@@ -1,0 +1,53 @@
+# Gradle
+.gradle/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/**/build/
+
+# Local Gradle properties (secrets / machine-specific)
+gradle.properties.local
+
+# JVM / Kotlin
+*.class
+*.jar
+*.war
+*.nar
+hs_err_pid*
+replay_pid*
+
+# IDE - IntelliJ / Cursor / VS Code
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.project
+.classpath
+.settings/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+*~
+
+# Local env / secrets (never commit)
+.env
+.env.*
+!.env.example
+
+# Application local data (see app.storage.local-root)
+.data/
+
+# Node (if you add frontend tooling later)
+node_modules/
+
+# jOOQ generated sources — do not commit
+**/build/generated-sources/jooq/

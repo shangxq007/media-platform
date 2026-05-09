@@ -1,0 +1,7 @@
+# SDKMAN — optional JVM SDK management for local development
+# See docs/sdkman.md for usage instructions.
+#
+# This file is NOT used by CI or by Gradle Wrapper.
+# Gradle Wrapper remains the authoritative build entry point.
+
+java=25.0.2-tem

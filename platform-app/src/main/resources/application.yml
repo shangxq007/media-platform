@@ -1,0 +1,144 @@
+spring:
+  application:
+    name: media-platform
+  datasource:
+    url: jdbc:h2:mem:platform;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+app:
+  outbox:
+    dispatch-interval-ms: 3000
+  api-versioning:
+    public-default-major: v1
+    also-accept-header: true
+  observability:
+    stack: lgtm
+  identity:
+    api-key-auth-enabled: false
+    # Example:
+    # api-keys:
+    #   local-dev-key: local-service-account
+  # OpenFeature global provider: InMemory (defaults only) unless Unleash is enabled.
+  features:
+    unleash:
+      enabled: false
+      api-url: http://localhost:4242/api/
+      app-name: media-platform
+      instance-id: "${HOSTNAME:singleton}"
+      api-key: ""
+  # Config-driven CLI (allowlist + arg templates). Override paths via env e.g. MEDIA_FFMPEG_PATH.
+  # Same structure can be fed from a config server or DB-backed PropertySource later.
+  cli-tools:
+    executables:
+      binary-true: /usr/bin/true
+      ffmpeg: ${MEDIA_FFMPEG_PATH:/usr/bin/ffmpeg}
+      ffprobe: ${MEDIA_FFPROBE_PATH:/usr/bin/ffprobe}
+    tools:
+      noop:
+        executable-key: binary-true
+        args: []
+        timeout-millis: 5000
+      ffprobe-version:
+        executable-key: ffprobe
+        args: ["-version"]
+        timeout-millis: 15000
+      ffprobe-duration:
+        executable-key: ffprobe
+        args:
+          - "-v"
+          - "error"
+          - "-show_entries"
+          - "format=duration"
+          - "-of"
+          - "default=noprint_wrappers=1:nokey=1"
+          - "{input}"
+        timeout-millis: 60000
+
+# Render execution mode: local (default) | temporal
+# - local: Uses LocalRenderExecutionAdapter, delegates to RenderOrchestratorService
+# - temporal: Uses TemporalRenderExecutionAdapter, requires Temporal Server
+render:
+  execution:
+    mode: local
+
+# AI stub configuration for development/testing (test profile override)
+app.ai.stub.enable-failures: false
+app.ai.stub.failure-rate: 0.0
+app.ai.stub.max-retries: 3
+app.ai.stub.retry-delay-ms: 1000
+
+# Temporal: leave connection.target unset to skip client/workers (no local server required).
+# When a server is available, set target + start-workers + auto-discovery, e.g.:
+# spring:
+#   temporal:
+#     connection:
+#       target: 127.0.0.1:7233
+#     start-workers: true
+#     workers-auto-discovery:
+#       packages:
+#         - com.example.platform.workflow.temporal
+
+# OpenTelemetry observability
+management:
+  otlp:
+    metrics:
+      export:
+        url: http://localhost:4318/v1/metrics
+        step: 1m
+        enable-gc-mbean: false
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+        step: 1m
+  observations:
+    enabled: true
+  traces:
+    sampling:
+      probability: 1.0
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: media-platform
+      environment: development
+
+# Application-specific metrics
+app:
+  observability:
+    trace-id-header: X-Trace-ID
+    request-id-header: X-Request-ID
+    tenant-id-header: X-Tenant-ID
+    job-id-header: X-Job-ID
+    event-id-header: X-Event-ID
+
+# Metrics aggregation and retention
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        commerce.checkout.duration: true
+        ai.provider.processing.time: true
+        outbox.dispatch.time: true

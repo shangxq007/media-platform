@@ -1,0 +1,22 @@
+# Git / IDE
+.git
+.gitignore
+.idea
+*.iml
+.vscode
+
+# Build outputs & caches
+**/.gradle
+**/build
+out
+bin
+
+# Docs & misc (not needed to compile)
+*.md
+docs
+terminals
+
+# Local env
+.env
+.env.*
+!.env.example
