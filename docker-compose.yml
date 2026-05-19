@@ -1,8 +1,5 @@
-# Example: app + PostgreSQL + persistent volume for local filesystem storage.
+# Media Platform — Local Development with Docker Compose
 # Usage: docker compose up --build
-#
-# Database: credentials match SPRING_DATASOURCE_* below. Migrations run from classpath (Flyway).
-# Storage: APP_STORAGE_LOCAL_ROOT points at a named volume so uploads survive container recreation.
 
 services:
   db:
@@ -22,7 +19,9 @@ services:
       retries: 10
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -30,7 +29,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/platform
       SPRING_DATASOURCE_USERNAME: platform
       SPRING_DATASOURCE_PASSWORD: secret
-      # Matches volume mount; override if you mount a host path instead.
       APP_STORAGE_LOCAL_ROOT: /data/storage
     volumes:
       - app-storage:/data/storage

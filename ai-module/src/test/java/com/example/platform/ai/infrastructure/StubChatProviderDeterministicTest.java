@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.ai.domain.ChatRequest;
 import com.example.platform.ai.domain.ChatResult;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Value;
 
 class StubChatProviderDeterministicTest {
 
@@ -14,7 +14,7 @@ class StubChatProviderDeterministicTest {
 
     @BeforeEach
     void setUp() {
-        provider = new StubChatProvider(0.0, false);
+        provider = new StubChatProvider(0.0, false, 3, 1000L, new SimpleMeterRegistry());
     }
 
     @Test

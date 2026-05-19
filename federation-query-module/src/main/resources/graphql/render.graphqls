@@ -1,0 +1,48 @@
+type Query {
+    exportPanelState(projectId: String!): ExportPanelState!
+}
+
+type ExportPanelState {
+    project: ProjectInfo!
+    timelineSummary: TimelineSummary!
+    exportOptions: [ExportOption!]!
+    workers: [WorkerStatus!]!
+    validation: ExportValidation
+}
+
+type ProjectInfo {
+    id: String!
+    name: String!
+}
+
+type TimelineSummary {
+    durationSeconds: Float!
+    tracks: Int!
+    clips: Int!
+    subtitles: Int!
+    effects: Int!
+}
+
+type ExportOption {
+    preset: String!
+    allowed: Boolean!
+    reasonCode: String
+    estimatedCost: Money
+    recommendedPreset: String
+    providerCandidates: [String!]
+    quotaRemaining: Float
+    requiresReview: Boolean!
+}
+
+type WorkerStatus {
+    id: String!
+    status: String!
+    gpuAvailable: Boolean!
+    providerKeys: [String!]
+}
+
+type ExportValidation {
+    allowed: Boolean!
+    violations: [String!]
+    recommendations: [String!]
+}

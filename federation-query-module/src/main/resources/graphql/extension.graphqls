@@ -1,0 +1,27 @@
+type Query {
+    extensionOverview: [ExtensionInfo!]!
+}
+
+type ExtensionInfo {
+    extensionKey: String!
+    runtimeType: String
+    trustLevel: String
+    enabled: Boolean!
+    version: String
+    healthStatus: String
+    lastExecutionAt: DateTime
+    routeRules: [RouteRule!]
+    resourceLimits: ResourceLimits
+}
+
+type RouteRule {
+    scene: String!
+    priority: Int!
+    enabled: Boolean!
+}
+
+type ResourceLimits {
+    timeoutMs: Int!
+    maxConcurrency: Int!
+    maxOutputBytes: Int!
+}

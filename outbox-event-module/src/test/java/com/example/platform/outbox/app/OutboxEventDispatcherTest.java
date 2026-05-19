@@ -12,6 +12,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,7 @@ class OutboxEventDispatcherTest {
     void setUp() {
         service = mock(OutboxEventService.class);
         publisher = mock(ApplicationEventPublisher.class);
-        dispatcher = new OutboxEventDispatcher(service, publisher, 3);
+        dispatcher = new OutboxEventDispatcher(service, publisher, 3, new SimpleMeterRegistry());
     }
 
     @Test

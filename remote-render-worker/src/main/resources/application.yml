@@ -1,0 +1,24 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: remote-render-worker
+  datasource:
+    url: jdbc:h2:file:/tmp/platform-remote-worker/db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+app:
+  storage:
+    local-root: /tmp/platform-remote-worker
+
+render:
+  providers:
+    javacv:
+      enabled: true
+  stale-compensator:
+    enabled: true
+    threshold: PT30M
+    interval: PT5M

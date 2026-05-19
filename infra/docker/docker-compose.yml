@@ -1,0 +1,60 @@
+# Media Platform — Local Development with Docker Compose
+# Usage: docker compose -f infra/docker/docker-compose.yml up --build
+#
+# Services:
+#   db       — PostgreSQL 16 (port 5432)
+#   app      — Spring Boot backend with embedded frontend (port 8080)
+#   frontend — Vue.js dev server for development (port 3000, optional)
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: platform
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform -d platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/platform
+      SPRING_DATASOURCE_USERNAME: platform
+      SPRING_DATASOURCE_PASSWORD: secret
+      APP_STORAGE_LOCAL_ROOT: /data/storage
+    volumes:
+      - app-storage:/data/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  app-storage:

@@ -1,8 +1,8 @@
 package com.example.platform.render.policy;
 
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-@Component
+@Service
 public class SimpleRenderPolicyEngine implements RenderPolicyEngine {
     @Override
     public RenderPolicyDecision decide(String profile) {

@@ -3,6 +3,7 @@ package com.example.platform.render.infrastructure;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -13,8 +14,12 @@ import java.util.List;
  * <p>Simulates render execution with a random delay. Implements the full
  * {@link RenderProvider} SPI including capability checks and environment
  * validation.</p>
+ *
+ * <p>Only active in the {@code test} profile. In production, {@link JavaCVRenderProvider}
+ * is used instead.</p>
  */
 @Component
+@Profile("test")
 public class MockRenderProvider implements RenderProvider {
     private static final Logger log = LoggerFactory.getLogger(MockRenderProvider.class);
 

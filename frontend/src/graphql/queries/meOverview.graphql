@@ -1,0 +1,52 @@
+query MeOverview {
+  meOverview {
+    id
+    displayName
+    currentTenant {
+      id
+      name
+      tier
+    }
+    currentWorkspace {
+      id
+      name
+      role
+    }
+    capabilities {
+      featureKey
+      allowed
+      reasonCode
+      quotaRemaining
+      source
+    }
+    navigation {
+      routeKey
+      path
+      title
+      icon
+      visible
+      enabled
+      reasonCode
+      badge
+      children {
+        routeKey
+        path
+        title
+        visible
+        enabled
+      }
+    }
+    billing {
+      currentPlan
+      creditBalance {
+        amount
+        currency
+      }
+      usageThisMonth {
+        renderMinutes
+        storageGb
+        apiCalls
+      }
+    }
+  }
+}

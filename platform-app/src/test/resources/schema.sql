@@ -377,3 +377,153 @@ create table if not exists quota_usage (
     created_at timestamp not null,
     updated_at timestamp not null
 );
+
+-- V17 tables for H2 test compatibility
+create table if not exists pricing_rule (
+    id                varchar(64)  not null primary key,
+    rule_key          varchar(128) not null,
+    name              varchar(255) not null,
+    description       text,
+    pricing_model     varchar(32)  not null,
+    meter_key         varchar(128),
+    unit_price_minor  bigint,
+    currency_code     varchar(8),
+    tier_config       text,
+    status            varchar(32)  not null default 'ACTIVE',
+    effective_from    timestamp,
+    effective_to      timestamp,
+    created_at        timestamp    not null,
+    updated_at        timestamp    not null
+);
+
+create table if not exists subscription_plan (
+    id                 varchar(64)  not null primary key,
+    plan_key           varchar(128) not null,
+    name               varchar(255) not null,
+    description        text,
+    billing_interval   varchar(32)  not null,
+    base_price_minor   bigint       not null,
+    currency_code      varchar(8)   not null,
+    included_quota     text,
+    status             varchar(32)  not null default 'ACTIVE',
+    created_at         timestamp    not null,
+    updated_at         timestamp    not null
+);
+
+alter table if exists subscription_contract
+    add column if not exists plan_key varchar(128);
+alter table if exists subscription_contract
+    add column if not exists included_quota_used text;
+
+create table if not exists usage_meter (
+    id                 varchar(64)  not null primary key,
+    meter_key          varchar(128) not null,
+    name               varchar(255) not null,
+    description        text,
+    unit               varchar(64)  not null,
+    aggregation_type   varchar(32)  not null,
+    status             varchar(32)  not null default 'ACTIVE',
+    created_at         timestamp    not null
+);
+
+create table if not exists usage_record (
+    id                varchar(64)  not null primary key,
+    tenant_id         varchar(64),
+    workspace_id      varchar(64),
+    user_id           varchar(64),
+    meter_key         varchar(128) not null,
+    quantity          double precision not null,
+    unit              varchar(64)  not null,
+    recorded_at       timestamp    not null,
+    idempotency_key   varchar(255),
+    created_at        timestamp    not null
+);
+
+create table if not exists rated_usage_record (
+    id                   varchar(64)  not null primary key,
+    usage_record_id      varchar(64)  not null,
+    pricing_rule_id      varchar(64)  not null,
+    rated_amount_minor   bigint       not null,
+    currency_code        varchar(8)   not null,
+    rating_details       text,
+    created_at           timestamp    not null
+);
+
+create table if not exists billing_ledger_entry (
+    id                varchar(64)  not null primary key,
+    tenant_id         varchar(64),
+    workspace_id      varchar(64),
+    user_id           varchar(64),
+    entry_type        varchar(32)  not null,
+    amount_minor      bigint       not null,
+    currency_code     varchar(8)   not null,
+    reference_type    varchar(64),
+    reference_id      varchar(64),
+    description       text,
+    created_at        timestamp    not null
+);
+
+create table if not exists credit_wallet (
+    id             varchar(64)  not null primary key,
+    tenant_id      varchar(64),
+    workspace_id   varchar(64),
+    user_id        varchar(64),
+    balance_minor  bigint       not null default 0,
+    currency_code  varchar(8)   not null,
+    status         varchar(32)  not null default 'ACTIVE',
+    created_at     timestamp    not null,
+    updated_at     timestamp    not null
+);
+
+create table if not exists credit_transaction (
+    id                   varchar(64)  not null primary key,
+    wallet_id            varchar(64)  not null,
+    transaction_type     varchar(32)  not null,
+    amount_minor         bigint       not null,
+    balance_after_minor  bigint       not null,
+    reference_type       varchar(64),
+    reference_id         varchar(64),
+    description          text,
+    created_at           timestamp    not null
+);
+
+create table if not exists invoice_line_item (
+    id                varchar(64)  not null primary key,
+    invoice_id        varchar(64)  not null,
+    line_type         varchar(32)  not null,
+    description       text,
+    quantity          double precision,
+    unit_price_minor  bigint,
+    amount_minor      bigint       not null,
+    currency_code     varchar(8)   not null,
+    period_start      timestamp,
+    period_end        timestamp,
+    created_at        timestamp    not null
+);
+
+create table if not exists custom_pricing_rule (
+    id                   varchar(64)  not null primary key,
+    tenant_id            varchar(64),
+    workspace_id         varchar(64),
+    meter_key            varchar(128) not null,
+    override_price_minor bigint,
+    discount_percent     double precision,
+    effective_from       timestamp,
+    effective_to         timestamp,
+    status               varchar(32)  not null default 'ACTIVE',
+    created_at           timestamp    not null
+);
+
+create table if not exists discount_policy (
+    id                varchar(64)  not null primary key,
+    policy_key        varchar(128) not null,
+    name              varchar(255) not null,
+    description       text,
+    discount_type     varchar(32)  not null,
+    discount_value    double precision not null,
+    conditions        text,
+    status            varchar(32)  not null default 'ACTIVE',
+    effective_from    timestamp,
+    effective_to      timestamp,
+    created_at        timestamp    not null
+);

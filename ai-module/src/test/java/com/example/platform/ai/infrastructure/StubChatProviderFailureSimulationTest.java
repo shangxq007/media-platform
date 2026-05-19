@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.ai.domain.ChatRequest;
 import com.example.platform.ai.domain.ChatResult;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Value;
 
 class StubChatProviderFailureSimulationTest {
 
@@ -15,7 +15,7 @@ class StubChatProviderFailureSimulationTest {
     @BeforeEach
     void setUp() {
         // Enable failure simulation with 100% failure rate for testing
-        provider = new StubChatProvider(1.0, true);
+        provider = new StubChatProvider(1.0, true, 0, 0L, new SimpleMeterRegistry());
     }
 
     @Test
@@ -38,7 +38,7 @@ class StubChatProviderFailureSimulationTest {
     @Test
     void lowFailureRateStillProducesSuccessMostly() {
         // Create a provider with very low failure rate
-        StubChatProvider lowFailureProvider = new StubChatProvider(0.1, true);
+        StubChatProvider lowFailureProvider = new StubChatProvider(0.1, true, 3, 1000L, new SimpleMeterRegistry());
 
         int successes = 0;
         int totalAttempts = 50;
@@ -63,7 +63,7 @@ class StubChatProviderFailureSimulationTest {
 
     @Test
     void zeroFailureRateAlwaysSucceeds() {
-        StubChatProvider noFailureProvider = new StubChatProvider(0.0, false);
+        StubChatProvider noFailureProvider = new StubChatProvider(0.0, false, 3, 1000L, new SimpleMeterRegistry());
 
         for (int i = 0; i < 10; i++) {
             ChatResult result = noFailureProvider.chat(new ChatRequest("test", "iteration " + i));
@@ -77,7 +77,7 @@ class StubChatProviderFailureSimulationTest {
     @Test
     void failureSimulationDoesNotAffectNormalProvider() {
         // Test that normal provider (without failure simulation) is not affected
-        StubChatProvider normalProvider = new StubChatProvider(0.0, false);
+        StubChatProvider normalProvider = new StubChatProvider(0.0, false, 3, 1000L, new SimpleMeterRegistry());
 
         ChatResult result1 = normalProvider.chat(new ChatRequest("test", "first call"));
         ChatResult result2 = normalProvider.chat(new ChatRequest("test", "second call"));

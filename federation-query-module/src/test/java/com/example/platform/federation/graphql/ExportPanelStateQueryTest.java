@@ -1,0 +1,232 @@
+package com.example.platform.federation.graphql;
+
+import com.example.platform.entitlement.app.EntitlementDecisionService;
+import com.example.platform.entitlement.domain.AccessCheckRequest;
+import com.example.platform.entitlement.domain.EntitlementDecision;
+import com.example.platform.federation.graphql.context.GraphQLRequestContext;
+import com.example.platform.federation.graphql.dto.ExportPanelState;
+import com.example.platform.federation.graphql.resolver.ExportPanelGraphQLResolver;
+import com.example.platform.identity.app.ProjectRepository;
+import com.example.platform.identity.domain.Project;
+import com.example.platform.render.app.RenderJobService;
+import com.example.platform.render.infrastructure.ExportPolicyService;
+import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Field;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class ExportPanelStateQueryTest {
+
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Field f = target.getClass().getDeclaredField(fieldName);
+        f.setAccessible(true);
+        f.set(target, value);
+    }
+
+    @Test
+    void returnsExportPanelStateForValidProject() throws Exception {
+        RenderJobService renderJobService = mock(RenderJobService.class);
+        ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
+        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        ProjectRepository projectRepository = mock(ProjectRepository.class);
+
+        GraphQLRequestContext ctx = new GraphQLRequestContext(
+                "tenant-1", null, "user-1",
+                List.of("MEMBER"), List.of("export"),
+                "GRAPHQL", "JWT_SESSION",
+                "trace-1", "req-1",
+                "127.0.0.1", "test-agent"
+        );
+
+        Project project = new Project("proj-1", "tenant-1", "Test Project", "desc",
+                Project.ProjectStatus.ACTIVE, Instant.now());
+        when(projectRepository.findById("proj-1")).thenReturn(Optional.of(project));
+        when(renderJobService.listByProject("tenant-1", "proj-1")).thenReturn(List.of());
+
+        EntitlementDecision decision = new EntitlementDecision(
+                true, "ALLOW", "TIER", "Access granted", "PRO",
+                List.of("tier:PRO"), null, null, null, null,
+                null, List.of(), null, false);
+        when(entitlementService.evaluate(any(AccessCheckRequest.class))).thenReturn(decision);
+
+        ExportPolicyService.ExportPreset preset = new ExportPolicyService.ExportPreset(
+                "pro_1080p", "Pro 1080p", "1920x1080", 30, "mp4", "h264", "aac", false, "PRO", "javacv");
+        when(exportPolicyService.getAvailablePresets("PRO")).thenReturn(List.of(preset));
+        when(exportPolicyService.isPresetAvailable("pro_1080p", "PRO")).thenReturn(true);
+        when(exportPolicyService.getDefaultPreset("PRO")).thenReturn(preset);
+        when(exportPolicyService.resolveProvider("pro_1080p", "PRO")).thenReturn("javacv");
+
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
+        setField(resolver, "renderJobService", renderJobService);
+        setField(resolver, "exportPolicyService", exportPolicyService);
+        setField(resolver, "entitlementDecisionService", entitlementService);
+        setField(resolver, "projectRepository", projectRepository);
+
+        ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
+
+        assertNotNull(result);
+        assertNotNull(result.project());
+        assertEquals("proj-1", result.project().id());
+        assertEquals("Test Project", result.project().name());
+        assertNotNull(result.timelineSummary());
+        assertNotNull(result.exportOptions());
+        assertNotNull(result.workers());
+        assertNotNull(result.validation());
+    }
+
+    @Test
+    void throwsForProjectNotInTenant() throws Exception {
+        RenderJobService renderJobService = mock(RenderJobService.class);
+        ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
+        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        ProjectRepository projectRepository = mock(ProjectRepository.class);
+
+        GraphQLRequestContext ctx = new GraphQLRequestContext(
+                "tenant-2", null, "user-1",
+                List.of("MEMBER"), List.of("export"),
+                "GRAPHQL", "JWT_SESSION",
+                "trace-1", "req-1",
+                "127.0.0.1", "test-agent"
+        );
+
+        Project project = new Project("proj-1", "tenant-1", "Test Project", "desc",
+                Project.ProjectStatus.ACTIVE, Instant.now());
+        when(projectRepository.findById("proj-1")).thenReturn(Optional.of(project));
+
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
+        setField(resolver, "renderJobService", renderJobService);
+        setField(resolver, "exportPolicyService", exportPolicyService);
+        setField(resolver, "entitlementDecisionService", entitlementService);
+        setField(resolver, "projectRepository", projectRepository);
+
+        assertThrows(IllegalArgumentException.class, () -> resolver.exportPanelState("proj-1", ctx));
+    }
+
+    @Test
+    void throwsForMissingProject() throws Exception {
+        RenderJobService renderJobService = mock(RenderJobService.class);
+        ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
+        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        ProjectRepository projectRepository = mock(ProjectRepository.class);
+
+        GraphQLRequestContext ctx = new GraphQLRequestContext(
+                "tenant-1", null, "user-1",
+                List.of("MEMBER"), List.of(),
+                "GRAPHQL", "JWT_SESSION",
+                "trace-1", "req-1",
+                "127.0.0.1", "test-agent"
+        );
+
+        when(projectRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
+        setField(resolver, "renderJobService", renderJobService);
+        setField(resolver, "exportPolicyService", exportPolicyService);
+        setField(resolver, "entitlementDecisionService", entitlementService);
+        setField(resolver, "projectRepository", projectRepository);
+
+        assertThrows(IllegalArgumentException.class, () -> resolver.exportPanelState("nonexistent", ctx));
+    }
+
+    @Test
+    void returnsValidationWithViolationsForRestrictedPresets() throws Exception {
+        RenderJobService renderJobService = mock(RenderJobService.class);
+        ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
+        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        ProjectRepository projectRepository = mock(ProjectRepository.class);
+
+        GraphQLRequestContext ctx = new GraphQLRequestContext(
+                "tenant-1", null, "user-1",
+                List.of("MEMBER"), List.of("export"),
+                "GRAPHQL", "JWT_SESSION",
+                "trace-1", "req-1",
+                "127.0.0.1", "test-agent"
+        );
+
+        Project project = new Project("proj-1", "tenant-1", "Test Project", "desc",
+                Project.ProjectStatus.ACTIVE, Instant.now());
+        when(projectRepository.findById("proj-1")).thenReturn(Optional.of(project));
+        when(renderJobService.listByProject("tenant-1", "proj-1")).thenReturn(List.of());
+
+        EntitlementDecision decision = new EntitlementDecision(
+                true, "ALLOW", "TIER", "Access granted", "FREE",
+                List.of("tier:FREE"), null, null, null, null,
+                null, List.of(), null, false);
+        when(entitlementService.evaluate(any(AccessCheckRequest.class))).thenReturn(decision);
+
+        ExportPolicyService.ExportPreset freePreset = new ExportPolicyService.ExportPreset(
+                "free_720p", "Free 720p", "1280x720", 30, "mp4", "h264", "aac", true, "FREE", "javacv");
+        ExportPolicyService.ExportPreset proPreset = new ExportPolicyService.ExportPreset(
+                "pro_1080p", "Pro 1080p", "1920x1080", 30, "mp4", "h264", "aac", false, "PRO", "javacv");
+        when(exportPolicyService.getAvailablePresets("FREE")).thenReturn(List.of(freePreset, proPreset));
+        when(exportPolicyService.isPresetAvailable("free_720p", "FREE")).thenReturn(true);
+        when(exportPolicyService.isPresetAvailable("pro_1080p", "FREE")).thenReturn(false);
+        when(exportPolicyService.getDefaultPreset("FREE")).thenReturn(freePreset);
+        when(exportPolicyService.resolveProvider("free_720p", "FREE")).thenReturn("javacv");
+        when(exportPolicyService.resolveProvider("pro_1080p", "FREE")).thenReturn("javacv");
+
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
+        setField(resolver, "renderJobService", renderJobService);
+        setField(resolver, "exportPolicyService", exportPolicyService);
+        setField(resolver, "entitlementDecisionService", entitlementService);
+        setField(resolver, "projectRepository", projectRepository);
+
+        ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
+
+        assertNotNull(result);
+        assertNotNull(result.validation());
+        assertFalse(result.validation().violations().isEmpty());
+    }
+
+    @Test
+    void returnsWorkerStatuses() throws Exception {
+        RenderJobService renderJobService = mock(RenderJobService.class);
+        ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
+        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        ProjectRepository projectRepository = mock(ProjectRepository.class);
+
+        GraphQLRequestContext ctx = new GraphQLRequestContext(
+                "tenant-1", null, "user-1",
+                List.of("MEMBER"), List.of("export"),
+                "GRAPHQL", "JWT_SESSION",
+                "trace-1", "req-1",
+                "127.0.0.1", "test-agent"
+        );
+
+        Project project = new Project("proj-1", "tenant-1", "Test Project", "desc",
+                Project.ProjectStatus.ACTIVE, Instant.now());
+        when(projectRepository.findById("proj-1")).thenReturn(Optional.of(project));
+        when(renderJobService.listByProject("tenant-1", "proj-1")).thenReturn(List.of());
+
+        EntitlementDecision decision = new EntitlementDecision(
+                true, "ALLOW", "TIER", "Access granted", "PRO",
+                List.of("tier:PRO"), null, null, null, null,
+                null, List.of(), null, false);
+        when(entitlementService.evaluate(any(AccessCheckRequest.class))).thenReturn(decision);
+
+        ExportPolicyService.ExportPreset preset = new ExportPolicyService.ExportPreset(
+                "pro_1080p", "Pro 1080p", "1920x1080", 30, "mp4", "h264", "aac", false, "PRO", "javacv");
+        when(exportPolicyService.getAvailablePresets("PRO")).thenReturn(List.of(preset));
+        when(exportPolicyService.isPresetAvailable("pro_1080p", "PRO")).thenReturn(true);
+        when(exportPolicyService.getDefaultPreset("PRO")).thenReturn(preset);
+        when(exportPolicyService.resolveProvider("pro_1080p", "PRO")).thenReturn("javacv");
+
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
+        setField(resolver, "renderJobService", renderJobService);
+        setField(resolver, "exportPolicyService", exportPolicyService);
+        setField(resolver, "entitlementDecisionService", entitlementService);
+        setField(resolver, "projectRepository", projectRepository);
+
+        ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
+
+        assertNotNull(result);
+        assertFalse(result.workers().isEmpty());
+        assertEquals("local-1", result.workers().getFirst().id());
+        assertEquals("IDLE", result.workers().getFirst().status());
+    }
+}

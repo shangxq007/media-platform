@@ -6,5 +6,9 @@ public enum AuditCategory {
     POLICY,
     PLUGIN,
     MANUAL_RETRY,
-    PERMISSION
+    PERMISSION,
+    EXTENSION,
+    EXTENSION_ROUTING,
+    EXTENSION_RESOURCE,
+    SANDBOX
 }

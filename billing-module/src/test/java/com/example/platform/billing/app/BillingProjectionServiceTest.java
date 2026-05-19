@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 class BillingProjectionServiceTest {
 
@@ -33,8 +34,9 @@ class BillingProjectionServiceTest {
     void activateSubscriptionCreatesBillingState() {
         Instant now = Instant.now();
         SubscriptionContract contract = new SubscriptionContract(
-                "sub_123", "tenant-1", "pro_monthly", "active",
-                now, now.plusSeconds(86400 * 30L)
+                "sub_123", "tenant-1", "tenant-1", "pro_monthly",
+                now, now.plusSeconds(86400 * 30L),
+                "active", 0L, "USD", Map.of(), Map.of()
         );
 
         BillingState state = service.activateSubscription(contract);
@@ -50,24 +52,26 @@ class BillingProjectionServiceTest {
     void activateSubscriptionStoresContract() {
         Instant now = Instant.now();
         SubscriptionContract contract = new SubscriptionContract(
-                "sub_123", "tenant-1", "pro_monthly", "active",
-                now, now.plusSeconds(86400 * 30L)
+                "sub_123", "tenant-1", "tenant-1", "pro_monthly",
+                now, now.plusSeconds(86400 * 30L),
+                "active", 0L, "USD", Map.of(), Map.of()
         );
 
         service.activateSubscription(contract);
 
         SubscriptionContract stored = service.getContract("sub_123");
         assertNotNull(stored);
-        assertEquals("tenant-1", stored.subjectId());
-        assertEquals("pro_monthly", stored.canonicalProductCode());
+        assertEquals("tenant-1", stored.userId());
+        assertEquals("pro_monthly", stored.planKey());
     }
 
     @Test
     void activateSubscriptionStoresBillingState() {
         Instant now = Instant.now();
         SubscriptionContract contract = new SubscriptionContract(
-                "sub_123", "tenant-1", "pro_monthly", "active",
-                now, now.plusSeconds(86400 * 30L)
+                "sub_123", "tenant-1", "tenant-1", "pro_monthly",
+                now, now.plusSeconds(86400 * 30L),
+                "active", 0L, "USD", Map.of(), Map.of()
         );
 
         service.activateSubscription(contract);
@@ -140,8 +144,8 @@ class BillingProjectionServiceTest {
 
         assertNotNull(contract);
         assertTrue(contract.contractId().startsWith("sub_"));
-        assertEquals("tenant-1", contract.subjectId());
-        assertEquals("pro_monthly", contract.canonicalProductCode());
+        assertEquals("tenant-1", contract.userId());
+        assertEquals("pro_monthly", contract.planKey());
         assertEquals("active", contract.lifecycleState());
         assertNotNull(contract.periodStartAt());
         assertNotNull(contract.periodEndAt());
@@ -160,12 +164,14 @@ class BillingProjectionServiceTest {
     void activateSubscriptionOverwritesExistingState() {
         Instant now = Instant.now();
         SubscriptionContract contract1 = new SubscriptionContract(
-                "sub_1", "tenant-1", "basic_monthly", "active",
-                now, now.plusSeconds(86400 * 30L)
+                "sub_1", "tenant-1", "tenant-1", "basic_monthly",
+                now, now.plusSeconds(86400 * 30L),
+                "active", 0L, "USD", Map.of(), Map.of()
         );
         SubscriptionContract contract2 = new SubscriptionContract(
-                "sub_2", "tenant-1", "pro_monthly", "active",
-                now, now.plusSeconds(86400 * 60L)
+                "sub_2", "tenant-1", "tenant-1", "pro_monthly",
+                now, now.plusSeconds(86400 * 60L),
+                "active", 0L, "USD", Map.of(), Map.of()
         );
 
         service.activateSubscription(contract1);

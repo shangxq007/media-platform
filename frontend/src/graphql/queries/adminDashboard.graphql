@@ -1,0 +1,34 @@
+query AdminDashboard($range: String = "7d") {
+  adminDashboard(range: $range) {
+    renderStats {
+      submitted
+      completed
+      failed
+      avgDurationSeconds
+    }
+    providerHealth {
+      providerKey
+      status
+      latencyMs
+      errorRate
+    }
+    billingSummary {
+      usageAmount { amount currency }
+      estimatedRevenue { amount currency }
+      creditBalanceTotal { amount currency }
+    }
+    feedbackSummary {
+      openIssues
+      criticalIssues
+      linkedRenderJobs
+      linkedPromptExecutions
+      replayLinked
+    }
+    extensionSummary {
+      installed
+      enabled
+      highRisk
+      sandboxJobsRunning
+    }
+  }
+}

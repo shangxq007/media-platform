@@ -14,18 +14,10 @@ public class SchedulerController {
         this.service = service;
     }
 
-    // -------------------------------------------------------------------------
-    // Internal scheduler endpoints (Prompt 13)
-    // -------------------------------------------------------------------------
-
     @PostMapping("/internal/scheduler/run/{jobKey}")
     public Map<String, String> runJob(@PathVariable String jobKey) {
         return Map.of("jobKey", jobKey, "status", "TRIGGERED");
     }
-
-    // -------------------------------------------------------------------------
-    // Legacy endpoints (kept for backward compatibility)
-    // -------------------------------------------------------------------------
 
     @GetMapping("/scheduler/overview")
     public Map<String, Object> overview() {

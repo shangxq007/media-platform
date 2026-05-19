@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<flow>
+    <chain name="render-pipeline">
+        THEN(aiScriptGen, renderPlanCalc, videoFrameGen, artifactUpdate)
+    </chain>
+    <chain name="render-pipeline-with-subtitles">
+        THEN(aiScriptGen, renderPlanCalc, subtitleBurnIn, videoFrameGen, artifactUpdate)
+    </chain>
+</flow>

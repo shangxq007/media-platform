@@ -1,0 +1,31 @@
+type Query {
+    monitoringFeedbackOverview(range: String = "7d"): MonitoringFeedbackOverview!
+}
+
+type MonitoringFeedbackOverview {
+    monitoringStatus: MonitoringStatus!
+    feedbackSummary: FeedbackSummary!
+    problematicDataSummary: ProblematicDataSummary
+}
+
+type MonitoringStatus {
+    sentryEnabled: Boolean!
+    openReplayEnabled: Boolean!
+    lastErrorAt: DateTime
+    lastFeedbackAt: DateTime
+}
+
+type FeedbackSummary {
+    openIssues: Int!
+    criticalIssues: Int!
+    linkedRenderJobs: Int
+    linkedPromptExecutions: Int
+    replayLinked: Boolean!
+}
+
+type ProblematicDataSummary {
+    total: Int!
+    requireReview: Int!
+    autoFixed: Int!
+    critical: Int!
+}

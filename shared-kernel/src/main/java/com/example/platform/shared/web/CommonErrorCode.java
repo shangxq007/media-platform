@@ -7,7 +7,8 @@ public enum CommonErrorCode implements ErrorCode {
     INTERNAL_ERROR("COMMON-500-001", "Internal error", 500),
     INTEGRATION_ERROR("COMMON-502-001", "Integration error", 502),
     AUTHENTICATION_REQUIRED("COMMON-401-001", "Authentication required", 401),
-    INSUFFICIENT_PERMISSION("COMMON-403-001", "Insufficient permission", 403);
+    INSUFFICIENT_PERMISSION("COMMON-403-001", "Insufficient permission", 403),
+    RATE_LIMIT_EXCEEDED("SECURITY-429-001", "Rate limit exceeded", 429);
 
     private final String code;
     private final String title;

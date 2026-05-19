@@ -1,6 +1,10 @@
 spring:
   application:
     name: media-platform
+  task:
+    scheduling:
+      pool:
+        size: 4
   datasource:
     url: jdbc:h2:mem:platform;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
     username: sa
@@ -11,16 +15,49 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  springdoc:
+    swagger-ui:
+      path: /swagger-ui.html
+    api-docs:
+      path: /v3/api-docs
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /v3/api-docs
+  otlp:
+    metrics:
+      export:
+        url: http://localhost:4318/v1/metrics
+        step: 1m
+        enable-gc-mbean: false
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+        step: 1m
+  observations:
+    enabled: true
+  traces:
+    sampling:
+      probability: 1.0
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        commerce.checkout.duration: true
+        ai.provider.processing.time: true
+        outbox.dispatch.time: true
+    tags:
+      application: media-platform
+      environment: development
+
 app:
   outbox:
     dispatch-interval-ms: 3000
@@ -29,12 +66,18 @@ app:
     also-accept-header: true
   observability:
     stack: lgtm
+    trace-id-header: X-Trace-ID
+    request-id-header: X-Request-ID
+    tenant-id-header: X-Tenant-ID
+    job-id-header: X-Job-ID
+    event-id-header: X-Event-ID
   identity:
     api-key-auth-enabled: false
-    # Example:
-    # api-keys:
-    #   local-dev-key: local-service-account
-  # OpenFeature global provider: InMemory (defaults only) unless Unleash is enabled.
+  security:
+    enabled: ${APP_SECURITY_ENABLED:false}
+    jwt:
+      secret-key: ${APP_JWT_SECRET:dev-only-insecure-key-replace-in-production-min-256-bits!!}
+      expiration-ms: 86400000
   features:
     unleash:
       enabled: false
@@ -42,8 +85,6 @@ app:
       app-name: media-platform
       instance-id: "${HOSTNAME:singleton}"
       api-key: ""
-  # Config-driven CLI (allowlist + arg templates). Override paths via env e.g. MEDIA_FFMPEG_PATH.
-  # Same structure can be fed from a config server or DB-backed PropertySource later.
   cli-tools:
     executables:
       binary-true: /usr/bin/true
@@ -69,76 +110,29 @@ app:
           - "default=noprint_wrappers=1:nokey=1"
           - "{input}"
         timeout-millis: 60000
+  analytics:
+    scheduler:
+      profiles-cron: "0 0 2 * * ?"
+      segments-cron: "0 0 3 * * ?"
+  ai.stub.enable-failures: false
+  ai.stub.failure-rate: 0.0
+  ai.stub.max-retries: 3
+  ai.stub.retry-delay-ms: 1000
 
-# Render execution mode: local (default) | temporal
-# - local: Uses LocalRenderExecutionAdapter, delegates to RenderOrchestratorService
-# - temporal: Uses TemporalRenderExecutionAdapter, requires Temporal Server
 render:
   execution:
     mode: local
 
-# AI stub configuration for development/testing (test profile override)
-app.ai.stub.enable-failures: false
-app.ai.stub.failure-rate: 0.0
-app.ai.stub.max-retries: 3
-app.ai.stub.retry-delay-ms: 1000
+# Sentry monitoring configuration
+# Set VITE_SENTRY_DSN in frontend .env and sentry.dsn in backend .env to enable
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:development}
+  enabled: ${SENTRY_ENABLED:false}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:1.0}
 
-# Temporal: leave connection.target unset to skip client/workers (no local server required).
-# When a server is available, set target + start-workers + auto-discovery, e.g.:
-# spring:
-#   temporal:
-#     connection:
-#       target: 127.0.0.1:7233
-#     start-workers: true
-#     workers-auto-discovery:
-#       packages:
-#         - com.example.platform.workflow.temporal
-
-# OpenTelemetry observability
-management:
-  otlp:
-    metrics:
-      export:
-        url: http://localhost:4318/v1/metrics
-        step: 1m
-        enable-gc-mbean: false
-    tracing:
-      endpoint: http://localhost:4318/v1/traces
-  prometheus:
-    metrics:
-      export:
-        enabled: true
-        step: 1m
-  observations:
-    enabled: true
-  traces:
-    sampling:
-      probability: 1.0
-  metrics:
-    distribution:
-      percentiles-histogram:
-        http.server.requests: true
-    tags:
-      application: media-platform
-      environment: development
-
-# Application-specific metrics
-app:
-  observability:
-    trace-id-header: X-Trace-ID
-    request-id-header: X-Request-ID
-    tenant-id-header: X-Tenant-ID
-    job-id-header: X-Job-ID
-    event-id-header: X-Event-ID
-
-# Metrics aggregation and retention
-management:
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    distribution:
-      percentiles-histogram:
-        commerce.checkout.duration: true
-        ai.provider.processing.time: true
-        outbox.dispatch.time: true
+# OpenReplay configuration
+openreplay:
+  project-key: ${OPENREPLAY_PROJECT_KEY:}
+  ingest-point: ${OPENREPLAY_INGEST_POINT:https://openrelay.yourdomain.com}
+  enabled: ${OPENREPLAY_ENABLED:false}

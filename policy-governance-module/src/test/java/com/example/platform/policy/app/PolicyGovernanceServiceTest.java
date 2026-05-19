@@ -3,7 +3,7 @@ package com.example.platform.policy.app;
 import com.example.platform.policy.domain.ExplainResult;
 import com.example.platform.policy.domain.PolicyDefinition;
 import com.example.platform.policy.domain.PolicyVersion;
-import com.example.platform.policy.features.AppFeaturesProperties;
+import com.example.platform.policy.featureflag.AppFeaturesProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

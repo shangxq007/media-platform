@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Test;
 
 class FfmpegCommandFactoryTest {
 
-    private FfmpegCommandFactory factory;
+    private FFmpegCommandFactory factory;
 
     @BeforeEach
     void setUp() {
-        factory = new FfmpegCommandFactory();
+        factory = new FFmpegCommandFactory();
     }
 
     @Test
@@ -114,7 +114,6 @@ class FfmpegCommandFactoryTest {
 
     @Test
     void shouldNotUseShellConcatenation() {
-        // Verify that all args are individual strings, not shell-concatenated
         RenderProfile profile = RenderProfile.social1080p();
         List<String> args = factory.buildTranscodeCommand(
                 "storage://input.mp4", "storage://output.mp4", profile);

@@ -1,0 +1,29 @@
+type Query {
+    promptTemplateDetail(id: String!): PromptTemplateDetail!
+}
+
+type PromptTemplateDetail {
+    id: String!
+    name: String!
+    status: String!
+    currentVersion: String
+    tags: [String!]
+    versions: [PromptVersion!]!
+    executions(limit: Int = 20): [PromptExecution!]!
+}
+
+type PromptVersion {
+    version: String!
+    createdAt: DateTime!
+    createdBy: String
+    changelog: String
+}
+
+type PromptExecution {
+    executionId: String!
+    status: String!
+    riskLevel: String
+    costEstimate: Money
+    startedAt: DateTime
+    finishedAt: DateTime
+}

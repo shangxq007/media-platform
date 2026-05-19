@@ -1,0 +1,310 @@
+{
+  "errors": {
+    "COMMON-400-001": {
+      "numericCode": 400001,
+      "messages": { "en": "Invalid request", "zh": "请求参数无效" },
+      "module": "common",
+      "status": 400
+    },
+    "COMMON-404-001": {
+      "numericCode": 404001,
+      "messages": { "en": "Resource not found", "zh": "资源不存在" },
+      "module": "common",
+      "status": 404
+    },
+    "COMMON-409-001": {
+      "numericCode": 409001,
+      "messages": { "en": "Conflict", "zh": "资源冲突" },
+      "module": "common",
+      "status": 409
+    },
+    "COMMON-500-001": {
+      "numericCode": 500001,
+      "messages": { "en": "Internal server error", "zh": "服务器内部错误" },
+      "module": "common",
+      "status": 500
+    },
+    "COMMON-502-001": {
+      "numericCode": 502001,
+      "messages": { "en": "Integration error", "zh": "外部服务集成错误" },
+      "module": "common",
+      "status": 502
+    },
+    "COMMON-401-001": {
+      "numericCode": 401001,
+      "messages": { "en": "Authentication required", "zh": "需要身份验证" },
+      "module": "common",
+      "status": 401
+    },
+    "COMMON-403-001": {
+      "numericCode": 403001,
+      "messages": { "en": "Insufficient permission", "zh": "权限不足" },
+      "module": "common",
+      "status": 403
+    },
+    "RENDER-400-001": {
+      "numericCode": 400101,
+      "messages": { "en": "Invalid render job request", "zh": "渲染任务请求无效" },
+      "module": "render",
+      "status": 400
+    },
+    "RENDER-404-001": {
+      "numericCode": 404101,
+      "messages": { "en": "Render job not found", "zh": "渲染任务不存在" },
+      "module": "render",
+      "status": 404
+    },
+    "RENDER-422-001": {
+      "numericCode": 422101,
+      "messages": { "en": "Render quality check failed", "zh": "渲染质量检查未通过" },
+      "module": "render",
+      "status": 422
+    },
+    "RENDER-500-001": {
+      "numericCode": 500101,
+      "messages": { "en": "Render execution failed", "zh": "渲染执行失败" },
+      "module": "render",
+      "status": 500
+    },
+    "RENDER-503-001": {
+      "numericCode": 503101,
+      "messages": { "en": "No render provider available", "zh": "无可用渲染提供者" },
+      "module": "render",
+      "status": 503
+    },
+    "SUBTITLE-400-001": {
+      "numericCode": 400201,
+      "messages": { "en": "Subtitle parsing failed", "zh": "字幕解析失败" },
+      "module": "subtitle",
+      "status": 400
+    },
+    "SUBTITLE-400-002": {
+      "numericCode": 400202,
+      "messages": { "en": "Unsupported subtitle format", "zh": "不支持的字幕格式" },
+      "module": "subtitle",
+      "status": 400
+    },
+    "SUBTITLE-404-001": {
+      "numericCode": 404201,
+      "messages": { "en": "Subtitle font not found", "zh": "字幕字体不存在" },
+      "module": "subtitle",
+      "status": 404
+    },
+    "SUBTITLE-422-001": {
+      "numericCode": 422201,
+      "messages": { "en": "Font glyph coverage insufficient", "zh": "字体字形覆盖不足" },
+      "module": "subtitle",
+      "status": 422
+    },
+    "EFFECT-400-001": {
+      "numericCode": 400301,
+      "messages": { "en": "Invalid effect parameters", "zh": "特效参数无效" },
+      "module": "effect",
+      "status": 400
+    },
+    "EFFECT-404-001": {
+      "numericCode": 404301,
+      "messages": { "en": "Effect not found", "zh": "特效不存在" },
+      "module": "effect",
+      "status": 404
+    },
+    "EFFECT-403-001": {
+      "numericCode": 403301,
+      "messages": { "en": "Effect not available for current tier", "zh": "当前等级不可用此特效" },
+      "module": "effect",
+      "status": 403
+    },
+    "TIMELINE-400-001": {
+      "numericCode": 400401,
+      "messages": { "en": "Invalid timeline data", "zh": "时间线数据无效" },
+      "module": "timeline",
+      "status": 400
+    },
+    "TIMELINE-422-001": {
+      "numericCode": 422401,
+      "messages": { "en": "Timeline schema version incompatible", "zh": "时间线 schema 版本不兼容" },
+      "module": "timeline",
+      "status": 422
+    },
+    "MIGRATION-400-001": {
+      "numericCode": 400501,
+      "messages": { "en": "Migration plan not found", "zh": "迁移计划不存在" },
+      "module": "migration",
+      "status": 400
+    },
+    "MIGRATION-409-001": {
+      "numericCode": 409501,
+      "messages": { "en": "Migration conflict detected", "zh": "检测到迁移冲突" },
+      "module": "migration",
+      "status": 409
+    },
+    "MIGRATION-422-001": {
+      "numericCode": 422501,
+      "messages": { "en": "Migration validation failed", "zh": "迁移验证失败" },
+      "module": "migration",
+      "status": 422
+    },
+    "ENTITLEMENT-403-001": {
+      "numericCode": 403601,
+      "messages": { "en": "Preset not allowed for current tier", "zh": "当前等级不允许使用此预设" },
+      "module": "entitlement",
+      "status": 403
+    },
+    "ENTITLEMENT-403-002": {
+      "numericCode": 403602,
+      "messages": { "en": "Provider not allowed for current tier", "zh": "当前等级不允许使用此渲染提供者" },
+      "module": "entitlement",
+      "status": 403
+    },
+    "ENTITLEMENT-403-003": {
+      "numericCode": 403603,
+      "messages": { "en": "GPU rendering not allowed for current tier", "zh": "当前等级不允许使用GPU渲染" },
+      "module": "entitlement",
+      "status": 403
+    },
+    "ENTITLEMENT-403-004": {
+      "numericCode": 403604,
+      "messages": { "en": "Export format not allowed for current tier", "zh": "当前等级不允许使用此导出格式" },
+      "module": "entitlement",
+      "status": 403
+    },
+    "ENTITLEMENT-403-005": {
+      "numericCode": 403605,
+      "messages": { "en": "Resolution exceeds current tier limit", "zh": "分辨率超出当前等级限制" },
+      "module": "entitlement",
+      "status": 403
+    },
+    "COST-402-001": {
+      "numericCode": 402701,
+      "messages": { "en": "Budget exceeded. Please reduce export quality or contact administrator", "zh": "预算已超出，请降低导出质量或联系管理员" },
+      "module": "cost",
+      "status": 402
+    },
+    "COST-402-002": {
+      "numericCode": 402702,
+      "messages": { "en": "Cost reservation failed", "zh": "成本预留失败" },
+      "module": "cost",
+      "status": 402
+    },
+    "COST-402-003": {
+      "numericCode": 402703,
+      "messages": { "en": "Approaching budget limit. Consider upgrading your plan", "zh": "接近预算限额，请考虑升级套餐" },
+      "module": "cost",
+      "status": 402
+    },
+    "USAGE-429-001": {
+      "numericCode": 429801,
+      "messages": { "en": "Unusual usage detected. Your exports have been temporarily adjusted", "zh": "检测到异常用量，导出已临时调整" },
+      "module": "usage",
+      "status": 429
+    },
+    "USAGE-429-002": {
+      "numericCode": 429802,
+      "messages": { "en": "Soft limit applied. Service quality has been adjusted", "zh": "已应用软限制，服务质量已调整" },
+      "module": "usage",
+      "status": 429
+    },
+    "USAGE-429-003": {
+      "numericCode": 429803,
+      "messages": { "en": "Degraded to recommended preset due to usage patterns", "zh": "由于用量模式已降级到推荐预设" },
+      "module": "usage",
+      "status": 429
+    },
+    "RECON-409-001": {
+      "numericCode": 409901,
+      "messages": { "en": "Reconciliation difference found", "zh": "对账发现差异" },
+      "module": "reconciliation",
+      "status": 409
+    },
+    "PROVIDER-503-001": {
+      "numericCode": 503101,
+      "messages": { "en": "Third-party provider is currently unhealthy", "zh": "第三方服务提供者当前不健康" },
+      "module": "provider",
+      "status": 503
+    },
+    "PROMPT-400-001": {
+      "numericCode": 400601,
+      "messages": { "en": "Invalid prompt template request", "zh": "提示词模板请求无效" },
+      "module": "prompt",
+      "status": 400
+    },
+    "PROMPT-400-002": {
+      "numericCode": 400602,
+      "messages": { "en": "Missing required prompt variables", "zh": "缺少必需的提示词变量" },
+      "module": "prompt",
+      "status": 400
+    },
+    "PROMPT-404-001": {
+      "numericCode": 404601,
+      "messages": { "en": "Prompt template not found", "zh": "提示词模板不存在" },
+      "module": "prompt",
+      "status": 404
+    },
+    "PROMPT-409-001": {
+      "numericCode": 409601,
+      "messages": { "en": "Prompt template code already exists", "zh": "提示词模板编码已存在" },
+      "module": "prompt",
+      "status": 409
+    },
+    "PROMPT-403-001": {
+      "numericCode": 403601,
+      "messages": { "en": "Prompt blocked by safety policy", "zh": "提示词被安全策略拦截" },
+      "module": "prompt",
+      "status": 403
+    },
+    "PROMPT-422-001": {
+      "numericCode": 422601,
+      "messages": { "en": "Prompt risk analysis failed", "zh": "提示词风险分析失败" },
+      "module": "prompt",
+      "status": 422
+    },
+    "PROMPT-500-001": {
+      "numericCode": 500601,
+      "messages": { "en": "Prompt execution failed", "zh": "提示词执行失败" },
+      "module": "prompt",
+      "status": 500
+    },
+    "MONITORING-500-001": {
+      "numericCode": 500701,
+      "messages": { "en": "Monitoring service error", "zh": "监控服务异常" },
+      "module": "monitoring",
+      "status": 500
+    },
+    "MONITORING-503-001": {
+      "numericCode": 503701,
+      "messages": { "en": "Session replay service unavailable", "zh": "会话回放服务不可用" },
+      "module": "monitoring",
+      "status": 503
+    },
+    "FEEDBACK-400-001": {
+      "numericCode": 400801,
+      "messages": { "en": "Invalid feedback submission", "zh": "反馈提交无效" },
+      "module": "feedback",
+      "status": 400
+    },
+    "FEEDBACK-500-001": {
+      "numericCode": 500801,
+      "messages": { "en": "Feedback submission failed", "zh": "反馈提交失败" },
+      "module": "feedback",
+      "status": 500
+    },
+    "SECURITY-429-001": {
+      "numericCode": 429901,
+      "messages": { "en": "Rate limit exceeded", "zh": "请求频率超限" },
+      "module": "security",
+      "status": 429
+    },
+    "SECURITY-401-001": {
+      "numericCode": 401901,
+      "messages": { "en": "API key authentication required", "zh": "需要 API Key 认证" },
+      "module": "security",
+      "status": 401
+    },
+    "SECURITY-403-001": {
+      "numericCode": 403901,
+      "messages": { "en": "IP not in whitelist", "zh": "IP 不在白名单中" },
+      "module": "security",
+      "status": 403
+    }
+  }
+}

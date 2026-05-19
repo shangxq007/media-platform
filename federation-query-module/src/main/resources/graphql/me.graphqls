@@ -1,0 +1,49 @@
+type Query {
+    meOverview: MeOverview!
+}
+
+type MeOverview {
+    id: String!
+    displayName: String!
+    currentTenant: TenantInfo
+    currentWorkspace: WorkspaceInfo
+    capabilities: [Capability!]!
+    navigation: [NavigationRoute!]!
+    billing: BillingSummary
+}
+
+type TenantInfo {
+    id: String!
+    name: String!
+    tier: String!
+}
+
+type WorkspaceInfo {
+    id: String!
+    name: String!
+    role: String!
+}
+
+type NavigationRoute {
+    routeKey: String!
+    path: String!
+    title: String!
+    icon: String
+    visible: Boolean!
+    enabled: Boolean!
+    reasonCode: String
+    badge: String
+    children: [NavigationRoute!]
+}
+
+type BillingSummary {
+    currentPlan: String
+    creditBalance: Money
+    usageThisMonth: UsageSummary
+}
+
+type UsageSummary {
+    renderMinutes: Float
+    storageGb: Float
+    apiCalls: Int
+}

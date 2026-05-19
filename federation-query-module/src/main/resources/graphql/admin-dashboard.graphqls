@@ -1,0 +1,38 @@
+type Query {
+    adminDashboard(range: String = "7d"): AdminDashboard!
+}
+
+type AdminDashboard {
+    renderStats: RenderStats!
+    providerHealth: [ProviderHealth!]!
+    billingSummary: AdminBillingSummary!
+    feedbackSummary: FeedbackSummary!
+    extensionSummary: ExtensionSummary!
+}
+
+type RenderStats {
+    submitted: Int!
+    completed: Int!
+    failed: Int!
+    avgDurationSeconds: Float
+}
+
+type ProviderHealth {
+    providerKey: String!
+    status: String!
+    latencyMs: Int
+    errorRate: Float
+}
+
+type AdminBillingSummary {
+    usageAmount: Money
+    estimatedRevenue: Money
+    creditBalanceTotal: Money
+}
+
+type ExtensionSummary {
+    installed: Int!
+    enabled: Int!
+    highRisk: Int!
+    sandboxJobsRunning: Int
+}

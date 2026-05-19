@@ -1,7 +1,7 @@
 # Deployment & Resource Requirements
 
-> **Generated**: 2026-05-08T08:47Z | **Updated**: 2026-05-08T11:00Z
-> **Scope**: PostgreSQL schema, table, volume requirements, and Temporal Server resources for production deployment.
+> **Generated**: 2026-05-08T08:47Z | **Updated**: 2026-05-11T20:00Z
+> **Scope**: PostgreSQL schema, table, volume requirements, Temporal Server resources, and user analytics deployment.
 
 ---
 
@@ -289,3 +289,50 @@ render:
 |------|---------|-----------------|----------|
 | `local` | `LocalRenderExecutionAdapter` | Not required | Dev, test, simple deployments |
 | `temporal` | `TemporalRenderExecutionAdapter` | Required | Production, distributed systems |
+
+---
+
+## User Analytics Module Requirements
+
+> **Added**: 2026-05-11 | **Module**: `user-analytics-module`
+
+### Storage
+
+| Store | Backend | Growth Pattern |
+|-------|---------|----------------|
+| Behavior events | In-memory (dev) / PostgreSQL (prod) | High (per user action) |
+| User profiles | In-memory (dev) / PostgreSQL (prod) | Low (per user) |
+| User habits | In-memory (dev) / PostgreSQL (prod) | Low (per user, recomputed) |
+| User segments | In-memory (dev) / PostgreSQL (prod) | Low (per tenant) |
+
+### PostgreSQL Tables (when persisted)
+
+| Table | Estimated Row Size | Growth Pattern |
+|-------|-------------------|----------------|
+| `user_behavior_event` | ~500 bytes | High (per user action) |
+| `user_profile` | ~1 KB | Low (per user) |
+| `user_habits` | ~2 KB | Low (per user) |
+| `user_segment` | ~1 KB | Low (per tenant) |
+| `user_segment_member` | ~100 bytes | Medium (per segment × user) |
+
+### Compute
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| CPU | 1 core | 2 cores |
+| Memory | 512 MB | 1 GB |
+| Disk | 1 GB | 10 GB |
+
+### Network
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 8080 | HTTP | REST API (shared with platform-app) |
+
+### Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `analytics.events.ingested` | Events ingested per tenant |
+| `analytics.segments.computed` | Segment computations |
+| `analytics.profiles.aggregated` | Profile aggregations |

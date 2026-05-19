@@ -31,5 +31,8 @@ include(
     "policy-governance-module",
     "artifact-catalog-module",
     "sandbox-runtime-module",
-    "federation-query-module"
+    "federation-query-module",
+    "user-analytics-module",
+    "compatibility-migration-module",
+    "remote-render-worker"
 )

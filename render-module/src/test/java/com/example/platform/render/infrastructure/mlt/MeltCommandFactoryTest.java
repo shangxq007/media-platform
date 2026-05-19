@@ -8,11 +8,11 @@ import org.junit.jupiter.api.Test;
 
 class MeltCommandFactoryTest {
 
-    private MeltCommandFactory factory;
+    private MLTCommandFactory factory;
 
     @BeforeEach
     void setUp() {
-        factory = new MeltCommandFactory();
+        factory = new MLTCommandFactory();
     }
 
     @Test

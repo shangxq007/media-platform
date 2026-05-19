@@ -1,0 +1,21 @@
+query ExtensionOverview {
+  extensionOverview {
+    extensionKey
+    runtimeType
+    trustLevel
+    enabled
+    version
+    healthStatus
+    lastExecutionAt { iso }
+    routeRules {
+      scene
+      priority
+      enabled
+    }
+    resourceLimits {
+      timeoutMs
+      maxConcurrency
+      maxOutputBytes
+    }
+  }
+}

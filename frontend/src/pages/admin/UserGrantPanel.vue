@@ -1,0 +1,145 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { EntitlementAdminAPI } from '@/api/admin/entitlement-admin'
+import type { UserGrant } from '@/types'
+
+const grants = ref<UserGrant[]>([])
+const loading = ref(true)
+const showCreate = ref(false)
+const form = ref({
+  userId: '',
+  userEmail: '',
+  featureKey: '',
+  featureName: '',
+  granted: true,
+  reason: '',
+  expiresAt: ''
+})
+const creating = ref(false)
+
+const commonFeatures = [
+  'gpu_rendering', '4k_export', 'remote_worker', 'custom_fonts',
+  'ofx_effects', 'watermark_free', 'priority_queue', 'api_extended'
+]
+
+onMounted(loadData)
+
+async function loadData() {
+  loading.value = true
+  try {
+    const result = await EntitlementAdminAPI.getUserGrants()
+    grants.value = result
+  } catch { /* backend may not be running */ }
+  loading.value = false
+}
+
+async function createGrant() {
+  if (!form.value.userId || !form.value.featureKey) return
+  creating.value = true
+  try {
+    await EntitlementAdminAPI.grantUserEntitlement({
+      ...form.value,
+      featureName: form.value.featureName || form.value.featureKey,
+      createdBy: 'admin',
+      expiresAt: form.value.expiresAt || undefined
+    })
+    showCreate.value = false
+    form.value = { userId: '', userEmail: '', featureKey: '', featureName: '', granted: true, reason: '', expiresAt: '' }
+    await loadData()
+  } catch { /* handle error */ }
+  creating.value = false
+}
+
+async function revokeGrant(grantId: string) {
+  await EntitlementAdminAPI.revokeUserEntitlement(grantId)
+  await loadData()
+}
+</script>
+
+<template>
+  <div class="flex-1 overflow-y-auto p-6 space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-bold text-white">User Grants</h1>
+      <div class="flex gap-2">
+        <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-sm rounded text-white" @click="showCreate = !showCreate">
+          {{ showCreate ? 'Cancel' : '+ New Grant' }}
+        </button>
+        <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded text-white" @click="loadData">Refresh</button>
+      </div>
+    </div>
+
+    <div v-if="loading" class="text-gray-400 text-sm">Loading...</div>
+
+    <template v-else>
+      <div v-if="showCreate" class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">User ID</label>
+            <input v-model="form.userId" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">User Email</label>
+            <input v-model="form.userEmail" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Feature</label>
+            <select v-model="form.featureKey" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white">
+              <option value="">Select...</option>
+              <option v-for="f in commonFeatures" :key="f" :value="f">{{ f }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Grant</label>
+            <select v-model="form.granted" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white">
+              <option :value="true">Grant</option>
+              <option :value="false">Revoke</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Reason</label>
+          <input v-model="form.reason" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Expiry (optional)</label>
+          <input v-model="form.expiresAt" type="date" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white" />
+        </div>
+        <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-sm rounded text-white" :disabled="creating || !form.userId || !form.featureKey" @click="createGrant">
+          {{ creating ? 'Creating...' : 'Create Grant' }}
+        </button>
+      </div>
+
+      <div v-if="grants.length === 0" class="text-gray-500 text-sm">No user grants</div>
+      <div v-else class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-700 text-xs text-gray-400">
+              <th class="text-left px-4 py-2">User</th>
+              <th class="text-left px-4 py-2">Feature</th>
+              <th class="text-left px-4 py-2">Status</th>
+              <th class="text-left px-4 py-2">Reason</th>
+              <th class="text-left px-4 py-2">Expires</th>
+              <th class="text-left px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="g in grants" :key="g.grantId" class="border-b border-gray-700/50">
+              <td class="px-4 py-2 text-xs text-white">{{ g.userEmail || g.userId }}</td>
+              <td class="px-4 py-2 text-xs text-gray-300">{{ g.featureName }}</td>
+              <td class="px-4 py-2">
+                <span class="px-1.5 py-0.5 rounded text-[10px]" :class="g.granted ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'">
+                  {{ g.granted ? 'GRANTED' : 'REVOKED' }}
+                </span>
+              </td>
+              <td class="px-4 py-2 text-xs text-gray-400">{{ g.reason }}</td>
+              <td class="px-4 py-2 text-xs text-gray-500">{{ g.expiresAt || '—' }}</td>
+              <td class="px-4 py-2"><button class="text-[10px] text-red-400 hover:text-red-300" @click="revokeGrant(g.grantId)">Revoke</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+  </div>
+</template>

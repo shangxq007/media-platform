@@ -4,6 +4,7 @@ import com.example.platform.entitlement.domain.*;
 import com.example.platform.entitlement.infrastructure.EntitlementGrantRepository;
 import com.example.platform.entitlement.infrastructure.InMemoryEntitlementCache;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,11 +29,14 @@ public class EntitlementService {
     private final Map<String, EntitlementChangedEvent> changeEvents = new ConcurrentHashMap<>();
     private final InMemoryEntitlementCache cache;
     private final EntitlementGrantRepository entitlementGrantRepository;
+    private final AuditPort auditPort;
 
     public EntitlementService(InMemoryEntitlementCache cache,
-                              @Autowired(required = false) EntitlementGrantRepository entitlementGrantRepository) {
+                              @Autowired(required = false) EntitlementGrantRepository entitlementGrantRepository,
+                              AuditPort auditPort) {
         this.cache = cache;
         this.entitlementGrantRepository = entitlementGrantRepository;
+        this.auditPort = auditPort;
     }
 
     public AccessDecision checkFeature(FeatureCheckCommand command) {
@@ -38,11 +44,23 @@ public class EntitlementService {
             try {
                 List<EntitlementGrantRepository.EntitlementGrantRecord> grants =
                         entitlementGrantRepository.findActiveBySubjectId(command.subjectId());
+                Instant now = Instant.now();
+                boolean expired = grants.stream().anyMatch(g ->
+                        g.expiresAt() != null && g.expiresAt().isBefore(now));
+                if (expired) {
+                    return new AccessDecision(false, "DENY", "EXPIRED",
+                            "Entitlement grant has expired", null,
+                            List.of(), null, null, null, null,
+                            null, List.of(), null, false);
+                }
                 if (!grants.isEmpty()) {
                     boolean granted = grants.stream()
                             .anyMatch(g -> g.bundleCode().equals(command.featureCode()));
                     String reason = granted ? "explicit-grant" : "no-grant";
-                    return new AccessDecision(command.subjectId(), command.featureCode(), granted, reason);
+                    return new AccessDecision(granted, granted ? "ALLOW" : "DENY", reason,
+                            granted ? "Access granted" : "Access denied", null,
+                            List.of(), null, null, null, null,
+                            null, List.of(), null, false);
                 }
             } catch (Exception e) {
                 log.warn("Failed to check feature grants from DB for {}: {}", command.subjectId(), e.getMessage());
@@ -53,7 +71,10 @@ public class EntitlementService {
         boolean granted = features != null && features.contains(command.featureCode());
         String reason = granted ? "explicit-grant" : "no-grant";
 
-        AccessDecision decision = new AccessDecision(command.subjectId(), command.featureCode(), granted, reason);
+        AccessDecision decision = new AccessDecision(granted, granted ? "ALLOW" : "DENY", reason,
+                granted ? "Access granted" : "Access denied", null,
+                List.of(), null, null, null, null,
+                null, List.of(), null, false);
 
         EntitlementSnapshot snapshot = snapshots.get(command.subjectId());
         if (snapshot != null) {
@@ -89,18 +110,18 @@ public class EntitlementService {
     public EntitlementChangedEvent grantEntitlement(EntitlementGrant grant) {
         if (entitlementGrantRepository != null) {
             try {
-                String grantId = Ids.newId("ent_grant");
+                String grantId = grant.grantId() != null ? grant.grantId() : Ids.newId("ent_grant");
                 entitlementGrantRepository.save(
                         grantId,
-                        "tenant",
+                        grant.subjectType() != null ? grant.subjectType() : "TENANT",
                         grant.subjectId(),
-                        grant.featureBundleCode(),
-                        grant.quotaProfileCode(),
-                        "billing",
+                        grant.bundleKey(),
+                        grant.quotaProfileKey(),
+                        grant.source() != null ? grant.source() : "admin",
                         null,
-                        "ACTIVE",
-                        Instant.now(),
-                        grant.effectiveUntil()
+                        grant.status() != null ? grant.status().name() : "ACTIVE",
+                        grant.startsAt() != null ? grant.startsAt() : Instant.now(),
+                        grant.expiresAt()
                 );
                 log.debug("Persisted entitlement grant: {} for subject: {}", grantId, grant.subjectId());
             } catch (Exception e) {
@@ -109,10 +130,10 @@ public class EntitlementService {
         }
 
         featureGrants.computeIfAbsent(grant.subjectId(), k -> ConcurrentHashMap.newKeySet())
-                .add(grant.featureBundleCode());
+                .add(grant.bundleKey());
 
-        if (grant.quotaProfileCode() != null && !grant.quotaProfileCode().isBlank()) {
-            quotaProfiles.put(grant.subjectId(), grant.quotaProfileCode());
+        if (grant.quotaProfileKey() != null && !grant.quotaProfileKey().isBlank()) {
+            quotaProfiles.put(grant.subjectId(), grant.quotaProfileKey());
         }
 
         String eventId = Ids.newId("ent");
@@ -125,14 +146,101 @@ public class EntitlementService {
 
         EntitlementSnapshot snapshot = new EntitlementSnapshot(
                 grant.subjectId(),
-                List.of(grant.featureBundleCode()),
-                grant.quotaProfileCode(),
-                grant.effectiveUntil()
+                List.of(grant.bundleKey()),
+                grant.quotaProfileKey(),
+                grant.expiresAt()
         );
         snapshots.put(grant.subjectId(), snapshot);
         cache.put(snapshot);
 
+        audit("entitlement.granted", grant.grantedBy(), Map.of(
+                "subjectId", grant.subjectId(),
+                "featureKey", grant.featureKey(),
+                "bundleKey", grant.bundleKey()));
+
         return event;
+    }
+
+    public EntitlementChangedEvent revokeEntitlement(String grantId, String revokedBy, String reason) {
+        if (entitlementGrantRepository != null) {
+            try {
+                List<EntitlementGrantRepository.EntitlementGrantRecord> all =
+                        entitlementGrantRepository.findBySubjectId(grantId);
+                Optional<EntitlementGrantRepository.EntitlementGrantRecord> target = all.stream()
+                        .filter(g -> g.id().equals(grantId))
+                        .findFirst();
+                if (target.isPresent()) {
+                    EntitlementGrantRepository.EntitlementGrantRecord rec = target.get();
+                    entitlementGrantRepository.save(
+                            rec.id(), rec.subjectType(), rec.subjectId(),
+                            rec.bundleCode(), rec.quotaProfileCode(),
+                            rec.sourceType(), rec.sourceRef(),
+                            "REVOKED", rec.effectiveAt(), rec.expiresAt());
+                }
+            } catch (Exception e) {
+                log.warn("Failed to persist grant revocation for {}: {}", grantId, e.getMessage());
+            }
+        }
+
+        String eventId = Ids.newId("ent");
+        EntitlementChangedEvent event = new EntitlementChangedEvent(
+                grantId, "entitlement.revoked", "admin.revoked");
+        changeEvents.put(eventId, event);
+
+        audit("entitlement.revoked", revokedBy, Map.of(
+                "grantId", grantId, "reason", reason != null ? reason : "unspecified"));
+
+        log.info("Revoked entitlement grant: {} by {} reason: {}", grantId, revokedBy, reason);
+        return event;
+    }
+
+    public EntitlementChangedEvent extendGrant(String grantId, Instant newExpiresAt) {
+        if (entitlementGrantRepository != null) {
+            try {
+                List<EntitlementGrantRepository.EntitlementGrantRecord> all =
+                        entitlementGrantRepository.findBySubjectId(grantId);
+                Optional<EntitlementGrantRepository.EntitlementGrantRecord> target = all.stream()
+                        .filter(g -> g.id().equals(grantId))
+                        .findFirst();
+                if (target.isPresent()) {
+                    EntitlementGrantRepository.EntitlementGrantRecord rec = target.get();
+                    entitlementGrantRepository.save(
+                            rec.id(), rec.subjectType(), rec.subjectId(),
+                            rec.bundleCode(), rec.quotaProfileCode(),
+                            rec.sourceType(), rec.sourceRef(),
+                            rec.grantStatus(), rec.effectiveAt(), newExpiresAt);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to persist grant extension for {}: {}", grantId, e.getMessage());
+            }
+        }
+
+        String eventId = Ids.newId("ent");
+        EntitlementChangedEvent event = new EntitlementChangedEvent(
+                grantId, "entitlement.extended", "admin.extended");
+        changeEvents.put(eventId, event);
+
+        audit("entitlement.extended", "system", Map.of(
+                "grantId", grantId, "newExpiresAt", newExpiresAt));
+
+        log.info("Extended entitlement grant: {} to {}", grantId, newExpiresAt);
+        return event;
+    }
+
+    public List<EntitlementGrantRepository.EntitlementGrantRecord> listGrants(String subjectId) {
+        if (entitlementGrantRepository != null) {
+            return entitlementGrantRepository.findBySubjectId(subjectId);
+        }
+        return List.of();
+    }
+
+    public Optional<EntitlementGrantRepository.EntitlementGrantRecord> getGrant(String grantId) {
+        if (entitlementGrantRepository != null) {
+            return entitlementGrantRepository.findBySubjectId(grantId).stream()
+                    .filter(g -> g.id().equals(grantId))
+                    .findFirst();
+        }
+        return Optional.empty();
     }
 
     public QuotaDecision getQuotaProfile(String subjectId) {
@@ -160,14 +268,25 @@ public class EntitlementService {
     public EntitlementSnapshot getSnapshot(String subjectId) {
         EntitlementSnapshot cached = cache.get(subjectId);
         if (cached != null) {
-            return cached;
+            Instant now = Instant.now();
+            if (cached.expiresAt() != null && cached.expiresAt().isBefore(now)) {
+                log.debug("Cached snapshot expired for {}", subjectId);
+            } else {
+                return cached;
+            }
         }
 
         if (entitlementGrantRepository != null) {
             try {
+                Instant now = Instant.now();
                 List<EntitlementGrantRepository.EntitlementGrantRecord> grants =
                         entitlementGrantRepository.findActiveBySubjectId(subjectId);
                 if (!grants.isEmpty()) {
+                    boolean anyExpired = grants.stream()
+                            .anyMatch(g -> g.expiresAt() != null && g.expiresAt().isBefore(now));
+                    if (anyExpired) {
+                        log.debug("Some grants expired for {}", subjectId);
+                    }
                     List<String> featureCodes = grants.stream()
                             .map(EntitlementGrantRepository.EntitlementGrantRecord::bundleCode)
                             .distinct()
@@ -179,7 +298,8 @@ public class EntitlementService {
                             .orElse(null);
                     Instant expiresAt = grants.stream()
                             .map(EntitlementGrantRepository.EntitlementGrantRecord::expiresAt)
-                            .max(Instant::compareTo)
+                            .filter(Objects::nonNull)
+                            .min(Instant::compareTo)
                             .orElse(Instant.now().plusSeconds(86400 * 30L));
 
                     EntitlementSnapshot snapshot = new EntitlementSnapshot(
@@ -208,5 +328,12 @@ public class EntitlementService {
 
     public List<EntitlementChangedEvent> getChangeEvents() {
         return List.copyOf(changeEvents.values());
+    }
+
+    private void audit(String action, String actor, Map<String, Object> payload) {
+        if (auditPort != null) {
+            auditPort.record("ADMIN", action, "ENTITLEMENT",
+                    "GRANT", payload.getOrDefault("grantId", payload.getOrDefault("subjectId", "unknown")).toString(), payload);
+        }
     }
 }

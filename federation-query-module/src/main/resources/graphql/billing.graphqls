@@ -1,0 +1,23 @@
+type Query {
+    billingSummary: BillingSummary!
+    usageRecords(limit: Int = 20, cursor: String): UsageRecordConnection!
+}
+
+type UsageRecordConnection {
+    edges: [UsageRecordEdge!]!
+    pageInfo: PageInfo!
+}
+
+type UsageRecordEdge {
+    cursor: String!
+    node: UsageRecord!
+}
+
+type UsageRecord {
+    id: String!
+    meterKey: String!
+    quantity: Float!
+    unit: String!
+    recordedAt: DateTime!
+    ratedAmount: Money
+}

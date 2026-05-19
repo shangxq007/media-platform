@@ -1,0 +1,39 @@
+query ExportPanelState($projectId: String!) {
+  exportPanelState(projectId: $projectId) {
+    project {
+      id
+      name
+    }
+    timelineSummary {
+      durationSeconds
+      tracks
+      clips
+      subtitles
+      effects
+    }
+    exportOptions {
+      preset
+      allowed
+      reasonCode
+      estimatedCost {
+        amount
+        currency
+      }
+      recommendedPreset
+      providerCandidates
+      quotaRemaining
+      requiresReview
+    }
+    workers {
+      id
+      status
+      gpuAvailable
+      providerKeys
+    }
+    validation {
+      allowed
+      violations
+      recommendations
+    }
+  }
+}

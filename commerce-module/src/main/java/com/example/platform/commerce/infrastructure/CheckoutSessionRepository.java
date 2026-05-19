@@ -35,10 +35,10 @@ public class CheckoutSessionRepository {
     public CheckoutSession save(CheckoutSession session) {
         OffsetDateTime now = OffsetDateTime.now();
         dsl.insertInto(table("CHECKOUT_SESSION"))
-                .columns(field("ID"), field("CHECKOUT_SESSION_CODE"), field("PRODUCT_ID"),
+                .columns(field("ID"), field("CHECKOUT_SESSION_CODE"), field("TENANT_ID"), field("PRODUCT_ID"),
                         field("PROVIDER_CODE"), field("SESSION_STATUS"), field("SUCCESS_URL"),
                         field("CANCEL_URL"), field("CREATED_AT"))
-                .values(session.checkoutSessionId(), session.checkoutSessionId(),
+                .values(session.checkoutSessionId(), session.checkoutSessionId(), session.tenantId(),
                         session.canonicalProductCode(), session.providerHint(),
                         "PENDING", session.redirectUrl(), "", now)
                 .execute();
@@ -63,6 +63,7 @@ public class CheckoutSessionRepository {
     private CheckoutSession mapRecord(Record record) {
         return new CheckoutSession(
                 record.get(field("ID"), String.class),
+                record.get(field("TENANT_ID"), String.class),
                 record.get(field("PRODUCT_ID"), String.class),
                 record.get(field("SUCCESS_URL"), String.class),
                 record.get(field("PROVIDER_CODE"), String.class)

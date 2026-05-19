@@ -5,6 +5,7 @@ import com.example.platform.commerce.api.dto.CheckoutSessionResponse;
 import com.example.platform.commerce.domain.PurchaseOrderCreatedEvent;
 import com.example.platform.commerce.app.CheckoutOrchestrator;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -41,16 +42,5 @@ public class CommerceController {
     @PostMapping("/checkout-sessions/{sessionId}/cancel")
     public PurchaseOrderCreatedEvent cancelCheckout(@PathVariable String sessionId) {
         return checkoutOrchestrator.cancelCheckout(sessionId);
-    }
-
-    @GetMapping("/orders/revenue/{tenantId}")
-    public double getTotalRevenueForTenant(@PathVariable String tenantId) {
-        return checkoutOrchestrator.getTotalRevenueForTenant(tenantId);
-    }
-
-    @GetMapping("/orders/recent/{tenantId}")
-    public List<PurchaseOrderCreatedEvent> getRecentOrders(@PathVariable String tenantId, 
-                                                           @RequestParam(defaultValue = "10") int limit) {
-        return checkoutOrchestrator.getRecentEvents(tenantId, limit);
     }
 }

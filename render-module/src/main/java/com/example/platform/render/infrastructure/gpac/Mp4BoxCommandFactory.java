@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 /**
  * Factory for building MP4Box command-line argument lists.
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
  * MP4Box -hls -out master.m3u8 input.mp4
  * </pre>
  */
+@Component
 public class Mp4BoxCommandFactory {
 
     private static final Logger log = LoggerFactory.getLogger(Mp4BoxCommandFactory.class);
@@ -86,6 +88,23 @@ public class Mp4BoxCommandFactory {
         args.add(inputUri);
 
         log.debug("Built CMAF command: input={} output={}", inputUri, outputBase);
+        return args;
+    }
+
+    /**
+     * Builds an MP4 faststart command (move moov atom to beginning).
+     *
+     * @param inputUri  input media file URI
+     * @param outputUri output file URI
+     * @return list of command arguments
+     */
+    public List<String> buildFaststartCommand(String inputUri, String outputUri) {
+        List<String> args = new ArrayList<>();
+        args.add("-add");
+        args.add(inputUri);
+        args.add("-new");
+        args.add(outputUri);
+        log.debug("Built faststart command: input={} output={}", inputUri, outputUri);
         return args;
     }
 

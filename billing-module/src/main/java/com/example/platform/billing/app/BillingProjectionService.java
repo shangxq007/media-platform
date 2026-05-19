@@ -67,8 +67,8 @@ public class BillingProjectionService {
                 subscriptionContractRepository.save(
                         contract.contractId(),
                         "tenant",
-                        contract.subjectId(),
-                        contract.canonicalProductCode(),
+                        contract.userId(),
+                        contract.planKey(),
                         null,
                         null,
                         contract.lifecycleState(),
@@ -84,12 +84,12 @@ public class BillingProjectionService {
         contracts.put(contract.contractId(), contract);
 
         BillingState state = new BillingState(
-                contract.subjectId(),
+                contract.userId(),
                 contract.lifecycleState(),
                 contract.periodEndAt(),
-                contract.canonicalProductCode()
+                contract.planKey()
         );
-        states.put(contract.subjectId(), state);
+        states.put(contract.userId(), state);
         return state;
     }
 
@@ -137,8 +137,10 @@ public class BillingProjectionService {
                         subscriptionContractRepository.findById(contractId).orElse(null);
                 if (record != null) {
                     contract = new SubscriptionContract(
-                            record.id(), record.subjectId(), record.canonicalProductCode(),
-                            record.contractState(), record.periodStartAt(), record.periodEndAt()
+                            record.id(), "tenant", record.subjectId(), record.canonicalProductCode(),
+                            record.periodStartAt(), record.periodEndAt(),
+                            record.contractState(), 0L, "USD",
+                            Map.of(), Map.of()
                     );
                     contracts.put(contractId, contract);
                 }
@@ -162,11 +164,16 @@ public class BillingProjectionService {
         Instant now = Instant.now();
         SubscriptionContract contract = new SubscriptionContract(
                 contractId,
+                "tenant",
                 subjectId,
                 canonicalProductCode,
-                lifecycleState,
                 now,
-                now.plus(periodDays, ChronoUnit.DAYS)
+                now.plus(periodDays, ChronoUnit.DAYS),
+                lifecycleState,
+                0L,
+                "USD",
+                Map.of(),
+                Map.of()
         );
 
         if (subscriptionContractRepository != null) {

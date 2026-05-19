@@ -19,4 +19,21 @@
 | [database-schema.md](./database-schema.md) | **数据库以 Flyway 为准**；`ddl-postgresql.sql` 仅为非权威参考 |
 | [ddl-postgresql.sql](./ddl-postgresql.sql) | PostgreSQL 多 schema **草案**（历史/目标参考，**不替代** Flyway） |
 
+## Entitlement & Billing
+
+| 文档 | 说明 |
+|------|------|
+| [entitlement-policy.md](./entitlement-policy.md) | Tier system, decision priority chain, grant lifecycle, API reference |
+| [rbac-abac-access-control.md](./rbac-abac-access-control.md) | RBAC model, ABAC model, decision service architecture |
+| [workspace-entitlement-pool.md](./workspace-entitlement-pool.md) | Workspace pool allocation, group grants, quota tracking |
+| [quota-policy.md](./quota-policy.md) | QuotaPolicy, QuotaProfile, runtime checks, integration points |
+| [export-validation.md](./export-validation.md) | Export validation flow, presets, upgrade options |
+| [flexible-billing-models.md](./flexible-billing-models.md) | 7 pricing models, meters, rating engine, ledger |
+| [subscription-billing.md](./subscription-billing.md) | Plan lifecycle, quota, trials, cancellation, payment stub |
+| [custom-pricing.md](./custom-pricing.md) | Tenant/workspace overrides, discount policies, pricing preview |
+| [credit-wallet.md](./credit-wallet.md) | Wallet lifecycle, transaction types, admin management |
+| [configurable-navigation.md](./configurable-navigation.md) | Route definitions, decision service, navigation policies |
+| [frontend-entitlement-management.md](./frontend-entitlement-management.md) | User/workspace/admin pages, UI integration |
+| [production-blockers.md](./production-blockers.md) | Production blockers (8 total, 3 critical) |
+
 **根目录 [README.md](../README.md)**：项目总览、模块清单、本地运行与 Docker。

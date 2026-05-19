@@ -2,8 +2,10 @@ package com.example.platform.commerce.app;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.example.platform.commerce.api.dto.CheckoutSessionResponse;
 import com.example.platform.commerce.api.dto.CreateCheckoutSessionRequest;
 import com.example.platform.commerce.domain.*;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +17,7 @@ class CheckoutOrchestratorBusinessLifecycleTest {
     @BeforeEach
     void setUp() {
         catalogService = new CommerceCatalogService();
-        orchestrator = new CheckoutOrchestrator(catalogService, null, null);
+        orchestrator = new CheckoutOrchestrator(catalogService, null, null, new SimpleMeterRegistry());
     }
 
     @Test

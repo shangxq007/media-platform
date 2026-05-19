@@ -27,6 +27,9 @@ dependencies {
     implementation(project(":artifact-catalog-module"))
     implementation(project(":sandbox-runtime-module"))
     implementation(project(":federation-query-module"))
+    implementation(project(":user-analytics-module"))
+
+    implementation("org.springframework.boot:spring-boot-starter-graphql")
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -39,6 +42,11 @@ dependencies {
     runtimeOnly("com.h2database:h2")
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.security:spring-security-web")
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
     implementation("org.springframework.modulith:spring-modulith-starter-core:2.0.4")
     runtimeOnly("org.springframework.modulith:spring-modulith-starter-insight:2.0.4")
     implementation("io.temporal:temporal-spring-boot-starter:1.33.0")

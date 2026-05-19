@@ -1,0 +1,4 @@
+type Query {
+    myCapabilities: [Capability!]!
+    entitlementDecision(featureKey: String!): Decision!
+}

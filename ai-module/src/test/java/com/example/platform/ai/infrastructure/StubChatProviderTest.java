@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.ai.domain.ChatRequest;
 import com.example.platform.ai.domain.ChatResult;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,12 +18,12 @@ class StubChatProviderTest {
 
     @BeforeEach
     void setUp() {
-        provider = new StubChatProvider(0.0, false);
+        provider = new StubChatProvider(0.0, false, 3, 1000L, new SimpleMeterRegistry());
     }
 
     @Test
     void constructorWithParametersSetsCorrectConfiguration() {
-        StubChatProvider configuredProvider = new StubChatProvider(0.1, true);
+        StubChatProvider configuredProvider = new StubChatProvider(0.1, true, 3, 1000L, new SimpleMeterRegistry());
 
         ChatResult result = configuredProvider.chat(new ChatRequest("test", "prompt"));
         assertNotNull(result);
@@ -129,7 +130,7 @@ class StubChatProviderTest {
 
     @Test
     void failureSimulationCanBeEnabled() {
-        StubChatProvider failureProvider = new StubChatProvider(1.0, true);
+        StubChatProvider failureProvider = new StubChatProvider(1.0, true, 0, 0L, new SimpleMeterRegistry());
 
         assertThrows(RuntimeException.class, () ->
             failureProvider.chat(new ChatRequest("test", "should fail"))
@@ -138,7 +139,7 @@ class StubChatProviderTest {
 
     @Test
     void failureSimulationWithLowFailureRate() {
-        StubChatProvider lowFailureProvider = new StubChatProvider(0.1, true);
+        StubChatProvider lowFailureProvider = new StubChatProvider(0.1, true, 3, 1000L, new SimpleMeterRegistry());
 
         // Run multiple times to increase chance of hitting failure simulation
         boolean failureOccurred = false;

@@ -1,0 +1,196 @@
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import EditorPage from '@/pages/EditorPage.vue'
+import PromptManagementPage from '@/pages/PromptManagementPage.vue'
+import EffectPackEditor from '@/pages/EffectPackEditor.vue'
+import AdminLayout from '@/components/admin/AdminLayout.vue'
+import AdminDashboard from '@/pages/admin/AdminDashboard.vue'
+import TenantManagement from '@/pages/admin/TenantManagement.vue'
+import RenderJobManagement from '@/pages/admin/RenderJobManagement.vue'
+import ExtensionManagement from '@/pages/admin/ExtensionManagement.vue'
+import QuotaBilling from '@/pages/admin/QuotaBilling.vue'
+import UserAnalytics from '@/pages/admin/UserAnalytics.vue'
+import NotificationManagement from '@/pages/admin/NotificationManagement.vue'
+import AuditCompliance from '@/pages/admin/AuditCompliance.vue'
+import ConfigManagement from '@/pages/admin/ConfigManagement.vue'
+import FeatureFlags from '@/pages/admin/FeatureFlags.vue'
+import RouteManagementPage from '@/pages/admin/RouteManagementPage.vue'
+import MonitoringFeedbackPage from '@/pages/admin/MonitoringFeedbackPage.vue'
+import FeatureFlagManagementPage from '@/pages/admin/FeatureFlagManagementPage.vue'
+import PolicyManagementPage from '@/pages/admin/PolicyManagementPage.vue'
+import FeedbackAdminPage from '@/pages/admin/FeedbackAdminPage.vue'
+import AuditLogPage from '@/pages/admin/AuditLogPage.vue'
+
+// Task 21: User-side entitlement & billing pages
+import MyCapabilitiesPage from '@/pages/entitlement/MyCapabilitiesPage.vue'
+// Task 9-12: User portal pages
+import UserDashboardPage from '@/pages/user/UserDashboardPage.vue'
+import MyProjectsPage from '@/pages/user/MyProjectsPage.vue'
+import UserMyCapabilitiesPage from '@/pages/user/MyCapabilitiesPage.vue'
+import MyUsagePage from '@/pages/user/MyUsagePage.vue'
+import MyBillingPage from '@/pages/user/MyBillingPage.vue'
+import MyCreditsPage from '@/pages/user/MyCreditsPage.vue'
+import MyFeedbackPage from '@/pages/user/MyFeedbackPage.vue'
+import MySettingsPage from '@/pages/user/MySettingsPage.vue'
+
+// Task 23: Platform admin entitlement & billing pages
+import QuotaPolicyEditor from '@/pages/admin/QuotaPolicyEditor.vue'
+import BillingPlanManagementPage from '@/pages/admin/BillingPlanManagementPage.vue'
+import PricingRuleEditor from '@/pages/admin/PricingRuleEditor.vue'
+import UsageLedgerPage from '@/pages/admin/UsageLedgerPage.vue'
+import InvoicePreviewPage from '@/pages/admin/InvoicePreviewPage.vue'
+
+import AnalyticsAssistantPage from '@/pages/analytics/AnalyticsAssistantPage.vue'
+import MyReportsPage from '@/pages/analytics/MyReportsPage.vue'
+import DatasetCatalogPage from '@/pages/admin/DatasetCatalogPage.vue'
+import QueryAuditPage from '@/pages/admin/QueryAuditPage.vue'
+
+import { navigationGuard } from './guards'
+
+const staticRoutes: RouteRecordRaw[] = [
+  { path: '/', name: 'editor', component: EditorPage },
+  { path: '/project/:id', name: 'project', component: EditorPage },
+  { path: '/prompts', name: 'prompts', component: PromptManagementPage },
+  { path: '/prompts/:templateId', name: 'prompt-editor', component: PromptManagementPage },
+  { path: '/effect-packs', name: 'effect-packs', component: EffectPackEditor },
+
+  // Task 21: User-side routes (legacy entitlement pages)
+  { path: '/me/plan', name: 'me-plan', component: MyCapabilitiesPage },
+  { path: '/me/upgrades', name: 'me-upgrades', component: MyCapabilitiesPage },
+
+  // Task 9-12: User portal routes
+  { path: '/me', name: 'me-dashboard', component: UserDashboardPage },
+  { path: '/me/projects', name: 'me-projects', component: MyProjectsPage },
+  { path: '/me/capabilities', name: 'me-capabilities', component: UserMyCapabilitiesPage },
+  { path: '/me/usage', name: 'me-usage', component: MyUsagePage },
+  { path: '/me/billing', name: 'me-billing', component: MyBillingPage },
+  { path: '/me/credits', name: 'me-credits', component: MyCreditsPage },
+  { path: '/me/feedback', name: 'me-feedback', component: MyFeedbackPage },
+  { path: '/me/settings', name: 'me-settings', component: MySettingsPage },
+
+  // NLQ user-side routes
+  { path: '/me/analytics', name: 'me-analytics', component: AnalyticsAssistantPage },
+  { path: '/me/reports', name: 'me-reports', component: MyReportsPage },
+
+  // Task 22: Workspace routes
+  { path: '/workspace/:workspaceId/members', name: 'workspace-members', component: () => import('@/pages/workspace/WorkspaceMembersPage.vue') },
+  { path: '/workspace/:workspaceId/roles', name: 'workspace-roles', component: () => import('@/pages/workspace/RoleManagementPanel.vue') },
+  { path: '/workspace/:workspaceId/entitlements/pool', name: 'workspace-pool', component: () => import('@/pages/workspace/WorkspaceEntitlementPoolPanel.vue') },
+  { path: '/workspace/:workspaceId/entitlements/grants', name: 'workspace-grants', component: () => import('@/pages/workspace/WorkspaceMemberGrantPanel.vue') },
+  { path: '/workspace/:workspaceId/entitlements/groups', name: 'workspace-groups', component: () => import('@/pages/workspace/WorkspaceGroupGrantPanel.vue') },
+  { path: '/workspace/:workspaceId/entitlements/quota', name: 'workspace-quota', component: () => import('@/pages/workspace/QuotaAllocationEditor.vue') },
+  { path: '/workspace/:workspaceId/entitlements/preview', name: 'workspace-preview', component: () => import('@/pages/workspace/EntitlementDecisionPreview.vue') },
+  { path: '/workspace/:workspaceId/entitlements/debug', name: 'workspace-debug', component: () => import('@/pages/workspace/AccessDecisionDebugPanel.vue') },
+
+  {
+    path: '/admin',
+    component: AdminLayout,
+    children: [
+      { path: '', name: 'admin-dashboard', component: AdminDashboard },
+      { path: 'tenants', name: 'admin-tenants', component: TenantManagement },
+      { path: 'render-jobs', name: 'admin-render-jobs', component: RenderJobManagement },
+      { path: 'extensions', name: 'admin-extensions', component: ExtensionManagement },
+      { path: 'quota-billing', name: 'admin-quota-billing', component: QuotaBilling },
+      { path: 'analytics', name: 'admin-analytics', component: UserAnalytics },
+      { path: 'notifications', name: 'admin-notifications', component: NotificationManagement },
+      { path: 'audit', name: 'admin-audit', component: AuditCompliance },
+      { path: 'config', name: 'admin-config', component: ConfigManagement },
+       { path: 'feature-flags', name: 'admin-feature-flags', component: FeatureFlags },
+       { path: 'feature-flags/manage', name: 'admin-feature-flag-mgmt', component: FeatureFlagManagementPage },
+       { path: 'policies', name: 'admin-policies', component: PolicyManagementPage },
+       { path: 'routes', name: 'admin-routes', component: RouteManagementPage },
+       { path: 'monitoring', name: 'admin-monitoring', component: MonitoringFeedbackPage },
+       { path: 'audit-log', name: 'admin-audit-log', component: AuditLogPage },
+       { path: 'feedback', name: 'admin-feedback', component: FeedbackAdminPage },
+
+      // NLQ admin routes
+      { path: 'analytics/datasets', name: 'admin-nlq-datasets', component: DatasetCatalogPage },
+      { path: 'analytics/query-audit', name: 'admin-nlq-query-audit', component: QueryAuditPage },
+
+      // Task 23: Admin entitlement & billing routes
+      { path: 'entitlements/bundles', name: 'admin-entitlement-bundles', component: () => import('@/pages/admin/EntitlementBundleList.vue') },
+      { path: 'entitlements/overrides', name: 'admin-entitlement-overrides', component: () => import('@/pages/admin/TenantOverridePanel.vue') },
+      { path: 'entitlements/grants', name: 'admin-entitlement-grants', component: () => import('@/pages/admin/UserGrantPanel.vue') },
+      { path: 'entitlements/quota', name: 'admin-entitlement-quota', component: QuotaPolicyEditor },
+      { path: 'billing/plans', name: 'admin-billing-plans', component: BillingPlanManagementPage },
+      { path: 'billing/pricing', name: 'admin-billing-pricing', component: PricingRuleEditor },
+      { path: 'billing/usage', name: 'admin-billing-usage', component: UsageLedgerPage },
+      { path: 'billing/credits', name: 'admin-billing-credits', component: () => import('@/pages/admin/CreditWalletAdminPanel.vue') },
+      { path: 'billing/quotes', name: 'admin-billing-quotes', component: () => import('@/pages/admin/BillingQuotePanel.vue') },
+      { path: 'billing/invoices', name: 'admin-billing-invoices', component: InvoicePreviewPage },
+    ]
+  }
+]
+
+const componentMap: Record<string, () => Promise<typeof import('*.vue')>> = {
+  EditorPage: () => import('@/pages/EditorPage.vue'),
+  PromptManagementPage: () => import('@/pages/PromptManagementPage.vue'),
+  EffectPackEditor: () => import('@/pages/EffectPackEditor.vue'),
+  AdminLayout: () => import('@/components/admin/AdminLayout.vue'),
+  AdminDashboard: () => import('@/pages/admin/AdminDashboard.vue'),
+  TenantManagement: () => import('@/pages/admin/TenantManagement.vue'),
+  RenderJobManagement: () => import('@/pages/admin/RenderJobManagement.vue'),
+  ExtensionManagement: () => import('@/pages/admin/ExtensionManagement.vue'),
+  QuotaBilling: () => import('@/pages/admin/QuotaBilling.vue'),
+  UserAnalytics: () => import('@/pages/admin/UserAnalytics.vue'),
+  NotificationManagement: () => import('@/pages/admin/NotificationManagement.vue'),
+  AuditCompliance: () => import('@/pages/admin/AuditCompliance.vue'),
+  ConfigManagement: () => import('@/pages/admin/ConfigManagement.vue'),
+  FeatureFlags: () => import('@/pages/admin/FeatureFlags.vue'),
+   FeatureFlagManagementPage: () => import('@/pages/admin/FeatureFlagManagementPage.vue'),
+   PolicyManagementPage: () => import('@/pages/admin/PolicyManagementPage.vue'),
+   RouteManagementPage: () => import('@/pages/admin/RouteManagementPage.vue'),
+   FeedbackAdminPage: () => import('@/pages/admin/FeedbackAdminPage.vue'),
+   AuditLogPage: () => import('@/pages/admin/AuditLogPage.vue'),
+  UserDashboardPage: () => import('@/pages/user/UserDashboardPage.vue'),
+  MyProjectsPage: () => import('@/pages/user/MyProjectsPage.vue'),
+  UserMyCapabilitiesPage: () => import('@/pages/user/MyCapabilitiesPage.vue'),
+  MyUsagePage: () => import('@/pages/user/MyUsagePage.vue'),
+  MyBillingPage: () => import('@/pages/user/MyBillingPage.vue'),
+  MyCreditsPage: () => import('@/pages/user/MyCreditsPage.vue'),
+  MyFeedbackPage: () => import('@/pages/user/MyFeedbackPage.vue'),
+  MySettingsPage: () => import('@/pages/user/MySettingsPage.vue'),
+}
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [...staticRoutes]
+})
+
+router.beforeEach(navigationGuard)
+
+export async function syncDynamicRoutes(componentKeys: Record<string, string>) {
+  for (const [routeKey, componentKey] of Object.entries(componentKeys)) {
+    if (router.hasRoute(routeKey)) continue
+
+    const loader = componentMap[componentKey]
+    if (!loader) {
+      console.warn(`[router] No component mapping for key: ${componentKey}`)
+      continue
+    }
+
+    try {
+      const component = await loader()
+      const existingRoute = router.getRoutes().find(r => r.name === routeKey)
+      if (existingRoute) continue
+      router.addRoute({ path: `/${routeKey}`, name: routeKey, component: component.default })
+    } catch (err) {
+      console.warn(`[router] Failed to add dynamic route ${routeKey}:`, err)
+    }
+  }
+}
+
+export function resetRouter() {
+  const baseRoutes = [...staticRoutes]
+  const currentRoutes = router.getRoutes()
+  for (const route of currentRoutes) {
+    if (route.name && !staticRoutes.some(sr => sr.name === route.name)) {
+      router.removeRoute(route.name.toString())
+    }
+  }
+  router.clearRoutes()
+  for (const route of baseRoutes) {
+    router.addRoute(route)
+  }
+}
+
+export default router

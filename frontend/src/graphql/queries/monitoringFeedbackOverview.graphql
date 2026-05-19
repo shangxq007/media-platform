@@ -1,0 +1,23 @@
+query MonitoringFeedbackOverview($range: String = "7d") {
+  monitoringFeedbackOverview(range: $range) {
+    monitoringStatus {
+      sentryEnabled
+      openReplayEnabled
+      lastErrorAt { iso }
+      lastFeedbackAt { iso }
+    }
+    feedbackSummary {
+      openIssues
+      criticalIssues
+      linkedRenderJobs
+      linkedPromptExecutions
+      replayLinked
+    }
+    problematicDataSummary {
+      total
+      requireReview
+      autoFixed
+      critical
+    }
+  }
+}

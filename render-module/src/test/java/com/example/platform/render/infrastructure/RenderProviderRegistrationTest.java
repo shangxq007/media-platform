@@ -1,0 +1,218 @@
+package com.example.platform.render.infrastructure;
+
+import com.example.platform.render.infrastructure.ffmpeg.FFmpegRenderProvider;
+import com.example.platform.render.infrastructure.ffmpeg.FfmpegRenderProvider;
+import com.example.platform.render.infrastructure.gpac.GPACRenderProvider;
+import com.example.platform.render.infrastructure.gpac.GpacRenderProvider;
+import com.example.platform.render.infrastructure.gstreamer.GStreamerRenderProvider;
+import com.example.platform.render.infrastructure.mlt.MeltCommandFactory;
+import com.example.platform.render.infrastructure.mlt.MltRenderProvider;
+import org.junit.jupiter.api.Test;
+
+
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class RenderProviderRegistrationTest {
+
+    private JavaCVRenderProvider createJavaCVProvider() {
+        JavaCVMediaProbeAdapter adapter = new JavaCVMediaProbeAdapter();
+        MediaProbeService probeService = new MediaProbeService(adapter);
+        return new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService));
+    }
+
+    @Test
+    void allCoreProvidersCanRegister() {
+        RenderProviderRegistry registry = new RenderProviderRegistry();
+        JavaCVRenderProvider javacv = createJavaCVProvider();
+        OFXRenderProvider ofx = new OFXRenderProvider();
+        MockRenderProvider mock = new MockRenderProvider();
+
+        registry.register("javacv", javacv, javacv.getCapability());
+        registry.register("ofx", ofx, ofx.getCapability());
+        registry.register("mock", mock, new RenderProviderCapability(
+                "mock",
+                Set.of("mp4"),
+                Set.of("h264", "aac"),
+                Set.of("video.fade_in", "video.fade_out"),
+                Set.of("dissolve"),
+                Set.of("burn_in"),
+                "1920x1080",
+                false,
+                false,
+                true,
+                Set.of("test_mock")
+        ));
+
+        assertEquals(3, registry.getAllProviders().size());
+        assertTrue(registry.getProvider("javacv").isPresent());
+        assertTrue(registry.getProvider("ofx").isPresent());
+        assertTrue(registry.getProvider("mock").isPresent());
+    }
+
+    @Test
+    void ffmpegProviderRegistersCorrectly() {
+        FFmpegRenderProvider capability = new FFmpegRenderProvider(null, null);
+        assertNotNull(capability);
+        assertTrue(capability.supports("h264"));
+        assertTrue(capability.supports("mp4"));
+        assertTrue(capability.supports("watermark"));
+    }
+
+    @Test
+    void gstreamerProviderRegistersCorrectly() {
+        GStreamerRenderProvider capability = new GStreamerRenderProvider(null, null);
+        assertNotNull(capability);
+        assertTrue(capability.supports("pipeline"));
+        assertTrue(capability.supports("streaming"));
+        assertTrue(capability.supports("real-time"));
+    }
+
+    @Test
+    void gpacProviderRegistersCorrectly() {
+        GPACRenderProvider capability = new GPACRenderProvider(null, null);
+        assertNotNull(capability);
+        assertTrue(capability.supports("mp4"));
+        assertTrue(capability.supports("dash"));
+        assertTrue(capability.supports("hls"));
+        assertTrue(capability.supports("cmaf"));
+    }
+
+    @Test
+    void mltProviderRegistersCorrectly() {
+        MltRenderProvider capability = new MltRenderProvider(null, null, null);
+        assertNotNull(capability);
+        assertTrue(capability.supports("timeline"));
+        assertTrue(capability.supports("multi-track"));
+    }
+
+    @Test
+    void routerCanRouteToEnabledProviders() {
+        RenderProviderRegistry registry = new RenderProviderRegistry();
+        JavaCVRenderProvider javacv = createJavaCVProvider();
+        OFXRenderProvider ofx = new OFXRenderProvider();
+
+        registry.register("javacv", javacv, javacv.getCapability());
+        registry.register("ofx", ofx, ofx.getCapability());
+
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
+        RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
+
+        RenderProvider result = router.route("default_1080p");
+        assertNotNull(result);
+        assertInstanceOf(JavaCVRenderProvider.class, result);
+    }
+
+    @Test
+    void routerRoutesToOfxForOfxProfiles() {
+        RenderProviderRegistry registry = new RenderProviderRegistry();
+        JavaCVRenderProvider javacv = createJavaCVProvider();
+        OFXRenderProvider ofx = new OFXRenderProvider();
+
+        registry.register("javacv", javacv, javacv.getCapability());
+        registry.register("ofx", ofx, ofx.getCapability());
+
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
+        RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
+
+        RenderProvider result = router.route("ofx_1080p");
+        assertNotNull(result);
+        assertInstanceOf(OFXRenderProvider.class, result);
+    }
+
+    @Test
+    void providerKeysAreLowercase() {
+        JavaCVRenderProvider javacv = createJavaCVProvider();
+        OFXRenderProvider ofx = new OFXRenderProvider();
+
+        assertEquals("javacv", javacv.getCapability().providerKey());
+        assertEquals("ofx", ofx.getCapability().providerKey());
+    }
+
+    @Test
+    void allProvidersHaveNonEmptyCapabilities() {
+        JavaCVRenderProvider javacv = createJavaCVProvider();
+        OFXRenderProvider ofx = new OFXRenderProvider();
+
+        assertNotNull(javacv.getCapability());
+        assertNotNull(ofx.getCapability());
+
+        assertFalse(javacv.getCapability().supportedEffects().isEmpty());
+        assertFalse(javacv.getCapability().supportedFormats().isEmpty());
+        assertFalse(javacv.getCapability().supportedCodecs().isEmpty());
+    }
+
+    @Test
+    void registryTracksMultipleProviders() {
+        RenderProviderRegistry registry = new RenderProviderRegistry();
+        JavaCVRenderProvider javacv = createJavaCVProvider();
+        OFXRenderProvider ofx = new OFXRenderProvider();
+
+        registry.register("javacv", javacv, javacv.getCapability());
+        registry.register("ofx", ofx, ofx.getCapability());
+
+        List<RenderProviderCapability> caps = registry.getAllCapabilities();
+        assertEquals(2, caps.size());
+
+        assertTrue(registry.getCapability("javacv").isPresent());
+        assertTrue(registry.getCapability("ofx").isPresent());
+
+        List<String> effects = registry.getAvailableEffects();
+        assertFalse(effects.isEmpty());
+    }
+
+    @Test
+    void ffmpegProviderIsNotDeadCode() {
+        FFmpegRenderProvider provider = new FFmpegRenderProvider(null, null);
+        assertNotNull(provider);
+        assertFalse(provider.getSupportedProfiles().isEmpty());
+        assertTrue(provider.supports("h264"));
+        assertTrue(provider.supports("h265"));
+        assertTrue(provider.supports("dash"));
+        assertTrue(provider.supports("hls"));
+    }
+
+    @Test
+    void gstreamerProviderIsNotDeadCode() {
+        GStreamerRenderProvider provider = new GStreamerRenderProvider(null, null);
+        assertNotNull(provider);
+        assertFalse(provider.getSupportedProfiles().isEmpty());
+        assertTrue(provider.supports("pipeline"));
+        assertTrue(provider.supports("streaming"));
+    }
+
+    @Test
+    void gpacProviderIsNotDeadCode() {
+        GPACRenderProvider provider = new GPACRenderProvider(null, null);
+        assertNotNull(provider);
+        assertFalse(provider.getSupportedProfiles().isEmpty());
+        assertTrue(provider.supports("mp4"));
+        assertTrue(provider.supports("dash"));
+        assertTrue(provider.supports("hls"));
+    }
+
+    @Test
+    void deprecatedFfmpegWrapperDelegates() {
+        FfmpegRenderProvider wrapper = new FfmpegRenderProvider(null, null);
+        assertNotNull(wrapper);
+        assertFalse(wrapper.getSupportedProfiles().isEmpty());
+    }
+
+    @Test
+    void deprecatedGpacWrapperDelegates() {
+        GpacRenderProvider wrapper = new GpacRenderProvider(null, null);
+        assertNotNull(wrapper);
+        assertFalse(wrapper.getSupportedProfiles().isEmpty());
+    }
+
+    @Test
+    void deprecatedMeltWrapperDelegates() {
+        MeltCommandFactory wrapper = new MeltCommandFactory();
+        assertNotNull(wrapper);
+        assertFalse(wrapper.buildRenderCommand("/tmp/p.xml", "/tmp/o.mp4", "profile").isEmpty());
+    }
+}

@@ -1,0 +1,66 @@
+type PageInfo {
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+    startCursor: String
+    endCursor: String
+    totalCount: Int
+}
+
+type ErrorInfo {
+    errorCode: String!
+    reasonCode: String
+    message: String!
+    traceId: String
+    details: Map
+}
+
+type Money {
+    amount: Float!
+    currency: String!
+}
+
+type DateTime {
+    iso: String!
+    epochMillis: Long!
+}
+
+type Decision {
+    allowed: Boolean!
+    reasonCode: String
+    message: String
+    recommendedAlternative: String
+    requiresReview: Boolean!
+    quotaRemaining: Float
+    upgradeOptions: [String!]
+}
+
+type Capability {
+    featureKey: String!
+    allowed: Boolean!
+    reasonCode: String
+    quotaRemaining: Float
+    expiresAt: DateTime
+    source: String
+}
+
+type StatusBadge {
+    value: String!
+    display: String!
+    color: String!
+}
+
+type MetricCard {
+    key: String!
+    label: String!
+    value: String!
+    unit: String
+    trend: Float
+    status: String
+}
+
+type AuditSummary {
+    total: Int!
+    lastActivityAt: DateTime
+}
+
+scalar Map
