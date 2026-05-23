@@ -1,6 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.identity.app.IdentityAccessService;
+import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.render.app.RenderJobService;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
@@ -30,13 +31,17 @@ public class RenderController {
     private final RenderJobService renderJobService;
     private final IdentityAccessService identityAccessService;
     private final AuditPort auditPort;
+    private final RenderOrchestratorPort orchestratorPort;
 
     public RenderController(RenderJobService renderJobService,
                              IdentityAccessService identityAccessService,
-                             AuditPort auditPort) {
+                             AuditPort auditPort,
+                             @org.springframework.beans.factory.annotation.Autowired(required = false)
+                             RenderOrchestratorPort orchestratorPort) {
         this.renderJobService = renderJobService;
         this.identityAccessService = identityAccessService;
         this.auditPort = auditPort;
+        this.orchestratorPort = orchestratorPort;
     }
 
     @PostMapping
@@ -83,6 +88,23 @@ public class RenderController {
             HttpServletRequest httpReq) {
         CallerContext ctx = buildCallerContext(httpReq);
         return ResponseEntity.ok(renderJobService.retry(jobId, ctx.tenantId()));
+    }
+
+    @PostMapping("/{jobId}/execute")
+    @Operation(summary = "执行渲染任务", description = "加载时间线快照并执行渲染流水线")
+    public ResponseEntity<Map<String, String>> executeRenderJob(
+            @PathVariable String jobId,
+            HttpServletRequest httpReq) {
+        CallerContext ctx = buildCallerContext(httpReq);
+        if (ctx.tenantId() == null || ctx.tenantId().isBlank()) {
+            throw new IllegalArgumentException("tenantId is required");
+        }
+        if (orchestratorPort == null) {
+            return ResponseEntity.ok(Map.of("jobId", jobId, "status", "QUEUED"));
+        }
+        String resultJobId = orchestratorPort.executeExistingRenderJob(ctx.tenantId(), jobId);
+        RenderJobResponse job = renderJobService.getById(jobId);
+        return ResponseEntity.ok(Map.of("jobId", resultJobId, "status", job.status()));
     }
 
     private CallerContext buildCallerContext(HttpServletRequest req) {

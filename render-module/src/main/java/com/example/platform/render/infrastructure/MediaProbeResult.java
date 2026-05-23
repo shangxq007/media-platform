@@ -17,11 +17,18 @@ public record MediaProbeResult(
         int audioChannels,
         int sampleRate,
         List<String> warnings,
-        String errorMessage
-) {
+        String errorMessage,
+        ColorProbeMetadata color) {
+
+    public MediaProbeResult {
+        if (color == null) {
+            color = ColorProbeMetadata.empty();
+        }
+    }
+
     public static MediaProbeResult failed(String jobId, String errorMessage) {
         return new MediaProbeResult(jobId, false, "", 0, 0, 0, 0,
-                "", "", 0, 0, 0, 0, List.of(errorMessage), errorMessage);
+                "", "", 0, 0, 0, 0, List.of(errorMessage), errorMessage, ColorProbeMetadata.empty());
     }
 
     public boolean hasVideo() {

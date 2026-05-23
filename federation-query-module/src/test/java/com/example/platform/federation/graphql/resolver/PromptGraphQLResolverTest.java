@@ -53,8 +53,7 @@ class PromptGraphQLResolverTest {
                 null, null);
         when(promptService.listExecutions("pt-1")).thenReturn(List.of(execution));
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver();
-        setField(resolver, "promptTemplateService", promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-1", ctx);
 
@@ -101,8 +100,7 @@ class PromptGraphQLResolverTest {
                 .toList();
         when(promptService.listExecutions("pt-2")).thenReturn(manyExecutions);
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver();
-        setField(resolver, "promptTemplateService", promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-2", ctx);
 

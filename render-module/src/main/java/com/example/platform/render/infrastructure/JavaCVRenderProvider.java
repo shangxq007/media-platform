@@ -1,5 +1,9 @@
 package com.example.platform.render.infrastructure;
 
+import com.example.platform.render.domain.timeline.TimelineClip;
+import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.timeline.TimelineTrack;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
@@ -18,9 +22,9 @@ import org.springframework.stereotype.Component;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -46,10 +50,14 @@ public class JavaCVRenderProvider implements RenderProvider {
 
     private final JavaCVRenderService renderService;
     private final JavaCVTranscodeService transcodeService;
+    private final TimelineScriptParser timelineScriptParser;
 
-    public JavaCVRenderProvider(JavaCVRenderService renderService, JavaCVTranscodeService transcodeService) {
+    public JavaCVRenderProvider(JavaCVRenderService renderService,
+            JavaCVTranscodeService transcodeService,
+            TimelineScriptParser timelineScriptParser) {
         this.renderService = renderService;
         this.transcodeService = transcodeService;
+        this.timelineScriptParser = timelineScriptParser;
     }
 
     public void setStorageRoot(String storageRoot) {
@@ -127,76 +135,50 @@ public class JavaCVRenderProvider implements RenderProvider {
     }
 
     private void renderFromTimeline(String jobId, String aiScript, RenderPreset preset, String outputPath) throws Exception {
-        log.info("JavaCVRenderProvider: rendering from OTIO timeline, job={}, preset={}", jobId, preset.key());
+        log.info("JavaCVRenderProvider: rendering from timeline, job={}, preset={}", jobId, preset.key());
 
-        Map<String, Object> timeline = parseOtiOTimeline(aiScript);
-        List<Map<String, Object>> tracks = (List<Map<String, Object>>) timeline.getOrDefault("tracks", List.of());
-
-        if (tracks.isEmpty()) {
-            log.warn("JavaCVRenderProvider: empty timeline, generating placeholder");
+        Optional<TimelineSpec> parsed = timelineScriptParser.parse(aiScript);
+        if (parsed.isEmpty()) {
             renderService.renderPlaceholder(jobId, outputPath, preset);
             return;
         }
 
-        Map<String, Object> firstTrack = tracks.get(0);
-        List<Map<String, Object>> clips = (List<Map<String, Object>>) firstTrack.getOrDefault("children", List.of());
-
-        if (clips.isEmpty()) {
+        TimelineSpec timeline = parsed.get();
+        Optional<TimelineClip> firstClip = timelineScriptParser.firstVideoClip(timeline);
+        if (firstClip.isEmpty() || firstClip.get().assetRef() == null) {
             renderService.renderPlaceholder(jobId, outputPath, preset);
             return;
         }
 
-        Map<String, Object> firstClip = clips.get(0);
-        Map<String, Object> sourceRange = (Map<String, Object>) firstClip.getOrDefault("source_range", Map.of());
-        double startTime = ((Number) sourceRange.getOrDefault("start_time", 0.0)).doubleValue();
-        double duration = ((Number) sourceRange.getOrDefault("duration", 30.0)).doubleValue();
-
-        String sourceUrl = (String) firstClip.getOrDefault("media_reference", "");
-        if (sourceUrl == null || sourceUrl.isEmpty() || sourceUrl.startsWith("file://")) {
+        String sourceUrl = firstClip.get().assetRef().storageUri();
+        if (!timelineScriptParser.mediaFileExists(sourceUrl, storageRoot)) {
+            log.warn("JavaCVRenderProvider: media not found {}, using placeholder", sourceUrl);
             renderService.renderPlaceholder(jobId, outputPath, preset);
             return;
         }
 
-        List<Map<String, Object>> subtitleTracks = extractSubtitleTracks(timeline);
-        boolean hasBurnInSubtitles = subtitleTracks.stream()
-                .anyMatch(st -> Boolean.TRUE.equals(st.get("burnIn")));
+        double startTime = firstClip.get().assetInPoint();
+        double duration = firstClip.get().clipDuration();
+        String sourcePath = timelineScriptParser.resolveLocalPath(sourceUrl, storageRoot);
 
-        String sourcePath = sourceUrl.replace("file://", "");
+        boolean hasBurnInSubtitles = timeline.tracks() != null && timeline.tracks().stream()
+                .anyMatch(t -> t.type() == TimelineTrack.TrackType.SUBTITLE);
+
         if (hasBurnInSubtitles) {
-            renderService.renderWithSubtitleBurnIn(jobId, sourcePath, outputPath, preset, startTime, duration, subtitleTracks);
+            List<Map<String, Object>> subtitleTracks = timeline.tracks().stream()
+                    .filter(t -> t.type() == TimelineTrack.TrackType.SUBTITLE)
+                    .map(t -> Map.<String, Object>of("type", "SUBTITLE", "burnIn", true))
+                    .toList();
+            renderService.renderWithSubtitleBurnIn(jobId, sourcePath, outputPath, preset,
+                    startTime, duration, subtitleTracks);
         } else {
             renderService.transcodeWithClipping(jobId, sourcePath, outputPath, preset, startTime, duration);
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> extractSubtitleTracks(Map<String, Object> timeline) {
-        List<Map<String, Object>> subtitleTracks = new ArrayList<>();
-        List<Map<String, Object>> tracks = (List<Map<String, Object>>) timeline.getOrDefault("tracks", List.of());
-        for (Map<String, Object> track : tracks) {
-            String type = (String) track.getOrDefault("type", "");
-            if ("SUBTITLE".equalsIgnoreCase(type) || "TEXT".equalsIgnoreCase(type)) {
-                subtitleTracks.add(track);
-            }
-        }
-        if (timeline.containsKey("subtitleTracks")) {
-            subtitleTracks.addAll((List<Map<String, Object>>) timeline.get("subtitleTracks"));
-        }
-        return subtitleTracks;
-    }
-
     private void renderFromAiScript(String jobId, String aiScript, RenderPreset preset, String outputPath) throws Exception {
         log.info("JavaCVRenderProvider: rendering from AI script, job={}", jobId);
         renderService.renderPlaceholder(jobId, outputPath, preset);
-    }
-
-    private Map<String, Object> parseOtiOTimeline(String aiScript) {
-        try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(aiScript, Map.class);
-        } catch (Exception e) {
-            log.warn("JavaCVRenderProvider: failed to parse OTIO timeline JSON, using defaults");
-            return Map.of("tracks", List.of());
-        }
     }
 
     @Override

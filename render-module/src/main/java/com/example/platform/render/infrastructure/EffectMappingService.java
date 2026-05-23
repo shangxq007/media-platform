@@ -1,5 +1,6 @@
 package com.example.platform.render.infrastructure;
 
+import com.example.platform.render.app.dto.EffectPackDtos.EffectPackEffectDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -63,7 +64,58 @@ public class EffectMappingService {
 
         register("video.vignette", "Vignette", "video", "Vignette effect",
                 List.of(new EffectParameterSchema("intensity", "float", 0.5, 0.0, 1.0, "Vignette intensity")),
-                List.of("ofx"), Map.of("intensity", "0.5"));
+                List.of("ofx"), Map.of("intensity", "0.5"),
+                List.of("PRO", "TEAM", "ENTERPRISE"));
+
+        register("video.natron_vignette", "Natron Vignette (POC)", "video",
+                "Vignette via Natron worker POC template",
+                List.of(new EffectParameterSchema("intensity", "float", 0.5, 0.0, 1.0, "Vignette intensity")),
+                List.of("natron", "ofx", "javacv"), Map.of("intensity", "0.5"),
+                List.of("PRO", "TEAM", "ENTERPRISE"));
+
+        register("video.natron_color_grade", "Natron Color Grade (POC)", "video",
+                "Saturation/contrast grade via Natron worker POC",
+                List.of(new EffectParameterSchema("saturation", "float", 1.15, 0.5, 2.0, "Saturation multiplier")),
+                List.of("natron", "ofx", "javacv"), Map.of("saturation", "1.15"),
+                List.of("PRO", "TEAM", "ENTERPRISE"));
+
+        register("video.particle_overlay", "PopcornFX Particle Overlay", "video",
+                "Pre-baked PopcornFX particle layer (transparent video) over main clip",
+                List.of(
+                        new EffectParameterSchema("assetPath", "string", "", null, null,
+                                "Local path or storage URI to baked overlay (webm/mov/png seq)"),
+                        new EffectParameterSchema("opacity", "float", 1.0, 0.0, 1.0, "Overlay opacity"),
+                        new EffectParameterSchema("position", "string", "center", null, null, "Overlay position")
+                ),
+                List.of("javacv", "ffmpeg", "ofx"), Map.of("opacity", "1.0", "position", "center"),
+                List.of("PRO", "TEAM", "ENTERPRISE"));
+
+        register("video.dash_drm", "DASH with DRM packaging", "video",
+                "Package output as encrypted MPEG-DASH via Bento4",
+                List.of(),
+                List.of("bento4", "gpac"), Map.of(),
+                List.of("TEAM", "ENTERPRISE"));
+
+        register("video.shotstack_template", "Shotstack Cloud Render", "video",
+                "Render timeline via Shotstack Edit API (cloud)",
+                List.of(
+                        new EffectParameterSchema("templateId", "string", "", null, null, "Optional Shotstack template"),
+                        new EffectParameterSchema("resolution", "string", "hd", null, null, "hd, sd, mobile")
+                ),
+                List.of("shotstack"), Map.of("resolution", "hd"),
+                List.of("TEAM", "ENTERPRISE"));
+
+        register("video.remotion_template", "Remotion React Render", "video",
+                "Programmatic render via Remotion CLI worker",
+                List.of(new EffectParameterSchema("compositionId", "string", "Main", null, null, "Remotion composition id")),
+                List.of("remotion"), Map.of("compositionId", "Main"),
+                List.of("PRO", "TEAM", "ENTERPRISE"));
+
+        register("video.blender_scene", "Blender Scene Render", "video",
+                "3D scene batch render via Blender",
+                List.of(new EffectParameterSchema("blendFile", "string", "scene.blend", null, null, "Blend file path")),
+                List.of("blender"), Map.of("blendFile", "scene.blend"),
+                List.of("TEAM", "ENTERPRISE"));
 
         register("video.chromatic", "Chromatic Aberration", "video", "RGB channel offset",
                 List.of(new EffectParameterSchema("offset", "int", 3, 1, 10, "Pixel offset")),
@@ -128,7 +180,15 @@ public class EffectMappingService {
 
     private void register(String key, String displayName, String category, String description,
                            List<EffectParameterSchema> params, List<String> providers, Map<String, Object> defaults) {
-        descriptors.put(key, new EffectDescriptor(key, displayName, category, description, params, providers, defaults));
+        register(key, displayName, category, description, params, providers, defaults,
+                List.of("FREE", "PRO", "TEAM", "ENTERPRISE"));
+    }
+
+    private void register(String key, String displayName, String category, String description,
+                           List<EffectParameterSchema> params, List<String> providers,
+                           Map<String, Object> defaults, List<String> allowedTiers) {
+        descriptors.put(key, new EffectDescriptor(key, displayName, category, description, params, providers,
+                defaults, allowedTiers));
         for (String provider : providers) {
             mappings.computeIfAbsent(key, k -> new ArrayList<>())
                     .add(new EffectProviderMapping(key, provider, displayName, Map.of()));
@@ -166,5 +226,40 @@ public class EffectMappingService {
                 .filter(e -> e.getValue().stream().anyMatch(m -> m.providerKey().equals(providerKey)))
                 .map(Map.Entry::getKey)
                 .toList();
+    }
+
+    /**
+     * Merges catalog rows from the database (single source for API) into the in-memory registry.
+     */
+    public synchronized void reloadFromCatalog(List<EffectPackEffectDto> catalogEffects) {
+        if (catalogEffects == null || catalogEffects.isEmpty()) {
+            return;
+        }
+        for (EffectPackEffectDto row : catalogEffects) {
+            List<EffectParameterSchema> params = new ArrayList<>();
+            if (row.parameterSchema() != null) {
+                row.parameterSchema().forEach((name, def) -> {
+                    if (def instanceof Map<?, ?> raw) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> map = (Map<String, Object>) raw;
+                        params.add(new EffectParameterSchema(
+                                name,
+                                map.get("type") != null ? map.get("type").toString() : "string",
+                                map.get("defaultValue"),
+                                map.get("min") instanceof Number n ? n.doubleValue() : null,
+                                map.get("max") instanceof Number n ? n.doubleValue() : null,
+                                map.get("description") != null ? map.get("description").toString() : ""));
+                    }
+                });
+            }
+            List<String> providers = row.providerMappings() != null ? row.providerMappings() : List.of("javacv");
+            Map<String, Object> defaults = row.defaultValues() != null
+                    ? new LinkedHashMap<>(row.defaultValues()) : Map.of();
+            List<String> tiers = row.allowedTiers() != null && !row.allowedTiers().isEmpty()
+                    ? row.allowedTiers() : List.of("FREE", "PRO", "TEAM", "ENTERPRISE");
+            register(row.effectKey(), row.displayName(), row.category(), row.description(),
+                    params, providers, defaults, tiers);
+        }
+        log.info("Effect catalog merged: {} descriptors in registry", descriptors.size());
     }
 }

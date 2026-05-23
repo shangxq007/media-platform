@@ -7,7 +7,6 @@ import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -32,10 +31,10 @@ public class EntitlementService {
     private final AuditPort auditPort;
 
     public EntitlementService(InMemoryEntitlementCache cache,
-                              @Autowired(required = false) EntitlementGrantRepository entitlementGrantRepository,
+                              Optional<EntitlementGrantRepository> entitlementGrantRepository,
                               AuditPort auditPort) {
         this.cache = cache;
-        this.entitlementGrantRepository = entitlementGrantRepository;
+        this.entitlementGrantRepository = entitlementGrantRepository.orElse(null);
         this.auditPort = auditPort;
     }
 
@@ -328,6 +327,16 @@ public class EntitlementService {
 
     public List<EntitlementChangedEvent> getChangeEvents() {
         return List.copyOf(changeEvents.values());
+    }
+
+    /** Restores in-memory grant cache from JDBC on startup. */
+    public void hydrateGrant(String subjectId, String bundleCode, String quotaProfileCode) {
+        if (bundleCode != null && !bundleCode.isBlank()) {
+            featureGrants.computeIfAbsent(subjectId, k -> ConcurrentHashMap.newKeySet()).add(bundleCode);
+        }
+        if (quotaProfileCode != null && !quotaProfileCode.isBlank()) {
+            quotaProfiles.put(subjectId, quotaProfileCode);
+        }
     }
 
     private void audit(String action, String actor, Map<String, Object> payload) {

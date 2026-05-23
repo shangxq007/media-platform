@@ -34,7 +34,8 @@ class MediaProbeServiceTest {
 
         JavaCVRenderService renderService = new JavaCVRenderService(probeService);
         JavaCVTranscodeService transcodeService = new JavaCVTranscodeService(probeService);
-        JavaCVRenderProvider provider = new JavaCVRenderProvider(renderService, transcodeService);
+        JavaCVRenderProvider provider = new JavaCVRenderProvider(renderService, transcodeService,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         provider.setStorageRoot(tempDir.toString());
 
         RenderProvider.RenderResult renderResult = provider.render("job-1", "{\"tracks\":[]}", "default_720p");
@@ -55,7 +56,8 @@ class MediaProbeServiceTest {
 
         JavaCVRenderService renderService = new JavaCVRenderService(probeService);
         JavaCVTranscodeService transcodeService = new JavaCVTranscodeService(probeService);
-        JavaCVRenderProvider provider = new JavaCVRenderProvider(renderService, transcodeService);
+        JavaCVRenderProvider provider = new JavaCVRenderProvider(renderService, transcodeService,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         provider.setStorageRoot(tempDir.toString());
 
         provider.render("job-1", "{\"tracks\":[]}", "default_720p");

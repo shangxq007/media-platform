@@ -2,22 +2,21 @@ package com.example.platform.identity.app;
 
 import com.example.platform.shared.logging.TraceKeys;
 import com.example.platform.shared.web.CommonErrorCode;
-import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.Set;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-@Component
+import java.io.IOException;
+import java.util.Set;
+
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
+
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final Set<String> PROTECTED_PREFIXES = Set.of(
             "/api/v1/extensions",

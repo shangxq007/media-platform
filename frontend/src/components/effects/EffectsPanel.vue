@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 import { useEffectPackStore } from '@/stores/effectPack'
+import { EntitlementAPI } from '@/api/index'
 import type { ClipEffect, EffectPackEffect } from '@/types'
 import EffectChain from './EffectChain.vue'
 import EffectParameterEditor from './EffectParameterEditor.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const timelineStore = useTimelineStore()
 const effectPackStore = useEffectPackStore()
@@ -37,8 +39,30 @@ const selectedClipEffects = computed(() => {
 })
 
 function isEffectAvailable(effect: EffectPackEffect & { packId: string; packVersion: string }): boolean {
-  return effect.allowedTiers.includes(currentTier.value)
+  if (!effect.allowedTiers.includes(currentTier.value)) {
+    return false
+  }
+  const allowed = effectPackStore.allowedPackIds
+  if (allowed.length === 0) {
+    return true
+  }
+  return allowed.includes(effect.packId) || (effect.packId === 'builtin-core' && allowed.includes('basic'))
 }
+
+onMounted(async () => {
+  await effectPackStore.loadFromApi()
+  try {
+    const policy = await EntitlementAPI.getCapabilities()
+    if (policy?.tier) {
+      currentTier.value = policy.tier as typeof currentTier.value
+    }
+    if (policy?.effectPacksAllowed?.length) {
+      effectPackStore.setAllowedPackIds(policy.effectPacksAllowed)
+    }
+  } catch {
+    // keep defaults when entitlement API unavailable
+  }
+})
 
 function selectEffect(effect: EffectPackEffect & { packId: string; packVersion: string }) {
   if (!isEffectAvailable(effect)) return
@@ -108,14 +132,14 @@ function onClipDrop(e: DragEvent) {
 </script>
 
 <template>
-  <div class="flex flex-col h-full" @dragover.prevent @drop="onClipDrop">
-    <!-- Tier Selector -->
-    <div class="px-2 py-1 border-b border-gray-700 bg-gray-800/30">
-      <div class="flex items-center gap-1">
-        <span class="text-[10px] text-gray-500 shrink-0">Tier:</span>
+  <div class="effects-panel" @dragover.prevent @drop="onClipDrop">
+    <div class="px-3 py-2 border-b border-default bg-bg-base/80">
+      <div class="flex items-center gap-2">
+        <AppIcon name="shield" :size="14" class="text-text-muted" />
+        <span class="text-[10px] text-text-muted shrink-0 uppercase tracking-wide">Plan tier</span>
         <select
           v-model="currentTier"
-          class="bg-gray-800 border border-gray-600 rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none focus:border-primary-400"
+          class="flex-1 bg-bg-surface border border-default rounded-md px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-primary-400"
         >
           <option value="FREE">Free</option>
           <option value="PRO">Pro</option>
@@ -125,62 +149,58 @@ function onClipDrop(e: DragEvent) {
       </div>
     </div>
 
-    <!-- Category Tabs -->
-    <div class="flex border-b border-gray-700">
+    <div class="effects-category-tabs">
       <button
         v-for="cat in categories"
         :key="cat"
-        class="flex-1 px-2 py-1.5 text-xs capitalize transition-colors"
-        :class="activeCategory === cat
-          ? 'bg-primary-500/10 text-primary-400 border-b-2 border-primary-400'
-          : 'text-gray-400 hover:text-white border-b-2 border-transparent'"
+        type="button"
+        class="effects-category-tab"
+        :class="{ 'is-active': activeCategory === cat }"
         @click="activeCategory = cat"
       >
         {{ cat }}
       </button>
       <button
-        class="px-2 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
-        :class="showPackBrowser ? 'text-primary-400' : ''"
+        type="button"
+        class="px-2 effects-category-tab"
+        :class="{ 'is-active': showPackBrowser }"
         title="Browse effect packs"
         @click="showPackBrowser = !showPackBrowser"
       >
-        📦
+        <AppIcon name="package" :size="14" />
       </button>
     </div>
 
-    <!-- Pack Browser -->
-    <div v-if="showPackBrowser" class="p-2 border-b border-gray-700 bg-gray-800/50 max-h-32 overflow-y-auto">
-      <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Effect Packs</div>
+    <div v-if="showPackBrowser" class="p-3 border-b border-default bg-bg-base/60 max-h-36 overflow-y-auto theme-scrollbar">
+      <div class="text-[10px] text-text-muted mb-2 uppercase tracking-wider font-semibold">Effect packs</div>
       <div
         v-for="pack in effectPackStore.allPacks"
         :key="pack.packId"
-        class="text-xs text-white py-1 flex items-center justify-between"
+        class="text-xs text-text-primary py-1.5 flex items-center justify-between"
       >
-        <span>{{ pack.name }}</span>
-        <div class="flex items-center gap-1">
-          <span class="text-gray-500">v{{ pack.version }}</span>
-          <span class="text-primary-400">{{ pack.effects.length }} effects</span>
+        <span class="font-medium">{{ pack.name }}</span>
+        <div class="flex items-center gap-2 text-text-muted">
+          <span>v{{ pack.version }}</span>
+          <span class="text-primary-400">{{ pack.effects.length }}</span>
         </div>
       </div>
     </div>
 
     <!-- Effects List -->
-    <div class="flex-1 overflow-y-auto p-2 space-y-1 theme-scrollbar">
-      <!-- Available Effects -->
+    <div class="flex-1 overflow-y-auto p-2 space-y-1.5 theme-scrollbar">
       <div
         v-for="effect in availableEffects"
         :key="effect.effectKey"
-        class="flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors"
-        :class="[
-          selectedEffect?.effectKey === effect.effectKey
-            ? 'bg-primary-500/20 border-primary-400'
-            : 'border-gray-700 hover:bg-gray-700/50'
-        ]"
+        class="effect-card"
+        :class="{ 'is-selected': selectedEffect?.effectKey === effect.effectKey }"
         draggable="true"
         @click="selectEffect(effect)"
         @dragstart="onDragStart($event, effect)"
       >
-        <span class="text-xs text-white flex-1">{{ effect.displayName }}</span>
+        <div class="effect-card-icon">
+          <AppIcon name="sparkles" :size="14" />
+        </div>
+        <span class="text-xs text-text-primary flex-1 font-medium">{{ effect.displayName }}</span>
         <span v-if="effect.providerMappings.includes('ofx')" class="text-[9px] text-info-500 px-1 rounded bg-info-500/10">OFX</span>
         <span v-if="effect.packId !== 'builtin-core'" class="text-[9px] text-purple-400 px-1 rounded bg-purple-500/10">PACK</span>
         <button

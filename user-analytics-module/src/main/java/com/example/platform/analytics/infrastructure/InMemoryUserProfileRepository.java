@@ -1,6 +1,8 @@
 package com.example.platform.analytics.infrastructure;
 
 import com.example.platform.analytics.domain.UserProfile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
@@ -8,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Repository
+@ConditionalOnMissingBean(JdbcTemplate.class)
 public class InMemoryUserProfileRepository implements UserProfileRepository {
 
     private final Map<String, UserProfile> profiles = new ConcurrentHashMap<>();

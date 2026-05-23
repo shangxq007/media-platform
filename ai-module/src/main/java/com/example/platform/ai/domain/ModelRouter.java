@@ -1,5 +1,10 @@
 package com.example.platform.ai.domain;
 
 public interface ModelRouter {
-    String route(String capability);
+
+    RoutePlan routePlan(String capability);
+
+    default String route(String capability) {
+        return routePlan(capability).primary().providerId();
+    }
 }

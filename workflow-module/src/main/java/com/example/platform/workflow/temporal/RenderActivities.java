@@ -14,4 +14,18 @@ public interface RenderActivities {
      */
     @ActivityMethod
     String decideRenderPipeline(String renderJobId, String tenantId);
+
+    /**
+     * Runs render + storage for an existing {@code render_job} row (must have timeline / ai_script).
+     */
+    @ActivityMethod
+    String executeRenderJob(String renderJobId, String tenantId);
+
+    /**
+     * Enqueues AUTO delivery policies and processes outbound delivery jobs (when enabled).
+     *
+     * @return number of delivery jobs processed
+     */
+    @ActivityMethod
+    int deliverArtifacts(String renderJobId, String tenantId);
 }

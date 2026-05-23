@@ -11,7 +11,8 @@ class RenderProviderRouterTest {
     private JavaCVRenderProvider createJavaCVProvider() {
         JavaCVMediaProbeAdapter adapter = new JavaCVMediaProbeAdapter();
         MediaProbeService probeService = new MediaProbeService(adapter);
-        return new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService));
+        return new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService),
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
     }
 
     @Test
@@ -23,7 +24,9 @@ class RenderProviderRouterTest {
         registry.register("javacv", javacv, javacv.getCapability());
         registry.register("ofx", ofx, ofx.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
         RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
 
@@ -40,7 +43,9 @@ class RenderProviderRouterTest {
         registry.register("javacv", javacv, javacv.getCapability());
         registry.register("ofx", ofx, ofx.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
         RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
 
@@ -57,7 +62,9 @@ class RenderProviderRouterTest {
         registry.register("javacv", javacv, javacv.getCapability());
         registry.register("ofx", ofx, ofx.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
         RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
 
@@ -74,7 +81,9 @@ class RenderProviderRouterTest {
         registry.register("javacv", javacv, javacv.getCapability());
         registry.register("ofx", ofx, ofx.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
         RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
 
@@ -89,7 +98,9 @@ class RenderProviderRouterTest {
 
         registry.register("javacv", javacv, javacv.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
         RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
 

@@ -63,11 +63,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", "tenant-1", "user-1",
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver();
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "billingDecisionService", billingService);
-        setField(resolver, "tenantRepository", tenantRepository);
-        setField(resolver, "userRepository", userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
 
         MeOverview result = resolver.meOverview(ctx);
 
@@ -107,11 +103,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", null, null,
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver();
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "billingDecisionService", billingService);
-        setField(resolver, "tenantRepository", tenantRepository);
-        setField(resolver, "userRepository", userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
 
         MeOverview result = resolver.meOverview(ctx);
 
@@ -153,11 +145,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", "tenant-1", "user-1",
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver();
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "billingDecisionService", billingService);
-        setField(resolver, "tenantRepository", tenantRepository);
-        setField(resolver, "userRepository", userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
 
         MeOverview result = resolver.meOverview(ctx);
 
@@ -197,11 +185,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", "tenant-1", "user-1",
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver();
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "billingDecisionService", billingService);
-        setField(resolver, "tenantRepository", tenantRepository);
-        setField(resolver, "userRepository", userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
 
         MeOverview result = resolver.meOverview(ctx);
 
@@ -242,11 +226,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", "tenant-1", "user-1",
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver();
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "billingDecisionService", billingService);
-        setField(resolver, "tenantRepository", tenantRepository);
-        setField(resolver, "userRepository", userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
 
         MeOverview result = resolver.meOverview(ctx);
 

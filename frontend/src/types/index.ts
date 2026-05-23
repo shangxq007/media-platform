@@ -145,6 +145,8 @@ export interface EffectPack {
   effects: EffectPackEffect[]
   compatibility: string
   allowedTiers: string[]
+  builtin?: boolean
+  tenantId?: string | null
 }
 
 export interface ClipEffect {

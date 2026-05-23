@@ -1,13 +1,16 @@
 package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.BillingLedgerEntry;
+import com.example.platform.billing.infrastructure.BillingLedgerJdbcRepository;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -16,6 +19,20 @@ public class BillingLedgerService {
     private static final Logger log = LoggerFactory.getLogger(BillingLedgerService.class);
 
     private final ConcurrentHashMap<String, BillingLedgerEntry> ledger = new ConcurrentHashMap<>();
+    private final Optional<BillingLedgerJdbcRepository> jdbcRepository;
+
+    public BillingLedgerService() {
+        this(Optional.empty());
+    }
+
+    @Autowired
+    public BillingLedgerService(Optional<BillingLedgerJdbcRepository> jdbcRepository) {
+        this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+    }
+
+    public void hydrateEntry(BillingLedgerEntry entry) {
+        ledger.put(entry.entryId(), entry);
+    }
 
     public BillingLedgerEntry writeEntry(String tenantId, String workspaceId, String userId,
                                           String entryType, long amountMinor, String currencyCode,
@@ -27,6 +44,7 @@ public class BillingLedgerService {
                 entryType, amountMinor, currencyCode,
                 referenceType, referenceId, description, Instant.now());
         ledger.put(entryId, entry);
+        jdbcRepository.ifPresent(r -> r.saveEntry(entry));
         log.info("BillingLedgerService: wrote entry {} type={} amount={} {}",
                 entryId, entryType, amountMinor, currencyCode);
         return entry;

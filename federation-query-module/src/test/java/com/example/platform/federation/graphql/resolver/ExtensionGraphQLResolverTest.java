@@ -52,10 +52,7 @@ class ExtensionGraphQLResolverTest {
         when(limiter.getLimits("ext-1")).thenReturn(limits);
         when(limiter.getLimits("ext-2")).thenReturn(ExtensionResourceLimits.UNTRUSTED);
 
-        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver();
-        setField(resolver, "extensionRegistryService", registryService);
-        setField(resolver, "extensionRouter", router);
-        setField(resolver, "extensionResourceLimiter", limiter);
+        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter);
 
         List<com.example.platform.federation.graphql.dto.ExtensionInfo> result = resolver.extensionOverview(ctx);
 
@@ -96,10 +93,7 @@ class ExtensionGraphQLResolverTest {
         when(router.getRules(any())).thenReturn(List.of());
         when(limiter.getLimits(any())).thenReturn(ExtensionResourceLimits.DEFAULTS);
 
-        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver();
-        setField(resolver, "extensionRegistryService", registryService);
-        setField(resolver, "extensionRouter", router);
-        setField(resolver, "extensionResourceLimiter", limiter);
+        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter);
 
         List<com.example.platform.federation.graphql.dto.ExtensionInfo> result = resolver.extensionOverview(ctx);
 
@@ -121,10 +115,7 @@ class ExtensionGraphQLResolverTest {
                 "127.0.0.1", "test-agent"
         );
 
-        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver();
-        setField(resolver, "extensionRegistryService", registryService);
-        setField(resolver, "extensionRouter", router);
-        setField(resolver, "extensionResourceLimiter", limiter);
+        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter);
 
         assertThrows(IllegalArgumentException.class, () -> resolver.extensionOverview(ctx));
     }
@@ -143,10 +134,7 @@ class ExtensionGraphQLResolverTest {
                 "127.0.0.1", "test-agent"
         );
 
-        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver();
-        setField(resolver, "extensionRegistryService", registryService);
-        setField(resolver, "extensionRouter", router);
-        setField(resolver, "extensionResourceLimiter", limiter);
+        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter);
 
         assertThrows(IllegalArgumentException.class, () -> resolver.extensionOverview(ctx));
     }

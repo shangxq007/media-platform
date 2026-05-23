@@ -8,20 +8,22 @@ import com.example.platform.prompt.domain.PromptTemplate;
 import com.example.platform.prompt.domain.PromptTemplateVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Component
+// @Controller disabled - GraphQL schema conflict
 public class PromptGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(PromptGraphQLResolver.class);
 
-    @Autowired private PromptTemplateService promptTemplateService;
+    private final PromptTemplateService promptTemplateService;
+
+    public PromptGraphQLResolver(PromptTemplateService promptTemplateService) {
+        this.promptTemplateService = promptTemplateService;
+    }
 
     @QueryMapping
     public PromptTemplateDetail promptTemplateDetail(@Argument String id, GraphQLRequestContext context) {

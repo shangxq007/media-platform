@@ -37,14 +37,36 @@ public class EntitlementGrantRepository {
                 ? OffsetDateTime.ofInstant(effectiveAt, ZoneOffset.UTC) : now;
         OffsetDateTime expAt = expiresAt != null
                 ? OffsetDateTime.ofInstant(expiresAt, ZoneOffset.UTC) : null;
-        dsl.insertInto(table("ENTITLEMENT_GRANT"))
-                .columns(field("ID"), field("SUBJECT_TYPE"), field("SUBJECT_ID"),
-                        field("BUNDLE_CODE"), field("QUOTA_PROFILE_CODE"),
-                        field("SOURCE_TYPE"), field("SOURCE_REF"),
-                        field("GRANT_STATUS"), field("EFFECTIVE_AT"), field("EXPIRES_AT"))
-                .values(id, subjectType, subjectId, bundleCode, quotaProfileCode,
-                        sourceType, sourceRef, grantStatus, effAt, expAt)
+        int updated = dsl.update(table("ENTITLEMENT_GRANT"))
+                .set(field("SUBJECT_TYPE"), subjectType)
+                .set(field("SUBJECT_ID"), subjectId)
+                .set(field("BUNDLE_CODE"), bundleCode)
+                .set(field("QUOTA_PROFILE_CODE"), quotaProfileCode)
+                .set(field("SOURCE_TYPE"), sourceType)
+                .set(field("SOURCE_REF"), sourceRef)
+                .set(field("GRANT_STATUS"), grantStatus)
+                .set(field("EFFECTIVE_AT"), effAt)
+                .set(field("EXPIRES_AT"), expAt)
+                .where(field("ID").eq(id))
                 .execute();
+        if (updated == 0) {
+            dsl.insertInto(table("ENTITLEMENT_GRANT"))
+                    .columns(field("ID"), field("SUBJECT_TYPE"), field("SUBJECT_ID"),
+                            field("BUNDLE_CODE"), field("QUOTA_PROFILE_CODE"),
+                            field("SOURCE_TYPE"), field("SOURCE_REF"),
+                            field("GRANT_STATUS"), field("EFFECTIVE_AT"), field("EXPIRES_AT"))
+                    .values(id, subjectType, subjectId, bundleCode, quotaProfileCode,
+                            sourceType, sourceRef, grantStatus, effAt, expAt)
+                    .execute();
+        }
+    }
+
+    public List<EntitlementGrantRecord> findAllActive() {
+        return dsl.select()
+                .from(table("ENTITLEMENT_GRANT"))
+                .where(field("GRANT_STATUS").eq("ACTIVE"))
+                .orderBy(field("EFFECTIVE_AT").desc())
+                .fetch(this::mapRecord);
     }
 
     public List<EntitlementGrantRecord> findBySubjectId(String subjectId) {

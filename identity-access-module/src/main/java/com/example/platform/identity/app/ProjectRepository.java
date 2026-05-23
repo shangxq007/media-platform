@@ -4,6 +4,7 @@ import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
 import com.example.platform.identity.domain.Project;
+import com.example.platform.identity.infrastructure.JooqRecords;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -48,12 +49,12 @@ public class ProjectRepository {
 
     private Project mapRecord(Record record) {
         return new Project(
-                record.get(field("id"), String.class),
-                record.get(field("tenant_id"), String.class),
-                record.get(field("name"), String.class),
-                record.get(field("description"), String.class),
-                Project.ProjectStatus.valueOf(record.get(field("status"), String.class)),
-                record.get(field("created_at"), OffsetDateTime.class).toInstant()
+                JooqRecords.string(record, "id"),
+                JooqRecords.string(record, "tenant_id"),
+                JooqRecords.string(record, "name"),
+                JooqRecords.string(record, "description"),
+                Project.ProjectStatus.valueOf(JooqRecords.string(record, "status")),
+                JooqRecords.offsetDateTime(record, "created_at").toInstant()
         );
     }
 }

@@ -67,7 +67,8 @@ class StaleRenderJobCompensatorTest {
     }
 
     private StaleRenderJobCompensator createCompensator(boolean enabled, Duration threshold) {
-        return new StaleRenderJobCompensator(dsl, historyRepository, eventPublisher, enabled, threshold);
+        var service = new StaleRenderJobCompensationService(dsl, historyRepository, eventPublisher);
+        return new StaleRenderJobCompensator(service, enabled, threshold);
     }
 
     private void insertJob(String jobId, String projectId, RenderJobStatus status, OffsetDateTime createdAt) {

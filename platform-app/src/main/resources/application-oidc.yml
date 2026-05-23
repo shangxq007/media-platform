@@ -1,0 +1,19 @@
+# OIDC Resource Server (Authentik) — activate with: spring.profiles.active=oidc
+# Requires reachable issuer-uri and matching Authentik Application (Public + PKCE).
+app:
+  security:
+    enabled: true
+    dev-auth-endpoint: true
+    oauth2:
+      enabled: true
+      issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:}
+      audience: ${APP_SECURITY_OAUTH2_AUDIENCE:}
+      legacy-hmac-jwt-enabled: ${APP_SECURITY_OAUTH2_LEGACY_HMAC_JWT_ENABLED:true}
+      jit-provisioning-enabled: true
+      trust-jwt-tenant-only: true
+      default-tenant-id: ${APP_SECURITY_OAUTH2_DEFAULT_TENANT_ID:tenant-1}
+
+spring:
+  config:
+    activate:
+      on-profile: oidc

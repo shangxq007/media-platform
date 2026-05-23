@@ -1,6 +1,8 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.billing.domain.*;
+import com.example.platform.billing.domain.SubscriptionContract;
+import com.example.platform.billing.domain.SubscriptionContractRole;
+import com.example.platform.billing.domain.SubscriptionPlan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -129,5 +131,40 @@ class SubscriptionBillingServiceTest {
     @Test
     void shouldProcessBillingCycle() {
         assertDoesNotThrow(() -> service.processBillingCycle());
+    }
+
+    @Test
+    void shouldSupportBaseAndAddonSubscriptionsTogether() {
+        service.createPlan("pro_monthly", "Pro", "", "MONTHLY", 9999, "USD",
+                Map.of("render.minutes", 600L));
+        service.createPlan("addon_gpu_monthly", "GPU", "", "MONTHLY", 4999, "USD",
+                Map.of("gpu.minutes", 300L));
+
+        service.createSubscription("t1", "u1", "pro_monthly", "pro_monthly", 30,
+                SubscriptionContractRole.BASE);
+        service.createAddonSubscription("t1", "u1", "addon_gpu_monthly", "addon_gpu_monthly", 30);
+
+        List<SubscriptionContract> active = service.listActiveSubscriptions("t1", "u1");
+        assertEquals(2, active.size());
+        assertNotNull(service.getCurrentSubscription("t1", "u1"));
+        assertEquals(600L, service.getEffectiveIncludedQuota("t1", "u1").get("render.minutes"));
+        assertEquals(300L, service.getEffectiveIncludedQuota("t1", "u1").get("gpu.minutes"));
+    }
+
+    @Test
+    void newBaseSubscriptionReplacesPreviousBase() {
+        service.createPlan("basic_monthly", "Basic", "", "MONTHLY", 2999, "USD", Map.of());
+        service.createPlan("pro_monthly", "Pro", "", "MONTHLY", 9999, "USD", Map.of());
+        service.createSubscription("t1", "u1", "basic_monthly", "basic_monthly", 30,
+                SubscriptionContractRole.BASE);
+        service.createSubscription("t1", "u1", "pro_monthly", "pro_monthly", 30,
+                SubscriptionContractRole.BASE);
+
+        List<SubscriptionContract> active = service.listActiveSubscriptions("t1", "u1");
+        long activeBase = active.stream()
+                .filter(c -> c.contractRole() == SubscriptionContractRole.BASE)
+                .count();
+        assertEquals(1, activeBase);
+        assertEquals("pro_monthly", service.getCurrentSubscription("t1", "u1").planKey());
     }
 }

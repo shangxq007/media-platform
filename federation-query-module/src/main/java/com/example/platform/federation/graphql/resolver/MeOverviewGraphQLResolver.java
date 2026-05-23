@@ -14,21 +14,29 @@ import com.example.platform.identity.domain.Tenant;
 import com.example.platform.identity.domain.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-@Component
+// @Controller disabled - GraphQL schema conflict
 public class MeOverviewGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(MeOverviewGraphQLResolver.class);
 
-    @Autowired private EntitlementDecisionService entitlementDecisionService;
-    @Autowired private BillingDecisionService billingDecisionService;
-    @Autowired private TenantRepository tenantRepository;
-    @Autowired private UserRepository userRepository;
+    private final EntitlementDecisionService entitlementDecisionService;
+    private final BillingDecisionService billingDecisionService;
+    private final TenantRepository tenantRepository;
+    private final UserRepository userRepository;
+
+    public MeOverviewGraphQLResolver(EntitlementDecisionService entitlementDecisionService,
+                                     BillingDecisionService billingDecisionService,
+                                     TenantRepository tenantRepository,
+                                     UserRepository userRepository) {
+        this.entitlementDecisionService = entitlementDecisionService;
+        this.billingDecisionService = billingDecisionService;
+        this.tenantRepository = tenantRepository;
+        this.userRepository = userRepository;
+    }
 
     @QueryMapping
     public MeOverview meOverview(GraphQLRequestContext context) {

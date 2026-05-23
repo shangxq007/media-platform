@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# Media Platform — Authentik groups + scope mapping (claims: tenantId, roles, platform_user_id)
+# Apply via: Customization → Blueprints → Upload/Apply, or mount under /blueprints/custom in worker.
+# You still must attach the scope mapping to your OAuth2 Provider in the UI.
+version: 1
+metadata:
+  name: media-platform-claims
+  labels:
+    blueprints.goauthentik.io/description: "Media Platform OIDC claims (tenantId, roles, platform_user_id)"
+context:
+  default_tenant_id: tenant-1
+entries:
+  - model: authentik_core.group
+    state: created
+    identifiers:
+      name: mp-tenant-1-admin
+    attrs:
+      name: mp-tenant-1-admin
+      attributes:
+        tenant_id: !Context default_tenant_id
+  - model: authentik_core.group
+    state: created
+    identifiers:
+      name: mp-tenant-1-editor
+    attrs:
+      name: mp-tenant-1-editor
+      attributes:
+        tenant_id: !Context default_tenant_id
+  - model: authentik_core.group
+    state: created
+    identifiers:
+      name: mp-tenant-1-viewer
+    attrs:
+      name: mp-tenant-1-viewer
+      attributes:
+        tenant_id: !Context default_tenant_id
+
+  - model: authentik_providers_oauth2.scopemapping
+    state: created
+    identifiers:
+      name: media-platform-claims
+    attrs:
+      name: media-platform-claims
+      scope_name: media-platform
+      description: "Media Platform tenantId, roles, platform_user_id for Resource Server"
+      expression: |
+        tenant_id = request.user.attributes.get("tenant_id", "tenant-1")
+        for group in request.user.all_groups():
+            if group.attributes.get("tenant_id"):
+                tenant_id = group.attributes.get("tenant_id")
+                break
+        roles = []
+        for group in request.user.all_groups():
+            name = (group.name or "").upper()
+            if "ADMIN" in name:
+                roles.append("ADMIN")
+            elif "EDITOR" in name:
+                roles.append("EDITOR")
+            elif "VIEWER" in name:
+                roles.append("VIEWER")
+        if not roles:
+            roles = ["VIEWER"]
+        platform_user_id = request.user.attributes.get("platform_user_id", str(request.user.pk))
+        return {
+            "tenantId": tenant_id,
+            "roles": roles,
+            "platform_user_id": platform_user_id,
+        }

@@ -49,6 +49,23 @@ public class WorkspaceEntitlementPoolService {
         throw new IllegalStateException("No pool repository available");
     }
 
+    public WorkspaceEntitlementPool extendPoolQuota(String workspaceId, String featureKey,
+            long additionalQuota, String actor) {
+        WorkspaceEntitlementPool pool = getPoolForFeature(workspaceId, featureKey);
+        long newTotal = pool.totalQuota() + additionalQuota;
+        if (poolRepository != null) {
+            poolRepository.updateTotal(pool.id(), newTotal);
+        }
+        WorkspaceEntitlementPool updated = new WorkspaceEntitlementPool(
+                pool.id(), pool.workspaceId(), pool.featureKey(),
+                newTotal, pool.usedQuota(), pool.period(), pool.createdAt(), java.time.Instant.now());
+        audit("workspace.pool.extended", actor, Map.of(
+                "workspaceId", workspaceId, "featureKey", featureKey, "additionalQuota", additionalQuota,
+                "newTotal", newTotal));
+        log.info("Extended pool {} by {} for workspace {} feature {}", pool.id(), additionalQuota, workspaceId, featureKey);
+        return updated;
+    }
+
     public WorkspaceEntitlementPool createPool(String workspaceId, String featureKey,
             long totalQuota, String period, String actor) {
         String id = Ids.newId("ws_pool");

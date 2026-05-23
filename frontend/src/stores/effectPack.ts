@@ -1,18 +1,23 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { EffectPack, EffectPackEffect, ClipEffect } from '@/types'
+import { EffectPackAPI } from '@/api/index'
 
 export const useEffectPackStore = defineStore('effectPack', () => {
   const builtinPacks = ref<EffectPack[]>([])
   const customPacks = ref<EffectPack[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const allowedPackIds = ref<string[]>([])
 
   const allPacks = computed(() => [...builtinPacks.value, ...customPacks.value])
 
   const allEffects = computed(() => {
     const map = new Map<string, EffectPackEffect & { packId: string; packVersion: string }>()
     for (const pack of allPacks.value) {
+      if (allowedPackIds.value.length > 0 && !allowedPackIds.value.includes(pack.packId)) {
+        continue
+      }
       for (const effect of pack.effects) {
         map.set(effect.effectKey, { ...effect, packId: pack.packId, packVersion: pack.version })
       }
@@ -20,7 +25,26 @@ export const useEffectPackStore = defineStore('effectPack', () => {
     return map
   })
 
-  function loadBuiltinPacks() {
+  async function loadFromApi() {
+    loading.value = true
+    error.value = null
+    try {
+      const packs = await EffectPackAPI.list()
+      builtinPacks.value = packs.filter(p => p.builtin)
+      customPacks.value = packs.filter(p => !p.builtin)
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : 'Failed to load effect packs'
+      loadBuiltinFallback()
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function setAllowedPackIds(packIds: string[]) {
+    allowedPackIds.value = packIds
+  }
+
+  function loadBuiltinFallback() {
     builtinPacks.value = [{
       packId: 'builtin-core',
       version: '2.0.0',
@@ -29,14 +53,7 @@ export const useEffectPackStore = defineStore('effectPack', () => {
       author: 'media-platform',
       compatibility: '2.0',
       allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'],
-      effects: [
-        { effectKey: 'video.fade_in', displayName: 'Fade In', category: 'transition', description: 'Fade from black', parameterSchema: { duration: { type: 'float', defaultValue: 1.0, min: 0.1, max: 5.0, description: 'Duration in seconds' } }, defaultValues: { duration: 1.0 }, providerMappings: ['javacv', 'ofx'], allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] },
-        { effectKey: 'video.fade_out', displayName: 'Fade Out', category: 'transition', description: 'Fade to black', parameterSchema: { duration: { type: 'float', defaultValue: 1.0, min: 0.1, max: 5.0, description: 'Duration in seconds' } }, defaultValues: { duration: 1.0 }, providerMappings: ['javacv', 'ofx'], allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] },
-        { effectKey: 'video.cross_dissolve', displayName: 'Cross Dissolve', category: 'transition', description: 'Cross-fade', parameterSchema: { duration: { type: 'float', defaultValue: 0.5, min: 0.1, max: 3.0, description: 'Duration' } }, defaultValues: { duration: 0.5 }, providerMappings: ['ofx', 'javacv'], allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] },
-        { effectKey: 'video.blur', displayName: 'Blur', category: 'video', description: 'Gaussian blur', parameterSchema: { radius: { type: 'float', defaultValue: 2.0, min: 0.1, max: 10.0, description: 'Blur radius' } }, defaultValues: { radius: 2.0 }, providerMappings: ['ofx', 'javacv'], allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] },
-        { effectKey: 'video.vignette', displayName: 'Vignette', category: 'video', description: 'Vignette effect', parameterSchema: { intensity: { type: 'float', defaultValue: 0.5, min: 0.0, max: 1.0, description: 'Intensity' } }, defaultValues: { intensity: 0.5 }, providerMappings: ['ofx'], allowedTiers: ['PRO', 'TEAM', 'ENTERPRISE'] },
-        { effectKey: 'text.subtitle_burn_in', displayName: 'Subtitle', category: 'text', description: 'Burn subtitles', parameterSchema: { text: { type: 'string', defaultValue: '', description: 'Subtitle text' }, position: { type: 'string', defaultValue: 'bottom', description: 'Position' } }, defaultValues: { text: '', position: 'bottom' }, providerMappings: ['ofx', 'javacv'], allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] },
-      ]
+      effects: []
     }]
   }
 
@@ -60,7 +77,46 @@ export const useEffectPackStore = defineStore('effectPack', () => {
     return [...allEffects.value.values()].filter(e => e.allowedTiers.includes(tier))
   }
 
-  loadBuiltinPacks()
+  async function saveCustomPack(pack: EffectPack): Promise<EffectPack> {
+    const saved = await EffectPackAPI.create(pack)
+    const idx = customPacks.value.findIndex(p => p.packId === saved.packId && p.version === saved.version)
+    if (idx >= 0) {
+      customPacks.value[idx] = saved
+    } else {
+      customPacks.value.push(saved)
+    }
+    return saved
+  }
 
-  return { builtinPacks, customPacks, allPacks, allEffects, loading, error, getEffect, createClipEffect, getEffectsForTier }
+  async function updateCustomPack(packId: string, version: string, pack: EffectPack): Promise<EffectPack> {
+    const saved = await EffectPackAPI.update(packId, version, pack)
+    const idx = customPacks.value.findIndex(p => p.packId === packId && p.version === version)
+    if (idx >= 0) {
+      customPacks.value[idx] = saved
+    }
+    return saved
+  }
+
+  async function deleteCustomPack(packId: string, version: string): Promise<void> {
+    await EffectPackAPI.remove(packId, version)
+    customPacks.value = customPacks.value.filter(p => !(p.packId === packId && p.version === version))
+  }
+
+  return {
+    builtinPacks,
+    customPacks,
+    allPacks,
+    allEffects,
+    loading,
+    error,
+    allowedPackIds,
+    loadFromApi,
+    setAllowedPackIds,
+    getEffect,
+    createClipEffect,
+    getEffectsForTier,
+    saveCustomPack,
+    updateCustomPack,
+    deleteCustomPack
+  }
 })

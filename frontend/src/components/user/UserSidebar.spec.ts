@@ -32,7 +32,7 @@ describe('UserSidebar', () => {
     const wrapper = mount(UserSidebar, { global: { plugins: [router] } })
     expect(wrapper.text()).toContain('Dashboard')
     expect(wrapper.text()).toContain('Projects')
-    expect(wrapper.text()).toContain('Editor')
+    expect(wrapper.text()).toContain('Video Editor')
     expect(wrapper.text()).toContain('Prompts')
     expect(wrapper.text()).toContain('Effect Packs')
     expect(wrapper.text()).toContain('Capabilities')

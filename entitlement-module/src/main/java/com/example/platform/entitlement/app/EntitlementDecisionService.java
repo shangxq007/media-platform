@@ -5,14 +5,15 @@ import com.example.platform.entitlement.infrastructure.EntitlementGrantRepositor
 import com.example.platform.entitlement.infrastructure.EntitlementOverrideRepository;
 import com.example.platform.entitlement.infrastructure.WorkspaceEntitlementPoolRepository;
 import com.example.platform.entitlement.infrastructure.WorkspaceMemberEntitlementGrantRepository;
+import com.example.platform.shared.collaboration.CollaborationAccessPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class EntitlementDecisionService {
@@ -24,17 +25,21 @@ public class EntitlementDecisionService {
     private final EntitlementOverrideRepository overrideRepository;
     private final WorkspaceEntitlementPoolRepository poolRepository;
     private final WorkspaceMemberEntitlementGrantRepository memberGrantRepository;
+    private final CollaborationAccessPort collaborationAccessPort;
 
-    public EntitlementDecisionService(EntitlementPolicyService policyService,
-            @Autowired(required = false) EntitlementGrantRepository grantRepository,
-            @Autowired(required = false) EntitlementOverrideRepository overrideRepository,
-            @Autowired(required = false) WorkspaceEntitlementPoolRepository poolRepository,
-            @Autowired(required = false) WorkspaceMemberEntitlementGrantRepository memberGrantRepository) {
+    public EntitlementDecisionService(
+            EntitlementPolicyService policyService,
+            Optional<EntitlementGrantRepository> grantRepository,
+            Optional<EntitlementOverrideRepository> overrideRepository,
+            Optional<WorkspaceEntitlementPoolRepository> poolRepository,
+            Optional<WorkspaceMemberEntitlementGrantRepository> memberGrantRepository,
+            Optional<CollaborationAccessPort> collaborationAccessPort) {
         this.policyService = policyService;
-        this.grantRepository = grantRepository;
-        this.overrideRepository = overrideRepository;
-        this.poolRepository = poolRepository;
-        this.memberGrantRepository = memberGrantRepository;
+        this.grantRepository = grantRepository.orElse(null);
+        this.overrideRepository = overrideRepository.orElse(null);
+        this.poolRepository = poolRepository.orElse(null);
+        this.memberGrantRepository = memberGrantRepository.orElse(null);
+        this.collaborationAccessPort = collaborationAccessPort.orElse(null);
     }
 
     public EntitlementDecision evaluate(AccessCheckRequest request) {
@@ -43,6 +48,19 @@ public class EntitlementDecisionService {
 
         String tier = policyService.getTier(request.tenantId());
         EntitlementPolicy tierPolicy = policyService.getPolicy(request.tenantId());
+
+        if (collaborationAccessPort != null && isSharedResourceCheck(request)) {
+            String userId = request.userId() != null ? request.userId() : request.subjectId();
+            if (userId != null && collaborationAccessPort.hasSharedAccess(
+                    request.tenantId(), userId, request.resourceType(), request.resourceId(), request.action())) {
+                matchedPolicies.add("shared-resource:" + request.resourceType() + ":" + request.resourceId());
+                return new EntitlementDecision(
+                        true, "ALLOW", EntitlementDecisionReason.SHARED_RESOURCE_GRANT.name(),
+                        "Access granted by shared resource grant", tier,
+                        matchedPolicies, null, null, null, null,
+                        null, List.of(), null, false);
+            }
+        }
 
         if (overrideRepository != null && request.subjectId() != null) {
             try {
@@ -141,6 +159,14 @@ public class EntitlementDecisionService {
 
     private boolean isRecordExpired(EntitlementGrantRepository.EntitlementGrantRecord g, Instant now) {
         return g.expiresAt() != null && g.expiresAt().isBefore(now);
+    }
+
+    private static boolean isSharedResourceCheck(AccessCheckRequest request) {
+        if (request.resourceType() == null || request.resourceId() == null) {
+            return false;
+        }
+        String type = request.resourceType().toLowerCase();
+        return "project".equals(type) || "export".equals(type);
     }
 
     private boolean checkTierPolicy(EntitlementPolicy policy, AccessCheckRequest request) {

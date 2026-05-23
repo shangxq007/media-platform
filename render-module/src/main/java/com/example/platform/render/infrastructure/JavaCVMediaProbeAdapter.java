@@ -1,5 +1,6 @@
 package com.example.platform.render.infrastructure;
 
+import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,7 +8,9 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class JavaCVMediaProbeAdapter implements MediaProbeAdapter {
@@ -31,6 +34,13 @@ public class JavaCVMediaProbeAdapter implements MediaProbeAdapter {
             if (width == 0 || height == 0) warnings.add("No video stream detected");
             if (durationMs <= 0) warnings.add("Duration is zero or unknown");
 
+            Map<String, String> streamMeta = collectStreamMetadata(grabber);
+            String pixelFormat = resolvePixelFormatName(grabber);
+            ColorProbeMetadata color = ColorProbeMetadataExtractor.fromStreamMetadata(streamMeta, pixelFormat);
+            if (color.hdr()) {
+                warnings.add("HDR color transfer detected");
+            }
+
             MediaProbeResult result = new MediaProbeResult(
                     jobId,
                     true,
@@ -46,7 +56,8 @@ public class JavaCVMediaProbeAdapter implements MediaProbeAdapter {
                     grabber.getAudioChannels(),
                     grabber.getSampleRate(),
                     warnings,
-                    ""
+                    "",
+                    color
             );
 
             grabber.stop();
@@ -59,6 +70,35 @@ public class JavaCVMediaProbeAdapter implements MediaProbeAdapter {
             log.error("JavaCVMediaProbeAdapter: failed to probe {}", filePath, e);
             return MediaProbeResult.failed(jobId, "Probe failed: " + e.getMessage());
         }
+    }
+
+    private static Map<String, String> collectStreamMetadata(FFmpegFrameGrabber grabber) {
+        Map<String, String> meta = new LinkedHashMap<>();
+        for (String key : List.of(
+                "color_space", "color_primaries", "color_transfer", "color_range",
+                "pix_fmt", "pixel_format", "chroma_location")) {
+            String value = grabber.getMetadata(key);
+            if (value != null && !value.isBlank()) {
+                meta.put(key, value.trim());
+            }
+        }
+        return meta;
+    }
+
+    private static String resolvePixelFormatName(FFmpegFrameGrabber grabber) {
+        String fromMeta = grabber.getMetadata("pix_fmt");
+        if (fromMeta != null && !fromMeta.isBlank()) {
+            return fromMeta.trim();
+        }
+        int pixFmt = grabber.getPixelFormat();
+        if (pixFmt >= 0) {
+            try {
+                return avutil.av_get_pix_fmt_name(pixFmt).getString();
+            } catch (Exception ignored) {
+                return String.valueOf(pixFmt);
+            }
+        }
+        return "";
     }
 
     @Override

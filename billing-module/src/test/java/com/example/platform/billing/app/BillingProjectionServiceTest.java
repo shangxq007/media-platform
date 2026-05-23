@@ -36,7 +36,8 @@ class BillingProjectionServiceTest {
         SubscriptionContract contract = new SubscriptionContract(
                 "sub_123", "tenant-1", "tenant-1", "pro_monthly",
                 now, now.plusSeconds(86400 * 30L),
-                "active", 0L, "USD", Map.of(), Map.of()
+                "active", 0L, "USD", Map.of(), Map.of(),
+                SubscriptionContractRole.BASE, "pro_monthly"
         );
 
         BillingState state = service.activateSubscription(contract);
@@ -54,7 +55,8 @@ class BillingProjectionServiceTest {
         SubscriptionContract contract = new SubscriptionContract(
                 "sub_123", "tenant-1", "tenant-1", "pro_monthly",
                 now, now.plusSeconds(86400 * 30L),
-                "active", 0L, "USD", Map.of(), Map.of()
+                "active", 0L, "USD", Map.of(), Map.of(),
+                SubscriptionContractRole.BASE, "pro_monthly"
         );
 
         service.activateSubscription(contract);
@@ -71,7 +73,8 @@ class BillingProjectionServiceTest {
         SubscriptionContract contract = new SubscriptionContract(
                 "sub_123", "tenant-1", "tenant-1", "pro_monthly",
                 now, now.plusSeconds(86400 * 30L),
-                "active", 0L, "USD", Map.of(), Map.of()
+                "active", 0L, "USD", Map.of(), Map.of(),
+                SubscriptionContractRole.BASE, "pro_monthly"
         );
 
         service.activateSubscription(contract);
@@ -166,12 +169,14 @@ class BillingProjectionServiceTest {
         SubscriptionContract contract1 = new SubscriptionContract(
                 "sub_1", "tenant-1", "tenant-1", "basic_monthly",
                 now, now.plusSeconds(86400 * 30L),
-                "active", 0L, "USD", Map.of(), Map.of()
+                "active", 0L, "USD", Map.of(), Map.of(),
+                SubscriptionContractRole.BASE, "basic_monthly"
         );
         SubscriptionContract contract2 = new SubscriptionContract(
                 "sub_2", "tenant-1", "tenant-1", "pro_monthly",
                 now, now.plusSeconds(86400 * 60L),
-                "active", 0L, "USD", Map.of(), Map.of()
+                "active", 0L, "USD", Map.of(), Map.of(),
+                SubscriptionContractRole.BASE, "pro_monthly"
         );
 
         service.activateSubscription(contract1);

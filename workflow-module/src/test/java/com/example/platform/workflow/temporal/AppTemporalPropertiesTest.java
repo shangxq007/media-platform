@@ -1,35 +1,33 @@
 package com.example.platform.workflow.temporal;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 
 class AppTemporalPropertiesTest {
 
     @Test
     void enabledDefaultsToFalse() {
-        AppTemporalProperties props = new AppTemporalProperties(false);
-        assertFalse(props.enabled());
+        AppTemporalProperties props = new AppTemporalProperties();
+        assertFalse(props.isEnabled());
     }
 
     @Test
-    void enabledCanBeTrue() {
-        AppTemporalProperties props = new AppTemporalProperties(true);
-        assertTrue(props.enabled());
+    void resolveNamespaceUsesPrefixAndEnvironment() {
+        AppTemporalProperties props = new AppTemporalProperties();
+        props.setEnvironment("dev");
+        assertEquals("media-platform-dev", props.resolveNamespace());
     }
 
     @Test
-    void recordIsImmutable() {
-        AppTemporalProperties props = new AppTemporalProperties(true);
-        assertTrue(props.enabled());
+    void taskQueueDefaultsToRenderTaskQueueName() {
+        assertEquals(RenderTaskQueue.NAME, new AppTemporalProperties().getTaskQueue());
     }
 
     @Test
-    void recordHasEnabledAccessor() throws Exception {
-        Method method = AppTemporalProperties.class.getMethod("enabled");
-        assertNotNull(method);
+    void workerRequiredDefaultsTrue() {
+        assertTrue(new AppTemporalProperties().isWorkerRequired());
     }
 }

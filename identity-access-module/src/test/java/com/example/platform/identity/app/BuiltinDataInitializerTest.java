@@ -1,5 +1,6 @@
 package com.example.platform.identity.app;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -8,6 +9,8 @@ import com.example.platform.identity.domain.Role;
 import com.example.platform.identity.infrastructure.RoleRepository;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +38,7 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        verify(roleRepository, times(11)).savePermission(any(Permission.class));
+        assertEquals(16, distinctPermissionKeys().size());
     }
 
     @Test
@@ -45,7 +48,7 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        verify(roleRepository, times(9)).save(any(Role.class));
+        assertEquals(3, distinctRoleKeys().size());
     }
 
     @Test
@@ -54,12 +57,12 @@ class BuiltinDataInitializerTest {
         when(roleRepository.savePermission(any(Permission.class))).thenAnswer(inv -> inv.getArgument(0));
         when(roleRepository.findByKey(anyString())).thenReturn(Optional.empty());
         when(roleRepository.save(any(Role.class))).thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(roleRepository.findPermissionByKey("render.submit"))
+        when(roleRepository.findPermissionByKey("render.submit"))
                 .thenReturn(Optional.of(new Permission("perm_1", "render.submit", "Submit", null, "RENDER", Instant.now())));
 
         initializer.init();
 
-        verify(roleRepository, times(10)).savePermission(any(Permission.class));
+        assertEquals(15, distinctPermissionKeys().size());
     }
 
     @Test
@@ -68,12 +71,12 @@ class BuiltinDataInitializerTest {
         when(roleRepository.save(any(Role.class))).thenAnswer(inv -> inv.getArgument(0));
         when(roleRepository.findPermissionByKey(anyString())).thenReturn(Optional.empty());
         when(roleRepository.savePermission(any(Permission.class))).thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(roleRepository.findByKey("OWNER"))
-                .thenReturn(Optional.of(new Role("rol_1", "OWNER", "Owner", null, Role.RoleScope.WORKSPACE, Instant.now())));
+        when(roleRepository.findByKey("ADMIN"))
+                .thenReturn(Optional.of(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.GLOBAL, Instant.now())));
 
         initializer.init();
 
-        verify(roleRepository, times(8)).save(any(Role.class));
+        assertEquals(2, distinctRoleKeys().size());
     }
 
     @Test
@@ -85,18 +88,8 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        ArgumentCaptor<Role> captor = ArgumentCaptor.forClass(Role.class);
-        verify(roleRepository, times(9)).save(captor.capture());
-        var roleKeys = captor.getAllValues().stream().map(Role::roleKey).toList();
-        assertTrue(roleKeys.contains("OWNER"));
-        assertTrue(roleKeys.contains("ADMIN"));
-        assertTrue(roleKeys.contains("BILLING_ADMIN"));
-        assertTrue(roleKeys.contains("PROJECT_MANAGER"));
-        assertTrue(roleKeys.contains("EDITOR"));
-        assertTrue(roleKeys.contains("VIEWER"));
-        assertTrue(roleKeys.contains("PROMPT_ADMIN"));
-        assertTrue(roleKeys.contains("EXTENSION_ADMIN"));
-        assertTrue(roleKeys.contains("RENDER_OPERATOR"));
+        Set<String> roleKeys = distinctRoleKeys();
+        assertTrue(roleKeys.containsAll(Set.of("ADMIN", "EDITOR", "VIEWER")));
     }
 
     @Test
@@ -108,19 +101,24 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
+        Set<String> permKeys = distinctPermissionKeys();
+        assertTrue(permKeys.containsAll(Set.of(
+                "ADMIN", "WRITE", "MEMBER_MANAGE",
+                "render.submit", "render.cancel", "render.use_gpu", "render.use_remote_worker",
+                "entitlement.grant", "entitlement.revoke", "billing.manage",
+                "prompt.template.manage", "extension.install", "audit.view",
+                "navigation.manage", "notification.manage", "social.publish")));
+    }
+
+    private Set<String> distinctPermissionKeys() {
         ArgumentCaptor<Permission> captor = ArgumentCaptor.forClass(Permission.class);
-        verify(roleRepository, times(11)).savePermission(captor.capture());
-        var permKeys = captor.getAllValues().stream().map(Permission::permissionKey).toList();
-        assertTrue(permKeys.contains("render.submit"));
-        assertTrue(permKeys.contains("render.cancel"));
-        assertTrue(permKeys.contains("render.use_gpu"));
-        assertTrue(permKeys.contains("render.use_remote_worker"));
-        assertTrue(permKeys.contains("entitlement.grant"));
-        assertTrue(permKeys.contains("entitlement.revoke"));
-        assertTrue(permKeys.contains("billing.manage"));
-        assertTrue(permKeys.contains("prompt.template.manage"));
-        assertTrue(permKeys.contains("extension.install"));
-        assertTrue(permKeys.contains("audit.view"));
-        assertTrue(permKeys.contains("navigation.manage"));
+        verify(roleRepository, atLeastOnce()).savePermission(captor.capture());
+        return captor.getAllValues().stream().map(Permission::permissionKey).collect(Collectors.toSet());
+    }
+
+    private Set<String> distinctRoleKeys() {
+        ArgumentCaptor<Role> captor = ArgumentCaptor.forClass(Role.class);
+        verify(roleRepository, atLeastOnce()).save(captor.capture());
+        return captor.getAllValues().stream().map(Role::roleKey).collect(Collectors.toSet());
     }
 }

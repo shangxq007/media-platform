@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { WorkspaceEntitlementAPI } from '@/api/workspace'
 import type { WorkspaceEntitlementPool } from '@/types'
+import WorkspacePageLayout from '@/components/workspace/WorkspacePageLayout.vue'
 
 const route = useRoute()
 const workspaceId = route.params.workspaceId as string
@@ -33,6 +34,7 @@ function barClass(pct: number): string {
 </script>
 
 <template>
+  <WorkspacePageLayout title="Entitlement Pool">
   <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
     <div class="flex items-center justify-between mb-3">
       <h3 class="text-sm font-semibold text-gray-300">Entitlement Pool</h3>
@@ -54,4 +56,5 @@ function barClass(pct: number): string {
       </div>
     </div>
   </div>
+  </WorkspacePageLayout>
 </template>

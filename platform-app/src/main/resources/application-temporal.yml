@@ -1,0 +1,35 @@
+# Profile: enable Temporal worker + durable render execution
+# Usage: --spring.profiles.active=dev,temporal  and  TEMPORAL_ENABLED=true
+
+spring:
+  autoconfigure:
+    exclude: []
+
+app:
+  temporal:
+    enabled: true
+    environment: ${PLATFORM_ENV:dev}
+    namespace-prefix: media-platform
+    task-queue: media-platform-tasks
+    worker-required: true
+    fail-on-missing-worker: ${TEMPORAL_FAIL_ON_MISSING_WORKER:false}
+    shutdown-await-seconds: ${TEMPORAL_SHUTDOWN_AWAIT_SECONDS:25}
+
+render:
+  execution:
+    mode: temporal
+  stale-compensator:
+    startup-enabled: true
+    skip-on-temporal: true
+
+delivery:
+  temporal:
+    activity-enabled: true
+
+# namespace resolved by TemporalNamespaceEnvironmentPostProcessor when TEMPORAL_NAMESPACE is unset
+spring.temporal:
+  connection:
+    target: ${TEMPORAL_TARGET:127.0.0.1:7233}
+  workers:
+    - task-queue: media-platform-tasks
+      name: render-worker

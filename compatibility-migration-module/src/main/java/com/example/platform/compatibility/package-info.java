@@ -1,12 +1,12 @@
 @ApplicationModule(
         displayName = "Schema Compatibility & Migration",
         allowedDependencies = {
-                "shared-kernel",
-                "policy-governance-module",
-                "extension-module",
-                "audit-compliance-module",
-                "outbox-event-module",
-                "scheduler-module"
+                "shared",
+                "policy",
+                "extension",
+                "audit",
+                "outbox",
+                "scheduler"
         }
 )
 package com.example.platform.compatibility;

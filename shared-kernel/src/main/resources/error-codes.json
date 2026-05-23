@@ -893,6 +893,174 @@
       "messages": { "en": "AI provider unavailable, using fallback", "zh": "AI提供者不可用，使用回退" },
       "module": "nlq",
       "status": 503
+    },
+    "NOTIFICATION-404-001": {
+      "numericCode": 4042001,
+      "messages": { "en": "Notification event not found", "zh": "通知事件不存在" },
+      "module": "notification",
+      "status": 404
+    },
+    "NOTIFICATION-400-001": {
+      "numericCode": 4002001,
+      "messages": { "en": "Notification event is not subscribable", "zh": "通知事件不可订阅" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-404-002": {
+      "numericCode": 4042002,
+      "messages": { "en": "Notification subscription not found", "zh": "通知订阅不存在" },
+      "module": "notification",
+      "status": 404
+    },
+    "NOTIFICATION-400-002": {
+      "numericCode": 4002002,
+      "messages": { "en": "Notification subscription update failed", "zh": "通知订阅更新失败" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-404-003": {
+      "numericCode": 4042003,
+      "messages": { "en": "Notification channel binding not found", "zh": "通知渠道绑定不存在" },
+      "module": "notification",
+      "status": 404
+    },
+    "NOTIFICATION-400-003": {
+      "numericCode": 4002003,
+      "messages": { "en": "Notification channel type unsupported", "zh": "不支持的通知渠道类型" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-400-004": {
+      "numericCode": 4002004,
+      "messages": { "en": "Notification channel verification failed", "zh": "通知渠道验证失败" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-400-005": {
+      "numericCode": 4002005,
+      "messages": { "en": "Notification channel test failed", "zh": "通知渠道测试失败" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-400-006": {
+      "numericCode": 4002006,
+      "messages": { "en": "Invalid webhook URL", "zh": "Webhook URL 无效" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-403-001": {
+      "numericCode": 4032001,
+      "messages": { "en": "Webhook URL resolved to private/internal IP and was blocked", "zh": "Webhook URL 解析到内部/私有 IP，已被阻止" },
+      "module": "notification",
+      "status": 403
+    },
+    "NOTIFICATION-400-007": {
+      "numericCode": 4002007,
+      "messages": { "en": "Webhook signature verification failed", "zh": "Webhook 签名验证失败" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-503-001": {
+      "numericCode": 5032001,
+      "messages": { "en": "Notification provider unavailable", "zh": "通知提供者不可用" },
+      "module": "notification",
+      "status": 503
+    },
+    "NOTIFICATION-503-002": {
+      "numericCode": 5032002,
+      "messages": { "en": "Novu notification provider is not configured", "zh": "Novu 通知提供者未配置" },
+      "module": "notification",
+      "status": 503
+    },
+    "NOTIFICATION-400-008": {
+      "numericCode": 4002008,
+      "messages": { "en": "Notification delivery failed", "zh": "通知投递失败" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-400-009": {
+      "numericCode": 4002009,
+      "messages": { "en": "Notification delivery retry exhausted", "zh": "通知投递重试次数已耗尽" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-403-002": {
+      "numericCode": 4032002,
+      "messages": { "en": "Notification access denied", "zh": "通知访问被拒绝" },
+      "module": "notification",
+      "status": 403
+    },
+    "NOTIFICATION-402-001": {
+      "numericCode": 4022001,
+      "messages": { "en": "Entitlement required for this notification feature", "zh": "此通知功能需要权益授权" },
+      "module": "notification",
+      "status": 402
+    },
+    "NOTIFICATION-429-001": {
+      "numericCode": 4292001,
+      "messages": { "en": "Notification quota exceeded", "zh": "通知配额已超出" },
+      "module": "notification",
+      "status": 429
+    },
+    "NOTIFICATION-400-010": {
+      "numericCode": 4002010,
+      "messages": { "en": "Critical notification event cannot be disabled", "zh": "关键通知事件不可关闭" },
+      "module": "notification",
+      "status": 400
+    },
+    "NOTIFICATION-400-011": {
+      "numericCode": 4002011,
+      "messages": { "en": "Notification preference is invalid", "zh": "通知偏好设置无效" },
+      "module": "notification",
+      "status": 400
+    },
+    "ASSET-404-001": {
+      "numericCode": 404301,
+      "messages": { "en": "Timeline asset not found in registry", "zh": "时间线资产未在注册表中找到" },
+      "module": "asset",
+      "status": 404
+    },
+    "ASSET-409-001": {
+      "numericCode": 409301,
+      "messages": { "en": "Timeline asset is still referenced and cannot be removed", "zh": "时间线资产仍被引用，无法删除" },
+      "module": "asset",
+      "status": 409
+    },
+    "ASSET-410-001": {
+      "numericCode": 410301,
+      "messages": { "en": "Timeline asset has been tombstoned", "zh": "时间线资产已标记删除（tombstone）" },
+      "module": "asset",
+      "status": 410
+    },
+    "STORAGE-404-001": {
+      "numericCode": 404401,
+      "messages": { "en": "Storage object not found", "zh": "存储对象不存在" },
+      "module": "storage",
+      "status": 404
+    },
+    "STORAGE-403-001": {
+      "numericCode": 403401,
+      "messages": { "en": "Storage orphan purge requires a valid approval token", "zh": "存储孤儿清理需要有效的审批令牌" },
+      "module": "storage",
+      "status": 403
+    },
+    "ARTIFACT-404-001": {
+      "numericCode": 404501,
+      "messages": { "en": "Artifact not found in catalog", "zh": "制品目录中未找到该制品" },
+      "module": "artifact",
+      "status": 404
+    },
+    "ARTIFACT-409-001": {
+      "numericCode": 409501,
+      "messages": { "en": "Artifact is still referenced and cannot be purged", "zh": "制品仍被引用，无法清除" },
+      "module": "artifact",
+      "status": 409
+    },
+    "ARTIFACT-410-001": {
+      "numericCode": 410501,
+      "messages": { "en": "Artifact has been tombstoned", "zh": "制品已标记删除（tombstone）" },
+      "module": "artifact",
+      "status": 410
     }
   }
 }

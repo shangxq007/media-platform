@@ -2,6 +2,7 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.entitlement.infrastructure.CustomPolicyRepository;
+import com.example.platform.entitlement.infrastructure.TenantTierJdbcRepository;
 import com.example.platform.shared.cost.BudgetGuardPort;
 import com.example.platform.shared.cost.BudgetGuardPort.BudgetCheckResult;
 import com.example.platform.shared.cost.CostEstimationPort;
@@ -11,10 +12,10 @@ import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -27,14 +28,25 @@ public class EntitlementPolicyService implements EntitlementPort {
     private final ConcurrentHashMap<String, List<FeatureFlag>> featureFlags = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> decisionSources = new ConcurrentHashMap<>();
     private final CustomPolicyRepository customPolicyRepository;
+    private final TenantTierJdbcRepository tenantTierRepository;
     private CostEstimationPort costEstimationPort;
     private BudgetGuardPort budgetGuardPort;
 
     public EntitlementPolicyService(
-            @Autowired(required = false) CustomPolicyRepository customPolicyRepository) {
-        this.customPolicyRepository = customPolicyRepository;
+            Optional<CustomPolicyRepository> customPolicyRepository,
+            Optional<TenantTierJdbcRepository> tenantTierRepository) {
+        this.customPolicyRepository = customPolicyRepository.orElse(null);
+        this.tenantTierRepository = tenantTierRepository.orElse(null);
         initializeDefaultTiers();
         initializeDefaultFeatureFlags();
+    }
+
+    /** Restore tier from JDBC on application startup (does not write through). */
+    public void hydrateTier(String tenantId, String tier) {
+        if (tenantId != null && tier != null) {
+            userTiers.put(tenantId, tier.toUpperCase());
+            decisionSources.put(tenantId, "tier");
+        }
     }
 
     public void setCostEstimationPort(CostEstimationPort port) {
@@ -115,9 +127,17 @@ public class EntitlementPolicyService implements EntitlementPort {
     }
 
     public void setTier(String tenantId, String tier) {
-        userTiers.put(tenantId, tier);
+        String normalized = tier != null ? tier.toUpperCase() : "FREE";
+        userTiers.put(tenantId, normalized);
         decisionSources.put(tenantId, "tier");
-        log.info("EntitlementPolicyService: set tier={} for tenant={}", tier, tenantId);
+        if (tenantTierRepository != null) {
+            try {
+                tenantTierRepository.upsert(tenantId, normalized);
+            } catch (Exception e) {
+                log.warn("Failed to persist tier for tenant {}: {}", tenantId, e.getMessage());
+            }
+        }
+        log.info("EntitlementPolicyService: set tier={} for tenant={}", normalized, tenantId);
     }
 
     public boolean isFeatureEnabled(String tier, String flagKey) {

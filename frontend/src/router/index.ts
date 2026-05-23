@@ -10,6 +10,9 @@ import ExtensionManagement from '@/pages/admin/ExtensionManagement.vue'
 import QuotaBilling from '@/pages/admin/QuotaBilling.vue'
 import UserAnalytics from '@/pages/admin/UserAnalytics.vue'
 import NotificationManagement from '@/pages/admin/NotificationManagement.vue'
+import NotificationAdminPage from '@/pages/admin/NotificationAdminPage.vue'
+import NotificationEventDefinitionPage from '@/pages/admin/NotificationEventDefinitionPage.vue'
+import NotificationDeliveryLogPage from '@/pages/admin/NotificationDeliveryLogPage.vue'
 import AuditCompliance from '@/pages/admin/AuditCompliance.vue'
 import ConfigManagement from '@/pages/admin/ConfigManagement.vue'
 import FeatureFlags from '@/pages/admin/FeatureFlags.vue'
@@ -31,6 +34,9 @@ import MyBillingPage from '@/pages/user/MyBillingPage.vue'
 import MyCreditsPage from '@/pages/user/MyCreditsPage.vue'
 import MyFeedbackPage from '@/pages/user/MyFeedbackPage.vue'
 import MySettingsPage from '@/pages/user/MySettingsPage.vue'
+import MyExportsPage from '@/pages/user/MyExportsPage.vue'
+import MyNotificationsPage from '@/pages/user/MyNotificationsPage.vue'
+import MySharedResourcesPage from '@/pages/user/MySharedResourcesPage.vue'
 
 // Task 23: Platform admin entitlement & billing pages
 import QuotaPolicyEditor from '@/pages/admin/QuotaPolicyEditor.vue'
@@ -44,6 +50,12 @@ import MyReportsPage from '@/pages/analytics/MyReportsPage.vue'
 import DatasetCatalogPage from '@/pages/admin/DatasetCatalogPage.vue'
 import QueryAuditPage from '@/pages/admin/QueryAuditPage.vue'
 
+// System pages
+import ForbiddenPage from '@/pages/system/ForbiddenPage.vue'
+import OauthCallbackPage from '@/pages/OauthCallbackPage.vue'
+import RouteDisabledPage from '@/pages/system/RouteDisabledPage.vue'
+import UpgradeRequiredPage from '@/pages/system/UpgradeRequiredPage.vue'
+
 import { navigationGuard } from './guards'
 
 const staticRoutes: RouteRecordRaw[] = [
@@ -52,6 +64,13 @@ const staticRoutes: RouteRecordRaw[] = [
   { path: '/prompts', name: 'prompts', component: PromptManagementPage },
   { path: '/prompts/:templateId', name: 'prompt-editor', component: PromptManagementPage },
   { path: '/effect-packs', name: 'effect-packs', component: EffectPackEditor },
+
+  { path: '/oauth/callback', name: 'oauth-callback', component: OauthCallbackPage },
+
+  // System pages
+  { path: '/forbidden', name: 'forbidden', component: ForbiddenPage },
+  { path: '/route-disabled', name: 'route-disabled', component: RouteDisabledPage },
+  { path: '/upgrade-required', name: 'upgrade-required', component: UpgradeRequiredPage },
 
   // Task 21: User-side routes (legacy entitlement pages)
   { path: '/me/plan', name: 'me-plan', component: MyCapabilitiesPage },
@@ -66,6 +85,14 @@ const staticRoutes: RouteRecordRaw[] = [
   { path: '/me/credits', name: 'me-credits', component: MyCreditsPage },
   { path: '/me/feedback', name: 'me-feedback', component: MyFeedbackPage },
   { path: '/me/settings', name: 'me-settings', component: MySettingsPage },
+  { path: '/me/exports', name: 'me-exports', component: MyExportsPage },
+  { path: '/me/delivery-destinations', name: 'me-delivery-destinations', component: () => import('@/pages/user/DeliveryDestinationsPage.vue') },
+  { path: '/me/notifications', name: 'me-notifications', component: MyNotificationsPage },
+  { path: '/me/shared-resources', name: 'me-shared-resources', component: MySharedResourcesPage },
+  { path: '/me/notification-settings', name: 'me-notification-settings', component: () => import('@/pages/user/NotificationSettingsPage.vue') },
+  { path: '/me/publish', name: 'me-publish', component: () => import('@/pages/user/SocialPublishPage.vue') },
+  { path: '/me/scheduler', name: 'me-scheduler', component: () => import('@/pages/user/PostSchedulerPage.vue') },
+  { path: '/me/publish-history', name: 'me-publish-history', component: () => import('@/pages/user/PublishHistoryPage.vue') },
 
   // NLQ user-side routes
   { path: '/me/analytics', name: 'me-analytics', component: AnalyticsAssistantPage },
@@ -75,7 +102,7 @@ const staticRoutes: RouteRecordRaw[] = [
   { path: '/workspace/:workspaceId/members', name: 'workspace-members', component: () => import('@/pages/workspace/WorkspaceMembersPage.vue') },
   { path: '/workspace/:workspaceId/roles', name: 'workspace-roles', component: () => import('@/pages/workspace/RoleManagementPanel.vue') },
   { path: '/workspace/:workspaceId/entitlements/pool', name: 'workspace-pool', component: () => import('@/pages/workspace/WorkspaceEntitlementPoolPanel.vue') },
-  { path: '/workspace/:workspaceId/entitlements/grants', name: 'workspace-grants', component: () => import('@/pages/workspace/WorkspaceMemberGrantPanel.vue') },
+  { path: '/workspace/:workspaceId/entitlements/grants', name: 'workspace-grants', component: () => import('@/pages/workspace/WorkspaceMemberGrantsPage.vue') },
   { path: '/workspace/:workspaceId/entitlements/groups', name: 'workspace-groups', component: () => import('@/pages/workspace/WorkspaceGroupGrantPanel.vue') },
   { path: '/workspace/:workspaceId/entitlements/quota', name: 'workspace-quota', component: () => import('@/pages/workspace/QuotaAllocationEditor.vue') },
   { path: '/workspace/:workspaceId/entitlements/preview', name: 'workspace-preview', component: () => import('@/pages/workspace/EntitlementDecisionPreview.vue') },
@@ -88,19 +115,23 @@ const staticRoutes: RouteRecordRaw[] = [
       { path: '', name: 'admin-dashboard', component: AdminDashboard },
       { path: 'tenants', name: 'admin-tenants', component: TenantManagement },
       { path: 'render-jobs', name: 'admin-render-jobs', component: RenderJobManagement },
+      { path: 'delivery', name: 'admin-delivery', component: () => import('@/pages/admin/DeliveryAdminPage.vue') },
       { path: 'extensions', name: 'admin-extensions', component: ExtensionManagement },
       { path: 'quota-billing', name: 'admin-quota-billing', component: QuotaBilling },
       { path: 'analytics', name: 'admin-analytics', component: UserAnalytics },
       { path: 'notifications', name: 'admin-notifications', component: NotificationManagement },
+      { path: 'notifications/overview', name: 'admin-notifications-overview', component: NotificationAdminPage },
+      { path: 'notifications/events', name: 'admin-notification-events', component: NotificationEventDefinitionPage },
+      { path: 'notifications/deliveries', name: 'admin-notification-deliveries', component: NotificationDeliveryLogPage },
       { path: 'audit', name: 'admin-audit', component: AuditCompliance },
       { path: 'config', name: 'admin-config', component: ConfigManagement },
-       { path: 'feature-flags', name: 'admin-feature-flags', component: FeatureFlags },
-       { path: 'feature-flags/manage', name: 'admin-feature-flag-mgmt', component: FeatureFlagManagementPage },
-       { path: 'policies', name: 'admin-policies', component: PolicyManagementPage },
-       { path: 'routes', name: 'admin-routes', component: RouteManagementPage },
-       { path: 'monitoring', name: 'admin-monitoring', component: MonitoringFeedbackPage },
-       { path: 'audit-log', name: 'admin-audit-log', component: AuditLogPage },
-       { path: 'feedback', name: 'admin-feedback', component: FeedbackAdminPage },
+      { path: 'feature-flags', name: 'admin-feature-flags', component: FeatureFlags },
+      { path: 'feature-flags/manage', name: 'admin-feature-flag-mgmt', component: FeatureFlagManagementPage },
+      { path: 'policies', name: 'admin-policies', component: PolicyManagementPage },
+      { path: 'routes', name: 'admin-routes', component: RouteManagementPage },
+      { path: 'monitoring', name: 'admin-monitoring', component: MonitoringFeedbackPage },
+      { path: 'audit-log', name: 'admin-audit-log', component: AuditLogPage },
+      { path: 'feedback', name: 'admin-feedback', component: FeedbackAdminPage },
 
       // NLQ admin routes
       { path: 'analytics/datasets', name: 'admin-nlq-datasets', component: DatasetCatalogPage },
@@ -110,6 +141,7 @@ const staticRoutes: RouteRecordRaw[] = [
       { path: 'entitlements/bundles', name: 'admin-entitlement-bundles', component: () => import('@/pages/admin/EntitlementBundleList.vue') },
       { path: 'entitlements/overrides', name: 'admin-entitlement-overrides', component: () => import('@/pages/admin/TenantOverridePanel.vue') },
       { path: 'entitlements/grants', name: 'admin-entitlement-grants', component: () => import('@/pages/admin/UserGrantPanel.vue') },
+      { path: 'entitlements/shared-grants', name: 'admin-shared-grants', component: () => import('@/pages/admin/SharedGrantsAdminPage.vue') },
       { path: 'entitlements/quota', name: 'admin-entitlement-quota', component: QuotaPolicyEditor },
       { path: 'billing/plans', name: 'admin-billing-plans', component: BillingPlanManagementPage },
       { path: 'billing/pricing', name: 'admin-billing-pricing', component: PricingRuleEditor },
@@ -133,14 +165,17 @@ const componentMap: Record<string, () => Promise<typeof import('*.vue')>> = {
   QuotaBilling: () => import('@/pages/admin/QuotaBilling.vue'),
   UserAnalytics: () => import('@/pages/admin/UserAnalytics.vue'),
   NotificationManagement: () => import('@/pages/admin/NotificationManagement.vue'),
+  NotificationAdminPage: () => import('@/pages/admin/NotificationAdminPage.vue'),
+  NotificationEventDefinitionPage: () => import('@/pages/admin/NotificationEventDefinitionPage.vue'),
+  NotificationDeliveryLogPage: () => import('@/pages/admin/NotificationDeliveryLogPage.vue'),
   AuditCompliance: () => import('@/pages/admin/AuditCompliance.vue'),
   ConfigManagement: () => import('@/pages/admin/ConfigManagement.vue'),
   FeatureFlags: () => import('@/pages/admin/FeatureFlags.vue'),
-   FeatureFlagManagementPage: () => import('@/pages/admin/FeatureFlagManagementPage.vue'),
-   PolicyManagementPage: () => import('@/pages/admin/PolicyManagementPage.vue'),
-   RouteManagementPage: () => import('@/pages/admin/RouteManagementPage.vue'),
-   FeedbackAdminPage: () => import('@/pages/admin/FeedbackAdminPage.vue'),
-   AuditLogPage: () => import('@/pages/admin/AuditLogPage.vue'),
+  FeatureFlagManagementPage: () => import('@/pages/admin/FeatureFlagManagementPage.vue'),
+  PolicyManagementPage: () => import('@/pages/admin/PolicyManagementPage.vue'),
+  RouteManagementPage: () => import('@/pages/admin/RouteManagementPage.vue'),
+  FeedbackAdminPage: () => import('@/pages/admin/FeedbackAdminPage.vue'),
+  AuditLogPage: () => import('@/pages/admin/AuditLogPage.vue'),
   UserDashboardPage: () => import('@/pages/user/UserDashboardPage.vue'),
   MyProjectsPage: () => import('@/pages/user/MyProjectsPage.vue'),
   UserMyCapabilitiesPage: () => import('@/pages/user/MyCapabilitiesPage.vue'),
@@ -149,6 +184,9 @@ const componentMap: Record<string, () => Promise<typeof import('*.vue')>> = {
   MyCreditsPage: () => import('@/pages/user/MyCreditsPage.vue'),
   MyFeedbackPage: () => import('@/pages/user/MyFeedbackPage.vue'),
   MySettingsPage: () => import('@/pages/user/MySettingsPage.vue'),
+  MyExportsPage: () => import('@/pages/user/MyExportsPage.vue'),
+  MyNotificationsPage: () => import('@/pages/user/MyNotificationsPage.vue'),
+  MySharedResourcesPage: () => import('@/pages/user/MySharedResourcesPage.vue'),
 }
 
 const router = createRouter({

@@ -22,9 +22,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class TraceCorrelationFilterTest {
+class PlatformTraceCorrelationFilterTest {
 
-    private final TraceCorrelationFilter filter = new TraceCorrelationFilter();
+    private final PlatformTraceCorrelationFilter filter = new PlatformTraceCorrelationFilter();
 
     @AfterEach
     void cleanup() {
@@ -37,8 +37,8 @@ class TraceCorrelationFilterTest {
         HttpServletResponse response = mock(HttpServletResponse.class);
         FilterChain chain = mock(FilterChain.class);
 
-        when(request.getHeader(TraceCorrelationFilter.TRACE_HEADER)).thenReturn(null);
-        when(request.getHeader(TraceCorrelationFilter.REQUEST_HEADER)).thenReturn(null);
+        when(request.getHeader(PlatformTraceCorrelationFilter.TRACE_HEADER)).thenReturn(null);
+        when(request.getHeader(PlatformTraceCorrelationFilter.REQUEST_HEADER)).thenReturn(null);
 
         filter.doFilterInternal(request, response, chain);
 
@@ -57,8 +57,8 @@ class TraceCorrelationFilterTest {
             return null;
         }).when(chain).doFilter(request, response);
 
-        when(request.getHeader(TraceCorrelationFilter.TRACE_HEADER)).thenReturn("test-trace-123");
-        when(request.getHeader(TraceCorrelationFilter.REQUEST_HEADER)).thenReturn("test-req-456");
+        when(request.getHeader(PlatformTraceCorrelationFilter.TRACE_HEADER)).thenReturn("test-trace-123");
+        when(request.getHeader(PlatformTraceCorrelationFilter.REQUEST_HEADER)).thenReturn("test-req-456");
 
         filter.doFilterInternal(request, response, chain);
 
@@ -78,8 +78,8 @@ class TraceCorrelationFilterTest {
             return null;
         }).when(chain).doFilter(request, response);
 
-        when(request.getHeader(TraceCorrelationFilter.TRACE_HEADER)).thenReturn("   ");
-        when(request.getHeader(TraceCorrelationFilter.REQUEST_HEADER)).thenReturn("");
+        when(request.getHeader(PlatformTraceCorrelationFilter.TRACE_HEADER)).thenReturn("   ");
+        when(request.getHeader(PlatformTraceCorrelationFilter.REQUEST_HEADER)).thenReturn("");
 
         filter.doFilterInternal(request, response, chain);
 
@@ -95,8 +95,8 @@ class TraceCorrelationFilterTest {
         HttpServletResponse response = mock(HttpServletResponse.class);
         FilterChain chain = mock(FilterChain.class);
 
-        when(request.getHeader(TraceCorrelationFilter.TRACE_HEADER)).thenReturn("trace-1");
-        when(request.getHeader(TraceCorrelationFilter.REQUEST_HEADER)).thenReturn("req-1");
+        when(request.getHeader(PlatformTraceCorrelationFilter.TRACE_HEADER)).thenReturn("trace-1");
+        when(request.getHeader(PlatformTraceCorrelationFilter.REQUEST_HEADER)).thenReturn("req-1");
 
         filter.doFilterInternal(request, response, chain);
 
@@ -110,13 +110,13 @@ class TraceCorrelationFilterTest {
         HttpServletResponse response = mock(HttpServletResponse.class);
         FilterChain chain = mock(FilterChain.class);
 
-        when(request.getHeader(TraceCorrelationFilter.TRACE_HEADER)).thenReturn("my-trace");
-        when(request.getHeader(TraceCorrelationFilter.REQUEST_HEADER)).thenReturn("my-req");
+        when(request.getHeader(PlatformTraceCorrelationFilter.TRACE_HEADER)).thenReturn("my-trace");
+        when(request.getHeader(PlatformTraceCorrelationFilter.REQUEST_HEADER)).thenReturn("my-req");
 
         filter.doFilterInternal(request, response, chain);
 
-        verify(response).setHeader(TraceCorrelationFilter.TRACE_HEADER, "my-trace");
-        verify(response).setHeader(TraceCorrelationFilter.REQUEST_HEADER, "my-req");
+        verify(response).setHeader(PlatformTraceCorrelationFilter.TRACE_HEADER, "my-trace");
+        verify(response).setHeader(PlatformTraceCorrelationFilter.REQUEST_HEADER, "my-req");
     }
 
     @Test
@@ -132,8 +132,8 @@ class TraceCorrelationFilterTest {
                 return null;
             }).when(chain).doFilter(request, response);
 
-            when(request.getHeader(TraceCorrelationFilter.TRACE_HEADER)).thenReturn(null);
-            when(request.getHeader(TraceCorrelationFilter.REQUEST_HEADER)).thenReturn(null);
+            when(request.getHeader(PlatformTraceCorrelationFilter.TRACE_HEADER)).thenReturn(null);
+            when(request.getHeader(PlatformTraceCorrelationFilter.REQUEST_HEADER)).thenReturn(null);
 
             filter.doFilterInternal(request, response, chain);
         }

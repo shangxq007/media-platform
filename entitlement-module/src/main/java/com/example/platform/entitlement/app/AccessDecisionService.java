@@ -4,6 +4,7 @@ import com.example.platform.entitlement.domain.*;
 import com.example.platform.policy.featureflag.domain.FeatureFlagDecision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ public class AccessDecisionService {
         this(entitlementDecisionService, quotaDecisionService, null);
     }
 
+    @Autowired
     public AccessDecisionService(EntitlementDecisionService entitlementDecisionService,
             QuotaDecisionService quotaDecisionService,
             AccessDecisionFeatureFlagService featureFlagService) {

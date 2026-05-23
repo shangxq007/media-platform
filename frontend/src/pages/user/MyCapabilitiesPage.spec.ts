@@ -51,6 +51,24 @@ vi.mock('@/api/me', () => ({
         { flagKey: 'nav.beta_features', displayName: 'Beta Features Nav', enabled: true, scope: 'USER', targetTier: 'PRO', description: 'Navigation entry for beta features panel' },
       ],
     }),
+    getUsageSummary: vi.fn().mockResolvedValue({
+      tenantId: 't1', userId: 'u1', period: '2026-05',
+      renderMinutesUsed: 120, renderMinutesLimit: 600,
+      storageGbUsed: 5.2, storageGbLimit: 50,
+      apiCallsUsed: 340, apiCallsLimit: 10000,
+      exportsUsed: 8, exportsLimit: 100,
+      lastUpdatedAt: '2026-05-16T12:00:00Z',
+    }),
+    getCreditBalance: vi.fn().mockResolvedValue({
+      walletId: 'w1', subjectId: 't1', subjectType: 'TENANT',
+      balance: 29.99, currency: 'USD', heldBalance: 0,
+    }),
+    getCurrentPlan: vi.fn().mockResolvedValue({
+      planId: 'p1', name: 'Pro Plan', tier: 'PRO',
+      description: 'Professional tier',
+      monthlyPrice: 29.99, annualPrice: 299.99, currency: 'USD',
+      includedQuota: {}, features: [], isActive: true,
+    }),
   },
 }))
 

@@ -24,8 +24,8 @@ public class ObservabilityOverviewService {
                         TraceKeys.WORKFLOW_ID
                 ),
                 "headers", List.of(
-                        TraceCorrelationFilter.TRACE_HEADER,
-                        TraceCorrelationFilter.REQUEST_HEADER
+                        PlatformTraceCorrelationFilter.TRACE_HEADER,
+                        PlatformTraceCorrelationFilter.REQUEST_HEADER
                 )
         );
     }

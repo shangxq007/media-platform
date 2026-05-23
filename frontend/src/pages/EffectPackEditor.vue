@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useEffectPackStore } from '@/stores/effectPack'
 import type { EffectPack, EffectPackEffect, EffectParameterDef } from '@/types'
+import PortalPageHeader from '@/components/ui/PortalPageHeader.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const effectPackStore = useEffectPackStore()
 
@@ -38,7 +40,7 @@ const allPacks = computed(() => effectPackStore.allPacks)
 
 const tierOptions = ['FREE', 'PRO', 'TEAM', 'ENTERPRISE']
 const categoryOptions = ['transition', 'video', 'audio', 'text'] as const
-const providerOptions = ['javacv', 'ofx', 'ffmpeg', 'gpu']
+const providerOptions = ['javacv', 'ffmpeg', 'natron', 'ofx', 'gpu']
 const paramTypeOptions: EffectParameterDef['type'][] = ['int', 'float', 'string', 'boolean', 'color']
 
 function resetPackForm() {
@@ -183,7 +185,7 @@ function toggleProvider(p: string) {
   else effectForm.providerMappings.push(p)
 }
 
-function savePack() {
+async function savePack() {
   if (!packForm.packId.trim() || !packForm.name.trim()) return
   const pack: EffectPack = {
     packId: packForm.packId.trim(),
@@ -195,21 +197,30 @@ function savePack() {
     allowedTiers: [...packForm.allowedTiers],
     effects: currentEffects.value,
   }
-  // Remove old pack if editing
-  const existingIdx = effectPackStore.customPacks.findIndex(p => p.packId === editingPackId.value)
-  if (existingIdx >= 0) {
-    effectPackStore.customPacks[existingIdx] = pack
-  } else {
-    effectPackStore.customPacks.push(pack)
+  try {
+    if (editingPackId.value) {
+      await effectPackStore.updateCustomPack(pack.packId, pack.version, pack)
+    } else {
+      await effectPackStore.saveCustomPack(pack)
+    }
+    resetPackForm()
+  } catch (e) {
+    console.error('Failed to save effect pack', e)
   }
-  resetPackForm()
 }
 
-function deletePack(packId: string) {
-  const idx = effectPackStore.customPacks.findIndex(p => p.packId === packId)
-  if (idx >= 0) effectPackStore.customPacks.splice(idx, 1)
-  if (editingPackId.value === packId) resetPackForm()
+async function deletePack(packId: string, version: string) {
+  try {
+    await effectPackStore.deleteCustomPack(packId, version)
+    if (editingPackId.value === packId) resetPackForm()
+  } catch (e) {
+    console.error('Failed to delete effect pack', e)
+  }
 }
+
+onMounted(() => {
+  effectPackStore.loadFromApi()
+})
 
 function togglePackTier(tier: string) {
   toggleTier(tier, packForm.allowedTiers)
@@ -217,87 +228,79 @@ function togglePackTier(tier: string) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-gray-900 text-white">
-    <!-- Header -->
-    <div class="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-      <h2 class="text-base font-semibold">Effect Pack Studio</h2>
-      <button
-        v-if="!showEditor"
-        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-sm rounded"
-        @click="startCreate"
-      >
-        + New Pack
-      </button>
-    </div>
+  <div class="h-full flex flex-col bg-bg-base text-text-primary studio-page">
+    <PortalPageHeader title="Effect Pack Studio" subtitle="Browse, create, and publish effect packs for your workspace">
+      <template #actions>
+        <button
+          v-if="!showEditor"
+          type="button"
+          class="theme-btn theme-btn-primary theme-btn-sm inline-flex items-center gap-1"
+          @click="startCreate"
+        >
+          <AppIcon name="plus" :size="16" />
+          New pack
+        </button>
+      </template>
+    </PortalPageHeader>
 
-    <div class="flex-1 flex overflow-hidden">
-      <!-- Pack List / Editor -->
-      <div class="flex-1 overflow-y-auto p-4">
-        <!-- ===== LIST VIEW ===== -->
+    <div class="flex-1 flex overflow-hidden min-h-0">
+      <div class="flex-1 overflow-y-auto theme-scrollbar">
         <template v-if="!showEditor">
-          <div v-if="allPacks.length === 0" class="text-gray-500 text-sm text-center py-12">
-            No effect packs found.
+          <div v-if="effectPackStore.loading" class="text-center py-16 text-text-muted text-sm">Loading packs…</div>
+          <div v-else-if="allPacks.length === 0" class="text-center py-16">
+            <AppIcon name="sparkles" :size="48" class="mx-auto text-text-muted opacity-40 mb-4" />
+            <p class="text-sm text-text-secondary">No effect packs yet</p>
+            <button type="button" class="theme-btn theme-btn-primary theme-btn-sm mt-4" @click="startCreate">Create your first pack</button>
           </div>
-          <div v-else class="space-y-3">
-            <div
+          <div v-else class="studio-pack-grid">
+            <article
               v-for="pack in allPacks"
-              :key="pack.packId"
-              class="border border-gray-700 rounded-lg p-4 bg-gray-800/50"
+              :key="`${pack.packId}-${pack.version}`"
+              class="studio-pack-card"
             >
-              <div class="flex items-start justify-between mb-2">
-                <div>
-                  <h3 class="text-sm font-semibold">{{ pack.name }}</h3>
-                  <p class="text-xs text-gray-400 mt-0.5">{{ pack.description || 'No description' }}</p>
+              <div class="studio-pack-card-header">
+                <div class="flex items-start gap-3">
+                  <div class="dashboard-action-icon flex-shrink-0">
+                    <AppIcon name="sparkles" :size="20" />
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="text-base font-semibold text-text-primary">{{ pack.name }}</h3>
+                    <p class="text-xs text-text-muted mt-1 line-clamp-2">{{ pack.description || 'No description' }}</p>
+                  </div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs px-1.5 py-0.5 rounded bg-purple-600/30 text-purple-300">
+                <div class="flex items-center gap-2 mt-3">
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-primary-500/15 text-primary-400 font-medium">
                     {{ pack.effects.length }} effects
                   </span>
-                  <span class="text-xs text-gray-500">v{{ pack.version }}</span>
+                  <span class="text-xs text-text-muted font-mono">v{{ pack.version }}</span>
+                  <span v-if="pack.packId === 'builtin-core'" class="text-xs text-text-muted">Built-in</span>
                 </div>
               </div>
-
-              <div class="flex items-center gap-2 mb-3">
-                <span class="text-xs text-gray-500">ID:</span>
-                <code class="text-xs bg-gray-700 px-1.5 py-0.5 rounded">{{ pack.packId }}</code>
-                <span class="text-xs text-gray-500 ml-2">Author:</span>
-                <span class="text-xs text-gray-300">{{ pack.author || '—' }}</span>
+              <div class="p-4 space-y-3">
+                <div class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="eff in pack.effects.slice(0, 8)"
+                    :key="eff.effectKey"
+                    class="text-[10px] px-2 py-0.5 rounded-md bg-bg-base border border-default text-text-secondary"
+                  >
+                    {{ eff.displayName }}
+                  </span>
+                  <span v-if="pack.effects.length > 8" class="text-[10px] text-text-muted">+{{ pack.effects.length - 8 }}</span>
+                </div>
+                <div class="flex items-center gap-2 pt-1 border-t border-default">
+                  <button type="button" class="theme-btn theme-btn-secondary theme-btn-sm" @click="startEdit(pack)">Edit</button>
+                  <button
+                    v-if="pack.packId !== 'builtin-core'"
+                    type="button"
+                    class="theme-btn theme-btn-ghost theme-btn-sm text-danger-500"
+                    @click="deletePack(pack.packId, pack.version)"
+                  >
+                    <AppIcon name="trash" :size="14" class="mr-1" />
+                    Delete
+                  </button>
+                </div>
               </div>
-
-              <!-- Effect tags -->
-              <div class="flex flex-wrap gap-1 mb-3">
-                <span
-                  v-for="eff in pack.effects"
-                  :key="eff.effectKey"
-                  class="text-xs px-1.5 py-0.5 rounded"
-                  :class="{
-                    'bg-blue-600/20 text-blue-300': eff.category === 'transition',
-                    'bg-green-600/20 text-green-300': eff.category === 'video',
-                    'bg-yellow-600/20 text-yellow-300': eff.category === 'audio',
-                    'bg-pink-600/20 text-pink-300': eff.category === 'text',
-                  }"
-                >
-                  {{ eff.displayName }}
-                </span>
-              </div>
-
-              <div class="flex items-center gap-2">
-                <button
-                  class="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
-                  @click="startEdit(pack)"
-                >
-                  Edit
-                </button>
-                <button
-                  v-if="pack.packId !== 'builtin-core'"
-                  class="text-xs px-2 py-1 bg-red-900/40 hover:bg-red-800/60 text-red-300 rounded"
-                  @click="deletePack(pack.packId)"
-                >
-                  Delete
-                </button>
-                <span v-else class="text-xs text-gray-600 italic">Built-in pack</span>
-              </div>
-            </div>
+            </article>
           </div>
         </template>
 

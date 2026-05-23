@@ -12,23 +12,31 @@ import com.example.platform.render.infrastructure.ExportPolicyService;
 import com.example.platform.render.infrastructure.ExportPolicyService.ExportPreset;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Component
+// @Controller disabled - GraphQL schema conflict
 public class ExportPanelGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(ExportPanelGraphQLResolver.class);
 
-    @Autowired private RenderJobService renderJobService;
-    @Autowired private ExportPolicyService exportPolicyService;
-    @Autowired private EntitlementDecisionService entitlementDecisionService;
-    @Autowired private ProjectRepository projectRepository;
+    private final RenderJobService renderJobService;
+    private final ExportPolicyService exportPolicyService;
+    private final EntitlementDecisionService entitlementDecisionService;
+    private final ProjectRepository projectRepository;
+
+    public ExportPanelGraphQLResolver(RenderJobService renderJobService,
+                                      ExportPolicyService exportPolicyService,
+                                      EntitlementDecisionService entitlementDecisionService,
+                                      ProjectRepository projectRepository) {
+        this.renderJobService = renderJobService;
+        this.exportPolicyService = exportPolicyService;
+        this.entitlementDecisionService = entitlementDecisionService;
+        this.projectRepository = projectRepository;
+    }
 
     @QueryMapping
     public ExportPanelState exportPanelState(@Argument String projectId, GraphQLRequestContext context) {

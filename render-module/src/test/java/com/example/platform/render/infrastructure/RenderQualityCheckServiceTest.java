@@ -18,7 +18,8 @@ class RenderQualityCheckServiceTest {
     private static JavaCVRenderProvider createJavaCVProvider() {
         JavaCVMediaProbeAdapter adapter = new JavaCVMediaProbeAdapter();
         MediaProbeService probeService = new MediaProbeService(adapter);
-        return new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService));
+        return new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService),
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
     }
 
     @BeforeEach
@@ -30,7 +31,8 @@ class RenderQualityCheckServiceTest {
 
         JavaCVRenderService renderService = new JavaCVRenderService(probeService);
         JavaCVTranscodeService transcodeService = new JavaCVTranscodeService(probeService);
-        provider = new JavaCVRenderProvider(renderService, transcodeService);
+        provider = new JavaCVRenderProvider(renderService, transcodeService,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         provider.setStorageRoot(tempDir.toString());
     }
 
@@ -130,7 +132,9 @@ class RenderQualityCheckServiceTest {
         registry.register("javacv", javacv, javacv.getCapability());
         registry.register("ofx", ofx, ofx.getCapability());
 
-        RenderProviderSelectionPolicy policy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy policy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
 
         var result = policy.select("default_1080p", List.of());
         assertTrue(result.isPresent());
@@ -148,7 +152,9 @@ class RenderQualityCheckServiceTest {
 
         registry.register("javacv", javacv, javacv.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
 
         RenderProvider provider = fallbackPolicy.resolve("default_1080p", List.of());

@@ -1,26 +1,19 @@
-spring:
-  datasource:
-    url: jdbc:h2:mem:platformtest;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-  sql:
-    init:
-      mode: always
-      platform: h2
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
 app:
+  security:
+    enabled: false
   identity:
     api-key-auth-enabled: false
-  outbox:
-    dispatch-interval-ms: 60000
-    scheduled-dispatch-enabled: false
-  ai:
-    stub:
-      enable-failures: false
-      failure-rate: 0.0
-render:
-  stale-compensator:
+  temporal:
     enabled: false
+
+render:
+  execution:
+    mode: local
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.graphql.autoconfigure.GraphQlAutoConfiguration
+      - org.springframework.boot.graphql.autoconfigure.servlet.GraphQlWebMvcAutoConfiguration
+      - io.temporal.spring.boot.autoconfigure.RootNamespaceAutoConfiguration
+      - io.temporal.spring.boot.autoconfigure.NonRootNamespaceAutoConfiguration

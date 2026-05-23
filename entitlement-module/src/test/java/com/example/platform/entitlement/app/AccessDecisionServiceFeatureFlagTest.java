@@ -21,11 +21,12 @@ class AccessDecisionServiceFeatureFlagTest {
 
     @BeforeEach
     void setUp() {
-        EntitlementPolicyService policyService = new EntitlementPolicyService(null);
+        EntitlementPolicyService policyService = new EntitlementPolicyService(java.util.Optional.empty(), java.util.Optional.empty());
         entitlementDecisionService = new EntitlementDecisionService(
-                policyService, null, null, null, null);
+                policyService, java.util.Optional.empty(), java.util.Optional.empty(),
+                java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty());
         QuotaPolicyService quotaPolicyService = new QuotaPolicyService();
-        QuotaUsageService quotaUsageService = new QuotaUsageService();
+        QuotaUsageService quotaUsageService = new QuotaUsageService(java.util.Optional.empty());
         quotaDecisionService = new QuotaDecisionService(quotaPolicyService, quotaUsageService);
         featureFlagService = mock(AccessDecisionFeatureFlagService.class);
         accessDecisionService = new AccessDecisionService(

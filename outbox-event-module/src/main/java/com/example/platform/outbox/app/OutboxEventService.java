@@ -96,6 +96,25 @@ public class OutboxEventService {
                 .fetchMaps();
     }
 
+    public List<Map<String, Object>> deadLetterEvents(int limit) {
+        return dsl.select(
+                        field("id"),
+                        field("aggregate_type"),
+                        field("aggregate_id"),
+                        field("event_type"),
+                        field("status"),
+                        field("retry_count"),
+                        field("last_error_code"),
+                        field("last_error_message"),
+                        field("created_at")
+                )
+                .from(table("outbox_events"))
+                .where(field("status").eq(STATUS_DEAD_LETTER))
+                .orderBy(field("created_at").desc())
+                .limit(limit)
+                .fetchMaps();
+    }
+
     public List<Map<String, Object>> failedEvents(int limit) {
         return dsl.select(
                         field("id"),

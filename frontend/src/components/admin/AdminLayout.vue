@@ -41,6 +41,7 @@ const navGroups = computed<AdminNavGroup[]>(() => [
       { key: 'dashboard', label: 'Dashboard', path: '/admin', icon: '📊' },
       { key: 'tenants', label: 'Tenants', path: '/admin/tenants', icon: '🏢' },
       { key: 'render-jobs', label: 'Render Jobs', path: '/admin/render-jobs', icon: '🎬' },
+      { key: 'delivery', label: 'Artifact Delivery', path: '/admin/delivery', icon: '📦' },
       { key: 'extensions', label: 'Extensions', path: '/admin/extensions', icon: '🔌' },
       { key: 'analytics', label: 'Analytics', path: '/admin/analytics', icon: '📈' },
        { key: 'notifications', label: 'Notifications', path: '/admin/notifications', icon: '🔔' },
@@ -154,15 +155,22 @@ const pageSubtitle = computed(() => {
         </template>
 
         <template #footer="{ collapsed: isCollapsed }">
-          <div class="px-md py-sm border-t border-default">
+          <div class="px-md py-sm border-t border-default space-y-xs">
             <button
+              type="button"
+              class="flex items-center gap-sm text-sm text-text-secondary hover:text-text-primary transition-colors w-full"
+              @click="router.push('/me')"
+            >
+              <span class="text-base">📊</span>
+              <span v-if="!isCollapsed">User Dashboard</span>
+            </button>
+            <button
+              type="button"
               class="flex items-center gap-sm text-sm text-text-secondary hover:text-text-primary transition-colors w-full"
               @click="router.push('/')"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              </svg>
-              <span v-if="!isCollapsed">Back to Editor</span>
+              <span class="text-base">✂️</span>
+              <span v-if="!isCollapsed">Video Editor</span>
             </button>
           </div>
         </template>

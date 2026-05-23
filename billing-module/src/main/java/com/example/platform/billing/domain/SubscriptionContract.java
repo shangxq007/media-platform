@@ -14,5 +14,19 @@ public record SubscriptionContract(
         long basePriceMinor,
         String currencyCode,
         Map<String, Long> includedQuota,
-        Map<String, Long> includedQuotaUsed) {
+        Map<String, Long> includedQuotaUsed,
+        SubscriptionContractRole contractRole,
+        String productCode) {
+
+    public SubscriptionContract {
+        if (contractRole == null) {
+            contractRole = SubscriptionContractRole.BASE;
+        }
+    }
+
+    public boolean isActiveAt(Instant now) {
+        return "ACTIVE".equals(lifecycleState)
+                && periodEndAt != null
+                && periodEndAt.isAfter(now);
+    }
 }

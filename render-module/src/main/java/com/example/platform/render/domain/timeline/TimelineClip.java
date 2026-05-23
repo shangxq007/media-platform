@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.timeline;
 
-import java.util.Map;
+import java.util.List;
 
 /**
  * A clip within a timeline track.
@@ -14,7 +14,7 @@ import java.util.Map;
  * @param assetInPoint    in-point within the asset in seconds
  * @param assetOutPoint   out-point within the asset in seconds
  * @param clipDuration    duration of the clip on the timeline in seconds
- * @param effects         clip-level effects (e.g., filters, transforms)
+ * @param effects         clip-level effects (filters, transitions, subtitles)
  */
 public record TimelineClip(
         String id,
@@ -23,7 +23,7 @@ public record TimelineClip(
         double assetInPoint,
         double assetOutPoint,
         double clipDuration,
-        Map<String, String> effects) {
+        List<TimelineClipEffect> effects) {
 
     /**
      * Creates a simple clip with no effects.
@@ -32,7 +32,7 @@ public record TimelineClip(
             double timelineStart, double assetInPoint, double assetOutPoint) {
         double duration = assetOutPoint - assetInPoint;
         return new TimelineClip(id, assetRef, timelineStart, assetInPoint, assetOutPoint,
-                duration, Map.of());
+                duration, List.of());
     }
 
     /**

@@ -19,15 +19,17 @@ const {
 
 onMounted(() => {
   try {
-    sentryStatus.value = isSentryInitialized().value ? 'active' : 'inactive'
-    openReplayStatus.value = isOpenReplayInitialized().value ? 'active' : 'inactive'
-    sentryReplayId.value = getSentryReplayId()
-    openReplaySessionId.value = getOpenReplaySessionId()
-    openReplaySessionUrl.value = getOpenReplaySessionUrl()
+    const sentryReady = isSentryInitialized()
+    const orReady = isOpenReplayInitialized()
+    sentryStatus.value = (sentryReady && sentryReady.value) ? 'active' : 'inactive'
+    openReplayStatus.value = (orReady && orReady.value) ? 'active' : 'inactive'
   } catch {
-    sentryStatus.value = 'error'
-    openReplayStatus.value = 'error'
+    sentryStatus.value = 'inactive'
+    openReplayStatus.value = 'inactive'
   }
+  try { sentryReplayId.value = getSentryReplayId() } catch { /* noop */ }
+  try { openReplaySessionId.value = getOpenReplaySessionId() } catch { /* noop */ }
+  try { openReplaySessionUrl.value = getOpenReplaySessionUrl() } catch { /* noop */ }
 })
 
 function statusVariant(status: string): 'success' | 'danger' | 'neutral' {
@@ -51,6 +53,7 @@ async function copyDiagnosticInfo() {
     copied.value = true
     setTimeout(() => { copied.value = false }, 2000)
   } catch {
+    /* clipboard unavailable */
   }
 }
 

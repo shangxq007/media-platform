@@ -11,5 +11,7 @@ public record SubscriptionResponse(
         Instant periodEndAt,
         String lifecycleState,
         long basePriceMinor,
-        String currencyCode) {
+        String currencyCode,
+        String contractRole,
+        String productCode) {
 }

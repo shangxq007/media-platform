@@ -17,13 +17,15 @@ class CheckoutOrchestratorTest {
     @BeforeEach
     void setUp() {
         catalogService = new CommerceCatalogService();
-        orchestrator = new CheckoutOrchestrator(catalogService, null, null, new SimpleMeterRegistry());
+        CommerceCartService cartService = new CommerceCartService(catalogService);
+        orchestrator = new CheckoutOrchestrator(catalogService, cartService, null, null, null, null, new SimpleMeterRegistry());
     }
 
     @Test
     void createSessionWithValidRequestReturnsSuccess() {
         CreateCheckoutSessionRequest request = new CreateCheckoutSessionRequest(
-                "tenant-1", "pro_monthly", "subscription", "https://example.com/success", "https://example.com/cancel"
+                "tenant-1", "pro_monthly", null, "subscription",
+                "https://example.com/success", "https://example.com/cancel"
         );
 
         CheckoutSessionResponse response = orchestrator.createSession(request);
@@ -37,7 +39,8 @@ class CheckoutOrchestratorTest {
     @Test
     void confirmCheckoutCreatesOrderWithCorrectValue() {
         CreateCheckoutSessionRequest sessionRequest = new CreateCheckoutSessionRequest(
-                "tenant-1", "pro_monthly", "subscription", "https://example.com/success", "https://example.com/cancel"
+                "tenant-1", "pro_monthly", null, "subscription",
+                "https://example.com/success", "https://example.com/cancel"
         );
         CheckoutSessionResponse sessionResponse = orchestrator.createSession(sessionRequest);
 
@@ -52,13 +55,13 @@ class CheckoutOrchestratorTest {
     void calculateRevenueForTenant() {
         // Create and confirm sessions for tenant-1
         orchestrator.createSession(new CreateCheckoutSessionRequest(
-                "tenant-1", "pro_monthly", "subscription", "https://example.com/success", null));
+                "tenant-1", "pro_monthly", null, "subscription", "https://example.com/success", null));
         CheckoutIntent intent1 = new CheckoutIntent("tenant-1", "pro_monthly", "subscription", "https://example.com/success", null);
         CheckoutSession session1 = orchestrator.createCheckoutSession(intent1);
         orchestrator.confirmCheckout(session1.checkoutSessionId());
 
         orchestrator.createSession(new CreateCheckoutSessionRequest(
-                "tenant-1", "basic_monthly", "subscription", "https://example.com/success", null));
+                "tenant-1", "basic_monthly", null, "subscription", "https://example.com/success", null));
         CheckoutIntent intent2 = new CheckoutIntent("tenant-1", "basic_monthly", "subscription", "https://example.com/success", null);
         CheckoutSession session2 = orchestrator.createCheckoutSession(intent2);
         orchestrator.confirmCheckout(session2.checkoutSessionId());

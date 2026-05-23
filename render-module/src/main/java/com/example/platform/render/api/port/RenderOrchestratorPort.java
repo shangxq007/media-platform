@@ -34,6 +34,21 @@ public interface RenderOrchestratorPort {
     String submitRenderJob(SubmitRenderJobRequest request);
 
     /**
+     * Execute an existing queued render job (loads timeline snapshot when present).
+     *
+     * @param tenantId tenant identifier
+     * @param jobId    existing render job id
+     * @return the render job id
+     */
+    String executeExistingRenderJob(String tenantId, String jobId);
+
+    /**
+     * Completes the render/storage phase for a job already in {@code RENDERING} with {@code ai_script} set.
+     * Used by {@link com.example.platform.render.app.RenderNatronQueueProcessor} after deferred enqueue.
+     */
+    String finishRenderPhase(String tenantId, String jobId);
+
+    /**
      * Get artifacts associated with a render job.
      *
      * @param jobId the render job identifier
@@ -41,4 +56,9 @@ public interface RenderOrchestratorPort {
      * @throws IllegalArgumentException if the job is not found or tenant access is denied
      */
     List<ArtifactInfoResponse> getArtifactsByJob(String jobId);
+
+    /**
+     * Loads Internal Timeline 1.0 JSON (or best available script) for edit-and-rerender flows.
+     */
+    String loadJobTimelineJson(String tenantId, String jobId);
 }

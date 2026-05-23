@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { WorkspaceEntitlementAPI } from '@/api/workspace'
 import type { WorkspaceRole } from '@/types'
+import WorkspacePageLayout from '@/components/workspace/WorkspacePageLayout.vue'
 
 const route = useRoute()
 const workspaceId = route.params.workspaceId as string
@@ -61,6 +62,7 @@ function togglePermission(permissions: string[], perm: string) {
 </script>
 
 <template>
+  <WorkspacePageLayout title="Roles & Permissions">
   <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
     <div class="flex items-center justify-between">
       <h3 class="text-sm font-semibold text-gray-300">Roles</h3>
@@ -121,4 +123,5 @@ function togglePermission(permissions: string[], perm: string) {
       </div>
     </div>
   </div>
+  </WorkspacePageLayout>
 </template>

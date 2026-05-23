@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
         "spring.ai.openai.api-key=test-key",
+        "app.security.enabled=false",
         "app.identity.api-key-auth-enabled=false",
         "app.outbox.dispatch-interval-ms=999999999"
 })

@@ -87,4 +87,39 @@ public record ProblematicDataRule(
                 "Render job cost significantly exceeds estimated cost",
                 "actual_cost > estimated_cost * 2", false, null, true);
     }
+
+    public static ProblematicDataRule danglingTimelineAsset() {
+        return new ProblematicDataRule("AST-001", "Dangling Timeline Asset Reference",
+                ProblematicDataType.MISSING_FIELD, ProblematicSeverity.HIGH,
+                "Timeline clip references missing or tombstoned assetId",
+                "clip.assetId NOT IN assetRegistry OR registry.status = TOMBSTONED", false, null, true);
+    }
+
+    public static ProblematicDataRule orphanArtifactBlob() {
+        return new ProblematicDataRule("AST-002", "Orphan Artifact Blob",
+                ProblematicDataType.LOGIC_CONFLICT, ProblematicSeverity.MEDIUM,
+                "Tombstoned catalog artifact still has storage object",
+                "artifact.status = TOMBSTONED AND blob.exists = true", true, "RUN_ARTIFACT_GC", true);
+    }
+
+    public static ProblematicDataRule unresolvedAssetUri() {
+        return new ProblematicDataRule("AST-003", "Unresolved Asset URI",
+                ProblematicDataType.MISSING_FIELD, ProblematicSeverity.HIGH,
+                "assetRegistry entry lacks concrete storage URI",
+                "asset.uri IS NULL OR asset.uri LIKE 'asset://%'", false, null, true);
+    }
+
+    public static ProblematicDataRule missingArtifactBlob() {
+        return new ProblematicDataRule("AST-004", "Missing Artifact Blob",
+                ProblematicDataType.MISSING_FIELD, ProblematicSeverity.HIGH,
+                "Active catalog artifact storage object not found",
+                "artifact.status = ACTIVE AND blob.exists = false", false, null, true);
+    }
+
+    public static ProblematicDataRule storageBucketOrphan() {
+        return new ProblematicDataRule("AST-005", "Storage Bucket Orphan Object",
+                ProblematicDataType.LOGIC_CONFLICT, ProblematicSeverity.MEDIUM,
+                "Object exists in storage bucket but is not referenced by catalog, timeline, render, or delivery",
+                "bucket_object NOT IN known_uri_index", false, null, true);
+    }
 }

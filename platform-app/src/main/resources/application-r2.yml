@@ -1,0 +1,22 @@
+# Profile: Cloudflare R2 / S3-compatible render cache + segment lifecycle
+# Usage: --spring.profiles.active=prod,r2  (with STORAGE_S3_* credentials)
+
+storage:
+  s3:
+    enabled: true
+    compatibility: r2
+    default-bucket: ${STORAGE_S3_DEFAULT_BUCKET:render-cache}
+
+render:
+  cache:
+    remote-enabled: true
+    upload-enabled: true
+    content-hash-enabled: true
+    cleanup-enabled: true
+    retention-days: ${RENDER_CACHE_RETENTION_DAYS:30}
+    cleanup-interval: ${RENDER_CACHE_CLEANUP_INTERVAL:PT24H}
+
+platform:
+  storage:
+    orphan-scan:
+      buckets: artifacts,render-cache

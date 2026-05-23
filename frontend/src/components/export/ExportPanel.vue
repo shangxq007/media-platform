@@ -3,15 +3,26 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useProjectStore } from '@/stores/project'
 import { useTimelineStore } from '@/stores/timeline'
 import { useSubtitleStore } from '@/stores/subtitle'
-import { RenderAPI, EntitlementAPI } from '@/api'
+import { RenderAPI, EntitlementAPI, IncrementalRenderAPI } from '@/api'
 import type { ExportSettings, RenderJob, ExportValidationResult, BudgetStatus, Artifact } from '@/types'
 import RenderJobStatus from './RenderJobStatus.vue'
 import ArtifactResult from './ArtifactResult.vue'
+import DeliveryStatusPanel from './DeliveryStatusPanel.vue'
+import AiTimelineEditPanel from './AiTimelineEditPanel.vue'
+import IncrementalRenderPanel from './IncrementalRenderPanel.vue'
+import TimelineInternalPreviewPanel from './TimelineInternalPreviewPanel.vue'
+import AiProposalsPanel from './AiProposalsPanel.vue'
+import type { AiProposalDto } from '@/api/ai-timeline'
+import { useExportUiStore } from '@/stores/exportUi'
+import { getTenantId } from '@/utils/tenant'
+import { buildEditorTimelineJson } from '@/utils/timelineExport'
 import ArtifactPreviewModal from './ArtifactPreviewModal.vue'
 import UpgradeHint from '@/components/ui/UpgradeHint.vue'
 import { useExportFeatureFlags } from '@/composables/useFeatureFlag'
+import { useTimelineSyncMetaStore } from '@/stores/timelineSyncMeta'
 
 const projectStore = useProjectStore()
+const metaStore = useTimelineSyncMetaStore()
 const timelineStore = useTimelineStore()
 const subtitleStore = useSubtitleStore()
 
@@ -54,6 +65,26 @@ const diagnosticInfo = ref<string | undefined>(undefined)
 
 const completedArtifact = ref<Artifact | null>(null)
 const previewOpen = ref(false)
+const exportUi = useExportUiStore()
+const exportMode = computed({
+  get: () => exportUi.mode,
+  set: (v: 'legacy' | 'incremental') => { exportUi.mode = v },
+})
+const editedTimelineJson = ref<string | null>(null)
+const previewInternalJson = ref<string | null>(null)
+const aiProposals = ref<AiProposalDto[]>([])
+const panelMessage = ref<string | null>(null)
+const editSessionId = ref(`sess-${Date.now()}`)
+
+watch(
+  editSessionId,
+  id => {
+    metaStore.setActiveEditSessionId(id?.trim() || null)
+  },
+  { immediate: true }
+)
+
+const hasSyncConflict = computed(() => !!metaStore.pendingConflict)
 
 const settings = ref<ExportSettings>({
   format: 'mp4',
@@ -101,6 +132,78 @@ const recentJobs = computed(() =>
   projectStore.renderJobs.slice(-5).reverse()
 )
 
+const completedJobs = computed(() =>
+  projectStore.renderJobs.filter(j => j.status === 'COMPLETED')
+)
+
+function buildTimelineJson(): string {
+  return buildEditorTimelineJson(
+    timelineStore.toJSON() as Record<string, unknown>,
+    timelineStore.clips,
+    editedTimelineJson.value
+  )
+}
+
+function onAiTimelineApplied(json: string) {
+  editedTimelineJson.value = json
+  panelMessage.value = 'AI 编辑已应用，可预览增量计划或导出'
+}
+
+function onProposalsUpdated(json: string, proposals: AiProposalDto[]) {
+  editedTimelineJson.value = json
+  aiProposals.value = proposals
+  const pending = proposals.filter(p => p.status === 'PENDING')
+  panelMessage.value = pending.length
+    ? `有 ${pending.length} 条 AI 建议待采纳`
+    : 'AI 建议已处理'
+}
+
+function onInternalPreviewed(json: string) {
+  previewInternalJson.value = json
+  panelMessage.value = '已生成 Internal Timeline 1.0 预览（提交增量时将优先使用）'
+}
+
+function effectiveTimelineJson(): string {
+  return previewInternalJson.value || buildTimelineJson()
+}
+
+function onPanelError(msg: string) {
+  panelMessage.value = msg
+  projectStore.setError(msg)
+}
+
+async function onIncrementalSubmitted(jobId: string) {
+  const tenantId = getTenantId()
+  const projectId = projectStore.currentProject?.id
+  renderJobId.value = jobId
+  renderJobStatus.value = 'queued'
+  renderProgress.value = 0
+  if (projectId) {
+    try {
+      const job = await IncrementalRenderAPI.getJob(tenantId, projectId, jobId)
+      const existing = projectStore.renderJobs.some(j => j.id === jobId)
+      if (existing) {
+        projectStore.updateRenderJob(jobId, job)
+      } else {
+        projectStore.addRenderJob(job)
+      }
+      lastJob.value = job
+    } catch {
+      projectStore.addRenderJob({
+        id: jobId,
+        projectId,
+        status: 'QUEUED',
+        format: settings.value.format,
+        resolution: settings.value.resolution,
+        profile: selectedPreset.value,
+        createdAt: new Date().toISOString(),
+      })
+    }
+  }
+  startPolling(jobId)
+  panelMessage.value = `增量作业已提交: ${jobId}`
+}
+
 const hasBudgetWarning = computed(() =>
   budgetStatus.value?.warning === true
 )
@@ -146,7 +249,9 @@ const unavailablePresets = computed(() => {
 const recommendedPreset = computed(() => validationResult.value?.recommendedPreset || null)
 
 const isExportDisabled = computed(() =>
+  exportMode.value === 'incremental' ||
   !canExport.value || submitting.value || hasBudgetExceeded.value ||
+  hasSyncConflict.value ||
   (validationResult.value !== null && !validationResult.value.allowed) ||
   featureFlagSubmitBlocked.value !== null
 )
@@ -199,10 +304,35 @@ async function validateCurrentExport() {
   }
 }
 
+async function loadProjectRenderJobs() {
+  const projectId = projectStore.currentProject?.id
+  if (!projectId) return
+  try {
+    const jobs = await IncrementalRenderAPI.listJobs(getTenantId(), projectId)
+    projectStore.setRenderJobs(jobs)
+  } catch {
+    try {
+      const all = await RenderAPI.listJobs()
+      projectStore.setRenderJobs(all.filter(j => j.projectId === projectId))
+    } catch {
+      /* keep local list */
+    }
+  }
+}
+
+watch(
+  () => projectStore.currentProject?.id,
+  () => {
+    void loadProjectRenderJobs()
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
   await loadCapabilities()
   await loadPresets()
   await loadWorkers()
+  await loadProjectRenderJobs()
 })
 
 onUnmounted(() => {
@@ -311,12 +441,24 @@ async function applyRecommendedPreset() {
 async function submitRender() {
   if (!projectStore.currentProject) return
 
+  if (hasSyncConflict.value) {
+    const msg = '请先解决时间线同步冲突后再导出'
+    projectStore.setError(msg)
+    panelMessage.value = msg
+    return
+  }
+
   const ffBlockReason = featureFlagSubmitBlocked.value
   if (ffBlockReason) {
     projectStore.setError(ffBlockReason)
     renderError.value = ffBlockReason
     renderErrorCode.value = 'FEATURE_FLAG_DISABLED'
     renderJobStatus.value = 'failed'
+    return
+  }
+
+  if (exportMode.value === 'incremental') {
+    panelMessage.value = '请使用下方「增量导出」按钮提交'
     return
   }
 
@@ -337,14 +479,20 @@ async function submitRender() {
     renderError.value = null
     renderErrorCode.value = undefined
 
-    const job = await RenderAPI.createJob(projectStore.currentProject.id, {
-      format: settings.value.format,
-      resolution: settings.value.resolution,
-      profile: selectedPreset.value,
-      audioTrack: settings.value.audioTrack,
-      frameRate: String(settings.value.frameRate),
-      encoder: settings.value.encoder
+    const editorTimeline = {
+      ...timelineStore.toJSON(),
+      clips: timelineStore.clips,
+    }
+    const snapshot = await RenderAPI.saveTimelineSnapshot(projectStore.currentProject.id, editorTimeline, {
+      ensureInternal: true,
     })
+
+    const job = await RenderAPI.createJob(projectStore.currentProject.id, {
+      timelineSnapshotId: snapshot.snapshotId,
+      profile: selectedPreset.value,
+    })
+
+    await RenderAPI.executeJob(job.id)
     projectStore.addRenderJob(job)
     lastJob.value = job
     renderJobId.value = job.id
@@ -364,9 +512,13 @@ async function submitRender() {
 
 function startPolling(jobId: string) {
   if (pollInterval.value) clearInterval(pollInterval.value)
+  const tenantId = getTenantId()
+  const projectId = projectStore.currentProject?.id
   pollInterval.value = setInterval(async () => {
     try {
-      const job = await RenderAPI.getJob(jobId)
+      const job = projectId
+        ? await IncrementalRenderAPI.getJob(tenantId, projectId, jobId)
+        : await RenderAPI.getJob(jobId)
       projectStore.updateRenderJob(jobId, job)
 
       switch (job.status) {
@@ -815,6 +967,13 @@ function handleViewLogs(url: string) {
       @view-logs="handleViewLogs"
     />
 
+    <DeliveryStatusPanel
+      v-if="renderJobId && renderJobStatus === 'completed' && projectStore.currentProject?.id"
+      :tenant-id="getTenantId()"
+      :project-id="projectStore.currentProject.id"
+      :job-id="renderJobId"
+    />
+
     <!-- Artifact Preview Modal -->
     <ArtifactPreviewModal
       :open="previewOpen"
@@ -822,12 +981,75 @@ function handleViewLogs(url: string) {
       @close="previewOpen = false"
     />
 
+    <!-- Export mode -->
+    <div class="flex gap-1 text-xs">
+      <button
+        type="button"
+        class="flex-1 py-1 rounded border"
+        :class="exportMode === 'incremental' ? 'border-emerald-500 text-emerald-400 bg-emerald-900/20' : 'border-gray-600 text-gray-400'"
+        @click="exportMode = 'incremental'"
+      >
+        增量 / AI
+      </button>
+      <button
+        type="button"
+        class="flex-1 py-1 rounded border"
+        :class="exportMode === 'legacy' ? 'border-blue-500 text-blue-400 bg-blue-900/20' : 'border-gray-600 text-gray-400'"
+        @click="exportMode = 'legacy'"
+      >
+        传统导出
+      </button>
+    </div>
+
+    <p
+      v-if="panelMessage"
+      class="text-xs text-violet-300"
+    >
+      {{ panelMessage }}
+    </p>
+
+    <template v-if="exportMode === 'incremental' && projectStore.currentProject">
+      <TimelineInternalPreviewPanel
+        :project-id="projectStore.currentProject.id"
+        :timeline-json="buildTimelineJson()"
+        @previewed="onInternalPreviewed"
+        @error="onPanelError"
+      />
+      <AiTimelineEditPanel
+        :project-id="projectStore.currentProject.id"
+        :timeline-json="effectiveTimelineJson()"
+        :completed-jobs="completedJobs"
+        v-model:edit-session-id="editSessionId"
+        @applied="onAiTimelineApplied"
+        @proposals-updated="onProposalsUpdated"
+        @error="onPanelError"
+      />
+      <AiProposalsPanel
+        v-if="aiProposals.length"
+        :project-id="projectStore.currentProject.id"
+        :timeline-json="editedTimelineJson || effectiveTimelineJson()"
+        :proposals="aiProposals"
+        :edit-session-id="editSessionId"
+        @updated="onProposalsUpdated"
+        @error="onPanelError"
+      />
+      <IncrementalRenderPanel
+        :project-id="projectStore.currentProject.id"
+        :timeline-json="effectiveTimelineJson()"
+        :profile="selectedPreset"
+        :completed-jobs="completedJobs"
+        :edit-session-id="editSessionId"
+        @submitted="onIncrementalSubmitted"
+        @error="onPanelError"
+      />
+    </template>
+
     <!-- Export Button -->
     <button class="w-full py-2 rounded text-sm font-medium transition-colors"
       :class="!isExportDisabled ? 'bg-clip-video hover:bg-clip-video/80 text-white' : 'bg-gray-600 text-gray-400 cursor-not-allowed'"
       :disabled="isExportDisabled"
       @click="submitRender">
-      {{ submitting ? 'Submitting...' : featureFlagSubmitBlocked ? 'Feature Disabled' : hasBudgetExceeded ? 'Budget Exceeded' : validationResult && !validationResult.allowed ? 'Export Blocked' : 'Export Video' }}
+      {{ exportMode === 'incremental' ? '使用下方增量导出' : submitting ? 'Submitting...' : hasSyncConflict ? 'Resolve sync conflict' : featureFlagSubmitBlocked ? 'Feature Disabled' : hasBudgetExceeded ? 'Budget Exceeded' : validationResult && !validationResult.allowed ? 'Export Blocked' : 'Export Video' }}
     </button>
 
     <!-- Last Job -->

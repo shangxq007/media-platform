@@ -1,27 +1,13 @@
--- Test schema: combines all V1-V8 Flyway migrations for H2
+-- Merged schema (greenfield): core infrastructure
 
--- V1 tables
+
 create table if not exists render_job (
     id varchar(64) primary key,
     project_id varchar(128) not null,
-    tenant_id varchar(64),
     timeline_snapshot_id varchar(128) not null,
     profile varchar(128) not null,
     status varchar(32) not null,
-    ai_script text,
-    artifact_uri text,
-    error_message text,
     created_at timestamp not null
-);
-
-create table if not exists render_job_status_history (
-    id varchar(64) primary key,
-    job_id varchar(64) not null,
-    from_status varchar(30),
-    to_status varchar(30) not null,
-    reason varchar(255),
-    error_code varchar(100),
-    occurred_at timestamp not null
 );
 
 create table if not exists notification_event (
@@ -39,7 +25,8 @@ create table if not exists notification_template (
     locale varchar(16) not null,
     version int not null,
     subject_template varchar(255),
-    body_template text not null
+    body_template text not null,
+    unique(template_code, channel, locale, version)
 );
 
 create table if not exists notification_delivery (
@@ -60,10 +47,10 @@ create table if not exists config_item (
     config_key varchar(128) not null,
     value_json text not null,
     value_version int not null,
-    updated_at timestamp not null
+    updated_at timestamp not null,
+    unique(namespace_key, config_key, value_version)
 );
 
--- V2 tables
 create table if not exists storage_object (
     id varchar(64) primary key,
     provider_code varchar(64) not null,
@@ -73,28 +60,6 @@ create table if not exists storage_object (
     checksum_sha256 varchar(128),
     file_size_bytes bigint,
     lifecycle_policy varchar(64),
-    created_at timestamp not null
-);
-
-create table if not exists prompt_template (
-    id varchar(64) primary key,
-    template_code varchar(128) not null,
-    locale varchar(32) not null,
-    version int not null,
-    template_body text not null,
-    variables_schema text,
-    status varchar(32) not null,
-    created_at timestamp not null
-);
-
-create table if not exists prompt_execution_log (
-    id varchar(64) primary key,
-    template_code varchar(128) not null,
-    template_version int,
-    provider_code varchar(64),
-    model_code varchar(128),
-    variables_json text,
-    rendered_prompt text,
     created_at timestamp not null
 );
 
@@ -114,7 +79,8 @@ create table if not exists secret_ref (
     secret_key varchar(128) not null,
     backend_type varchar(64) not null,
     backend_ref varchar(255) not null,
-    created_at timestamp not null
+    created_at timestamp not null,
+    unique(namespace_key, secret_key)
 );
 
 create table if not exists extension_definition (
@@ -128,7 +94,8 @@ create table if not exists extension_definition (
     status varchar(32) not null,
     timeout_ms bigint,
     config_schema text,
-    created_at timestamp not null
+    created_at timestamp not null,
+    unique(extension_code, version)
 );
 
 create table if not exists extension_invocation (
@@ -145,7 +112,7 @@ create table if not exists extension_invocation (
 
 create table if not exists app_datasource (
     id varchar(64) primary key,
-    datasource_code varchar(64) not null,
+    datasource_code varchar(64) not null unique,
     datasource_kind varchar(32) not null,
     dialect varchar(32),
     jdbc_url text,
@@ -155,158 +122,212 @@ create table if not exists app_datasource (
     created_at timestamp not null
 );
 
--- V3 tables
 create table if not exists outbox_events (
-    id varchar(64) primary key,
-    aggregate_type varchar(100) not null,
-    aggregate_id varchar(100) not null,
-    event_type varchar(150) not null,
-    event_version int not null,
-    payload text not null,
-    status varchar(50) not null,
-    retry_count int not null default 0,
-    next_attempt_at timestamp,
-    idempotency_key varchar(255),
-    created_at timestamp not null,
-    published_at timestamp
+  id varchar(64) primary key,
+  aggregate_type varchar(100) not null,
+  aggregate_id varchar(100) not null,
+  event_type varchar(150) not null,
+  event_version int not null,
+  payload text not null,
+  status varchar(50) not null,
+  created_at timestamp not null,
+  published_at timestamp
 );
 
 create table if not exists audit_records (
-    id varchar(64) primary key,
-    actor_type varchar(50) not null,
-    actor_id varchar(100),
-    action varchar(120) not null,
-    resource_type varchar(120) not null,
-    resource_id varchar(120),
-    payload text,
-    category varchar(50),
-    created_at timestamp not null
+  id varchar(64) primary key,
+  actor_type varchar(50) not null,
+  actor_id varchar(100),
+  action varchar(120) not null,
+  resource_type varchar(120) not null,
+  resource_id varchar(120),
+  payload text,
+  created_at timestamp not null
 );
 
 create table if not exists schedules (
-    id varchar(64) primary key,
-    schedule_code varchar(100) not null,
-    handler_code varchar(120) not null,
-    enabled boolean not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  schedule_code varchar(100) not null,
+  handler_code varchar(120) not null,
+  enabled boolean not null,
+  created_at timestamp not null
 );
 
 create table if not exists quota_definitions (
-    id varchar(64) primary key,
-    quota_code varchar(80) not null,
-    unit varchar(50) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  quota_code varchar(80) not null,
+  unit varchar(50) not null,
+  created_at timestamp not null
 );
 
--- V4 tables
+
+-- Enhance outbox_events with retry tracking, dead-letter support, and idempotency
+-- Note: H2-compatible syntax (no IF EXISTS on ALTER TABLE)
+alter table outbox_events add column if not exists retry_count int not null default 0;
+alter table outbox_events add column if not exists next_attempt_at timestamp;
+alter table outbox_events add column if not exists idempotency_key varchar(255);
+
+-- Enhance audit_records with category support
+alter table audit_records add column if not exists category varchar(50);
+-- Merged schema: commerce, identity, media
+
+
 create table if not exists commerce_product (
-    id varchar(64) primary key,
-    product_code varchar(128) not null,
-    name varchar(255) not null,
-    status varchar(32) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  product_code varchar(128) not null unique,
+  purchase_mode varchar(64) not null,
+  feature_bundle_code varchar(128) not null,
+  quota_profile_code varchar(128),
+  status varchar(32) not null,
+  created_at timestamp not null
 );
 
 create table if not exists commerce_price (
-    id varchar(64) primary key,
-    product_id varchar(64) not null,
-    currency varchar(3) not null,
-    amount bigint not null,
-    status varchar(32) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  product_id varchar(64) not null,
+  price_code varchar(128) not null unique,
+  currency_code varchar(8) not null,
+  amount_minor bigint not null,
+  billing_interval varchar(32),
+  created_at timestamp not null
 );
 
 create table if not exists provider_product_mapping (
-    id varchar(64) primary key,
-    product_id varchar(64) not null,
-    provider_code varchar(64) not null,
-    external_id varchar(255) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  provider_code varchar(64) not null,
+  external_product_ref varchar(255) not null,
+  external_price_ref varchar(255),
+  product_id varchar(64) not null,
+  created_at timestamp not null
 );
 
 create table if not exists checkout_session (
-    id varchar(64) primary key,
-    product_id varchar(64) not null,
-    status varchar(32) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  checkout_session_code varchar(128) not null unique,
+  product_id varchar(64) not null,
+  provider_code varchar(64),
+  session_status varchar(32) not null,
+  success_url text,
+  cancel_url text,
+  created_at timestamp not null
 );
 
 create table if not exists purchase_order (
-    id varchar(64) primary key,
-    checkout_session_id varchar(64) not null,
-    status varchar(32) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  checkout_session_id varchar(64),
+  canonical_product_code varchar(128) not null,
+  order_status varchar(32) not null,
+  total_amount_minor bigint,
+  currency_code varchar(8),
+  created_at timestamp not null
 );
 
 create table if not exists payment_attempt (
-    id varchar(64) primary key,
-    purchase_order_id varchar(64) not null,
-    provider_code varchar(64) not null,
-    status varchar(32) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  purchase_order_id varchar(64),
+  provider_code varchar(64) not null,
+  provider_reference varchar(255),
+  attempt_status varchar(32) not null,
+  amount_minor bigint,
+  currency_code varchar(8),
+  request_payload text,
+  response_payload text,
+  created_at timestamp not null
 );
 
 create table if not exists provider_webhook_event (
-    id varchar(64) primary key,
-    provider_code varchar(64) not null,
-    event_type varchar(128) not null,
-    payload text not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  provider_code varchar(64) not null,
+  webhook_event_key varchar(255) not null unique,
+  webhook_event_type varchar(128) not null,
+  webhook_event_version int not null,
+  signature_valid boolean not null,
+  payload text not null,
+  created_at timestamp not null
 );
 
 create table if not exists subscription_contract (
-    id varchar(64) primary key,
-    subject_type varchar(64) not null,
-    subject_id varchar(64) not null,
-    status varchar(32) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  subject_type varchar(32) not null,
+  subject_id varchar(128) not null,
+  canonical_product_code varchar(128) not null,
+  provider_code varchar(64),
+  external_contract_ref varchar(255),
+  contract_state varchar(32) not null,
+  period_start_at timestamp,
+  period_end_at timestamp,
+  created_at timestamp not null
 );
 
 create table if not exists billing_invoice (
-    id varchar(64) primary key,
-    contract_id varchar(64) not null,
-    status varchar(32) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  contract_id varchar(64),
+  provider_code varchar(64),
+  external_invoice_ref varchar(255),
+  invoice_status varchar(32) not null,
+  amount_due_minor bigint,
+  amount_paid_minor bigint,
+  currency_code varchar(8),
+  created_at timestamp not null
 );
 
 create table if not exists feature_definition (
-    id varchar(64) primary key,
-    feature_code varchar(128) not null,
-    name varchar(255) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  feature_code varchar(128) not null unique,
+  description varchar(255),
+  created_at timestamp not null
 );
 
 create table if not exists feature_bundle (
-    id varchar(64) primary key,
-    bundle_code varchar(128) not null,
-    name varchar(255) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  bundle_code varchar(128) not null unique,
+  description varchar(255),
+  created_at timestamp not null
 );
 
 create table if not exists feature_bundle_item (
-    id varchar(64) primary key,
-    bundle_id varchar(64) not null,
-    feature_id varchar(64) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  bundle_id varchar(64) not null,
+  feature_id varchar(64) not null,
+  created_at timestamp not null
 );
 
 create table if not exists entitlement_grant (
-    id varchar(64) primary key,
-    subject_type varchar(64) not null,
-    subject_id varchar(64) not null,
-    feature_id varchar(64) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  subject_type varchar(32) not null,
+  subject_id varchar(128) not null,
+  bundle_code varchar(128) not null,
+  quota_profile_code varchar(128),
+  source_type varchar(32) not null,
+  source_ref varchar(255),
+  grant_status varchar(32) not null,
+  effective_at timestamp not null,
+  expires_at timestamp
 );
 
 create table if not exists entitlement_override (
-    id varchar(64) primary key,
-    subject_type varchar(64) not null,
-    subject_id varchar(64) not null,
-    feature_id varchar(64) not null,
-    created_at timestamp not null
+  id varchar(64) primary key,
+  subject_type varchar(32) not null,
+  subject_id varchar(128) not null,
+  override_kind varchar(64) not null,
+  override_payload text not null,
+  effective_at timestamp not null,
+  expires_at timestamp
 );
 
--- V7 tables
+
+-- =============================================================================
+-- V7: Identity, Render Job Enhancements, Artifact & Notification Tables
+--
+-- Purpose: Add tenant/project/user/api_key management tables, enhance
+--          render_job with AI script and artifact tracking, add artifact
+--          and notification_record tables for the end-to-end business flow.
+-- =============================================================================
+
+-- =============================================================================
+-- Identity & Access Tables
+-- =============================================================================
+
 create table if not exists tenant (
     id varchar(64) primary key,
     name varchar(255) not null,
@@ -323,6 +344,8 @@ create table if not exists project (
     created_at timestamp not null
 );
 
+create index if not exists ix_project_tenant_id on project(tenant_id);
+
 create table if not exists "user" (
     id varchar(64) primary key,
     tenant_id varchar(64) not null,
@@ -333,16 +356,36 @@ create table if not exists "user" (
     created_at timestamp not null
 );
 
+create index if not exists ix_user_tenant_id on "user"(tenant_id);
+
 create table if not exists api_key (
     id varchar(64) primary key,
     tenant_id varchar(64),
     fingerprint varchar(32) not null,
-    hashed_key varchar(128) not null,
+    hashed_key varchar(128) not null unique,
     principal varchar(255) not null,
     created_at timestamp not null,
     last_used_at timestamp,
     revoked_at timestamp
 );
+
+create index if not exists ix_api_key_fingerprint on api_key(fingerprint);
+
+-- =============================================================================
+-- Render Job Enhancements
+-- =============================================================================
+
+alter table if exists render_job add column if not exists ai_script text;
+alter table if exists render_job add column if not exists artifact_uri text;
+alter table if exists render_job add column if not exists error_message text;
+alter table if exists render_job add column if not exists tenant_id varchar(64);
+alter table if exists render_job add column if not exists pipeline_plan_json text;
+alter table if exists render_job add column if not exists pipeline_execution_json text;
+alter table if exists render_job add column if not exists base_job_id varchar(64);
+
+-- =============================================================================
+-- Artifact Table
+-- =============================================================================
 
 create table if not exists artifact (
     id varchar(64) primary key,
@@ -352,8 +395,29 @@ create table if not exists artifact (
     format varchar(32),
     resolution varchar(32),
     duration bigint,
+    status varchar(32) not null default 'ACTIVE',
+    tombstoned_at timestamp,
     created_at timestamp not null
 );
+
+create index if not exists ix_artifact_render_job_id on artifact(render_job_id);
+create index if not exists ix_artifact_project_id on artifact(project_id);
+create index if not exists ix_artifact_status on artifact(status);
+
+create table if not exists artifact_relation (
+    id varchar(64) primary key,
+    source_artifact_id varchar(64) not null,
+    target_artifact_id varchar(64) not null,
+    relation_type varchar(64) not null,
+    created_at timestamp not null
+);
+
+create index if not exists ix_artifact_relation_source on artifact_relation(source_artifact_id);
+create index if not exists ix_artifact_relation_target on artifact_relation(target_artifact_id);
+
+-- =============================================================================
+-- Notification Record Table
+-- =============================================================================
 
 create table if not exists notification_record (
     id varchar(64) primary key,
@@ -368,7 +432,21 @@ create table if not exists notification_record (
     created_at timestamp not null
 );
 
--- V8 tables
+create index if not exists ix_notification_record_event_id on notification_record(event_id);
+create index if not exists ix_notification_record_status on notification_record(status);
+
+
+-- =============================================================================
+-- V8: Quota Usage & Render History Tables
+--
+-- Purpose: Persist quota usage tracking and render job history that were
+--          previously stored in-memory via ConcurrentHashMap.
+-- =============================================================================
+
+-- =============================================================================
+-- Quota Usage Table
+-- =============================================================================
+
 create table if not exists quota_usage (
     id varchar(64) primary key,
     tenant_id varchar(64) not null,
@@ -378,10 +456,715 @@ create table if not exists quota_usage (
     updated_at timestamp not null
 );
 
--- V17 tables for H2 test compatibility
+create index if not exists ix_quota_usage_tenant_id on quota_usage(tenant_id);
+create index if not exists ix_quota_usage_tenant_feature on quota_usage(tenant_id, feature_code);
+
+
+-- =============================================================================
+-- V10: Render Job Status History Table
+--
+-- Purpose: Track every state transition of render jobs for auditability,
+--          debugging, and failure compensation.
+-- =============================================================================
+
+create table if not exists render_job_status_history (
+    id varchar(64) primary key,
+    job_id varchar(64) not null,
+    from_status varchar(30),
+    to_status varchar(30) not null,
+    reason varchar(255),
+    error_code varchar(100),
+    occurred_at timestamp not null default now()
+);
+
+create index if not exists ix_rjsh_job_id on render_job_status_history(job_id);
+
+-- V13: Delivery subsystem
+create table if not exists delivery_destination (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    user_id varchar(64),
+    name varchar(255) not null,
+    protocol varchar(32) not null,
+    config_json clob,
+    credential_ref varchar(512),
+    credential_json clob,
+    enabled boolean default true,
+    verified_at timestamp,
+    created_at timestamp not null
+);
+create table if not exists delivery_policy (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(64),
+    destination_id varchar(64) not null,
+    artifact_selector varchar(32) not null default 'FINAL_ONLY',
+    path_template varchar(512) not null,
+    trigger_mode varchar(16) not null default 'AUTO',
+    enabled boolean default true,
+    created_at timestamp not null
+);
+create table if not exists delivery_job (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(64) not null,
+    render_job_id varchar(64) not null,
+    destination_id varchar(64) not null,
+    status varchar(32) not null,
+    source_uri varchar(1024) not null,
+    remote_path varchar(1024),
+    remote_uri varchar(1024),
+    bytes_transferred bigint,
+    attempt_count int not null default 0,
+    error_code varchar(64),
+    error_message varchar(2048),
+    created_at timestamp not null,
+    completed_at timestamp
+);
+
+-- Merged schema: prompt, extensions, workspace RBAC
+
+
+-- V11__prompt_engineering_tables.sql
+-- Prompt Engineering Platform database schema
+
+-- Prompt templates
+create table if not exists prompt_template (
+    template_id varchar(64) primary key,
+    name varchar(255) not null,
+    description text,
+    category varchar(128),
+    tags text,
+    owner varchar(128),
+    status varchar(32) not null default 'DRAFT',
+    schema_version varchar(32) not null default '1.0.0',
+    current_prompt_version varchar(32),
+    created_at timestamp not null default now(),
+    updated_at timestamp not null default now()
+);
+
+-- Prompt template versions
+create table if not exists prompt_template_version (
+    version_id varchar(64) primary key,
+    template_id varchar(64) not null references prompt_template(template_id),
+    prompt_version varchar(32) not null,
+    template_body text not null,
+    variable_schema_json text,
+    changelog text,
+    created_by varchar(128),
+    created_at timestamp not null default now(),
+    checksum varchar(64),
+    previous_version varchar(32),
+    deprecated boolean not null default false,
+    unique(template_id, prompt_version)
+);
+
+-- Prompt execution runs
+create table if not exists prompt_execution_run (
+    execution_id varchar(64) primary key,
+    template_id varchar(64) not null references prompt_template(template_id),
+    prompt_version varchar(32) not null,
+    tenant_id varchar(64) not null,
+    user_id varchar(128) not null,
+    model_provider varchar(64),
+    model_name varchar(64),
+    rendered_prompt_hash varchar(64),
+    redacted_prompt_preview varchar(512),
+    input_variables_redacted_json text,
+    output_summary text,
+    status varchar(32) not null default 'PENDING',
+    risk_level varchar(32) not null default 'LOW',
+    token_estimate int not null default 0,
+    cost_estimate double precision not null default 0,
+    started_at timestamp not null default now(),
+    finished_at timestamp,
+    error_code varchar(64),
+    error_details_json text,
+    related_prompt_file varchar(256),
+    related_manifest_entry varchar(256)
+);
+
+-- Prompt evaluation results
+create table if not exists prompt_evaluation_result (
+    evaluation_id varchar(64) primary key,
+    execution_id varchar(64) not null references prompt_execution_run(execution_id),
+    template_id varchar(64) not null,
+    evaluator_user_id varchar(128) not null,
+    acceptance_criteria_met boolean not null default false,
+    documentation_updated boolean not null default false,
+    manifest_updated boolean not null default false,
+    tests_pass boolean not null default false,
+    has_high_risk_changes boolean not null default false,
+    has_human_review_items boolean not null default false,
+    has_scope_creep boolean not null default false,
+    has_false_claims boolean not null default false,
+    overall_verdict varchar(32) not null,
+    evaluated_at timestamp not null default now()
+);
+
+-- Indexes
+create index if not exists idx_prompt_template_status on prompt_template(status);
+create index if not exists idx_prompt_execution_template on prompt_execution_run(template_id);
+create index if not exists idx_prompt_execution_tenant on prompt_execution_run(tenant_id);
+create index if not exists idx_prompt_execution_status on prompt_execution_run(status);
+create index if not exists idx_prompt_version_template on prompt_template_version(template_id);
+
+
+-- V12__problematic_data_tables.sql
+-- Problematic data detection and handling schema
+
+-- Main problematic data records table
+create table if not exists problematic_data_record (
+    record_id varchar(64) primary key,
+    data_type varchar(64) not null,
+    data_id varchar(128) not null,
+    tenant_id varchar(64),
+    user_id varchar(128),
+    problematic_type varchar(64) not null,
+    severity varchar(32) not null default 'MEDIUM',
+    detection_rule varchar(64),
+    description text,
+    context_json text,
+    source_session_id varchar(128),
+    render_job_id varchar(128),
+    prompt_execution_id varchar(128),
+    provider_key varchar(64),
+    worker_id varchar(64),
+    status varchar(32) not null default 'DETECTED',
+    auto_fix_applied text,
+    quarantine_table varchar(128),
+    requires_human_review boolean not null default false,
+    human_review_notes text,
+    detected_at timestamp not null default now(),
+    resolved_at timestamp,
+    resolved_by varchar(128)
+);
+
+-- Indexes for common queries
+create index if not exists idx_problematic_data_tenant on problematic_data_record(tenant_id);
+create index if not exists idx_problematic_data_status on problematic_data_record(status);
+create index if not exists idx_problematic_data_type on problematic_data_record(problematic_type);
+create index if not exists idx_problematic_data_severity on problematic_data_record(severity);
+create index if not exists idx_problematic_data_render_job on problematic_data_record(render_job_id);
+create index if not exists idx_problematic_data_prompt_exec on problematic_data_record(prompt_execution_id);
+create index if not exists idx_problematic_data_detected_at on problematic_data_record(detected_at);
+create index if not exists idx_problematic_data_human_review on problematic_data_record(requires_human_review, status);
+
+-- Quarantine table for render jobs
+create table if not exists quarantined_render_jobs (
+    quarantine_id varchar(64) primary key,
+    original_job_id varchar(128) not null,
+    tenant_id varchar(64),
+    quarantine_reason varchar(64) not null,
+    detection_rule varchar(64),
+    original_data_json text,
+    status varchar(32) not null default 'QUARANTINED',
+    quarantined_at timestamp not null default now(),
+    resolved_at timestamp,
+    resolved_by varchar(128),
+    resolution_notes text
+);
+
+-- Quarantine table for prompt executions
+create table if not exists quarantined_prompt_executions (
+    quarantine_id varchar(64) primary key,
+    original_execution_id varchar(128) not null,
+    tenant_id varchar(64),
+    quarantine_reason varchar(64) not null,
+    detection_rule varchar(64),
+    original_data_json text,
+    status varchar(32) not null default 'QUARANTINED',
+    quarantined_at timestamp not null default now(),
+    resolved_at timestamp,
+    resolved_by varchar(128),
+    resolution_notes text
+);
+
+-- Quarantine table for provider/worker issues
+create table if not exists quarantined_provider_workers (
+    quarantine_id varchar(64) primary key,
+    provider_key varchar(64),
+    worker_id varchar(64),
+    tenant_id varchar(64),
+    quarantine_reason varchar(64) not null,
+    detection_rule varchar(64),
+    original_data_json text,
+    status varchar(32) not null default 'QUARANTINED',
+    quarantined_at timestamp not null default now(),
+    resolved_at timestamp,
+    resolved_by varchar(128),
+    resolution_notes text
+);
+
+-- Detection rules configuration
+create table if not exists problematic_data_rule_config (
+    rule_id varchar(64) primary key,
+    rule_name varchar(255) not null,
+    data_type varchar(64) not null,
+    default_severity varchar(32) not null default 'MEDIUM',
+    description text,
+    detection_query text,
+    auto_fixable boolean not null default false,
+    auto_fix_action varchar(255),
+    enabled boolean not null default true,
+    created_at timestamp not null default now(),
+    updated_at timestamp not null default now()
+);
+
+-- Insert default detection rules
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('RJB-001', 'Missing RenderJob Output', 'MISSING_FIELD', 'HIGH', 'RenderJob completed but has no output artifact', false, '', true);
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('RJB-002', 'Stuck RenderJob', 'INVALID_STATE_TRANSITION', 'MEDIUM', 'RenderJob stuck in non-terminal state for too long', true, 'MARK_STALE_AND_RETRY', true);
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('RJB-003', 'Duplicate RenderJob', 'DUPLICATE_ENTRY', 'LOW', 'Multiple render jobs with same project+profile+timeline hash', true, 'MARK_DUPLICATE', true);
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('PMT-001', 'Prompt Sensitive Data Leak', 'MISSING_FIELD', 'CRITICAL', 'Sensitive prompt variable found in execution record', false, '', true);
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('PMT-002', 'Prompt Output Mismatch', 'OUTPUT_MISMATCH', 'HIGH', 'Prompt execution output does not match expected format', false, '', true);
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('PRV-001', 'Provider Error Spike', 'ERROR_RATE_SPIKE', 'HIGH', 'Provider error rate exceeds threshold in time window', false, '', true);
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('WRK-001', 'Worker Stale Heartbeat', 'PERFORMANCE_ANOMALY', 'MEDIUM', 'Remote worker has not sent heartbeat within expected interval', true, 'MARK_WORKER_OFFLINE', true);
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('SLA-001', 'SLA Breach', 'SLA_BREACH', 'CRITICAL', 'Render job exceeded SLA time limit', false, '', true);
+merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('CST-001', 'Cost Anomaly', 'COST_ANOMALY', 'HIGH', 'Render job cost significantly exceeds estimated cost', false, '', true);
+
+
+-- =============================================================================
+-- V13: Extension Platform Upgrade
+--
+-- Purpose: Upgrade dynamic extension platform with multi-layer trust model,
+--          routing/canary release, resource limits, SPI context, structured
+--          results, rollback tracking, and comprehensive audit.
+--
+-- Changes:
+--   1. trust_level column on extension_definition
+--   2. extension_routing_rule table for canary/cohort routing
+--   3. extension_resource_limit table for per-extension quotas
+--   4. extension_rollback_point table for rollback snapshots
+--   5. extension_audit_event table for detailed audit trail
+--   6. extension_invocation enhancements (trace_id, trust_level, resource_usage)
+--   7. Indexes for new tables
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 1. Trust level on extension_definition
+-- ---------------------------------------------------------------------------
+alter table if exists extension_definition add column if not exists trust_level varchar(32) not null default 'SEMI_TRUSTED';
+alter table if exists extension_definition add column if not exists sandboxed boolean not null default true;
+alter table if exists extension_definition add column if not exists max_concurrency int not null default 4;
+alter table if exists extension_definition add column if not exists max_memory_mb int not null default 256;
+alter table if exists extension_definition add column if not exists max_cpu_percent int not null default 50;
+alter table if exists extension_definition add column if not exists max_queue_size int not null default 100;
+alter table if exists extension_definition add column if not exists max_input_bytes bigint not null default 10485760;
+alter table if exists extension_definition add column if not exists max_output_bytes bigint not null default 4194304;
+alter table if exists extension_definition add column if not exists requires_review boolean not null default false;
+alter table if exists extension_definition add column if not exists review_status varchar(32) default 'APPROVED';
+
+-- ---------------------------------------------------------------------------
+-- 2. Extension routing rules for canary / cohort-based traffic splitting
+-- ---------------------------------------------------------------------------
+create table if not exists extension_routing_rule (
+    id varchar(64) primary key,
+    rule_name varchar(255) not null,
+    extension_code varchar(128) not null,
+    source_version varchar(64),
+    target_version varchar(64) not null,
+    tenant_id varchar(64),
+    user_id varchar(128),
+    scene varchar(128),
+    priority int not null default 0,
+    traffic_percent int not null default 0,
+    enabled boolean not null default true,
+    created_at timestamp not null default now(),
+    created_by varchar(128),
+    updated_at timestamp,
+    unique(extension_code, source_version, target_version, tenant_id, user_id, scene)
+);
+
+create index if not exists ix_ext_routing_extension_code on extension_routing_rule(extension_code);
+create index if not exists ix_ext_routing_tenant on extension_routing_rule(tenant_id);
+create index if not exists ix_ext_routing_enabled on extension_routing_rule(enabled);
+create index if not exists ix_ext_routing_priority on extension_routing_rule(priority);
+
+-- ---------------------------------------------------------------------------
+-- 3. Per-extension resource limits (overrides defaults from extension_definition)
+-- ---------------------------------------------------------------------------
+create table if not exists extension_resource_limit (
+    id varchar(64) primary key,
+    extension_code varchar(128) not null,
+    tenant_id varchar(64),
+    limit_type varchar(64) not null,
+    max_value bigint not null,
+    current_value bigint not null default 0,
+    window_seconds int not null default 60,
+    created_at timestamp not null default now(),
+    updated_at timestamp,
+    unique(extension_code, tenant_id, limit_type)
+);
+
+create index if not exists ix_ext_res_limit_code on extension_resource_limit(extension_code);
+create index if not exists ix_ext_res_limit_tenant on extension_resource_limit(tenant_id);
+
+-- ---------------------------------------------------------------------------
+-- 4. Rollback point snapshots
+-- ---------------------------------------------------------------------------
+create table if not exists extension_rollback_point (
+    id varchar(64) primary key,
+    extension_code varchar(128) not null,
+    version varchar(64) not null,
+    artifact_uri text,
+    config_snapshot text,
+    routing_rule_ids text,
+    created_at timestamp not null default now(),
+    created_by varchar(128),
+    is_active boolean not null default true
+);
+
+create index if not exists ix_ext_rollback_code on extension_rollback_point(extension_code);
+create index if not exists ix_ext_rollback_active on extension_rollback_point(is_active);
+
+-- ---------------------------------------------------------------------------
+-- 5. Detailed extension audit events
+-- ---------------------------------------------------------------------------
+create table if not exists extension_audit_event (
+    id varchar(64) primary key,
+    extension_code varchar(128) not null,
+    extension_version varchar(64),
+    event_type varchar(64) not null,
+    actor varchar(128) not null,
+    tenant_id varchar(64),
+    user_id varchar(128),
+    trace_id varchar(128),
+    trust_level varchar(32),
+    details text,
+    severity varchar(32) not null default 'INFO',
+    created_at timestamp not null default now()
+);
+
+create index if not exists ix_ext_audit_code on extension_audit_event(extension_code);
+create index if not exists ix_ext_audit_type on extension_audit_event(event_type);
+create index if not exists ix_ext_audit_tenant on extension_audit_event(tenant_id);
+create index if not exists ix_ext_audit_trace on extension_audit_event(trace_id);
+create index if not exists ix_ext_audit_created on extension_audit_event(created_at);
+
+-- ---------------------------------------------------------------------------
+-- 6. Enhance extension_invocation with trace_id, trust_level, resource_usage
+-- ---------------------------------------------------------------------------
+alter table if exists extension_invocation add column if not exists trace_id varchar(128);
+alter table if exists extension_invocation add column if not exists trust_level varchar(32);
+alter table if exists extension_invocation add column if not exists input_bytes bigint;
+alter table if exists extension_invocation add column if not exists output_bytes bigint;
+alter table if exists extension_invocation add column if not exists cpu_time_ms bigint;
+alter table if exists extension_invocation add column if not exists memory_peak_mb bigint;
+alter table if exists extension_invocation add column if not exists routing_rule_id varchar(64);
+
+create index if not exists ix_ext_invocation_trace on extension_invocation(trace_id);
+
+-- ---------------------------------------------------------------------------
+-- 7. Sandbox execution jobs table
+-- ---------------------------------------------------------------------------
+create table if not exists sandbox_execution_job (
+    id varchar(64) primary key,
+    extension_code varchar(128),
+    language varchar(32) not null,
+    script_hash varchar(64),
+    status varchar(32) not null default 'PENDING',
+    trace_id varchar(128),
+    tenant_id varchar(64),
+    user_id varchar(128),
+    timeout_ms bigint not null default 30000,
+    started_at timestamp,
+    finished_at timestamp,
+    exit_code int,
+    output_preview text,
+    error_message text,
+    created_at timestamp not null default now()
+);
+
+create index if not exists ix_sandbox_job_status on sandbox_execution_job(status);
+create index if not exists ix_sandbox_job_trace on sandbox_execution_job(trace_id);
+create index if not exists ix_sandbox_job_extension on sandbox_execution_job(extension_code);
+
+
+create table if not exists workspace (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    name varchar(255) not null,
+    description text,
+    plan_tier varchar(64) not null default 'FREE',
+    status varchar(32) not null default 'ACTIVE',
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists workspace_member (
+    id varchar(64) primary key,
+    workspace_id varchar(64) not null,
+    user_id varchar(64) not null,
+    role varchar(64) not null,
+    status varchar(32) not null default 'ACTIVE',
+    joined_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists workspace_group (
+    id varchar(64) primary key,
+    workspace_id varchar(64) not null,
+    name varchar(255) not null,
+    description text,
+    created_at timestamp not null
+);
+
+create table if not exists workspace_group_member (
+    id varchar(64) primary key,
+    workspace_id varchar(64) not null,
+    group_id varchar(64) not null,
+    member_id varchar(64) not null,
+    created_at timestamp not null
+);
+
+create table if not exists role (
+    id varchar(64) primary key,
+    role_key varchar(128) not null unique,
+    name varchar(255) not null,
+    description text,
+    scope varchar(32) not null,
+    created_at timestamp not null
+);
+
+create table if not exists permission (
+    id varchar(64) primary key,
+    permission_key varchar(128) not null unique,
+    name varchar(255) not null,
+    description text,
+    resource_type varchar(128),
+    created_at timestamp not null
+);
+
+create table if not exists role_permission (
+    id varchar(64) primary key,
+    role_id varchar(64) not null,
+    permission_id varchar(64) not null,
+    created_at timestamp not null
+);
+
+create table if not exists user_role_assignment (
+    id varchar(64) primary key,
+    tenant_id varchar(64),
+    workspace_id varchar(64),
+    user_id varchar(64) not null,
+    role_id varchar(64) not null,
+    assigned_by varchar(64),
+    created_at timestamp not null
+);
+
+create table if not exists group_role_assignment (
+    id varchar(64) primary key,
+    workspace_id varchar(64) not null,
+    group_id varchar(64) not null,
+    role_id varchar(64) not null,
+    assigned_at timestamp not null
+);
+
+create table if not exists service_account (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    workspace_id varchar(64) not null,
+    name varchar(255) not null,
+    description text,
+    status varchar(32) not null default 'ACTIVE',
+    created_at timestamp not null
+);
+
+create table if not exists api_client (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    workspace_id varchar(64) not null,
+    name varchar(255) not null,
+    client_key_hash varchar(255) not null,
+    status varchar(32) not null default 'ACTIVE',
+    created_at timestamp not null
+);
+
+create index if not exists ix_workspace_tenant_id on workspace(tenant_id);
+create index if not exists ix_workspace_member_workspace_id on workspace_member(workspace_id);
+create index if not exists ix_workspace_member_user_id on workspace_member(user_id);
+create index if not exists ix_workspace_group_workspace_id on workspace_group(workspace_id);
+create index if not exists ix_workspace_group_member_group_id on workspace_group_member(group_id);
+create index if not exists ix_workspace_group_member_member_id on workspace_group_member(member_id);
+create index if not exists ix_role_permission_role_id on role_permission(role_id);
+create index if not exists ix_user_role_assignment_user_id on user_role_assignment(user_id);
+create index if not exists ix_user_role_assignment_workspace_id on user_role_assignment(workspace_id);
+create index if not exists ix_group_role_assignment_group_id on group_role_assignment(group_id);
+create index if not exists ix_service_account_workspace_id on service_account(workspace_id);
+create index if not exists ix_api_client_workspace_id on api_client(workspace_id);
+-- Merged schema: entitlement, navigation, billing models, notifications, social
+
+
+create table if not exists entitlement_bundle (
+    id varchar(64) primary key,
+    bundle_key varchar(128) not null unique,
+    name varchar(255) not null,
+    description text,
+    status varchar(32) not null default 'ACTIVE',
+    allowed_providers json,
+    allowed_presets json,
+    gpu_allowed boolean not null default false,
+    remote_worker_allowed boolean not null default false,
+    custom_fonts_allowed boolean not null default false,
+    max_subtitle_tracks int not null default 2,
+    max_concurrent_jobs int not null default 1,
+    monthly_render_minutes bigint not null default 60,
+    storage_limit_bytes bigint not null default 1073741824,
+    watermark_required boolean not null default true,
+    priority_queue_allowed boolean not null default false,
+    beta_effects_allowed boolean not null default false,
+    prompt_execution_limit bigint not null default 100,
+    extension_execution_allowed boolean not null default false,
+    api_access_allowed boolean not null default false,
+    mcp_access_allowed boolean not null default false,
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists quota_profile (
+    id varchar(64) primary key,
+    profile_key varchar(128) not null unique,
+    name varchar(255) not null,
+    description text,
+    monthly_render_minutes bigint not null default 60,
+    daily_render_jobs int not null default 5,
+    concurrent_render_jobs int not null default 1,
+    storage_bytes bigint not null default 1073741824,
+    gpu_minutes bigint not null default 0,
+    remote_worker_jobs int not null default 0,
+    prompt_executions bigint not null default 100,
+    extension_executions bigint not null default 0,
+    api_calls_per_minute int not null default 60,
+    mcp_calls_per_minute int not null default 30,
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists workspace_entitlement_pool (
+    id varchar(64) primary key,
+    workspace_id varchar(64) not null,
+    feature_key varchar(128) not null,
+    total_quota bigint not null default 0,
+    used_quota bigint not null default 0,
+    period varchar(32) not null default 'MONTHLY',
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists workspace_member_entitlement_grant (
+    id varchar(64) primary key,
+    workspace_id varchar(64) not null,
+    member_id varchar(64) not null,
+    feature_key varchar(128) not null,
+    quota_amount bigint not null default 0,
+    starts_at timestamp not null,
+    expires_at timestamp,
+    status varchar(32) not null default 'ACTIVE',
+    granted_by varchar(64),
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists workspace_quota_allocation (
+    id varchar(64) primary key,
+    workspace_id varchar(64) not null,
+    member_id varchar(64) not null,
+    quota_profile_key varchar(128) not null,
+    allocated_amount bigint not null default 0,
+    used_amount bigint not null default 0,
+    period varchar(32) not null default 'MONTHLY',
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create index if not exists ix_entitlement_bundle_bundle_key on entitlement_bundle(bundle_key);
+create index if not exists ix_entitlement_bundle_status on entitlement_bundle(status);
+create index if not exists ix_quota_profile_profile_key on quota_profile(profile_key);
+create index if not exists ix_workspace_entitlement_pool_workspace_id on workspace_entitlement_pool(workspace_id);
+create index if not exists ix_workspace_entitlement_pool_feature_key on workspace_entitlement_pool(feature_key);
+create index if not exists ix_workspace_member_grant_workspace_id on workspace_member_entitlement_grant(workspace_id);
+create index if not exists ix_workspace_member_grant_member_id on workspace_member_entitlement_grant(member_id);
+create index if not exists ix_workspace_member_grant_status on workspace_member_entitlement_grant(status);
+create index if not exists ix_workspace_quota_alloc_workspace_id on workspace_quota_allocation(workspace_id);
+create index if not exists ix_workspace_quota_alloc_member_id on workspace_quota_allocation(member_id);
+
+alter table entitlement_override add column if not exists status varchar(32) not null default 'ACTIVE';
+alter table entitlement_override add column if not exists created_at timestamp;
+alter table entitlement_override add column if not exists updated_at timestamp;
+
+
+-- =============================================================================
+-- V16: Navigation & Dynamic Routing
+--
+-- Purpose: Store frontend route definitions and navigation policies so that
+--          the backend can evaluate visibility / enablement per user context.
+-- =============================================================================
+
+create table if not exists frontend_route_definition (
+    id              varchar(64)  not null primary key,
+    route_key       varchar(128) not null unique,
+    path            varchar(256) not null,
+    component_key   varchar(128) not null,
+    title           varchar(256) not null,
+    description     text,
+    menu_group      varchar(128),
+    icon            varchar(64),
+    sort_order      int          not null default 0,
+    parent_route_key varchar(128),
+    required_permissions    text,
+    required_roles          text,
+    required_entitlements   text,
+    required_tier           varchar(64),
+    required_features       text,
+    supported_sources       text,
+    visible         boolean      not null default true,
+    enabled         boolean      not null default true,
+    hidden_reason   varchar(512),
+    disabled_reason varchar(512),
+    upgrade_options text,
+    created_at      timestamp    not null default now(),
+    updated_at      timestamp    not null default now()
+);
+
+create index if not exists ix_route_def_menu_group on frontend_route_definition(menu_group);
+create index if not exists ix_route_def_visible on frontend_route_definition(visible);
+create index if not exists ix_route_def_enabled on frontend_route_definition(enabled);
+create index if not exists ix_route_def_parent on frontend_route_definition(parent_route_key);
+
+create table if not exists navigation_policy (
+    id              varchar(64)  not null primary key,
+    policy_key      varchar(128) not null unique,
+    route_key       varchar(128) not null,
+    policy_type     varchar(32)  not null,
+    condition_expr  text         not null,
+    effect          varchar(16)  not null,
+    reason_code     varchar(128) not null,
+    reason_message  text         not null,
+    upgrade_options text,
+    priority        int          not null default 0,
+    enabled         boolean      not null default true,
+    created_at      timestamp    not null default now(),
+    updated_at      timestamp    not null default now(),
+    constraint fk_nav_policy_route foreign key (route_key)
+        references frontend_route_definition (route_key)
+        on delete cascade
+);
+
+create index if not exists ix_nav_policy_route on navigation_policy(route_key);
+create index if not exists ix_nav_policy_priority on navigation_policy(priority);
+
+
+-- =============================================================================
+-- V17: Flexible Multi-Billing Models
+--
+-- Purpose: Add tables for subscription plans, pricing rules, usage metering,
+--          rating, billing ledger, credit wallets, invoice line items,
+--          custom pricing rules, and discount policies.
+-- =============================================================================
+
 create table if not exists pricing_rule (
     id                varchar(64)  not null primary key,
-    rule_key          varchar(128) not null,
+    rule_key          varchar(128) not null unique,
     name              varchar(255) not null,
     description       text,
     pricing_model     varchar(32)  not null,
@@ -392,13 +1175,17 @@ create table if not exists pricing_rule (
     status            varchar(32)  not null default 'ACTIVE',
     effective_from    timestamp,
     effective_to      timestamp,
-    created_at        timestamp    not null,
-    updated_at        timestamp    not null
+    created_at        timestamp    not null default now(),
+    updated_at        timestamp    not null default now()
 );
+
+create index if not exists ix_pricing_rule_key on pricing_rule(rule_key);
+create index if not exists ix_pricing_rule_model on pricing_rule(pricing_model);
+create index if not exists ix_pricing_rule_status on pricing_rule(status);
 
 create table if not exists subscription_plan (
     id                 varchar(64)  not null primary key,
-    plan_key           varchar(128) not null,
+    plan_key           varchar(128) not null unique,
     name               varchar(255) not null,
     description        text,
     billing_interval   varchar(32)  not null,
@@ -406,25 +1193,31 @@ create table if not exists subscription_plan (
     currency_code      varchar(8)   not null,
     included_quota     text,
     status             varchar(32)  not null default 'ACTIVE',
-    created_at         timestamp    not null,
-    updated_at         timestamp    not null
+    created_at         timestamp    not null default now(),
+    updated_at         timestamp    not null default now()
 );
+
+create index if not exists ix_subscription_plan_key on subscription_plan(plan_key);
+create index if not exists ix_subscription_plan_status on subscription_plan(status);
 
 alter table if exists subscription_contract
     add column if not exists plan_key varchar(128);
+
 alter table if exists subscription_contract
     add column if not exists included_quota_used text;
 
 create table if not exists usage_meter (
     id                 varchar(64)  not null primary key,
-    meter_key          varchar(128) not null,
+    meter_key          varchar(128) not null unique,
     name               varchar(255) not null,
     description        text,
     unit               varchar(64)  not null,
     aggregation_type   varchar(32)  not null,
     status             varchar(32)  not null default 'ACTIVE',
-    created_at         timestamp    not null
+    created_at         timestamp    not null default now()
 );
+
+create index if not exists ix_usage_meter_key on usage_meter(meter_key);
 
 create table if not exists usage_record (
     id                varchar(64)  not null primary key,
@@ -432,12 +1225,16 @@ create table if not exists usage_record (
     workspace_id      varchar(64),
     user_id           varchar(64),
     meter_key         varchar(128) not null,
-    quantity          double precision not null,
+    quantity          DOUBLE not null,
     unit              varchar(64)  not null,
     recorded_at       timestamp    not null,
-    idempotency_key   varchar(255),
-    created_at        timestamp    not null
+    idempotency_key   varchar(255) unique,
+    created_at        timestamp    not null default now()
 );
+
+create index if not exists ix_usage_record_tenant on usage_record(tenant_id);
+create index if not exists ix_usage_record_meter on usage_record(meter_key);
+create index if not exists ix_usage_record_recorded on usage_record(recorded_at);
 
 create table if not exists rated_usage_record (
     id                   varchar(64)  not null primary key,
@@ -446,8 +1243,11 @@ create table if not exists rated_usage_record (
     rated_amount_minor   bigint       not null,
     currency_code        varchar(8)   not null,
     rating_details       text,
-    created_at           timestamp    not null
+    created_at           timestamp    not null default now()
 );
+
+create index if not exists ix_rated_usage_record_usage on rated_usage_record(usage_record_id);
+create index if not exists ix_rated_usage_record_rule on rated_usage_record(pricing_rule_id);
 
 create table if not exists billing_ledger_entry (
     id                varchar(64)  not null primary key,
@@ -460,8 +1260,13 @@ create table if not exists billing_ledger_entry (
     reference_type    varchar(64),
     reference_id      varchar(64),
     description       text,
-    created_at        timestamp    not null
+    created_at        timestamp    not null default now()
 );
+
+create index if not exists ix_billing_ledger_tenant on billing_ledger_entry(tenant_id);
+create index if not exists ix_billing_ledger_type on billing_ledger_entry(entry_type);
+create index if not exists ix_billing_ledger_ref on billing_ledger_entry(reference_type, reference_id);
+create index if not exists ix_billing_ledger_created on billing_ledger_entry(created_at);
 
 create table if not exists credit_wallet (
     id             varchar(64)  not null primary key,
@@ -471,9 +1276,12 @@ create table if not exists credit_wallet (
     balance_minor  bigint       not null default 0,
     currency_code  varchar(8)   not null,
     status         varchar(32)  not null default 'ACTIVE',
-    created_at     timestamp    not null,
-    updated_at     timestamp    not null
+    created_at     timestamp    not null default now(),
+    updated_at     timestamp    not null default now()
 );
+
+create index if not exists ix_credit_wallet_tenant on credit_wallet(tenant_id);
+create index if not exists ix_credit_wallet_status on credit_wallet(status);
 
 create table if not exists credit_transaction (
     id                   varchar(64)  not null primary key,
@@ -484,22 +1292,28 @@ create table if not exists credit_transaction (
     reference_type       varchar(64),
     reference_id         varchar(64),
     description          text,
-    created_at           timestamp    not null
+    created_at           timestamp    not null default now()
 );
+
+create index if not exists ix_credit_txn_wallet on credit_transaction(wallet_id);
+create index if not exists ix_credit_txn_type on credit_transaction(transaction_type);
+create index if not exists ix_credit_txn_created on credit_transaction(created_at);
 
 create table if not exists invoice_line_item (
     id                varchar(64)  not null primary key,
     invoice_id        varchar(64)  not null,
     line_type         varchar(32)  not null,
     description       text,
-    quantity          double precision,
+    quantity          DOUBLE,
     unit_price_minor  bigint,
     amount_minor      bigint       not null,
     currency_code     varchar(8)   not null,
     period_start      timestamp,
     period_end        timestamp,
-    created_at        timestamp    not null
+    created_at        timestamp    not null default now()
 );
+
+create index if not exists ix_invoice_line_item_invoice on invoice_line_item(invoice_id);
 
 create table if not exists custom_pricing_rule (
     id                   varchar(64)  not null primary key,
@@ -507,23 +1321,525 @@ create table if not exists custom_pricing_rule (
     workspace_id         varchar(64),
     meter_key            varchar(128) not null,
     override_price_minor bigint,
-    discount_percent     double precision,
+    discount_percent     DOUBLE,
     effective_from       timestamp,
     effective_to         timestamp,
     status               varchar(32)  not null default 'ACTIVE',
-    created_at           timestamp    not null
+    created_at           timestamp    not null default now()
 );
+
+create index if not exists ix_custom_pricing_tenant on custom_pricing_rule(tenant_id);
+create index if not exists ix_custom_pricing_meter on custom_pricing_rule(meter_key);
 
 create table if not exists discount_policy (
     id                varchar(64)  not null primary key,
-    policy_key        varchar(128) not null,
+    policy_key        varchar(128) not null unique,
     name              varchar(255) not null,
     description       text,
     discount_type     varchar(32)  not null,
-    discount_value    double precision not null,
+    discount_value    DOUBLE not null,
     conditions        text,
     status            varchar(32)  not null default 'ACTIVE',
     effective_from    timestamp,
     effective_to      timestamp,
-    created_at        timestamp    not null
+    created_at        timestamp    not null default now()
 );
+
+create index if not exists ix_discount_policy_key on discount_policy(policy_key);
+create index if not exists ix_discount_policy_status on discount_policy(status);
+
+
+
+-- =============================================================================
+-- Notification platform (catalog, delivery, inbox)
+-- =============================================================================
+create table if not exists notification_event_definition (
+    id varchar(64) primary key,
+    event_key varchar(100) not null unique,
+    name varchar(200) not null,
+    description varchar(500),
+    category varchar(50) not null,
+    severity varchar(20) not null,
+    visibility varchar(30) not null,
+    user_configurable boolean not null default false,
+    critical boolean not null default false,
+    default_enabled boolean not null default true,
+    supported_channels text,
+    required_permissions text,
+    required_entitlements text,
+    feature_flag_key varchar(100),
+    novu_workflow_id varchar(100),
+    local_template_key varchar(100),
+    archived boolean not null default false,
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists notification_channel_binding (
+    id varchar(64) primary key,
+    tenant_id varchar(64),
+    workspace_id varchar(64),
+    user_id varchar(64) not null,
+    channel_type varchar(32) not null,
+    destination_masked varchar(255),
+    destination_encrypted text,
+    verified boolean not null default false,
+    verification_status varchar(32) not null default 'PENDING',
+    enabled boolean not null default true,
+    failure_count int not null default 0,
+    last_failure_at timestamp,
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists notification_subscription (
+    id varchar(64) primary key,
+    tenant_id varchar(64),
+    workspace_id varchar(64),
+    user_id varchar(64) not null,
+    event_key varchar(100) not null,
+    enabled boolean not null default true,
+    channels text,
+    frequency varchar(30) not null default 'IMMEDIATE',
+    filters text,
+    quiet_hours_start varchar(10),
+    quiet_hours_end varchar(10),
+    quiet_hours_timezone varchar(50),
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create table if not exists notification_preference (
+    id varchar(64) primary key,
+    tenant_id varchar(64),
+    user_id varchar(64) not null,
+    event_key varchar(100) not null,
+    enabled boolean not null default true,
+    channels text,
+    created_at timestamp not null,
+    updated_at timestamp not null,
+    unique(tenant_id, user_id, event_key)
+);
+
+create table if not exists notification_delivery_record (
+    id varchar(64) primary key,
+    event_key varchar(100) not null,
+    tenant_id varchar(64),
+    user_id varchar(64),
+    channel_type varchar(32) not null,
+    status varchar(32) not null,
+    attempts int not null default 0,
+    payload_redacted text,
+    provider_message_id varchar(128),
+    error_code varchar(64),
+    sent_at timestamp,
+    failed_at timestamp,
+    created_at timestamp not null
+);
+
+create table if not exists notification_user_inbox (
+    id varchar(64) primary key,
+    tenant_id varchar(64),
+    workspace_id varchar(64),
+    user_id varchar(64) not null,
+    event_key varchar(100),
+    type varchar(32) not null default 'INFO',
+    title varchar(255),
+    message text,
+    read boolean not null default false,
+    link varchar(512),
+    actor_id varchar(64),
+    resource_type varchar(64),
+    resource_id varchar(64),
+    created_at timestamp not null,
+    read_at timestamp
+);
+
+create index if not exists ix_notification_channel_binding_user on notification_channel_binding(user_id);
+create index if not exists ix_notification_subscription_user on notification_subscription(user_id);
+create index if not exists ix_notification_delivery_record_user on notification_delivery_record(user_id);
+create index if not exists ix_notification_user_inbox_user on notification_user_inbox(user_id);
+
+-- Feature flags (policy governance persistence)
+create table if not exists feature_flag_definition (
+    id varchar(64) primary key,
+    flag_key varchar(128) not null unique,
+    name varchar(255) not null,
+    description text,
+    flag_type varchar(32) not null default 'BOOLEAN',
+    enabled boolean not null default false,
+    default_value_json text,
+    variants_json text,
+    tags_json text,
+    owner varchar(128),
+    archived boolean not null default false,
+    created_at timestamp not null default now(),
+    updated_at timestamp not null default now()
+);
+
+create table if not exists feature_flag_targeting_rule (
+    id varchar(64) primary key,
+    flag_key varchar(128) not null,
+    rule_id varchar(64),
+    tenant_id varchar(64),
+    workspace_id varchar(64),
+    user_id varchar(64),
+    role varchar(64),
+    tier varchar(64),
+    percentage double precision,
+    priority int not null default 0,
+    enabled boolean not null default true,
+    rule_json text not null,
+    created_at timestamp not null default now()
+);
+
+create index if not exists ix_feature_flag_targeting_flag on feature_flag_targeting_rule(flag_key);
+
+-- =============================================================================
+-- Social publish
+-- =============================================================================
+create table if not exists social_connected_platform (
+    id varchar(36) primary key,
+    tenant_id varchar(36) not null,
+    user_id varchar(36) not null,
+    platform_type varchar(32) not null,
+    platform_user_id varchar(256),
+    platform_username varchar(256),
+    access_token_encrypted text,
+    refresh_token_encrypted text,
+    token_expires_at timestamp,
+    status varchar(16) default 'ACTIVE',
+    created_at timestamp not null default now(),
+    updated_at timestamp not null default now()
+);
+
+create table if not exists social_post (
+    id varchar(36) primary key,
+    tenant_id varchar(36) not null,
+    user_id varchar(36) not null,
+    content_text text,
+    media_urls varchar(4000),
+    platform_type varchar(32) not null,
+    status varchar(16) default 'DRAFT',
+    platform_post_id varchar(256),
+    platform_post_url varchar(512),
+    scheduled_at timestamp,
+    published_at timestamp,
+    failed_at timestamp,
+    error_code varchar(64),
+    error_message text,
+    retry_count int default 0,
+    created_at timestamp not null default now(),
+    updated_at timestamp not null default now()
+);
+
+create table if not exists social_post_analytics (
+    id varchar(36) primary key,
+    post_id varchar(36) not null,
+    platform_type varchar(32) not null,
+    impressions int default 0,
+    reach int default 0,
+    likes int default 0,
+    comments int default 0,
+    shares int default 0,
+    clicks int default 0,
+    fetched_at timestamp,
+    created_at timestamp not null default now()
+);
+
+create index if not exists ix_social_post_tenant_user on social_post(tenant_id, user_id);
+create index if not exists ix_social_post_status on social_post(status);
+create index if not exists ix_social_connected_platform_tenant_user on social_connected_platform(tenant_id, user_id);
+create index if not exists ix_social_post_analytics_post on social_post_analytics(post_id);
+-- =============================================================================
+-- V6: Performance Indexes & Foreign Key Conventions
+--
+-- Purpose: Add missing indexes on foreign keys and frequently queried columns
+--          to establish a performance baseline. All indexes are additive and
+--          use IF NOT EXISTS for idempotency.
+--
+-- Conventions:
+--   - Index names: ix_<table>_<column>[_<column>]
+--   - Foreign key columns always indexed (JOIN / cascade performance)
+--   - Status + timestamp columns indexed together (dispatch / polling queries)
+--   - Unique constraints already create implicit indexes; no duplicates added
+-- =============================================================================
+
+-- =============================================================================
+-- V1 tables: render_job, notification_event, notification_delivery, config_item
+-- =============================================================================
+
+-- render_job: queried by project for listing, by status for polling
+create index if not exists ix_render_job_project_id on render_job(project_id);
+create index if not exists ix_render_job_status on render_job(status);
+
+-- notification_event: queried by event type for filtering, by created_at for range scans
+create index if not exists ix_notification_event_event_type on notification_event(event_type);
+create index if not exists ix_notification_event_created_at on notification_event(created_at);
+
+-- notification_delivery: joined to notification_event via event_id, filtered by status
+create index if not exists ix_notification_delivery_event_id on notification_delivery(event_id);
+create index if not exists ix_notification_delivery_status on notification_delivery(status);
+
+-- config_item: queried by namespace for scoped reads
+create index if not exists ix_config_item_namespace_key on config_item(namespace_key);
+
+-- =============================================================================
+-- V2 tables: storage_object, extension_invocation
+-- =============================================================================
+
+-- storage_object: queried by provider + bucket for scoped lookups
+create index if not exists ix_storage_object_provider_code on storage_object(provider_code);
+create index if not exists ix_storage_object_bucket on storage_object(bucket);
+
+-- extension_invocation: queried by extension_code for invocation history
+create index if not exists ix_extension_invocation_extension_code on extension_invocation(extension_code);
+create index if not exists ix_extension_invocation_created_at on extension_invocation(created_at);
+
+-- =============================================================================
+-- V3 tables: outbox_events, audit_records, schedules, quota_definitions
+-- =============================================================================
+
+-- outbox_events: dispatch queries filter by status + created_at; aggregate lookups
+create index if not exists ix_outbox_events_status_created_at on outbox_events(status, created_at);
+create index if not exists ix_outbox_events_aggregate on outbox_events(aggregate_type, aggregate_id);
+
+-- audit_records: queried by actor, resource, and time range
+create index if not exists ix_audit_records_created_at on audit_records(created_at);
+create index if not exists ix_audit_records_actor_id on audit_records(actor_id);
+create index if not exists ix_audit_records_resource on audit_records(resource_type, resource_id);
+
+-- schedules: queried by schedule_code for lookups (unique already indexed, but explicit for clarity)
+-- Note: schedule_code has no unique constraint; add one for data integrity
+create index if not exists ix_schedules_schedule_code on schedules(schedule_code);
+
+-- =============================================================================
+-- V4 tables: commerce, billing, entitlement
+-- =============================================================================
+
+-- commerce_price: joined to commerce_product via product_id
+create index if not exists ix_commerce_price_product_id on commerce_price(product_id);
+
+-- provider_product_mapping: joined to commerce_product via product_id
+create index if not exists ix_provider_product_mapping_product_id on provider_product_mapping(product_id);
+
+-- checkout_session: joined to commerce_product via product_id
+create index if not exists ix_checkout_session_product_id on checkout_session(product_id);
+
+-- purchase_order: joined to checkout_session via checkout_session_id
+create index if not exists ix_purchase_order_checkout_session_id on purchase_order(checkout_session_id);
+
+-- payment_attempt: joined to purchase_order via purchase_order_id
+create index if not exists ix_payment_attempt_purchase_order_id on payment_attempt(purchase_order_id);
+
+-- subscription_contract: queried by subject for entitlement resolution
+create index if not exists ix_subscription_contract_subject on subscription_contract(subject_type, subject_id);
+
+-- billing_invoice: joined to subscription_contract via contract_id
+create index if not exists ix_billing_invoice_contract_id on billing_invoice(contract_id);
+
+-- feature_bundle_item: joined to feature_bundle via bundle_id, feature_definition via feature_id
+create index if not exists ix_feature_bundle_item_bundle_id on feature_bundle_item(bundle_id);
+create index if not exists ix_feature_bundle_item_feature_id on feature_bundle_item(feature_id);
+
+-- entitlement_grant: queried by subject for entitlement resolution
+create index if not exists ix_entitlement_grant_subject on entitlement_grant(subject_type, subject_id);
+
+-- entitlement_override: queried by subject for override resolution
+create index if not exists ix_entitlement_override_subject on entitlement_override(subject_type, subject_id);
+
+-- =============================================================================
+-- V5 columns: outbox_events (idempotency_key, next_attempt_at)
+-- =============================================================================
+
+-- outbox_events.idempotency_key: unique lookups for deduplication
+create index if not exists ix_outbox_events_idempotency_key on outbox_events(idempotency_key);
+
+-- outbox_events.next_attempt_at: queried for retry scheduling
+create index if not exists ix_outbox_events_next_attempt_at on outbox_events(next_attempt_at);
+-- NLQ report definitions, query history, and report executions (Prompt 64)
+
+create table if not exists nlq_report_definition (
+    report_id              varchar(64)  not null primary key,
+    tenant_id              varchar(64),
+    workspace_id           varchar(64),
+    name                   varchar(255) not null,
+    description            text,
+    widgets_json           text,
+    query_definitions_json text,
+    created_by             varchar(128),
+    visibility             varchar(32)  not null default 'PRIVATE',
+    schedule_json          text,
+    created_at             timestamp    not null default now(),
+    updated_at             timestamp    not null default now(),
+    archived               boolean      not null default false
+);
+
+create index if not exists ix_nlq_report_tenant on nlq_report_definition(tenant_id);
+create index if not exists ix_nlq_report_workspace on nlq_report_definition(workspace_id);
+
+create table if not exists nlq_query_history (
+    query_id           varchar(64)  not null primary key,
+    user_id            varchar(128) not null,
+    tenant_id          varchar(64),
+    workspace_id       varchar(64),
+    question_redacted  text,
+    sql_hash           varchar(64),
+    datasets_json      text,
+    row_count          int          not null default 0,
+    duration_ms        bigint       not null default 0,
+    risk_level         varchar(32),
+    status             varchar(32)  not null,
+    error_code         varchar(64),
+    created_at         timestamp    not null default now()
+);
+
+create index if not exists ix_nlq_history_tenant on nlq_query_history(tenant_id);
+create index if not exists ix_nlq_history_user on nlq_query_history(user_id);
+
+create table if not exists nlq_report_execution (
+    execution_id   varchar(64)  not null primary key,
+    report_id      varchar(64)  not null,
+    status         varchar(32)  not null,
+    row_count      int          not null default 0,
+    duration_ms    bigint       not null default 0,
+    error_code     varchar(64),
+    created_at     timestamp    not null default now()
+);
+
+create index if not exists ix_nlq_report_exec_report on nlq_report_execution(report_id);
+-- User analytics persistence (Prompt 19–20) and shared resource grants (Prompt 68)
+
+create table if not exists user_behavior_event (
+    event_id        varchar(64)  not null primary key,
+    tenant_id       varchar(64)  not null,
+    user_id         varchar(128) not null,
+    event_type      varchar(64)  not null,
+    action          varchar(128),
+    resource_type   varchar(64),
+    resource_id     varchar(128),
+    metadata_json   text,
+    occurred_at     timestamp    not null default now()
+);
+
+create index if not exists ix_user_behavior_tenant on user_behavior_event(tenant_id);
+create index if not exists ix_user_behavior_user on user_behavior_event(user_id);
+create index if not exists ix_user_behavior_occurred on user_behavior_event(occurred_at);
+
+create table if not exists user_profile (
+    profile_id                  varchar(64)  not null primary key,
+    tenant_id                   varchar(64)  not null,
+    user_id                     varchar(128) not null,
+    display_name                varchar(255),
+    preferred_languages_json    text,
+    feature_usage_counts_json   text,
+    action_counts_json          text,
+    total_sessions              int          not null default 0,
+    total_actions               int          not null default 0,
+    first_seen_at               timestamp,
+    last_active_at              timestamp,
+    updated_at                  timestamp    not null default now(),
+    unique(tenant_id, user_id)
+);
+
+create index if not exists ix_user_profile_tenant on user_profile(tenant_id);
+
+create table if not exists user_segment (
+    segment_id      varchar(64)  not null primary key,
+    tenant_id       varchar(64)  not null,
+    name            varchar(255) not null,
+    description     text,
+    criteria_json   text,
+    user_ids_json   text,
+    user_count      int          not null default 0,
+    computed_at     timestamp    not null default now()
+);
+
+create index if not exists ix_user_segment_tenant on user_segment(tenant_id);
+
+create table if not exists user_habits (
+    tenant_id       varchar(64)  not null,
+    user_id         varchar(128) not null,
+    habits_json     text         not null,
+    computed_at     timestamp    not null default now(),
+    primary key (tenant_id, user_id)
+);
+
+create table if not exists shared_resource_grant (
+    grant_id              varchar(64)  not null primary key,
+    tenant_id             varchar(64)  not null,
+    resource_type         varchar(32)  not null,
+    resource_id           varchar(128) not null,
+    resource_name         varchar(255),
+    resource_description  text,
+    resource_status       varchar(32),
+    shared_by_user_id     varchar(128),
+    shared_with_user_id   varchar(128) not null,
+    permission            varchar(32)  not null default 'READ',
+    status                varchar(32)  not null default 'ACTIVE',
+    created_at            timestamp    not null default now(),
+    expires_at            timestamp
+);
+
+create index if not exists ix_shared_resource_grant_recipient
+    on shared_resource_grant(tenant_id, shared_with_user_id);
+create index if not exists ix_shared_resource_grant_resource
+    on shared_resource_grant(resource_type, resource_id);
+-- Tenant subscription tier for EntitlementPolicyService (Prompt 06, 59)
+
+create table if not exists tenant_entitlement_tier (
+    tenant_id   varchar(64)  not null primary key,
+    tier        varchar(32)  not null default 'FREE',
+    updated_at  timestamp    not null default now()
+);
+
+create index if not exists ix_tenant_entitlement_tier_tier on tenant_entitlement_tier(tier);
+
+-- Timeline snapshots (V9) and effect pack catalog (V10)
+create table if not exists timeline_snapshot (
+    id              varchar(64)  primary key,
+    project_id      varchar(64)  not null,
+    tenant_id       varchar(64),
+    payload_json    clob         not null,
+    schema_version  varchar(32)  default '2.0.0',
+    created_at      timestamp    not null default current_timestamp
+);
+
+create index if not exists idx_timeline_snapshot_project on timeline_snapshot (project_id);
+
+create table if not exists effect_pack (
+    id              varchar(64)  primary key,
+    pack_id         varchar(128) not null,
+    version         varchar(32)  not null,
+    name            varchar(255) not null,
+    description     varchar(1024),
+    author          varchar(128),
+    compatibility   varchar(32)  default '2.0',
+    allowed_tiers   clob,
+    tenant_id       varchar(64)  not null default '',
+    builtin         boolean      not null default false,
+    created_at      timestamp    not null default current_timestamp,
+    updated_at      timestamp    not null default current_timestamp
+);
+
+create unique index if not exists uq_effect_pack_identity
+    on effect_pack (pack_id, version, tenant_id);
+
+create index if not exists idx_effect_pack_tenant on effect_pack (tenant_id);
+
+create table if not exists effect_pack_effect (
+    id                  varchar(64)  primary key,
+    pack_row_id         varchar(64)  not null,
+    effect_key          varchar(128) not null,
+    display_name        varchar(255) not null,
+    category            varchar(64)  not null,
+    description         varchar(1024),
+    parameter_schema    clob,
+    default_values      clob,
+    provider_mappings   clob,
+    allowed_tiers       clob,
+    sort_order          int          not null default 0
+);
+
+create unique index if not exists uq_effect_pack_effect_key
+    on effect_pack_effect (pack_row_id, effect_key);

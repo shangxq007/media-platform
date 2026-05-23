@@ -89,4 +89,11 @@ class LocalFsStorageProviderTest {
         assertTrue(Files.exists(stored));
         assertEquals(0, Files.size(stored));
     }
+
+    @Test
+    void listObjectsReturnsStoredFiles() {
+        provider.put(new PutObjectCommand("artifacts", "a/out.mp4", new byte[]{1}, "video/mp4"));
+        provider.put(new PutObjectCommand("artifacts", "b/out.mp4", new byte[]{2}, "video/mp4"));
+        assertEquals(2, provider.listObjects("artifacts", "", 10).size());
+    }
 }

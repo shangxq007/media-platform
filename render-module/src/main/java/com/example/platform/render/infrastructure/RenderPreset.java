@@ -84,6 +84,10 @@ public enum RenderPreset {
             case "gpu_h264": case "gpu": return GPU_H264;
             case "gpu_h265": case "gpu_hevc": return GPU_H265;
             case "gpu_vp9": return GPU_VP9;
+            case "natron_poc_1080p": return HQ_1080P;
+            case "natron_poc_720p": return PREVIEW_720P;
+            case "shotstack_social_1080p": return HQ_1080P;
+            case "shotstack_social_720p": return PREVIEW_720P;
             default: break;
         }
 

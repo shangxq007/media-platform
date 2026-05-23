@@ -1,6 +1,19 @@
+server:
+  shutdown: graceful
+
 spring:
   application:
     name: media-platform
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  profiles:
+    active: dev
+  autoconfigure:
+    exclude:
+      - io.temporal.spring.boot.autoconfigure.RootNamespaceAutoConfiguration
+      - io.temporal.spring.boot.autoconfigure.NonRootNamespaceAutoConfiguration
+  graphql:
+    enabled: false
   task:
     scheduling:
       pool:
@@ -13,13 +26,18 @@ spring:
     console:
       enabled: true
   flyway:
-    enabled: true
-    locations: classpath:db/migration
+    enabled: false
   springdoc:
     swagger-ui:
       path: /swagger-ui.html
+      tags-sorter: alpha
+      operations-sorter: alpha
+      doc-expansion: none
+      display-request-duration: true
     api-docs:
       path: /v3/api-docs
+    packages-to-scan: com.example.platform
+    paths-to-match: /api/**
 
 management:
   endpoints:
@@ -59,8 +77,29 @@ management:
       environment: development
 
 app:
+  secrets:
+    vault:
+      enabled: ${VAULT_ENABLED:false}
+      uri: ${VAULT_ADDR:http://127.0.0.1:8200}
+      auth-method: ${VAULT_AUTH_METHOD:token}
+      token: ${VAULT_TOKEN:}
+      role-id: ${VAULT_ROLE_ID:}
+      secret-id: ${VAULT_SECRET_ID:}
+      namespace: ${VAULT_NAMESPACE:}
+      kv-mount: ${VAULT_KV_MOUNT:secret}
+      path-prefix: ${VAULT_PATH_PREFIX:media-platform}
+      connection-timeout-ms: ${VAULT_CONNECTION_TIMEOUT_MS:5000}
+      read-timeout-ms: ${VAULT_READ_TIMEOUT_MS:15000}
+    inline-credentials-enabled: ${SECRETS_INLINE_CREDENTIALS_ENABLED:true}
+  temporal:
+    enabled: false
+    environment: ${PLATFORM_ENV:dev}
+    namespace-prefix: media-platform
+    task-queue: media-platform-tasks
+    worker-required: false
   outbox:
     dispatch-interval-ms: 3000
+    retry-interval-ms: 30000
   api-versioning:
     public-default-major: v1
     also-accept-header: true
@@ -73,8 +112,26 @@ app:
     event-id-header: X-Event-ID
   identity:
     api-key-auth-enabled: false
+  render:
+    worker-queue:
+      enabled: false
+      consume-enabled: false
+      poll-interval-ms: 5000
   security:
-    enabled: ${APP_SECURITY_ENABLED:false}
+    enabled: true
+    dev-auth-endpoint: false
+    oauth2:
+      enabled: ${APP_SECURITY_OAUTH2_ENABLED:false}
+      issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:}
+      audience: ${APP_SECURITY_OAUTH2_AUDIENCE:}
+      tenant-claim: ${APP_SECURITY_OAUTH2_TENANT_CLAIM:tenantId}
+      roles-claim: ${APP_SECURITY_OAUTH2_ROLES_CLAIM:roles}
+      user-id-claim: ${APP_SECURITY_OAUTH2_USER_ID_CLAIM:platform_user_id}
+      # Migration: accept legacy HMAC JWT (dev token) alongside Authentik when true
+      legacy-hmac-jwt-enabled: ${APP_SECURITY_OAUTH2_LEGACY_HMAC_JWT_ENABLED:false}
+      jit-provisioning-enabled: ${APP_SECURITY_OAUTH2_JIT_PROVISIONING_ENABLED:true}
+      trust-jwt-tenant-only: ${APP_SECURITY_OAUTH2_TRUST_JWT_TENANT_ONLY:true}
+      default-tenant-id: ${APP_SECURITY_OAUTH2_DEFAULT_TENANT_ID:}
     jwt:
       secret-key: ${APP_JWT_SECRET:dev-only-insecure-key-replace-in-production-min-256-bits!!}
       expiration-ms: 86400000
@@ -90,6 +147,9 @@ app:
       binary-true: /usr/bin/true
       ffmpeg: ${MEDIA_FFMPEG_PATH:/usr/bin/ffmpeg}
       ffprobe: ${MEDIA_FFPROBE_PATH:/usr/bin/ffprobe}
+      melt: ${MEDIA_MELT_PATH:/usr/bin/melt}
+      gst-launch-1.0: ${MEDIA_GSTREAMER_PATH:/usr/bin/gst-launch-1.0}
+      MP4Box: ${MEDIA_MP4BOX_PATH:/usr/bin/MP4Box}
     tools:
       noop:
         executable-key: binary-true
@@ -110,10 +170,44 @@ app:
           - "default=noprint_wrappers=1:nokey=1"
           - "{input}"
         timeout-millis: 60000
+      ffmpeg:
+        executable-key: ffmpeg
+        args: []
+        timeout-millis: 600000
+      melt:
+        executable-key: melt
+        args: []
+        timeout-millis: 600000
+      gst-launch-1.0:
+        executable-key: gst-launch-1.0
+        args: []
+        timeout-millis: 600000
+      MP4Box:
+        executable-key: MP4Box
+        args: []
+        timeout-millis: 300000
   analytics:
     scheduler:
       profiles-cron: "0 0 2 * * ?"
       segments-cron: "0 0 3 * * ?"
+  ai:
+    default-provider: stubChatProvider
+    providers:
+      openai:
+        enabled: false
+    routing:
+      script-generation:
+        primary:
+          provider: stubChatProvider
+      nlq-sql-generation:
+        primary:
+          provider: stubChatProvider
+      nlq-result-summary:
+        primary:
+          provider: stubChatProvider
+      timeline-edit:
+        primary:
+          provider: stubChatProvider
   ai.stub.enable-failures: false
   ai.stub.failure-rate: 0.0
   ai.stub.max-retries: 3
@@ -122,6 +216,116 @@ app:
 render:
   execution:
     mode: local
+  stale-compensator:
+    enabled: true
+    threshold: PT30M
+    interval: PT5M
+    startup-enabled: true
+    startup-include-queued: false
+    skip-on-temporal: true
+  pipeline:
+    dag:
+      enabled: true
+      parallel-external: true
+  aaf:
+    converter-enabled: true
+    worker-enabled: true
+    poll-interval-ms: 3000
+    queue-max-depth: 32
+    converter-command: ""
+  providers:
+    javacv:
+      enabled: true
+    ofx:
+      enabled: true
+    ffmpeg:
+      enabled: true
+    gstreamer:
+      enabled: true
+    gpac:
+      enabled: true
+    mlt:
+      enabled: true
+    mock:
+      enabled: false
+    natron:
+      enabled: false
+      fallback-to-ffmpeg: true
+      supported-effect-keys:
+        - video.natron_vignette
+        - video.natron_color_grade
+    bento4:
+      enabled: true
+      mp4fragment-bin: mp4fragment
+      mp4dash-bin: mp4dash
+    shotstack:
+      enabled: false
+      api-url: https://api.shotstack.io/edit/v1
+      environment: stage
+      api-key: ${SHOTSTACK_API_KEY:}
+    libass:
+      enabled: true
+    remotion:
+      enabled: true
+      cli: npx
+      remotion-args: remotion
+      composition-id: Main
+      stub-on-missing-cli: true
+    blender:
+      enabled: true
+      binary: blender
+      stub-on-missing-binary: true
+    vapoursynth:
+      enabled: true
+      binary: vspipe
+      stub-on-missing-binary: true
+      fallback-to-ffmpeg: true
+    shaka:
+      enabled: true
+      packager-bin: packager
+      stub-on-missing-binary: true
+    skia:
+      enabled: true
+      timeout-ms: 300000
+  subtitle:
+    libass:
+      enabled: true
+  timeline:
+    mlt-multitrack-min-tracks: 2
+  cache:
+    remote-enabled: ${RENDER_CACHE_REMOTE_ENABLED:false}
+    remote-uri-prefix: ${RENDER_CACHE_REMOTE_PREFIX:s3://tenant-cache/render}
+    upload-enabled: ${RENDER_CACHE_UPLOAD_ENABLED:false}
+    content-hash-enabled: ${RENDER_CACHE_CONTENT_HASH_ENABLED:false}
+    invalidate-on-hash-mismatch: ${RENDER_CACHE_INVALIDATE_ON_HASH_MISMATCH:true}
+    cleanup-enabled: ${RENDER_CACHE_CLEANUP_ENABLED:false}
+    retention-days: ${RENDER_CACHE_RETENTION_DAYS:30}
+    cleanup-interval: ${RENDER_CACHE_CLEANUP_INTERVAL:PT24H}
+    webhook-enabled: ${RENDER_CACHE_WEBHOOK_ENABLED:false}
+    webhook-url: ${RENDER_CACHE_WEBHOOK_URL:}
+    webhook-secret: ${RENDER_CACHE_WEBHOOK_SECRET:}
+
+delivery:
+  enabled: ${DELIVERY_ENABLED:true}
+  worker-enabled: ${DELIVERY_WORKER_ENABLED:true}
+  poll-interval-ms: ${DELIVERY_POLL_INTERVAL_MS:5000}
+  max-attempts: ${DELIVERY_MAX_ATTEMPTS:3}
+  temporal:
+    activity-enabled: ${DELIVERY_TEMPORAL_ACTIVITY_ENABLED:false}
+
+storage:
+  s3:
+    enabled: ${STORAGE_S3_ENABLED:false}
+    # generic | r2 — r2 disables chunked encoding (required by Cloudflare R2)
+    compatibility: ${STORAGE_S3_COMPATIBILITY:generic}
+    account-id: ${STORAGE_S3_ACCOUNT_ID:}
+    region: ${STORAGE_S3_REGION:us-east-1}
+    endpoint: ${STORAGE_S3_ENDPOINT:}
+    access-key: ${STORAGE_S3_ACCESS_KEY:}
+    secret-key: ${STORAGE_S3_SECRET_KEY:}
+    path-style-access: ${STORAGE_S3_PATH_STYLE:true}
+    chunked-encoding-enabled: ${STORAGE_S3_CHUNKED_ENCODING:true}
+    default-bucket: ${STORAGE_S3_DEFAULT_BUCKET:render-cache}
 
 # Sentry monitoring configuration
 # Set VITE_SENTRY_DSN in frontend .env and sentry.dsn in backend .env to enable
@@ -136,3 +340,47 @@ openreplay:
   project-key: ${OPENREPLAY_PROJECT_KEY:}
   ingest-point: ${OPENREPLAY_INGEST_POINT:https://openrelay.yourdomain.com}
   enabled: ${OPENREPLAY_ENABLED:false}
+
+platform:
+  environment: ${PLATFORM_ENV:dev}
+  artifact:
+    gc:
+      enabled: true
+      retention-days: 7
+      schedule-interval: PT6H
+      batch-size: 50
+
+  timeline:
+    asset:
+      gc:
+        enabled: true
+        retention-days: 7
+        schedule-interval: PT6H
+        delete-blob-on-purge: true
+        max-projects-per-run: 100
+
+  storage:
+    orphan-scan:
+      buckets: artifacts,render-cache
+      max-objects-per-bucket: 500
+    orphan-purge:
+      enabled: false
+      approval-token: ${STORAGE_ORPHAN_PURGE_TOKEN:}
+      max-deletes-per-run: 20
+
+  lifecycle:
+    shutdown:
+      outbox-drain-enabled: true
+      outbox-drain-batch: 50
+
+  payment:
+    stripe:
+      enabled: ${STRIPE_ENABLED:false}
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+      success-url: ${STRIPE_SUCCESS_URL:https://example.com/billing/success}
+      cancel-url: ${STRIPE_CANCEL_URL:https://example.com/billing/cancel}
+
+  filter:
+    rate-limit:
+      enabled: false

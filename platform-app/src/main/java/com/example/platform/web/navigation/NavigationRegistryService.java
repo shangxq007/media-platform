@@ -23,6 +23,7 @@ public class NavigationRegistryService {
     public NavigationRegistryService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         loadBuiltinRoutes();
+        NavigationCanonicalRoutes.registerAll(this, objectMapper);
         loadBuiltinPolicies();
     }
 

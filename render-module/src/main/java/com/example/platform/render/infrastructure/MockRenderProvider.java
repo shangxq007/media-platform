@@ -19,7 +19,6 @@ import java.util.List;
  * is used instead.</p>
  */
 @Component
-@Profile("test")
 public class MockRenderProvider implements RenderProvider {
     private static final Logger log = LoggerFactory.getLogger(MockRenderProvider.class);
 

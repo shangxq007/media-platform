@@ -9,6 +9,7 @@ import StatusBadge from '@/components/ui/StatusBadge.vue'
 import DataTableShell from '@/components/ui/DataTableShell.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import { formatApiError } from '@/utils/apiError'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
 const loading = ref(true)
@@ -36,7 +37,7 @@ async function loadCredits() {
       total.value = tx.value.total
     }
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load credits'
+    error.value = formatApiError(e, 'Failed to load credits')
   } finally {
     loading.value = false
   }

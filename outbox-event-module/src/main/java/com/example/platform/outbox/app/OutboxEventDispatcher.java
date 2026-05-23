@@ -76,6 +76,18 @@ public class OutboxEventDispatcher {
         }
     }
 
+    @Scheduled(fixedDelayString = "${app.outbox.retry-interval-ms:30000}")
+    public void scheduledRetry() {
+        try {
+            int retried = retryDueEvents();
+            if (retried > 0) {
+                log.debug("Outbox retry cycle dispatched {} events", retried);
+            }
+        } catch (Exception ex) {
+            log.warn("Outbox retry skipped: {}", ex.getMessage());
+        }
+    }
+
     // -------------------------------------------------------------------------
     // processOnce — process a single event with SELECT FOR UPDATE
     // -------------------------------------------------------------------------

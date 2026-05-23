@@ -1,6 +1,7 @@
 .layout-shell {
   display: flex;
-  height: 100%;
+  height: 100vh;
+  height: 100dvh;
   width: 100%;
   overflow: hidden;
   background-color: var(--color-bg-base);
@@ -23,6 +24,7 @@
   flex: 1;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
 }
 
 .layout-header {
@@ -40,6 +42,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
 }
 
 .layout-content-padded {
@@ -199,15 +202,18 @@
 @media (max-width: 640px) {
   .layout-shell {
     flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
   }
 
   .layout-sidebar {
     width: 100% !important;
     height: auto;
-    max-height: 50vh;
+    max-height: 60vh;
     border-right: none;
     border-bottom: 1px solid var(--color-border-default);
     flex-shrink: 0;
+    overflow-y: auto;
   }
 
   .layout-sidebar.layout-sidebar-overlay {
@@ -218,6 +224,13 @@
     bottom: 0;
     z-index: var(--z-overlay);
     max-height: 100vh;
+    border-bottom: none;
+  }
+
+  .layout-main {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .layout-content-padded {

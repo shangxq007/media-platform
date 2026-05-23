@@ -91,6 +91,10 @@ function isClipSelected(tc: TrackClip): boolean {
   return store.selectedClipId === tc.id
 }
 
+function isClipPatchHighlighted(tc: TrackClip): boolean {
+  return store.isClipPatchHighlighted(tc.id)
+}
+
 function onClipClick(e: MouseEvent, tc: TrackClip) {
   e.stopPropagation()
   store.selectClip(tc.id)
@@ -208,6 +212,33 @@ watch(() => props.currentTime, (t) => {
   }
 })
 
+const PIXELS_PER_SECOND_SCROLL = 50
+
+function scrollTrackClipIntoView(trackClipId: string) {
+  if (!timelineRef.value) {
+    return
+  }
+  for (const track of store.state.tracks) {
+    const tc = track.clips.find(c => c.id === trackClipId)
+    if (!tc) {
+      continue
+    }
+    const targetLeft = Math.max(0, tc.start * PIXELS_PER_SECOND_SCROLL - 80)
+    timelineRef.value.scrollLeft = targetLeft
+    return
+  }
+}
+
+watch(
+  () => store.scrollToTrackClipId,
+  id => {
+    if (id) {
+      scrollTrackClipIntoView(id)
+      store.clearScrollToTrackClipRequest()
+    }
+  }
+)
+
 onMounted(() => {
   document.addEventListener('mouseup', onMouseUp)
   document.addEventListener('mousemove', onTimelineMouseMove)
@@ -252,6 +283,13 @@ onUnmounted(() => {
         <button class="px-2 py-1 text-xs bg-gray-700 rounded" :disabled="!history.canRedo()" @click="history.redo(store)">↷</button>
       </div>
       <div class="ml-auto flex items-center gap-2 text-[10px] text-gray-500">
+        <span
+          v-if="store.patchHighlightClipIds.length"
+          class="text-amber-400"
+          title="Patch / 冲突 diff 影响的片段"
+        >
+          {{ store.patchHighlightClipIds.length }} 处高亮
+        </span>
         <span>{{ store.state.tracks.length }} tracks</span>
         <span>{{ totalClips }} clips</span>
       </div>
@@ -342,7 +380,8 @@ onUnmounted(() => {
               :class="[
                 getClipColor(store.clips.find(c => c.id === tc.clipId)),
                 track.locked ? 'opacity-50 cursor-not-allowed' : 'hover:ring-2 hover:ring-white/50',
-                isClipSelected(tc) ? 'ring-2 ring-yellow-400' : ''
+                isClipSelected(tc) ? 'ring-2 ring-yellow-400' : '',
+                isClipPatchHighlighted(tc) ? 'ring-2 ring-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]' : ''
               ]"
               :style="getClipStyle(tc)"
               @click="onClipClick($event, tc)"

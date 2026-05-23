@@ -3,6 +3,7 @@ package com.example.platform.identity.app;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
+import com.example.platform.identity.infrastructure.JooqRecords;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -69,17 +70,17 @@ public class ApiKeyRepository {
     }
 
     private ApiKeyRecord mapRecord(Record record) {
+        OffsetDateTime lastUsed = JooqRecords.offsetDateTime(record, "last_used_at");
+        OffsetDateTime revoked = JooqRecords.offsetDateTime(record, "revoked_at");
         return new ApiKeyRecord(
-                record.get(field("id"), String.class),
-                record.get(field("tenant_id"), String.class),
-                record.get(field("fingerprint"), String.class),
-                record.get(field("hashed_key"), String.class),
-                record.get(field("principal"), String.class),
-                record.get(field("created_at"), OffsetDateTime.class).toInstant(),
-                record.get(field("last_used_at"), OffsetDateTime.class) != null
-                        ? record.get(field("last_used_at"), OffsetDateTime.class).toInstant() : null,
-                record.get(field("revoked_at"), OffsetDateTime.class) != null
-                        ? record.get(field("revoked_at"), OffsetDateTime.class).toInstant() : null
+                JooqRecords.string(record, "id"),
+                JooqRecords.string(record, "tenant_id"),
+                JooqRecords.string(record, "fingerprint"),
+                JooqRecords.string(record, "hashed_key"),
+                JooqRecords.string(record, "principal"),
+                JooqRecords.offsetDateTime(record, "created_at").toInstant(),
+                lastUsed != null ? lastUsed.toInstant() : null,
+                revoked != null ? revoked.toInstant() : null
         );
     }
 }

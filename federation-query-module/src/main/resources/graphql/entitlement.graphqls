@@ -1,4 +1,4 @@
-type Query {
+extend type Query {
     myCapabilities: [Capability!]!
     entitlementDecision(featureKey: String!): Decision!
 }

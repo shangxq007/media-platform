@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { WorkspaceEntitlementAPI } from '@/api/workspace'
 import type { WorkspaceMember, EntitlementGrant } from '@/types'
 import WorkspaceMemberGrantPanel from './WorkspaceMemberGrantPanel.vue'
+import WorkspacePageLayout from '@/components/workspace/WorkspacePageLayout.vue'
 
 const route = useRoute()
 const workspaceId = route.params.workspaceId as string
@@ -34,11 +35,10 @@ async function selectMember(member: WorkspaceMember) {
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto p-6 space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-white">Workspace Members</h1>
-      <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded text-white" @click="loadMembers">Refresh</button>
-    </div>
+  <WorkspacePageLayout title="Workspace Members">
+    <template #actions>
+      <button class="theme-btn theme-btn-secondary theme-btn-sm" type="button" @click="loadMembers">Refresh</button>
+    </template>
 
     <div v-if="loading" class="text-gray-400 text-sm">Loading...</div>
     <div v-else-if="members.length === 0" class="text-gray-500 text-sm">No members found</div>
@@ -80,5 +80,5 @@ async function selectMember(member: WorkspaceMember) {
           @refresh="selectMember(selectedMember)" />
       </div>
     </div>
-  </div>
+  </WorkspacePageLayout>
 </template>

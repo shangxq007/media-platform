@@ -6,6 +6,7 @@ import PromptTemplateList from '@/components/prompt/PromptTemplateList.vue'
 import PromptTemplateEditor from '@/components/prompt/PromptTemplateEditor.vue'
 import PromptExecutionList from '@/components/prompt/PromptExecutionList.vue'
 import PromptManifestPanel from '@/components/prompt/PromptManifestPanel.vue'
+import PortalPageHeader from '@/components/ui/PortalPageHeader.vue'
 import PROMPT_TEMPLATE_DETAIL from '@/graphql/queries/promptTemplateDetail.graphql?raw'
 import { usePromptFeatureFlags } from '@/composables/useFeatureFlag'
 
@@ -119,81 +120,56 @@ const showManifestPanel = computed(() => activeTab.value === 'manifest' && isPro
 </script>
 
 <template>
-  <div class="flex h-full bg-gray-900 text-white">
-    <!-- Page access blocked by feature flag -->
+  <div class="h-full flex flex-col bg-bg-base text-text-primary px-lg py-md">
     <div v-if="!pageAccessEnabled" class="flex-1 flex items-center justify-center">
       <div class="text-center space-y-4 max-w-md">
         <div class="text-4xl">🚩</div>
-        <h2 class="text-lg font-semibold text-gray-200">Prompt Management Unavailable</h2>
-        <p class="text-sm text-gray-400">The prompt.management.enabled feature flag is currently disabled. Contact your administrator to enable this feature.</p>
-        <button class="theme-btn theme-btn-secondary theme-btn-sm" @click="refreshPromptFlags">
+        <h2 class="text-lg font-semibold">Prompt Management Unavailable</h2>
+        <p class="text-sm text-text-secondary">The prompt.management.enabled feature flag is currently disabled. Contact your administrator to enable this feature.</p>
+        <button type="button" class="theme-btn theme-btn-secondary theme-btn-sm" @click="refreshPromptFlags">
           {{ loadingPromptFlags ? 'Checking...' : 'Refresh Status' }}
         </button>
       </div>
     </div>
 
     <template v-else>
-      <!-- Sidebar -->
-      <div class="w-56 border-r border-gray-700 flex flex-col">
-        <div class="p-3 border-b border-gray-700">
-          <h2 class="text-sm font-semibold">Prompt Platform</h2>
-        </div>
-        <nav class="flex-1 p-2 space-y-1">
-          <button class="w-full text-left px-3 py-2 rounded text-sm flex items-center justify-between"
-            :class="activeTab === 'templates' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'"
-            @click="activeTab = 'templates'">
-            <span>Templates</span>
-          </button>
-          <button class="w-full text-left px-3 py-2 rounded text-sm flex items-center justify-between"
-            :class="activeTab === 'executions' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'"
-            @click="activeTab = 'executions'">
-            <span>Executions</span>
-            <span v-if="isPromptFlagEnabled('prompt.riskReview.enabled')" class="text-[8px] px-1 py-0 rounded bg-purple-600/30 text-purple-300 font-medium">RISK</span>
-          </button>
-          <button class="w-full text-left px-3 py-2 rounded text-sm flex items-center justify-between"
-            :class="activeTab === 'manifest' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'"
-            :disabled="!isPromptFlagEnabled('prompt.manifestPanel.enabled')"
-            :title="!isPromptFlagEnabled('prompt.manifestPanel.enabled') ? 'Manifest panel feature flag is disabled' : ''"
-            @click="activeTab = 'manifest'">
-            <span>Manifest</span>
-            <span v-if="!isPromptFlagEnabled('prompt.manifestPanel.enabled')" class="text-[8px] px-1 py-0 rounded bg-gray-600/30 text-gray-400 font-medium">OFF</span>
-          </button>
-        </nav>
+      <PortalPageHeader title="Prompt Engineering" subtitle="Templates, executions, and manifest governance" />
 
-        <!-- Feature Flag Status in Sidebar -->
-        <div class="p-3 border-t border-gray-700 space-y-1">
-          <div class="text-[10px] text-gray-500 font-medium">Feature Flags</div>
-          <div class="flex items-center justify-between text-[10px]">
-            <span class="text-gray-500">Risk Review</span>
-            <span :class="isPromptFlagEnabled('prompt.riskReview.enabled') ? 'text-green-400' : 'text-gray-500'">
-              {{ isPromptFlagEnabled('prompt.riskReview.enabled') ? 'ON' : 'OFF' }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between text-[10px]">
-            <span class="text-gray-500">Cost Preview</span>
-            <span :class="isPromptFlagEnabled('prompt.executionCostPreview.enabled') ? 'text-green-400' : 'text-gray-500'">
-              {{ isPromptFlagEnabled('prompt.executionCostPreview.enabled') ? 'ON' : 'OFF' }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between text-[10px]">
-            <span class="text-gray-500">Manifest</span>
-            <span :class="isPromptFlagEnabled('prompt.manifestPanel.enabled') ? 'text-green-400' : 'text-gray-500'">
-              {{ isPromptFlagEnabled('prompt.manifestPanel.enabled') ? 'ON' : 'OFF' }}
-            </span>
-          </div>
-        </div>
-
-        <div class="p-3 border-t border-gray-700">
-          <router-link to="/" class="text-xs text-blue-400 hover:text-blue-300">
-            ← Back to Editor
-          </router-link>
-        </div>
+      <div class="flex gap-sm border-b border-default mb-md flex-shrink-0">
+        <button
+          type="button"
+          class="px-md py-sm text-sm border-b-2 -mb-px transition-colors"
+          :class="activeTab === 'templates' ? 'border-primary-500 text-primary-500' : 'border-transparent text-text-secondary'"
+          @click="activeTab = 'templates'"
+        >
+          Templates
+        </button>
+        <button
+          type="button"
+          class="px-md py-sm text-sm border-b-2 -mb-px transition-colors"
+          :class="activeTab === 'executions' ? 'border-primary-500 text-primary-500' : 'border-transparent text-text-secondary'"
+          @click="activeTab = 'executions'"
+        >
+          Executions
+          <span v-if="isPromptFlagEnabled('prompt.riskReview.enabled')" class="ml-xs theme-badge text-[9px]">RISK</span>
+        </button>
+        <button
+          type="button"
+          class="px-md py-sm text-sm border-b-2 -mb-px transition-colors"
+          :class="activeTab === 'manifest' ? 'border-primary-500 text-primary-500' : 'border-transparent text-text-secondary'"
+          :disabled="!isPromptFlagEnabled('prompt.manifestPanel.enabled')"
+          @click="activeTab = 'manifest'"
+        >
+          Manifest
+        </button>
+        <button type="button" class="ml-auto theme-btn theme-btn-ghost theme-btn-sm" @click="refreshPromptFlags">
+          {{ loadingPromptFlags ? '…' : 'Refresh flags' }}
+        </button>
       </div>
 
-      <!-- Main Content -->
-      <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
         <!-- GraphQL Status Bar -->
-        <div v-if="currentTemplateId" class="px-4 py-1.5 border-b border-gray-700 bg-gray-800/50 flex items-center justify-between text-xs">
+        <div v-if="currentTemplateId" class="px-md py-sm border-b border-default bg-bg-surface flex items-center justify-between text-xs flex-shrink-0">
           <div class="flex items-center gap-3">
             <span v-if="restFallback" class="text-blue-400">REST fallback</span>
             <span v-else-if="gqlTemplateDetail" class="text-green-400">GraphQL loaded</span>

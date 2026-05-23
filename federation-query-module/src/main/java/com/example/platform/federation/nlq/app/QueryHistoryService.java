@@ -1,9 +1,11 @@
 package com.example.platform.federation.nlq.app;
 
 import com.example.platform.federation.nlq.domain.QueryHistoryRecord;
+import com.example.platform.federation.nlq.infrastructure.NlqJdbcRepository;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.security.MessageDigest;
@@ -18,6 +20,20 @@ public class QueryHistoryService {
     private static final Logger log = LoggerFactory.getLogger(QueryHistoryService.class);
 
     private final Map<String, QueryHistoryRecord> historyStore = new ConcurrentHashMap<>();
+    private final Optional<NlqJdbcRepository> jdbcRepository;
+
+    public QueryHistoryService() {
+        this(Optional.empty());
+    }
+
+    @Autowired
+    public QueryHistoryService(Optional<NlqJdbcRepository> jdbcRepository) {
+        this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+    }
+
+    public void hydrateRecord(QueryHistoryRecord record) {
+        historyStore.put(record.queryId(), record);
+    }
 
     public QueryHistoryRecord record(String userId, String tenantId, String workspaceId,
             String questionRedacted, String sql, List<String> datasets,
@@ -32,6 +48,7 @@ public class QueryHistoryService {
         );
 
         historyStore.put(queryId, record);
+        jdbcRepository.ifPresent(r -> r.saveQueryHistory(record));
         log.info("QueryHistoryService: recorded queryId={}, userId={}, status={}", queryId, userId, status);
         return record;
     }

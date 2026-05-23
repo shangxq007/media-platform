@@ -1,0 +1,10 @@
+# Hyperswitch HTTP checkout (no official SDK). Activate with SPRING_PROFILES_ACTIVE=hyperswitch
+platform:
+  payment:
+    hyperswitch:
+      enabled: ${HYPERSWITCH_ENABLED:false}
+      api-key: ${HYPERSWITCH_API_KEY:}
+      base-url: ${HYPERSWITCH_BASE_URL:https://sandbox.hyperswitch.io}
+      profile-id: ${HYPERSWITCH_PROFILE_ID:}
+      success-url: ${HYPERSWITCH_SUCCESS_URL:https://example.com/billing/success}
+      cancel-url: ${HYPERSWITCH_CANCEL_URL:https://example.com/billing/cancel}

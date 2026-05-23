@@ -10,20 +10,24 @@ import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.domain.RenderJobStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-@Component
+// @Controller disabled - GraphQL schema conflict
 public class MonitoringFeedbackGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(MonitoringFeedbackGraphQLResolver.class);
 
-    @Autowired private RenderJobService renderJobService;
-    @Autowired private PromptTemplateService promptTemplateService;
+    private final RenderJobService renderJobService;
+    private final PromptTemplateService promptTemplateService;
+
+    public MonitoringFeedbackGraphQLResolver(RenderJobService renderJobService,
+                                             PromptTemplateService promptTemplateService) {
+        this.renderJobService = renderJobService;
+        this.promptTemplateService = promptTemplateService;
+    }
 
     @QueryMapping
     public MonitoringFeedbackOverview monitoringFeedbackOverview(@Argument String range,

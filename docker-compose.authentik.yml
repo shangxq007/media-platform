@@ -1,0 +1,72 @@
+# Optional Authentik stack for OIDC联调 (profile oidc).
+# Usage:
+#   docker compose -f docker-compose.authentik.yml up -d
+# Then set:
+#   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost:9000/application/o/media-platform-dev/
+#   VITE_OIDC_ISSUER=http://localhost:9000/application/o/media-platform-dev/
+#
+# See docs/zh/authentik-oidc-resource-server.md
+
+services:
+  authentik-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: authentik
+    volumes:
+      - authentik-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik -d authentik"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  authentik-redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - authentik-redis:/data
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.10.4
+    command: server
+    volumes:
+      - ./docs/authentik:/blueprints/custom:ro
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-change-me-in-production-use-openssl-rand}
+      AUTHENTIK_REDIS__HOST: authentik-redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_HOST: http://localhost:9000
+    ports:
+      - "9000:9000"
+    depends_on:
+      authentik-postgres:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_started
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.10.4
+    command: worker
+    volumes:
+      - ./docs/authentik:/blueprints/custom:ro
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-change-me-in-production-use-openssl-rand}
+      AUTHENTIK_REDIS__HOST: authentik-redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+    depends_on:
+      authentik-postgres:
+        condition: service_healthy
+      authentik-redis:
+        condition: service_started
+
+volumes:
+  authentik-pg:
+  authentik-redis:

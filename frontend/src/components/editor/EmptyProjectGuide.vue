@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 
 const emit = defineEmits<{
-  upload: []
+  upload: [files: File[]]
   tryDemo: []
   importSubtitle: []
 }>()
@@ -16,7 +16,7 @@ function triggerFileUpload() {
 function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files?.length) {
-    emit('upload')
+    emit('upload', Array.from(input.files))
   }
   input.value = ''
 }

@@ -20,7 +20,8 @@ class RenderProviderRegistrationTest {
     private JavaCVRenderProvider createJavaCVProvider() {
         JavaCVMediaProbeAdapter adapter = new JavaCVMediaProbeAdapter();
         MediaProbeService probeService = new MediaProbeService(adapter);
-        return new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService));
+        return new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService),
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
     }
 
     @Test
@@ -54,7 +55,8 @@ class RenderProviderRegistrationTest {
 
     @Test
     void ffmpegProviderRegistersCorrectly() {
-        FFmpegRenderProvider capability = new FFmpegRenderProvider(null, null);
+        FFmpegRenderProvider capability = new FFmpegRenderProvider(null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(capability);
         assertTrue(capability.supports("h264"));
         assertTrue(capability.supports("mp4"));
@@ -63,7 +65,8 @@ class RenderProviderRegistrationTest {
 
     @Test
     void gstreamerProviderRegistersCorrectly() {
-        GStreamerRenderProvider capability = new GStreamerRenderProvider(null, null);
+        GStreamerRenderProvider capability = new GStreamerRenderProvider(null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(capability);
         assertTrue(capability.supports("pipeline"));
         assertTrue(capability.supports("streaming"));
@@ -72,7 +75,8 @@ class RenderProviderRegistrationTest {
 
     @Test
     void gpacProviderRegistersCorrectly() {
-        GPACRenderProvider capability = new GPACRenderProvider(null, null);
+        GPACRenderProvider capability = new GPACRenderProvider(null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(capability);
         assertTrue(capability.supports("mp4"));
         assertTrue(capability.supports("dash"));
@@ -82,7 +86,8 @@ class RenderProviderRegistrationTest {
 
     @Test
     void mltProviderRegistersCorrectly() {
-        MltRenderProvider capability = new MltRenderProvider(null, null, null);
+        MltRenderProvider capability = new MltRenderProvider(null, null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(capability);
         assertTrue(capability.supports("timeline"));
         assertTrue(capability.supports("multi-track"));
@@ -97,7 +102,9 @@ class RenderProviderRegistrationTest {
         registry.register("javacv", javacv, javacv.getCapability());
         registry.register("ofx", ofx, ofx.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
         RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
 
@@ -115,7 +122,9 @@ class RenderProviderRegistrationTest {
         registry.register("javacv", javacv, javacv.getCapability());
         registry.register("ofx", ofx, ofx.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
         RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
 
@@ -167,7 +176,8 @@ class RenderProviderRegistrationTest {
 
     @Test
     void ffmpegProviderIsNotDeadCode() {
-        FFmpegRenderProvider provider = new FFmpegRenderProvider(null, null);
+        FFmpegRenderProvider provider = new FFmpegRenderProvider(null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(provider);
         assertFalse(provider.getSupportedProfiles().isEmpty());
         assertTrue(provider.supports("h264"));
@@ -178,7 +188,8 @@ class RenderProviderRegistrationTest {
 
     @Test
     void gstreamerProviderIsNotDeadCode() {
-        GStreamerRenderProvider provider = new GStreamerRenderProvider(null, null);
+        GStreamerRenderProvider provider = new GStreamerRenderProvider(null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(provider);
         assertFalse(provider.getSupportedProfiles().isEmpty());
         assertTrue(provider.supports("pipeline"));
@@ -187,7 +198,8 @@ class RenderProviderRegistrationTest {
 
     @Test
     void gpacProviderIsNotDeadCode() {
-        GPACRenderProvider provider = new GPACRenderProvider(null, null);
+        GPACRenderProvider provider = new GPACRenderProvider(null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(provider);
         assertFalse(provider.getSupportedProfiles().isEmpty());
         assertTrue(provider.supports("mp4"));
@@ -197,14 +209,16 @@ class RenderProviderRegistrationTest {
 
     @Test
     void deprecatedFfmpegWrapperDelegates() {
-        FfmpegRenderProvider wrapper = new FfmpegRenderProvider(null, null);
+        FfmpegRenderProvider wrapper = new FfmpegRenderProvider(null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(wrapper);
         assertFalse(wrapper.getSupportedProfiles().isEmpty());
     }
 
     @Test
     void deprecatedGpacWrapperDelegates() {
-        GpacRenderProvider wrapper = new GpacRenderProvider(null, null);
+        GpacRenderProvider wrapper = new GpacRenderProvider(null, null,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         assertNotNull(wrapper);
         assertFalse(wrapper.getSupportedProfiles().isEmpty());
     }

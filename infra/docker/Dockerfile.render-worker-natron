@@ -1,0 +1,40 @@
+# Natron render worker POC — Java render-module + FFmpeg + poc-render.sh
+# NatronRenderer can be mounted or installed in a derived image for phase 2.
+
+FROM eclipse-temurin:25-jdk-jammy AS build
+
+WORKDIR /workspace
+COPY platform/gradle/ platform/gradle/
+COPY platform/gradlew platform/build.gradle.kts platform/settings.gradle.kts platform/
+COPY platform/render-module/ platform/render-module/
+COPY platform/shared-kernel/ platform/shared-kernel/
+COPY platform/extension-module/ platform/extension-module/
+
+WORKDIR /workspace/platform
+RUN ./gradlew :render-module:jar -x test --no-daemon
+
+FROM eclipse-temurin:25-jre-jammy
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    bash \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=build /workspace/platform/render-module/build/libs/render-module-*.jar /app/render-module.jar
+COPY platform/render-module/src/main/resources/natron/poc-render.sh /app/bin/natron-poc-render.sh
+COPY platform/render-module/src/main/resources/natron/templates/video.natron_vignette/batch_vignette.py \
+    /app/share/natron/templates/video.natron_vignette/batch_vignette.py
+RUN chmod +x /app/bin/natron-poc-render.sh
+
+ENV APP_STORAGE_LOCAL_ROOT=/data/storage \
+    NATRON_POC_SCRIPT=/app/bin/natron-poc-render.sh \
+    NATRON_POC_FALLBACK=true \
+    MEDIA_FFMPEG_PATH=/usr/bin/ffmpeg
+
+VOLUME ["/data/storage"]
+
+# Full platform-app boot with natron-worker profile, or invoke jar entrypoint in phase 2.
+# POC: run platform-app with render.providers.natron.enabled=true on this image.
+LABEL org.opencontainers.image.description="Media platform Natron worker POC (FFmpeg vignette fallback)"

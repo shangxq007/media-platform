@@ -1,0 +1,8 @@
+# Profile: self-hosted Vault (HTTP) or HCP with namespace
+# Usage: --spring.profiles.active=dev,vault
+
+app:
+  secrets:
+    vault:
+      enabled: true
+    inline-credentials-enabled: false

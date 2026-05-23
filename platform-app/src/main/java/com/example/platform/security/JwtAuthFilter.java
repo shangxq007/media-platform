@@ -13,8 +13,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.MDC;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.crypto.SecretKey;
@@ -23,9 +25,26 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 
-@Component
+@Configuration
 @ConditionalOnProperty(name = "app.security.enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(name = "app.security.oauth2.enabled", havingValue = "false", matchIfMissing = true)
 public class JwtAuthFilter extends OncePerRequestFilter {
+
+    private final JwtProperties jwtProperties;
+
+    public JwtAuthFilter(JwtProperties jwtProperties) {
+        this.jwtProperties = jwtProperties;
+    }
+
+    @Bean
+    @Order(3)
+    FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration() {
+        FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(this);
+        registration.addUrlPatterns("/api/v1/*");
+        registration.setOrder(3);
+        registration.setEnabled(true);
+        return registration;
+    }
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -36,12 +55,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             "/api/v1/artifacts",
             "/api/v1/web/"
     );
-
-    private final JwtProperties jwtProperties;
-
-    public JwtAuthFilter(JwtProperties jwtProperties) {
-        this.jwtProperties = jwtProperties;
-    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {

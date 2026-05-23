@@ -130,6 +130,75 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   const selectedClipId = ref<string | null>(null)
+  const patchHighlightClipIds = ref<string[]>([])
+
+  function setPatchHighlightClipIds(ids: string[]) {
+    patchHighlightClipIds.value = [...new Set(ids.filter(Boolean))]
+    patchHighlightIndex.value = 0
+  }
+
+  function clearPatchHighlightClipIds() {
+    patchHighlightClipIds.value = []
+  }
+
+  function isClipPatchHighlighted(trackClipId: string): boolean {
+    return patchHighlightClipIds.value.includes(trackClipId)
+  }
+
+  const scrollToTrackClipId = ref<string | null>(null)
+  const patchHighlightIndex = ref(0)
+
+  function focusTrackClip(trackClipId: string): boolean {
+    const tc = findTrackClipInState(trackClipId)
+    if (!tc) {
+      return false
+    }
+    selectedClipId.value = trackClipId
+    state.value.currentTime = Math.max(0, tc.start)
+    scrollToTrackClipId.value = trackClipId
+    return true
+  }
+
+  function focusFirstPatchHighlightClip(): boolean {
+    patchHighlightIndex.value = 0
+    const first = patchHighlightClipIds.value[0]
+    if (!first) {
+      return false
+    }
+    return focusTrackClip(first)
+  }
+
+  function focusHighlightAtIndex(index: number): boolean {
+    const ids = patchHighlightClipIds.value
+    if (!ids.length) {
+      return false
+    }
+    const i = ((index % ids.length) + ids.length) % ids.length
+    patchHighlightIndex.value = i
+    return focusTrackClip(ids[i])
+  }
+
+  function nextPatchHighlight(): boolean {
+    return focusHighlightAtIndex(patchHighlightIndex.value + 1)
+  }
+
+  function prevPatchHighlight(): boolean {
+    return focusHighlightAtIndex(patchHighlightIndex.value - 1)
+  }
+
+  function findTrackClipInState(trackClipId: string) {
+    for (const track of state.value.tracks) {
+      const tc = track.clips.find(c => c.id === trackClipId)
+      if (tc) {
+        return tc
+      }
+    }
+    return null
+  }
+
+  function clearScrollToTrackClipRequest() {
+    scrollToTrackClipId.value = null
+  }
 
   const selectedTrackClip = computed(() => {
     if (!selectedClipId.value) return null
@@ -302,6 +371,18 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   return {
     state, clips, trackCount, selectedClipId, selectedTrackClip, selectedClip,
+    patchHighlightClipIds,
+    setPatchHighlightClipIds,
+    clearPatchHighlightClipIds,
+    isClipPatchHighlighted,
+    scrollToTrackClipId,
+    focusTrackClip,
+    focusFirstPatchHighlightClip,
+    patchHighlightIndex,
+    focusHighlightAtIndex,
+    nextPatchHighlight,
+    prevPatchHighlight,
+    clearScrollToTrackClipRequest,
     addTrack, removeTrack, addClipToTrack, removeClipFromTrack,
     moveClip, resizeClip, setCurrentTime, togglePlayback, setZoom,
     loadFromJSON, toJSON, getOTIOExport, loadDemoProject,

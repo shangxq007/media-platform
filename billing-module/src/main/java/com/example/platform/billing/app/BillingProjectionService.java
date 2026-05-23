@@ -140,7 +140,9 @@ public class BillingProjectionService {
                             record.id(), "tenant", record.subjectId(), record.canonicalProductCode(),
                             record.periodStartAt(), record.periodEndAt(),
                             record.contractState(), 0L, "USD",
-                            Map.of(), Map.of()
+                            Map.of(), Map.of(),
+                            SubscriptionContractRole.BASE,
+                            record.canonicalProductCode()
                     );
                     contracts.put(contractId, contract);
                 }
@@ -173,7 +175,9 @@ public class BillingProjectionService {
                 0L,
                 "USD",
                 Map.of(),
-                Map.of()
+                Map.of(),
+                SubscriptionContractRole.BASE,
+                canonicalProductCode
         );
 
         if (subscriptionContractRepository != null) {

@@ -52,6 +52,20 @@ public class SubscriptionBillingController {
         return toSubscriptionResponse(contract);
     }
 
+    @GetMapping("/billing/subscriptions/active")
+    public List<SubscriptionResponse> listActiveSubscriptions(
+            @RequestParam String tenantId, @RequestParam String userId) {
+        return subscriptionBillingService.listActiveSubscriptions(tenantId, userId).stream()
+                .map(this::toSubscriptionResponse)
+                .toList();
+    }
+
+    @GetMapping("/billing/subscriptions/effective-quota")
+    public Map<String, Long> getEffectiveIncludedQuota(
+            @RequestParam String tenantId, @RequestParam String userId) {
+        return subscriptionBillingService.getEffectiveIncludedQuota(tenantId, userId);
+    }
+
     @PostMapping("/billing/subscriptions/change-plan")
     public SubscriptionResponse changePlan(@RequestBody ChangePlanRequest request) {
         SubscriptionContract contract = subscriptionBillingService.changePlan(
@@ -77,6 +91,8 @@ public class SubscriptionBillingController {
                 contract.contractId(), contract.tenantId(), contract.userId(),
                 contract.planKey(), contract.periodStartAt(), contract.periodEndAt(),
                 contract.lifecycleState(), contract.basePriceMinor(),
-                contract.currencyCode());
+                contract.currencyCode(),
+                contract.contractRole().name(),
+                contract.productCode());
     }
 }

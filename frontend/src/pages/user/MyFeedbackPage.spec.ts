@@ -3,6 +3,20 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import MyFeedbackPage from './MyFeedbackPage.vue'
 
+vi.mock('@/api/me', () => ({
+  MeEntitlementAPI: {
+    getMyFeedback: vi.fn().mockResolvedValue({
+      feedback: [],
+      total: 0,
+      page: 0,
+      size: 20,
+    }),
+    submitFeedback: vi.fn().mockResolvedValue({
+      id: 'fb1', type: 'GENERAL', severity: 'low', status: 'OPEN', title: 'Test', createdAt: '2026-05-19T00:00:00Z',
+    }),
+  },
+}))
+
 describe('MyFeedbackPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

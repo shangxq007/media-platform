@@ -52,9 +52,7 @@ class MonitoringFeedbackGraphQLResolverTest {
                         "ERR-001", null, null, null)
         ));
 
-        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "promptTemplateService", promptTemplateService);
+        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(renderJobService, promptTemplateService);
 
         MonitoringFeedbackOverview result = resolver.monitoringFeedbackOverview("7d", ctx);
 
@@ -84,9 +82,7 @@ class MonitoringFeedbackGraphQLResolverTest {
         when(renderJobService.list()).thenReturn(List.of());
         when(promptTemplateService.listAllExecutions()).thenReturn(List.of());
 
-        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "promptTemplateService", promptTemplateService);
+        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(renderJobService, promptTemplateService);
 
         MonitoringFeedbackOverview result = resolver.monitoringFeedbackOverview(null, ctx);
 
@@ -120,9 +116,7 @@ class MonitoringFeedbackGraphQLResolverTest {
                         null, null)
         ));
 
-        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "promptTemplateService", promptTemplateService);
+        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(renderJobService, promptTemplateService);
 
         MonitoringFeedbackOverview result = resolver.monitoringFeedbackOverview("7d", ctx);
 

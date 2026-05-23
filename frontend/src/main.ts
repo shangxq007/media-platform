@@ -3,6 +3,9 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import './style.css'
+import { bootstrapDevAuth } from './api/index'
+import { useAuthStore } from './stores/auth'
+import { isOidcEnabled } from './auth/oidcConfig'
 
 // Import monitoring utilities
 import { initSentry, setSentryUser, captureSentryException } from './utils/sentry'
@@ -46,7 +49,16 @@ function initMonitoring() {
 
 initMonitoring()
 
-app.mount('#app')
+async function bootstrapApp() {
+  const auth = useAuthStore()
+  await auth.init()
+  if (!isOidcEnabled()) {
+    await bootstrapDevAuth()
+  }
+  app.mount('#app')
+}
+
+bootstrapApp()
 
 // Global error handler
 app.config.errorHandler = (err: any, instance: any, info: string) => {

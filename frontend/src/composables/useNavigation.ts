@@ -1,10 +1,12 @@
 import { ref, computed } from 'vue'
 import { NavigationClient } from '@/api/navigation'
 import type { NavigationProfile, RouteVisibilityDecision } from '@/types/routing'
+import { getFallbackNavigation, mergeWithFallback } from '@/navigation/navigationFallback'
 
 const profile = ref<NavigationProfile | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const isUsingFallback = ref(false)
 let fetchPromise: Promise<NavigationProfile> | null = null
 
 export function useNavigation() {
@@ -46,17 +48,29 @@ export function useNavigation() {
 
     loading.value = true
     error.value = null
+    isUsingFallback.value = false
 
     fetchPromise = NavigationClient.getNavigation()
       .then(result => {
-        profile.value = result
-        return result
+        if (!result || !result.routes || result.routes.length === 0) {
+          console.warn('[useNavigation] Backend returned empty navigation, using fallback')
+          const fallback = getFallbackNavigation()
+          profile.value = fallback
+          isUsingFallback.value = true
+          return fallback
+        }
+        const merged = mergeWithFallback(result)
+        profile.value = merged
+        return merged
       })
       .catch(err => {
         const msg = err instanceof Error ? err.message : String(err)
         error.value = msg
-        console.error('[useNavigation] Failed to fetch navigation:', err)
-        return { routes: [], menuGroups: {} }
+        console.warn('[useNavigation] Failed to fetch navigation, using fallback:', err)
+        const fallback = getFallbackNavigation()
+        profile.value = fallback
+        isUsingFallback.value = true
+        return fallback
       })
       .finally(() => {
         loading.value = false
@@ -69,12 +83,14 @@ export function useNavigation() {
   function clearCache() {
     profile.value = null
     error.value = null
+    isUsingFallback.value = false
   }
 
   return {
     profile,
     loading,
     error,
+    isUsingFallback,
     routes,
     menuGroups,
     visibleRoutes,

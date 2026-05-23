@@ -32,6 +32,8 @@ export interface RouteVisibilityDecision {
   requiredUpgrade?: string
   requiredPermission?: string
   requiredEntitlement?: string
+  requiredFeatureFlag?: string
+  upgradeOptions?: string[]
   children?: RouteVisibilityDecision[]
 }
 

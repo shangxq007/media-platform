@@ -16,7 +16,7 @@ class QuotaDecisionServiceTest {
     @BeforeEach
     void setUp() {
         policyService = new QuotaPolicyService();
-        usageService = new QuotaUsageService();
+        usageService = new QuotaUsageService(java.util.Optional.empty());
         service = new QuotaDecisionService(policyService, usageService);
     }
 

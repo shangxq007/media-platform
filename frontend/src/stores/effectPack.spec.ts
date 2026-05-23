@@ -1,13 +1,42 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useEffectPackStore } from '@/stores/effectPack'
 
+const mockPack = {
+  packId: 'builtin-core',
+  version: '2.0.0',
+  name: 'Core Effects',
+  description: 'Built-in',
+  author: 'media-platform',
+  compatibility: '2.0',
+  allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'],
+  builtin: true,
+  effects: [
+    { effectKey: 'video.fade_in', displayName: 'Fade In', category: 'transition', description: '', parameterSchema: {}, defaultValues: { duration: 1.0 }, providerMappings: ['javacv'], allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] },
+    { effectKey: 'video.blur', displayName: 'Blur', category: 'video', description: '', parameterSchema: {}, defaultValues: { radius: 2.0 }, providerMappings: ['javacv'], allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] },
+    { effectKey: 'text.subtitle_burn_in', displayName: 'Subtitle', category: 'text', description: '', parameterSchema: {}, defaultValues: {}, providerMappings: ['javacv'], allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] },
+    { effectKey: 'video.vignette', displayName: 'Vignette', category: 'video', description: '', parameterSchema: {}, defaultValues: { intensity: 0.5 }, providerMappings: ['ofx'], allowedTiers: ['PRO', 'TEAM', 'ENTERPRISE'] },
+  ]
+}
+
+vi.mock('@/api/index', () => ({
+  EffectPackAPI: {
+    list: vi.fn(async () => [mockPack]),
+    get: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn()
+  }
+}))
+
 describe('EffectPackStore', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setActivePinia(createPinia())
+    const store = useEffectPackStore()
+    await store.loadFromApi()
   })
 
-  it('loads builtin packs on init', () => {
+  it('loads builtin packs from API', () => {
     const store = useEffectPackStore()
     expect(store.builtinPacks.length).toBeGreaterThan(0)
     expect(store.builtinPacks[0].packId).toBe('builtin-core')
@@ -48,7 +77,6 @@ describe('EffectPackStore', () => {
     const store = useEffectPackStore()
     const freeEffects = store.getEffectsForTier('FREE')
     expect(freeEffects.length).toBeGreaterThan(0)
-    // All free effects should have FREE in allowedTiers
     freeEffects.forEach(e => {
       expect(e.allowedTiers).toContain('FREE')
     })

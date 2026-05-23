@@ -3,9 +3,11 @@ package com.example.platform.federation.nlq.app;
 import com.example.platform.federation.nlq.domain.ReportDefinition;
 import com.example.platform.federation.nlq.domain.ReportSchedule;
 import com.example.platform.federation.nlq.domain.ReportWidget;
+import com.example.platform.federation.nlq.infrastructure.NlqJdbcRepository;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -20,9 +22,26 @@ public class ReportDefinitionService {
 
     private final Map<String, ReportDefinition> reportStore = new ConcurrentHashMap<>();
     private final QueryAuditService queryAuditService;
+    private final Optional<NlqJdbcRepository> jdbcRepository;
 
     public ReportDefinitionService(QueryAuditService queryAuditService) {
+        this(queryAuditService, Optional.empty());
+    }
+
+    @Autowired
+    public ReportDefinitionService(QueryAuditService queryAuditService,
+                                   Optional<NlqJdbcRepository> jdbcRepository) {
         this.queryAuditService = queryAuditService;
+        this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+    }
+
+    public void hydrateReport(ReportDefinition report) {
+        reportStore.put(report.reportId(), report);
+    }
+
+    private void persistReport(ReportDefinition report) {
+        reportStore.put(report.reportId(), report);
+        jdbcRepository.ifPresent(r -> r.saveReport(report));
     }
 
     public ReportDefinition create(String tenantId, String workspaceId, String name, String description,
@@ -38,7 +57,7 @@ public class ReportDefinitionService {
             createdBy, visibility, schedule, now, now, false
         );
 
-        reportStore.put(reportId, report);
+        persistReport(report);
         queryAuditService.auditReportCreated(createdBy, tenantId, reportId, name);
         log.info("ReportDefinitionService: created reportId={}, name={}", reportId, name);
         return report;
@@ -91,7 +110,7 @@ public class ReportDefinitionService {
             existing.createdAt(), Instant.now(), false
         );
 
-        reportStore.put(reportId, updated);
+        persistReport(updated);
         log.info("ReportDefinitionService: updated reportId={}", reportId);
         return Optional.of(updated);
     }
@@ -110,7 +129,7 @@ public class ReportDefinitionService {
             existing.createdAt(), Instant.now(), true
         );
 
-        reportStore.put(reportId, archived);
+        persistReport(archived);
         queryAuditService.auditReportArchived(existing.createdBy(), existing.tenantId(), reportId);
         log.info("ReportDefinitionService: archived reportId={}", reportId);
         return true;

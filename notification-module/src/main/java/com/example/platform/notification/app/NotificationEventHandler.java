@@ -6,6 +6,9 @@ import static org.jooq.impl.DSL.table;
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
+import com.example.platform.shared.events.RenderCacheHashInvalidatedEvent;
+import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
+import com.example.platform.shared.events.RenderDeliveryFailedEvent;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
 import com.example.platform.shared.Ids;
@@ -68,6 +71,54 @@ public class NotificationEventHandler {
                 event.renderJobId(),
                 Map.of("renderJobId", event.renderJobId(), "projectId", event.projectId(),
                         "oldStatus", event.oldStatus(), "newStatus", event.newStatus())
+        ));
+    }
+
+    @EventListener
+    public void onRenderCacheHashInvalidated(RenderCacheHashInvalidatedEvent event) {
+        log.info("NotificationEventHandler: cache hash invalidated job={} tasks={}",
+                event.renderJobId(), event.invalidatedCount());
+        handle(new NotificationInboundEvent(
+                "render.cache.hash_invalidated",
+                event.renderJobId(),
+                Map.of(
+                        "renderJobId", event.renderJobId(),
+                        "projectId", event.projectId() != null ? event.projectId() : "",
+                        "tenantId", event.tenantId() != null ? event.tenantId() : "",
+                        "baseJobId", event.baseJobId() != null ? event.baseJobId() : "",
+                        "invalidatedTaskIds", event.invalidatedTaskIds(),
+                        "invalidatedCount", event.invalidatedCount(),
+                        "detectedAt", event.detectedAt().toString())
+        ));
+    }
+
+    @EventListener
+    public void onRenderDeliveryCompleted(RenderDeliveryCompletedEvent event) {
+        handle(new NotificationInboundEvent(
+                "render.delivery.completed",
+                event.deliveryJobId(),
+                Map.of(
+                        "deliveryJobId", event.deliveryJobId(),
+                        "renderJobId", event.renderJobId(),
+                        "projectId", event.projectId() != null ? event.projectId() : "",
+                        "tenantId", event.tenantId() != null ? event.tenantId() : "",
+                        "destinationId", event.destinationId() != null ? event.destinationId() : "",
+                        "protocol", event.protocol() != null ? event.protocol() : "",
+                        "remoteUri", event.remoteUri() != null ? event.remoteUri() : "")
+        ));
+    }
+
+    @EventListener
+    public void onRenderDeliveryFailed(RenderDeliveryFailedEvent event) {
+        handle(new NotificationInboundEvent(
+                "render.delivery.failed",
+                event.deliveryJobId(),
+                Map.of(
+                        "deliveryJobId", event.deliveryJobId(),
+                        "renderJobId", event.renderJobId(),
+                        "projectId", event.projectId() != null ? event.projectId() : "",
+                        "tenantId", event.tenantId() != null ? event.tenantId() : "",
+                        "errorMessage", event.errorMessage() != null ? event.errorMessage() : "")
         ));
     }
 

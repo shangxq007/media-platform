@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { MeEntitlementAPI } from '@/api/me'
 import type { Project } from '@/types'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
@@ -8,12 +9,14 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import FilterBar from '@/components/ui/FilterBar.vue'
+import { formatApiError } from '@/utils/apiError'
 
 const router = useRouter()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
 const projects = ref<Project[]>([])
+const total = ref(0)
 const search = ref('')
 const currentPage = ref(1)
 const pageSize = 12
@@ -24,9 +27,11 @@ async function loadProjects() {
   loading.value = true
   error.value = null
   try {
-    projects.value = []
+    const result = await MeEntitlementAPI.getMyProjects(currentPage.value - 1, pageSize)
+    projects.value = result.projects
+    total.value = result.total
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load projects'
+    error.value = formatApiError(e, 'Failed to load projects')
   } finally {
     loading.value = false
   }
@@ -37,22 +42,17 @@ const filteredProjects = computed(() => {
   const q = search.value.toLowerCase()
   return projects.value.filter(p =>
     p.name.toLowerCase().includes(q) ||
-    p.description.toLowerCase().includes(q)
+    (p.description ?? '').toLowerCase().includes(q)
   )
 })
 
-const paginatedProjects = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return filteredProjects.value.slice(start, start + pageSize)
-})
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredProjects.value.length / pageSize)))
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
 function projectStatusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
   switch (status) {
-    case 'active': return 'success'
-    case 'archived': return 'neutral'
-    case 'error': return 'danger'
+    case 'ACTIVE': return 'success'
+    case 'ARCHIVED': return 'neutral'
+    case 'ERROR': return 'danger'
     default: return 'warning'
   }
 }
@@ -63,6 +63,11 @@ function navigateToProject(id: string) {
 
 function navigateToNew() {
   router.push('/project/new')
+}
+
+function changePage(page: number) {
+  currentPage.value = page
+  loadProjects()
 }
 </script>
 
@@ -76,7 +81,7 @@ function navigateToNew() {
     </PageHeader>
 
     <LoadingState v-if="loading" message="Loading projects..." />
-    <ErrorState v-else-if="error" :description="error" @retry="loadProjects" />
+    <ErrorState v-else-if="error" title="Unable to load projects" :description="error" @retry="loadProjects" />
 
     <template v-else>
       <FilterBar v-model:search="search" search-placeholder="Search projects..." />
@@ -89,7 +94,7 @@ function navigateToNew() {
 
       <template v-else>
         <div class="grid-auto">
-          <div v-for="proj in paginatedProjects" :key="proj.id"
+          <div v-for="proj in filteredProjects" :key="proj.id"
             class="c-card hover:border-primary-200 transition-colors cursor-pointer"
             @click="navigateToProject(proj.id)">
             <div class="c-card-body">
@@ -102,7 +107,6 @@ function navigateToNew() {
               <p v-if="proj.description" class="text-xs text-text-secondary line-clamp-2 mb-sm">{{ proj.description }}</p>
               <div class="flex items-center justify-between text-xs text-text-muted">
                 <span>Created: {{ proj.createdAt }}</span>
-                <span>{{ proj.tenantId }}</span>
               </div>
             </div>
           </div>
@@ -110,12 +114,12 @@ function navigateToNew() {
 
         <div v-if="totalPages > 1" class="flex items-center justify-between px-md py-sm border-t border-default bg-bg-surface">
           <div class="text-xs text-text-muted">
-            Showing {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredProjects.length) }} of {{ filteredProjects.length }}
+            Showing {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, total) }} of {{ total }}
           </div>
           <div class="flex items-center gap-xs">
-            <button class="theme-btn theme-btn-ghost theme-btn-sm" :disabled="currentPage <= 1" @click="currentPage -= 1">←</button>
+            <button class="theme-btn theme-btn-ghost theme-btn-sm" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">←</button>
             <span class="text-xs text-text-secondary px-sm">{{ currentPage }} / {{ totalPages }}</span>
-            <button class="theme-btn theme-btn-ghost theme-btn-sm" :disabled="currentPage >= totalPages" @click="currentPage += 1">→</button>
+            <button class="theme-btn theme-btn-ghost theme-btn-sm" :disabled="currentPage >= totalPages" @click="changePage(currentPage + 1)">→</button>
           </div>
         </div>
       </template>

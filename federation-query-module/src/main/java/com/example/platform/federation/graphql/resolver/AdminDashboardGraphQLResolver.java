@@ -12,23 +12,31 @@ import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.domain.RenderJobStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Component
+// @Controller disabled - GraphQL schema conflict
 public class AdminDashboardGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(AdminDashboardGraphQLResolver.class);
 
-    @Autowired private RenderJobService renderJobService;
-    @Autowired private BillingProjectionService billingProjectionService;
-    @Autowired private UsageMeteringService usageMeteringService;
-    @Autowired private ExtensionRegistryService extensionRegistryService;
+    private final RenderJobService renderJobService;
+    private final BillingProjectionService billingProjectionService;
+    private final UsageMeteringService usageMeteringService;
+    private final ExtensionRegistryService extensionRegistryService;
+
+    public AdminDashboardGraphQLResolver(RenderJobService renderJobService,
+                                         BillingProjectionService billingProjectionService,
+                                         UsageMeteringService usageMeteringService,
+                                         ExtensionRegistryService extensionRegistryService) {
+        this.renderJobService = renderJobService;
+        this.billingProjectionService = billingProjectionService;
+        this.usageMeteringService = usageMeteringService;
+        this.extensionRegistryService = extensionRegistryService;
+    }
 
     @QueryMapping
     public AdminDashboard adminDashboard(@Argument String range, GraphQLRequestContext context) {

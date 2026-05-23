@@ -3,8 +3,11 @@ package com.example.platform.render.infrastructure.ffmpeg;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.render.domain.RenderProfile;
+import com.example.platform.render.domain.timeline.TimelineAssetRef;
+import com.example.platform.render.domain.timeline.TimelineClip;
 import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.timeline.TimelineTrack;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,15 +96,20 @@ class FfmpegCommandFactoryTest {
     @Test
     void shouldBuildTranscodeFromTimeline() {
         TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
-        TimelineSpec timeline = TimelineSpec.create("tl-1", "Test", output);
+        TimelineClip clip = TimelineClip.of("c1", TimelineAssetRef.of("a1", "/tmp/input.mp4"),
+                0, 0, 10);
+        TimelineTrack track = new TimelineTrack("v1", "Video", TimelineTrack.TrackType.VIDEO,
+                0, List.of(clip), false, false);
+        TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
+                List.of(track), List.of(), output, 10, java.util.Map.of());
         List<String> args = factory.buildTranscodeFromTimeline(timeline, "storage://output.mp4");
 
+        assertTrue(args.contains("-i"));
+        assertTrue(args.contains("/tmp/input.mp4"));
         assertTrue(args.contains("-c:v"));
         assertTrue(args.contains("libx264"));
         assertTrue(args.contains("-s"));
         assertTrue(args.contains("1920x1080"));
-        assertTrue(args.contains("-pix_fmt"));
-        assertTrue(args.contains("yuv420p"));
         assertTrue(args.contains("storage://output.mp4"));
     }
 

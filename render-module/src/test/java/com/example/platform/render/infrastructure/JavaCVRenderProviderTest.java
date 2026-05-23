@@ -19,7 +19,8 @@ class JavaCVRenderProviderTest {
         MediaProbeService probeService = new MediaProbeService(adapter);
         JavaCVRenderService renderService = new JavaCVRenderService(probeService);
         JavaCVTranscodeService transcodeService = new JavaCVTranscodeService(probeService);
-        provider = new JavaCVRenderProvider(renderService, transcodeService);
+        provider = new JavaCVRenderProvider(renderService, transcodeService,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
     }
 
     @Test

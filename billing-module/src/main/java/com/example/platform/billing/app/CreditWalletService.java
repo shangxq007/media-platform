@@ -1,14 +1,16 @@
 package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.*;
+import com.example.platform.billing.infrastructure.CreditWalletJdbcRepository;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -19,6 +21,24 @@ public class CreditWalletService {
     private final ConcurrentHashMap<String, CreditWallet> wallets = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CreditTransaction> transactions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> reservations = new ConcurrentHashMap<>();
+    private final Optional<CreditWalletJdbcRepository> jdbcRepository;
+
+    public CreditWalletService() {
+        this(Optional.empty());
+    }
+
+    @Autowired
+    public CreditWalletService(Optional<CreditWalletJdbcRepository> jdbcRepository) {
+        this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+    }
+
+    public void hydrateWallet(CreditWallet wallet) {
+        wallets.put(wallet.walletId(), wallet);
+    }
+
+    public void hydrateTransaction(CreditTransaction txn) {
+        transactions.put(txn.transactionId(), txn);
+    }
 
     public CreditWallet createWallet(String tenantId, String workspaceId, String userId,
                                       String currencyCode) {
@@ -26,7 +46,7 @@ public class CreditWalletService {
         CreditWallet wallet = new CreditWallet(
                 walletId, tenantId, workspaceId, userId,
                 0L, currencyCode, "ACTIVE", Instant.now(), Instant.now());
-        wallets.put(walletId, wallet);
+        persistWallet(wallet);
         log.info("CreditWalletService: created wallet {} tenant={}", walletId, tenantId);
         return wallet;
     }
@@ -36,9 +56,18 @@ public class CreditWalletService {
     }
 
     public CreditWallet getWalletByTenant(String tenantId, String userId) {
-        return wallets.values().stream()
+        CreditWallet cached = wallets.values().stream()
                 .filter(w -> tenantId.equals(w.tenantId()) && userId.equals(w.userId()))
                 .findFirst()
+                .orElse(null);
+        if (cached != null) {
+            return cached;
+        }
+        return jdbcRepository.flatMap(r -> r.findWalletByTenantAndUser(tenantId, userId))
+                .map(w -> {
+                    hydrateWallet(w);
+                    return w;
+                })
                 .orElse(null);
     }
 
@@ -53,7 +82,7 @@ public class CreditWalletService {
                 existing.walletId(), existing.tenantId(), existing.workspaceId(),
                 existing.userId(), newBalance, existing.currencyCode(),
                 existing.status(), existing.createdAt(), Instant.now());
-        wallets.put(walletId, updated);
+        persistWallet(updated);
         recordTransaction(walletId, CreditTransaction.TYPE_CREDIT, amountMinor,
                 newBalance, referenceType, referenceId, description);
         log.info("CreditWalletService: credited wallet {} amount={} newBalance={}",
@@ -75,7 +104,7 @@ public class CreditWalletService {
                 existing.walletId(), existing.tenantId(), existing.workspaceId(),
                 existing.userId(), newBalance, existing.currencyCode(),
                 existing.status(), existing.createdAt(), Instant.now());
-        wallets.put(walletId, updated);
+        persistWallet(updated);
         recordTransaction(walletId, CreditTransaction.TYPE_DEBIT, amountMinor,
                 newBalance, referenceType, referenceId, description);
         log.info("CreditWalletService: debited wallet {} amount={} newBalance={}",
@@ -122,7 +151,7 @@ public class CreditWalletService {
                 existing.walletId(), existing.tenantId(), existing.workspaceId(),
                 existing.userId(), newBalance, existing.currencyCode(),
                 existing.status(), existing.createdAt(), Instant.now());
-        wallets.put(walletId, updated);
+        persistWallet(updated);
         recordTransaction(walletId, CreditTransaction.TYPE_FINALIZE, actualAmountMinor,
                 newBalance, referenceType, referenceId, description);
         log.info("CreditWalletService: finalized reservation {} actual={} newBalance={}",
@@ -150,6 +179,12 @@ public class CreditWalletService {
                 txnId, walletId, type, amountMinor, balanceAfterMinor,
                 referenceType, referenceId, description, Instant.now());
         transactions.put(txnId, txn);
+        jdbcRepository.ifPresent(r -> r.saveTransaction(txn));
+    }
+
+    private void persistWallet(CreditWallet wallet) {
+        wallets.put(wallet.walletId(), wallet);
+        jdbcRepository.ifPresent(r -> r.saveWallet(wallet));
     }
 
     public List<CreditTransaction> getTransactions(String walletId) {

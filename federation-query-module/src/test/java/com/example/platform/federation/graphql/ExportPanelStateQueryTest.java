@@ -61,11 +61,7 @@ class ExportPanelStateQueryTest {
         when(exportPolicyService.getDefaultPreset("PRO")).thenReturn(preset);
         when(exportPolicyService.resolveProvider("pro_1080p", "PRO")).thenReturn("javacv");
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "exportPolicyService", exportPolicyService);
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "projectRepository", projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
 
         ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
 
@@ -98,11 +94,7 @@ class ExportPanelStateQueryTest {
                 Project.ProjectStatus.ACTIVE, Instant.now());
         when(projectRepository.findById("proj-1")).thenReturn(Optional.of(project));
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "exportPolicyService", exportPolicyService);
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "projectRepository", projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
 
         assertThrows(IllegalArgumentException.class, () -> resolver.exportPanelState("proj-1", ctx));
     }
@@ -124,11 +116,7 @@ class ExportPanelStateQueryTest {
 
         when(projectRepository.findById("nonexistent")).thenReturn(Optional.empty());
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "exportPolicyService", exportPolicyService);
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "projectRepository", projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
 
         assertThrows(IllegalArgumentException.class, () -> resolver.exportPanelState("nonexistent", ctx));
     }
@@ -170,11 +158,7 @@ class ExportPanelStateQueryTest {
         when(exportPolicyService.resolveProvider("free_720p", "FREE")).thenReturn("javacv");
         when(exportPolicyService.resolveProvider("pro_1080p", "FREE")).thenReturn("javacv");
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "exportPolicyService", exportPolicyService);
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "projectRepository", projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
 
         ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
 
@@ -216,11 +200,7 @@ class ExportPanelStateQueryTest {
         when(exportPolicyService.getDefaultPreset("PRO")).thenReturn(preset);
         when(exportPolicyService.resolveProvider("pro_1080p", "PRO")).thenReturn("javacv");
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "exportPolicyService", exportPolicyService);
-        setField(resolver, "entitlementDecisionService", entitlementService);
-        setField(resolver, "projectRepository", projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
 
         ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
 

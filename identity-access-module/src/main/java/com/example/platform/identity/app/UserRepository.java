@@ -4,6 +4,7 @@ import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
 import com.example.platform.identity.domain.User;
+import com.example.platform.identity.infrastructure.JooqRecords;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -46,15 +47,31 @@ public class UserRepository {
                 .fetch(this::mapRecord);
     }
 
+    public Optional<User> findByTenantIdAndEmail(String tenantId, String email) {
+        Record record = dsl.select()
+                .from(table("\"user\""))
+                .where(field("tenant_id").eq(tenantId))
+                .and(field("email").eq(email))
+                .fetchOne();
+        return Optional.ofNullable(record).map(this::mapRecord);
+    }
+
+    public void updateRole(String userId, User.UserRole role) {
+        dsl.update(table("\"user\""))
+                .set(field("role"), role.name())
+                .where(field("id").eq(userId))
+                .execute();
+    }
+
     private User mapRecord(Record record) {
         return new User(
-                record.get(field("id"), String.class),
-                record.get(field("tenant_id"), String.class),
-                record.get(field("username"), String.class),
-                record.get(field("email"), String.class),
-                User.UserRole.valueOf(record.get(field("role"), String.class)),
-                User.UserStatus.valueOf(record.get(field("status"), String.class)),
-                record.get(field("created_at"), OffsetDateTime.class).toInstant()
+                JooqRecords.string(record, "id"),
+                JooqRecords.string(record, "tenant_id"),
+                JooqRecords.string(record, "username"),
+                JooqRecords.string(record, "email"),
+                User.UserRole.valueOf(JooqRecords.string(record, "role")),
+                User.UserStatus.valueOf(JooqRecords.string(record, "status")),
+                JooqRecords.offsetDateTime(record, "created_at").toInstant()
         );
     }
 }

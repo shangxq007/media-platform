@@ -26,7 +26,8 @@ class GpacRenderProviderTest {
     void setUp(@TempDir Path tempDir) {
         mockToolRunner = mock(ProcessToolRunner.class);
         commandFactory = new Mp4BoxCommandFactory();
-        provider = new GPACRenderProvider(mockToolRunner, commandFactory);
+        provider = new GPACRenderProvider(mockToolRunner, commandFactory,
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         provider.setStorageRoot(tempDir.toString());
     }
 

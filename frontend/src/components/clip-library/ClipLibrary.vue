@@ -266,7 +266,7 @@ function getMetadataStatus(clip: Clip): string {
 
       <EmptyProjectGuide
         v-if="!allClips.length && !uploadItems.length"
-        @upload="() => {}"
+        @upload="onFilesSelected"
         @try-demo="$emit('tryDemo')"
         @import-subtitle="$emit('importSubtitle')"
       />

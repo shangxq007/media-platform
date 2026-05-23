@@ -49,11 +49,7 @@ class AdminDashboardGraphQLResolverTest {
                 new ExtensionInfo("ext-1", "1.0.0", "PROVIDER", "PROVIDER", "ACTIVE", "SEMI_TRUSTED")
         ));
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "billingProjectionService", billingProjectionService);
-        setField(resolver, "usageMeteringService", usageMeteringService);
-        setField(resolver, "extensionRegistryService", extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
 
         AdminDashboard result = resolver.adminDashboard("7d", ctx);
 
@@ -90,11 +86,7 @@ class AdminDashboardGraphQLResolverTest {
         when(usageMeteringService.getUsage(null, null)).thenReturn(List.of());
         when(extensionRegistryService.listExtensions()).thenReturn(List.of());
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "billingProjectionService", billingProjectionService);
-        setField(resolver, "usageMeteringService", usageMeteringService);
-        setField(resolver, "extensionRegistryService", extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
 
         AdminDashboard result = resolver.adminDashboard("7d", ctx);
 
@@ -116,11 +108,7 @@ class AdminDashboardGraphQLResolverTest {
                 "127.0.0.1", "test-agent"
         );
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "billingProjectionService", billingProjectionService);
-        setField(resolver, "usageMeteringService", usageMeteringService);
-        setField(resolver, "extensionRegistryService", extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
 
         assertThrows(IllegalArgumentException.class, () -> resolver.adminDashboard("7d", ctx));
     }
@@ -144,11 +132,7 @@ class AdminDashboardGraphQLResolverTest {
         when(usageMeteringService.getUsage(null, null)).thenReturn(List.of());
         when(extensionRegistryService.listExtensions()).thenReturn(List.of());
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "billingProjectionService", billingProjectionService);
-        setField(resolver, "usageMeteringService", usageMeteringService);
-        setField(resolver, "extensionRegistryService", extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
 
         AdminDashboard result = resolver.adminDashboard(null, ctx);
         assertNotNull(result);

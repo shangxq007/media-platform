@@ -45,16 +45,8 @@ public class CustomPolicyRepository {
     }
 
     private EntitlementPolicy mapToPolicy(String tenantId, Record r) {
-        return new EntitlementPolicy(
-                "custom-" + tenantId,
-                "CUSTOM",
-                3840, 2160, 6000,
-                false,
-                Set.of("javacv", "ofx", "mlt", "gstreamer", "gpac", "remote-javacv"),
-                true, true, 20, true,
-                Set.of("basic", "pro", "team", "enterprise"),
-                Set.of("mp4", "webm", "mov", "dash", "hls", "cmaf"),
-                50,
-                Map.of("source", "custom_policy_db"));
+        String overrideId = r.get(field("ID"), String.class);
+        String payload = r.get(field("OVERRIDE_PAYLOAD"), String.class);
+        return CustomPolicyPayloadParser.parse(tenantId, overrideId, payload);
     }
 }

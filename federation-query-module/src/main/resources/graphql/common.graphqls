@@ -21,7 +21,7 @@ type Money {
 
 type DateTime {
     iso: String!
-    epochMillis: Long!
+    epochMillis: Int!
 }
 
 type Decision {

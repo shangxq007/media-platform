@@ -4,6 +4,7 @@ import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
 import com.example.platform.identity.domain.Tenant;
+import com.example.platform.identity.infrastructure.JooqRecords;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -45,10 +46,10 @@ public class TenantRepository {
 
     private Tenant mapRecord(Record record) {
         return new Tenant(
-                record.get(field("id"), String.class),
-                record.get(field("name"), String.class),
-                Tenant.TenantStatus.valueOf(record.get(field("status"), String.class)),
-                record.get(field("created_at"), OffsetDateTime.class).toInstant()
+                JooqRecords.string(record, "id"),
+                JooqRecords.string(record, "name"),
+                Tenant.TenantStatus.valueOf(JooqRecords.string(record, "status")),
+                JooqRecords.offsetDateTime(record, "created_at").toInstant()
         );
     }
 }

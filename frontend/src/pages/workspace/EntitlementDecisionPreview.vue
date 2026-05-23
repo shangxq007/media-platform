@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { WorkspaceEntitlementAPI } from '@/api/workspace'
 import type { WorkspaceMember, EntitlementDecision } from '@/types'
+import WorkspacePageLayout from '@/components/workspace/WorkspacePageLayout.vue'
 
 const route = useRoute()
 const workspaceId = route.params.workspaceId as string
@@ -18,6 +19,12 @@ const commonFeatures = [
   'ofx_effects', 'watermark_free', 'priority_queue', 'api_extended'
 ]
 
+onMounted(async () => {
+  try {
+    members.value = await WorkspaceEntitlementAPI.getMembers(workspaceId)
+  } catch { /* backend may not be running */ }
+})
+
 async function preview() {
   if (!selectedMemberId.value || !selectedFeatureKey.value) return
   loading.value = true
@@ -29,6 +36,7 @@ async function preview() {
 </script>
 
 <template>
+  <WorkspacePageLayout title="Entitlement Decision Preview">
   <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
     <h3 class="text-sm font-semibold text-gray-300">Decision Preview</h3>
 
@@ -71,4 +79,5 @@ async function preview() {
       <div v-if="result.expiry" class="text-[10px] text-gray-500 mt-1">Expires: {{ result.expiry }}</div>
     </div>
   </div>
+  </WorkspacePageLayout>
 </template>

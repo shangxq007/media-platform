@@ -18,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableConfigurationProperties(JwtProperties.class)
 @ConditionalOnProperty(name = "app.security.enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(name = "app.security.oauth2.enabled", havingValue = "false", matchIfMissing = true)
 public class SecurityFilterChainConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -43,13 +44,7 @@ public class SecurityFilterChainConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/api/v1/mcp/**").authenticated()
-                .requestMatchers("/api/v1/**").authenticated()
-                .anyRequest().permitAll()
-            )
+            .authorizeHttpRequests(SecurityHttpRules::applyApiAuthorization)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

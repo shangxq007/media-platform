@@ -3,6 +3,7 @@ plugins { id("java-library") }
 dependencies {
     api(project(":policy-governance-module"))
     api(project(":render-module"))
+    implementation(project(":delivery-module"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-validation")
     api("io.temporal:temporal-sdk:1.33.0")

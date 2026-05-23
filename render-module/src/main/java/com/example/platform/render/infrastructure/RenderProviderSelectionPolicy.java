@@ -1,12 +1,15 @@
 package com.example.platform.render.infrastructure;
 
+import com.example.platform.render.infrastructure.effects.EffectProviderRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Policy for selecting the best render provider based on profile, effects, and health.
@@ -25,9 +28,12 @@ public class RenderProviderSelectionPolicy {
     private static final Logger log = LoggerFactory.getLogger(RenderProviderSelectionPolicy.class);
 
     private final RenderProviderRegistry registry;
+    private final EffectProviderRouter effectProviderRouter;
 
-    public RenderProviderSelectionPolicy(RenderProviderRegistry registry) {
+    public RenderProviderSelectionPolicy(RenderProviderRegistry registry,
+                                         EffectProviderRouter effectProviderRouter) {
         this.registry = registry;
+        this.effectProviderRouter = effectProviderRouter;
     }
 
     public Optional<RenderProvider> select(String profile, List<String> effectKeys) {
@@ -62,14 +68,43 @@ public class RenderProviderSelectionPolicy {
             healthy = effectMatches;
         }
 
-        // Prefer stable, then by resolution capability
+        Set<String> preferredProviders = preferredProvidersForEffects(effectKeys);
+
+        // Prefer stable, effect-tier routing, then resolution capability
         return healthy.stream()
-                .sorted(Comparator.comparing(RenderProviderCapability::experimental)
+                .sorted(Comparator
+                        .comparingInt((RenderProviderCapability c) ->
+                                providerPreferenceRank(c.providerKey(), preferredProviders))
+                        .thenComparing(RenderProviderCapability::experimental)
                         .thenComparingInt(c -> resolutionArea(c.maxResolution())))
                 .map(cap -> registry.getProvider(cap.providerKey()))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst();
+    }
+
+    private Set<String> preferredProvidersForEffects(List<String> effectKeys) {
+        Set<String> ordered = new LinkedHashSet<>();
+        if (effectKeys != null) {
+            for (String key : effectKeys) {
+                effectProviderRouter.resolveProviderForEffect(key, null).ifPresent(ordered::add);
+            }
+        }
+        return ordered;
+    }
+
+    private static int providerPreferenceRank(String providerKey, Set<String> preferred) {
+        if (preferred == null || preferred.isEmpty()) {
+            return 0;
+        }
+        int idx = 0;
+        for (String p : preferred) {
+            if (p.equals(providerKey)) {
+                return idx;
+            }
+            idx++;
+        }
+        return preferred.size() + 1;
     }
 
     private int resolutionArea(String resolution) {

@@ -18,39 +18,29 @@ public class UsageBillingController {
     private final RatingEngine ratingEngine;
     private final BillingLedgerService billingLedgerService;
     private final BillingDecisionService billingDecisionService;
+    private final PricingRuleService pricingRuleService;
 
     public UsageBillingController(UsageMeteringService usageMeteringService,
                                    RatingEngine ratingEngine,
                                    BillingLedgerService billingLedgerService,
-                                   BillingDecisionService billingDecisionService) {
+                                   BillingDecisionService billingDecisionService,
+                                   PricingRuleService pricingRuleService) {
         this.usageMeteringService = usageMeteringService;
         this.ratingEngine = ratingEngine;
         this.billingLedgerService = billingLedgerService;
         this.billingDecisionService = billingDecisionService;
+        this.pricingRuleService = pricingRuleService;
     }
 
     @PostMapping("/quote")
     public QuoteResponse quote(@RequestBody QuoteRequest request) {
+        PricingRuleService.PricingPreviewResult preview = pricingRuleService.previewPricing(
+                request.tenantId(), request.meterKey(), request.quantity(), Map.of());
         PricingRule rule = findRuleForMeter(request.meterKey());
-        long estimatedAmountMinor;
-        String currencyCode = "USD";
-        String pricingModel = "USAGE_BASED";
-
-        if (rule != null) {
-            currencyCode = rule.currencyCode();
-            pricingModel = rule.pricingModel().name();
-            if (rule.tiers() != null && !rule.tiers().isEmpty()) {
-                estimatedAmountMinor = calculateTieredAmount(request.quantity(), rule);
-            } else {
-                estimatedAmountMinor = Math.round(request.quantity() * rule.unitPriceMinor());
-            }
-        } else {
-            estimatedAmountMinor = Math.round(request.quantity() * 100);
-        }
-
+        String pricingModel = rule != null ? rule.pricingModel().name() : "USAGE_BASED";
         return new QuoteResponse(
                 request.tenantId(), request.meterKey(), request.quantity(),
-                request.unit(), estimatedAmountMinor, currencyCode, pricingModel);
+                request.unit(), preview.estimatedAmountMinor(), preview.currencyCode(), pricingModel);
     }
 
     @PostMapping("/usage/record")
@@ -96,7 +86,11 @@ public class UsageBillingController {
     }
 
     private PricingRule findRuleForMeter(String meterKey) {
-        return null;
+        return pricingRuleService.listPricingRules().stream()
+                .filter(r -> meterKey.equals(r.meterKey()))
+                .filter(r -> "ACTIVE".equals(r.status()))
+                .findFirst()
+                .orElse(null);
     }
 
     private long calculateTieredAmount(double quantity, PricingRule rule) {

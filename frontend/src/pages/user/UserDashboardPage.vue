@@ -2,7 +2,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { MeEntitlementAPI } from '@/api/me'
-import type { MyCapabilities, UsageSummary, CreditWallet, Project, RenderJobDetailed } from '@/types'
+import type { MyCapabilities, UsageSummary, CreditWallet, Project } from '@/types'
+import type { DashboardData } from '@/api/me'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import PageSection from '@/components/ui/PageSection.vue'
 import MetricCard from '@/components/ui/MetricCard.vue'
@@ -10,18 +11,21 @@ import StatusBadge from '@/components/ui/StatusBadge.vue'
 import FeatureBadge from '@/components/ui/FeatureBadge.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import { formatApiError } from '@/utils/apiError'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import UpgradeHint from '@/components/ui/UpgradeHint.vue'
+import UserOnboardingPanel from '@/pages/user/UserOnboardingPanel.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import { quickActionIcons } from '@/config/navigation'
 
 const router = useRouter()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
+const dashboard = ref<DashboardData | null>(null)
 const capabilities = ref<MyCapabilities | null>(null)
 const usage = ref<UsageSummary | null>(null)
 const credits = ref<CreditWallet | null>(null)
-const recentProjects = ref<Project[]>([])
-const recentExports = ref<RenderJobDetailed[]>([])
 
 onMounted(loadDashboard)
 
@@ -29,16 +33,18 @@ async function loadDashboard() {
   loading.value = true
   error.value = null
   try {
-    const [caps, use, cred] = await Promise.allSettled([
+    const [dash, caps, use, cred] = await Promise.allSettled([
+      MeEntitlementAPI.getDashboard(),
       MeEntitlementAPI.getMyCapabilities(),
       MeEntitlementAPI.getUsageSummary(),
       MeEntitlementAPI.getCreditBalance(),
     ])
+    if (dash.status === 'fulfilled') dashboard.value = dash.value
     if (caps.status === 'fulfilled') capabilities.value = caps.value
     if (use.status === 'fulfilled') usage.value = use.value
     if (cred.status === 'fulfilled') credits.value = cred.value
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load dashboard'
+    error.value = formatApiError(e, 'Failed to load dashboard')
   } finally {
     loading.value = false
   }
@@ -60,23 +66,19 @@ const betaFeatures = computed(() => {
   return capabilities.value.featureFlags.filter(f => f.enabled)
 })
 
-function projectStatusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
-  switch (status) {
-    case 'active': return 'success'
-    case 'archived': return 'neutral'
-    case 'error': return 'danger'
-    default: return 'warning'
-  }
-}
+const quickActions = computed(() => dashboard.value?.quickActions ?? [])
 
-function exportStatusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
-  switch (status) {
-    case 'completed': return 'success'
-    case 'running': case 'queued': return 'warning'
-    case 'failed': case 'cancelled': return 'danger'
-    default: return 'neutral'
-  }
-}
+const enabledQuickActions = computed(() => quickActions.value.filter(a => a.visible !== false))
+
+const recentProjects = computed<Project[]>(() => dashboard.value?.recentProjects ?? [])
+
+const onboarding = computed(() => dashboard.value?.onboarding ?? {
+  hasProjects: false,
+  hasCompletedProfile: false,
+  hasInvitedTeamMembers: false,
+  hasCompletedFirstExport: false,
+  hasSetBilling: false,
+})
 
 const quotaItems = computed(() => {
   if (!usage.value) return []
@@ -91,6 +93,12 @@ const quotaItems = computed(() => {
 function navigateTo(path: string) {
   router.push(path)
 }
+
+function handleQuickAction(action: { key: string; path: string; enabled: boolean }) {
+  if (action.enabled) {
+    navigateTo(action.path)
+  }
+}
 </script>
 
 <template>
@@ -103,36 +111,30 @@ function navigateTo(path: string) {
     </PageHeader>
 
     <LoadingState v-if="loading" message="Loading dashboard..." />
-    <ErrorState v-else-if="error" :description="error" @retry="loadDashboard" />
+    <ErrorState v-else-if="error" title="Unable to load dashboard" :description="error" @retry="loadDashboard" />
 
     <template v-else>
+      <!-- Onboarding Panel -->
+      <UserOnboardingPanel :onboarding="onboarding" />
+
       <!-- Quick Actions -->
-      <PageSection title="Quick Actions">
-        <div class="flex flex-wrap gap-md">
-          <button class="c-card flex-1 min-w-48 text-left hover:border-primary-200 transition-colors cursor-pointer" @click="navigateTo('/project/new')">
-            <div class="c-card-body flex items-center gap-md">
-              <span class="text-2xl">➕</span>
-              <div>
-                <div class="text-sm font-medium text-text-primary">New Project</div>
-                <div class="text-xs text-text-muted">Start a new editing project</div>
-              </div>
+      <PageSection title="Quick Actions" description="Jump into common workflows">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
+          <button
+            v-for="action in enabledQuickActions"
+            :key="action.key"
+            type="button"
+            class="dashboard-action-card w-full"
+            :disabled="!action.enabled"
+            @click="handleQuickAction(action)"
+          >
+            <div class="dashboard-action-icon">
+              <AppIcon :name="quickActionIcons[action.key] || 'zap'" :size="22" />
             </div>
-          </button>
-          <button class="c-card flex-1 min-w-48 text-left hover:border-primary-200 transition-colors cursor-pointer" @click="navigateTo('/')">
-            <div class="c-card-body flex items-center gap-md">
-              <span class="text-2xl">📁</span>
-              <div>
-                <div class="text-sm font-medium text-text-primary">Upload Media</div>
-                <div class="text-xs text-text-muted">Import media files to your library</div>
-              </div>
-            </div>
-          </button>
-          <button class="c-card flex-1 min-w-48 text-left hover:border-primary-200 transition-colors cursor-pointer" @click="navigateTo('/?demo=true')">
-            <div class="c-card-body flex items-center gap-md">
-              <span class="text-2xl">🎬</span>
-              <div>
-                <div class="text-sm font-medium text-text-primary">Try Demo</div>
-                <div class="text-xs text-text-muted">Explore with a sample project</div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-text-primary">{{ action.label }}</div>
+              <div v-if="!action.enabled && action.disabledReason" class="text-xs text-text-muted mt-0.5">
+                {{ action.disabledReason }}
               </div>
             </div>
           </button>
@@ -179,31 +181,21 @@ function navigateTo(path: string) {
                 <div class="text-sm text-text-primary truncate-text">{{ proj.name }}</div>
                 <div class="text-xs text-text-muted">{{ proj.createdAt }}</div>
               </div>
-              <StatusBadge :variant="projectStatusVariant(proj.status)" :label="proj.status" />
+              <StatusBadge :variant="proj.status === 'ACTIVE' ? 'success' : 'neutral'" :label="proj.status" />
             </div>
           </div>
         </PageSection>
 
         <PageSection title="Recent Exports">
-          <EmptyState v-if="recentExports.length === 0" title="No exports yet" description="Export a project to see it here.">
+          <EmptyState title="No exports yet" description="Export a project to see it here.">
             <template #action>
-              <button class="theme-btn theme-btn-secondary theme-btn-sm" @click="navigateTo('/')">Open Editor</button>
+              <button class="theme-btn theme-btn-secondary theme-btn-sm" @click="navigateTo('/me/exports')">View All</button>
             </template>
           </EmptyState>
-          <div v-else class="space-y-sm">
-            <div v-for="exp in recentExports" :key="exp.id"
-              class="flex items-center justify-between p-sm rounded bg-bg-surface border border-default">
-              <div class="min-w-0 flex-1">
-                <div class="text-sm text-text-primary truncate-text">{{ exp.format }} · {{ exp.resolution }}</div>
-                <div class="text-xs text-text-muted">{{ exp.createdAt }}</div>
-              </div>
-              <StatusBadge :variant="exportStatusVariant(exp.status)" :label="exp.status" />
-            </div>
-          </div>
         </PageSection>
       </div>
 
-      <!-- Beta Features -->
+      <!-- Feature Flags -->
       <PageSection v-if="betaFeatures.length" title="Beta Features Available">
         <div class="flex flex-wrap gap-sm">
           <FeatureBadge v-for="flag in betaFeatures" :key="flag.flagKey" :feature="flag.displayName" variant="beta" />

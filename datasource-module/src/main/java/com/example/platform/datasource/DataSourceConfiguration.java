@@ -3,6 +3,8 @@ package com.example.platform.datasource;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,5 +45,12 @@ public class DataSourceConfiguration {
             map.put(name, DSL.using(ds, dialect));
         });
         return new DslContextRegistry(map);
+    }
+
+    @Bean
+    @ConditionalOnBean(DataSource.class)
+    @ConditionalOnMissingBean(DSLContext.class)
+    public DSLContext dslContext(DataSource dataSource) {
+        return DSL.using(dataSource, SQLDialect.H2);
     }
 }

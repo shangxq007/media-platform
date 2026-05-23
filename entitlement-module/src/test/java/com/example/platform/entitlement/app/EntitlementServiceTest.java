@@ -4,11 +4,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.entitlement.infrastructure.InMemoryEntitlementCache;
+import com.example.platform.shared.audit.AuditPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+
+import static org.mockito.Mockito.mock;
 
 class EntitlementServiceTest {
 
@@ -18,7 +22,7 @@ class EntitlementServiceTest {
     @BeforeEach
     void setUp() {
         cache = new InMemoryEntitlementCache();
-        service = new EntitlementService(cache, null, null);
+        service = new EntitlementService(cache, Optional.empty(), mock(AuditPort.class));
     }
 
     @Test

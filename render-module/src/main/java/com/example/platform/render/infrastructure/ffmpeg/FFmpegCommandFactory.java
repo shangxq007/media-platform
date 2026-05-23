@@ -1,10 +1,15 @@
 package com.example.platform.render.infrastructure.ffmpeg;
 
 import com.example.platform.render.domain.RenderProfile;
+import com.example.platform.render.domain.timeline.TimelineClip;
+import com.example.platform.render.domain.timeline.TimelineClipEffect;
 import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.infrastructure.effects.EffectFilterGraphBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +27,12 @@ import org.slf4j.LoggerFactory;
 public class FFmpegCommandFactory {
 
     private static final Logger log = LoggerFactory.getLogger(FFmpegCommandFactory.class);
+
+    private EffectFilterGraphBuilder effectFilterGraphBuilder;
+
+    public void setEffectFilterGraphBuilder(EffectFilterGraphBuilder effectFilterGraphBuilder) {
+        this.effectFilterGraphBuilder = effectFilterGraphBuilder;
+    }
 
     public List<String> buildProbeCommand(String inputUri) {
         List<String> args = new ArrayList<>();
@@ -112,61 +123,177 @@ public class FFmpegCommandFactory {
         return args;
     }
 
-    public List<String> buildTranscodeFromTimeline(TimelineSpec timeline, String outputUri) {
-        List<String> args = new ArrayList<>();
-        TimelineOutputSpec outputSpec = timeline.outputSpec();
+    /**
+     * Builds ffmpeg arguments to render resolved timeline clips to a single output file.
+     */
+    public List<String> buildRenderFromResolvedClips(List<ResolvedClip> clips, String outputUri,
+            RenderProfile profile) {
+        return buildRenderFromResolvedClips(clips, outputUri, profile, null);
+    }
 
+    public List<String> buildRenderFromResolvedClips(List<ResolvedClip> clips, String outputUri,
+            RenderProfile profile,
+            com.example.platform.render.app.timeline.SegmentRenderSlice segmentWindow) {
+        if (clips == null || clips.isEmpty()) {
+            throw new IllegalArgumentException("At least one clip is required");
+        }
+        List<String> args;
+        if (clips.size() == 1) {
+            ResolvedClip clip = clips.get(0);
+            double start = clip.startSeconds();
+            double duration = clip.durationSeconds();
+            if (segmentWindow != null) {
+                start = Math.max(start, segmentWindow.startSeconds());
+                duration = Math.min(duration, segmentWindow.durationSeconds());
+            }
+            args = buildClipTranscodeCommand(clip.localPath(), outputUri, start, duration, profile, clip.effects());
+        } else {
+            args = buildConcatCommand(clips, outputUri, profile);
+        }
+        if (segmentWindow != null && clips.size() > 1) {
+            args.add("-t");
+            args.add(String.valueOf(segmentWindow.durationSeconds()));
+        }
+        return args;
+    }
+
+    public List<String> buildClipTranscodeCommand(String inputPath, String outputUri,
+            double startSeconds, double durationSeconds, RenderProfile profile) {
+        return buildClipTranscodeCommand(inputPath, outputUri, startSeconds, durationSeconds, profile, List.of());
+    }
+
+    public List<String> buildClipTranscodeCommand(String inputPath, String outputUri,
+            double startSeconds, double durationSeconds, RenderProfile profile,
+            List<TimelineClipEffect> effects) {
+        List<String> args = new ArrayList<>();
+        if (startSeconds > 0) {
+            args.add("-ss");
+            args.add(String.valueOf(startSeconds));
+        }
+        args.add("-i");
+        args.add(inputPath);
+        if (durationSeconds > 0) {
+            args.add("-t");
+            args.add(String.valueOf(durationSeconds));
+        }
+        if (effectFilterGraphBuilder != null) {
+            Optional<String> vf = effectFilterGraphBuilder.buildVideoFilterChain(effects);
+            vf.ifPresent(chain -> {
+                args.add("-vf");
+                args.add(chain);
+            });
+        }
+        appendOutputEncoding(args, profile);
+        args.add("-y");
+        args.add(outputUri);
+        log.debug("Built clip transcode: input={} start={} duration={}", inputPath, startSeconds, durationSeconds);
+        return args;
+    }
+
+    public List<String> buildConcatCommand(List<ResolvedClip> clips, String outputUri, RenderProfile profile) {
+        List<String> args = new ArrayList<>();
+        StringBuilder filter = new StringBuilder();
+        for (int i = 0; i < clips.size(); i++) {
+            ResolvedClip clip = clips.get(i);
+            if (clip.startSeconds() > 0) {
+                args.add("-ss");
+                args.add(String.valueOf(clip.startSeconds()));
+            }
+            if (clip.durationSeconds() > 0) {
+                args.add("-t");
+                args.add(String.valueOf(clip.durationSeconds()));
+            }
+            args.add("-i");
+            args.add(clip.localPath());
+            filter.append("[").append(i).append(":v:0][").append(i).append(":a:0]");
+        }
+        filter.append("concat=n=").append(clips.size()).append(":v=1:a=1[outv][outa]");
+        args.add("-filter_complex");
+        args.add(filter.toString());
+        args.add("-map");
+        args.add("[outv]");
+        args.add("-map");
+        args.add("[outa]");
+        appendOutputEncoding(args, profile);
+        args.add("-y");
+        args.add(outputUri);
+        log.debug("Built concat command: clips={} output={}", clips.size(), outputUri);
+        return args;
+    }
+
+    public List<String> buildTranscodeFromTimeline(TimelineSpec timeline, String outputUri) {
+        RenderProfile profile = timelineProfile(timeline);
+        List<ResolvedClip> clips = new ArrayList<>();
         if (timeline.tracks() != null) {
             timeline.tracks().forEach(track -> {
                 if (track.clips() != null) {
-                    track.clips().forEach(clip -> {
-                        if (clip.assetRef() != null) {
-                            args.add("-i");
-                            args.add(clip.assetRef().storageUri());
-                        }
-                    });
+                    track.clips().forEach(clip -> addClip(clips, clip));
                 }
             });
         }
+        return buildRenderFromResolvedClips(clips, outputUri, profile);
+    }
 
-        if (outputSpec.videoCodec() != null) {
+    private void addClip(List<ResolvedClip> clips, TimelineClip clip) {
+        if (clip.assetRef() == null || clip.assetRef().storageUri() == null) {
+            return;
+        }
+        clips.add(new ResolvedClip(
+                clip.assetRef().storageUri(),
+                clip.assetInPoint(),
+                clip.clipDuration(),
+                clip.effects() != null ? clip.effects() : List.of()));
+    }
+
+    private RenderProfile timelineProfile(TimelineSpec timeline) {
+        TimelineOutputSpec outputSpec = timeline.outputSpec();
+        if (outputSpec == null) {
+            return RenderProfile.of("default_1080p", "1920x1080", "h264");
+        }
+        return new RenderProfile(
+                timeline.id(),
+                timeline.name(),
+                null,
+                outputSpec.resolution(),
+                outputSpec.videoCodec(),
+                outputSpec.videoBitrate(),
+                outputSpec.audioSpec() != null ? outputSpec.audioSpec().codec() : "aac",
+                outputSpec.audioSpec() != null ? outputSpec.audioSpec().sampleRate() : 48000,
+                Map.of());
+    }
+
+    private void appendOutputEncoding(List<String> args, RenderProfile profile) {
+        if (profile.codec() != null && !profile.codec().isBlank()) {
             args.add("-c:v");
-            args.add(mapCodec(outputSpec.videoCodec()));
+            args.add(mapCodec(profile.codec()));
         }
-
-        if (outputSpec.videoBitrate() > 0) {
+        if (profile.bitrateKbps() > 0) {
             args.add("-b:v");
-            args.add(outputSpec.videoBitrate() + "k");
+            args.add(profile.bitrateKbps() + "k");
         }
-
-        if (outputSpec.resolution() != null) {
+        if (profile.resolution() != null && !profile.resolution().isBlank()) {
             args.add("-s");
-            args.add(outputSpec.resolution());
+            args.add(profile.resolution());
         }
-
-        if (outputSpec.frameRate() > 0) {
-            args.add("-r");
-            args.add(String.valueOf(outputSpec.frameRate()));
-        }
-
-        if (outputSpec.pixelFormat() != null) {
-            args.add("-pix_fmt");
-            args.add(outputSpec.pixelFormat());
-        }
-
-        if (outputSpec.audioSpec() != null) {
+        if (profile.audioCodec() != null && !profile.audioCodec().isBlank()) {
             args.add("-c:a");
-            args.add(outputSpec.audioSpec().codec());
-            if (outputSpec.audioSpec().bitrateKbps() > 0) {
-                args.add("-b:a");
-                args.add(outputSpec.audioSpec().bitrateKbps() + "k");
-            }
+            args.add(profile.audioCodec());
         }
+        if (profile.audioRate() > 0) {
+            args.add("-ar");
+            args.add(String.valueOf(profile.audioRate()));
+        }
+    }
 
-        args.add("-y");
-        args.add(outputUri);
-        log.debug("Built timeline transcode command: timeline={} output={}", timeline.id(), outputUri);
-        return args;
+    public record ResolvedClip(
+            String localPath,
+            double startSeconds,
+            double durationSeconds,
+            List<TimelineClipEffect> effects) {
+
+        public ResolvedClip(String localPath, double startSeconds, double durationSeconds) {
+            this(localPath, startSeconds, durationSeconds, List.of());
+        }
     }
 
     private String mapCodec(String codec) {

@@ -54,8 +54,7 @@ class PromptTemplateDetailQueryTest {
                 null, null);
         when(promptService.listExecutions("pt-1")).thenReturn(List.of(execution));
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver();
-        setField(resolver, "promptTemplateService", promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-1", ctx);
 
@@ -102,8 +101,7 @@ class PromptTemplateDetailQueryTest {
                 .toList();
         when(promptService.listExecutions("pt-2")).thenReturn(manyExecutions);
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver();
-        setField(resolver, "promptTemplateService", promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-2", ctx);
 
@@ -132,8 +130,7 @@ class PromptTemplateDetailQueryTest {
         when(promptService.getCurrentVersion("pt-3")).thenReturn(null);
         when(promptService.listExecutions("pt-3")).thenReturn(List.of());
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver();
-        setField(resolver, "promptTemplateService", promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-3", ctx);
 
@@ -165,8 +162,7 @@ class PromptTemplateDetailQueryTest {
         when(promptService.getCurrentVersion("pt-4")).thenReturn(null);
         when(promptService.listExecutions("pt-4")).thenReturn(List.of());
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver();
-        setField(resolver, "promptTemplateService", promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-4", ctx);
 
@@ -205,8 +201,7 @@ class PromptTemplateDetailQueryTest {
                 null, null);
         when(promptService.listExecutions("pt-5")).thenReturn(List.of(failedExec));
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver();
-        setField(resolver, "promptTemplateService", promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-5", ctx);
 

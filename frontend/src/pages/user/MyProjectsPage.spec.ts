@@ -4,6 +4,17 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import MyProjectsPage from './MyProjectsPage.vue'
 
+vi.mock('@/api/me', () => ({
+  MeEntitlementAPI: {
+    getMyProjects: vi.fn().mockResolvedValue({
+      projects: [],
+      total: 0,
+      page: 0,
+      size: 20,
+    }),
+  },
+}))
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [

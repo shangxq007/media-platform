@@ -15,6 +15,25 @@ spring:
     import: optional:file:/etc/media-platform/application.yaml
 
 # Stricter production defaults; override per environment as needed.
+# 推荐组合：SPRING_PROFILES_ACTIVE=prod,r2,temporal + PLATFORM_ENV=prod + STORAGE_S3_ENABLED=true
+
+platform:
+  environment: ${PLATFORM_ENV:prod}
+  lifecycle:
+    shutdown:
+      outbox-drain-enabled: true
+      outbox-drain-batch: 100
+
+app:
+  temporal:
+    environment: ${PLATFORM_ENV:prod}
+    fail-on-missing-worker: ${TEMPORAL_FAIL_ON_MISSING_WORKER:true}
+
+render:
+  stale-compensator:
+    startup-enabled: true
+    skip-on-temporal: true
+
 logging:
   level:
     root: INFO

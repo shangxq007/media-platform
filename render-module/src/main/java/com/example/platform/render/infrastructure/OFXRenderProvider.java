@@ -11,6 +11,7 @@ import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.example.platform.render.infrastructure.ofx.OfxFfmpegCompositeService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -54,8 +55,19 @@ import java.util.Set;
 public class OFXRenderProvider implements RenderProvider {
     private static final Logger log = LoggerFactory.getLogger(OFXRenderProvider.class);
 
+    private final OfxFfmpegCompositeService ofxFfmpegCompositeService;
+
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
+
+    /** No-arg for unit tests; production uses Spring-injected compositor. */
+    public OFXRenderProvider() {
+        this(null);
+    }
+
+    public OFXRenderProvider(OfxFfmpegCompositeService ofxFfmpegCompositeService) {
+        this.ofxFfmpegCompositeService = ofxFfmpegCompositeService;
+    }
 
     public void setStorageRoot(String storageRoot) {
         this.storageRoot = storageRoot;
@@ -73,7 +85,7 @@ public class OFXRenderProvider implements RenderProvider {
                 Set.of("video.fade_in", "video.fade_out", "video.cross_dissolve",
                         "video.blur", "video.sharpen", "video.vignette", "video.chromatic",
                         "video.brightness", "video.contrast", "video.grayscale", "video.sepia",
-                        "video.watermark", "video.overlay", "video.pip",
+                        "video.watermark", "video.overlay", "video.pip", "video.particle_overlay",
                         "text.subtitle_burn_in", "text.overlay",
                         "audio.volume"),
                 Set.of("dissolve", "wipe", "slide", "zoom", "fade_in", "fade_out", "cross_dissolve"),
@@ -131,6 +143,14 @@ public class OFXRenderProvider implements RenderProvider {
 
     private void renderFromTimeline(String jobId, String aiScript, String profile, String outputPath) throws Exception {
         log.info("OFXRenderProvider: rendering from OTIO timeline with effects, job={}", jobId);
+
+        if (ofxFfmpegCompositeService != null) {
+            var ffmpegDone = ofxFfmpegCompositeService.tryCompose(jobId, aiScript, Path.of(outputPath));
+            if (ffmpegDone.isPresent()) {
+                log.info("OFXRenderProvider: FFmpeg dual-input / libass path completed for job={}", jobId);
+                return;
+            }
+        }
 
         Map<String, Object> timeline = parseOtiOTimeline(aiScript);
         List<Map<String, Object>> tracks = (List<Map<String, Object>>) timeline.getOrDefault("tracks", List.of());
@@ -391,7 +411,7 @@ public class OFXRenderProvider implements RenderProvider {
         return switch (capability) {
             case "h264", "mp4", "watermark", "subtitle-burn", "fade", "clip", "transcode",
                  "blur", "sharpen", "vignette", "chromatic", "dissolve", "wipe", "slide", "zoom",
-                 "text-burn", "color-grade", "overlay", "pip" -> true;
+                 "text-burn", "color-grade", "overlay", "pip", "particle_overlay" -> true;
             case "h265", "hdr" -> false;
             default -> getSupportedProfiles().contains(capability);
         };

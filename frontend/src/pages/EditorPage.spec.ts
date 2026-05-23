@@ -63,6 +63,30 @@ vi.mock('@/composables/useSaveProject', () => ({
   }),
 }))
 
+vi.mock('@/composables/useTimelineSync', () => ({
+  useTimelineSync: () => ({
+    isSyncing: ref(false),
+    isPulling: ref(false),
+    syncError: ref(null),
+    fastForwardNotice: ref(null),
+    pendingConflict: ref(null),
+    pullTimeline: vi.fn(),
+    syncTimeline: vi.fn(),
+    resolveConflict: vi.fn(),
+    dismissConflict: vi.fn(),
+    persistOfflineDraft: vi.fn(),
+    tryRestoreOfflineDraft: vi.fn(),
+  }),
+}))
+
+vi.mock('@/composables/useEditorTimelineLifecycle', () => ({
+  useEditorTimelineLifecycle: vi.fn(),
+}))
+
+vi.mock('@/components/timeline/TimelineConflictDialog.vue', () => ({
+  default: { template: '<div />' },
+}))
+
 vi.mock('@/stores/timeline', () => ({
   useTimelineStore: () => ({
     state: {
@@ -79,6 +103,7 @@ vi.mock('@/stores/timeline', () => ({
     toJSON: () => ({ schemaVersion: '2.0.0', tracks: [] }),
     selectedTrackClip: null,
     loadDemoProject: vi.fn(),
+    loadFromJSON: vi.fn(),
     setCurrentTime: vi.fn(),
   }),
 }))

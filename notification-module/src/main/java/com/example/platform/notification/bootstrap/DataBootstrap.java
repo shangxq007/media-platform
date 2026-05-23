@@ -14,14 +14,43 @@ import org.springframework.context.annotation.Profile;
 public class DataBootstrap {
     @Bean
     CommandLineRunner seedTemplates(NotificationTemplateService templates) {
-        return args -> templates.ensureTemplate(new NotificationTemplate(
-                null,
-                NotificationTemplateCode.RENDER_CREATED,
-                NotificationTemplateChannel.WEBHOOK,
-                "en",
-                1,
-                "Render created",
-                "{\"eventType\":\"{{eventType}}\",\"subjectId\":\"{{subjectId}}\",\"payload\":{{payloadJson}}}"
-        ));
+        return args -> {
+            templates.ensureTemplate(new NotificationTemplate(
+                    null,
+                    NotificationTemplateCode.RENDER_CREATED,
+                    NotificationTemplateChannel.WEBHOOK,
+                    "en",
+                    1,
+                    "Render created",
+                    "{\"eventType\":\"{{eventType}}\",\"subjectId\":\"{{subjectId}}\",\"payload\":{{payloadJson}}}"
+            ));
+            templates.ensureTemplate(new NotificationTemplate(
+                    null,
+                    NotificationTemplateCode.RENDER_COMPLETED,
+                    NotificationTemplateChannel.WEBHOOK,
+                    "en",
+                    1,
+                    "Render completed",
+                    "{\"eventType\":\"{{eventType}}\",\"subjectId\":\"{{subjectId}}\",\"payload\":{{payloadJson}}}"
+            ));
+            templates.ensureTemplate(new NotificationTemplate(
+                    null,
+                    NotificationTemplateCode.RENDER_FAILED,
+                    NotificationTemplateChannel.WEBHOOK,
+                    "en",
+                    1,
+                    "Render failed",
+                    "{\"eventType\":\"{{eventType}}\",\"subjectId\":\"{{subjectId}}\",\"payload\":{{payloadJson}}}"
+            ));
+            templates.ensureTemplate(new NotificationTemplate(
+                    null,
+                    NotificationTemplateCode.GENERIC_EVENT,
+                    NotificationTemplateChannel.EMAIL,
+                    "en",
+                    1,
+                    "Notification: {{eventType}}",
+                    "{\"eventType\":\"{{eventType}}\",\"subjectId\":\"{{subjectId}}\",\"payload\":{{payloadJson}}}"
+            ));
+        };
     }
 }

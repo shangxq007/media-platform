@@ -4,7 +4,10 @@ import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactRelation;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.web.ErrorCodeRegistry;
+import com.example.platform.shared.web.MediaAssetErrors;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +31,8 @@ public class ArtifactCatalogService {
     private static final Logger log = LoggerFactory.getLogger(ArtifactCatalogService.class);
 
     private final ArtifactCatalogRepository artifactRepository;
+    private final ArtifactRelationRepository relationRepository;
+    private final ErrorCodeRegistry errorCodeRegistry;
     private final boolean persistent;
 
     private final Map<String, Artifact> artifacts = new ConcurrentHashMap<>();
@@ -35,8 +40,13 @@ public class ArtifactCatalogService {
     private final AtomicLong artifactSeq = new AtomicLong(0);
     private final AtomicLong relationSeq = new AtomicLong(0);
 
-    public ArtifactCatalogService(@Autowired(required = false) ArtifactCatalogRepository artifactRepository) {
+    public ArtifactCatalogService(
+            @Autowired(required = false) ArtifactCatalogRepository artifactRepository,
+            @Autowired(required = false) ArtifactRelationRepository relationRepository,
+            ErrorCodeRegistry errorCodeRegistry) {
         this.artifactRepository = artifactRepository;
+        this.relationRepository = relationRepository;
+        this.errorCodeRegistry = errorCodeRegistry;
         this.persistent = artifactRepository != null;
         log.info("ArtifactCatalogService initialized (persistent={})", persistent);
     }
@@ -56,12 +66,12 @@ public class ArtifactCatalogService {
         if (persistent) {
             String id = Ids.newId("art");
             Artifact artifact = new Artifact(id, renderJobId, projectId, storageUri,
-                    format, resolution, duration, Instant.now());
+                    format, resolution, duration, ArtifactStatus.ACTIVE, null, Instant.now());
             return artifactRepository.save(artifact);
         } else {
             String id = "art-" + artifactSeq.incrementAndGet();
             Artifact artifact = new Artifact(id, renderJobId, projectId, storageUri,
-                    format, resolution, duration, Instant.now());
+                    format, resolution, duration, ArtifactStatus.ACTIVE, null, Instant.now());
             artifacts.put(id, artifact);
             return artifact;
         }
@@ -102,40 +112,83 @@ public class ArtifactCatalogService {
     public ArtifactRelation relateArtifacts(String sourceId, String targetId, String relationType) {
         if (persistent) {
             if (artifactRepository.findById(sourceId).isEmpty()) {
-                throw new IllegalArgumentException("Source artifact not found: " + sourceId);
+                throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, sourceId);
             }
             if (artifactRepository.findById(targetId).isEmpty()) {
-                throw new IllegalArgumentException("Target artifact not found: " + targetId);
+                throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, targetId);
             }
         } else {
             if (!artifacts.containsKey(sourceId)) {
-                throw new IllegalArgumentException("Source artifact not found: " + sourceId);
+                throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, sourceId);
             }
             if (!artifacts.containsKey(targetId)) {
-                throw new IllegalArgumentException("Target artifact not found: " + targetId);
+                throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, targetId);
             }
         }
-        if (persistent) {
-            String id = Ids.newId("rel");
-            return new ArtifactRelation(id, sourceId, targetId, relationType);
-        } else {
-            String id = "rel-" + relationSeq.incrementAndGet();
-            ArtifactRelation relation = new ArtifactRelation(id, sourceId, targetId, relationType);
-            relations.put(id, relation);
-            return relation;
+        String id = persistent ? Ids.newId("rel") : "rel-" + relationSeq.incrementAndGet();
+        ArtifactRelation relation = new ArtifactRelation(id, sourceId, targetId, relationType);
+        if (persistent && relationRepository != null) {
+            relationRepository.save(relation);
         }
+        relations.put(id, relation);
+        return relation;
+    }
+
+    public List<Map<String, Object>> findRelationReferences(String artifactId) {
+        if (persistent && relationRepository != null) {
+            return relationRepository.findReferenceMaps(artifactId);
+        }
+        List<Map<String, Object>> refs = new ArrayList<>();
+        for (ArtifactRelation relation : relations.values()) {
+            if (artifactId.equals(relation.sourceId())) {
+                refs.add(Map.of(
+                        "kind", "artifact_relation",
+                        "relationId", relation.id(),
+                        "role", "source",
+                        "peerId", relation.targetId(),
+                        "relationType", relation.relationType()));
+            }
+            if (artifactId.equals(relation.targetId())) {
+                refs.add(Map.of(
+                        "kind", "artifact_relation",
+                        "relationId", relation.id(),
+                        "role", "target",
+                        "peerId", relation.sourceId(),
+                        "relationType", relation.relationType()));
+            }
+        }
+        return refs;
+    }
+
+    public Artifact tombstoneInMemory(String artifactId) {
+        Artifact existing = artifacts.get(artifactId);
+        if (existing == null) {
+            throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
+        }
+        Artifact updated = new Artifact(
+                existing.id(), existing.renderJobId(), existing.projectId(), existing.storageUri(),
+                existing.format(), existing.resolution(), existing.duration(),
+                ArtifactStatus.TOMBSTONED, Instant.now(), existing.createdAt());
+        artifacts.put(artifactId, updated);
+        return updated;
     }
 
     public Artifact updateStatus(String artifactId, ArtifactStatus newStatus) {
         if (persistent) {
-            Artifact existing = artifactRepository.findById(artifactId)
-                    .orElseThrow(() -> new IllegalArgumentException("Artifact not found: " + artifactId));
-            return existing;
+            return artifactRepository.updateStatus(artifactId, newStatus,
+                    newStatus == ArtifactStatus.TOMBSTONED ? Instant.now() : null);
         }
         Artifact existing = artifacts.get(artifactId);
         if (existing == null) {
-            throw new IllegalArgumentException("Artifact not found: " + artifactId);
+            throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
         }
-        return existing;
+        Artifact updated = new Artifact(
+                existing.id(), existing.renderJobId(), existing.projectId(), existing.storageUri(),
+                existing.format(), existing.resolution(), existing.duration(),
+                newStatus,
+                newStatus == ArtifactStatus.TOMBSTONED ? Instant.now() : existing.tombstonedAt(),
+                existing.createdAt());
+        artifacts.put(artifactId, updated);
+        return updated;
     }
 }

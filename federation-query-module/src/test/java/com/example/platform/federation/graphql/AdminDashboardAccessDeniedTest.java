@@ -29,11 +29,7 @@ class AdminDashboardAccessDeniedTest {
         UsageMeteringService usageMeteringService = mock(UsageMeteringService.class);
         ExtensionRegistryService extensionRegistryService = mock(ExtensionRegistryService.class);
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver();
-        setField(resolver, "renderJobService", renderJobService);
-        setField(resolver, "billingProjectionService", billingProjectionService);
-        setField(resolver, "usageMeteringService", usageMeteringService);
-        setField(resolver, "extensionRegistryService", extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
         return resolver;
     }
 

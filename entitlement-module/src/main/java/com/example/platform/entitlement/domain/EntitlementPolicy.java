@@ -25,20 +25,20 @@ public record EntitlementPolicy(
 
     public static EntitlementPolicy freeTier() {
         return new EntitlementPolicy("policy-free", "FREE", 1280, 720, 60,
-                true, Set.of("javacv", "mlt", "gstreamer"), false, false,
-                2, false, Set.of("basic"), Set.of("mp4", "webm"), 1, Map.of());
+                true, Set.of("javacv", "mlt", "gstreamer", "ffmpeg"), false, false,
+                2, false, Set.of("basic", "builtin-core"), Set.of("mp4", "webm"), 1, Map.of());
     }
 
     public static EntitlementPolicy proTier() {
         return new EntitlementPolicy("policy-pro", "PRO", 1920, 1080, 300,
-                false, Set.of("javacv", "ofx", "mlt", "gstreamer", "gpac"), false, false,
-                5, true, Set.of("basic", "pro"), Set.of("mp4", "webm", "mov"), 3, Map.of());
+                false, Set.of("javacv", "ofx", "mlt", "gstreamer", "gpac", "ffmpeg"), false, false,
+                5, true, Set.of("basic", "builtin-core", "pro", "natron-core"), Set.of("mp4", "webm", "mov"), 3, Map.of());
     }
 
     public static EntitlementPolicy teamTier() {
         return new EntitlementPolicy("policy-team", "TEAM", 3840, 2160, 1200,
                 false, Set.of("javacv", "ofx", "mlt", "gstreamer", "gpac"), true, true,
-                10, true, Set.of("basic", "pro", "team"), Set.of("mp4", "webm", "mov", "dash", "hls"), 10, Map.of());
+                10, true, Set.of("basic", "pro", "team", "natron-core"), Set.of("mp4", "webm", "mov", "dash", "hls"), 10, Map.of());
     }
 
     public static EntitlementPolicy enterpriseTier() {
@@ -73,6 +73,12 @@ public record EntitlementPolicy(
     }
 
     public boolean isEffectPackAllowed(String packId) {
-        return effectPacksAllowed == null || effectPacksAllowed.contains(packId);
+        if (effectPacksAllowed == null) {
+            return true;
+        }
+        if (effectPacksAllowed.contains(packId)) {
+            return true;
+        }
+        return "builtin-core".equals(packId) && effectPacksAllowed.contains("basic");
     }
 }

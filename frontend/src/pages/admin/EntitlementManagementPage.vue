@@ -5,6 +5,7 @@ import type { EntitlementBundle, TenantOverride, UserGrant } from '@/types'
 import EntitlementBundleList from './EntitlementBundleList.vue'
 import TenantOverridePanel from './TenantOverridePanel.vue'
 import UserGrantPanel from './UserGrantPanel.vue'
+import SharedGrantsAdminPage from './SharedGrantsAdminPage.vue'
 
 const featureFlaggedEntitlements = ref<Set<string>>(new Set())
 
@@ -23,7 +24,7 @@ onMounted(async () => {
 
 
 
-const activeTab = ref<'bundles' | 'overrides' | 'grants'>('bundles')
+const activeTab = ref<'bundles' | 'overrides' | 'grants' | 'shared'>('bundles')
 
 const bundles = ref<EntitlementBundle[]>([])
 const overrides = ref<TenantOverride[]>([])
@@ -65,6 +66,9 @@ async function loadData() {
       <button class="px-4 py-2 text-sm" :class="activeTab === 'grants' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'" @click="activeTab = 'grants'">
         User Grants ({{ grants.length }})
       </button>
+      <button class="px-4 py-2 text-sm" :class="activeTab === 'shared' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'" @click="activeTab = 'shared'">
+        Shared Grants
+      </button>
     </div>
 
     <div v-if="loading" class="text-gray-400 text-sm">Loading...</div>
@@ -75,6 +79,7 @@ async function loadData() {
        <EntitlementBundleList v-if="activeTab === 'bundles'" :bundles="bundles" @refresh="loadData" />
        <TenantOverridePanel v-else-if="activeTab === 'overrides'" :overrides="overrides" @refresh="loadData" />
        <UserGrantPanel v-else-if="activeTab === 'grants'" :grants="grants" @refresh="loadData" />
+       <SharedGrantsAdminPage v-else-if="activeTab === 'shared'" />
      </template>
   </div>
 </template>

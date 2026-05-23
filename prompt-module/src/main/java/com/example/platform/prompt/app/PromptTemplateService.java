@@ -4,8 +4,10 @@ import com.example.platform.prompt.domain.*;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
+import com.example.platform.prompt.infrastructure.PromptJdbcRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -32,11 +34,42 @@ public class PromptTemplateService {
     private final AtomicLong templateSeq = new AtomicLong(0);
     private final AtomicLong versionSeq = new AtomicLong(0);
     private final AtomicLong executionSeq = new AtomicLong(0);
+    private final Optional<PromptJdbcRepository> jdbcRepository;
     private AuditPort auditPort;
 
-    public PromptTemplateService() {}
+    public PromptTemplateService() {
+        this(Optional.empty());
+    }
+
+    @Autowired
+    public PromptTemplateService(Optional<PromptJdbcRepository> jdbcRepository) {
+        this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+    }
 
     public void setAuditPort(AuditPort port) { this.auditPort = port; }
+
+    /** Restores state from JDBC on application startup. */
+    public void hydrateTemplate(PromptTemplate template) {
+        templatesById.put(template.templateId(), template);
+        templatesByCode.put(generateCode(template.name()), template);
+        versionsByTemplateId.putIfAbsent(template.templateId(), new ArrayList<>());
+        bumpSeq(template.templateId(), "pt-", templateSeq);
+    }
+
+    public void hydrateVersion(PromptTemplateVersion version) {
+        versionsById.put(version.versionId(), version);
+        List<PromptTemplateVersion> versions = versionsByTemplateId.computeIfAbsent(
+                version.templateId(), id -> new ArrayList<>());
+        if (versions.stream().noneMatch(v -> v.versionId().equals(version.versionId()))) {
+            versions.add(version);
+        }
+        bumpSeq(version.versionId(), "pv-", versionSeq);
+    }
+
+    public void hydrateExecution(PromptExecutionRun run) {
+        executionsById.put(run.executionId(), run);
+        bumpSeq(run.executionId(), "pe-", executionSeq);
+    }
 
     // -------------------------------------------------------------------------
     // Template CRUD
@@ -46,7 +79,7 @@ public class PromptTemplateService {
             List<String> tags, String owner, String schemaVersion) {
         String templateId = "pt-" + templateSeq.incrementAndGet();
         String code = generateCode(name);
-        if (templatesByCode.containsKey(code)) {
+        if (codeExists(code)) {
             throw new PlatformException(
                     new ConfigurableErrorCode("PROMPT-409-001", 409601,
                             Map.of("en", "Prompt template code already exists", "zh", "提示词模板编码已存在"),
@@ -58,8 +91,7 @@ public class PromptTemplateService {
         PromptTemplate template = new PromptTemplate(templateId, name, description, category,
                 tags != null ? List.copyOf(tags) : List.of(), owner,
                 PromptTemplateStatus.DRAFT, schemaVersion, null, now, now);
-        templatesById.put(templateId, template);
-        templatesByCode.put(code, template);
+        storeTemplate(template, code);
         versionsByTemplateId.put(templateId, new ArrayList<>());
         audit("CREATE", templateId, Map.of("name", name, "category", category));
         log.info("PromptTemplateService: created template {} ({})", templateId, code);
@@ -73,8 +105,7 @@ public class PromptTemplateService {
             throw notFound(templateId);
         }
         PromptTemplate updated = existing.withUpdatedFields(name, description, category, tags);
-        templatesById.put(templateId, updated);
-        templatesByCode.put(generateCode(name), updated);
+        storeTemplate(updated, generateCode(name));
         audit("UPDATE", templateId, Map.of("name", name));
         return updated;
     }
@@ -107,8 +138,7 @@ public class PromptTemplateService {
         PromptTemplate existing = templatesById.get(templateId);
         if (existing == null) throw notFound(templateId);
         PromptTemplate activated = existing.withStatus(PromptTemplateStatus.ACTIVE);
-        templatesById.put(templateId, activated);
-        templatesByCode.put(generateCode(activated.name()), activated);
+        storeTemplate(activated, generateCode(activated.name()));
         audit("ACTIVATE", templateId, Map.of());
         return activated;
     }
@@ -117,8 +147,7 @@ public class PromptTemplateService {
         PromptTemplate existing = templatesById.get(templateId);
         if (existing == null) throw notFound(templateId);
         PromptTemplate deprecated = existing.withStatus(PromptTemplateStatus.DEPRECATED);
-        templatesById.put(templateId, deprecated);
-        templatesByCode.put(generateCode(deprecated.name()), deprecated);
+        storeTemplate(deprecated, generateCode(deprecated.name()));
         audit("DEPRECATE", templateId, Map.of());
         return deprecated;
     }
@@ -127,8 +156,7 @@ public class PromptTemplateService {
         PromptTemplate existing = templatesById.get(templateId);
         if (existing == null) throw notFound(templateId);
         PromptTemplate archived = existing.withStatus(PromptTemplateStatus.ARCHIVED);
-        templatesById.put(templateId, archived);
-        templatesByCode.put(generateCode(archived.name()), archived);
+        storeTemplate(archived, generateCode(archived.name()));
         audit("ARCHIVE", templateId, Map.of());
         return archived;
     }
@@ -154,11 +182,11 @@ public class PromptTemplateService {
         versions.add(version);
         versionsById.put(versionId, version);
         versionsByTemplateId.put(templateId, versions);
+        jdbcRepository.ifPresent(r -> r.saveVersion(version));
 
         // Update template's current version
         PromptTemplate updated = template.withCurrentVersion(newVersion);
-        templatesById.put(templateId, updated);
-        templatesByCode.put(generateCode(updated.name()), updated);
+        storeTemplate(updated, generateCode(updated.name()));
 
         audit("CREATE_VERSION", templateId, Map.of("version", newVersion));
         log.info("PromptTemplateService: created version {} for template {}", newVersion, templateId);
@@ -371,7 +399,7 @@ public class PromptTemplateService {
                 OffsetDateTime.now(), null, null, null,
                 relatedPromptFile, relatedManifestEntry);
 
-        executionsById.put(executionId, run);
+        storeExecution(run);
         audit("EXECUTION_START", executionId, Map.of("templateId", templateId, "riskLevel", riskLevel.name()));
         log.info("PromptTemplateService: started execution {} for template {}", executionId, templateId);
         return run;
@@ -389,7 +417,7 @@ public class PromptTemplateService {
                 existing.tokenEstimate(), existing.costEstimate(),
                 existing.startedAt(), OffsetDateTime.now(), null, null,
                 existing.relatedPromptFile(), existing.relatedManifestEntry());
-        executionsById.put(executionId, completed);
+        storeExecution(completed);
         audit("EXECUTION_COMPLETE", executionId, Map.of());
         return completed;
     }
@@ -406,7 +434,7 @@ public class PromptTemplateService {
                 existing.tokenEstimate(), existing.costEstimate(),
                 existing.startedAt(), OffsetDateTime.now(), errorCode, errorDetails,
                 existing.relatedPromptFile(), existing.relatedManifestEntry());
-        executionsById.put(executionId, failed);
+        storeExecution(failed);
         audit("EXECUTION_FAIL", executionId, Map.of("errorCode", errorCode));
         return failed;
     }
@@ -563,6 +591,35 @@ public class PromptTemplateService {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private void storeTemplate(PromptTemplate template, String code) {
+        templatesById.put(template.templateId(), template);
+        templatesByCode.put(code, template);
+        jdbcRepository.ifPresent(r -> r.saveTemplate(template));
+    }
+
+    private void storeExecution(PromptExecutionRun run) {
+        executionsById.put(run.executionId(), run);
+        jdbcRepository.ifPresent(r -> r.saveExecution(run));
+    }
+
+    private boolean codeExists(String code) {
+        if (templatesByCode.containsKey(code)) {
+            return true;
+        }
+        return jdbcRepository.map(r -> r.existsByDerivedCode(code)).orElse(false);
+    }
+
+    private static void bumpSeq(String id, String prefix, AtomicLong seq) {
+        if (id != null && id.startsWith(prefix)) {
+            try {
+                long n = Long.parseLong(id.substring(prefix.length()));
+                seq.updateAndGet(cur -> Math.max(cur, n));
+            } catch (NumberFormatException ignored) {
+                // keep sequence
+            }
+        }
+    }
 
     private String generateCode(String name) {
         return name.toLowerCase()

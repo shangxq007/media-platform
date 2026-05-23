@@ -28,6 +28,10 @@ export const useProjectStore = defineStore('project', () => {
     renderJobs.value.push(job)
   }
 
+  function setRenderJobs(jobs: RenderJob[]) {
+    renderJobs.value = jobs
+  }
+
   function updateRenderJob(jobId: string, updates: Partial<RenderJob>) {
     const idx = renderJobs.value.findIndex(j => j.id === jobId)
     if (idx >= 0) {
@@ -45,6 +49,6 @@ export const useProjectStore = defineStore('project', () => {
 
   return {
     currentProject, projects, renderJobs, currentTenant, loading, error, hasProject,
-    setTenant, setProject, addProject, addRenderJob, updateRenderJob, setError, setLoading
+    setTenant, setProject, addProject, addRenderJob, setRenderJobs, updateRenderJob, setError, setLoading
   }
 })

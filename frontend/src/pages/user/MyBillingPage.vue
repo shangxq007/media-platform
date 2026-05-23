@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { MeEntitlementAPI } from '@/api/me'
 import type { SubscriptionPlan, BillingLedgerEntry, Invoice } from '@/types'
+import type { ActiveSubscription } from '@/api/me'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import PageSection from '@/components/ui/PageSection.vue'
 import MetricCard from '@/components/ui/MetricCard.vue'
@@ -9,11 +10,14 @@ import StatusBadge from '@/components/ui/StatusBadge.vue'
 import DataTableShell from '@/components/ui/DataTableShell.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import { formatApiError } from '@/utils/apiError'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
 const loading = ref(true)
 const error = ref<string | null>(null)
 const plan = ref<SubscriptionPlan | null>(null)
+const activeSubscriptions = ref<ActiveSubscription[]>([])
+const effectiveQuota = ref<Record<string, number>>({})
 const ledgerEntries = ref<BillingLedgerEntry[]>([])
 const invoices = ref<Invoice[]>([])
 const page = ref(0)
@@ -25,19 +29,23 @@ async function loadBilling() {
   loading.value = true
   error.value = null
   try {
-    const [p, h, inv] = await Promise.allSettled([
+    const [p, subs, quota, h, inv] = await Promise.allSettled([
       MeEntitlementAPI.getCurrentPlan(),
+      MeEntitlementAPI.getActiveSubscriptions(),
+      MeEntitlementAPI.getEffectiveQuota(),
       MeEntitlementAPI.getBillingHistory(page.value),
       MeEntitlementAPI.getInvoices(),
     ])
     if (p.status === 'fulfilled') plan.value = p.value
+    if (subs.status === 'fulfilled') activeSubscriptions.value = subs.value
+    if (quota.status === 'fulfilled') effectiveQuota.value = quota.value
     if (h.status === 'fulfilled') {
       ledgerEntries.value = h.value.entries
       total.value = h.value.total
     }
     if (inv.status === 'fulfilled') invoices.value = inv.value
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load billing data'
+    error.value = formatApiError(e, 'Failed to load billing data')
   } finally {
     loading.value = false
   }
@@ -148,6 +156,32 @@ const invoiceColumns = [
           </div>
         </div>
       </div>
+
+      <!-- Active subscriptions (base + add-ons) -->
+      <PageSection v-if="activeSubscriptions.length > 0" title="Active Subscriptions">
+        <div class="space-y-sm">
+          <div
+            v-for="sub in activeSubscriptions"
+            :key="sub.contractId"
+            class="flex items-center justify-between p-sm rounded bg-bg-surface border border-default"
+          >
+            <div>
+              <div class="text-sm font-medium text-text-primary">{{ sub.planKey }}</div>
+              <div class="text-xs text-text-muted">{{ sub.productCode }} · {{ sub.contractRole }}</div>
+            </div>
+            <StatusBadge :variant="sub.lifecycleState === 'ACTIVE' ? 'success' : 'neutral'" :label="sub.lifecycleState" />
+          </div>
+        </div>
+      </PageSection>
+
+      <PageSection v-if="Object.keys(effectiveQuota).length > 0" title="Included Quota (merged)">
+        <div class="grid grid-cols-2 gap-md">
+          <div v-for="(value, meter) in effectiveQuota" :key="meter" class="text-sm flex justify-between p-sm rounded bg-bg-surface border border-default">
+            <span class="text-text-secondary">{{ meter }}</span>
+            <span class="font-mono text-text-primary">{{ value }}</span>
+          </div>
+        </div>
+      </PageSection>
 
       <!-- Usage Charges Detail -->
       <PageSection title="Usage Charges This Period">

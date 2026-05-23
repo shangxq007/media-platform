@@ -32,12 +32,12 @@ class TemporalWorkflowStarterTest {
     }
 
     @Test
-    void propertiesRecordHasExpectedShape() {
-        Method enabledMethod = assertDoesNotThrow(() -> AppTemporalProperties.class.getMethod("enabled"));
+    void propertiesClassHasEnabledAccessor() {
+        Method enabledMethod = assertDoesNotThrow(() -> AppTemporalProperties.class.getMethod("isEnabled"));
         assertNotNull(enabledMethod);
         Class<?> returnType = enabledMethod.getReturnType();
         assertTrue(boolean.class.equals(returnType) || Boolean.class.equals(returnType),
-                "enabled() must return boolean");
+                "isEnabled() must return boolean");
     }
 
     private static Method assertDoesNotThrow(Callable<Method> action) {

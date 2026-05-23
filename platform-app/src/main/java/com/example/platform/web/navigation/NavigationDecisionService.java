@@ -6,6 +6,7 @@ import com.example.platform.policy.api.FeatureFlagEvaluator;
 import com.example.platform.shared.entitlement.EntitlementPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -29,6 +30,7 @@ public class NavigationDecisionService {
         this(registryService, permissionService, roleService, entitlementPort, null);
     }
 
+    @Autowired
     public NavigationDecisionService(NavigationRegistryService registryService,
                                       PermissionService permissionService,
                                       RoleService roleService,
@@ -204,9 +206,9 @@ public class NavigationDecisionService {
             }
         }
 
-        if (!visible) {
+        if (!visible && !hasSpecificNavReason(reasons)) {
             reasons.add(0, "NAV-404-HIDDEN: Route '" + def.routeKey() + "' is hidden");
-        } else if (!enabled) {
+        } else if (!enabled && !hasSpecificNavReason(reasons)) {
             reasons.add(0, "NAV-403-DISABLED: Route '" + def.routeKey() + "' is disabled");
         }
 
@@ -276,6 +278,10 @@ public class NavigationDecisionService {
             log.warn("Failed to evaluate policy condition '{}': {}", condition, e.getMessage());
             return true;
         }
+    }
+
+    private static boolean hasSpecificNavReason(List<String> reasons) {
+        return reasons.stream().anyMatch(r -> r.startsWith("NAV-403") || r.startsWith("NAV-404-SYNC"));
     }
 
     private boolean meetsTierRequirement(String userTier, String requiredTier) {

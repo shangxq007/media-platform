@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { WorkspaceEntitlementAPI } from '@/api/workspace'
 import type { AccessDecisionDebug } from '@/types'
+import WorkspacePageLayout from '@/components/workspace/WorkspacePageLayout.vue'
 
 const route = useRoute()
 const workspaceId = route.params.workspaceId as string
@@ -36,6 +37,7 @@ function ruleClass(r: string): string {
 </script>
 
 <template>
+  <WorkspacePageLayout title="Access Decision Debug">
   <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
     <h3 class="text-sm font-semibold text-gray-300">Access Decision Debug</h3>
 
@@ -70,4 +72,5 @@ function ruleClass(r: string): string {
       </div>
     </div>
   </div>
+  </WorkspacePageLayout>
 </template>

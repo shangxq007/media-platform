@@ -1,0 +1,27 @@
+# Natron Worker POC — local smoke test
+# docker compose -f platform/infra/natron/docker-compose.poc.yml build
+# docker compose -f platform/infra/natron/docker-compose.poc.yml run --rm natron-poc-script --help
+
+services:
+  natron-worker-build:
+    build:
+      context: ../../..
+      dockerfile: platform/infra/docker/Dockerfile.render-worker-natron
+    image: media-platform/natron-worker-poc:latest
+
+  natron-poc-script:
+    image: media-platform/natron-worker-poc:latest
+    entrypoint: ["/app/bin/natron-poc-render.sh"]
+    command:
+      - "--effect-key"
+      - "video.natron_vignette"
+      - "--input"
+      - "/data/in/sample.mp4"
+      - "--output"
+      - "/data/out/output.mp4"
+      - "--intensity"
+      - "0.6"
+      - "--fallback-ffmpeg"
+    volumes:
+      - ./samples:/data/in:ro
+      - ./out:/data/out

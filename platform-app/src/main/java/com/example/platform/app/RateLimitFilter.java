@@ -8,41 +8,40 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Rate limiting filter with IP whitelist support.
- *
- * Features:
- * - Per-IP rate limiting (requests per minute)
- * - IP whitelist bypass
- * - Configurable via IdentityProperties
- * - Thread-safe using ConcurrentHashMap
- */
-@Component
-@Order(2)
+@Configuration
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
     private final IdentityProperties identityProperties;
-
-    // IP -> (window start, request count)
     private final ConcurrentHashMap<String, RateLimitEntry> rateLimits = new ConcurrentHashMap<>();
 
     public RateLimitFilter(IdentityProperties identityProperties) {
         this.identityProperties = identityProperties;
+    }
+
+    @Bean
+    @Order(2)
+    FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(this);
+        registration.addUrlPatterns("/api/v1/*");
+        registration.setOrder(2);
+        registration.setEnabled(identityProperties.isRateLimitEnabled());
+        return registration;
     }
 
     @Override
@@ -57,13 +56,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String clientIp = getClientIp(request);
         List<String> whitelist = identityProperties.getIpWhitelist();
 
-        // Whitelisted IPs bypass rate limiting
         if (whitelist != null && !whitelist.isEmpty() && whitelist.contains(clientIp)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Check rate limit
         if (isRateLimited(clientIp)) {
             log.warn("Rate limit exceeded for IP: {}", clientIp);
             ProblemDetail pd = ProblemDetail.forStatusAndDetail(
@@ -88,7 +85,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private boolean isRateLimited(String clientIp) {
         int maxRequests = identityProperties.getRateLimitRequestsPerMinute();
         long now = Instant.now().getEpochSecond();
-        long windowStart = now - (now % 60); // 1-minute windows
+        long windowStart = now - (now % 60);
 
         RateLimitEntry entry = rateLimits.compute(clientIp, (ip, existing) -> {
             if (existing == null || existing.windowStart != windowStart) {
@@ -116,7 +113,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static class RateLimitEntry {
         final long windowStart;
         final AtomicInteger count;
-
         RateLimitEntry(long windowStart, AtomicInteger count) {
             this.windowStart = windowStart;
             this.count = count;

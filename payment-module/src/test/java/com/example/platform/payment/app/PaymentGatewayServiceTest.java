@@ -3,6 +3,7 @@ package com.example.platform.payment.app;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.payment.domain.*;
+import com.example.platform.payment.app.CheckoutPaymentBindingRegistry;
 import com.example.platform.payment.infrastructure.NoopHyperswitchPaymentProvider;
 import com.example.platform.payment.infrastructure.NoopStripePaymentProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +22,7 @@ class PaymentGatewayServiceTest {
                 new NoopStripePaymentProvider(),
                 new NoopHyperswitchPaymentProvider()
         );
-        service = new PaymentGatewayService(providers, null, null);
+        service = new PaymentGatewayService(providers, null, null, new CheckoutPaymentBindingRegistry(), null);
     }
 
     @Test
@@ -67,7 +68,7 @@ class PaymentGatewayServiceTest {
 
         assertNotNull(result);
         assertTrue(result.verified());
-        assertEquals("processing", result.canonicalStatus());
+        assertEquals("paid", result.canonicalStatus());
     }
 
     @Test
@@ -85,7 +86,7 @@ class PaymentGatewayServiceTest {
 
         assertNotNull(result);
         assertTrue(result.verified());
-        assertEquals("processing", result.canonicalStatus());
+        assertEquals("paid", result.canonicalStatus());
     }
 
     @Test
@@ -99,14 +100,29 @@ class PaymentGatewayServiceTest {
     @Test
     void parseWebhookWithStripeProviderReturnsResult() {
         Map<String, String> headers = Map.of("Stripe-Signature", "test-sig");
+        String body = """
+                {"type":"payment.succeeded","checkoutSessionId":"chk_test","tenantId":"tenant-1","userId":"user-1"}
+                """;
 
-        WebhookParseResult result = service.parseWebhook("stripe", headers, "{}");
+        WebhookParseResult result = service.parseWebhook("stripe", headers, body);
 
         assertNotNull(result);
         assertEquals("payment.succeeded", result.eventType());
         assertEquals(1, result.eventVersion());
         assertTrue(result.validSignature());
-        assertNotNull(result.externalReference());
+        assertEquals("chk_test", result.checkoutSessionId());
+        assertTrue(result.paymentSucceeded());
+    }
+
+    @Test
+    void parseWebhookResolvesCheckoutSessionFromBinding() {
+        service.createCheckout(new CheckoutCommand(
+                "chk_bound", "pro_monthly", "https://ok", null, "tenant-1", "user-1", 9999L, "USD"));
+        WebhookParseResult result = service.parseWebhook("stripe", Map.of(), """
+                {"type":"payment.succeeded","providerReference":"stripe-chk_bound"}
+                """);
+        assertEquals("chk_bound", result.checkoutSessionId());
+        assertEquals("tenant-1", result.tenantId());
     }
 
     @Test
@@ -116,7 +132,7 @@ class PaymentGatewayServiceTest {
         WebhookParseResult result = service.parseWebhook("hyperswitch", headers, "{}");
 
         assertNotNull(result);
-        assertEquals("payment.updated", result.eventType());
+        assertEquals("payment.succeeded", result.eventType());
         assertEquals(1, result.eventVersion());
         assertTrue(result.validSignature());
     }

@@ -3,9 +3,11 @@ package com.example.platform.federation.nlq.app;
 import com.example.platform.federation.nlq.domain.ReportDefinition;
 import com.example.platform.federation.nlq.domain.ReportExecution;
 import com.example.platform.federation.nlq.domain.SqlSafetyResult;
+import com.example.platform.federation.nlq.infrastructure.NlqJdbcRepository;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -26,15 +28,35 @@ public class ReportExecutionService {
     private final SqlScopeInjector sqlScopeInjector;
     private final QueryAuditService queryAuditService;
     private final Map<String, ReportExecution> executionStore = new ConcurrentHashMap<>();
+    private final Optional<NlqJdbcRepository> jdbcRepository;
 
     public ReportExecutionService(ReportDefinitionService reportDefinitionService,
             QueryExecutionService queryExecutionService, SqlSafetyValidator sqlSafetyValidator,
             SqlScopeInjector sqlScopeInjector, QueryAuditService queryAuditService) {
+        this(reportDefinitionService, queryExecutionService, sqlSafetyValidator, sqlScopeInjector,
+                queryAuditService, Optional.empty());
+    }
+
+    @Autowired
+    public ReportExecutionService(ReportDefinitionService reportDefinitionService,
+            QueryExecutionService queryExecutionService, SqlSafetyValidator sqlSafetyValidator,
+            SqlScopeInjector sqlScopeInjector, QueryAuditService queryAuditService,
+            Optional<NlqJdbcRepository> jdbcRepository) {
         this.reportDefinitionService = reportDefinitionService;
         this.queryExecutionService = queryExecutionService;
         this.sqlSafetyValidator = sqlSafetyValidator;
         this.sqlScopeInjector = sqlScopeInjector;
         this.queryAuditService = queryAuditService;
+        this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+    }
+
+    public void hydrateExecution(ReportExecution execution) {
+        executionStore.put(execution.executionId(), execution);
+    }
+
+    private void persistExecution(ReportExecution execution) {
+        executionStore.put(execution.executionId(), execution);
+        jdbcRepository.ifPresent(r -> r.saveReportExecution(execution));
     }
 
     public ReportExecution execute(String reportId, String userId, String tenantId,
@@ -46,7 +68,7 @@ public class ReportExecutionService {
         if (reportOpt.isEmpty()) {
             long elapsed = System.currentTimeMillis() - start;
             ReportExecution failed = new ReportExecution(executionId, reportId, "NOT_FOUND", 0, elapsed, "NLQ_REPORT_NOT_FOUND", Instant.now());
-            executionStore.put(executionId, failed);
+            persistExecution(failed);
             return failed;
         }
 
@@ -54,7 +76,7 @@ public class ReportExecutionService {
         if (report.archived()) {
             long elapsed = System.currentTimeMillis() - start;
             ReportExecution failed = new ReportExecution(executionId, reportId, "ARCHIVED", 0, elapsed, "NLQ_REPORT_NOT_FOUND", Instant.now());
-            executionStore.put(executionId, failed);
+            persistExecution(failed);
             return failed;
         }
 
@@ -62,7 +84,7 @@ public class ReportExecutionService {
         if (queryDefs == null || queryDefs.isEmpty()) {
             long elapsed = System.currentTimeMillis() - start;
             ReportExecution empty = new ReportExecution(executionId, reportId, "SUCCESS", 0, elapsed, null, Instant.now());
-            executionStore.put(executionId, empty);
+            persistExecution(empty);
             return empty;
         }
 
@@ -74,7 +96,7 @@ public class ReportExecutionService {
             if (!safety.safe()) {
                 long elapsed = System.currentTimeMillis() - start;
                 ReportExecution failed = new ReportExecution(executionId, reportId, "UNSAFE", 0, elapsed, "NLQ_SQL_UNSAFE", Instant.now());
-                executionStore.put(executionId, failed);
+                persistExecution(failed);
                 return failed;
             }
 
@@ -94,7 +116,7 @@ public class ReportExecutionService {
 
         long durationMs = System.currentTimeMillis() - start;
         ReportExecution execution = new ReportExecution(executionId, reportId, lastStatus, totalRows, durationMs, null, Instant.now());
-        executionStore.put(executionId, execution);
+        persistExecution(execution);
 
         queryAuditService.auditReportExecuted(userId, tenantId, reportId, durationMs);
         log.info("ReportExecutionService: reportId={}, executionId={}, status={}, rows={}, duration={}ms",

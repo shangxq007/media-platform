@@ -1,0 +1,29 @@
+# Profile: natron-worker — enable Natron POC render provider on a dedicated worker node.
+# Usage: --spring.profiles.active=dev,natron-worker
+
+render:
+  providers:
+    natron:
+      enabled: true
+      poc-effect-key: video.natron_vignette
+      poc-script-path: ${NATRON_POC_SCRIPT:/app/bin/natron-poc-render.sh}
+      renderer-binary: ${NATRON_RENDERER_BIN:NatronRenderer}
+      fallback-to-ffmpeg: ${NATRON_POC_FALLBACK:true}
+      auto-select-profile: true
+      reader-node-name: MyReader
+      writer-node-name: MyWriter
+      timeout-millis: 600000
+      supported-effect-keys:
+        - video.natron_vignette
+        - video.natron_color_grade
+
+app:
+  render:
+    worker-queue:
+      enabled: true
+      consume-enabled: true
+      poll-interval-ms: 3000
+  cli-tools:
+    executables:
+      natron-poc-render: ${NATRON_POC_SCRIPT:/app/bin/natron-poc-render.sh}
+      ffmpeg: ${MEDIA_FFMPEG_PATH:/usr/bin/ffmpeg}

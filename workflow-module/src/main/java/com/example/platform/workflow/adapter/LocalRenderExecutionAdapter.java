@@ -1,6 +1,5 @@
 package com.example.platform.workflow.adapter;
 
-import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.workflow.port.RenderExecutionPort;
 import org.slf4j.Logger;
@@ -70,9 +69,6 @@ public class LocalRenderExecutionAdapter implements RenderExecutionPort {
         log.info("Executing render job locally: jobId={}, tenant={}, project={}",
                 renderJobId, tenantId, projectId);
 
-        SubmitRenderJobRequest request = new SubmitRenderJobRequest(
-                tenantId, projectId, prompt, profile);
-
-        return orchestratorPort.submitRenderJob(request);
+        return orchestratorPort.executeExistingRenderJob(tenantId, renderJobId);
     }
 }

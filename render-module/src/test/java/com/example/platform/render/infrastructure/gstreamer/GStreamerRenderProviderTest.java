@@ -26,7 +26,7 @@ class GStreamerRenderProviderTest {
     void setUp(@TempDir Path tempDir) {
         mockToolRunner = mock(ProcessToolRunner.class);
         commandFactory = new GStreamerCommandFactory();
-        provider = new GStreamerRenderProvider(mockToolRunner, commandFactory);
+        provider = new GStreamerRenderProvider(mockToolRunner, commandFactory, new com.example.platform.render.domain.timeline.TimelineScriptParser());
         provider.setStorageRoot(tempDir.toString());
         // Default mock behavior for successful execution
         Instant now = Instant.now();

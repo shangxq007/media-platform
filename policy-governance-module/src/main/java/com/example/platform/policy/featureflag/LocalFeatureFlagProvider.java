@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
@@ -15,42 +14,49 @@ public class LocalFeatureFlagProvider {
 
     private static final Logger log = LoggerFactory.getLogger(LocalFeatureFlagProvider.class);
 
-    private final ConcurrentHashMap<String, FeatureFlagDefinition> flagStore = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, List<FeatureFlagTargetingRule>> rulesStore = new ConcurrentHashMap<>();
+    private final FeatureFlagPersistence store;
+
+    public LocalFeatureFlagProvider(FeatureFlagJdbcStore store) {
+        this.store = store;
+    }
+
+    /** For unit tests without Spring context. */
+    public LocalFeatureFlagProvider() {
+        this.store = new InMemoryFeatureFlagPersistence();
+    }
 
     public Optional<FeatureFlagDefinition> getFlag(String flagKey) {
-        return Optional.ofNullable(flagStore.get(flagKey));
+        return store.findByKey(flagKey);
     }
 
     public FeatureFlagDefinition saveFlag(FeatureFlagDefinition definition) {
-        flagStore.put(definition.flagKey(), definition);
-        return definition;
+        return store.save(definition);
     }
 
     public List<FeatureFlagDefinition> listFlags() {
-        return List.copyOf(flagStore.values());
+        return store.findAll();
     }
 
     public List<FeatureFlagDefinition> listFlagsByTag(String tag) {
-        return flagStore.values().stream()
+        return listFlags().stream()
                 .filter(f -> f.tags() != null && f.tags().contains(tag))
                 .collect(Collectors.toList());
     }
 
     public boolean deleteFlag(String flagKey) {
-        return flagStore.remove(flagKey) != null;
+        return store.delete(flagKey);
     }
 
     public void saveRule(String flagKey, FeatureFlagTargetingRule rule) {
-        rulesStore.computeIfAbsent(flagKey, k -> new ArrayList<>()).add(rule);
+        store.saveRule(flagKey, rule);
     }
 
     public List<FeatureFlagTargetingRule> getRules(String flagKey) {
-        return List.copyOf(rulesStore.getOrDefault(flagKey, List.of()));
+        return store.findRules(flagKey);
     }
 
     public void clearRules(String flagKey) {
-        rulesStore.remove(flagKey);
+        store.clearRules(flagKey);
     }
 
     public FeatureFlagDecision evaluate(FeatureFlagEvaluationRequest request) {
@@ -58,7 +64,7 @@ public class LocalFeatureFlagProvider {
         FeatureFlagContext context = request.context();
         Object defaultValue = request.defaultValue();
 
-        FeatureFlagDefinition definition = flagStore.get(flagKey);
+        FeatureFlagDefinition definition = store.findByKey(flagKey).orElse(null);
         if (definition == null || !definition.enabled() || definition.archived()) {
             boolean fallback = defaultValue instanceof Boolean ? (Boolean) defaultValue : false;
             String reason = definition == null ? "FLAG_NOT_DEFINED"
@@ -73,8 +79,7 @@ public class LocalFeatureFlagProvider {
             );
         }
 
-        List<FeatureFlagTargetingRule> rules = rulesStore.getOrDefault(flagKey, List.of())
-                .stream()
+        List<FeatureFlagTargetingRule> rules = store.findRules(flagKey).stream()
                 .filter(FeatureFlagTargetingRule::enabled)
                 .sorted(Comparator.comparingInt(r -> r.priority() != null ? r.priority() : Integer.MAX_VALUE))
                 .collect(Collectors.toList());

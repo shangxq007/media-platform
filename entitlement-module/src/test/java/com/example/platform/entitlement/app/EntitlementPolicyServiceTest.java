@@ -13,7 +13,7 @@ class EntitlementPolicyServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new EntitlementPolicyService(null);
+        service = new EntitlementPolicyService(java.util.Optional.empty(), java.util.Optional.empty());
     }
 
     @Test

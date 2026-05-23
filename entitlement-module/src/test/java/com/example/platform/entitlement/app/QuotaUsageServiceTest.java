@@ -13,7 +13,7 @@ class QuotaUsageServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new QuotaUsageService();
+        service = new QuotaUsageService(java.util.Optional.empty());
     }
 
     @Test

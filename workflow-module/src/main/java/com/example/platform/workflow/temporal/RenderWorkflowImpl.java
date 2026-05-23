@@ -15,12 +15,14 @@ public class RenderWorkflowImpl implements RenderWorkflow {
     private final RenderActivities activities = Workflow.newActivityStub(
             RenderActivities.class,
             ActivityOptions.newBuilder()
-                    .setStartToCloseTimeout(Duration.ofMinutes(2))
+                    .setStartToCloseTimeout(Duration.ofHours(2))
                     .build());
 
     @Override
     public String run(String renderJobId, String tenantId) {
         String pipeline = activities.decideRenderPipeline(renderJobId, tenantId);
-        return "render-" + pipeline + ":" + renderJobId;
+        String completedJobId = activities.executeRenderJob(renderJobId, tenantId);
+        int delivered = activities.deliverArtifacts(completedJobId, tenantId);
+        return "render-" + pipeline + ":" + completedJobId + ":delivered=" + delivered;
     }
 }

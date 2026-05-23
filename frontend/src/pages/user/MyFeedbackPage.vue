@@ -1,28 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { MeEntitlementAPI } from '@/api/me'
+import type { FeedbackItem } from '@/api/me'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import PageSection from '@/components/ui/PageSection.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import RiskBadge from '@/components/ui/RiskBadge.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import { formatApiError } from '@/utils/apiError'
 import EmptyState from '@/components/ui/EmptyState.vue'
-
-interface FeedbackItem {
-  id: string
-  type: 'BUG' | 'FEATURE' | 'GENERAL'
-  severity: 'low' | 'medium' | 'high' | 'critical'
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
-  title: string
-  description: string
-  createdAt: string
-}
 
 const loading = ref(true)
 const error = ref<string | null>(null)
 const feedbackItems = ref<FeedbackItem[]>([])
 const showSubmitDialog = ref(false)
-const newFeedback = ref<{ type: 'BUG' | 'FEATURE' | 'GENERAL'; severity: 'low' | 'medium' | 'high' | 'critical'; title: string; description: string }>({ type: 'GENERAL', severity: 'low', title: '', description: '' })
+const submitLoading = ref(false)
+const submitError = ref<string | null>(null)
+const newFeedback = ref({ type: 'GENERAL' as 'BUG' | 'FEATURE' | 'GENERAL', severity: 'low' as 'low' | 'medium' | 'high' | 'critical', title: '', description: '' })
 
 onMounted(loadFeedback)
 
@@ -30,9 +25,10 @@ async function loadFeedback() {
   loading.value = true
   error.value = null
   try {
-    feedbackItems.value = []
+    const result = await MeEntitlementAPI.getMyFeedback()
+    feedbackItems.value = result.feedback
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to load feedback'
+    error.value = formatApiError(e, 'Failed to load feedback')
   } finally {
     loading.value = false
   }
@@ -55,10 +51,25 @@ function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'neut
   }
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   if (!newFeedback.value.title.trim()) return
-  showSubmitDialog.value = false
-  newFeedback.value = { type: 'GENERAL', severity: 'low', title: '', description: '' }
+  submitLoading.value = true
+  submitError.value = null
+  try {
+    await MeEntitlementAPI.submitFeedback(
+      newFeedback.value.type,
+      newFeedback.value.severity,
+      newFeedback.value.title,
+      newFeedback.value.description
+    )
+    showSubmitDialog.value = false
+    newFeedback.value = { type: 'GENERAL', severity: 'low', title: '', description: '' }
+    await loadFeedback()
+  } catch (e: unknown) {
+    submitError.value = e instanceof Error ? e.message : 'Failed to submit feedback'
+  } finally {
+    submitLoading.value = false
+  }
 }
 </script>
 
@@ -88,7 +99,7 @@ function handleSubmit() {
               <div class="flex items-start justify-between mb-sm">
                 <div class="min-w-0 flex-1">
                   <h3 class="text-sm font-medium text-text-primary">{{ item.title }}</h3>
-                  <p class="text-xs text-text-secondary mt-xs line-clamp-2">{{ item.description }}</p>
+                  <p v-if="item.description" class="text-xs text-text-secondary mt-xs line-clamp-2">{{ item.description }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-sm flex-wrap">
@@ -111,6 +122,9 @@ function handleSubmit() {
             <h3 class="text-lg font-semibold text-text-primary">Submit Feedback</h3>
           </div>
           <div class="c-dialog-body space-y-md">
+            <div v-if="submitError" class="p-sm bg-danger-500/10 rounded text-xs text-danger-500">
+              {{ submitError }}
+            </div>
             <div class="grid grid-cols-2 gap-md">
               <div>
                 <label class="c-form-label">Type</label>
@@ -141,7 +155,9 @@ function handleSubmit() {
           </div>
           <div class="c-dialog-footer">
             <button class="theme-btn theme-btn-secondary" @click="showSubmitDialog = false">Cancel</button>
-            <button class="theme-btn theme-btn-primary" :disabled="!newFeedback.title.trim()" @click="handleSubmit">Submit</button>
+            <button class="theme-btn theme-btn-primary" :disabled="!newFeedback.title.trim() || submitLoading" @click="handleSubmit">
+              {{ submitLoading ? 'Submitting...' : 'Submit' }}
+            </button>
           </div>
         </div>
       </div>

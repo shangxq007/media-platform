@@ -12,5 +12,6 @@ public enum EntitlementDecisionReason {
     EXPIRED,
     REVOKED,
     ABAC_RULE,
+    SHARED_RESOURCE_GRANT,
     DEFAULT_DENY
 }

@@ -1,0 +1,41 @@
+# Profile: LiteLLM proxy as unified AI gateway (OpenAI-compatible /v1)
+# Usage: --spring.profiles.active=dev,litellm
+# LiteLLM model list & provider keys are configured on the LiteLLM service (config.yaml / UI).
+
+app:
+  ai:
+    default-provider: stubChatProvider
+    providers:
+      openai:
+        enabled: true
+        backend-label: litellm
+        tenant-virtual-keys-enabled: ${LITELLM_TENANT_VIRTUAL_KEYS:true}
+        # When true: PUT /admin/tenants/{id}/ai/litellm-key writes to Vault; DB keeps vault_ref only.
+        tenant-keys-vault-backed: ${LITELLM_TENANT_KEYS_VAULT:false}
+    routing:
+      script-generation:
+        primary:
+          provider: openAiChatProvider
+          # LiteLLM model alias — must exist in LiteLLM config (e.g. gemini/gemini-2.0-flash)
+          model: ${LITELLM_MODEL_SCRIPT:gemini/gemini-2.0-flash}
+        fallback:
+          - provider: stubChatProvider
+      nlq-sql-generation:
+        primary:
+          provider: openAiChatProvider
+          model: ${LITELLM_MODEL_NLQ:gpt-4o-mini}
+      nlq-result-summary:
+        primary:
+          provider: openAiChatProvider
+          model: ${LITELLM_MODEL_NLQ:gpt-4o-mini}
+      timeline-edit:
+        primary:
+          provider: openAiChatProvider
+          model: ${LITELLM_MODEL_TIMELINE_EDIT:gemini/gemini-2.0-flash}
+
+spring:
+  ai:
+    openai:
+      # LiteLLM master key or virtual key
+      api-key: ${LITELLM_API_KEY:sk-litellm}
+      base-url: ${LITELLM_BASE_URL:http://127.0.0.1:4000/v1}

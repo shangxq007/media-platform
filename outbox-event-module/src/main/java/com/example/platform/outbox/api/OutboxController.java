@@ -86,4 +86,15 @@ public class OutboxController {
         dispatcher.deadLetter(outboxId, reason);
         return Map.of("outboxId", outboxId, "status", "DEAD_LETTER", "reason", reason);
     }
+
+    @GetMapping("/outbox/dead-letter")
+    public List<Map<String, Object>> deadLetterEvents(@RequestParam(defaultValue = "50") int limit) {
+        return service.deadLetterEvents(Math.max(1, Math.min(limit, 200)));
+    }
+
+    @PostMapping("/outbox/retry-due")
+    public Map<String, Object> retryDue(@RequestParam(defaultValue = "100") int limit) {
+        int processed = dispatcher.retryDueEvents();
+        return Map.of("processed", processed, "limit", Math.max(1, Math.min(limit, 500)));
+    }
 }

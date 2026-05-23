@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":config-module"))
     implementation(project(":workflow-module"))
     implementation(project(":storage-module"))
+    implementation(project(":delivery-module"))
     implementation(project(":prompt-module"))
     implementation(project(":cloud-resource-module"))
     implementation(project(":secrets-config-module"))
@@ -28,6 +29,8 @@ dependencies {
     implementation(project(":sandbox-runtime-module"))
     implementation(project(":federation-query-module"))
     implementation(project(":user-analytics-module"))
+    implementation(project(":social-publish-module"))
+    implementation(project(":compatibility-migration-module"))
 
     implementation("org.springframework.boot:spring-boot-starter-graphql")
 
@@ -43,6 +46,7 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.security:spring-security-web")
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
@@ -56,4 +60,8 @@ dependencies {
 
     testImplementation("org.springframework.modulith:spring-modulith-starter-test:2.0.4")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    args("--spring.profiles.active=dev")
 }

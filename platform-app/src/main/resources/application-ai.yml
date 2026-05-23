@@ -1,0 +1,31 @@
+# Profile: direct OpenAI / OpenAI-compatible endpoint (NIM, etc.)
+# Usage: --spring.profiles.active=dev,ai
+
+app:
+  ai:
+    default-provider: stubChatProvider
+    providers:
+      openai:
+        enabled: true
+        backend-label: openai
+    routing:
+      script-generation:
+        primary:
+          provider: openAiChatProvider
+          model: gpt-4o-mini
+        fallback:
+          - provider: stubChatProvider
+      nlq-sql-generation:
+        primary:
+          provider: openAiChatProvider
+          model: gpt-4o-mini
+      nlq-result-summary:
+        primary:
+          provider: openAiChatProvider
+          model: gpt-4o-mini
+
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}

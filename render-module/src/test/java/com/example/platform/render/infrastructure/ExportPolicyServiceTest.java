@@ -106,10 +106,13 @@ class ExportPolicyServiceTest {
         RenderProviderRegistry registry = new RenderProviderRegistry();
         JavaCVMediaProbeAdapter adapter = new JavaCVMediaProbeAdapter();
         MediaProbeService probeService = new MediaProbeService(adapter);
-        JavaCVRenderProvider javacv = new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService));
+        JavaCVRenderProvider javacv = new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService),
+                new com.example.platform.render.domain.timeline.TimelineScriptParser());
         registry.register("javacv", javacv, javacv.getCapability());
 
-        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(registry);
+        RenderProviderSelectionPolicy selectionPolicy = new RenderProviderSelectionPolicy(
+                registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
+                        new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
 
         // Should fall back to available provider

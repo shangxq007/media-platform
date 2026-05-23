@@ -6,6 +6,56 @@ import UserDashboardPage from './UserDashboardPage.vue'
 
 vi.mock('@/api/me', () => ({
   MeEntitlementAPI: {
+    getDashboard: vi.fn().mockResolvedValue({
+      tenantId: 't1',
+      userId: 'u1',
+      timestamp: '2026-05-19T00:00:00Z',
+      workspace: { id: 't1', name: 'Test Tenant', status: 'ACTIVE', role: 'ADMIN' },
+      capabilities: {
+        tier: 'PRO',
+        monthlyRenderMinutes: 600,
+        maxConcurrentJobs: 2,
+        gpuAllowed: false,
+        remoteWorkerAllowed: false,
+        customFontsAllowed: true,
+        watermark: false,
+        allowedExportFormats: ['mp4', 'webm'],
+        allowedPresets: ['default_720p', 'default_1080p'],
+        exportFormats: ['mp4', 'webm'],
+        exportPresets: ['default_720p', 'default_1080p'],
+        maxExportResolutionWidth: 1920,
+        maxExportResolutionHeight: 1080,
+        gpuExportAllowed: false,
+        maxConcurrentExports: 2,
+      },
+      featureFlags: [
+        { flagKey: 'beta_ui', displayName: 'Beta UI', enabled: true, description: 'New UI' },
+        { flagKey: 'experimental_ai', displayName: 'AI Assistant', enabled: false, description: 'AI-powered editing' },
+      ],
+      recentProjects: [],
+      quickActions: [
+        { key: 'new_project', label: 'New Project', icon: '➕', path: '/project/new', enabled: true, visible: true },
+        { key: 'upload_media', label: 'Upload Media', icon: '📁', path: '/', enabled: true, visible: true },
+      ],
+      usage: {
+        period: '2026-05',
+        renderMinutesUsed: 120,
+        renderMinutesLimit: 600,
+        storageGbUsed: 5.2,
+        storageGbLimit: 50,
+        apiCallsUsed: 340,
+        apiCallsLimit: 10000,
+        exportsUsed: 8,
+        exportsLimit: 100,
+      },
+      onboarding: {
+        hasProjects: false,
+        hasCompletedProfile: true,
+        hasInvitedTeamMembers: false,
+        hasCompletedFirstExport: false,
+        hasSetBilling: false,
+      },
+    }),
     getMyCapabilities: vi.fn().mockResolvedValue({
       tenantId: 't1',
       userId: 'u1',
@@ -66,9 +116,12 @@ vi.mock('@/api/me', () => ({
       lastUpdatedAt: '2026-05-16T12:00:00Z',
     }),
     getCreditBalance: vi.fn().mockResolvedValue({
-      tenantId: 't1',
+      walletId: 'w1',
+      subjectId: 't1',
+      subjectType: 'TENANT',
       balance: 29.99,
       currency: 'USD',
+      heldBalance: 0,
     }),
   },
 }))

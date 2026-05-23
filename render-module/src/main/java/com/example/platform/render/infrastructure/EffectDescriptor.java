@@ -10,5 +10,6 @@ public record EffectDescriptor(
         String description,
         List<EffectParameterSchema> paramSchemas,
         List<String> providerKeys,
-        Map<String, Object> defaultParams
+        Map<String, Object> defaultParams,
+        List<String> allowedTiers
 ) {}

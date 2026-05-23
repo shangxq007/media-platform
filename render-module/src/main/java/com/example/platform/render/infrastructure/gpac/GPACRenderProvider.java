@@ -6,6 +6,9 @@ import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
+import com.example.platform.render.domain.timeline.TimelineClip;
+import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderPreset;
 import org.slf4j.Logger;
@@ -15,10 +18,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 
 @Component
 @ConditionalOnProperty(prefix = "render.providers.gpac", name = "enabled", havingValue = "true")
@@ -31,11 +35,14 @@ public class GPACRenderProvider implements RenderProvider {
 
     private final ProcessToolRunner processToolRunner;
     private final Mp4BoxCommandFactory commandFactory;
+    private final TimelineScriptParser timelineScriptParser;
 
     public GPACRenderProvider(ProcessToolRunner processToolRunner,
-                               Mp4BoxCommandFactory commandFactory) {
+                               Mp4BoxCommandFactory commandFactory,
+                               TimelineScriptParser timelineScriptParser) {
         this.processToolRunner = processToolRunner;
         this.commandFactory = commandFactory;
+        this.timelineScriptParser = timelineScriptParser;
     }
 
     public void setStorageRoot(String storageRoot) {
@@ -55,16 +62,14 @@ public class GPACRenderProvider implements RenderProvider {
 
             String artifactId = Ids.newId("art");
 
-            if (aiScript != null && aiScript.contains("{")) {
-                Map<String, Object> timeline = parseTimeline(aiScript);
-                String format = (String) timeline.getOrDefault("format", "mp4");
+            String format = resolveOutputFormat(aiScript, profile);
+            String mezzanine = resolveMezzaninePath(jobId, aiScript);
 
-                if ("dash".equalsIgnoreCase(format) || "hls".equalsIgnoreCase(format) || "cmaf".equalsIgnoreCase(format)) {
-                    return packageStreaming(jobId, outputDir, preset, format, artifactId);
-                }
+            if ("dash".equalsIgnoreCase(format) || "hls".equalsIgnoreCase(format) || "cmaf".equalsIgnoreCase(format)) {
+                return packageStreaming(jobId, outputDir, preset, format, artifactId, mezzanine);
             }
 
-            return packageMp4(jobId, outputPath, preset, artifactId);
+            return packageMp4(jobId, outputPath, preset, artifactId, mezzanine);
 
         } catch (PlatformException e) {
             throw e;
@@ -82,11 +87,11 @@ public class GPACRenderProvider implements RenderProvider {
     }
 
     private RenderResult packageStreaming(String jobId, Path outputDir, RenderPreset preset,
-                                           String format, String artifactId) throws Exception {
+                                           String format, String artifactId, String mezzanine) throws Exception {
         log.info("GPACRenderProvider: packaging streaming format={}, job={}", format, jobId);
 
         String baseMp4 = outputDir.resolve("base.mp4").toString();
-        createBaseMp4(baseMp4, preset);
+        prepareMezzanine(baseMp4, preset, mezzanine);
 
         List<String> args;
         String manifestPath;
@@ -139,10 +144,10 @@ public class GPACRenderProvider implements RenderProvider {
     }
 
     private RenderResult packageMp4(String jobId, String outputPath, RenderPreset preset,
-                                      String artifactId) throws Exception {
+                                      String artifactId, String mezzanine) throws Exception {
         log.info("GPACRenderProvider: packaging MP4 job={}", jobId);
 
-        createBaseMp4(outputPath, preset);
+        prepareMezzanine(outputPath, preset, mezzanine);
 
         String faststartOutput = outputPath + ".faststart.mp4";
         List<String> args = commandFactory.buildFaststartCommand(outputPath, faststartOutput);
@@ -162,6 +167,61 @@ public class GPACRenderProvider implements RenderProvider {
                 "mp4",
                 resolution
         );
+    }
+
+    private void prepareMezzanine(String outputPath, RenderPreset preset, String mezzanine) throws Exception {
+        if (mezzanine != null && Files.isRegularFile(Path.of(mezzanine))) {
+            Files.copy(Path.of(mezzanine), Path.of(outputPath),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            return;
+        }
+        createBaseMp4(outputPath, preset);
+    }
+
+    private String resolveMezzaninePath(String jobId, String aiScript) {
+        Path jobOutput = Path.of(storageRoot, "artifacts", jobId, "output.mp4");
+        if (Files.isRegularFile(jobOutput)) {
+            return jobOutput.toString();
+        }
+        Path transcodeOutput = Path.of(storageRoot, "artifacts", jobId, "transcode-output.mp4");
+        if (Files.isRegularFile(transcodeOutput)) {
+            return transcodeOutput.toString();
+        }
+        Optional<TimelineSpec> timeline = timelineScriptParser.parse(aiScript);
+        if (timeline.isPresent()) {
+            Optional<TimelineClip> clip = timelineScriptParser.firstVideoClip(timeline.get());
+            if (clip.isPresent() && clip.get().assetRef() != null) {
+                String uri = clip.get().assetRef().storageUri();
+                if (timelineScriptParser.mediaFileExists(uri, storageRoot)) {
+                    return timelineScriptParser.resolveLocalPath(uri, storageRoot);
+                }
+            }
+        }
+        return null;
+    }
+
+    private String resolveOutputFormat(String aiScript, String profile) {
+        if (profile != null) {
+            if (profile.contains("dash")) {
+                return "dash";
+            }
+            if (profile.contains("hls")) {
+                return "hls";
+            }
+            if (profile.contains("cmaf")) {
+                return "cmaf";
+            }
+        }
+        if (aiScript != null && aiScript.contains("{")) {
+            try {
+                Map<String, Object> timeline = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readValue(aiScript, Map.class);
+                return (String) timeline.getOrDefault("format", "mp4");
+            } catch (Exception ignored) {
+                return "mp4";
+            }
+        }
+        return "mp4";
     }
 
     private void createBaseMp4(String outputPath, RenderPreset preset) throws Exception {
@@ -198,14 +258,6 @@ public class GPACRenderProvider implements RenderProvider {
 
             recorder.stop();
             recorder.release();
-        }
-    }
-
-    private Map<String, Object> parseTimeline(String aiScript) {
-        try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(aiScript, Map.class);
-        } catch (Exception e) {
-            return Map.of();
         }
     }
 

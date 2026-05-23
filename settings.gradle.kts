@@ -13,6 +13,7 @@ include(
     "config-module",
     "workflow-module",
     "storage-module",
+    "delivery-module",
     "prompt-module",
     "cloud-resource-module",
     "secrets-config-module",
@@ -34,5 +35,6 @@ include(
     "federation-query-module",
     "user-analytics-module",
     "compatibility-migration-module",
-    "remote-render-worker"
+    "remote-render-worker",
+    "social-publish-module"
 )

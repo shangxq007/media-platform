@@ -46,8 +46,57 @@ public class ProblematicDataDetectionService {
                 ProblematicDataRule.providerErrorSpike(),
                 ProblematicDataRule.workerStaleHeartbeat(),
                 ProblematicDataRule.slaBreach(),
-                ProblematicDataRule.costAnomaly()
+                ProblematicDataRule.costAnomaly(),
+                ProblematicDataRule.danglingTimelineAsset(),
+                ProblematicDataRule.orphanArtifactBlob(),
+                ProblematicDataRule.unresolvedAssetUri(),
+                ProblematicDataRule.missingArtifactBlob(),
+                ProblematicDataRule.storageBucketOrphan()
         );
+    }
+
+    /**
+     * Records asset/timeline integrity findings from {@code AssetIntegrityScanService}.
+     */
+    public List<ProblematicDataRecord> detectAssetIntegrityFindings(
+            String projectId, String tenantId, List<Map<String, Object>> findings) {
+        List<ProblematicDataRecord> detected = new ArrayList<>();
+        for (Map<String, Object> finding : findings) {
+            String ruleId = String.valueOf(finding.getOrDefault("ruleId", "AST-001"));
+            String dataId = String.valueOf(finding.getOrDefault("dataId", projectId));
+            String description = String.valueOf(finding.getOrDefault("message", "Asset integrity issue"));
+            ProblematicSeverity severity = severityForAssetRule(ruleId);
+            ProblematicDataType type = typeForAssetRule(ruleId);
+            detected.add(createRecord(dataId, "ASSET_INTEGRITY", tenantId, null,
+                    type, severity, ruleId, description, finding, projectId, null, null));
+        }
+        for (ProblematicDataRecord record : detected) {
+            eventPublisher.publishEvent(new ProblematicDataDetectedEvent(
+                    record.recordId(), record.dataType(), record.dataId(),
+                    record.problematicType().name(), record.severity().name(),
+                    record.detectionRule(), record.description(),
+                    record.context(), record.detectedAt().toInstant()));
+            auditService.record("system", "PROBLEMATIC_DATA_DETECTED", "AUDIT",
+                    "problematic_data", record.recordId(), Map.of(
+                            "dataType", record.dataType(),
+                            "severity", record.severity().name(),
+                            "rule", record.detectionRule()));
+        }
+        return detected;
+    }
+
+    private static ProblematicSeverity severityForAssetRule(String ruleId) {
+        return switch (ruleId) {
+            case "AST-002", "AST-005" -> ProblematicSeverity.MEDIUM;
+            default -> ProblematicSeverity.HIGH;
+        };
+    }
+
+    private static ProblematicDataType typeForAssetRule(String ruleId) {
+        return switch (ruleId) {
+            case "AST-002", "AST-005" -> ProblematicDataType.LOGIC_CONFLICT;
+            default -> ProblematicDataType.MISSING_FIELD;
+        };
     }
 
     /**

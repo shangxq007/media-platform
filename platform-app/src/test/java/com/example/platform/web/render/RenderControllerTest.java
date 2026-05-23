@@ -1,6 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.identity.app.IdentityAccessService;
+import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.render.app.RenderJobService;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
@@ -19,6 +20,7 @@ class RenderControllerTest {
     private RenderJobService renderJobService;
     private IdentityAccessService identityAccessService;
     private AuditPort auditPort;
+    private RenderOrchestratorPort orchestratorPort;
     private RenderController controller;
 
     @BeforeEach
@@ -26,7 +28,8 @@ class RenderControllerTest {
         renderJobService = mock(RenderJobService.class);
         identityAccessService = mock(IdentityAccessService.class);
         auditPort = mock(AuditPort.class);
-        controller = new RenderController(renderJobService, identityAccessService, auditPort);
+        orchestratorPort = mock(RenderOrchestratorPort.class);
+        controller = new RenderController(renderJobService, identityAccessService, auditPort, orchestratorPort);
     }
 
     @Test

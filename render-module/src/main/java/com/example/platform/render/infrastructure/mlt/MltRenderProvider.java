@@ -6,6 +6,8 @@ import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
+import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderPreset;
 import org.slf4j.Logger;
@@ -14,12 +16,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 
 /**
  * MLT/melt-based render provider for multi-track timeline rendering.
@@ -27,10 +29,10 @@ import java.util.Set;
  * <p>This provider renders timelines using MLT's melt command. It converts
  * the internal timeline representation to MLT project XML and executes melt.</p>
  *
- * <p>Activated when {@code render.providers.melt.enabled=true}.</p>
+ * <p>Activated when {@code render.providers.mlt.enabled=true}.</p>
  */
 @Component
-@ConditionalOnProperty(prefix = "render.providers.melt", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "render.providers.mlt", name = "enabled", havingValue = "true")
 public class MltRenderProvider implements RenderProvider {
 
     private static final Logger log = LoggerFactory.getLogger(MltRenderProvider.class);
@@ -41,12 +43,16 @@ public class MltRenderProvider implements RenderProvider {
     private final ProcessToolRunner processToolRunner;
     private final MltProjectXmlBuilder xmlBuilder;
     private final MLTCommandFactory commandFactory;
+    private final TimelineScriptParser timelineScriptParser;
 
     public MltRenderProvider(ProcessToolRunner processToolRunner,
-                              MltProjectXmlBuilder xmlBuilder, MLTCommandFactory commandFactory) {
+                              MltProjectXmlBuilder xmlBuilder,
+                              MLTCommandFactory commandFactory,
+                              TimelineScriptParser timelineScriptParser) {
         this.processToolRunner = processToolRunner;
         this.xmlBuilder = xmlBuilder;
         this.commandFactory = commandFactory;
+        this.timelineScriptParser = timelineScriptParser;
     }
 
     public void setStorageRoot(String storageRoot) {
@@ -63,11 +69,7 @@ public class MltRenderProvider implements RenderProvider {
             String outputPath = outputDir.resolve("output.mp4").toString();
             RenderPreset preset = RenderPreset.fromProfile(profile);
 
-            // Parse timeline from aiScript
-            Map<String, Object> timeline = parseTimeline(aiScript);
-
-            // Build MLT XML
-            String xmlContent = buildMltXml(timeline, preset);
+            String xmlContent = buildMltXml(aiScript, preset);
             String xmlPath = outputDir.resolve("project.mlt").toString();
             writeXmlFile(xmlPath, xmlContent);
 
@@ -121,72 +123,55 @@ public class MltRenderProvider implements RenderProvider {
         }
     }
 
-    private String buildMltXml(Map<String, Object> timeline, RenderPreset preset) {
-        // Build MLT XML from timeline data
-        StringBuilder xml = new StringBuilder();
-        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        xml.append("<mlt>\n");
-
-        // Profile
-        xml.append(String.format("  <profile width=\"%d\" height=\"%d\" frame_rate_num=\"%d\" />\n",
-                preset.width(), preset.height(), preset.frameRate()));
-
-        // Producers (from tracks/clips)
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> tracks = (List<Map<String, Object>>) timeline.getOrDefault("tracks", List.of());
-        int producerId = 0;
-        for (Map<String, Object> track : tracks) {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> clips = (List<Map<String, Object>>) track.getOrDefault("children", List.of());
-            for (Map<String, Object> clip : clips) {
-                String sourceUrl = (String) clip.getOrDefault("media_reference", "");
-                if (sourceUrl != null && !sourceUrl.isEmpty() && !sourceUrl.startsWith("file://")) {
-                    String sourcePath = sourceUrl.replace("file://", "");
-                    xml.append(String.format("  <producer id=\"prod_%d\"><property name=\"resource\">%s</property></producer>\n",
-                            producerId, escapeXml(sourcePath)));
-                    producerId++;
-                }
+    private String buildMltXml(String aiScript, RenderPreset preset) {
+        Optional<TimelineSpec> parsed = timelineScriptParser.parse(aiScript);
+        if (parsed.isPresent()) {
+            TimelineSpec timeline = resolveTimelinePaths(parsed.get());
+            if (!timelineScriptParser.videoClipsInOrder(timeline).isEmpty()) {
+                return xmlBuilder.build(timeline);
             }
         }
+        return xmlBuilder.buildSkeleton(preset.width(), preset.height(), preset.frameRate());
+    }
 
-        // If no producers, add a color producer
-        if (producerId == 0) {
-            xml.append("  <producer id=\"color\"><property name=\"resource\">color:#334455</property></producer>\n");
+    private TimelineSpec resolveTimelinePaths(TimelineSpec timeline) {
+        List<com.example.platform.render.domain.timeline.TimelineTrack> tracks = new ArrayList<>();
+        if (timeline.tracks() != null) {
+            for (var track : timeline.tracks()) {
+                List<com.example.platform.render.domain.timeline.TimelineClip> clips = new ArrayList<>();
+                if (track.clips() != null) {
+                    for (var clip : track.clips()) {
+                        if (clip.assetRef() == null) {
+                            clips.add(clip);
+                            continue;
+                        }
+                        String uri = clip.assetRef().storageUri();
+                        String local = timelineScriptParser.resolveLocalPath(uri, storageRoot);
+                        clips.add(new com.example.platform.render.domain.timeline.TimelineClip(
+                                clip.id(),
+                                com.example.platform.render.domain.timeline.TimelineAssetRef.of(
+                                        clip.assetRef().assetId(), local),
+                                clip.timelineStart(),
+                                clip.assetInPoint(),
+                                clip.assetOutPoint(),
+                                clip.clipDuration(),
+                                clip.effects()));
+                    }
+                }
+                tracks.add(new com.example.platform.render.domain.timeline.TimelineTrack(
+                        track.id(), track.name(), track.type(), track.layer(),
+                        clips, track.muted(), track.locked()));
+            }
         }
-
-        // Playlist
-        xml.append("  <playlist id=\"main\">\n");
-        for (int i = 0; i < Math.max(producerId, 1); i++) {
-            xml.append(String.format("    <entry producer=\"prod_%d\" />\n", i));
-        }
-        xml.append("  </playlist>\n");
-
-        // Tractor
-        xml.append("  <tractor><multitrack><track producer=\"main\" /></multitrack></tractor>\n");
-        xml.append("</mlt>\n");
-
-        return xml.toString();
+        return new TimelineSpec(
+                timeline.id(), timeline.name(), timeline.description(),
+                tracks, timeline.textOverlays(), timeline.outputSpec(),
+                timeline.totalDuration(), timeline.metadata());
     }
 
     private void writeXmlFile(String path, String content) throws Exception {
         try (FileWriter writer = new FileWriter(path)) {
             writer.write(content);
-        }
-    }
-
-    private String escapeXml(String text) {
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&apos;");
-    }
-
-    private Map<String, Object> parseTimeline(String aiScript) {
-        try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(aiScript, Map.class);
-        } catch (Exception e) {
-            return Map.of("tracks", List.of());
         }
     }
 

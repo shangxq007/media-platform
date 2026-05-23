@@ -106,6 +106,47 @@ public class EntitlementController {
         return Map.of("status", "refreshed");
     }
 
+    @PutMapping("/tenants/{tenantId}/tier")
+    public Map<String, Object> setTenantTier(@PathVariable String tenantId, @RequestBody TierUpdateRequest body) {
+        entitlementPolicyService.setTier(tenantId, body.tier());
+        return Map.of(
+                "tenantId", tenantId,
+                "tier", entitlementPolicyService.getTier(tenantId),
+                "decisionSource", entitlementPolicyService.getDecisionSource(tenantId));
+    }
+
+    @PostMapping("/entitlements/access-check")
+    public Map<String, Object> accessCheck(
+            @RequestHeader(value = "X-Tenant-ID", required = false) String tenantId,
+            @RequestHeader(value = "X-User-ID", required = false) String userId,
+            @RequestBody AccessCheckBody body) {
+        String effectiveTenant = tenantId != null ? tenantId : body.tenantId();
+        String effectiveUser = userId != null ? userId : body.userId();
+        AccessCheckRequest request = new AccessCheckRequest(
+                effectiveTenant,
+                body.workspaceId(),
+                effectiveUser,
+                body.subjectType() != null ? body.subjectType() : "USER",
+                body.subjectId() != null ? body.subjectId() : effectiveUser,
+                body.action() != null ? body.action() : "read",
+                body.resourceType(),
+                body.resourceId(),
+                body.featureKey(),
+                body.requestedPreset(),
+                body.providerKey(),
+                "api",
+                body.requestedQuota(),
+                body.context());
+        AccessDecision decision = accessDecisionService.check(request);
+        return Map.of(
+                "allowed", decision.allowed(),
+                "decision", decision.decision(),
+                "reasonCode", decision.reasonCode(),
+                "message", decision.userFriendlyMessage(),
+                "currentTier", decision.currentTier(),
+                "matchedPolicies", decision.matchedPolicies());
+    }
+
     @GetMapping("/entitlements/subjects/{subjectId}")
     public EntitlementSnapshot snapshot(@PathVariable String subjectId) {
         return entitlementService.getSnapshot(subjectId);
@@ -115,4 +156,21 @@ public class EntitlementController {
             String preset,
             String outputFormat,
             Long estimatedDurationSeconds) {}
+
+    public record TierUpdateRequest(String tier) {}
+
+    public record AccessCheckBody(
+            String tenantId,
+            String userId,
+            String workspaceId,
+            String subjectType,
+            String subjectId,
+            String action,
+            String resourceType,
+            String resourceId,
+            String featureKey,
+            String requestedPreset,
+            String providerKey,
+            Long requestedQuota,
+            java.util.Map<String, Object> context) {}
 }

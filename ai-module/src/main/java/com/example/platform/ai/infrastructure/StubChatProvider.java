@@ -135,6 +135,19 @@ public class StubChatProvider implements ChatProvider {
     }
 
     private String generateMockScript(String capability, String prompt) {
+        if ("timeline-edit".equalsIgnoreCase(capability)) {
+            return """
+                    {
+                      "operations": [
+                        {
+                          "op": "replace",
+                          "path": "/metadata/platform.ai.lastStubEdit",
+                          "value": "true"
+                        }
+                      ]
+                    }
+                    """;
+        }
         String scriptId = Ids.newId("scr");
         String scenesJson = generateScenesForCapability(capability);
         

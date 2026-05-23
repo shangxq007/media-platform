@@ -1,4 +1,4 @@
-type Query {
+extend type Query {
     adminDashboard(range: String = "7d"): AdminDashboard!
 }
 
