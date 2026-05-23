@@ -208,11 +208,18 @@ export const EntitlementAPI = {
     const { data } = await api.get('/entitlements/me/capabilities')
     return data
   },
-  async validateExport(preset: string, outputFormat: string, estimatedDurationSeconds?: number) {
+  async validateExport(
+    preset: string,
+    outputFormat: string,
+    estimatedDurationSeconds?: number,
+    options?: { effectKeys?: string[]; timelineJson?: string }
+  ) {
     const { data } = await api.post('/render/export/validate', {
       preset,
       outputFormat,
-      estimatedDurationSeconds
+      estimatedDurationSeconds,
+      effectKeys: options?.effectKeys,
+      timelineJson: options?.timelineJson,
     })
     return data
   }

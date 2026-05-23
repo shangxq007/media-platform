@@ -7,6 +7,7 @@ import com.example.platform.shared.Ids;
 import com.example.platform.shared.payment.PaymentSucceededPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,19 +24,20 @@ public class PaymentGatewayService {
     private final PaymentAttemptRepository paymentAttemptRepository;
     private final ProviderWebhookEventRepository webhookEventRepository;
     private final CheckoutPaymentBindingRegistry bindingRegistry;
-    private final Optional<PaymentSucceededPort> paymentSucceededPort;
+    private final ObjectProvider<PaymentSucceededPort> paymentSucceededPort;
 
-    public PaymentGatewayService(List<PaymentProvider> providers,
-                                 @Autowired(required = false) PaymentAttemptRepository paymentAttemptRepository,
-                                 @Autowired(required = false) ProviderWebhookEventRepository webhookEventRepository,
-                                 CheckoutPaymentBindingRegistry bindingRegistry,
-                                 @Autowired(required = false) PaymentSucceededPort paymentSucceededPort) {
+    public PaymentGatewayService(
+            List<PaymentProvider> providers,
+            @Autowired(required = false) PaymentAttemptRepository paymentAttemptRepository,
+            @Autowired(required = false) ProviderWebhookEventRepository webhookEventRepository,
+            CheckoutPaymentBindingRegistry bindingRegistry,
+            ObjectProvider<PaymentSucceededPort> paymentSucceededPort) {
         this.providers = providers.stream()
                 .collect(java.util.stream.Collectors.toMap(p -> p.code().value(), p -> p));
         this.paymentAttemptRepository = paymentAttemptRepository;
         this.webhookEventRepository = webhookEventRepository;
         this.bindingRegistry = bindingRegistry;
-        this.paymentSucceededPort = Optional.ofNullable(paymentSucceededPort);
+        this.paymentSucceededPort = paymentSucceededPort;
     }
 
     public CheckoutResult createCheckout(CheckoutCommand command) {
@@ -125,7 +127,7 @@ public class PaymentGatewayService {
         if (!result.paymentSucceeded()) {
             return;
         }
-        paymentSucceededPort.ifPresent(port -> {
+        paymentSucceededPort.ifAvailable(port -> {
             try {
                 port.onPaymentSucceeded(new PaymentSucceededPort.PaymentSucceededEvent(
                         providerCode,

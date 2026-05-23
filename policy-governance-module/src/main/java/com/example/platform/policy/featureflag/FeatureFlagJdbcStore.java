@@ -5,6 +5,7 @@ import com.example.platform.policy.featureflag.domain.FeatureFlagTargetingRule;
 import com.example.platform.policy.featureflag.domain.FeatureFlagType;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.Jsons;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
+@ConditionalOnBean(JdbcTemplate.class)
 public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
 
     private final JdbcTemplate jdbc;

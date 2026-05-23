@@ -8,9 +8,12 @@ import com.example.platform.payment.infrastructure.NoopHyperswitchPaymentProvide
 import com.example.platform.payment.infrastructure.NoopStripePaymentProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
 import java.util.Map;
+
+import static org.mockito.Mockito.mock;
 
 class PaymentGatewayServiceTest {
 
@@ -22,7 +25,9 @@ class PaymentGatewayServiceTest {
                 new NoopStripePaymentProvider(),
                 new NoopHyperswitchPaymentProvider()
         );
-        service = new PaymentGatewayService(providers, null, null, new CheckoutPaymentBindingRegistry(), null);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<com.example.platform.shared.payment.PaymentSucceededPort> ports = mock(ObjectProvider.class);
+        service = new PaymentGatewayService(providers, null, null, new CheckoutPaymentBindingRegistry(), ports);
     }
 
     @Test

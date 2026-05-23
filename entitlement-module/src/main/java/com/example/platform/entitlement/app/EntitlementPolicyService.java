@@ -67,6 +67,8 @@ public class EntitlementPolicyService implements EntitlementPort {
     private void initializeDefaultFeatureFlags() {
         featureFlags.put("FREE", List.of(
                 new FeatureFlag("watermark", "Watermark", true, "TIER", "FREE", "Adds watermark to exports"),
+                new FeatureFlag("export.client.enabled", "Browser Export", true, "TIER", "FREE",
+                        "Export video in the browser without server render"),
                 new FeatureFlag("gpu-render", "GPU Rendering", false, "TIER", "FREE", "GPU-accelerated rendering"),
                 new FeatureFlag("remote-worker", "Remote Worker", false, "TIER", "FREE", "Remote render worker support")));
         featureFlags.put("PRO", List.of(
@@ -173,6 +175,12 @@ public class EntitlementPolicyService implements EntitlementPort {
     @Override
     public EntitlementPort.ExportValidationResult validateExport(String tenantId, String userId,
             String requestedPreset, String outputFormat, long estimatedDurationSeconds) {
+        return validateExport(tenantId, userId, requestedPreset, outputFormat, estimatedDurationSeconds, List.of());
+    }
+
+    @Override
+    public EntitlementPort.ExportValidationResult validateExport(String tenantId, String userId,
+            String requestedPreset, String outputFormat, long estimatedDurationSeconds, List<String> effectKeys) {
         String tier = getTier(tenantId);
         EntitlementPolicy policy = getPolicy(tenantId);
         ExportCapabilityPolicy exportPolicy = ExportCapabilityPolicy.forTier(tier);
@@ -232,6 +240,11 @@ public class EntitlementPolicyService implements EntitlementPort {
 
         boolean allowed = violations.isEmpty();
 
+        boolean clientFeatureOn = isFeatureEnabled(tier, "export.client.enabled");
+        ClientExportRoutingPolicy.RoutingDecision routing = ClientExportRoutingPolicy.resolve(
+                tier, requestedPreset, estimatedDurationSeconds,
+                effectKeys != null ? effectKeys : List.of(), clientFeatureOn);
+
         EntitlementPort.ExportValidationResult result = new EntitlementPort.ExportValidationResult(
                 allowed,
                 allowed ? "ALLOWED" : violations.get(0),
@@ -246,7 +259,10 @@ public class EntitlementPolicyService implements EntitlementPort {
                 allowed ? "Export request validated successfully"
                         : "Export request denied: " + String.join(", ", violations),
                 violations,
-                recommendations
+                recommendations,
+                routing.recommendedRenderLocation(),
+                routing.clientExportSupported(),
+                routing.unsupportedReasons()
         );
         return result;
     }

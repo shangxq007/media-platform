@@ -27,6 +27,8 @@ import { isDemoProjectId } from '@/utils/timelineImport'
 import { loadConflictClipHighlights } from '@/utils/timelinePatchHighlight'
 import { useEditorFeatureFlags } from '@/composables/useFeatureFlag'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import ProgramMonitor from '@/components/editor/ProgramMonitor.vue'
+import { buildEditorTimelineJson } from '@/utils/timelineExport'
 
 const route = useRoute()
 const exportUi = useExportUiStore()
@@ -141,6 +143,13 @@ const showMigrationBanner = computed(() => {
 })
 
 const hasTracks = computed(() => timelineStore.state.tracks.length > 0)
+
+const programMonitorJson = computed(() =>
+  buildEditorTimelineJson(
+    timelineStore.toJSON() as Record<string, unknown>,
+    timelineStore.clips
+  )
+)
 
 const currentClipName = computed(() => {
   const sel = timelineStore.selectedTrackClip
@@ -430,22 +439,20 @@ onMounted(() => {
           <div class="flex-1 flex items-center justify-center editor-preview-stage relative overflow-hidden">
             <div v-if="hasTracks" class="w-full h-full flex items-center justify-center p-md">
               <div class="w-full max-w-3xl aspect-video bg-black editor-preview-frame flex flex-col">
-                <div class="flex-1 flex items-center justify-center relative">
-                  <div class="text-center">
-                    <div class="w-14 h-14 mx-auto mb-3 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-400">
-                      <AppIcon name="monitor" :size="28" />
-                    </div>
-                    <p class="text-sm font-medium text-text-secondary">Program Monitor</p>
-                    <p v-if="currentClipName" class="text-xs text-primary-400 mt-1" aria-live="polite">
-                      {{ currentClipName }}
-                    </p>
-                    <p v-else class="text-xs text-text-muted mt-1" aria-live="polite">
-                      No clip selected
-                    </p>
-                  </div>
-                  <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                <div class="flex-1 flex items-center justify-center relative min-h-0">
+                  <ProgramMonitor
+                    :timeline-json="programMonitorJson"
+                    :current-time="currentTime"
+                    :is-playing="isPlaying"
+                    :watermark="true"
+                    class="absolute inset-0"
+                  />
+                  <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
                     <span class="text-[10px] text-text-muted font-mono bg-black/60 px-1.5 py-0.5 rounded" aria-live="polite">
                       {{ currentTime.toFixed(1) }}s
+                    </span>
+                    <span v-if="currentClipName" class="text-[10px] text-primary-400 bg-black/60 px-1.5 py-0.5 rounded truncate max-w-[40%]">
+                      {{ currentClipName }}
                     </span>
                     <span class="text-[10px] text-text-muted font-mono bg-black/60 px-1.5 py-0.5 rounded">
                       {{ totalDuration.toFixed(1) }}s

@@ -18,6 +18,7 @@ const EXPORT_FLAG_KEYS = [
   'export.remoteWorker.enabled',
   'export.providerRouting.v2',
   'export.newPresetSelector.enabled',
+  'export.client.enabled',
 ] as const
 
 const EDITOR_FLAG_KEYS = [

@@ -9,21 +9,18 @@ import com.example.platform.shared.Ids;
 import com.example.platform.shared.commerce.CheckoutPaymentPort;
 import com.example.platform.shared.commerce.PurchaseFulfillmentCommand;
 import com.example.platform.shared.commerce.PurchaseFulfillmentPort;
+import com.example.platform.shared.web.TenantGuard;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 @Service
 public class CheckoutOrchestrator {
@@ -31,16 +28,16 @@ public class CheckoutOrchestrator {
     private static final Logger log = LoggerFactory.getLogger(CheckoutOrchestrator.class);
 
     private final CommerceCatalogService catalogService;
-    private final CheckoutSessionRepository checkoutSessionRepository;
-    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final CommerceCartService commerceCartService;
+    private final Optional<CheckoutSessionRepository> checkoutSessionRepository;
+    private final Optional<PurchaseOrderRepository> purchaseOrderRepository;
     private final Optional<PurchaseFulfillmentPort> fulfillmentPort;
     private final Optional<CheckoutPaymentPort> checkoutPaymentPort;
-    private final Map<String, CheckoutSession> sessions = new ConcurrentHashMap<>();
-    private final Map<String, String> sessionUserIds = new ConcurrentHashMap<>();
-    private final Map<String, String> sessionCartIds = new ConcurrentHashMap<>();
-    private final CommerceCartService commerceCartService;
-    private final Map<String, PurchaseOrderCreatedEvent> publishedEvents = new ConcurrentHashMap<>();
-    private final Set<String> activeSessions = new ConcurrentSkipListSet<>();
+
+    private final Map<String, CheckoutSession> inMemorySessions = new ConcurrentHashMap<>();
+    private final Map<String, String> inMemorySessionUserIds = new ConcurrentHashMap<>();
+    private final Map<String, String> inMemorySessionCartIds = new ConcurrentHashMap<>();
+    private final Map<String, PurchaseOrderCreatedEvent> inMemoryPublishedEvents = new ConcurrentHashMap<>();
 
     private final Counter sessionCreatedCounter;
     private final Counter orderConfirmedCounter;
@@ -48,17 +45,18 @@ public class CheckoutOrchestrator {
     private final Timer checkoutDurationTimer;
     private final Timer revenueCalculationTimer;
 
-    public CheckoutOrchestrator(CommerceCatalogService catalogService,
-                                CommerceCartService commerceCartService,
-                                @Autowired(required = false) CheckoutSessionRepository checkoutSessionRepository,
-                                @Autowired(required = false) PurchaseOrderRepository purchaseOrderRepository,
-                                @Autowired(required = false) PurchaseFulfillmentPort fulfillmentPort,
-                                @Autowired(required = false) CheckoutPaymentPort checkoutPaymentPort,
-                                MeterRegistry meterRegistry) {
+    public CheckoutOrchestrator(
+            CommerceCatalogService catalogService,
+            CommerceCartService commerceCartService,
+            @Autowired(required = false) CheckoutSessionRepository checkoutSessionRepository,
+            @Autowired(required = false) PurchaseOrderRepository purchaseOrderRepository,
+            @Autowired(required = false) PurchaseFulfillmentPort fulfillmentPort,
+            @Autowired(required = false) CheckoutPaymentPort checkoutPaymentPort,
+            MeterRegistry meterRegistry) {
         this.catalogService = catalogService;
         this.commerceCartService = commerceCartService;
-        this.checkoutSessionRepository = checkoutSessionRepository;
-        this.purchaseOrderRepository = purchaseOrderRepository;
+        this.checkoutSessionRepository = Optional.ofNullable(checkoutSessionRepository);
+        this.purchaseOrderRepository = Optional.ofNullable(purchaseOrderRepository);
         this.fulfillmentPort = Optional.ofNullable(fulfillmentPort);
         this.checkoutPaymentPort = Optional.ofNullable(checkoutPaymentPort);
         this.sessionCreatedCounter = Counter.builder("commerce.sessions.created")
@@ -78,41 +76,33 @@ public class CheckoutOrchestrator {
                 .register(meterRegistry);
     }
 
+    private boolean dbBacked() {
+        return checkoutSessionRepository.isPresent();
+    }
+
     public CheckoutSessionResponse createSession(CreateCheckoutSessionRequest request) {
         return createSession(request, null);
     }
 
     public CheckoutSessionResponse createSession(CreateCheckoutSessionRequest request, String cartId) {
         validateCheckoutRequest(request);
+        String tenantId = TenantGuard.tenantOrDefault(request.tenantId());
         CanonicalProduct product = catalogService.requireProduct(request.productCode());
 
         if (product.purchaseMode() == PurchaseMode.SUBSCRIPTION && request.successUrl() == null) {
             throw new IllegalArgumentException("Subscription products require a success URL");
         }
-        if (!catalogService.isAvailableForTenant(product, request.tenantId())) {
+        if (!catalogService.isAvailableForTenant(product, tenantId)) {
             throw new IllegalArgumentException("Product '" + request.productCode() + "' is not available for this tenant");
         }
 
-        String purchaseMode = request.purchaseMode() != null
-                ? request.purchaseMode()
-                : product.purchaseModeName();
+        String purchaseMode = request.purchaseMode() != null ? request.purchaseMode() : product.purchaseModeName();
 
         CheckoutIntent intent = new CheckoutIntent(
-                request.tenantId(),
-                request.productCode(),
-                purchaseMode,
-                request.successUrl(),
-                request.cancelUrl());
+                tenantId, request.productCode(), purchaseMode, request.successUrl(), request.cancelUrl());
 
-        CheckoutSession session = createCheckoutSession(intent);
         String userId = request.userId();
-        if (userId != null && !userId.isBlank()) {
-            sessionUserIds.put(session.checkoutSessionId(), userId);
-        }
-        if (cartId != null && !cartId.isBlank()) {
-            sessionCartIds.put(session.checkoutSessionId(), cartId);
-        }
-        activeSessions.add(session.checkoutSessionId());
+        CheckoutSession session = createCheckoutSession(intent, userId, cartId);
         sessionCreatedCounter.increment();
 
         long amountMinor = cartId != null ? commerceCartService.cartTotalMinor(cartId) : product.priceMinor();
@@ -121,7 +111,7 @@ public class CheckoutOrchestrator {
         if (checkoutPaymentPort.isPresent()) {
             CheckoutPaymentPort.CheckoutPaymentRequest paymentRequest = new CheckoutPaymentPort.CheckoutPaymentRequest(
                     session.checkoutSessionId(),
-                    request.tenantId(),
+                    tenantId,
                     userId,
                     product.productCode(),
                     amountMinor,
@@ -129,40 +119,43 @@ public class CheckoutOrchestrator {
                     request.successUrl(),
                     request.cancelUrl(),
                     cartId);
-            CheckoutPaymentPort.CheckoutPaymentSession payment = checkoutPaymentPort.get()
-                    .createPaymentForCheckout(paymentRequest);
+            CheckoutPaymentPort.CheckoutPaymentSession payment =
+                    checkoutPaymentPort.get().createPaymentForCheckout(paymentRequest);
             redirectUrl = payment.redirectUrl();
             providerHint = payment.providerCode() + ":" + payment.providerReference();
         }
 
         log.info("Created checkout session {} for tenant {} product={}",
-                session.checkoutSessionId(), request.tenantId(), request.productCode());
+                session.checkoutSessionId(), tenantId, request.productCode());
         return new CheckoutSessionResponse(session.checkoutSessionId(), redirectUrl, providerHint);
     }
 
     public CheckoutSession createCheckoutSession(CheckoutIntent intent) {
-        String sessionId = Ids.newId("chk");
+        return createCheckoutSession(intent, null, null);
+    }
+
+    public CheckoutSession createCheckoutSession(CheckoutIntent intent, String userId, String cartId) {
+        String tenantId = TenantGuard.tenantOrDefault(intent.tenantId());
         CanonicalProduct product = catalogService.requireProduct(intent.canonicalProductCode());
-        if (!catalogService.isAvailableForTenant(product, intent.tenantId())) {
+        if (!catalogService.isAvailableForTenant(product, tenantId)) {
             throw new IllegalArgumentException("Product not available: " + intent.canonicalProductCode());
         }
 
+        String sessionId = Ids.newId("chk");
         CheckoutSession session = new CheckoutSession(
-                sessionId,
-                intent.tenantId(),
-                intent.canonicalProductCode(),
-                intent.successUrl(),
-                "internal");
+                sessionId, tenantId, intent.canonicalProductCode(), intent.successUrl(), "internal");
 
-        if (checkoutSessionRepository != null) {
-            try {
-                checkoutSessionRepository.save(session);
-            } catch (Exception e) {
-                log.warn("Failed to persist checkout session {}: {}", sessionId, e.getMessage());
+        if (dbBacked()) {
+            checkoutSessionRepository.get().save(session, userId, cartId);
+        } else {
+            inMemorySessions.put(sessionId, session);
+            if (userId != null && !userId.isBlank()) {
+                inMemorySessionUserIds.put(sessionId, userId);
+            }
+            if (cartId != null && !cartId.isBlank()) {
+                inMemorySessionCartIds.put(sessionId, cartId);
             }
         }
-        sessions.put(sessionId, session);
-        activeSessions.add(sessionId);
         return session;
     }
 
@@ -174,6 +167,7 @@ public class CheckoutOrchestrator {
         Timer.Sample sample = Timer.start();
         try {
             CheckoutSession session = requireSession(sessionId);
+            TenantGuard.assertSameTenantIfContextPresent(session.tenantId());
             CanonicalProduct product = catalogService.requireProduct(session.canonicalProductCode());
             String userId = resolveUserId(session, userIdOverride);
 
@@ -181,34 +175,16 @@ public class CheckoutOrchestrator {
             long orderValue = product.priceMinor();
 
             PurchaseOrderCreatedEvent event = new PurchaseOrderCreatedEvent(
-                    orderId,
-                    session.tenantId(),
-                    session.canonicalProductCode(),
-                    "CONFIRMED");
+                    orderId, session.tenantId(), session.canonicalProductCode(), "CONFIRMED");
 
-            persistOrder(orderId, session, orderValue);
+            persistOrder(orderId, session, orderValue, product.currencyCode());
             completeSession(sessionId);
-            publishedEvents.put(orderId, event);
-            activeSessions.remove(sessionId);
+            if (!dbBacked()) {
+                inMemoryPublishedEvents.put(orderId, event);
+            }
             orderConfirmedCounter.increment();
 
-            fulfillmentPort.ifPresent(port -> {
-                try {
-                    String cartId = sessionCartIds.get(sessionId);
-                    if (cartId != null) {
-                        for (CanonicalProduct lineProduct : commerceCartService.resolveLines(cartId)) {
-                            port.fulfill(toFulfillmentCommand(orderId, session.tenantId(), userId, lineProduct));
-                        }
-                        sessionCartIds.remove(sessionId);
-                    } else {
-                        port.fulfill(toFulfillmentCommand(orderId, session.tenantId(), userId, product));
-                    }
-                } catch (Exception e) {
-                    log.error("Purchase fulfillment failed for order {} product {}: {}",
-                            orderId, product.productCode(), e.getMessage(), e);
-                    throw new IllegalStateException("Fulfillment failed for order " + orderId, e);
-                }
-            });
+            fulfillmentPort.ifPresent(port -> fulfillOrder(orderId, sessionId, session, userId, product, port));
 
             log.info("Confirmed checkout {} -> order {} product={} valueMinor={}",
                     sessionId, orderId, product.productCode(), orderValue);
@@ -218,12 +194,35 @@ public class CheckoutOrchestrator {
         }
     }
 
+    private void fulfillOrder(
+            String orderId,
+            String sessionId,
+            CheckoutSession session,
+            String userId,
+            CanonicalProduct product,
+            PurchaseFulfillmentPort port) {
+        try {
+            String cartId = resolveCartId(sessionId);
+            if (cartId != null) {
+                for (CanonicalProduct lineProduct : commerceCartService.resolveLines(cartId)) {
+                    port.fulfill(toFulfillmentCommand(orderId, session.tenantId(), userId, lineProduct));
+                }
+            } else {
+                port.fulfill(toFulfillmentCommand(orderId, session.tenantId(), userId, product));
+            }
+        } catch (Exception e) {
+            log.error("Purchase fulfillment failed for order {} product {}: {}",
+                    orderId, product.productCode(), e.getMessage(), e);
+            throw new IllegalStateException("Fulfillment failed for order " + orderId, e);
+        }
+    }
+
     public List<PurchaseOrderCreatedEvent> getPublishedEvents() {
-        return List.copyOf(publishedEvents.values());
+        return List.copyOf(inMemoryPublishedEvents.values());
     }
 
     public CheckoutSession getSession(String sessionId) {
-        return sessions.get(sessionId);
+        return requireSession(sessionId);
     }
 
     public List<CanonicalProduct> listCatalogProducts() {
@@ -232,23 +231,28 @@ public class CheckoutOrchestrator {
 
     public PurchaseOrderCreatedEvent cancelCheckout(String sessionId) {
         CheckoutSession session = requireSession(sessionId);
+        TenantGuard.assertSameTenantIfContextPresent(session.tenantId());
         PurchaseOrderCreatedEvent cancelledEvent = new PurchaseOrderCreatedEvent(
-                Ids.newId("ord"),
-                session.tenantId(),
-                session.canonicalProductCode(),
-                "CANCELLED");
+                Ids.newId("ord"), session.tenantId(), session.canonicalProductCode(), "CANCELLED");
         persistCancelledOrder(cancelledEvent, session);
-        activeSessions.remove(sessionId);
-        publishedEvents.put(cancelledEvent.orderId(), cancelledEvent);
+        if (!dbBacked()) {
+            inMemoryPublishedEvents.put(cancelledEvent.orderId(), cancelledEvent);
+        }
         orderCancelledCounter.increment();
         log.info("Cancelled checkout session {} for tenant {}", sessionId, session.tenantId());
         return cancelledEvent;
     }
 
     public List<PurchaseOrderCreatedEvent> getRecentEvents(String tenantId, int limit) {
-        return publishedEvents.values().stream()
-                .filter(event -> event.tenantId().equals(tenantId))
-                .sorted((e1, e2) -> e2.canonicalProductCode().compareTo(e1.canonicalProductCode()))
+        String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
+        if (purchaseOrderRepository.isPresent()) {
+            return purchaseOrderRepository.get().findRecentByTenant(effectiveTenant, limit).stream()
+                    .map(r -> new PurchaseOrderCreatedEvent(
+                            r.id(), effectiveTenant, r.canonicalProductCode(), r.orderStatus()))
+                    .toList();
+        }
+        return inMemoryPublishedEvents.values().stream()
+                .filter(event -> event.tenantId().equals(effectiveTenant))
                 .limit(limit)
                 .toList();
     }
@@ -256,8 +260,12 @@ public class CheckoutOrchestrator {
     public double getTotalRevenueForTenant(String tenantId) {
         Timer.Sample sample = Timer.start();
         try {
-            return publishedEvents.values().stream()
-                    .filter(event -> event.tenantId().equals(tenantId))
+            String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
+            if (purchaseOrderRepository.isPresent()) {
+                return purchaseOrderRepository.get().sumConfirmedRevenueMinor(effectiveTenant) / 100.0;
+            }
+            return inMemoryPublishedEvents.values().stream()
+                    .filter(event -> event.tenantId().equals(effectiveTenant))
                     .filter(event -> !"CANCELLED".equals(event.orderStatus()))
                     .mapToLong(event -> catalogService.findProduct(event.canonicalProductCode())
                             .map(CanonicalProduct::priceMinor)
@@ -269,28 +277,29 @@ public class CheckoutOrchestrator {
     }
 
     public long getActiveSessionsCount() {
-        return activeSessions.size();
+        String tenant = com.example.platform.shared.web.TenantContext.get();
+        if (tenant != null && !tenant.isBlank() && checkoutSessionRepository.isPresent()) {
+            return checkoutSessionRepository.get().countActiveForTenant(tenant);
+        }
+        return inMemorySessions.size();
     }
 
     public long getActiveSessionsCount(String tenantId) {
-        return activeSessions.stream()
-                .map(sessions::get)
-                .filter(session -> session != null && tenantId.equals(session.tenantId()))
+        String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
+        if (checkoutSessionRepository.isPresent()) {
+            return checkoutSessionRepository.get().countActiveForTenant(effectiveTenant);
+        }
+        return inMemorySessions.values().stream()
+                .filter(session -> effectiveTenant.equals(session.tenantId()))
                 .count();
     }
 
     private CheckoutSession requireSession(String sessionId) {
-        CheckoutSession session = sessions.get(sessionId);
-        if (session == null && checkoutSessionRepository != null) {
-            try {
-                session = checkoutSessionRepository.findById(sessionId).orElse(null);
-                if (session != null) {
-                    sessions.put(sessionId, session);
-                }
-            } catch (Exception e) {
-                log.warn("Failed to load checkout session from DB: {}", e.getMessage());
-            }
+        if (dbBacked()) {
+            return checkoutSessionRepository.get().findByIdUnchecked(sessionId)
+                    .orElseThrow(() -> new IllegalArgumentException("Checkout session not found: " + sessionId));
         }
+        CheckoutSession session = inMemorySessions.get(sessionId);
         if (session == null) {
             throw new IllegalArgumentException("Checkout session not found: " + sessionId);
         }
@@ -301,11 +310,29 @@ public class CheckoutOrchestrator {
         if (userIdOverride != null && !userIdOverride.isBlank()) {
             return userIdOverride;
         }
-        String fromSession = sessionUserIds.get(session.checkoutSessionId());
+        if (dbBacked()) {
+            return checkoutSessionRepository.get()
+                    .findMetadata(session.checkoutSessionId())
+                    .map(CheckoutSessionRepository.SessionMetadata::userId)
+                    .filter(id -> id != null && !id.isBlank())
+                    .orElse(session.tenantId() + "-billing-owner");
+        }
+        String fromSession = inMemorySessionUserIds.get(session.checkoutSessionId());
         if (fromSession != null && !fromSession.isBlank()) {
             return fromSession;
         }
         return session.tenantId() + "-billing-owner";
+    }
+
+    private String resolveCartId(String sessionId) {
+        if (dbBacked()) {
+            return checkoutSessionRepository.get()
+                    .findMetadata(sessionId)
+                    .map(CheckoutSessionRepository.SessionMetadata::cartId)
+                    .filter(id -> id != null && !id.isBlank())
+                    .orElse(null);
+        }
+        return inMemorySessionCartIds.get(sessionId);
     }
 
     private static PurchaseFulfillmentCommand toFulfillmentCommand(
@@ -327,43 +354,41 @@ public class CheckoutOrchestrator {
                 30);
     }
 
-    private void persistOrder(String orderId, CheckoutSession session, long orderValueMinor) {
-        if (purchaseOrderRepository != null) {
-            try {
-                purchaseOrderRepository.save(orderId, session.checkoutSessionId(),
-                        session.canonicalProductCode(), "CONFIRMED", orderValueMinor, null);
-            } catch (Exception e) {
-                log.warn("Failed to persist purchase order {}: {}", orderId, e.getMessage());
-            }
+    private void persistOrder(String orderId, CheckoutSession session, long orderValueMinor, String currencyCode) {
+        if (purchaseOrderRepository.isPresent()) {
+            purchaseOrderRepository.get().save(
+                    orderId,
+                    session.tenantId(),
+                    session.checkoutSessionId(),
+                    session.canonicalProductCode(),
+                    "CONFIRMED",
+                    orderValueMinor,
+                    currencyCode);
         }
-        if (checkoutSessionRepository != null) {
-            try {
-                checkoutSessionRepository.updateStatus(session.checkoutSessionId(), "COMPLETED");
-            } catch (Exception e) {
-                log.warn("Failed to update checkout session status: {}", e.getMessage());
-            }
+        if (checkoutSessionRepository.isPresent()) {
+            checkoutSessionRepository.get().updateStatus(session.checkoutSessionId(), "COMPLETED");
         }
     }
 
     private void persistCancelledOrder(PurchaseOrderCreatedEvent event, CheckoutSession session) {
-        if (purchaseOrderRepository != null) {
-            try {
-                purchaseOrderRepository.save(
-                        event.orderId(),
-                        session.checkoutSessionId(),
-                        event.canonicalProductCode(),
-                        "CANCELLED",
-                        0L,
-                        null);
-            } catch (Exception e) {
-                log.warn("Failed to persist cancelled order: {}", e.getMessage());
-            }
+        if (purchaseOrderRepository.isPresent()) {
+            purchaseOrderRepository.get().save(
+                    event.orderId(),
+                    session.tenantId(),
+                    session.checkoutSessionId(),
+                    event.canonicalProductCode(),
+                    "CANCELLED",
+                    0L,
+                    null);
         }
     }
 
     private void completeSession(String sessionId) {
-        sessionUserIds.remove(sessionId);
-        sessionCartIds.remove(sessionId);
+        if (!dbBacked()) {
+            inMemorySessions.remove(sessionId);
+            inMemorySessionUserIds.remove(sessionId);
+            inMemorySessionCartIds.remove(sessionId);
+        }
     }
 
     private void validateCheckoutRequest(CreateCheckoutSessionRequest request) {

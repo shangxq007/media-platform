@@ -80,7 +80,7 @@ Against `ExportCapabilityPolicy.allowedPresets` for the user's tier:
 
 | Tier | Allowed Presets |
 |------|----------------|
-| FREE | `free_720p_watermarked`, `default_720p`, `preview_720p`, `mobile_480p` |
+| FREE | `client_720p_watermarked`, `free_720p_watermarked`, `default_720p`, `preview_720p`, `mobile_480p` |
 | PRO | + `default_1080p`, `pro_1080p`, `social_1080p`, `social_720p`, `hq_1080p`, `h265`, `vp9` |
 | TEAM | + `team_4k`, `ofx_1080p`, `ofx_720p`, `gpu_h264`, `gpu_h265` |
 | ENTERPRISE | + `enterprise_4k_ofx`, `experimental_all_providers` |
@@ -117,13 +117,37 @@ If `BudgetGuardPort` is available, the system checks the tenant's budget:
 - If budget exceeded: adds `BUDGET_EXCEEDED` violation
 - If approaching limit: adds warning recommendation
 
+### 7. Client vs server render location
+
+`POST /render/export/validate` accepts optional `effectKeys` and `timelineJson`. The response includes:
+
+| Field | Description |
+|-------|-------------|
+| `recommendedRenderLocation` | `CLIENT` (browser WebCodecs/MediaRecorder) or `SERVER` (existing render job pipeline) |
+| `clientExportSupported` | `true` when the timeline can be encoded locally |
+| `clientExportUnsupportedReasons` | e.g. `EFFECT_REQUIRES_SERVER`, `DURATION_EXCEEDS_CLIENT_LIMIT`, `TIER_USES_SERVER_EXPORT` |
+
+**FREE tier** defaults to `CLIENT` for `client_720p_watermarked` / `free_720p_watermarked` when:
+
+- Feature flag `export.client.enabled` is on (tier policy)
+- Duration ≤ 300 seconds
+- No Natron/OFX/GPU effects in the timeline
+
+**Browser upload flow** (optional artifact):
+
+1. `POST /api/v1/render/client-exports` → `sessionId`, `uploadUrl`
+2. Browser encodes via `ClientCompositor` (frontend)
+3. `POST /api/v1/render/client-exports/{sessionId}/upload` (multipart) → `artifactId`, `downloadUrl`
+
+See [frontend client export capabilities](../frontend/src/clientExport/clientExportCapabilities.ts) for browser support matrix.
+
 ## Recommended Presets
 
 When the requested preset is not allowed, the system recommends an alternative:
 
 | Tier | Recommended Preset |
 |------|-------------------|
-| FREE | `free_720p_watermarked` |
+| FREE | `client_720p_watermarked` |
 | PRO | `default_1080p` |
 | TEAM | `default_1080p` |
 | ENTERPRISE | `pro_1080p` |

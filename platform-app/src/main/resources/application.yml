@@ -343,6 +343,9 @@ openreplay:
 
 platform:
   environment: ${PLATFORM_ENV:dev}
+  runtime:
+    production-checks-enabled: false
+    modulith-violation-budget: 13
   artifact:
     gc:
       enabled: true

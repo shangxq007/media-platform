@@ -1,9 +1,9 @@
 package com.example.platform.app.ai;
 
 import com.example.platform.secrets.api.SecretRef;
+import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
-import com.example.platform.secrets.app.SecretRefRegistryService;
-import com.example.platform.secrets.config.SecretsProperties;
+import com.example.platform.secrets.api.port.SecretsConfigPort;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,19 +18,19 @@ public class TenantLitellmKeyCredentialService {
     private static final String CREDENTIAL_FIELD = "virtualKey";
 
     private final SecretResolver secretResolver;
-    private final SecretRefRegistryService secretRefRegistry;
-    private final SecretsProperties secretsProperties;
+    private final SecretRefRegistryPort secretRefRegistry;
+    private final SecretsConfigPort secretsConfig;
 
     @Value("${app.ai.providers.openai.tenant-keys-vault-backed:false}")
     private boolean tenantKeysVaultBacked;
 
     public TenantLitellmKeyCredentialService(
             SecretResolver secretResolver,
-            SecretRefRegistryService secretRefRegistry,
-            SecretsProperties secretsProperties) {
+            SecretRefRegistryPort secretRefRegistry,
+            SecretsConfigPort secretsConfig) {
         this.secretResolver = secretResolver;
         this.secretRefRegistry = secretRefRegistry;
-        this.secretsProperties = secretsProperties;
+        this.secretsConfig = secretsConfig;
     }
 
     public boolean isVaultBackedMode() {
@@ -38,7 +38,7 @@ public class TenantLitellmKeyCredentialService {
     }
 
     public boolean isVaultAvailable() {
-        return secretsProperties.getVault().isEnabled();
+        return secretsConfig.vaultEnabled();
     }
 
     public StoredLitellmKey persist(String tenantId, String virtualKey, String explicitVaultRef) {
@@ -46,7 +46,7 @@ public class TenantLitellmKeyCredentialService {
             return new StoredLitellmKey(null, explicitVaultRef.trim(), StorageBackend.VAULT);
         }
         if (tenantKeysVaultBacked) {
-            if (!secretsProperties.getVault().isEnabled()) {
+            if (!secretsConfig.vaultEnabled()) {
                 throw new IllegalStateException(
                         "tenant-keys-vault-backed is enabled but Vault is not "
                                 + "(set app.secrets.vault.enabled=true)");
@@ -57,7 +57,7 @@ public class TenantLitellmKeyCredentialService {
             secretRefRegistry.register("ai-litellm", tenantId, "vault", encodedRef);
             return new StoredLitellmKey(null, encodedRef, StorageBackend.VAULT);
         }
-        if (secretsProperties.isInlineCredentialsEnabled()) {
+        if (secretsConfig.inlineCredentialsEnabled()) {
             return new StoredLitellmKey(virtualKey, null, StorageBackend.INLINE);
         }
         throw new IllegalStateException(
@@ -90,7 +90,7 @@ public class TenantLitellmKeyCredentialService {
     }
 
     public void revoke(String vaultRef) {
-        if (vaultRef == null || vaultRef.isBlank() || !secretsProperties.getVault().isEnabled()) {
+        if (vaultRef == null || vaultRef.isBlank() || !secretsConfig.vaultEnabled()) {
             return;
         }
         try {

@@ -1,0 +1,14 @@
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+
+platform:
+  runtime:
+    production-checks-enabled: false
+
+app:
+  security:
+    enabled: false

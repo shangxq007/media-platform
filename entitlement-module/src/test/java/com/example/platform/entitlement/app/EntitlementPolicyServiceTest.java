@@ -72,6 +72,8 @@ class EntitlementPolicyServiceTest {
         assertNotNull(result);
         assertTrue(result.allowed());
         assertEquals("FREE", result.currentTier());
+        assertEquals("CLIENT", result.recommendedRenderLocation());
+        assertTrue(result.clientExportSupported());
     }
 
     @Test

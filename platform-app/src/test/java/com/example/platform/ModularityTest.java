@@ -1,38 +1,28 @@
 package com.example.platform;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
 import org.springframework.modulith.core.Violations;
 
+/** Zero-tolerance Modulith boundary check. See {@code docs/modulith-debt-register.md}. */
 class ModularityTest {
+
     @Test
-    void verifiesModuleStructure() {
+    void modularityViolationsWithinBudget() {
         ApplicationModules modules = ApplicationModules.of(PlatformApplication.class);
         Violations violations = modules.detectViolations();
-        Violations filtered = violations
-                .filter(it -> !it.toString().contains("Module 'render' depends on module 'extension'"))
-                .filter(it -> !it.toString().contains("Module 'compatibility"))
-                .filter(it -> !it.toString().contains("Module 'audit' depends on module 'entitlement'"))
-                .filter(it -> !it.toString().contains("Module 'audit' depends on module 'billing'"))
-                .filter(it -> !it.toString().contains("Module 'observability' depends on module 'audit'"))
-                .filter(it -> !it.toString().contains("Module 'entitlement' depends on module 'billing'"))
-                .filter(it -> !it.toString().contains("Module 'render' depends on module 'billing'"))
-                .filter(it -> !it.toString().contains("Module 'render' depends on module 'entitlement'"))
-                .filter(it -> !it.toString().contains("Module 'render' depends on module 'audit'"))
-                .filter(it -> !it.toString().contains("Module 'app' depends on non-exposed type com.example.platform.identity"))
-                .filter(it -> !it.toString().contains("Module 'security' depends on non-exposed type com.example.platform.identity"))
-                .filter(it -> !it.toString().contains("Module 'web' depends on non-exposed type com.example.platform.render"))
-                .filter(it -> !it.toString().contains("Module 'web' depends on non-exposed type com.example.platform.prompt"))
-                .filter(it -> !it.toString().contains("Module 'web' depends on non-exposed type com.example.platform.identity"))
-                .filter(it -> !it.toString().contains("Module 'entitlement' depends on"))
-                .filter(it -> !it.toString().contains("module 'policy'"))
-                .filter(it -> !it.toString().contains("Module 'identity' depends on"));
-        if (filtered.hasViolations()) {
-            System.err.println("Module structure violations (tracked for cleanup): " + filtered.getMessages());
+        int count = violations.getMessages().size();
+        if (violations.hasViolations()) {
+            System.err.println("Modulith violation messages (" + count + "), first: " + violations.getMessages().stream()
+                    .limit(3)
+                    .toList());
         }
-        // Strict enforcement deferred until module APIs are fully exposed via @NamedInterface.
-        // assertFalse(filtered.hasViolations(), "Module structure violations found: " + filtered.getMessages());
+        assertTrue(
+                !violations.hasViolations(),
+                "Modulith violations remain (messages=" + count + "): " + violations.getMessages().stream()
+                        .limit(20)
+                        .toList());
     }
 }

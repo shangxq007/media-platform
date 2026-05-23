@@ -1,9 +1,9 @@
 package com.example.platform.delivery.app;
 
 import com.example.platform.secrets.api.SecretRef;
+import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
-import com.example.platform.secrets.app.SecretRefRegistryService;
-import com.example.platform.secrets.config.SecretsProperties;
+import com.example.platform.secrets.api.port.SecretsConfigPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -17,16 +17,16 @@ public class DeliveryDestinationCredentialService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final SecretResolver secretResolver;
-    private final SecretRefRegistryService secretRefRegistry;
-    private final SecretsProperties secretsProperties;
+    private final SecretRefRegistryPort secretRefRegistry;
+    private final SecretsConfigPort secretsConfig;
 
     public DeliveryDestinationCredentialService(
             SecretResolver secretResolver,
-            SecretRefRegistryService secretRefRegistry,
-            SecretsProperties secretsProperties) {
+            SecretRefRegistryPort secretRefRegistry,
+            SecretsConfigPort secretsConfig) {
         this.secretResolver = secretResolver;
         this.secretRefRegistry = secretRefRegistry;
-        this.secretsProperties = secretsProperties;
+        this.secretsConfig = secretsConfig;
     }
 
     public StoredCredentials persist(
@@ -40,13 +40,13 @@ public class DeliveryDestinationCredentialService {
         if (inlineCredentials == null || inlineCredentials.isEmpty()) {
             return new StoredCredentials(null, null);
         }
-        if (secretsProperties.getVault().isEnabled()) {
+        if (secretsConfig.vaultEnabled()) {
             String logicalKey = "tenants/" + tenantId + "/destinations/" + destinationId;
             String encodedRef = secretResolver.storeCredentialMap("delivery", logicalKey, inlineCredentials);
             secretRefRegistry.register("delivery", destinationId, "vault", encodedRef);
             return new StoredCredentials(encodedRef, null);
         }
-        if (secretsProperties.isInlineCredentialsEnabled()) {
+        if (secretsConfig.inlineCredentialsEnabled()) {
             return new StoredCredentials(null, toJson(inlineCredentials));
         }
         throw new IllegalStateException(
@@ -61,7 +61,7 @@ public class DeliveryDestinationCredentialService {
         if (credentialRef == null || credentialRef.isBlank()) {
             return;
         }
-        if (!secretsProperties.getVault().isEnabled()) {
+        if (!secretsConfig.vaultEnabled()) {
             return;
         }
         try {

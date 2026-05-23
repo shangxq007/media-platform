@@ -14,7 +14,7 @@ create table if not exists timeline_revision (
     author_user_id      varchar(64),
     edit_session_id     varchar(64),
     message             varchar(512),
-    change_summary_json clob,
+    change_summary_json text,
     created_at          timestamp    not null
 );
 

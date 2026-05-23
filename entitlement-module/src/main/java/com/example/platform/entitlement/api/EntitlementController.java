@@ -5,10 +5,12 @@ import com.example.platform.entitlement.app.EntitlementPolicyService;
 import com.example.platform.entitlement.app.EntitlementService;
 import com.example.platform.entitlement.app.QuotaDecisionService;
 import com.example.platform.entitlement.domain.*;
+import com.example.platform.entitlement.domain.ClientExportRoutingPolicy;
 import com.example.platform.shared.entitlement.EntitlementPort;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -77,9 +79,15 @@ public class EntitlementController {
 
         AccessDecision decision = accessDecisionService.check(accessRequest);
 
+        List<String> effectKeys = request.effectKeys() != null ? request.effectKeys() : List.of();
+        if (effectKeys.isEmpty() && request.timelineJson() != null && !request.timelineJson().isBlank()) {
+            effectKeys = com.example.platform.entitlement.domain.ClientExportRoutingPolicy
+                    .parseEffectKeysFromTimelineJson(request.timelineJson());
+        }
+
         EntitlementPort.ExportValidationResult legacyResult = entitlementPolicyService.validateExport(
                 effectiveTenant, effectiveUser,
-                request.preset(), request.outputFormat(), duration);
+                request.preset(), request.outputFormat(), duration, effectKeys);
 
         Map<String, Object> result = new HashMap<>();
         result.put("allowed", decision.allowed());
@@ -97,6 +105,9 @@ public class EntitlementController {
         result.put("expiresAt", decision.expiresAt());
         result.put("requiresReview", decision.requiresReview());
         result.put("legacyValidation", legacyResult);
+        result.put("recommendedRenderLocation", legacyResult.recommendedRenderLocation());
+        result.put("clientExportSupported", legacyResult.clientExportSupported());
+        result.put("clientExportUnsupportedReasons", legacyResult.clientExportUnsupportedReasons());
         return result;
     }
 
@@ -155,7 +166,9 @@ public class EntitlementController {
     public record ExportValidationRequest(
             String preset,
             String outputFormat,
-            Long estimatedDurationSeconds) {}
+            Long estimatedDurationSeconds,
+            List<String> effectKeys,
+            String timelineJson) {}
 
     public record TierUpdateRequest(String tier) {}
 

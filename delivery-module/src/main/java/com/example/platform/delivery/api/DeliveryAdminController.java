@@ -10,7 +10,7 @@ import com.example.platform.delivery.app.DeliveryCredentialMigrationService;
 import com.example.platform.delivery.app.DeliveryDestinationUriIndexService;
 import com.example.platform.delivery.app.DeliveryJobService;
 import com.example.platform.delivery.app.DeliveryRemoteUriIndexService;
-import com.example.platform.secrets.app.CredentialBundleResolver;
+import com.example.platform.secrets.api.port.CredentialBundlePort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
@@ -32,7 +32,7 @@ public class DeliveryAdminController {
 
     private final DSLContext dsl;
     private final DeliveryJobService deliveryJobService;
-    private final CredentialBundleResolver credentialBundleResolver;
+    private final CredentialBundlePort credentialBundlePort;
     private final DeliveryCredentialMigrationService credentialMigrationService;
     private final DeliveryRemoteUriIndexService remoteUriIndexService;
     private final DeliveryDestinationUriIndexService destinationUriIndexService;
@@ -40,13 +40,13 @@ public class DeliveryAdminController {
     public DeliveryAdminController(
             DSLContext dsl,
             DeliveryJobService deliveryJobService,
-            CredentialBundleResolver credentialBundleResolver,
+            CredentialBundlePort credentialBundlePort,
             DeliveryCredentialMigrationService credentialMigrationService,
             DeliveryRemoteUriIndexService remoteUriIndexService,
             DeliveryDestinationUriIndexService destinationUriIndexService) {
         this.dsl = dsl;
         this.deliveryJobService = deliveryJobService;
-        this.credentialBundleResolver = credentialBundleResolver;
+        this.credentialBundlePort = credentialBundlePort;
         this.credentialMigrationService = credentialMigrationService;
         this.remoteUriIndexService = remoteUriIndexService;
         this.destinationUriIndexService = destinationUriIndexService;
@@ -111,7 +111,7 @@ public class DeliveryAdminController {
                         r.get(field("protocol", String.class)),
                         Boolean.TRUE.equals(r.get(field("enabled", Boolean.class))),
                         r.get(field("credential_ref", String.class)),
-                        credentialBundleResolver.hasCredentials(
+                        credentialBundlePort.hasCredentials(
                                 r.get(field("credential_ref", String.class)),
                                 r.get(field("credential_json", String.class)))));
     }

@@ -3,8 +3,12 @@ package com.example.platform.commerce.infrastructure;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
+import com.example.platform.shared.web.TenantGuard;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
+import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -26,46 +30,80 @@ public class PurchaseOrderRepository {
         this.dsl = dsl;
     }
 
-    public void save(String orderId, String checkoutSessionId, String canonicalProductCode,
-                     String orderStatus, Long amountMinor, String currencyCode) {
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(table("PURCHASE_ORDER"))
-                .columns(field("ID"), field("CHECKOUT_SESSION_ID"), field("CANONICAL_PRODUCT_CODE"),
-                        field("ORDER_STATUS"), field("TOTAL_AMOUNT_MINOR"), field("CURRENCY_CODE"),
-                        field("CREATED_AT"))
-                .values(orderId, checkoutSessionId, canonicalProductCode,
-                        orderStatus, amountMinor, currencyCode, now)
+    public void save(
+            String orderId,
+            String tenantId,
+            String checkoutSessionId,
+            String canonicalProductCode,
+            String orderStatus,
+            Long amountMinor,
+            String currencyCode) {
+        String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        dsl.insertInto(table("purchase_order"))
+                .columns(
+                        field("id"),
+                        field("tenant_id"),
+                        field("checkout_session_id"),
+                        field("canonical_product_code"),
+                        field("order_status"),
+                        field("total_amount_minor"),
+                        field("currency_code"),
+                        field("created_at"))
+                .values(orderId, effectiveTenant, checkoutSessionId, canonicalProductCode, orderStatus, amountMinor, currencyCode, now)
                 .execute();
+    }
+
+    public List<PurchaseOrderRecord> findRecentByTenant(String tenantId, int limit) {
+        String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
+        return dsl.select()
+                .from(table("purchase_order"))
+                .where(field("tenant_id").eq(effectiveTenant))
+                .orderBy(field("created_at").desc())
+                .limit(limit)
+                .fetch(this::mapRecord);
+    }
+
+    public long sumConfirmedRevenueMinor(String tenantId) {
+        String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
+        Long sum = dsl.select(org.jooq.impl.DSL.coalesce(org.jooq.impl.DSL.sum(field("total_amount_minor", Long.class)), 0L))
+                .from(table("purchase_order"))
+                .where(field("tenant_id").eq(effectiveTenant))
+                .and(field("order_status").ne("CANCELLED"))
+                .fetchOne(0, Long.class);
+        return sum != null ? sum : 0L;
     }
 
     public Optional<PurchaseOrderRecord> findById(String id) {
         Record record = dsl.select()
-                .from(table("PURCHASE_ORDER"))
-                .where(field("ID").eq(id))
+                .from(table("purchase_order"))
+                .where(field("id").eq(id))
+                .and(tenantPredicate())
                 .fetchOne();
-        return Optional.ofNullable(record).map(r -> new PurchaseOrderRecord(
-                r.get(field("ID"), String.class),
-                r.get(field("CHECKOUT_SESSION_ID"), String.class),
-                r.get(field("CANONICAL_PRODUCT_CODE"), String.class),
-                r.get(field("ORDER_STATUS"), String.class),
-                r.get(field("TOTAL_AMOUNT_MINOR"), Long.class),
-                r.get(field("CURRENCY_CODE"), String.class)
-        ));
+        return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public Optional<PurchaseOrderRecord> findByCheckoutSessionId(String checkoutSessionId) {
         Record record = dsl.select()
-                .from(table("PURCHASE_ORDER"))
-                .where(field("CHECKOUT_SESSION_ID").eq(checkoutSessionId))
+                .from(table("purchase_order"))
+                .where(field("checkout_session_id").eq(checkoutSessionId))
+                .and(tenantPredicate())
                 .fetchOne();
-        return Optional.ofNullable(record).map(r -> new PurchaseOrderRecord(
-                r.get(field("ID"), String.class),
-                r.get(field("CHECKOUT_SESSION_ID"), String.class),
-                r.get(field("CANONICAL_PRODUCT_CODE"), String.class),
-                r.get(field("ORDER_STATUS"), String.class),
-                r.get(field("TOTAL_AMOUNT_MINOR"), Long.class),
-                r.get(field("CURRENCY_CODE"), String.class)
-        ));
+        return Optional.ofNullable(record).map(this::mapRecord);
+    }
+
+    private PurchaseOrderRecord mapRecord(Record r) {
+        return new PurchaseOrderRecord(
+                r.get(field("id"), String.class),
+                r.get(field("checkout_session_id"), String.class),
+                r.get(field("canonical_product_code"), String.class),
+                r.get(field("order_status"), String.class),
+                r.get(field("total_amount_minor"), Long.class),
+                r.get(field("currency_code"), String.class));
+    }
+
+    private static Condition tenantPredicate() {
+        return field("tenant_id").eq(TenantGuard.requireTenantId());
     }
 
     /**

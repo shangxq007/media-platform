@@ -5,6 +5,7 @@ import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -16,6 +17,7 @@ import io.micrometer.core.instrument.Timer;
 import java.util.concurrent.TimeUnit;
 
 @Component("stubChatProvider")
+@ConditionalOnProperty(prefix = "app.ai", name = "default-provider", havingValue = "stubChatProvider", matchIfMissing = true)
 public class StubChatProvider implements ChatProvider {
     private static final Logger log = LoggerFactory.getLogger(StubChatProvider.class);
     

@@ -34,7 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         "app.security.enabled=false",
         "app.identity.api-key-auth-enabled=false",
         "app.outbox.dispatch-interval-ms=999999999",
-        "render.providers.javacv.enabled=true",
+        "render.providers.javacv.enabled=false",
+        "render.providers.gstreamer.enabled=false",
         "render.providers.ffmpeg.enabled=true",
         "render.providers.mlt.enabled=true"
 })

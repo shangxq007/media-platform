@@ -3,6 +3,7 @@ package com.example.platform.policy.featureflag;
 import com.example.platform.policy.featureflag.domain.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -16,8 +17,8 @@ public class LocalFeatureFlagProvider {
 
     private final FeatureFlagPersistence store;
 
-    public LocalFeatureFlagProvider(FeatureFlagJdbcStore store) {
-        this.store = store;
+    public LocalFeatureFlagProvider(@Autowired(required = false) FeatureFlagJdbcStore jdbcStore) {
+        this.store = jdbcStore != null ? jdbcStore : new InMemoryFeatureFlagPersistence();
     }
 
     /** For unit tests without Spring context. */

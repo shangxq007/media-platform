@@ -1,4 +1,4 @@
-package com.example.platform.commerce;
+package com.example.platform.payment.commerce;
 
 import com.example.platform.payment.app.PaymentGatewayService;
 import com.example.platform.payment.domain.CheckoutCommand;
@@ -7,11 +7,11 @@ import com.example.platform.shared.commerce.CheckoutPaymentPort;
 import org.springframework.stereotype.Service;
 
 @Service
-public class PaymentCheckoutAdapter implements CheckoutPaymentPort {
+public class CheckoutPaymentPortAdapter implements CheckoutPaymentPort {
 
     private final PaymentGatewayService paymentGatewayService;
 
-    public PaymentCheckoutAdapter(PaymentGatewayService paymentGatewayService) {
+    public CheckoutPaymentPortAdapter(PaymentGatewayService paymentGatewayService) {
         this.paymentGatewayService = paymentGatewayService;
     }
 

@@ -13,21 +13,53 @@ spring:
   # If the file is absent, startup continues (optional: prefix).
   config:
     import: optional:file:/etc/media-platform/application.yaml
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
 
 # Stricter production defaults; override per environment as needed.
 # 推荐组合：SPRING_PROFILES_ACTIVE=prod,r2,temporal + PLATFORM_ENV=prod + STORAGE_S3_ENABLED=true
 
 platform:
   environment: ${PLATFORM_ENV:prod}
+  runtime:
+    production-checks-enabled: true
+    modulith-violation-budget: 0
+  payment:
+    stripe:
+      enabled: ${PLATFORM_PAYMENT_STRIPE_ENABLED:true}
+    hyperswitch:
+      enabled: ${PLATFORM_PAYMENT_HYPERSWITCH_ENABLED:false}
   lifecycle:
     shutdown:
       outbox-drain-enabled: true
       outbox-drain-batch: 100
 
 app:
+  security:
+    enabled: true
+    dev-auth-endpoint: false
+    oauth2:
+      enabled: ${APP_SECURITY_OAUTH2_ENABLED:true}
+  features:
+    unleash:
+      enabled: ${APP_FEATURES_UNLEASH_ENABLED:false}
+  ai:
+    default-provider: ${APP_AI_DEFAULT_PROVIDER:openAiChatProvider}
+    providers:
+      openai:
+        enabled: ${APP_AI_OPENAI_ENABLED:true}
   temporal:
     environment: ${PLATFORM_ENV:prod}
     fail-on-missing-worker: ${TEMPORAL_FAIL_ON_MISSING_WORKER:true}
+
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,platformReadiness
 
 render:
   stale-compensator:

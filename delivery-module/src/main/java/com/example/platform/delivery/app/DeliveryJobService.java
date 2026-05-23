@@ -10,7 +10,7 @@ import com.example.platform.delivery.domain.DeliveryProtocol;
 import com.example.platform.delivery.infrastructure.DeliveryAdapterRegistry;
 import com.example.platform.delivery.infrastructure.DeliveryConfigParser;
 import com.example.platform.delivery.spi.DeliveryAdapter;
-import com.example.platform.secrets.app.CredentialBundleResolver;
+import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.delivery.spi.DeliveryContext;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
@@ -40,14 +40,14 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     private final ApplicationEventPublisher eventPublisher;
     private final boolean enabled;
     private final int maxAttempts;
-    private final CredentialBundleResolver credentialBundleResolver;
+    private final CredentialBundlePort credentialBundlePort;
     private final DeliveryDestinationCredentialService destinationCredentialService;
 
     public DeliveryJobService(DSLContext dsl,
                               DeliveryAdapterRegistry adapterRegistry,
                               DeliverySourceResolver sourceResolver,
                               ApplicationEventPublisher eventPublisher,
-                              CredentialBundleResolver credentialBundleResolver,
+                              CredentialBundlePort credentialBundlePort,
                               DeliveryDestinationCredentialService destinationCredentialService,
                               @Value("${delivery.enabled:true}") boolean enabled,
                               @Value("${delivery.max-attempts:3}") int maxAttempts) {
@@ -55,7 +55,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         this.adapterRegistry = adapterRegistry;
         this.sourceResolver = sourceResolver;
         this.eventPublisher = eventPublisher;
-        this.credentialBundleResolver = credentialBundleResolver;
+        this.credentialBundlePort = credentialBundlePort;
         this.destinationCredentialService = destinationCredentialService;
         this.enabled = enabled;
         this.maxAttempts = Math.max(1, maxAttempts);
@@ -420,7 +420,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     }
 
     private Map<String, String> resolveDestinationCredentials(Record dest) {
-        return credentialBundleResolver.resolve(
+        return credentialBundlePort.resolve(
                 dest.get(field("credential_ref", String.class)),
                 dest.get(field("credential_json", String.class)));
     }

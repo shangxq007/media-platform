@@ -6,8 +6,8 @@ create table if not exists delivery_destination (
     user_id varchar(64),
     name varchar(255) not null,
     protocol varchar(32) not null,
-    config_json clob,
-    credential_json clob,
+    config_json text,
+    credential_json text,
     enabled boolean default true,
     verified_at timestamp,
     created_at timestamp not null

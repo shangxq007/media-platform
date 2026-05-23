@@ -272,6 +272,8 @@ export interface MyCapabilities {
   featureFlags: FeatureFlag[]
 }
 
+export type RenderLocation = 'CLIENT' | 'SERVER'
+
 export interface ExportValidationResult {
   allowed: boolean
   reasonCode: string
@@ -286,6 +288,10 @@ export interface ExportValidationResult {
   userFriendlyMessage: string
   violations: string[]
   recommendations: string[]
+  recommendedRenderLocation?: RenderLocation
+  clientExportSupported?: boolean
+  clientExportUnsupportedReasons?: string[]
+  legacyValidation?: ExportValidationResult
 }
 
 export interface BudgetStatus {

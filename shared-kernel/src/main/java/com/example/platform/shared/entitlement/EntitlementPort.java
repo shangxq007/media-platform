@@ -8,6 +8,13 @@ import java.util.List;
 public interface EntitlementPort {
     ExportValidationResult validateExport(String tenantId, String userId,
             String requestedPreset, String outputFormat, long estimatedDurationSeconds);
+
+    default ExportValidationResult validateExport(String tenantId, String userId,
+            String requestedPreset, String outputFormat, long estimatedDurationSeconds,
+            List<String> effectKeys) {
+        return validateExport(tenantId, userId, requestedPreset, outputFormat, estimatedDurationSeconds);
+    }
+
     String getTier(String tenantId);
 
     record ExportValidationResult(
@@ -23,5 +30,8 @@ public interface EntitlementPort {
             List<String> upgradeOptions,
             String userFriendlyMessage,
             List<String> violations,
-            List<String> recommendations) {}
+            List<String> recommendations,
+            String recommendedRenderLocation,
+            boolean clientExportSupported,
+            List<String> clientExportUnsupportedReasons) {}
 }

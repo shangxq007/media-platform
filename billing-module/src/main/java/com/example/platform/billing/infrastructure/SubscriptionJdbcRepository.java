@@ -81,11 +81,12 @@ public class SubscriptionJdbcRepository {
         ));
         int updated = jdbc.update("""
                 UPDATE subscription_contract SET
-                subject_type = ?, subject_id = ?, canonical_product_code = ?,
+                tenant_id = ?, subject_type = ?, subject_id = ?, canonical_product_code = ?,
                 contract_state = ?, period_start_at = ?, period_end_at = ?,
                 plan_key = ?, included_quota_used = ?
                 WHERE id = ?
                 """,
+                contract.tenantId(),
                 "USER",
                 contract.userId(),
                 contract.planKey(),
@@ -98,11 +99,12 @@ public class SubscriptionJdbcRepository {
         if (updated == 0) {
             jdbc.update("""
                     INSERT INTO subscription_contract
-                    (id, subject_type, subject_id, canonical_product_code, contract_state,
+                    (id, tenant_id, subject_type, subject_id, canonical_product_code, contract_state,
                      period_start_at, period_end_at, created_at, plan_key, included_quota_used)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     contract.contractId(),
+                    contract.tenantId(),
                     "USER",
                     contract.userId(),
                     contract.planKey(),
@@ -113,6 +115,27 @@ public class SubscriptionJdbcRepository {
                     contract.planKey(),
                     metaJson);
         }
+    }
+
+    public Optional<SubscriptionContract> findContractById(String contractId) {
+        List<SubscriptionContract> rows = jdbc.query(
+                "SELECT * FROM subscription_contract WHERE id = ?",
+                this::mapContract,
+                contractId);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    public List<SubscriptionContract> findActiveByTenantAndUser(String tenantId, String userId, Instant now) {
+        return jdbc.query("""
+                SELECT * FROM subscription_contract
+                WHERE tenant_id = ? AND subject_id = ? AND contract_state = 'ACTIVE'
+                AND (period_end_at IS NULL OR period_end_at > ?)
+                ORDER BY created_at DESC
+                """,
+                this::mapContract,
+                tenantId,
+                userId,
+                Timestamp.from(now));
     }
 
     public List<SubscriptionPlan> loadAllPlans() {
@@ -161,7 +184,10 @@ public class SubscriptionJdbcRepository {
         @SuppressWarnings("unchecked")
         Map<String, Long> includedQuotaUsed = meta.get("includedQuotaUsed") instanceof Map
                 ? (Map<String, Long>) meta.get("includedQuotaUsed") : Map.of();
-        String tenantId = meta.get("tenantId") != null ? meta.get("tenantId").toString() : rs.getString("subject_id");
+        String tenantId = rs.getString("tenant_id");
+        if (tenantId == null || tenantId.isBlank()) {
+            tenantId = meta.get("tenantId") != null ? meta.get("tenantId").toString() : rs.getString("subject_id");
+        }
         String userId = meta.get("userId") != null ? meta.get("userId").toString() : rs.getString("subject_id");
         long basePrice = meta.get("basePriceMinor") instanceof Number n ? n.longValue() : 0L;
         String currency = meta.get("currencyCode") != null ? meta.get("currencyCode").toString() : "USD";

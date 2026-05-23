@@ -4,7 +4,12 @@ import { useProjectStore } from '@/stores/project'
 import { useTimelineStore } from '@/stores/timeline'
 import { useSubtitleStore } from '@/stores/subtitle'
 import { RenderAPI, EntitlementAPI, IncrementalRenderAPI } from '@/api'
-import type { ExportSettings, RenderJob, ExportValidationResult, BudgetStatus, Artifact } from '@/types'
+import { ClientExportAPI } from '@/api/client-export'
+import { ClientCompositor } from '@/clientExport/clientCompositor'
+import { extractEffectKeys } from '@/clientExport/timelineParser'
+import { resolveExportPath } from '@/clientExport/resolveExportPath'
+import { detectClientExportCapabilities } from '@/clientExport/clientExportCapabilities'
+import type { ExportSettings, RenderJob, ExportValidationResult, BudgetStatus, Artifact, RenderLocation } from '@/types'
 import RenderJobStatus from './RenderJobStatus.vue'
 import ArtifactResult from './ArtifactResult.vue'
 import DeliveryStatusPanel from './DeliveryStatusPanel.vue'
@@ -30,8 +35,14 @@ const subtitleMode = ref<'none' | 'burn-in' | 'external' | 'multi-external'>('no
 const selectedSubtitleLanguages = ref<string[]>([])
 
 const currentTier = ref('FREE')
-const selectedPreset = ref('free_720p_watermarked')
+const selectedPreset = ref('client_720p_watermarked')
 const submitting = ref(false)
+const saveToProject = ref(true)
+const renderLocation = ref<RenderLocation>('SERVER')
+const clientExportProgress = ref(0)
+const clientExportMessage = ref<string | null>(null)
+const clientExportAbort = ref<AbortController | null>(null)
+const clientCompositor = new ClientCompositor()
 const lastJob = ref<RenderJob | null>(null)
 const pollInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const availablePresets = ref<any[]>([])
@@ -258,6 +269,24 @@ const isExportDisabled = computed(() =>
 
 const watermarked = computed(() => presetInfo.value?.watermark || false)
 
+const clientExportFeatureOn = computed(
+  () => isExportFlagEnabled('export.client.enabled') || currentTier.value === 'FREE'
+)
+
+const browserExportCapable = computed(() => detectClientExportCapabilities().supported)
+
+function normalizeValidationResponse(raw: Record<string, unknown>): ExportValidationResult {
+  const leg = (raw.legacyValidation ?? raw) as ExportValidationResult
+  return {
+    ...leg,
+    allowed: Boolean(raw.allowed ?? leg.allowed),
+    recommendedRenderLocation: (raw.recommendedRenderLocation ?? leg.recommendedRenderLocation) as RenderLocation | undefined,
+    clientExportSupported: Boolean(raw.clientExportSupported ?? leg.clientExportSupported),
+    clientExportUnsupportedReasons: (raw.clientExportUnsupportedReasons ?? leg.clientExportUnsupportedReasons) as string[] | undefined,
+    budgetStatus: leg.budgetStatus ?? (raw.budgetStatus as BudgetStatus),
+  }
+}
+
 let validateDebounce: ReturnType<typeof setTimeout> | null = null
 
 function scheduleValidate() {
@@ -286,19 +315,31 @@ async function validateCurrentExport() {
   if (!selectedPreset.value) return
   validatingExport.value = true
   try {
-    const result = await EntitlementAPI.validateExport(
+    const timelineJson = buildTimelineJson()
+    const raw = await EntitlementAPI.validateExport(
       selectedPreset.value,
       settings.value.format,
-      Math.max(60, timelineStore.state.duration)
+      Math.max(1, Math.ceil(timelineStore.state.duration)),
+      { effectKeys: extractEffectKeys(timelineJson), timelineJson }
     )
+    const result = normalizeValidationResponse(raw as Record<string, unknown>)
     validationResult.value = result
     exportValidationDetail.value = result
+    renderLocation.value = resolveExportPath({
+      allowed: result.allowed,
+      recommendedRenderLocation: result.recommendedRenderLocation,
+      clientExportSupported: result.clientExportSupported,
+      currentTier: result.currentTier,
+      preset: selectedPreset.value,
+      clientFeatureEnabled: clientExportFeatureOn.value && browserExportCapable.value,
+    })
     if (result.budgetStatus) {
       budgetStatus.value = result.budgetStatus
     }
   } catch {
     validationResult.value = null
     exportValidationDetail.value = null
+    renderLocation.value = 'SERVER'
   } finally {
     validatingExport.value = false
   }
@@ -345,6 +386,9 @@ async function loadCapabilities() {
   try {
     const caps = await EntitlementAPI.getCapabilities()
     currentTier.value = caps.tier || 'FREE'
+    if (currentTier.value === 'FREE' && !selectedPreset.value.startsWith('client')) {
+      selectedPreset.value = 'client_720p_watermarked'
+    }
     budgetStatus.value = {
       allowed: true,
       warning: false,
@@ -378,7 +422,8 @@ async function loadPresets() {
     }
   } catch {
     availablePresets.value = [
-      { name: 'free_720p_watermarked', displayName: 'Free 720p (Watermarked)', resolution: '1280x720', watermark: true },
+      { name: 'client_720p_watermarked', displayName: 'Free 720p (Browser)', resolution: '1280x720', watermark: true },
+      { name: 'free_720p_watermarked', displayName: 'Free 720p (Cloud)', resolution: '1280x720', watermark: true },
       { name: 'preview_720p', displayName: 'Preview 720p', resolution: '1280x720', watermark: false },
       { name: 'default_720p', displayName: 'Standard 720p', resolution: '1280x720', watermark: false },
       { name: 'default_1080p', displayName: 'Standard 1080p', resolution: '1920x1080', watermark: false },
@@ -438,6 +483,89 @@ async function applyRecommendedPreset() {
   }
 }
 
+async function submitClientExport() {
+  if (!projectStore.currentProject) return
+
+  submitting.value = true
+  clientExportProgress.value = 0
+  clientExportMessage.value = null
+  renderJobStatus.value = 'running'
+  renderError.value = null
+  clientExportAbort.value = new AbortController()
+
+  try {
+    const timelineJson = buildTimelineJson()
+    const snapshot = await RenderAPI.saveTimelineSnapshot(
+      projectStore.currentProject.id,
+      JSON.parse(timelineJson) as Record<string, unknown>,
+      { ensureInternal: true }
+    )
+
+    let sessionId: string | null = null
+    if (saveToProject.value) {
+      const session = await ClientExportAPI.startSession(
+        projectStore.currentProject.id,
+        snapshot.snapshotId,
+        selectedPreset.value
+      )
+      sessionId = session.sessionId
+    }
+
+    const result = await clientCompositor.exportTimeline(timelineJson, {
+      watermark: watermarked.value,
+      signal: clientExportAbort.value.signal,
+      onProgress: (p) => {
+        clientExportProgress.value = p.progress
+        clientExportMessage.value = p.message ?? p.phase
+        renderProgress.value = p.progress
+      },
+    })
+
+    let downloadUrl: string | undefined
+    let artifactId: string | undefined
+
+    if (sessionId) {
+      const completed = await ClientExportAPI.uploadAndComplete(sessionId, result.blob, {
+        durationSeconds: result.durationSeconds,
+        registerArtifact: true,
+      })
+      downloadUrl = completed.downloadUrl
+      artifactId = completed.artifactId || undefined
+    } else {
+      downloadUrl = URL.createObjectURL(result.blob)
+    }
+
+    completedArtifact.value = {
+      id: artifactId || `client_${Date.now()}`,
+      renderJobId: sessionId || 'client-export',
+      projectId: projectStore.currentProject.id,
+      name: `${projectStore.currentProject.name}_browser`,
+      outputFormat: settings.value.format,
+      duration: result.durationSeconds,
+      fileSize: result.blob.size,
+      provider: 'client',
+      createdAt: new Date().toISOString(),
+      outputUrl: downloadUrl,
+    }
+    renderJobStatus.value = 'completed'
+    renderProgress.value = 100
+    panelMessage.value = '浏览器导出完成'
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      renderJobStatus.value = 'cancelled'
+      panelMessage.value = '已取消浏览器导出'
+    } else {
+      const msg = err instanceof Error ? err.message : 'Browser export failed'
+      renderError.value = msg
+      renderJobStatus.value = 'failed'
+      projectStore.setError(msg)
+    }
+  } finally {
+    submitting.value = false
+    clientExportAbort.value = null
+  }
+}
+
 async function submitRender() {
   if (!projectStore.currentProject) return
 
@@ -470,6 +598,12 @@ async function submitRender() {
     if (validationResult.value && !validationResult.value.allowed) {
       projectStore.setError(validationResult.value.userFriendlyMessage)
       submitting.value = false
+      return
+    }
+
+    if (renderLocation.value === 'CLIENT') {
+      submitting.value = false
+      await submitClientExport()
       return
     }
 
@@ -607,6 +741,9 @@ function handleRetry() {
 }
 
 function handleCancel() {
+  if (clientExportAbort.value) {
+    clientExportAbort.value.abort()
+  }
   if (pollInterval.value) clearInterval(pollInterval.value)
   renderJobStatus.value = 'cancelled'
 }
@@ -745,6 +882,28 @@ function handleViewLogs(url: string) {
       </div>
       <div v-if="validationResult.upgradeOptions?.length">
         <UpgradeHint variant="card" title="Upgrade Required" :description="validationResult.upgradeOptions.join(', ')" class="mt-1" />
+      </div>
+    </div>
+
+    <!-- Render location -->
+    <div v-if="validationResult?.allowed" class="p-2 rounded bg-gray-800/50 border border-gray-700 text-xs space-y-1">
+      <div class="flex justify-between">
+        <span class="text-gray-400">Export path</span>
+        <span :class="renderLocation === 'CLIENT' ? 'text-emerald-400' : 'text-blue-400'">
+          {{ renderLocation === 'CLIENT' ? 'Browser (WebCodecs)' : 'Cloud render' }}
+        </span>
+      </div>
+      <div v-if="renderLocation === 'CLIENT'" class="flex items-center gap-2">
+        <label class="flex items-center gap-1 text-gray-400 cursor-pointer">
+          <input v-model="saveToProject" type="checkbox" class="rounded border-gray-600" />
+          Save to project
+        </label>
+      </div>
+      <div v-if="validationResult.clientExportUnsupportedReasons?.length && renderLocation === 'SERVER'" class="text-[10px] text-amber-400">
+        {{ validationResult.clientExportUnsupportedReasons.join(', ') }}
+      </div>
+      <div v-if="renderLocation === 'CLIENT' && clientExportMessage" class="text-[10px] text-gray-400">
+        {{ clientExportMessage }} ({{ clientExportProgress }}%)
       </div>
     </div>
 
@@ -1049,7 +1208,7 @@ function handleViewLogs(url: string) {
       :class="!isExportDisabled ? 'bg-clip-video hover:bg-clip-video/80 text-white' : 'bg-gray-600 text-gray-400 cursor-not-allowed'"
       :disabled="isExportDisabled"
       @click="submitRender">
-      {{ exportMode === 'incremental' ? '使用下方增量导出' : submitting ? 'Submitting...' : hasSyncConflict ? 'Resolve sync conflict' : featureFlagSubmitBlocked ? 'Feature Disabled' : hasBudgetExceeded ? 'Budget Exceeded' : validationResult && !validationResult.allowed ? 'Export Blocked' : 'Export Video' }}
+      {{ exportMode === 'incremental' ? '使用下方增量导出' : submitting ? (renderLocation === 'CLIENT' ? 'Exporting in browser...' : 'Submitting...') : hasSyncConflict ? 'Resolve sync conflict' : featureFlagSubmitBlocked ? 'Feature Disabled' : hasBudgetExceeded ? 'Budget Exceeded' : validationResult && !validationResult.allowed ? 'Export Blocked' : renderLocation === 'CLIENT' ? 'Export in Browser' : 'Export Video' }}
     </button>
 
     <!-- Last Job -->

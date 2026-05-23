@@ -5,10 +5,26 @@ app:
     api-key-auth-enabled: false
   temporal:
     enabled: false
+  ai:
+    default-provider: stubChatProvider
+
+platform:
+  payment:
+    stripe:
+      enabled: false
+    hyperswitch:
+      enabled: false
 
 render:
   execution:
     mode: local
+  providers:
+    gstreamer:
+      enabled: false
+    vapoursynth:
+      enabled: false
+    natron:
+      enabled: false
 
 spring:
   autoconfigure:

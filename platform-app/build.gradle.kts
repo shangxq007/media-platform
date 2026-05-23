@@ -60,6 +60,8 @@ dependencies {
 
     testImplementation("org.springframework.modulith:spring-modulith-starter-test:2.0.4")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.testcontainers:junit-jupiter:1.20.6")
+    testImplementation("org.testcontainers:postgresql:1.20.6")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {

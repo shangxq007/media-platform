@@ -15,6 +15,7 @@ import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.shared.web.TenantContext;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -35,6 +36,7 @@ class TimelineRevisionServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        TenantContext.set("ten-1");
         String db = "trev" + COUNTER.incrementAndGet();
         Connection conn = DriverManager.getConnection(
                 "jdbc:h2:mem:" + db + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");

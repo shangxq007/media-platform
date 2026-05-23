@@ -8,9 +8,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
-import com.example.platform.secrets.app.SecretRefRegistryService;
-import com.example.platform.secrets.config.SecretsProperties;
+import com.example.platform.secrets.api.port.SecretsConfigPort;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -48,11 +48,11 @@ class TenantLitellmKeyServiceTest {
         }
 
         SecretResolver secretResolver = mock(SecretResolver.class);
-        SecretRefRegistryService registry = mock(SecretRefRegistryService.class);
-        SecretsProperties secretsProperties = new SecretsProperties();
-        secretsProperties.setInlineCredentialsEnabled(true);
+        SecretRefRegistryPort registry = mock(SecretRefRegistryPort.class);
+        SecretsConfigPort secretsConfig = mock(SecretsConfigPort.class);
+        when(secretsConfig.inlineCredentialsEnabled()).thenReturn(true);
 
-        credentialService = new TenantLitellmKeyCredentialService(secretResolver, registry, secretsProperties);
+        credentialService = new TenantLitellmKeyCredentialService(secretResolver, registry, secretsConfig);
         ReflectionTestUtils.setField(credentialService, "tenantKeysVaultBacked", false);
 
         service = new TenantLitellmKeyService(new TenantLitellmKeyRepository(dsl), credentialService);
@@ -80,12 +80,12 @@ class TenantLitellmKeyServiceTest {
         SecretResolver secretResolver = mock(SecretResolver.class);
         when(secretResolver.resolve(any())).thenReturn(Optional.of("sk-from-vault"));
 
-        SecretRefRegistryService registry = mock(SecretRefRegistryService.class);
-        SecretsProperties secretsProperties = new SecretsProperties();
-        secretsProperties.setInlineCredentialsEnabled(true);
+        SecretRefRegistryPort registry = mock(SecretRefRegistryPort.class);
+        SecretsConfigPort secretsConfig = mock(SecretsConfigPort.class);
+        when(secretsConfig.inlineCredentialsEnabled()).thenReturn(true);
 
         TenantLitellmKeyCredentialService vaultCredentials =
-                new TenantLitellmKeyCredentialService(secretResolver, registry, secretsProperties);
+                new TenantLitellmKeyCredentialService(secretResolver, registry, secretsConfig);
 
         String db = "litellmkeyvault" + COUNTER.incrementAndGet();
         Connection conn = DriverManager.getConnection(

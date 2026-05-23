@@ -12,7 +12,7 @@ import java.util.Map;
 public class ExportPolicyService {
 
     private static final Map<String, ExportTier> DEFAULT_TIERS = Map.of(
-            "FREE", new ExportTier("FREE", 1, List.of("free_720p_watermarked"), true, false),
+            "FREE", new ExportTier("FREE", 1, List.of("client_720p_watermarked", "free_720p_watermarked"), true, false),
             "PRO", new ExportTier("PRO", 2, List.of("pro_1080p", "default_1080p", "default_720p", "social_720p"), false, false),
             "TEAM", new ExportTier("TEAM", 3, List.of("team_4k", "ofx_1080p", "ofx_720p", "pro_1080p", "default_1080p"), false, false),
             "ENTERPRISE", new ExportTier("ENTERPRISE", 4, List.of("enterprise_4k_ofx", "team_4k", "ofx_1080p", "pro_1080p", "default_1080p"), false, false),
@@ -20,6 +20,8 @@ public class ExportPolicyService {
     );
 
     private static final Map<String, ExportPreset> DEFAULT_PRESETS = Map.ofEntries(
+            Map.entry("client_720p_watermarked", new ExportPreset("client_720p_watermarked", "Free 720p (Browser)",
+                    "1280x720", 30, "mp4", "h264", "aac", true, "FREE", "client")),
             Map.entry("free_720p_watermarked", new ExportPreset("free_720p_watermarked", "Free 720p (Watermarked)",
                     "1280x720", 30, "mp4", "h264", "aac", true, "FREE", "javacv")),
             Map.entry("pro_1080p", new ExportPreset("pro_1080p", "Pro 1080p",

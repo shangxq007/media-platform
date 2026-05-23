@@ -3,6 +3,7 @@ package com.example.platform.billing.app;
 import com.example.platform.billing.domain.*;
 import com.example.platform.billing.infrastructure.SubscriptionJdbcRepository;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.web.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,10 @@ public class SubscriptionBillingService {
     @Autowired
     public SubscriptionBillingService(Optional<SubscriptionJdbcRepository> jdbcRepository) {
         this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+    }
+
+    private boolean dbBacked() {
+        return jdbcRepository.isPresent();
     }
 
     public void hydratePlan(SubscriptionPlan plan) {
@@ -71,6 +76,12 @@ public class SubscriptionBillingService {
     }
 
     public List<SubscriptionPlan> listPlans() {
+        if (dbBacked()) {
+            return jdbcRepository.get().loadAllPlans().stream()
+                    .filter(p -> "ACTIVE".equals(p.status()))
+                    .peek(this::hydratePlan)
+                    .toList();
+        }
         return plans.values().stream()
                 .filter(p -> "ACTIVE".equals(p.status()))
                 .toList();
@@ -85,9 +96,10 @@ public class SubscriptionBillingService {
     public SubscriptionContract createSubscription(String tenantId, String userId,
                                                     String planKey, String productCode,
                                                     int periodDays, SubscriptionContractRole role) {
+        String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
         SubscriptionPlan plan = requirePlan(planKey);
         if (role == SubscriptionContractRole.BASE) {
-            cancelActiveContracts(tenantId, userId, SubscriptionContractRole.BASE);
+            cancelActiveContracts(effectiveTenant, userId, SubscriptionContractRole.BASE);
         }
 
         String contractId = Ids.newId("sub");
@@ -95,7 +107,7 @@ public class SubscriptionBillingService {
         Map<String, Long> quotaUsed = emptyQuotaUsed(plan.includedQuota());
 
         SubscriptionContract contract = new SubscriptionContract(
-                contractId, tenantId, userId, planKey,
+                contractId, effectiveTenant, userId, planKey,
                 now, now.plus(periodDays, ChronoUnit.DAYS),
                 "ACTIVE", plan.basePriceMinor(), plan.currencyCode(),
                 plan.includedQuota(), quotaUsed, role, productCode);
@@ -121,9 +133,13 @@ public class SubscriptionBillingService {
     }
 
     public List<SubscriptionContract> listActiveSubscriptions(String tenantId, String userId) {
+        String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
         Instant now = Instant.now();
+        if (dbBacked()) {
+            return jdbcRepository.get().findActiveByTenantAndUser(effectiveTenant, userId, now);
+        }
         return subscriptions.values().stream()
-                .filter(s -> tenantId.equals(s.tenantId()) && userId.equals(s.userId()))
+                .filter(s -> effectiveTenant.equals(s.tenantId()) && userId.equals(s.userId()))
                 .filter(s -> s.isActiveAt(now))
                 .toList();
     }
@@ -144,10 +160,7 @@ public class SubscriptionBillingService {
     }
 
     public SubscriptionContract changePlan(String contractId, String newPlanKey, int periodDays) {
-        SubscriptionContract existing = subscriptions.get(contractId);
-        if (existing == null) {
-            throw new IllegalArgumentException("Subscription not found: " + contractId);
-        }
+        SubscriptionContract existing = requireContract(contractId);
         SubscriptionPlan newPlan = requirePlan(newPlanKey);
         Instant now = Instant.now();
         Map<String, Long> quotaUsed = emptyQuotaUsed(newPlan.includedQuota());
@@ -164,10 +177,7 @@ public class SubscriptionBillingService {
     }
 
     public SubscriptionContract cancelAtPeriodEnd(String contractId) {
-        SubscriptionContract existing = subscriptions.get(contractId);
-        if (existing == null) {
-            throw new IllegalArgumentException("Subscription not found: " + contractId);
-        }
+        SubscriptionContract existing = requireContract(contractId);
 
         SubscriptionContract cancelled = new SubscriptionContract(
                 existing.contractId(), existing.tenantId(), existing.userId(),
@@ -211,23 +221,42 @@ public class SubscriptionBillingService {
     }
 
     private void persistContract(SubscriptionContract contract) {
-        subscriptions.put(contract.contractId(), contract);
-        jdbcRepository.ifPresent(r -> r.saveContract(contract));
+        if (dbBacked()) {
+            jdbcRepository.get().saveContract(contract);
+        } else {
+            subscriptions.put(contract.contractId(), contract);
+        }
+    }
+
+    private SubscriptionContract requireContract(String contractId) {
+        if (dbBacked()) {
+            return jdbcRepository.get().findContractById(contractId)
+                    .orElseThrow(() -> new IllegalArgumentException("Subscription not found: " + contractId));
+        }
+        SubscriptionContract existing = subscriptions.get(contractId);
+        if (existing == null) {
+            throw new IllegalArgumentException("Subscription not found: " + contractId);
+        }
+        return existing;
     }
 
     public void processBillingCycle() {
         Instant now = Instant.now();
-        subscriptions.values().stream()
-                .filter(s -> "ACTIVE".equals(s.lifecycleState()))
+        List<SubscriptionContract> active = listActiveSubscriptionsAllTenants();
+        active.stream()
                 .filter(s -> s.periodEndAt() != null && s.periodEndAt().isBefore(now))
                 .forEach(s -> log.info("SubscriptionBillingService: subscription {} period ended at {}",
                         s.contractId(), s.periodEndAt()));
-        log.info("SubscriptionBillingService: billing cycle scan complete ({} active contracts)",
-                listActiveSubscriptionsAllTenants().size());
+        log.info("SubscriptionBillingService: billing cycle scan complete ({} active contracts)", active.size());
     }
 
     public List<SubscriptionContract> listActiveSubscriptionsAllTenants() {
         Instant now = Instant.now();
+        if (dbBacked()) {
+            return jdbcRepository.get().loadAllContracts().stream()
+                    .filter(s -> s.isActiveAt(now))
+                    .toList();
+        }
         return subscriptions.values().stream()
                 .filter(s -> s.isActiveAt(now))
                 .toList();

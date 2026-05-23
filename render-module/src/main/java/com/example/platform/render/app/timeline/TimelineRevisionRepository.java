@@ -2,8 +2,10 @@ package com.example.platform.render.app.timeline;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import com.example.platform.shared.web.TenantGuard;
 import java.util.List;
 import java.util.Optional;
+import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
@@ -24,6 +26,7 @@ public class TimelineRevisionRepository {
         Record row = dsl.select()
                 .from(table("timeline_revision"))
                 .where(field("id").eq(revisionId))
+                .and(tenantCondition())
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(map(row));
     }
@@ -31,7 +34,7 @@ public class TimelineRevisionRepository {
     public Optional<RevisionRow> findHeadByProject(String projectId) {
         Record row = dsl.select()
                 .from(table("timeline_revision"))
-                .where(field("project_id").eq(projectId))
+                .where(projectScope(projectId))
                 .orderBy(field("revision_number").desc())
                 .limit(1)
                 .fetchOne();
@@ -50,7 +53,7 @@ public class TimelineRevisionRepository {
             String projectId, String editSessionId, String authorUserId, String source, int limit) {
         var query = dsl.select()
                 .from(table("timeline_revision"))
-                .where(field("project_id").eq(projectId));
+                .where(projectScope(projectId));
         if (editSessionId != null && !editSessionId.isBlank()) {
             query = query.and(field("edit_session_id").eq(editSessionId));
         }
@@ -72,7 +75,7 @@ public class TimelineRevisionRepository {
                 .set(field("message"), message)
                 .set(field("labels_json"), labelsJson)
                 .where(field("id").eq(revisionId))
-                .and(field("project_id").eq(projectId))
+                .and(projectScope(projectId))
                 .execute();
         return updated > 0;
     }
@@ -80,7 +83,7 @@ public class TimelineRevisionRepository {
     public List<String> listDistinctSources(String projectId) {
         return dsl.selectDistinct(field("source", String.class))
                 .from(table("timeline_revision"))
-                .where(field("project_id").eq(projectId))
+                .where(projectScope(projectId))
                 .orderBy(field("source").asc())
                 .fetch(field("source", String.class));
     }
@@ -91,7 +94,7 @@ public class TimelineRevisionRepository {
                         field("author_user_id", String.class),
                         org.jooq.impl.DSL.count().as("revision_count"))
                 .from(table("timeline_revision"))
-                .where(field("project_id").eq(projectId))
+                .where(projectScope(projectId))
                 .and(field("author_user_id").isNotNull())
                 .groupBy(field("author_user_id"))
                 .orderBy(org.jooq.impl.DSL.count().desc())
@@ -109,7 +112,7 @@ public class TimelineRevisionRepository {
                         org.jooq.impl.DSL.max(field("created_at")).as("last_at"),
                         org.jooq.impl.DSL.count().as("revision_count"))
                 .from(table("timeline_revision"))
-                .where(field("project_id").eq(projectId))
+                .where(projectScope(projectId))
                 .and(field("edit_session_id").isNotNull())
                 .groupBy(field("edit_session_id"))
                 .orderBy(org.jooq.impl.DSL.max(field("created_at")).desc())
@@ -121,10 +124,18 @@ public class TimelineRevisionRepository {
                         r.get(org.jooq.impl.DSL.field("revision_count", Integer.class))));
     }
 
+    private static Condition tenantCondition() {
+        return field("tenant_id").eq(TenantGuard.requireTenantId());
+    }
+
+    private static Condition projectScope(String projectId) {
+        return field("project_id").eq(projectId).and(tenantCondition());
+    }
+
     public int nextRevisionNumber(String projectId) {
         Integer max = dsl.select(field("revision_number", Integer.class))
                 .from(table("timeline_revision"))
-                .where(field("project_id").eq(projectId))
+                .where(projectScope(projectId))
                 .orderBy(field("revision_number").desc())
                 .limit(1)
                 .fetchOne(field("revision_number", Integer.class));

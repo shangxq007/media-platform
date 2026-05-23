@@ -87,15 +87,15 @@ public class FeatureFlagService implements FeatureFlagEvaluator {
                     definition.tags(), Instant.now(), Instant.now(), false
             );
         }
-        flagCache.put(toSave.flagKey(), toSave);
         localProvider.saveFlag(toSave);
         String savedFlagKey = toSave.flagKey();
         if (toSave.targetingRules() != null) {
             localProvider.clearRules(savedFlagKey);
             toSave.targetingRules().forEach(r -> localProvider.saveRule(savedFlagKey, r));
         }
+        reloadFlagFromStore(savedFlagKey);
         log.info("FeatureFlagService: created flag '{}'", toSave.flagKey());
-        return toSave;
+        return getFlag(savedFlagKey).orElse(toSave);
     }
 
     public Optional<FeatureFlagDefinition> getFlag(String flagKey) {
@@ -124,13 +124,13 @@ public class FeatureFlagService implements FeatureFlagEvaluator {
                 definition.targetingRules(), definition.enabled(), definition.owner(),
                 definition.tags(), existing.createdAt(), Instant.now(), existing.archived()
         );
-        flagCache.put(flagKey, updated);
         localProvider.saveFlag(updated);
         if (definition.targetingRules() != null) {
             localProvider.clearRules(flagKey);
             definition.targetingRules().forEach(r -> localProvider.saveRule(flagKey, r));
         }
-        return updated;
+        reloadFlagFromStore(flagKey);
+        return getFlag(flagKey).orElse(updated);
     }
 
     public FeatureFlagDefinition enableFlag(String flagKey) {
@@ -155,10 +155,10 @@ public class FeatureFlagService implements FeatureFlagEvaluator {
                 existing.targetingRules(), false, existing.owner(),
                 existing.tags(), existing.createdAt(), Instant.now(), true
         );
-        flagCache.put(flagKey, archived);
         localProvider.saveFlag(archived);
+        reloadFlagFromStore(flagKey);
         log.info("FeatureFlagService: archived flag '{}'", flagKey);
-        return archived;
+        return getFlag(flagKey).orElse(archived);
     }
 
     public void addTargetingRule(String flagKey, FeatureFlagTargetingRule rule) {
@@ -190,15 +190,25 @@ public class FeatureFlagService implements FeatureFlagEvaluator {
                 existing.targetingRules(), enabled, existing.owner(),
                 existing.tags(), existing.createdAt(), Instant.now(), existing.archived()
         );
-        flagCache.put(flagKey, updated);
         localProvider.saveFlag(updated);
+        reloadFlagFromStore(flagKey);
         log.info("FeatureFlagService: {} flag '{}'", enabled ? "enabled" : "disabled", flagKey);
-        return updated;
+        return getFlag(flagKey).orElse(updated);
+    }
+
+    /** Refreshes one flag from the authoritative persistence store into the read cache. */
+    public void reloadFlagFromStore(String flagKey) {
+        localProvider.getFlag(flagKey).ifPresent(def -> flagCache.put(flagKey, def));
+    }
+
+    public void reloadAllFlagsFromStore() {
+        flagCache.clear();
+        localProvider.listFlags().forEach(def -> flagCache.put(def.flagKey(), def));
     }
 
     private void ensureCached(String flagKey) {
         if (!flagCache.containsKey(flagKey)) {
-            localProvider.getFlag(flagKey).ifPresent(def -> flagCache.put(flagKey, def));
+            reloadFlagFromStore(flagKey);
         }
     }
 }

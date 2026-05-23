@@ -25,23 +25,14 @@ public class SecurityConfiguration {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        List<String> allowedOrigins = identityProperties.getAllowedOrigins();
-        if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
-            config.setAllowedOrigins(allowedOrigins);
-        } else {
-            config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8080"));
-        }
+        config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
-        source.registerCorsConfiguration("/graphql", config);
-        source.registerCorsConfiguration("/graphql/**", config);
-        source.registerCorsConfiguration("/swagger-ui/**", config);
-        source.registerCorsConfiguration("/v3/api-docs/**", config);
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 

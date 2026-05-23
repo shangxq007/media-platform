@@ -3,9 +3,8 @@ package com.example.platform.delivery.app;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
+import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
-import com.example.platform.secrets.app.SecretRefRegistryService;
-import com.example.platform.secrets.config.SecretsProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
@@ -29,18 +28,15 @@ public class DeliveryCredentialMigrationService {
 
     private final DSLContext dsl;
     private final SecretResolver secretResolver;
-    private final SecretRefRegistryService secretRefRegistry;
-    private final SecretsProperties secretsProperties;
+    private final SecretRefRegistryPort secretRefRegistry;
 
     public DeliveryCredentialMigrationService(
             DSLContext dsl,
             SecretResolver secretResolver,
-            SecretRefRegistryService secretRefRegistry,
-            SecretsProperties secretsProperties) {
+            SecretRefRegistryPort secretRefRegistry) {
         this.dsl = dsl;
         this.secretResolver = secretResolver;
         this.secretRefRegistry = secretRefRegistry;
-        this.secretsProperties = secretsProperties;
     }
 
     @Transactional

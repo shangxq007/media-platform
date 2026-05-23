@@ -12,7 +12,7 @@ import com.example.platform.delivery.api.dto.DeliveryJobResponse;
 import com.example.platform.delivery.api.dto.DeliveryPolicyResponse;
 import com.example.platform.delivery.app.DeliveryDestinationCredentialService;
 import com.example.platform.delivery.app.DeliveryJobService;
-import com.example.platform.secrets.app.CredentialBundleResolver;
+import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.shared.Ids;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,17 +35,17 @@ public class DeliveryController {
     private final DSLContext dsl;
     private final DeliveryJobService deliveryJobService;
     private final DeliveryDestinationCredentialService destinationCredentialService;
-    private final CredentialBundleResolver credentialBundleResolver;
+    private final CredentialBundlePort credentialBundlePort;
 
     public DeliveryController(
             DSLContext dsl,
             DeliveryJobService deliveryJobService,
             DeliveryDestinationCredentialService destinationCredentialService,
-            CredentialBundleResolver credentialBundleResolver) {
+            CredentialBundlePort credentialBundlePort) {
         this.dsl = dsl;
         this.deliveryJobService = deliveryJobService;
         this.destinationCredentialService = destinationCredentialService;
-        this.credentialBundleResolver = credentialBundleResolver;
+        this.credentialBundlePort = credentialBundlePort;
     }
 
     @PostMapping("/delivery/destinations")
@@ -261,7 +261,7 @@ public class DeliveryController {
                 protocol,
                 enabled,
                 credentialRef,
-                credentialBundleResolver.hasCredentials(credentialRef, credentialJson));
+                credentialBundlePort.hasCredentials(credentialRef, credentialJson));
     }
 
     private static String toJson(Map<String, ?> map) {

@@ -9,9 +9,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
-import com.example.platform.secrets.app.SecretRefRegistryService;
-import com.example.platform.secrets.config.SecretsProperties;
+import com.example.platform.secrets.api.port.SecretsConfigPort;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,17 +21,18 @@ import org.springframework.test.util.ReflectionTestUtils;
 class TenantLitellmKeyCredentialServiceTest {
 
     private SecretResolver secretResolver;
-    private SecretRefRegistryService registry;
-    private SecretsProperties secretsProperties;
+    private SecretRefRegistryPort registry;
+    private SecretsConfigPort secretsConfig;
     private TenantLitellmKeyCredentialService service;
 
     @BeforeEach
     void setUp() {
         secretResolver = mock(SecretResolver.class);
-        registry = mock(SecretRefRegistryService.class);
-        secretsProperties = new SecretsProperties();
-        secretsProperties.setInlineCredentialsEnabled(true);
-        service = new TenantLitellmKeyCredentialService(secretResolver, registry, secretsProperties);
+        registry = mock(SecretRefRegistryPort.class);
+        secretsConfig = mock(SecretsConfigPort.class);
+        when(secretsConfig.inlineCredentialsEnabled()).thenReturn(true);
+        when(secretsConfig.vaultEnabled()).thenReturn(false);
+        service = new TenantLitellmKeyCredentialService(secretResolver, registry, secretsConfig);
         ReflectionTestUtils.setField(service, "tenantKeysVaultBacked", false);
     }
 
@@ -44,7 +45,7 @@ class TenantLitellmKeyCredentialServiceTest {
 
     @Test
     void persistToVaultWhenVaultBackedEnabled() {
-        secretsProperties.getVault().setEnabled(true);
+        when(secretsConfig.vaultEnabled()).thenReturn(true);
         ReflectionTestUtils.setField(service, "tenantKeysVaultBacked", true);
         when(secretResolver.storeCredentialMap(eq("ai-litellm"), eq("tenants/ten-2/litellm"), any()))
                 .thenReturn("vault:secret/data/platform/ai-litellm/tenants/ten-2/litellm");

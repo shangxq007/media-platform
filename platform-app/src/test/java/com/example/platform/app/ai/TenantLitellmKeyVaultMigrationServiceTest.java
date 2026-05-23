@@ -8,9 +8,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
-import com.example.platform.secrets.app.SecretRefRegistryService;
-import com.example.platform.secrets.config.SecretsProperties;
+import com.example.platform.secrets.api.port.SecretsConfigPort;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -62,10 +62,11 @@ class TenantLitellmKeyVaultMigrationServiceTest {
         when(secretResolver.storeCredentialMap(eq("ai-litellm"), eq("tenants/ten-inline/litellm"), any()))
                 .thenReturn("vault:secret/data/platform/ai-litellm/tenants/ten-inline/litellm");
 
-        SecretsProperties secretsProperties = new SecretsProperties();
-        secretsProperties.getVault().setEnabled(true);
+        SecretsConfigPort secretsConfig = mock(SecretsConfigPort.class);
+        when(secretsConfig.vaultEnabled()).thenReturn(true);
+        when(secretsConfig.inlineCredentialsEnabled()).thenReturn(false);
         credentialService = new TenantLitellmKeyCredentialService(
-                secretResolver, mock(SecretRefRegistryService.class), secretsProperties);
+                secretResolver, mock(SecretRefRegistryPort.class), secretsConfig);
         ReflectionTestUtils.setField(credentialService, "tenantKeysVaultBacked", true);
 
         migrationService = new TenantLitellmKeyVaultMigrationService(

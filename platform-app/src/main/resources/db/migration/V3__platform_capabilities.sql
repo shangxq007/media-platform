@@ -187,16 +187,25 @@ create table if not exists problematic_data_rule_config (
     updated_at timestamp not null default now()
 );
 
--- Insert default detection rules
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('RJB-001', 'Missing RenderJob Output', 'MISSING_FIELD', 'HIGH', 'RenderJob completed but has no output artifact', false, '', true);
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('RJB-002', 'Stuck RenderJob', 'INVALID_STATE_TRANSITION', 'MEDIUM', 'RenderJob stuck in non-terminal state for too long', true, 'MARK_STALE_AND_RETRY', true);
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('RJB-003', 'Duplicate RenderJob', 'DUPLICATE_ENTRY', 'LOW', 'Multiple render jobs with same project+profile+timeline hash', true, 'MARK_DUPLICATE', true);
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('PMT-001', 'Prompt Sensitive Data Leak', 'MISSING_FIELD', 'CRITICAL', 'Sensitive prompt variable found in execution record', false, '', true);
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('PMT-002', 'Prompt Output Mismatch', 'OUTPUT_MISMATCH', 'HIGH', 'Prompt execution output does not match expected format', false, '', true);
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('PRV-001', 'Provider Error Spike', 'ERROR_RATE_SPIKE', 'HIGH', 'Provider error rate exceeds threshold in time window', false, '', true);
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('WRK-001', 'Worker Stale Heartbeat', 'PERFORMANCE_ANOMALY', 'MEDIUM', 'Remote worker has not sent heartbeat within expected interval', true, 'MARK_WORKER_OFFLINE', true);
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('SLA-001', 'SLA Breach', 'SLA_BREACH', 'CRITICAL', 'Render job exceeded SLA time limit', false, '', true);
-merge into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled) key(rule_id) values ('CST-001', 'Cost Anomaly', 'COST_ANOMALY', 'HIGH', 'Render job cost significantly exceeds estimated cost', false, '', true);
+-- Insert default detection rules (Flyway runs once per schema version)
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('RJB-001', 'Missing RenderJob Output', 'MISSING_FIELD', 'HIGH', 'RenderJob completed but has no output artifact', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('RJB-002', 'Stuck RenderJob', 'INVALID_STATE_TRANSITION', 'MEDIUM', 'RenderJob stuck in non-terminal state for too long', true, 'MARK_STALE_AND_RETRY', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('RJB-003', 'Duplicate RenderJob', 'DUPLICATE_ENTRY', 'LOW', 'Multiple render jobs with same project+profile+timeline hash', true, 'MARK_DUPLICATE', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('PMT-001', 'Prompt Sensitive Data Leak', 'MISSING_FIELD', 'CRITICAL', 'Sensitive prompt variable found in execution record', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('PMT-002', 'Prompt Output Mismatch', 'OUTPUT_MISMATCH', 'HIGH', 'Prompt execution output does not match expected format', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('PRV-001', 'Provider Error Spike', 'ERROR_RATE_SPIKE', 'HIGH', 'Provider error rate exceeds threshold in time window', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('WRK-001', 'Worker Stale Heartbeat', 'PERFORMANCE_ANOMALY', 'MEDIUM', 'Remote worker has not sent heartbeat within expected interval', true, 'MARK_WORKER_OFFLINE', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('SLA-001', 'SLA Breach', 'SLA_BREACH', 'CRITICAL', 'Render job exceeded SLA time limit', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('CST-001', 'Cost Anomaly', 'COST_ANOMALY', 'HIGH', 'Render job cost significantly exceeds estimated cost', false, '', true);
 
 
 -- =============================================================================

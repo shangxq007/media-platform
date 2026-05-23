@@ -21,7 +21,7 @@ public record ExportCapabilityPolicy(
         return switch (tier.toUpperCase()) {
             case "FREE" -> new ExportCapabilityPolicy("ecp-free", "FREE",
                     Set.of("mp4", "webm"),
-                    Set.of("free_720p_watermarked", "default_720p", "preview_720p", "mobile_480p"),
+                    Set.of("free_720p_watermarked", "client_720p_watermarked", "default_720p", "preview_720p", "mobile_480p"),
                     1280, 720, true, false, false, 1);
             case "PRO" -> new ExportCapabilityPolicy("ecp-pro", "PRO",
                     Set.of("mp4", "webm", "mov"),

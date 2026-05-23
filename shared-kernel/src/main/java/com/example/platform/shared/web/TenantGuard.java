@@ -37,9 +37,17 @@ public final class TenantGuard {
 
     public static String tenantOrDefault(String explicitTenantId) {
         if (explicitTenantId != null && !explicitTenantId.isBlank()) {
-            assertSameTenant(explicitTenantId);
+            assertSameTenantIfContextPresent(explicitTenantId);
             return explicitTenantId;
         }
         return requireTenantId();
+    }
+
+    /** Validates tenant match only when {@link TenantContext} is already established (HTTP/worker). */
+    public static void assertSameTenantIfContextPresent(String resourceTenantId) {
+        String current = TenantContext.get();
+        if (current != null && !current.isBlank()) {
+            assertSameTenant(resourceTenantId);
+        }
     }
 }

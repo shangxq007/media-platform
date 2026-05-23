@@ -10,7 +10,8 @@ docker compose up -d db
 cd frontend && npm install && npm run dev
 ```
 
-生产环境请使用 `prod` profile，并配置 `APP_JWT_SECRET` 与 PostgreSQL。
+生产环境请使用 **`SPRING_PROFILES_ACTIVE=prod`**（勿带 `dev`），配置 PostgreSQL 与 OIDC。  
+启动门禁见 [docs/production-safety.md](docs/production-safety.md)。
 
 ## 模块结构
 
@@ -28,9 +29,11 @@ Schema 统一在：
 | V2 | 商业、身份、渲染、产物 |
 | V3 | Prompt、扩展平台、工作空间 RBAC |
 | V4 | 权益、导航、计费、通知、社交、Feature Flag |
-| V5 | 索引与约束 |
+| V5–V19 | 索引、交付、Temporal、租户 AI 密钥等 |
+| V20–V22 | 时间线领域版控（`timeline_revision`、`labels_json`） |
 
-绿色field 项目已合并原 V1–V17 迁移，无需 baseline 历史版本。
+当前 **22** 个中央 Flyway 脚本；模块内 Bootstrap 仅作 JDBC→内存 **hydrate**，不替代 DDL。  
+Modulith 违规预算见 [docs/modulith-debt-register.md](docs/modulith-debt-register.md)。
 
 ## 插件扩展
 
@@ -46,5 +49,6 @@ Schema 统一在：
 
 ```bash
 ./gradlew test
+./gradlew :platform-app:test --tests "com.example.platform.FlywaySchemaIntegrationTest"  # 需 Docker
 cd frontend && npx vitest run
 ```

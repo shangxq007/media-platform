@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS effect_pack (
     description     VARCHAR(1024),
     author          VARCHAR(128),
     compatibility   VARCHAR(32)  DEFAULT '2.0',
-    allowed_tiers   CLOB,
+    allowed_tiers   text,
     tenant_id       VARCHAR(64)  NOT NULL DEFAULT '',
     builtin         BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -26,10 +26,10 @@ CREATE TABLE IF NOT EXISTS effect_pack_effect (
     display_name        VARCHAR(255) NOT NULL,
     category            VARCHAR(64)  NOT NULL,
     description         VARCHAR(1024),
-    parameter_schema    CLOB,
-    default_values      CLOB,
-    provider_mappings   CLOB,
-    allowed_tiers       CLOB,
+    parameter_schema    text,
+    default_values      text,
+    provider_mappings   text,
+    allowed_tiers       text,
     sort_order          INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_effect_pack_effect_pack FOREIGN KEY (pack_row_id) REFERENCES effect_pack(id)
 );
