@@ -9,6 +9,7 @@ public class HyperswitchPaymentProperties {
     private String apiKey = "";
     private String baseUrl = "https://sandbox.hyperswitch.io";
     private String profileId = "";
+    private String webhookSecret = "";
     private String successUrl = "https://example.com/billing/success";
     private String cancelUrl = "https://example.com/billing/cancel";
 
@@ -42,6 +43,14 @@ public class HyperswitchPaymentProperties {
 
     public void setProfileId(String profileId) {
         this.profileId = profileId;
+    }
+
+    public String getWebhookSecret() {
+        return webhookSecret;
+    }
+
+    public void setWebhookSecret(String webhookSecret) {
+        this.webhookSecret = webhookSecret;
     }
 
     public String getSuccessUrl() {

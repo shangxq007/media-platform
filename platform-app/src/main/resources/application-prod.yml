@@ -27,8 +27,11 @@ platform:
     production-checks-enabled: true
     modulith-violation-budget: 0
   payment:
+    webhook:
+      allow-unsigned: false
     stripe:
       enabled: ${PLATFORM_PAYMENT_STRIPE_ENABLED:true}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
     hyperswitch:
       enabled: ${PLATFORM_PAYMENT_HYPERSWITCH_ENABLED:false}
   lifecycle:
@@ -40,6 +43,11 @@ app:
   security:
     enabled: true
     dev-auth-endpoint: false
+    jwt:
+      secret-key: ${APP_JWT_SECRET}
+    cors:
+      allowed-origin-patterns:
+        - ${APP_CORS_ALLOWED_ORIGIN:https://localhost:5173}
     oauth2:
       enabled: ${APP_SECURITY_OAUTH2_ENABLED:true}
   features:

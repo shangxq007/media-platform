@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 
 @Component
-@ConditionalOnProperty(prefix = "platform.payment.stripe", name = "enabled", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "platform.payment.stripe", name = "enabled", havingValue = "false", matchIfMissing = false)
 public class NoopStripePaymentProvider implements PaymentProvider {
     @Override
     public ProviderCode code() {

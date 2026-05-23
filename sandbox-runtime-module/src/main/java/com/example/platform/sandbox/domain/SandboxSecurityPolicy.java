@@ -15,4 +15,9 @@ public interface SandboxSecurityPolicy {
      * @return true if the command is permitted, false otherwise
      */
     boolean isAllowed(String command);
+
+    /**
+     * Static analysis of user script source before execution (blocked patterns, dangerous APIs).
+     */
+    boolean isCodeSafe(String code);
 }

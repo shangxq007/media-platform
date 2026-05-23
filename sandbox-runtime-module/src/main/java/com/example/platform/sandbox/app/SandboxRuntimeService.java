@@ -55,6 +55,11 @@ public class SandboxRuntimeService {
             return new SandboxExecutor.SandboxResult(-1, "",
                     "Language '" + language + "' is not allowed by security policy");
         }
+        if (!securityPolicy.isCodeSafe(code)) {
+            log.warn("Sandbox execution blocked: code failed static safety check");
+            return new SandboxExecutor.SandboxResult(-1, "",
+                    "Code rejected by sandbox security policy (blocked pattern detected)");
+        }
 
         long effectiveTimeout = Math.min(timeout > 0 ? timeout : DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 

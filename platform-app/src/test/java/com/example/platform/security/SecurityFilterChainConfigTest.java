@@ -4,6 +4,8 @@ import com.example.platform.identity.app.ApiKeyAuthFilter;
 import com.example.platform.identity.app.IdentityAccessService;
 import com.example.platform.identity.app.IdentityProperties;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -18,7 +20,12 @@ class SecurityFilterChainConfigTest {
         IdentityProperties identityProps = new IdentityProperties();
         ApiKeyAuthFilter apiKeyFilter = new ApiKeyAuthFilter(identityService, identityProps);
 
-        SecurityFilterChainConfig config = new SecurityFilterChainConfig(jwtFilter, apiKeyFilter);
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.setAllowedOriginPatterns(java.util.List.of("http://localhost:*"));
+        corsConfig.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource cors = new UrlBasedCorsConfigurationSource();
+        cors.registerCorsConfiguration("/**", corsConfig);
+        SecurityFilterChainConfig config = new SecurityFilterChainConfig(jwtFilter, apiKeyFilter, cors);
         var registration = config.mcpApiKeyAuthFilterRegistration();
 
         assertNotNull(registration);

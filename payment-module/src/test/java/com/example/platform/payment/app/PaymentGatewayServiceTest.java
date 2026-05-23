@@ -3,9 +3,11 @@ package com.example.platform.payment.app;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.payment.domain.*;
-import com.example.platform.payment.app.CheckoutPaymentBindingRegistry;
+import com.example.platform.payment.infrastructure.HyperswitchPaymentProperties;
 import com.example.platform.payment.infrastructure.NoopHyperswitchPaymentProvider;
 import com.example.platform.payment.infrastructure.NoopStripePaymentProvider;
+import com.example.platform.payment.infrastructure.PaymentWebhookProperties;
+import com.example.platform.payment.infrastructure.StripePaymentProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -18,16 +20,29 @@ import static org.mockito.Mockito.mock;
 class PaymentGatewayServiceTest {
 
     private PaymentGatewayService service;
+    private PaymentWebhookProperties webhookProperties;
 
     @BeforeEach
     void setUp() {
-        List<PaymentProvider> providers = List.of(
+        webhookProperties = new PaymentWebhookProperties();
+        webhookProperties.setAllowUnsigned(true);
+        service = buildService(List.of(
                 new NoopStripePaymentProvider(),
-                new NoopHyperswitchPaymentProvider()
-        );
+                new NoopHyperswitchPaymentProvider()));
+    }
+
+    private PaymentGatewayService buildService(List<PaymentProvider> providers) {
         @SuppressWarnings("unchecked")
         ObjectProvider<com.example.platform.shared.payment.PaymentSucceededPort> ports = mock(ObjectProvider.class);
-        service = new PaymentGatewayService(providers, null, null, new CheckoutPaymentBindingRegistry(), ports);
+        return new PaymentGatewayService(
+                providers,
+                null,
+                null,
+                new CheckoutPaymentBindingRegistry(),
+                ports,
+                webhookProperties,
+                new StripePaymentProperties(),
+                new HyperswitchPaymentProperties());
     }
 
     @Test
@@ -95,11 +110,8 @@ class PaymentGatewayServiceTest {
     }
 
     @Test
-    void confirmWithUnknownProviderUsesNoopStripe() {
-        PaymentVerificationResult result = service.confirm("unknown", "ref-123", "{}");
-
-        assertNotNull(result);
-        assertTrue(result.verified());
+    void confirmWithUnknownProviderThrows() {
+        assertThrows(IllegalArgumentException.class, () -> service.confirm("unknown", "ref-123", "{}"));
     }
 
     @Test
@@ -143,13 +155,16 @@ class PaymentGatewayServiceTest {
     }
 
     @Test
-    void parseWebhookWithUnknownProviderUsesNoopStripe() {
-        Map<String, String> headers = Map.of();
+    void parseWebhookWithUnknownProviderThrows() {
+        assertThrows(IllegalArgumentException.class, () -> service.parseWebhook("unknown", Map.of(), "{}"));
+    }
 
-        WebhookParseResult result = service.parseWebhook("unknown", headers, "{}");
-
-        assertNotNull(result);
-        assertEquals("payment.succeeded", result.eventType());
+    @Test
+    void parseWebhookRejectsInvalidSignatureWhenUnsignedNotAllowed() {
+        webhookProperties.setAllowUnsigned(false);
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.parseWebhook("stripe", Map.of(), "{\"type\":\"payment.succeeded\"}"));
     }
 
     @Test

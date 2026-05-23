@@ -1,8 +1,12 @@
 package com.example.platform.payment.app;
 
 import com.example.platform.payment.domain.*;
+import com.example.platform.payment.infrastructure.HyperswitchPaymentProperties;
 import com.example.platform.payment.infrastructure.PaymentAttemptRepository;
+import com.example.platform.payment.infrastructure.PaymentWebhookProperties;
 import com.example.platform.payment.infrastructure.ProviderWebhookEventRepository;
+import com.example.platform.payment.infrastructure.StripePaymentProperties;
+import com.example.platform.payment.infrastructure.StripeWebhookSignatureVerifier;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.payment.PaymentSucceededPort;
 import org.slf4j.Logger;
@@ -25,19 +29,28 @@ public class PaymentGatewayService {
     private final ProviderWebhookEventRepository webhookEventRepository;
     private final CheckoutPaymentBindingRegistry bindingRegistry;
     private final ObjectProvider<PaymentSucceededPort> paymentSucceededPort;
+    private final PaymentWebhookProperties webhookProperties;
+    private final StripePaymentProperties stripeProperties;
+    private final HyperswitchPaymentProperties hyperswitchProperties;
 
     public PaymentGatewayService(
             List<PaymentProvider> providers,
             @Autowired(required = false) PaymentAttemptRepository paymentAttemptRepository,
             @Autowired(required = false) ProviderWebhookEventRepository webhookEventRepository,
             CheckoutPaymentBindingRegistry bindingRegistry,
-            ObjectProvider<PaymentSucceededPort> paymentSucceededPort) {
+            ObjectProvider<PaymentSucceededPort> paymentSucceededPort,
+            PaymentWebhookProperties webhookProperties,
+            StripePaymentProperties stripeProperties,
+            HyperswitchPaymentProperties hyperswitchProperties) {
         this.providers = providers.stream()
                 .collect(java.util.stream.Collectors.toMap(p -> p.code().value(), p -> p));
         this.paymentAttemptRepository = paymentAttemptRepository;
         this.webhookEventRepository = webhookEventRepository;
         this.bindingRegistry = bindingRegistry;
         this.paymentSucceededPort = paymentSucceededPort;
+        this.webhookProperties = webhookProperties;
+        this.stripeProperties = stripeProperties;
+        this.hyperswitchProperties = hyperswitchProperties;
     }
 
     public CheckoutResult createCheckout(CheckoutCommand command) {
@@ -75,17 +88,23 @@ public class PaymentGatewayService {
     }
 
     public PaymentVerificationResult confirm(String providerCode, String providerReference, String payload) {
-        PaymentProvider provider = providers.getOrDefault(providerCode,
-                new com.example.platform.payment.infrastructure.NoopStripePaymentProvider());
+        PaymentProvider provider = requireProvider(providerCode);
         PaymentVerificationResult result = provider.verifyPayment(new VerifyPaymentCommand(providerReference, payload));
         persistVerification(provider, new VerifyPaymentCommand(providerReference, payload), result);
         return result;
     }
 
     public WebhookParseResult parseWebhook(String providerCode, Map<String, String> headers, String body) {
-        PaymentProvider provider = providers.getOrDefault(providerCode,
-                new com.example.platform.payment.infrastructure.NoopStripePaymentProvider());
-        WebhookParseResult result = enrichFromBinding(provider.parseWebhook(headers, body));
+        PaymentProvider provider = requireProvider(providerCode);
+        WebhookParseResult parsed = enrichFromBinding(provider.parseWebhook(headers, body));
+        boolean signatureOk = verifyWebhookSignature(providerCode, headers, body, parsed.validSignature());
+
+        if (!webhookProperties.isAllowUnsigned() && !signatureOk) {
+            log.warn("Rejected webhook for provider {}: invalid signature", providerCode);
+            throw new IllegalArgumentException("Webhook signature validation failed for provider " + providerCode);
+        }
+
+        WebhookParseResult result = withValidSignature(parsed, signatureOk || webhookProperties.isAllowUnsigned());
 
         if (webhookEventRepository != null) {
             String webhookEventKey = providerCode + ":" + result.externalReference() + ":" + result.eventType();
@@ -104,6 +123,49 @@ public class PaymentGatewayService {
 
         dispatchPaymentSucceeded(providerCode, result);
         return result;
+    }
+
+    private boolean verifyWebhookSignature(
+            String providerCode, Map<String, String> headers, String body, boolean providerClaimedValid) {
+        if ("stripe".equals(providerCode) && stripeProperties.isEnabled()) {
+            return StripeWebhookSignatureVerifier.verify(headers, body, stripeProperties.getWebhookSecret());
+        }
+        if ("hyperswitch".equals(providerCode) && hyperswitchProperties.isEnabled()) {
+            String hmac = headerValue(headers, "X-Hmac-SHA256");
+            if (hmac == null || hmac.isBlank()) {
+                return false;
+            }
+            String secret = hyperswitchProperties.getWebhookSecret();
+            if (secret == null || secret.isBlank()) {
+                return false;
+            }
+            return providerClaimedValid;
+        }
+        return providerClaimedValid;
+    }
+
+    private static String headerValue(Map<String, String> headers, String name) {
+        if (headers == null) {
+            return null;
+        }
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(name)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private static WebhookParseResult withValidSignature(WebhookParseResult result, boolean validSignature) {
+        return new WebhookParseResult(
+                result.eventType(),
+                result.eventVersion(),
+                result.externalReference(),
+                validSignature,
+                result.canonicalStatus(),
+                result.checkoutSessionId(),
+                result.tenantId(),
+                result.userId());
     }
 
     private WebhookParseResult enrichFromBinding(WebhookParseResult result) {
@@ -160,21 +222,25 @@ public class PaymentGatewayService {
         }
     }
 
+    private PaymentProvider requireProvider(String providerCode) {
+        PaymentProvider provider = providers.get(providerCode);
+        if (provider == null) {
+            throw new IllegalArgumentException("Unknown payment provider: " + providerCode);
+        }
+        return provider;
+    }
+
     private PaymentProvider resolveProvider(String productCode) {
         if (productCode != null && productCode.contains("hs")) {
-            return providers.getOrDefault("hyperswitch",
-                    new com.example.platform.payment.infrastructure.NoopHyperswitchPaymentProvider());
+            return requireProvider("hyperswitch");
         }
-        return providers.getOrDefault("stripe",
-                new com.example.platform.payment.infrastructure.NoopStripePaymentProvider());
+        return requireProvider("stripe");
     }
 
     private PaymentProvider resolveProviderByReference(String providerReference) {
         if (providerReference != null && providerReference.startsWith("hs")) {
-            return providers.getOrDefault("hyperswitch",
-                    new com.example.platform.payment.infrastructure.NoopHyperswitchPaymentProvider());
+            return requireProvider("hyperswitch");
         }
-        return providers.getOrDefault("stripe",
-                new com.example.platform.payment.infrastructure.NoopStripePaymentProvider());
+        return requireProvider("stripe");
     }
 }

@@ -1,9 +1,11 @@
 package com.example.platform.production;
 
+import com.example.platform.app.AppCorsProperties;
+import com.example.platform.billing.infrastructure.SubscriptionJdbcRepository;
 import com.example.platform.commerce.infrastructure.CheckoutSessionRepository;
 import com.example.platform.commerce.infrastructure.CommerceCartRepository;
-import com.example.platform.billing.infrastructure.SubscriptionJdbcRepository;
 import com.example.platform.policy.featureflag.FeatureFlagJdbcStore;
+import com.example.platform.security.JwtProperties;
 import com.example.platform.shared.runtime.PlatformRuntimeProperties;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +23,8 @@ public class ProductionSafetyValidator {
 
     private final Environment environment;
     private final PlatformRuntimeProperties runtimeProperties;
+    private final JwtProperties jwtProperties;
+    private final AppCorsProperties corsProperties;
     private final org.springframework.beans.factory.ObjectProvider<CheckoutSessionRepository> checkoutSessions;
     private final org.springframework.beans.factory.ObjectProvider<CommerceCartRepository> commerceCarts;
     private final org.springframework.beans.factory.ObjectProvider<SubscriptionJdbcRepository> subscriptionStore;
@@ -29,12 +33,16 @@ public class ProductionSafetyValidator {
     public ProductionSafetyValidator(
             Environment environment,
             PlatformRuntimeProperties runtimeProperties,
+            JwtProperties jwtProperties,
+            AppCorsProperties corsProperties,
             org.springframework.beans.factory.ObjectProvider<CheckoutSessionRepository> checkoutSessions,
             org.springframework.beans.factory.ObjectProvider<CommerceCartRepository> commerceCarts,
             org.springframework.beans.factory.ObjectProvider<SubscriptionJdbcRepository> subscriptionStore,
             org.springframework.beans.factory.ObjectProvider<FeatureFlagJdbcStore> featureFlagStore) {
         this.environment = environment;
         this.runtimeProperties = runtimeProperties;
+        this.jwtProperties = jwtProperties;
+        this.corsProperties = corsProperties;
         this.checkoutSessions = checkoutSessions;
         this.commerceCarts = commerceCarts;
         this.subscriptionStore = subscriptionStore;
@@ -60,6 +68,15 @@ public class ProductionSafetyValidator {
             errors.add(
                     "configure OIDC (app.security.oauth2.enabled=true) or an approved legacy JWT path for production");
         }
+        if (jwtProperties.usesInsecureDefault()) {
+            errors.add("APP_JWT_SECRET must be set to a strong secret (not blank or dev default)");
+        }
+        if (corsProperties.hasWildcardOriginWithCredentials()) {
+            errors.add("app.security.cors must not use wildcard origins when allow-credentials is true");
+        }
+        if (getBool("platform.payment.webhook.allow-unsigned", false)) {
+            errors.add("platform.payment.webhook.allow-unsigned must be false in production");
+        }
         if (!getBool("spring.flyway.enabled", false)) {
             errors.add("spring.flyway.enabled must be true");
         }
@@ -73,6 +90,12 @@ public class ProductionSafetyValidator {
         boolean hyperswitch = getBool("platform.payment.hyperswitch.enabled", false);
         if (!stripe && !hyperswitch) {
             errors.add("enable platform.payment.stripe.enabled or platform.payment.hyperswitch.enabled");
+        }
+        if (stripe) {
+            String webhookSecret = environment.getProperty("platform.payment.stripe.webhook-secret", "");
+            if (webhookSecret == null || webhookSecret.isBlank()) {
+                errors.add("platform.payment.stripe.webhook-secret required when Stripe is enabled");
+            }
         }
 
         String aiProvider = environment.getProperty("app.ai.default-provider", "stubChatProvider");

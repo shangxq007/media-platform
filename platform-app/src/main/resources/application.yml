@@ -133,8 +133,13 @@ app:
       trust-jwt-tenant-only: ${APP_SECURITY_OAUTH2_TRUST_JWT_TENANT_ONLY:true}
       default-tenant-id: ${APP_SECURITY_OAUTH2_DEFAULT_TENANT_ID:}
     jwt:
-      secret-key: ${APP_JWT_SECRET:dev-only-insecure-key-replace-in-production-min-256-bits!!}
+      secret-key: ${APP_JWT_SECRET:}
       expiration-ms: 86400000
+    cors:
+      allowed-origin-patterns:
+        - http://localhost:*
+        - http://127.0.0.1:*
+      allow-credentials: true
   features:
     unleash:
       enabled: false
@@ -377,12 +382,17 @@ platform:
       outbox-drain-batch: 50
 
   payment:
+    webhook:
+      allow-unsigned: ${PAYMENT_WEBHOOK_ALLOW_UNSIGNED:false}
     stripe:
       enabled: ${STRIPE_ENABLED:false}
       secret-key: ${STRIPE_SECRET_KEY:}
       webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
       success-url: ${STRIPE_SUCCESS_URL:https://example.com/billing/success}
       cancel-url: ${STRIPE_CANCEL_URL:https://example.com/billing/cancel}
+    hyperswitch:
+      enabled: ${HYPERSWITCH_ENABLED:false}
+      webhook-secret: ${HYPERSWITCH_WEBHOOK_SECRET:}
 
   filter:
     rate-limit:

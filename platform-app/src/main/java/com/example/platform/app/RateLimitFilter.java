@@ -87,6 +87,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         long now = Instant.now().getEpochSecond();
         long windowStart = now - (now % 60);
 
+        pruneStaleEntries(windowStart);
+
         RateLimitEntry entry = rateLimits.compute(clientIp, (ip, existing) -> {
             if (existing == null || existing.windowStart != windowStart) {
                 return new RateLimitEntry(windowStart, new AtomicInteger(1));
@@ -96,6 +98,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         });
 
         return entry.count.get() > maxRequests;
+    }
+
+    /** Drop entries older than two minute-windows to avoid unbounded map growth. */
+    private void pruneStaleEntries(long currentWindowStart) {
+        long staleBefore = currentWindowStart - 120;
+        rateLimits.entrySet().removeIf(e -> e.getValue().windowStart < staleBefore);
     }
 
     private String getClientIp(HttpServletRequest request) {

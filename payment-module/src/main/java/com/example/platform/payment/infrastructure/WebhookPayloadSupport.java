@@ -14,7 +14,7 @@ public final class WebhookPayloadSupport {
 
     public static WebhookParseResult parseCommerceWebhook(String body, String defaultReference) {
         if (body == null || body.isBlank()) {
-            return new WebhookParseResult("payment.succeeded", 1, defaultReference, true);
+            return new WebhookParseResult("payment.succeeded", 1, defaultReference, false);
         }
         try {
             Map<String, Object> payload = Jsons.fromJson(body, MAP);
@@ -25,9 +25,9 @@ public final class WebhookPayloadSupport {
             String reference = stringOr(payload.get("providerReference"), payload.get("externalReference"), defaultReference);
             String status = stringOr(payload.get("status"), payload.get("canonicalStatus"), "paid");
             return new WebhookParseResult(
-                    eventType, 1, reference, true, status, checkoutSessionId, tenantId, userId);
+                    eventType, 1, reference, false, status, checkoutSessionId, tenantId, userId);
         } catch (Exception ignored) {
-            return new WebhookParseResult("payment.succeeded", 1, defaultReference, true);
+            return new WebhookParseResult("payment.succeeded", 1, defaultReference, false);
         }
     }
 
