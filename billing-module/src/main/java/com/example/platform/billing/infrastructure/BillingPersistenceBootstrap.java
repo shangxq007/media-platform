@@ -41,12 +41,7 @@ public class BillingPersistenceBootstrap {
 
     @EventListener(ApplicationReadyEvent.class)
     public void hydrate() {
-        for (CreditWallet wallet : creditRepository.loadAllWallets()) {
-            creditWalletService.hydrateWallet(wallet);
-        }
-        for (CreditTransaction txn : creditRepository.loadAllTransactions()) {
-            creditWalletService.hydrateTransaction(txn);
-        }
+        // CreditWalletService now uses JDBC as primary storage — no hydration needed
         for (BillingLedgerEntry entry : ledgerRepository.loadAll()) {
             billingLedgerService.hydrateEntry(entry);
         }

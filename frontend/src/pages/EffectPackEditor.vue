@@ -308,74 +308,74 @@ function togglePackTier(tier: string) {
         <template v-else>
           <div class="max-w-3xl space-y-6">
             <!-- Pack Info -->
-            <section class="border border-gray-700 rounded-lg p-4">
-              <h3 class="text-sm font-semibold mb-3 text-gray-300">Pack Info</h3>
+            <section class="border border-border-subtle rounded-lg p-4">
+              <h3 class="text-sm font-semibold mb-3 text-text-primary">Pack Info</h3>
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="text-xs text-gray-400 block mb-1">Pack ID *</label>
+                  <label class="text-xs text-text-secondary block mb-1">Pack ID *</label>
                   <input
                     v-model="packForm.packId"
                     type="text"
                     placeholder="my-effect-pack"
-                    class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                    class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                     :disabled="editingPackId !== null"
                   />
                 </div>
                 <div>
-                  <label class="text-xs text-gray-400 block mb-1">Version</label>
+                  <label class="text-xs text-text-secondary block mb-1">Version</label>
                   <input
                     v-model="packForm.version"
                     type="text"
                     placeholder="1.0.0"
-                    class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                    class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                   />
                 </div>
                 <div class="col-span-2">
-                  <label class="text-xs text-gray-400 block mb-1">Name *</label>
+                  <label class="text-xs text-text-secondary block mb-1">Name *</label>
                   <input
                     v-model="packForm.name"
                     type="text"
                     placeholder="My Effect Pack"
-                    class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                    class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                   />
                 </div>
                 <div class="col-span-2">
-                  <label class="text-xs text-gray-400 block mb-1">Description</label>
+                  <label class="text-xs text-text-secondary block mb-1">Description</label>
                   <textarea
                     v-model="packForm.description"
                     rows="2"
                     placeholder="Describe what this pack does..."
-                    class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white resize-none"
+                    class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white resize-none"
                   />
                 </div>
                 <div>
-                  <label class="text-xs text-gray-400 block mb-1">Author</label>
+                  <label class="text-xs text-text-secondary block mb-1">Author</label>
                   <input
                     v-model="packForm.author"
                     type="text"
                     placeholder="Your name"
-                    class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                    class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                   />
                 </div>
                 <div>
-                  <label class="text-xs text-gray-400 block mb-1">Compatibility</label>
+                  <label class="text-xs text-text-secondary block mb-1">Compatibility</label>
                   <input
                     v-model="packForm.compatibility"
                     type="text"
                     placeholder="2.0"
-                    class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                    class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                   />
                 </div>
                 <div class="col-span-2">
-                  <label class="text-xs text-gray-400 block mb-1">Allowed Tiers</label>
+                  <label class="text-xs text-text-secondary block mb-1">Allowed Tiers</label>
                   <div class="flex gap-2">
                     <button
                       v-for="tier in tierOptions"
                       :key="tier"
                       class="text-xs px-2 py-1 rounded border"
                       :class="packForm.allowedTiers.includes(tier)
-                        ? 'bg-blue-600/30 border-blue-500 text-blue-300'
-                        : 'bg-gray-800 border-gray-600 text-gray-500'"
+                        ? 'bg-blue-600/30 border-blue-500 text-info'
+                        : 'bg-surface-2 border-border-default text-text-tertiary'"
                       @click="togglePackTier(tier)"
                     >
                       {{ tier }}
@@ -386,8 +386,8 @@ function togglePackTier(tier: string) {
             </section>
 
             <!-- Effects List -->
-            <section class="border border-gray-700 rounded-lg p-4">
-              <h3 class="text-sm font-semibold mb-3 text-gray-300">
+            <section class="border border-border-subtle rounded-lg p-4">
+              <h3 class="text-sm font-semibold mb-3 text-text-primary">
                 Effects ({{ currentEffects.length }})
               </h3>
 
@@ -395,13 +395,13 @@ function togglePackTier(tier: string) {
                 <div
                   v-for="(eff, idx) in currentEffects"
                   :key="idx"
-                  class="flex items-center gap-3 p-2 rounded border border-gray-700 bg-gray-800/30"
+                  class="flex items-center gap-3 p-2 rounded border border-border-subtle bg-surface-2/30"
                 >
                   <span
                     class="text-xs px-1.5 py-0.5 rounded shrink-0"
                     :class="{
-                      'bg-blue-600/20 text-blue-300': eff.category === 'transition',
-                      'bg-green-600/20 text-green-300': eff.category === 'video',
+                      'bg-blue-600/20 text-info': eff.category === 'transition',
+                      'bg-success-muted text-success': eff.category === 'video',
                       'bg-yellow-600/20 text-yellow-300': eff.category === 'audio',
                       'bg-pink-600/20 text-pink-300': eff.category === 'text',
                     }"
@@ -410,59 +410,59 @@ function togglePackTier(tier: string) {
                   </span>
                   <div class="flex-1 min-w-0">
                     <span class="text-sm text-white">{{ eff.displayName }}</span>
-                    <span class="text-xs text-gray-500 ml-2 font-mono">{{ eff.effectKey }}</span>
+                    <span class="text-xs text-text-tertiary ml-2 font-mono">{{ eff.effectKey }}</span>
                   </div>
                   <div class="flex gap-1 shrink-0">
-                    <span class="text-xs text-gray-500">{{ Object.keys(eff.parameterSchema).length }} params</span>
-                    <button class="text-xs px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 rounded" @click="editEffect(idx)">Edit</button>
-                    <button class="text-xs px-1.5 py-0.5 bg-red-900/40 hover:bg-red-800/60 text-red-300 rounded" @click="removeEffect(idx)">×</button>
+                    <span class="text-xs text-text-tertiary">{{ Object.keys(eff.parameterSchema).length }} params</span>
+                    <button class="text-xs px-1.5 py-0.5 bg-surface-3 hover:bg-surface-4 rounded" @click="editEffect(idx)">Edit</button>
+                    <button class="text-xs px-1.5 py-0.5 bg-red-900/40 hover:bg-red-800/60 text-danger rounded" @click="removeEffect(idx)">×</button>
                   </div>
                 </div>
               </div>
 
               <!-- Add / Edit Effect Form -->
-              <div class="border border-dashed border-gray-600 rounded-lg p-4 bg-gray-800/20">
-                <h4 class="text-xs font-semibold text-gray-400 mb-3">
+              <div class="border border-dashed border-border-default rounded-lg p-4 bg-surface-2/20">
+                <h4 class="text-xs font-semibold text-text-secondary mb-3">
                   {{ activeEffectIdx !== null ? 'Edit Effect' : 'Add Effect' }}
                 </h4>
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="text-xs text-gray-400 block mb-1">Effect Key *</label>
+                    <label class="text-xs text-text-secondary block mb-1">Effect Key *</label>
                     <input
                       v-model="effectForm.effectKey"
                       type="text"
                       placeholder="video.my_effect"
-                      class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                      class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                     />
                   </div>
                   <div>
-                    <label class="text-xs text-gray-400 block mb-1">Display Name *</label>
+                    <label class="text-xs text-text-secondary block mb-1">Display Name *</label>
                     <input
                       v-model="effectForm.displayName"
                       type="text"
                       placeholder="My Effect"
-                      class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                      class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                     />
                   </div>
                   <div>
-                    <label class="text-xs text-gray-400 block mb-1">Category</label>
+                    <label class="text-xs text-text-secondary block mb-1">Category</label>
                     <select
                       v-model="effectForm.category"
-                      class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                      class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                     >
                       <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
                     </select>
                   </div>
                   <div>
-                    <label class="text-xs text-gray-400 block mb-1">Providers</label>
+                    <label class="text-xs text-text-secondary block mb-1">Providers</label>
                     <div class="flex gap-2 flex-wrap">
                       <button
                         v-for="p in providerOptions"
                         :key="p"
                         class="text-xs px-2 py-1 rounded border"
                         :class="effectForm.providerMappings.includes(p)
-                          ? 'bg-green-600/30 border-green-500 text-green-300'
-                          : 'bg-gray-800 border-gray-600 text-gray-500'"
+                          ? 'bg-green-600/30 border-green-500 text-success'
+                          : 'bg-surface-2 border-border-default text-text-tertiary'"
                         @click="toggleProvider(p)"
                       >
                         {{ p }}
@@ -470,24 +470,24 @@ function togglePackTier(tier: string) {
                     </div>
                   </div>
                   <div class="col-span-2">
-                    <label class="text-xs text-gray-400 block mb-1">Description</label>
+                    <label class="text-xs text-text-secondary block mb-1">Description</label>
                     <input
                       v-model="effectForm.description"
                       type="text"
                       placeholder="What does this effect do?"
-                      class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white"
+                      class="w-full bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white"
                     />
                   </div>
                   <div class="col-span-2">
-                    <label class="text-xs text-gray-400 block mb-1">Allowed Tiers</label>
+                    <label class="text-xs text-text-secondary block mb-1">Allowed Tiers</label>
                     <div class="flex gap-2">
                       <button
                         v-for="tier in tierOptions"
                         :key="tier"
                         class="text-xs px-2 py-1 rounded border"
                         :class="effectForm.allowedTiers.includes(tier)
-                          ? 'bg-blue-600/30 border-blue-500 text-blue-300'
-                          : 'bg-gray-800 border-gray-600 text-gray-500'"
+                          ? 'bg-blue-600/30 border-blue-500 text-info'
+                          : 'bg-surface-2 border-border-default text-text-tertiary'"
                         @click="toggleTier(tier, effectForm.allowedTiers)"
                       >
                         {{ tier }}
@@ -498,21 +498,21 @@ function togglePackTier(tier: string) {
 
                 <!-- Parameters -->
                 <div class="mt-4">
-                  <label class="text-xs text-gray-400 block mb-2">Parameters</label>
+                  <label class="text-xs text-text-secondary block mb-2">Parameters</label>
 
                   <div v-if="Object.keys(effectForm.parameterSchema).length > 0" class="space-y-2 mb-3">
                     <div
                       v-for="(def, key) in effectForm.parameterSchema"
                       :key="key"
-                      class="flex items-center gap-2 p-2 rounded bg-gray-800/50 border border-gray-700"
+                      class="flex items-center gap-2 p-2 rounded bg-surface-2/50 border border-border-subtle"
                     >
                       <span class="text-xs font-mono text-purple-300 w-24 shrink-0">{{ key }}</span>
-                      <span class="text-xs text-gray-500 w-16 shrink-0">{{ def.type }}</span>
+                      <span class="text-xs text-text-tertiary w-16 shrink-0">{{ def.type }}</span>
                       <input
                         v-if="def.type === 'string' || def.type === 'color'"
                         :value="String(effectForm.defaultValues[key] ?? '')"
                         type="text"
-                        class="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                        class="flex-1 bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white"
                         @input="updateDefaultValue(key, ($event.target as HTMLInputElement).value)"
                       />
                       <input
@@ -520,7 +520,7 @@ function togglePackTier(tier: string) {
                         :value="String(effectForm.defaultValues[key] ?? 0)"
                         type="number"
                         :step="def.type === 'float' ? 0.1 : 1"
-                        class="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                        class="flex-1 bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white"
                         @input="updateDefaultValue(key, ($event.target as HTMLInputElement).value)"
                       />
                       <input
@@ -530,7 +530,7 @@ function togglePackTier(tier: string) {
                         class="rounded"
                         @change="updateDefaultValue(key, ($event.target as HTMLInputElement).checked ? 'true' : 'false')"
                       />
-                      <button class="text-xs text-red-400 hover:text-red-300 shrink-0" @click="removeParameter(key)">×</button>
+                      <button class="text-xs text-danger hover:text-danger shrink-0" @click="removeParameter(key)">×</button>
                     </div>
                   </div>
 
@@ -539,17 +539,17 @@ function togglePackTier(tier: string) {
                       v-model="paramKey"
                       type="text"
                       placeholder="Parameter name"
-                      class="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-xs text-white"
+                      class="flex-1 bg-surface-2 border border-border-default rounded px-2 py-1.5 text-xs text-white"
                       @keyup.enter="addParameter"
                     />
                     <select
                       v-model="paramType"
-                      class="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-xs text-white"
+                      class="bg-surface-2 border border-border-default rounded px-2 py-1.5 text-xs text-white"
                     >
                       <option v-for="t in paramTypeOptions" :key="t" :value="t">{{ t }}</option>
                     </select>
                     <button
-                      class="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+                      class="text-xs px-2 py-1 bg-surface-3 hover:bg-surface-4 rounded"
                       @click="addParameter"
                     >
                       Add
@@ -573,7 +573,7 @@ function togglePackTier(tier: string) {
                       Update Effect
                     </button>
                     <button
-                      class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded"
+                      class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded"
                       @click="resetEffectForm"
                     >
                       Cancel
@@ -586,7 +586,7 @@ function togglePackTier(tier: string) {
             <!-- Save / Cancel -->
             <div class="flex gap-2 justify-end">
               <button
-                class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-sm rounded"
+                class="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-sm rounded"
                 @click="cancelEdit"
               >
                 Cancel

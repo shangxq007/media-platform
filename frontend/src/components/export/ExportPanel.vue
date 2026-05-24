@@ -120,12 +120,12 @@ const timelineSummary = computed(() => ({
 
 const tierBadgeClass = computed(() => {
   switch (currentTier.value) {
-    case 'FREE': return 'bg-gray-600'
+    case 'FREE': return 'bg-surface-4'
     case 'PRO': return 'bg-blue-600'
     case 'TEAM': return 'bg-purple-600'
     case 'ENTERPRISE': return 'bg-amber-600'
     case 'EXPERIMENTAL': return 'bg-red-600'
-    default: return 'bg-gray-600'
+    default: return 'bg-surface-4'
   }
 })
 
@@ -462,9 +462,9 @@ function getWorkerStatusClass(status: string): string {
   switch (status) {
     case 'IDLE': return 'bg-green-500'
     case 'BUSY': return 'bg-yellow-500'
-    case 'OFFLINE': return 'bg-gray-500'
+    case 'OFFLINE': return 'bg-surface-4'
     case 'ERROR': return 'bg-red-500'
-    default: return 'bg-gray-500'
+    default: return 'bg-surface-4'
   }
 }
 
@@ -728,10 +728,10 @@ function startPolling(jobId: string) {
 
 function getStatusColor(status: string): string {
   switch (status) {
-    case 'COMPLETED': return 'text-green-400'
-    case 'FAILED': return 'text-red-400'
-    case 'PROCESSING': case 'RENDERING': return 'text-yellow-400'
-    default: return 'text-gray-400'
+    case 'COMPLETED': return 'text-success'
+    case 'FAILED': return 'text-danger'
+    case 'PROCESSING': case 'RENDERING': return 'text-warning'
+    default: return 'text-text-secondary'
   }
 }
 
@@ -802,98 +802,98 @@ function handleViewLogs(url: string) {
     </div>
 
     <!-- REST Fallback notice -->
-    <div v-if="restFallback" class="px-2 py-1 rounded bg-blue-900/20 border border-blue-700/50 text-[10px] text-blue-300">
+    <div v-if="restFallback" class="px-2 py-1 rounded bg-info-muted border border-blue-700/50 text-[10px] text-info">
       Using REST fallback — GraphQL endpoint unavailable
     </div>
 
     <!-- Feature Flag Status Display -->
-    <div class="p-2 rounded bg-gray-800/50 border border-gray-700 text-xs space-y-1">
+    <div class="p-2 rounded bg-surface-2/50 border border-border-subtle text-xs space-y-1">
       <div class="flex items-center justify-between">
-        <span class="text-gray-400 font-medium">Feature Flags</span>
-        <button class="text-[10px] text-blue-400 hover:text-blue-300" @click="refreshExportFlags()">
+        <span class="text-text-secondary font-medium">Feature Flags</span>
+        <button class="text-[10px] text-info hover:text-info" @click="refreshExportFlags()">
           {{ loadingExportFlags ? 'Loading...' : 'Refresh' }}
         </button>
       </div>
       <div v-for="flag in exportFlagStatuses" :key="flag.key" class="flex items-center justify-between">
-        <span class="text-gray-400">{{ flag.label }}</span>
+        <span class="text-text-secondary">{{ flag.label }}</span>
         <span class="text-[10px] px-1.5 py-0.5 rounded"
-          :class="flag.enabled ? 'bg-green-600/20 text-green-300' : 'bg-gray-600/20 text-gray-400'">
+          :class="flag.enabled ? 'bg-success-muted text-success' : 'bg-surface-4/20 text-text-secondary'">
           {{ flag.enabled ? 'ON' : 'OFF' }}
         </span>
       </div>
     </div>
 
     <!-- Feature Flag Block Notice -->
-    <div v-if="featureFlagSubmitBlocked" class="p-2 rounded bg-yellow-900/20 border border-yellow-700/50 text-xs">
-      <div class="flex items-center gap-1 text-yellow-400 font-medium">
+    <div v-if="featureFlagSubmitBlocked" class="p-2 rounded bg-warning-muted border border-yellow-700/50 text-xs">
+      <div class="flex items-center gap-1 text-warning font-medium">
         <span>🚩</span>
         <span>Feature Flag Block</span>
       </div>
-      <div class="text-yellow-300 mt-1">{{ featureFlagSubmitBlocked }}</div>
+      <div class="text-warning mt-1">{{ featureFlagSubmitBlocked }}</div>
     </div>
 
     <!-- Timeline Summary -->
-    <div class="p-2 rounded bg-gray-800/50 border border-gray-700 text-xs space-y-1">
-      <div class="text-gray-400 font-medium">Timeline Summary</div>
+    <div class="p-2 rounded bg-surface-2/50 border border-border-subtle text-xs space-y-1">
+      <div class="text-text-secondary font-medium">Timeline Summary</div>
       <div class="flex justify-between">
-        <span class="text-gray-400">Duration</span>
+        <span class="text-text-secondary">Duration</span>
         <span class="text-white">{{ timelineSummary.duration.toFixed(1) }}s</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-gray-400">Tracks</span>
+        <span class="text-text-secondary">Tracks</span>
         <span class="text-white">{{ timelineSummary.tracks }}</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-gray-400">Clips</span>
+        <span class="text-text-secondary">Clips</span>
         <span class="text-white">{{ timelineSummary.clips }}</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-gray-400">Subtitles</span>
+        <span class="text-text-secondary">Subtitles</span>
         <span class="text-white">{{ timelineSummary.subtitles }}</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-gray-400">Effects</span>
+        <span class="text-text-secondary">Effects</span>
         <span class="text-white">{{ timelineSummary.effects }}</span>
       </div>
     </div>
 
     <!-- Budget Status -->
     <div v-if="budgetStatus" class="p-2 rounded border text-xs space-y-1"
-      :class="hasBudgetExceeded ? 'bg-red-900/30 border-red-700' : hasBudgetWarning ? 'bg-yellow-900/30 border-yellow-700' : 'bg-gray-800/50 border-gray-700'">
+      :class="hasBudgetExceeded ? 'bg-red-900/30 border-red-700' : hasBudgetWarning ? 'bg-yellow-900/30 border-yellow-700' : 'bg-surface-2/50 border-border-subtle'">
       <div class="flex items-center justify-between">
-        <span class="text-gray-400">Budget</span>
-        <span v-if="hasBudgetExceeded" class="text-red-400 font-medium">Exceeded</span>
-        <span v-else-if="hasBudgetWarning" class="text-yellow-400 font-medium">Warning</span>
-        <span v-else class="text-green-400 font-medium">OK</span>
+        <span class="text-text-secondary">Budget</span>
+        <span v-if="hasBudgetExceeded" class="text-danger font-medium">Exceeded</span>
+        <span v-else-if="hasBudgetWarning" class="text-warning font-medium">Warning</span>
+        <span v-else class="text-success font-medium">OK</span>
       </div>
-      <div class="w-full bg-gray-700 rounded-full h-1.5">
+      <div class="w-full bg-surface-3 rounded-full h-1.5">
         <div class="h-1.5 rounded-full transition-all"
           :class="hasBudgetExceeded ? 'bg-red-500' : hasBudgetWarning ? 'bg-yellow-500' : 'bg-green-500'"
           :style="{ width: budgetStatus.budgetLimit > 0 ? Math.min(100, (budgetStatus.currentSpend / budgetStatus.budgetLimit * 100)) + '%' : '0%' }">
         </div>
       </div>
       <div class="flex justify-between text-[10px]">
-        <span class="text-gray-500">${{ budgetStatus.currentSpend?.toFixed(2) || '0.00' }} spent</span>
-        <span class="text-gray-500">${{ budgetStatus.budgetLimit?.toFixed(2) || '0.00' }} limit</span>
+        <span class="text-text-tertiary">${{ budgetStatus.currentSpend?.toFixed(2) || '0.00' }} spent</span>
+        <span class="text-text-tertiary">${{ budgetStatus.budgetLimit?.toFixed(2) || '0.00' }} limit</span>
       </div>
       <div v-if="budgetStatus.message" class="text-[10px] mt-1"
-        :class="hasBudgetExceeded ? 'text-red-400' : 'text-yellow-400'">
+        :class="hasBudgetExceeded ? 'text-danger' : 'text-warning'">
         {{ budgetStatus.message }}
       </div>
     </div>
 
     <!-- Validation Not Allowed -->
-    <div v-if="validationResult && !validationResult.allowed" class="p-2 rounded bg-red-900/20 border border-red-700/50 text-xs space-y-1">
-      <div class="flex items-center gap-1 text-red-400 font-medium">
+    <div v-if="validationResult && !validationResult.allowed" class="p-2 rounded bg-danger-muted border border-red-700/50 text-xs space-y-1">
+      <div class="flex items-center gap-1 text-danger font-medium">
         <span>⚠</span>
         <span>Export Blocked</span>
       </div>
-      <div class="text-red-300">{{ validationResult.userFriendlyMessage }}</div>
+      <div class="text-danger">{{ validationResult.userFriendlyMessage }}</div>
       <div v-if="validationResult.violations?.length" class="mt-1 space-y-0.5">
-        <div v-for="(v, i) in validationResult.violations" :key="i" class="text-[10px] text-red-300/80">{{ v }}</div>
+        <div v-for="(v, i) in validationResult.violations" :key="i" class="text-[10px] text-danger/80">{{ v }}</div>
       </div>
       <div v-if="validationResult.recommendedPreset" class="mt-1">
-        <button class="text-[10px] text-blue-400 hover:text-blue-300 underline" @click="applyRecommendedPreset">
+        <button class="text-[10px] text-info hover:text-info underline" @click="applyRecommendedPreset">
           Use recommended preset: {{ validationResult.recommendedPreset }}
         </button>
       </div>
@@ -903,54 +903,54 @@ function handleViewLogs(url: string) {
     </div>
 
     <!-- Render location -->
-    <div v-if="validationResult?.allowed" class="p-2 rounded bg-gray-800/50 border border-gray-700 text-xs space-y-1">
+    <div v-if="validationResult?.allowed" class="p-2 rounded bg-surface-2/50 border border-border-subtle text-xs space-y-1">
       <div class="flex justify-between">
-        <span class="text-gray-400">Export path</span>
-        <span :class="renderLocation === 'CLIENT' ? 'text-emerald-400' : 'text-blue-400'">
+        <span class="text-text-secondary">Export path</span>
+        <span :class="renderLocation === 'CLIENT' ? 'text-emerald-400' : 'text-info'">
           {{ renderLocation === 'CLIENT' ? 'Browser (WebCodecs)' : 'Cloud render' }}
         </span>
       </div>
       <div v-if="renderLocation === 'CLIENT'" class="flex items-center gap-2">
-        <label class="flex items-center gap-1 text-gray-400 cursor-pointer">
-          <input v-model="saveToProject" type="checkbox" class="rounded border-gray-600" />
+        <label class="flex items-center gap-1 text-text-secondary cursor-pointer">
+          <input v-model="saveToProject" type="checkbox" class="rounded border-border-default" />
           Save to project
         </label>
       </div>
       <div v-if="validationResult.clientExportUnsupportedReasons?.length && renderLocation === 'SERVER'" class="text-[10px] text-amber-400">
         {{ validationResult.clientExportUnsupportedReasons.join(', ') }}
       </div>
-      <div v-if="renderLocation === 'CLIENT' && clientExportMessage" class="text-[10px] text-gray-400">
+      <div v-if="renderLocation === 'CLIENT' && clientExportMessage" class="text-[10px] text-text-secondary">
         {{ clientExportMessage }} ({{ clientExportProgress }}%)
       </div>
     </div>
 
     <!-- Validation Allowed -->
-    <div v-if="validationResult && validationResult.allowed && validationResult.recommendations?.length" class="p-2 rounded bg-blue-900/20 border border-blue-700/50 text-xs">
-      <div v-for="(rec, i) in validationResult.recommendations" :key="i" class="text-blue-300 text-[10px]">
+    <div v-if="validationResult && validationResult.allowed && validationResult.recommendations?.length" class="p-2 rounded bg-info-muted border border-blue-700/50 text-xs">
+      <div v-for="(rec, i) in validationResult.recommendations" :key="i" class="text-info text-[10px]">
         {{ rec }}
       </div>
     </div>
 
     <!-- Worker Status -->
-    <div class="p-2 rounded bg-gray-800/50 border border-gray-700">
+    <div class="p-2 rounded bg-surface-2/50 border border-border-subtle">
       <div class="flex items-center justify-between mb-1">
-        <span class="text-xs text-gray-400">Render Worker</span>
-        <button class="text-[10px] text-blue-400 hover:text-blue-300" @click="loadWorkers()">Refresh</button>
+        <span class="text-xs text-text-secondary">Render Worker</span>
+        <button class="text-[10px] text-info hover:text-info" @click="loadWorkers()">Refresh</button>
       </div>
 
       <div class="flex gap-1 mb-2">
         <button class="flex-1 px-2 py-1 rounded text-xs font-medium transition-colors"
-          :class="selectedWorkerType === 'local' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'"
+          :class="selectedWorkerType === 'local' ? 'bg-blue-600 text-white' : 'bg-surface-3 text-text-secondary'"
           @click="selectedWorkerType = 'local'">
           Local
         </button>
         <button class="flex-1 px-2 py-1 rounded text-xs font-medium transition-colors"
-          :class="selectedWorkerType === 'remote' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'"
+          :class="selectedWorkerType === 'remote' ? 'bg-blue-600 text-white' : 'bg-surface-3 text-text-secondary'"
           :disabled="!remoteWorkerAvailable || !isExportFlagEnabled('export.remoteWorker.enabled')"
           :title="!remoteWorkerAvailable ? 'Remote worker requires TEAM tier' : !isExportFlagEnabled('export.remoteWorker.enabled') ? getExportFlagDisabledReason('export.remoteWorker.enabled') : ''"
           @click="selectedWorkerType = 'remote'; loadWorkers()">
           Remote
-          <span v-if="!remoteWorkerAvailable || !isExportFlagEnabled('export.remoteWorker.enabled')" class="text-[9px] text-gray-500">(TEAM+)</span>
+          <span v-if="!remoteWorkerAvailable || !isExportFlagEnabled('export.remoteWorker.enabled')" class="text-[9px] text-text-tertiary">(TEAM+)</span>
         </button>
       </div>
 
@@ -958,102 +958,102 @@ function handleViewLogs(url: string) {
         <div class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-green-500"></span>
           <span class="text-white">Local Worker</span>
-          <span class="text-gray-500 ml-auto">{{ providerInfo?.key || 'auto' }}</span>
+          <span class="text-text-tertiary ml-auto">{{ providerInfo?.key || 'auto' }}</span>
         </div>
-        <div class="text-gray-500 text-[10px]">
+        <div class="text-text-tertiary text-[10px]">
           {{ providerInfo?.capabilities?.formats?.join(', ') || 'MP4, WebM' }} ·
           {{ providerInfo?.capabilities?.codecs?.join(', ') || 'H.264, VP9' }}
         </div>
       </div>
 
       <div v-else class="space-y-1">
-        <div v-if="loadingWorkers" class="text-xs text-gray-500">Loading workers...</div>
-        <div v-else-if="workers.length === 0" class="text-xs text-gray-500">No remote workers registered</div>
+        <div v-if="loadingWorkers" class="text-xs text-text-tertiary">Loading workers...</div>
+        <div v-else-if="workers.length === 0" class="text-xs text-text-tertiary">No remote workers registered</div>
         <div v-for="worker in workers" :key="worker.workerId" class="flex items-center gap-1.5 text-xs">
           <span class="w-2 h-2 rounded-full" :class="getWorkerStatusClass(worker.status)"></span>
           <span class="text-white font-mono">{{ worker.workerId }}</span>
-          <span class="text-gray-500 ml-auto">{{ worker.status }} ({{ worker.activeJobs }}/{{ worker.maxConcurrentJobs }})</span>
+          <span class="text-text-tertiary ml-auto">{{ worker.status }} ({{ worker.activeJobs }}/{{ worker.maxConcurrentJobs }})</span>
         </div>
       </div>
 
-      <div v-if="selectedPreset.startsWith('gpu_')" class="mt-1.5 pt-1.5 border-t border-gray-700">
+      <div v-if="selectedPreset.startsWith('gpu_')" class="mt-1.5 pt-1.5 border-t border-border-subtle">
         <div class="flex items-center gap-1 text-[10px]">
-          <span :class="gpuAvailable && isExportFlagEnabled('export.gpu.v2') ? 'text-purple-400' : 'text-gray-500'">⚡ GPU Accelerated</span>
-          <span v-if="!gpuAvailable || !isExportFlagEnabled('export.gpu.v2')" class="text-gray-500">(TEAM+ required)</span>
-          <span class="text-gray-500 ml-auto">{{ selectedPreset.includes('h265') ? 'NVENC HEVC' : 'NVENC H.264' }}</span>
+          <span :class="gpuAvailable && isExportFlagEnabled('export.gpu.v2') ? 'text-accent-400' : 'text-text-tertiary'">⚡ GPU Accelerated</span>
+          <span v-if="!gpuAvailable || !isExportFlagEnabled('export.gpu.v2')" class="text-text-tertiary">(TEAM+ required)</span>
+          <span class="text-text-tertiary ml-auto">{{ selectedPreset.includes('h265') ? 'NVENC HEVC' : 'NVENC H.264' }}</span>
         </div>
       </div>
     </div>
 
     <!-- Preset Selection -->
     <div>
-      <label class="text-xs text-gray-400 block mb-1">Preset</label>
+      <label class="text-xs text-text-secondary block mb-1">Preset</label>
       <select v-model="selectedPreset"
-        class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+        class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white"
         @change="updateSettingsFromPreset(selectedPreset)">
         <option v-for="preset in availablePresets" :key="preset.name" :value="preset.name">
           {{ preset.displayName }} {{ preset.watermark ? '(Watermarked)' : '' }}
         </option>
       </select>
-      <div v-if="recommendedPreset" class="text-[10px] text-blue-400 mt-0.5">
+      <div v-if="recommendedPreset" class="text-[10px] text-info mt-0.5">
         Recommended: {{ recommendedPreset }}
       </div>
     </div>
 
     <!-- Estimated Cost -->
-    <div v-if="validationResult?.estimatedCost" class="p-2 rounded bg-gray-800/50 border border-gray-700 text-xs">
+    <div v-if="validationResult?.estimatedCost" class="p-2 rounded bg-surface-2/50 border border-border-subtle text-xs">
       <div class="flex justify-between">
-        <span class="text-gray-400">Estimated Cost</span>
+        <span class="text-text-secondary">Estimated Cost</span>
         <span class="text-white font-medium">
           ${{ validationResult.estimatedCost.toFixed(4) }} {{ validationResult.currency }}
         </span>
       </div>
       <div v-if="validationResult.providerCandidates?.length" class="flex justify-between mt-0.5">
-        <span class="text-gray-400">Provider</span>
-        <span class="text-gray-300">{{ validationResult.providerCandidates.join(', ') }}</span>
+        <span class="text-text-secondary">Provider</span>
+        <span class="text-text-primary">{{ validationResult.providerCandidates.join(', ') }}</span>
       </div>
       <div class="flex justify-between mt-0.5">
-        <span class="text-gray-400">Quota Remaining</span>
+        <span class="text-text-secondary">Quota Remaining</span>
         <span class="text-white">{{ budgetStatus?.remainingBudget ?? '—' }}</span>
       </div>
     </div>
 
     <!-- Preset Info -->
-    <div v-if="presetInfo" class="p-2 rounded bg-gray-800/50 border border-gray-700 text-xs space-y-1">
+    <div v-if="presetInfo" class="p-2 rounded bg-surface-2/50 border border-border-subtle text-xs space-y-1">
       <div class="flex justify-between">
-        <span class="text-gray-400">Resolution</span>
+        <span class="text-text-secondary">Resolution</span>
         <span class="text-white">{{ presetInfo.resolution }}</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-gray-400">Watermark</span>
-        <span :class="watermarked ? 'text-yellow-400' : 'text-green-400'">
+        <span class="text-text-secondary">Watermark</span>
+        <span :class="watermarked ? 'text-warning' : 'text-success'">
           {{ watermarked ? 'Yes' : 'No' }}
         </span>
       </div>
       <div v-if="providerInfo" class="flex justify-between">
-        <span class="text-gray-400">Provider</span>
+        <span class="text-text-secondary">Provider</span>
         <span class="text-white">{{ providerInfo.key || 'auto' }}</span>
       </div>
     </div>
 
     <!-- Unavailable Presets -->
-    <div v-if="unavailablePresets.length > 0" class="p-2 rounded bg-gray-800/30 border border-gray-700/50 text-xs">
-      <div class="text-gray-500 mb-1">Unavailable Presets ({{ currentTier }})</div>
+    <div v-if="unavailablePresets.length > 0" class="p-2 rounded bg-surface-2/30 border border-border-subtle/50 text-xs">
+      <div class="text-text-tertiary mb-1">Unavailable Presets ({{ currentTier }})</div>
       <div v-for="preset in unavailablePresets.slice(0, 3)" :key="preset.name" class="flex justify-between text-[10px]">
-        <span class="text-gray-500">{{ preset.displayName }}</span>
-        <span class="text-gray-600" :title="getPresetDisabledReason(preset)">
+        <span class="text-text-tertiary">{{ preset.displayName }}</span>
+        <span class="text-text-tertiary" :title="getPresetDisabledReason(preset)">
           {{ getPresetDisabledReason(preset) }}
         </span>
       </div>
-      <div v-if="unavailablePresets.length > 3" class="text-[10px] text-gray-600 mt-0.5">
+      <div v-if="unavailablePresets.length > 3" class="text-[10px] text-text-tertiary mt-0.5">
         +{{ unavailablePresets.length - 3 }} more
       </div>
     </div>
 
     <!-- Format -->
     <div>
-      <label class="text-xs text-gray-400 block mb-1">Format</label>
-      <select v-model="settings.format" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+      <label class="text-xs text-text-secondary block mb-1">Format</label>
+      <select v-model="settings.format" class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white">
         <option value="mp4">MP4 (H.264)</option>
         <option value="webm">WebM (VP9)</option>
         <option value="mov">MOV</option>
@@ -1062,8 +1062,8 @@ function handleViewLogs(url: string) {
 
     <!-- Frame Rate -->
     <div>
-      <label class="text-xs text-gray-400 block mb-1">Frame Rate</label>
-      <select v-model="settings.frameRate" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+      <label class="text-xs text-text-secondary block mb-1">Frame Rate</label>
+      <select v-model="settings.frameRate" class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white">
         <option :value="24">24 fps</option>
         <option :value="30">30 fps</option>
         <option :value="60">60 fps</option>
@@ -1072,8 +1072,8 @@ function handleViewLogs(url: string) {
 
     <!-- Encoder -->
     <div>
-      <label class="text-xs text-gray-400 block mb-1">Encoder</label>
-      <select v-model="settings.encoder" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+      <label class="text-xs text-text-secondary block mb-1">Encoder</label>
+      <select v-model="settings.encoder" class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white">
         <option value="h264">H.264</option>
         <option value="vp9">VP9</option>
         <option value="aac">AAC</option>
@@ -1082,8 +1082,8 @@ function handleViewLogs(url: string) {
 
     <!-- Subtitle Mode -->
     <div v-if="subtitleStore.tracks.length > 0">
-      <label class="text-xs text-gray-400 block mb-1">Subtitle Mode</label>
-      <select v-model="subtitleMode" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+      <label class="text-xs text-text-secondary block mb-1">Subtitle Mode</label>
+      <select v-model="subtitleMode" class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white">
         <option value="none">No Subtitles</option>
         <option value="burn-in">Burn-in (Hardcoded)</option>
         <option value="external">External Subtitle File</option>
@@ -1099,21 +1099,21 @@ function handleViewLogs(url: string) {
     </div>
 
     <!-- Subtitle & Font Info -->
-    <div v-if="subtitleStore.tracks.length > 0" class="p-2 rounded bg-gray-800/50 border border-gray-700 text-xs space-y-1">
-      <div class="text-gray-400">Subtitle Tracks</div>
+    <div v-if="subtitleStore.tracks.length > 0" class="p-2 rounded bg-surface-2/50 border border-border-subtle text-xs space-y-1">
+      <div class="text-text-secondary">Subtitle Tracks</div>
       <div v-for="track in subtitleStore.tracks" :key="track.id" class="flex justify-between">
         <span class="text-white">{{ track.label }}</span>
-        <span class="text-gray-500">
+        <span class="text-text-tertiary">
           {{ track.cues.length }} cues
           <span v-if="track.fontId"> · {{ track.fontId }}</span>
-          <span v-if="!track.burnIn" class="text-blue-400"> · EXT</span>
+          <span v-if="!track.burnIn" class="text-info"> · EXT</span>
         </span>
       </div>
-      <div v-if="subtitleStore.fonts.length" class="mt-1 pt-1 border-t border-gray-700">
-        <div class="text-gray-400">Fonts</div>
+      <div v-if="subtitleStore.fonts.length" class="mt-1 pt-1 border-t border-border-subtle">
+        <div class="text-text-secondary">Fonts</div>
         <div v-for="font in subtitleStore.fonts" :key="font.fontId" class="flex justify-between text-[10px]">
           <span class="text-white">{{ font.family }}</span>
-          <span class="text-gray-500">{{ font.format.toUpperCase() }} · {{ (font.fileSize / 1024).toFixed(0) }}KB</span>
+          <span class="text-text-tertiary">{{ font.format.toUpperCase() }} · {{ (font.fileSize / 1024).toFixed(0) }}KB</span>
         </div>
       </div>
     </div>
@@ -1162,7 +1162,7 @@ function handleViewLogs(url: string) {
       <button
         type="button"
         class="flex-1 py-1 rounded border"
-        :class="exportMode === 'incremental' ? 'border-emerald-500 text-emerald-400 bg-emerald-900/20' : 'border-gray-600 text-gray-400'"
+        :class="exportMode === 'incremental' ? 'border-emerald-500 text-emerald-400 bg-emerald-900/20' : 'border-border-default text-text-secondary'"
         @click="exportMode = 'incremental'"
       >
         增量 / AI
@@ -1170,7 +1170,7 @@ function handleViewLogs(url: string) {
       <button
         type="button"
         class="flex-1 py-1 rounded border"
-        :class="exportMode === 'legacy' ? 'border-blue-500 text-blue-400 bg-blue-900/20' : 'border-gray-600 text-gray-400'"
+        :class="exportMode === 'legacy' ? 'border-blue-500 text-info bg-info-muted' : 'border-border-default text-text-secondary'"
         @click="exportMode = 'legacy'"
       >
         传统导出
@@ -1222,15 +1222,15 @@ function handleViewLogs(url: string) {
 
     <!-- Export Button -->
     <button class="w-full py-2 rounded text-sm font-medium transition-colors"
-      :class="!isExportDisabled ? 'bg-clip-video hover:bg-clip-video/80 text-white' : 'bg-gray-600 text-gray-400 cursor-not-allowed'"
+      :class="!isExportDisabled ? 'bg-clip-video hover:bg-clip-video/80 text-white' : 'bg-surface-4 text-text-secondary cursor-not-allowed'"
       :disabled="isExportDisabled"
       @click="submitRender">
       {{ exportMode === 'incremental' ? '使用下方增量导出' : submitting ? (renderLocation === 'CLIENT' ? 'Exporting in browser...' : 'Submitting...') : hasSyncConflict ? 'Resolve sync conflict' : featureFlagSubmitBlocked ? 'Feature Disabled' : hasBudgetExceeded ? 'Budget Exceeded' : validationResult && !validationResult.allowed ? 'Export Blocked' : renderLocation === 'CLIENT' ? 'Export in Browser' : 'Export Video' }}
     </button>
 
     <!-- Last Job -->
-    <div v-if="lastJob && !renderJobId" class="p-2 rounded bg-gray-800/50 border border-gray-700">
-      <div class="text-xs text-gray-400">Last Job</div>
+    <div v-if="lastJob && !renderJobId" class="p-2 rounded bg-surface-2/50 border border-border-subtle">
+      <div class="text-xs text-text-secondary">Last Job</div>
       <div class="flex items-center justify-between mt-1">
         <span class="text-xs font-mono text-white">{{ lastJob.id?.slice(0, 12) }}...</span>
         <span class="text-xs font-medium" :class="getStatusColor(lastJob.status)">{{ lastJob.status }}</span>
@@ -1239,15 +1239,15 @@ function handleViewLogs(url: string) {
 
     <!-- Recent Jobs -->
     <div v-if="recentJobs.length && !renderJobId" class="space-y-1">
-      <div class="text-xs text-gray-400">Recent Jobs</div>
-      <div v-for="job in recentJobs" :key="job.id" class="flex items-center justify-between p-1.5 rounded bg-gray-800/30">
-        <span class="text-xs font-mono text-gray-300">{{ job.id?.slice(0, 8) }}</span>
+      <div class="text-xs text-text-secondary">Recent Jobs</div>
+      <div v-for="job in recentJobs" :key="job.id" class="flex items-center justify-between p-1.5 rounded bg-surface-2/30">
+        <span class="text-xs font-mono text-text-primary">{{ job.id?.slice(0, 8) }}</span>
         <span class="text-xs" :class="getStatusColor(job.status)">{{ job.status }}</span>
       </div>
     </div>
 
     <!-- Error -->
-    <div v-if="projectStore.error" class="p-2 rounded bg-red-900/30 border border-red-700 text-xs text-red-400">
+    <div v-if="projectStore.error" class="p-2 rounded bg-red-900/30 border border-red-700 text-xs text-danger">
       {{ projectStore.error }}
     </div>
   </div>

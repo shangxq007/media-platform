@@ -10,7 +10,7 @@ public class RemotionRenderProviderProperties {
     private String remotionArgs = "remotion";
     private String compositionId = "Main";
     private long timeoutMillis = 900_000;
-    private boolean stubOnMissingCli = true;
+    private boolean stubOnMissingCli = false;
     private String projectDir = "";
 
     public boolean isEnabled() {

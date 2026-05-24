@@ -169,10 +169,10 @@ function getRiskClass(level: string): string {
 
 function getActionClass(action: string): string {
   switch (action) {
-    case 'BLOCK': return 'text-red-400'
+    case 'BLOCK': return 'text-danger'
     case 'REQUIRE_REVIEW': return 'text-orange-400'
-    case 'WARN': return 'text-yellow-400'
-    default: return 'text-green-400'
+    case 'WARN': return 'text-warning'
+    default: return 'text-success'
   }
 }
 </script>
@@ -180,91 +180,91 @@ function getActionClass(action: string): string {
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between p-3 border-b border-gray-700">
+    <div class="flex items-center justify-between p-3 border-b border-border-subtle">
       <div class="flex items-center gap-2">
-        <button class="text-gray-400 hover:text-white text-sm" @click="emit('back')">← Back</button>
+        <button class="text-text-secondary hover:text-white text-sm" @click="emit('back')">← Back</button>
         <h2 class="text-lg font-semibold text-white">{{ template?.name || 'Loading...' }}</h2>
         <span class="px-1.5 py-0.5 rounded text-[10px]"
-          :class="template?.status === 'ACTIVE' ? 'bg-green-600' : 'bg-gray-600'">
+          :class="template?.status === 'ACTIVE' ? 'bg-green-600' : 'bg-surface-4'">
           {{ template?.status }}
         </span>
       </div>
     </div>
 
     <!-- Prompt Quota Info -->
-    <div v-if="promptQuota" class="px-3 py-2 border-b border-gray-700 bg-gray-800/50">
+    <div v-if="promptQuota" class="px-3 py-2 border-b border-border-subtle bg-surface-2/50">
       <div class="flex items-center gap-4 text-[10px]">
-        <span class="text-gray-400">Executions:</span>
+        <span class="text-text-secondary">Executions:</span>
         <span class="text-white">{{ promptQuota.executionsUsed }} / {{ promptQuota.executionQuota }}</span>
-        <div class="w-24 bg-gray-700 rounded-full h-1.5">
+        <div class="w-24 bg-surface-3 rounded-full h-1.5">
           <div class="h-1.5 rounded-full bg-blue-500 transition-all"
             :style="{ width: Math.min(100, (promptQuota.executionsUsed / promptQuota.executionQuota * 100)) + '%' }" />
         </div>
-        <span class="text-gray-500">Est. cost: ${{ promptQuota.estimatedCostPerExecution.toFixed(4) }} {{ promptQuota.currency }}/exec</span>
+        <span class="text-text-tertiary">Est. cost: ${{ promptQuota.estimatedCostPerExecution.toFixed(4) }} {{ promptQuota.currency }}/exec</span>
       </div>
     </div>
 
     <!-- Tabs -->
-    <div class="flex border-b border-gray-700">
+    <div class="flex border-b border-border-subtle">
       <button v-for="tab in ['edit', 'versions', 'render', 'risk']" :key="tab"
         class="px-4 py-2 text-sm capitalize"
-        :class="activeTab === tab ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text:text-white'"
+        :class="activeTab === tab ? 'text-white border-b-2 border-blue-500' : 'text-text-secondary hover:text:text-white'"
         @click="activeTab = tab as any">
         {{ tab }}
       </button>
     </div>
 
-    <div v-if="loading" class="p-3 text-gray-400">Loading...</div>
+    <div v-if="loading" class="p-3 text-text-secondary">Loading...</div>
 
     <!-- Edit Tab -->
     <div v-else-if="activeTab === 'edit'" class="flex-1 overflow-y-auto p-3 space-y-3">
       <div>
-        <label class="text-xs text-gray-400 block mb-1">Name</label>
-        <input v-model="editName" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white" />
+        <label class="text-xs text-text-secondary block mb-1">Name</label>
+        <input v-model="editName" class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-sm text-white" />
       </div>
       <div>
-        <label class="text-xs text-gray-400 block mb-1">Description</label>
-        <input v-model="editDescription" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white" />
+        <label class="text-xs text-text-secondary block mb-1">Description</label>
+        <input v-model="editDescription" class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-sm text-white" />
       </div>
       <div>
-        <label class="text-xs text-gray-400 block mb-1">Category</label>
-        <input v-model="editCategory" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white" />
+        <label class="text-xs text-text-secondary block mb-1">Category</label>
+        <input v-model="editCategory" class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-sm text-white" />
       </div>
       <div>
-        <label class="text-xs text-gray-400 block mb-1">Tags (comma-separated)</label>
-        <input v-model="editTags" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white" />
+        <label class="text-xs text-text-secondary block mb-1">Tags (comma-separated)</label>
+        <input v-model="editTags" class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-sm text-white" />
       </div>
       <div>
-        <label class="text-xs text-gray-400 block mb-1">Template Body</label>
+        <label class="text-xs text-text-secondary block mb-1">Template Body</label>
         <textarea v-model="editBody" rows="12"
-          class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white font-mono" />
+          class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-sm text-white font-mono" />
       </div>
       <div class="flex gap-2">
         <button class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded"
           :disabled="saving" @click="saveTemplate">
           {{ saving ? 'Saving...' : 'Save' }}
         </button>
-        <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded"
+        <button class="px-3 py-1 bg-surface-4 hover:bg-gray-500 text-white text-sm rounded"
           @click="validateTemplate">Validate</button>
       </div>
       <div v-if="validationResult" class="p-2 rounded text-xs"
-        :class="validationResult.valid ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'">
+        :class="validationResult.valid ? 'bg-green-900/30 text-success' : 'bg-red-900/30 text-danger'">
         <div v-for="err in validationResult.errors" :key="err">{{ err }}</div>
-        <div v-for="warn in validationResult.warnings" :key="warn" class="text-yellow-400">{{ warn }}</div>
+        <div v-for="warn in validationResult.warnings" :key="warn" class="text-warning">{{ warn }}</div>
       </div>
     </div>
 
     <!-- Versions Tab -->
     <div v-else-if="activeTab === 'versions'" class="flex-1 overflow-y-auto p-3 space-y-2">
       <div v-for="version in versions" :key="version.versionId"
-        class="p-2 rounded bg-gray-800/50 border border-gray-700">
+        class="p-2 rounded bg-surface-2/50 border border-border-subtle">
         <div class="flex items-center justify-between">
           <span class="text-white text-sm font-mono">v{{ version.promptVersion }}</span>
-          <span class="text-gray-500 text-xs">{{ version.changelog }}</span>
+          <span class="text-text-tertiary text-xs">{{ version.changelog }}</span>
         </div>
-        <div class="text-gray-400 text-xs mt-1">{{ version.templateBody?.substring(0, 100) }}...</div>
+        <div class="text-text-secondary text-xs mt-1">{{ version.templateBody?.substring(0, 100) }}...</div>
         <div class="flex gap-1 mt-1">
-          <button class="text-[10px] text-blue-400 hover:text-blue-300"
+          <button class="text-[10px] text-info hover:text-info"
             @click="editBody = version.templateBody || ''; activeTab = 'edit'">
             Use this version
           </button>
@@ -275,24 +275,24 @@ function getActionClass(action: string): string {
     <!-- Render Tab -->
     <div v-else-if="activeTab === 'render'" class="flex-1 overflow-y-auto p-3 space-y-3">
       <div>
-        <label class="text-xs text-gray-400 block mb-1">Variables (JSON)</label>
+        <label class="text-xs text-text-secondary block mb-1">Variables (JSON)</label>
         <textarea v-model="renderVariables" rows="4"
-          class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white font-mono" />
+          class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-sm text-white font-mono" />
       </div>
       <button class="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded"
         :disabled="rendering" @click="renderPreview">
         {{ rendering ? 'Rendering...' : 'Preview Render' }}
       </button>
       <div v-if="renderResult" class="space-y-2">
-        <div class="p-2 rounded bg-gray-800/50 border border-gray-700">
-          <div class="text-xs text-gray-400 mb-1">Rendered Output</div>
+        <div class="p-2 rounded bg-surface-2/50 border border-border-subtle">
+          <div class="text-xs text-text-secondary mb-1">Rendered Output</div>
           <pre class="text-white text-xs whitespace-pre-wrap">{{ renderResult.renderedPrompt }}</pre>
         </div>
-        <div class="p-2 rounded bg-gray-800/50 border border-gray-700">
-          <div class="text-xs text-gray-400 mb-1">Redacted Output</div>
+        <div class="p-2 rounded bg-surface-2/50 border border-border-subtle">
+          <div class="text-xs text-text-secondary mb-1">Redacted Output</div>
           <pre class="text-white text-xs whitespace-pre-wrap">{{ renderResult.redactedPrompt }}</pre>
         </div>
-        <div v-if="renderResult.missingVariables?.length" class="text-yellow-400 text-xs">
+        <div v-if="renderResult.missingVariables?.length" class="text-warning text-xs">
           Missing: {{ renderResult.missingVariables.join(', ') }}
         </div>
         <div v-if="renderResult.warnings?.length" class="text-orange-400 text-xs">
@@ -304,9 +304,9 @@ function getActionClass(action: string): string {
     <!-- Risk Tab -->
     <div v-else-if="activeTab === 'risk'" class="flex-1 overflow-y-auto p-3 space-y-3">
       <div>
-        <label class="text-xs text-gray-400 block mb-1">Content to Analyze</label>
+        <label class="text-xs text-text-secondary block mb-1">Content to Analyze</label>
         <textarea v-model="riskContent" rows="6"
-          class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white font-mono"
+          class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-sm text-white font-mono"
           placeholder="Paste prompt content to analyze..." />
       </div>
       <button class="px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-sm rounded"
@@ -323,8 +323,8 @@ function getActionClass(action: string): string {
             {{ riskAnalysis.action }}
           </span>
         </div>
-        <div class="text-gray-300 text-xs">{{ riskAnalysis.explanation }}</div>
-        <div v-if="riskAnalysis.secretFindings?.length" class="text-red-400 text-xs">
+        <div class="text-text-primary text-xs">{{ riskAnalysis.explanation }}</div>
+        <div v-if="riskAnalysis.secretFindings?.length" class="text-danger text-xs">
           <div v-for="f in riskAnalysis.secretFindings" :key="f">{{ f }}</div>
         </div>
         <div v-if="riskAnalysis.commandFindings?.length" class="text-orange-400 text-xs">

@@ -111,10 +111,10 @@ function formatIso(iso?: { iso: string }): string {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-bold">Monitoring & Feedback</h1>
-        <p class="text-sm text-gray-400 mt-1">Error tracking, session replay, and data quality</p>
+        <p class="text-sm text-text-secondary mt-1">Error tracking, session replay, and data quality</p>
       </div>
       <div class="flex items-center gap-3">
-        <select v-model="range" class="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white" @change="refetch">
+        <select v-model="range" class="bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white" @change="refetch">
           <option value="1d">Last 24h</option>
           <option value="7d">Last 7 days</option>
           <option value="30d">Last 30 days</option>
@@ -123,133 +123,133 @@ function formatIso(iso?: { iso: string }): string {
       </div>
     </div>
 
-    <div v-if="restFallback" class="px-3 py-2 rounded bg-blue-900/20 border border-blue-700/50 text-xs text-blue-300">
+    <div v-if="restFallback" class="px-3 py-2 rounded bg-info-muted border border-blue-700/50 text-xs text-info">
       Using REST fallback — GraphQL endpoint unavailable
     </div>
 
-    <div v-if="error" class="px-3 py-2 rounded bg-red-900/20 border border-red-700/50 text-xs text-red-300">
-      <div v-if="errorCode" class="font-mono text-[10px] text-red-400 mb-1">{{ errorCode }}</div>
+    <div v-if="error" class="px-3 py-2 rounded bg-danger-muted border border-red-700/50 text-xs text-danger">
+      <div v-if="errorCode" class="font-mono text-[10px] text-danger mb-1">{{ errorCode }}</div>
       {{ error.message }}
     </div>
 
     <!-- Feature Flag Status -->
-    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+    <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold text-gray-300">🚩 Feature Flag Status</h2>
-        <button class="text-[10px] text-blue-400 hover:text-blue-300" @click="refreshMonitoringFlags()">
+        <h2 class="text-sm font-semibold text-text-primary">🚩 Feature Flag Status</h2>
+        <button class="text-[10px] text-info hover:text-info" @click="refreshMonitoringFlags()">
           {{ loadingMonitoringFlags ? 'Loading...' : 'Refresh' }}
         </button>
       </div>
       <div class="grid grid-cols-5 gap-3">
-        <div v-for="flag in monitoringFlagStatuses" :key="flag.key" class="flex items-center justify-between p-3 bg-gray-900/50 rounded">
+        <div v-for="flag in monitoringFlagStatuses" :key="flag.key" class="flex items-center justify-between p-3 bg-surface-0/50 rounded">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-gray-500'"></span>
-            <span class="text-xs text-gray-300">{{ flag.label }}</span>
+            <span class="text-xs text-text-primary">{{ flag.label }}</span>
           </div>
           <span class="text-[10px] px-1.5 py-0.5 rounded"
-            :class="flag.enabled ? 'bg-green-600/20 text-green-300' : 'bg-gray-600/20 text-gray-400'">
+            :class="flag.enabled ? 'bg-success-muted text-success' : 'bg-surface-4/20 text-text-secondary'">
             {{ flag.enabled ? 'ON' : 'OFF' }}
           </span>
         </div>
       </div>
     </div>
 
-    <div v-if="loading" class="text-gray-400 text-sm">Loading...</div>
+    <div v-if="loading" class="text-text-secondary text-sm">Loading...</div>
 
     <template v-else>
       <!-- Monitoring Status -->
-      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-        <h2 class="text-sm font-semibold mb-3 text-gray-300">Monitoring Status</h2>
+      <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+        <h2 class="text-sm font-semibold mb-3 text-text-primary">Monitoring Status</h2>
         <div class="grid grid-cols-2 gap-4">
-          <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded">
+          <div class="flex items-center justify-between p-3 bg-surface-0/50 rounded">
             <div class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full" :class="monitoringStatus?.sentryEnabled && isMonitoringFlagEnabled('monitoring.sentryReplay.enabled') ? 'bg-green-500' : 'bg-gray-500'"></span>
-              <span class="text-xs text-gray-400">Sentry</span>
+              <span class="text-xs text-text-secondary">Sentry</span>
             </div>
-            <span class="text-xs font-medium" :class="monitoringStatus?.sentryEnabled && isMonitoringFlagEnabled('monitoring.sentryReplay.enabled') ? 'text-green-400' : 'text-gray-500'">
+            <span class="text-xs font-medium" :class="monitoringStatus?.sentryEnabled && isMonitoringFlagEnabled('monitoring.sentryReplay.enabled') ? 'text-success' : 'text-text-tertiary'">
               {{ monitoringStatus?.sentryEnabled && isMonitoringFlagEnabled('monitoring.sentryReplay.enabled') ? 'Enabled' : 'Disabled' }}
             </span>
           </div>
-          <div class="flex items-center justify-between p-3 bg-gray-900/50 rounded">
+          <div class="flex items-center justify-between p-3 bg-surface-0/50 rounded">
             <div class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full" :class="monitoringStatus?.openReplayEnabled && isMonitoringFlagEnabled('monitoring.openReplay.enabled') ? 'bg-green-500' : 'bg-gray-500'"></span>
-              <span class="text-xs text-gray-400">OpenReplay</span>
+              <span class="text-xs text-text-secondary">OpenReplay</span>
             </div>
-            <span class="text-xs font-medium" :class="monitoringStatus?.openReplayEnabled && isMonitoringFlagEnabled('monitoring.openReplay.enabled') ? 'text-green-400' : 'text-gray-500'">
+            <span class="text-xs font-medium" :class="monitoringStatus?.openReplayEnabled && isMonitoringFlagEnabled('monitoring.openReplay.enabled') ? 'text-success' : 'text-text-tertiary'">
               {{ monitoringStatus?.openReplayEnabled && isMonitoringFlagEnabled('monitoring.openReplay.enabled') ? 'Enabled' : 'Disabled' }}
             </span>
           </div>
-          <div class="text-xs text-gray-500">
-            Last error: <span class="text-gray-300">{{ formatIso(monitoringStatus?.lastErrorAt) }}</span>
+          <div class="text-xs text-text-tertiary">
+            Last error: <span class="text-text-primary">{{ formatIso(monitoringStatus?.lastErrorAt) }}</span>
           </div>
-          <div class="text-xs text-gray-500">
-            Last feedback: <span class="text-gray-300">{{ formatIso(monitoringStatus?.lastFeedbackAt) }}</span>
+          <div class="text-xs text-text-tertiary">
+            Last feedback: <span class="text-text-primary">{{ formatIso(monitoringStatus?.lastFeedbackAt) }}</span>
           </div>
         </div>
       </div>
 
       <!-- Stats Grid -->
       <div class="grid grid-cols-4 gap-4">
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="text-xs text-gray-400 mb-1">Open Issues</div>
+        <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+          <div class="text-xs text-text-secondary mb-1">Open Issues</div>
           <div class="text-2xl font-bold">{{ feedbackSummary?.openIssues ?? '—' }}</div>
         </div>
-        <div class="bg-gray-800 border rounded-lg p-4" :class="hasCriticalIssues ? 'border-red-700' : 'border-gray-700'">
-          <div class="text-xs text-gray-400 mb-1">Critical Issues</div>
-          <div class="text-2xl font-bold" :class="hasCriticalIssues ? 'text-red-400' : ''">
+        <div class="bg-surface-2 border rounded-lg p-4" :class="hasCriticalIssues ? 'border-red-700' : 'border-border-subtle'">
+          <div class="text-xs text-text-secondary mb-1">Critical Issues</div>
+          <div class="text-2xl font-bold" :class="hasCriticalIssues ? 'text-danger' : ''">
             {{ feedbackSummary?.criticalIssues ?? '—' }}
           </div>
         </div>
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="text-xs text-gray-400 mb-1">Linked Render Jobs</div>
+        <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+          <div class="text-xs text-text-secondary mb-1">Linked Render Jobs</div>
           <div class="text-2xl font-bold">{{ feedbackSummary?.linkedRenderJobs ?? '—' }}</div>
         </div>
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="text-xs text-gray-400 mb-1">Linked Executions</div>
+        <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+          <div class="text-xs text-text-secondary mb-1">Linked Executions</div>
           <div class="text-2xl font-bold">{{ feedbackSummary?.linkedPromptExecutions ?? '—' }}</div>
         </div>
       </div>
 
       <!-- Feature Flag Evaluation Metrics -->
-      <div v-if="ffMetrics" class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-        <h2 class="text-sm font-semibold mb-3 text-gray-300">🚩 Feature Flag Evaluation Metrics</h2>
+      <div v-if="ffMetrics" class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+        <h2 class="text-sm font-semibold mb-3 text-text-primary">🚩 Feature Flag Evaluation Metrics</h2>
         <div class="grid grid-cols-4 gap-4 mb-4">
           <div>
-            <div class="text-xs text-gray-400">Total Evaluations</div>
-            <div class="text-lg font-bold text-gray-200">{{ ffMetrics.totalEvaluations.toLocaleString() }}</div>
+            <div class="text-xs text-text-secondary">Total Evaluations</div>
+            <div class="text-lg font-bold text-text-primary">{{ ffMetrics.totalEvaluations.toLocaleString() }}</div>
           </div>
           <div>
-            <div class="text-xs text-gray-400">Enabled</div>
-            <div class="text-lg font-bold text-green-400">{{ ffMetrics.enabledCount.toLocaleString() }}</div>
+            <div class="text-xs text-text-secondary">Enabled</div>
+            <div class="text-lg font-bold text-success">{{ ffMetrics.enabledCount.toLocaleString() }}</div>
           </div>
           <div>
-            <div class="text-xs text-gray-400">Disabled</div>
-            <div class="text-lg font-bold text-gray-400">{{ ffMetrics.disabledCount.toLocaleString() }}</div>
+            <div class="text-xs text-text-secondary">Disabled</div>
+            <div class="text-lg font-bold text-text-secondary">{{ ffMetrics.disabledCount.toLocaleString() }}</div>
           </div>
           <div>
-            <div class="text-xs text-gray-400">Error Rate</div>
-            <div class="text-lg font-bold" :class="ffMetrics.errorRate > 0.05 ? 'text-red-400' : 'text-green-400'">
+            <div class="text-xs text-text-secondary">Error Rate</div>
+            <div class="text-lg font-bold" :class="ffMetrics.errorRate > 0.05 ? 'text-danger' : 'text-success'">
               {{ (ffMetrics.errorRate * 100).toFixed(1) }}%
             </div>
           </div>
         </div>
         <div v-if="ffMetrics.topFlags.length > 0" class="grid grid-cols-2 gap-4">
           <div>
-            <div class="text-xs text-gray-400 mb-2">Top Flags</div>
+            <div class="text-xs text-text-secondary mb-2">Top Flags</div>
             <div class="space-y-1">
-              <div v-for="flag in ffMetrics.topFlags" :key="flag.flagKey" class="flex items-center justify-between p-2 bg-gray-900/50 rounded text-xs">
-                <span class="font-mono text-blue-300">{{ flag.flagKey }}</span>
-                <span class="text-gray-400">{{ flag.evaluations.toLocaleString() }} evals</span>
-                <span :class="flag.errorRate > 0.05 ? 'text-red-400' : 'text-green-400'">{{ (flag.errorRate * 100).toFixed(1) }}% err</span>
+              <div v-for="flag in ffMetrics.topFlags" :key="flag.flagKey" class="flex items-center justify-between p-2 bg-surface-0/50 rounded text-xs">
+                <span class="font-mono text-info">{{ flag.flagKey }}</span>
+                <span class="text-text-secondary">{{ flag.evaluations.toLocaleString() }} evals</span>
+                <span :class="flag.errorRate > 0.05 ? 'text-danger' : 'text-success'">{{ (flag.errorRate * 100).toFixed(1) }}% err</span>
               </div>
             </div>
           </div>
           <div>
-            <div class="text-xs text-gray-400 mb-2">Usage by Tenant</div>
+            <div class="text-xs text-text-secondary mb-2">Usage by Tenant</div>
             <div class="space-y-1">
-              <div v-for="t in ffMetrics.usageByTenant" :key="t.tenant" class="flex items-center justify-between p-2 bg-gray-900/50 rounded text-xs">
-                <span class="font-mono text-gray-300">{{ t.tenant }}</span>
-                <span class="text-gray-400">{{ t.evaluations.toLocaleString() }} evals</span>
+              <div v-for="t in ffMetrics.usageByTenant" :key="t.tenant" class="flex items-center justify-between p-2 bg-surface-0/50 rounded text-xs">
+                <span class="font-mono text-text-primary">{{ t.tenant }}</span>
+                <span class="text-text-secondary">{{ t.evaluations.toLocaleString() }} evals</span>
               </div>
             </div>
           </div>
@@ -257,24 +257,24 @@ function formatIso(iso?: { iso: string }): string {
       </div>
 
       <!-- Problematic Data -->
-       <div class="bg-gray-800 border rounded-lg p-4" :class="hasCriticalData ? 'border-red-700' : 'border-gray-700'">
-        <h2 class="text-sm font-semibold mb-3 text-gray-300">Problematic Data</h2>
+       <div class="bg-surface-2 border rounded-lg p-4" :class="hasCriticalData ? 'border-red-700' : 'border-border-subtle'">
+        <h2 class="text-sm font-semibold mb-3 text-text-primary">Problematic Data</h2>
         <div class="grid grid-cols-4 gap-4">
           <div>
-            <div class="text-xs text-gray-400">Total</div>
-            <div class="text-lg font-bold text-gray-200">{{ problematicData?.total ?? '—' }}</div>
+            <div class="text-xs text-text-secondary">Total</div>
+            <div class="text-lg font-bold text-text-primary">{{ problematicData?.total ?? '—' }}</div>
           </div>
           <div>
-            <div class="text-xs text-gray-400">Require Review</div>
-            <div class="text-lg font-bold text-yellow-400">{{ problematicData?.requireReview ?? '—' }}</div>
+            <div class="text-xs text-text-secondary">Require Review</div>
+            <div class="text-lg font-bold text-warning">{{ problematicData?.requireReview ?? '—' }}</div>
           </div>
           <div>
-            <div class="text-xs text-gray-400">Auto-Fixed</div>
-            <div class="text-lg font-bold text-green-400">{{ problematicData?.autoFixed ?? '—' }}</div>
+            <div class="text-xs text-text-secondary">Auto-Fixed</div>
+            <div class="text-lg font-bold text-success">{{ problematicData?.autoFixed ?? '—' }}</div>
           </div>
           <div>
-            <div class="text-xs text-gray-400">Critical</div>
-            <div class="text-lg font-bold" :class="hasCriticalData ? 'text-red-400' : ''">
+            <div class="text-xs text-text-secondary">Critical</div>
+            <div class="text-lg font-bold" :class="hasCriticalData ? 'text-danger' : ''">
               {{ problematicData?.critical ?? '—' }}
             </div>
           </div>
@@ -282,9 +282,9 @@ function formatIso(iso?: { iso: string }): string {
       </div>
 
       <!-- Replay Linked -->
-      <div v-if="(feedbackSummary?.replayLinked ?? 0) > 0" class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-        <h2 class="text-sm font-semibold mb-2 text-gray-300">Session Replay</h2>
-        <p class="text-xs text-gray-400">
+      <div v-if="(feedbackSummary?.replayLinked ?? 0) > 0" class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+        <h2 class="text-sm font-semibold mb-2 text-text-primary">Session Replay</h2>
+        <p class="text-xs text-text-secondary">
           {{ feedbackSummary?.replayLinked }} feedback items linked to session replays for debugging.
         </p>
       </div>

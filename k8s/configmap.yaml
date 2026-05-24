@@ -5,10 +5,11 @@ metadata:
   namespace: media-platform
 data:
   SPRING_PROFILES_ACTIVE: "prod"
-  SPRING_DATASOURCE_URL: "jdbc:postgresql://db:5432/platform"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresql.media-platform.svc.cluster.local:5432/platform"
   SPRING_DATASOURCE_USERNAME: "platform"
   SPRING_FLYWAY_ENABLED: "true"
   APP_SECURITY_ENABLED: "true"
   APP_SECURITY_OAUTH2_ENABLED: "true"
   APP_STORAGE_LOCAL_ROOT: "/data/platform"
   SERVER_PORT: "8080"
+  APP_REMOTE_WORKER_CALLBACK_URL: "http://api.media-platform.svc.cluster.local:8080"

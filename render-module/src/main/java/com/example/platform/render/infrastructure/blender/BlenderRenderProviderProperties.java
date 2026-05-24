@@ -8,7 +8,7 @@ public class BlenderRenderProviderProperties {
     private boolean enabled;
     private String binary = "blender";
     private long timeoutMillis = 1_800_000;
-    private boolean stubOnMissingBinary = true;
+    private boolean stubOnMissingBinary = false;
 
     public boolean isEnabled() {
         return enabled;

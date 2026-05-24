@@ -17,9 +17,23 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: render-worker-hpa
+  namespace: media-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: render-worker
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
     - type: Resource
       resource:
-        name: memory
+        name: cpu
         target:
           type: Utilization
           averageUtilization: 80

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const props = defineProps<{
   isAdmin?: boolean
@@ -22,23 +23,23 @@ const menuItems = computed(() => {
     dividerBefore?: boolean
     isAdmin?: boolean
   }> = [
-    { routeKey: 'me-dashboard', path: '/me', label: 'Dashboard', icon: '📊' },
-    { routeKey: 'me-projects', path: '/me/projects', label: 'Projects', icon: '📁' },
-    { routeKey: 'me-shared-resources', path: '/me/shared-resources', label: 'Shared With Me', icon: '🔗' },
-    { routeKey: 'editor', path: '/', label: 'Video Editor', icon: '✂️' },
-    { routeKey: 'me-exports', path: '/me/exports', label: 'Exports', icon: '📤', dividerBefore: true },
-    { routeKey: 'me-capabilities', path: '/me/capabilities', label: 'Capabilities', icon: '🛡️', dividerBefore: true },
-    { routeKey: 'me-usage', path: '/me/usage', label: 'Usage', icon: '📈' },
-    { routeKey: 'me-billing', path: '/me/billing', label: 'Billing', icon: '💳' },
-    { routeKey: 'me-credits', path: '/me/credits', label: 'Credits', icon: '💰' },
-    { routeKey: 'me-reports', path: '/me/reports', label: 'Reports', icon: '📊' },
-    { routeKey: 'me-feedback', path: '/me/feedback', label: 'Feedback', icon: '💬', dividerBefore: true },
-    { routeKey: 'me-notification-settings', path: '/me/notification-settings', label: 'Notification Settings', icon: '🔔' },
-    { routeKey: 'me-settings', path: '/me/settings', label: 'Settings', icon: '⚙️', dividerBefore: true },
+    { routeKey: 'me-dashboard', path: '/me', label: 'Dashboard', icon: 'layout-dashboard' },
+    { routeKey: 'me-projects', path: '/me/projects', label: 'Projects', icon: 'folder-open' },
+    { routeKey: 'me-shared-resources', path: '/me/shared-resources', label: 'Shared With Me', icon: 'share-2' },
+    { routeKey: 'editor', path: '/', label: 'Video Editor', icon: 'clapperboard' },
+    { routeKey: 'me-exports', path: '/me/exports', label: 'Exports', icon: 'upload', dividerBefore: true },
+    { routeKey: 'me-capabilities', path: '/me/capabilities', label: 'Capabilities', icon: 'shield', dividerBefore: true },
+    { routeKey: 'me-usage', path: '/me/usage', label: 'Usage', icon: 'bar-chart-3' },
+    { routeKey: 'me-billing', path: '/me/billing', label: 'Billing', icon: 'credit-card' },
+    { routeKey: 'me-credits', path: '/me/credits', label: 'Credits', icon: 'wallet' },
+    { routeKey: 'me-reports', path: '/me/reports', label: 'Reports', icon: 'file-text' },
+    { routeKey: 'me-feedback', path: '/me/feedback', label: 'Feedback', icon: 'message-circle', dividerBefore: true },
+    { routeKey: 'me-notification-settings', path: '/me/notification-settings', label: 'Notification Settings', icon: 'bell' },
+    { routeKey: 'me-settings', path: '/me/settings', label: 'Settings', icon: 'settings', dividerBefore: true },
   ]
 
   if (props.isAdmin) {
-    items.push({ routeKey: 'admin-dashboard', path: '/admin', label: 'Admin Console', icon: '🔐', dividerBefore: true, isAdmin: true })
+    items.push({ routeKey: 'admin-dashboard', path: '/admin', label: 'Admin Console', icon: 'key-round', dividerBefore: true, isAdmin: true })
   }
 
   return items
@@ -67,9 +68,9 @@ function handleClick(path: string) {
         :aria-current="isActive(item.path) ? 'page' : undefined"
         @click="handleClick(item.path)"
       >
-        <span class="text-base flex-shrink-0" aria-hidden="true">{{ item.icon }}</span>
+        <AppIcon :name="item.icon" :size="18" class="flex-shrink-0" />
         <span class="truncate-text flex-1">{{ item.label }}</span>
-        <span v-if="item.isAdmin" class="theme-badge bg-danger-500/20 text-danger-500 text-[9px] flex-shrink-0">ADMIN</span>
+        <span v-if="item.isAdmin" class="theme-badge bg-danger-muted text-danger text-[9px] flex-shrink-0">ADMIN</span>
       </button>
     </template>
   </div>

@@ -101,32 +101,32 @@ function handleSave() {
 
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="emit('close')">
-    <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+    <div class="bg-surface-2 border border-border-subtle rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
         <h2 class="text-lg font-semibold text-white">
           {{ isEditing ? 'Edit Route' : 'Create Route' }}
         </h2>
-        <button class="text-gray-400 hover:text-white text-xl leading-none" @click="emit('close')">×</button>
+        <button class="text-text-secondary hover:text-white text-xl leading-none" @click="emit('close')">×</button>
       </div>
 
       <div class="px-6 py-4 space-y-4">
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Route Key *</label>
+            <label class="block text-xs text-text-secondary mb-1">Route Key *</label>
             <input
               v-model="form.routeKey"
               type="text"
               :disabled="isEditing"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200 disabled:opacity-50"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary disabled:opacity-50"
               placeholder="e.g. my-route"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Path *</label>
+            <label class="block text-xs text-text-secondary mb-1">Path *</label>
             <input
               v-model="form.path"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. /my-route"
             />
           </div>
@@ -134,101 +134,101 @@ function handleSave() {
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Component Key *</label>
+            <label class="block text-xs text-text-secondary mb-1">Component Key *</label>
             <input
               v-model="form.componentKey"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. MyPage"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Title *</label>
+            <label class="block text-xs text-text-secondary mb-1">Title *</label>
             <input
               v-model="form.title"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. My Page"
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Description</label>
+          <label class="block text-xs text-text-secondary mb-1">Description</label>
           <input
             v-model="form.description"
             type="text"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+            class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             placeholder="Optional description"
           />
         </div>
 
         <div class="grid grid-cols-3 gap-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Menu Group</label>
+            <label class="block text-xs text-text-secondary mb-1">Menu Group</label>
             <input
               v-model="form.menuGroup"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. main, admin"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Icon</label>
+            <label class="block text-xs text-text-secondary mb-1">Icon</label>
             <input
               v-model="form.icon"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. 📊"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Order</label>
+            <label class="block text-xs text-text-secondary mb-1">Order</label>
             <input
               v-model.number="form.order"
               type="number"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Parent Route Key</label>
+          <label class="block text-xs text-text-secondary mb-1">Parent Route Key</label>
           <input
             v-model="form.parentRouteKey"
             type="text"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+            class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             placeholder="Optional parent route"
           />
         </div>
 
-        <div class="border-t border-gray-700 pt-4">
-          <h3 class="text-sm font-medium text-gray-300 mb-3">Access Control</h3>
+        <div class="border-t border-border-subtle pt-4">
+          <h3 class="text-sm font-medium text-text-primary mb-3">Access Control</h3>
           <div class="space-y-3">
             <div>
-              <label class="block text-xs text-gray-400 mb-1">Required Permissions (comma-separated)</label>
+              <label class="block text-xs text-text-secondary mb-1">Required Permissions (comma-separated)</label>
               <input
                 v-model="form.requiredPermissions"
                 type="text"
-                class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 placeholder="e.g. config:read, config:write"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-400 mb-1">Required Roles (comma-separated)</label>
+              <label class="block text-xs text-text-secondary mb-1">Required Roles (comma-separated)</label>
               <input
                 v-model="form.requiredRoles"
                 type="text"
-                class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 placeholder="e.g. ADMIN, TENANT_ADMIN"
               />
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs text-gray-400 mb-1">Required Tier</label>
+                <label class="block text-xs text-text-secondary mb-1">Required Tier</label>
                 <select
                   v-model="form.requiredTier"
-                  class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                  class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 >
                   <option value="">Any</option>
                   <option value="FREE">Free</option>
@@ -239,20 +239,20 @@ function handleSave() {
                 </select>
               </div>
              <div>
-               <label class="block text-xs text-gray-400 mb-1">Supported Sources</label>
+               <label class="block text-xs text-text-secondary mb-1">Supported Sources</label>
                <input
                  v-model="form.supportedSources"
                  type="text"
-                 class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                 class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                  placeholder="e.g. WEB, ADMIN"
                />
              </div>
              <div>
-               <label class="block text-xs text-gray-400 mb-1">Required Feature Flags (comma-separated)</label>
+               <label class="block text-xs text-text-secondary mb-1">Required Feature Flags (comma-separated)</label>
                <input
                  v-model="form.requiredFeatureFlags"
                  type="text"
-                 class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                 class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                  placeholder="e.g. new-dashboard-v2, beta-ui"
                />
              </div>
@@ -260,24 +260,24 @@ function handleSave() {
          </div>
        </div>
 
-       <div class="border-t border-gray-700 pt-4">
-         <h3 class="text-sm font-medium text-gray-300 mb-3">Visibility</h3>
+       <div class="border-t border-border-subtle pt-4">
+         <h3 class="text-sm font-medium text-text-primary mb-3">Visibility</h3>
           <div class="flex items-center gap-6">
-            <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-              <input v-model="form.visible" type="checkbox" class="rounded bg-gray-900 border-gray-700" />
+            <label class="flex items-center gap-2 text-sm text-text-primary cursor-pointer">
+              <input v-model="form.visible" type="checkbox" class="rounded bg-surface-0 border-border-subtle" />
               Visible
             </label>
-            <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-              <input v-model="form.enabled" type="checkbox" class="rounded bg-gray-900 border-gray-700" />
+            <label class="flex items-center gap-2 text-sm text-text-primary cursor-pointer">
+              <input v-model="form.enabled" type="checkbox" class="rounded bg-surface-0 border-border-subtle" />
               Enabled
             </label>
           </div>
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-700">
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle">
         <button
-          class="px-4 py-1.5 text-sm text-gray-400 hover:text-white border border-gray-600 rounded-lg transition-colors"
+          class="px-4 py-1.5 text-sm text-text-secondary hover:text-white border border-border-default rounded-lg transition-colors"
           @click="emit('close')"
         >
           Cancel

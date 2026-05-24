@@ -56,3 +56,10 @@ spec:
             limits:
               memory: "4Gi"
               cpu: "2000m"
+          volumeMounts:
+            - name: data
+              mountPath: /data/platform
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: app-data

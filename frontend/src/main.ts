@@ -23,10 +23,10 @@ function initMonitoring() {
   setOpenReplayUser({ id: userId, tenantId })
 
   // Sentry initialization - lazy loaded (runtime import to avoid Vite pre-resolution)
-  const sentryDsn = (import.meta as any).env?.VITE_SENTRY_DSN || ''
+  const sentryDsn = import.meta.env?.VITE_SENTRY_DSN || ''
   if (sentryDsn) {
     const sentryImport = new Function('m', 'return import(m)')
-    sentryImport('@sentry/vue').then((SentryVue: any) => {
+    sentryImport('@sentry/vue').then((SentryVue: { init?: (opts: unknown) => void }) => {
       if (SentryVue && SentryVue.init) {
         initSentry(SentryVue, { dsn: sentryDsn })
         SentryVue.init({ app, dsn: sentryDsn, tracesSampleRate: 1.0 })
@@ -35,10 +35,10 @@ function initMonitoring() {
   }
 
   // OpenReplay initialization - lazy loaded (runtime import to avoid Vite pre-resolution)
-  const orKey = (import.meta as any).env?.VITE_OPENREPLAY_PROJECT_KEY || ''
+  const orKey = import.meta.env?.VITE_OPENREPLAY_PROJECT_KEY || ''
   if (orKey) {
     const dynamicImport = new Function('m', 'return import(m)')
-    dynamicImport('@openreplay/tracker').then((Tracker: any) => {
+    dynamicImport('@openreplay/tracker').then((Tracker: { default?: new (opts: unknown) => unknown }) => {
       if (Tracker && Tracker.default) {
         const tracker = new Tracker.default({ projectKey: orKey })
         initOpenReplay(tracker, { projectKey: orKey, enabled: true })
@@ -61,7 +61,7 @@ async function bootstrapApp() {
 bootstrapApp()
 
 // Global error handler
-app.config.errorHandler = (err: any, instance: any, info: string) => {
+app.config.errorHandler = (err: unknown, instance: { $options?: { name?: string } } | null, info: string) => {
   console.error('[Vue Error]', err, info)
   captureSentryException(err instanceof Error ? err : new Error(String(err)), {
     component: instance?.$options?.name || 'unknown',

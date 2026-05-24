@@ -134,53 +134,53 @@ async function handleSave() {
 
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="emit('close')">
-    <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+    <div class="bg-surface-2 border border-border-subtle rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
         <h2 class="text-lg font-semibold text-white">{{ isEditing ? 'Edit Feature Flag' : 'New Feature Flag' }}</h2>
-        <button class="text-gray-400 hover:text-white text-xl leading-none" @click="emit('close')">×</button>
+        <button class="text-text-secondary hover:text-white text-xl leading-none" @click="emit('close')">×</button>
       </div>
 
-      <div v-if="saveError" class="mx-6 mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
+      <div v-if="saveError" class="mx-6 mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-danger text-sm">
         {{ saveError }}
       </div>
 
       <div class="px-6 py-4 space-y-4">
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Flag Key *</label>
+            <label class="block text-xs text-text-secondary mb-1">Flag Key *</label>
             <input
               v-model="form.flagKey"
               type="text"
               :disabled="isEditing"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200 disabled:opacity-50"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary disabled:opacity-50"
               placeholder="e.g. new-dashboard-v2"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Name *</label>
+            <label class="block text-xs text-text-secondary mb-1">Name *</label>
             <input
               v-model="form.name"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. New Dashboard V2"
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Description</label>
+          <label class="block text-xs text-text-secondary mb-1">Description</label>
           <textarea
             v-model="form.description"
             rows="2"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200 resize-none"
+            class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary resize-none"
             placeholder="What does this flag control?"
           />
         </div>
 
         <div class="grid grid-cols-3 gap-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Type *</label>
-            <select v-model="form.type" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200">
+            <label class="block text-xs text-text-secondary mb-1">Type *</label>
+            <select v-model="form.type" class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary">
               <option value="BOOLEAN">Boolean</option>
               <option value="STRING">String</option>
               <option value="NUMBER">Number</option>
@@ -188,20 +188,20 @@ async function handleSave() {
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Default Value *</label>
+            <label class="block text-xs text-text-secondary mb-1">Default Value *</label>
             <input
               v-model="form.defaultValue"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               :placeholder="form.type === 'BOOLEAN' ? 'false' : ''"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Owner *</label>
+            <label class="block text-xs text-text-secondary mb-1">Owner *</label>
             <input
               v-model="form.owner"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="team or person"
             />
           </div>
@@ -209,79 +209,79 @@ async function handleSave() {
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Tags (comma-separated)</label>
+            <label class="block text-xs text-text-secondary mb-1">Tags (comma-separated)</label>
             <input
               v-model="form.tags"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. ui, beta, experiment"
             />
           </div>
           <div class="flex items-end pb-1">
-            <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-              <input v-model="form.enabled" type="checkbox" class="rounded bg-gray-900 border-gray-700" />
+            <label class="flex items-center gap-2 text-sm text-text-primary cursor-pointer">
+              <input v-model="form.enabled" type="checkbox" class="rounded bg-surface-0 border-border-subtle" />
               Enabled
             </label>
           </div>
         </div>
 
         <!-- Variants -->
-        <div class="border-t border-gray-700 pt-4">
+        <div class="border-t border-border-subtle pt-4">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-medium text-gray-300">Variants</h3>
-            <button class="text-xs text-blue-400 hover:text-blue-300" @click="addVariant">+ Add Variant</button>
+            <h3 class="text-sm font-medium text-text-primary">Variants</h3>
+            <button class="text-xs text-info hover:text-info" @click="addVariant">+ Add Variant</button>
           </div>
-          <div v-if="variants.length === 0" class="text-xs text-gray-500">No variants defined</div>
+          <div v-if="variants.length === 0" class="text-xs text-text-tertiary">No variants defined</div>
           <div v-else class="space-y-2">
             <div v-for="(variant, idx) in variants" :key="idx" class="flex items-center gap-2">
               <input
                 v-model="variant.key"
                 type="text"
-                class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                class="flex-1 bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 placeholder="Variant key"
               />
               <input
                 v-model="variant.value"
                 type="text"
-                class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                class="flex-1 bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 placeholder="Variant value"
               />
-              <button class="text-red-400 hover:text-red-300 text-sm px-2" @click="removeVariant(idx)">✕</button>
+              <button class="text-danger hover:text-danger text-sm px-2" @click="removeVariant(idx)">✕</button>
             </div>
           </div>
         </div>
 
         <!-- Targeting Rules -->
-        <div class="border-t border-gray-700 pt-4">
+        <div class="border-t border-border-subtle pt-4">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-medium text-gray-300">Targeting Rules ({{ targetingRules.length }})</h3>
-            <button class="text-xs text-blue-400 hover:text-blue-300" @click="addRule">+ Add Rule</button>
+            <h3 class="text-sm font-medium text-text-primary">Targeting Rules ({{ targetingRules.length }})</h3>
+            <button class="text-xs text-info hover:text-info" @click="addRule">+ Add Rule</button>
           </div>
-          <div v-if="targetingRules.length === 0" class="text-xs text-gray-500">No targeting rules — flag uses default value</div>
+          <div v-if="targetingRules.length === 0" class="text-xs text-text-tertiary">No targeting rules — flag uses default value</div>
           <div v-else class="space-y-2">
             <div
               v-for="(rule, idx) in targetingRules"
               :key="rule.ruleId || idx"
-              class="flex items-center justify-between p-3 bg-gray-900/50 rounded border border-gray-700"
+              class="flex items-center justify-between p-3 bg-surface-0/50 rounded border border-border-subtle"
             >
               <div class="flex items-center gap-3">
-                <span class="text-xs text-gray-500 font-mono">#{{ rule.priority }}</span>
-                <span class="text-xs text-gray-200">{{ rule.name || 'Unnamed rule' }}</span>
-                <span class="text-xs px-1.5 py-0.5 rounded bg-blue-600/20 text-blue-300">{{ rule.percentage }}%</span>
-                <span class="text-xs text-gray-500">{{ rule.conditions.length }} conditions</span>
+                <span class="text-xs text-text-tertiary font-mono">#{{ rule.priority }}</span>
+                <span class="text-xs text-text-primary">{{ rule.name || 'Unnamed rule' }}</span>
+                <span class="text-xs px-1.5 py-0.5 rounded bg-blue-600/20 text-info">{{ rule.percentage }}%</span>
+                <span class="text-xs text-text-tertiary">{{ rule.conditions.length }} conditions</span>
               </div>
               <div class="flex gap-1">
-                <button class="text-[10px] text-blue-400 hover:text-blue-300 px-1" @click="editRule(rule)">Edit</button>
-                <button class="text-[10px] text-red-400 hover:text-red-300 px-1" @click="removeRule(idx)">Remove</button>
+                <button class="text-[10px] text-info hover:text-info px-1" @click="editRule(rule)">Edit</button>
+                <button class="text-[10px] text-danger hover:text-danger px-1" @click="removeRule(idx)">Remove</button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-700">
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle">
         <button
-          class="px-4 py-1.5 text-sm text-gray-400 hover:text-white border border-gray-600 rounded-lg transition-colors"
+          class="px-4 py-1.5 text-sm text-text-secondary hover:text-white border border-border-default rounded-lg transition-colors"
           @click="emit('close')"
         >
           Cancel

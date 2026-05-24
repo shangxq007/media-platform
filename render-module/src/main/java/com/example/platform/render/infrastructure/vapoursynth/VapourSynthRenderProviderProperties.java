@@ -7,7 +7,7 @@ public class VapourSynthRenderProviderProperties {
 
     private boolean enabled = true;
     private String binary = "vspipe";
-    private boolean stubOnMissingBinary = true;
+    private boolean stubOnMissingBinary = false;
     private boolean fallbackToFfmpeg = true;
     private long timeoutMillis = 600_000L;
 

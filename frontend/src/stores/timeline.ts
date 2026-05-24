@@ -90,12 +90,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     state.value = json
   }
 
-  function toJSON(): any {
-    const json = JSON.parse(JSON.stringify(state.value));
-    // Add schema version
+  function toJSON(): Record<string, unknown> {
+    const json: Record<string, unknown> = JSON.parse(JSON.stringify(state.value));
     json.schemaVersion = '2.0.0';
-    // Add subtitle tracks from subtitle store
-    // (subtitle tracks are managed separately but included in OTIO export)
     return json;
   }
 
@@ -108,9 +105,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     clips.value = timeline.clips
   }
 
-  function getOTIOExport(): any {
+  function getOTIOExport(): Record<string, unknown> {
     const json = toJSON();
-    for (const track of json.tracks || []) {
+    const tracks = json.tracks as Array<Record<string, unknown>> | undefined;
+    for (const track of tracks || []) {
       for (const clip of track.children || []) {
         if (clip.effects && clip.effects.length > 0) {
           for (const effect of clip.effects) {

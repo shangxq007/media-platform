@@ -78,11 +78,11 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
     />
 
     <template v-else>
-      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-        <h2 class="text-sm font-semibold text-gray-300 mb-3">Select Policy</h2>
+      <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+        <h2 class="text-sm font-semibold text-text-primary mb-3">Select Policy</h2>
         <select
           v-model="selectedPolicyCode"
-          class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+          class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
         >
           <option value="">Choose a policy...</option>
           <option v-for="policy in props.policies" :key="policy.policyId" :value="policy.code">
@@ -91,39 +91,39 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
         </select>
       </div>
 
-      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+      <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-semibold text-gray-300">Simulation Context</h2>
-          <button class="text-xs text-gray-400 hover:text-white" @click="resetContext">Reset</button>
+          <h2 class="text-sm font-semibold text-text-primary">Simulation Context</h2>
+          <button class="text-xs text-text-secondary hover:text-white" @click="resetContext">Reset</button>
         </div>
         <div class="grid grid-cols-4 gap-3">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">User</label>
-            <input v-model="context.user" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="user-1" />
+            <label class="block text-xs text-text-secondary mb-1">User</label>
+            <input v-model="context.user" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="user-1" />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Role</label>
-            <input v-model="context.role" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="ADMIN" />
+            <label class="block text-xs text-text-secondary mb-1">Role</label>
+            <input v-model="context.role" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="ADMIN" />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Tenant</label>
-            <input v-model="context.tenant" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="tenant-1" />
+            <label class="block text-xs text-text-secondary mb-1">Tenant</label>
+            <input v-model="context.tenant" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="tenant-1" />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Workspace</label>
-            <input v-model="context.workspace" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="workspace-1" />
+            <label class="block text-xs text-text-secondary mb-1">Workspace</label>
+            <input v-model="context.workspace" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="workspace-1" />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Resource</label>
-            <input v-model="context.resource" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="render-job:123" />
+            <label class="block text-xs text-text-secondary mb-1">Resource</label>
+            <input v-model="context.resource" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="render-job:123" />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Action</label>
-            <input v-model="context.action" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="CREATE" />
+            <label class="block text-xs text-text-secondary mb-1">Action</label>
+            <input v-model="context.action" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="CREATE" />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Tier</label>
-            <select v-model="context.tier" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200">
+            <label class="block text-xs text-text-secondary mb-1">Tier</label>
+            <select v-model="context.tier" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary">
               <option value="">Any</option>
               <option value="FREE">Free</option>
               <option value="PRO">Pro</option>
@@ -132,8 +132,8 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Region</label>
-            <input v-model="context.region" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="us-east-1" />
+            <label class="block text-xs text-text-secondary mb-1">Region</label>
+            <input v-model="context.region" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="us-east-1" />
           </div>
         </div>
         <button
@@ -145,44 +145,44 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
         </button>
       </div>
 
-      <div v-if="error" class="p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
+      <div v-if="error" class="p-3 bg-red-900/30 border border-red-700 rounded-lg text-danger text-sm">
         {{ error }}
       </div>
 
       <template v-if="result">
         <!-- Decision Result -->
-        <div class="bg-gray-800 border rounded-lg p-4" :class="result.decision === 'ALLOW' ? 'border-green-700' : result.decision === 'DENY' ? 'border-red-700' : 'border-yellow-700'">
+        <div class="bg-surface-2 border rounded-lg p-4" :class="result.decision === 'ALLOW' ? 'border-green-700' : result.decision === 'DENY' ? 'border-red-700' : 'border-yellow-700'">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-gray-300">Decision Result</h2>
+            <h2 class="text-sm font-semibold text-text-primary">Decision Result</h2>
             <StatusBadge :variant="decisionVariant(result.decision)" :label="result.decision" size="md" />
           </div>
-          <p class="text-sm text-gray-200">{{ result.explanation }}</p>
+          <p class="text-sm text-text-primary">{{ result.explanation }}</p>
         </div>
 
         <!-- Decision Chain -->
-        <div v-if="result.decisionChain.length > 0" class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h3 class="text-sm font-semibold text-gray-300 mb-3">Decision Chain</h3>
+        <div v-if="result.decisionChain.length > 0" class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+          <h3 class="text-sm font-semibold text-text-primary mb-3">Decision Chain</h3>
           <div class="space-y-2">
-            <div v-for="(step, idx) in result.decisionChain" :key="idx" class="flex items-center gap-3 p-2 bg-gray-900/50 rounded">
-              <span class="text-xs text-gray-500 font-mono w-6">{{ idx + 1 }}</span>
-              <span class="text-xs text-gray-300 flex-1">{{ step.step }}</span>
+            <div v-for="(step, idx) in result.decisionChain" :key="idx" class="flex items-center gap-3 p-2 bg-surface-0/50 rounded">
+              <span class="text-xs text-text-tertiary font-mono w-6">{{ idx + 1 }}</span>
+              <span class="text-xs text-text-primary flex-1">{{ step.step }}</span>
               <StatusBadge :variant="decisionVariant(step.decision)" :label="step.decision" />
-              <span v-if="step.detail" class="text-xs text-gray-500">{{ step.detail }}</span>
+              <span v-if="step.detail" class="text-xs text-text-tertiary">{{ step.detail }}</span>
             </div>
           </div>
         </div>
 
         <!-- Matched Rules -->
-        <div v-if="result.matchedRules.length > 0" class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h3 class="text-sm font-semibold text-gray-300 mb-3">Matched Rules ({{ result.matchedRules.length }})</h3>
+        <div v-if="result.matchedRules.length > 0" class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+          <h3 class="text-sm font-semibold text-text-primary mb-3">Matched Rules ({{ result.matchedRules.length }})</h3>
           <div class="space-y-2">
-            <div v-for="mr in result.matchedRules" :key="mr.ruleId" class="p-3 bg-gray-900/50 rounded">
+            <div v-for="mr in result.matchedRules" :key="mr.ruleId" class="p-3 bg-surface-0/50 rounded">
               <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs text-gray-200 font-medium">{{ mr.ruleName }}</span>
+                <span class="text-xs text-text-primary font-medium">{{ mr.ruleName }}</span>
                 <StatusBadge :variant="decisionVariant(mr.effect)" :label="mr.effect" />
               </div>
               <div class="flex flex-wrap gap-1">
-                <span v-for="(mc, idx) in mr.matchedConditions" :key="idx" class="text-[10px] px-1.5 py-0.5 rounded bg-green-600/20 text-green-300">
+                <span v-for="(mc, idx) in mr.matchedConditions" :key="idx" class="text-[10px] px-1.5 py-0.5 rounded bg-success-muted text-success">
                   {{ mc }}
                 </span>
               </div>
@@ -191,17 +191,17 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
         </div>
 
         <!-- Feature Flag Results -->
-        <div v-if="result.featureFlagResults.length > 0" class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h3 class="text-sm font-semibold text-gray-300 mb-3">Feature Flag Evaluations ({{ result.featureFlagResults.length }})</h3>
+        <div v-if="result.featureFlagResults.length > 0" class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+          <h3 class="text-sm font-semibold text-text-primary mb-3">Feature Flag Evaluations ({{ result.featureFlagResults.length }})</h3>
           <div class="space-y-1.5">
-            <div v-for="ffr in result.featureFlagResults" :key="ffr.flagKey" class="flex items-center justify-between p-2 bg-gray-900/50 rounded">
+            <div v-for="ffr in result.featureFlagResults" :key="ffr.flagKey" class="flex items-center justify-between p-2 bg-surface-0/50 rounded">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-mono text-blue-300">{{ ffr.flagKey }}</span>
-                <span v-if="!ffr.evaluated" class="text-[10px] px-1 py-0.5 rounded bg-gray-600/20 text-gray-400">Not evaluated</span>
+                <span class="text-xs font-mono text-info">{{ ffr.flagKey }}</span>
+                <span v-if="!ffr.evaluated" class="text-[10px] px-1 py-0.5 rounded bg-surface-4/20 text-text-secondary">Not evaluated</span>
               </div>
               <span
                 class="text-xs px-1.5 py-0.5 rounded"
-                :class="ffr.result === 'ENABLED' ? 'bg-green-600/20 text-green-300' : 'bg-red-600/20 text-red-300'"
+                :class="ffr.result === 'ENABLED' ? 'bg-success-muted text-success' : 'bg-red-600/20 text-danger'"
               >
                 {{ ffr.result }}
               </span>

@@ -5,7 +5,8 @@ metadata:
   namespace: media-platform
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 50Gi
+  storageClassName: nfs-client
