@@ -9,7 +9,7 @@ const error = ref<string | null>(null)
 const selectedExecution = ref<PromptExecutionRun | null>(null)
 
 const statusColors: Record<string, string> = {
-  PENDING: 'bg-gray-500',
+  PENDING: 'bg-surface-4',
   RUNNING: 'bg-blue-500',
   SUCCEEDED: 'bg-green-500',
   FAILED: 'bg-red-500',
@@ -37,35 +37,35 @@ function selectExecution(execution: PromptExecutionRun) {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center justify-between p-3 border-b border-gray-700">
+    <div class="flex items-center justify-between p-3 border-b border-border-subtle">
       <h2 class="text-lg font-semibold text-white">Executions</h2>
-      <button class="text-xs text-blue-400 hover:text-blue-300" @click="loadExecutions">Refresh</button>
+      <button class="text-xs text-info hover:text-info" @click="loadExecutions">Refresh</button>
     </div>
 
-    <div v-if="error" class="p-3 text-red-400 text-sm">{{ error }}</div>
-    <div v-if="loading" class="p-3 text-gray-400 text-sm">Loading...</div>
+    <div v-if="error" class="p-3 text-danger text-sm">{{ error }}</div>
+    <div v-if="loading" class="p-3 text-text-secondary text-sm">Loading...</div>
 
     <div class="flex-1 flex overflow-hidden">
       <!-- List -->
-      <div class="w-1/2 border-r border-gray-700 overflow-y-auto">
-        <div v-if="!loading && executions.length === 0" class="p-3 text-gray-500 text-sm">
+      <div class="w-1/2 border-r border-border-subtle overflow-y-auto">
+        <div v-if="!loading && executions.length === 0" class="p-3 text-text-tertiary text-sm">
           No executions found
         </div>
         <div v-for="exec in executions" :key="exec.executionId"
-          class="p-3 border-b border-gray-700 hover:bg-gray-800/50 cursor-pointer"
-          :class="selectedExecution?.executionId === exec.executionId ? 'bg-gray-800' : ''"
+          class="p-3 border-b border-border-subtle hover:bg-surface-2/50 cursor-pointer"
+          :class="selectedExecution?.executionId === exec.executionId ? 'bg-surface-2' : ''"
           @click="selectExecution(exec)">
           <div class="flex items-center justify-between">
             <span class="text-white text-sm font-mono">{{ exec.executionId?.slice(0, 12) }}</span>
             <span class="px-1.5 py-0.5 rounded text-[10px]"
-              :class="statusColors[exec.status] || 'bg-gray-600'">
+              :class="statusColors[exec.status] || 'bg-surface-4'">
               {{ exec.status }}
             </span>
           </div>
-          <div class="text-gray-400 text-xs mt-1">
+          <div class="text-text-secondary text-xs mt-1">
             {{ exec.modelProvider }} / {{ exec.modelName }}
           </div>
-          <div class="text-gray-500 text-xs">
+          <div class="text-text-tertiary text-xs">
             Tokens: {{ exec.tokenEstimate }} | Cost: ${{ exec.costEstimate?.toFixed(4) }}
           </div>
         </div>
@@ -73,54 +73,54 @@ function selectExecution(execution: PromptExecutionRun) {
 
       <!-- Detail -->
       <div class="w-1/2 overflow-y-auto p-3">
-        <div v-if="!selectedExecution" class="text-gray-500 text-sm">
+        <div v-if="!selectedExecution" class="text-text-tertiary text-sm">
           Select an execution to view details
         </div>
         <div v-else class="space-y-3">
           <div>
-            <span class="text-xs text-gray-400">Execution ID</span>
+            <span class="text-xs text-text-secondary">Execution ID</span>
             <div class="text-white text-sm font-mono">{{ selectedExecution.executionId }}</div>
           </div>
           <div>
-            <span class="text-xs text-gray-400">Template</span>
+            <span class="text-xs text-text-secondary">Template</span>
             <div class="text-white text-sm">{{ selectedExecution.templateId }}</div>
           </div>
           <div>
-            <span class="text-xs text-gray-400">Version</span>
+            <span class="text-xs text-text-secondary">Version</span>
             <div class="text-white text-sm">{{ selectedExecution.promptVersion }}</div>
           </div>
           <div>
-            <span class="text-xs text-gray-400">Provider / Model</span>
+            <span class="text-xs text-text-secondary">Provider / Model</span>
             <div class="text-white text-sm">{{ selectedExecution.modelProvider }} / {{ selectedExecution.modelName }}</div>
           </div>
           <div>
-            <span class="text-xs text-gray-400">Status</span>
+            <span class="text-xs text-text-secondary">Status</span>
             <div><span class="px-1.5 py-0.5 rounded text-[10px]"
               :class="statusColors[selectedExecution.status]">{{ selectedExecution.status }}</span></div>
           </div>
           <div>
-            <span class="text-xs text-gray-400">Risk Level</span>
+            <span class="text-xs text-text-secondary">Risk Level</span>
             <div class="text-white text-sm">{{ selectedExecution.riskLevel }}</div>
           </div>
           <div>
-            <span class="text-xs text-gray-400">Token Estimate</span>
+            <span class="text-xs text-text-secondary">Token Estimate</span>
             <div class="text-white text-sm">{{ selectedExecution.tokenEstimate }}</div>
           </div>
           <div>
-            <span class="text-xs text-gray-400">Cost Estimate</span>
+            <span class="text-xs text-text-secondary">Cost Estimate</span>
             <div class="text-white text-sm">${{ selectedExecution.costEstimate?.toFixed(4) }}</div>
           </div>
           <div>
-            <span class="text-xs text-gray-400">Started</span>
+            <span class="text-xs text-text-secondary">Started</span>
             <div class="text-white text-sm">{{ selectedExecution.startedAt }}</div>
           </div>
           <div v-if="selectedExecution.finishedAt">
-            <span class="text-xs text-gray-400">Finished</span>
+            <span class="text-xs text-text-secondary">Finished</span>
             <div class="text-white text-sm">{{ selectedExecution.finishedAt }}</div>
           </div>
           <div v-if="selectedExecution.errorCode">
-            <span class="text-xs text-gray-400">Error</span>
-            <div class="text-red-400 text-sm">{{ selectedExecution.errorCode }}: {{ selectedExecution.errorDetailsJson }}</div>
+            <span class="text-xs text-text-secondary">Error</span>
+            <div class="text-danger text-sm">{{ selectedExecution.errorCode }}: {{ selectedExecution.errorDetailsJson }}</div>
           </div>
         </div>
       </div>

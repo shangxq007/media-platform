@@ -140,7 +140,7 @@ function resetContext() {
         </button>
       </div>
 
-      <div v-if="error" class="p-3 bg-red-900/30 border border-red-700 rounded-lg text-danger text-sm">
+      <div v-if="error" class="p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
         {{ error }}
       </div>
 
@@ -155,7 +155,7 @@ function resetContext() {
             <div class="text-xs text-text-secondary">Result</div>
             <span
               class="text-sm px-2 py-0.5 rounded"
-              :class="result.enabled ? 'bg-success-muted text-success' : 'bg-red-600/20 text-danger'"
+              :class="result.enabled ? 'bg-success-muted text-success' : 'bg-danger-muted text-danger'"
             >
               {{ result.enabled ? 'ENABLED' : 'DISABLED' }}
             </span>

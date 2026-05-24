@@ -66,10 +66,10 @@ function tierClass(tier: string, enabled: boolean): string {
   if (!enabled) return 'bg-surface-3/30 text-text-tertiary'
   switch (tier) {
     case 'FREE': return 'bg-success-muted text-success'
-    case 'PRO': return 'bg-blue-600/20 text-info'
-    case 'TEAM': return 'bg-accent-500/10 text-purple-300'
-    case 'ENTERPRISE': return 'bg-yellow-600/20 text-yellow-300'
-    case 'EXPERIMENTAL': return 'bg-red-600/20 text-danger'
+    case 'PRO': return 'bg-info-muted text-info'
+    case 'TEAM': return 'bg-accent-500/10 text-accent-300'
+    case 'ENTERPRISE': return 'bg-yellow-600/20 text-warning'
+    case 'EXPERIMENTAL': return 'bg-danger-muted text-danger'
     default: return 'bg-surface-4/20 text-text-primary'
   }
 }
@@ -116,7 +116,7 @@ function tierClass(tier: string, enabled: boolean): string {
       <div class="bg-surface-2 border border-border-subtle rounded-lg p-4 mb-6">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-text-primary">Current Tenant Tier</h2>
-          <span class="text-xs px-2 py-1 rounded bg-blue-600/20 text-info font-mono">
+          <span class="text-xs px-2 py-1 rounded bg-info-muted text-info font-mono">
             {{ capabilities?.tier || 'FREE' }}
           </span>
         </div>
@@ -128,7 +128,7 @@ function tierClass(tier: string, enabled: boolean): string {
             :key="tier"
             class="text-xs px-2.5 py-1 rounded border"
             :class="selectedTier === tier
-              ? 'bg-blue-600/30 border-blue-500 text-info'
+              ? 'bg-blue-600/30 border-info text-info'
               : 'border-border-default text-text-secondary hover:text-white'"
             @click="selectedTier = tier"
           >
@@ -182,7 +182,7 @@ function tierClass(tier: string, enabled: boolean): string {
             v-for="f in tierFlags"
             :key="f.flagKey"
             class="flex items-center gap-2 p-2 rounded border"
-            :class="f.enabled ? 'border-green-700/30 bg-green-900/10' : 'border-border-subtle bg-surface-2/50'"
+            :class="f.enabled ? 'border-success/30 bg-green-900/10' : 'border-border-subtle bg-surface-2/50'"
           >
             <span
               class="w-2 h-2 rounded-full shrink-0"

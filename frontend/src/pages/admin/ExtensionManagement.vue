@@ -219,26 +219,26 @@ const extensionFlagStatuses = computed(() => [
       </template>
     </PageHeader>
 
-    <div v-if="restFallback" class="px-3 py-2 rounded bg-blue-900/20 border border-blue-700/50 text-xs text-blue-300">
+    <div v-if="restFallback" class="px-3 py-2 rounded bg-info-muted border border-info/50 text-xs text-info">
       Using REST fallback — GraphQL endpoint unavailable
     </div>
 
     <!-- Feature Flag Status -->
-    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+    <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold text-gray-300">Extension Feature Flags</h2>
-        <button class="text-[10px] text-blue-400 hover:text-blue-300" @click="refreshExtensionFlags()">
+        <h2 class="text-sm font-semibold text-text-primary">Extension Feature Flags</h2>
+        <button class="text-[10px] text-info hover:text-info" @click="refreshExtensionFlags()">
           {{ loadingExtensionFlags ? 'Loading...' : 'Refresh' }}
         </button>
       </div>
       <div class="grid grid-cols-5 gap-3">
-        <div v-for="flag in extensionFlagStatuses" :key="flag.key" class="flex items-center justify-between p-2 bg-gray-900/50 rounded">
+        <div v-for="flag in extensionFlagStatuses" :key="flag.key" class="flex items-center justify-between p-2 bg-surface-0/50 rounded">
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-gray-500'"></span>
-            <span class="text-xs text-gray-300">{{ flag.label }}</span>
+            <span class="w-2 h-2 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-surface-4'"></span>
+            <span class="text-xs text-text-primary">{{ flag.label }}</span>
           </div>
           <span class="text-[10px] px-1.5 py-0.5 rounded"
-            :class="flag.enabled ? 'bg-green-600/20 text-green-300' : 'bg-gray-600/20 text-gray-400'">
+            :class="flag.enabled ? 'bg-success-muted text-success' : 'bg-surface-4/20 text-text-secondary'">
             {{ flag.enabled ? 'ON' : 'OFF' }}
           </span>
         </div>
@@ -246,12 +246,12 @@ const extensionFlagStatuses = computed(() => [
     </div>
 
     <!-- Platform access blocked -->
-    <div v-if="!platformAccessEnabled" class="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
-      <div class="flex items-center gap-2 text-yellow-400 font-medium">
+    <div v-if="!platformAccessEnabled" class="bg-warning-muted border border-warning/50 rounded-lg p-4">
+      <div class="flex items-center gap-2 text-warning font-medium">
         <span>🚩</span>
         <span>Extension Platform Feature Flag Disabled</span>
       </div>
-      <p class="text-xs text-yellow-300 mt-1">The extension.platform.enabled feature flag is currently disabled. Extension management features are limited.</p>
+      <p class="text-xs text-warning mt-1">The extension.platform.enabled feature flag is currently disabled. Extension management features are limited.</p>
     </div>
 
     <!-- High-risk extension warnings -->
@@ -292,10 +292,10 @@ const extensionFlagStatuses = computed(() => [
             <div v-if="gqlExtensions.length" class="flex items-center gap-1 mt-1">
               <span class="text-[10px] px-1 py-0.5 rounded"
                 :class="{
-                  'bg-green-600/20 text-green-300': selectedGqlExtension?.trustLevel === 'HIGH',
-                  'bg-yellow-600/20 text-yellow-300': selectedGqlExtension?.trustLevel === 'MEDIUM',
-                  'bg-red-600/20 text-red-300': selectedGqlExtension?.trustLevel === 'LOW',
-                  'bg-gray-600/20 text-gray-400': !selectedGqlExtension?.trustLevel
+                  'bg-success-muted text-success': selectedGqlExtension?.trustLevel === 'HIGH',
+                  'bg-yellow-600/20 text-warning': selectedGqlExtension?.trustLevel === 'MEDIUM',
+                  'bg-danger-muted text-danger': selectedGqlExtension?.trustLevel === 'LOW',
+                  'bg-surface-4/20 text-text-secondary': !selectedGqlExtension?.trustLevel
                 }">
                 {{ selectedGqlExtension?.trustLevel || 'N/A' }} trust
               </span>
@@ -304,7 +304,7 @@ const extensionFlagStatuses = computed(() => [
             <div v-if="runtimeFeatureFlags.get(ext.key)?.length" class="flex flex-wrap gap-1 mt-1">
               <span v-for="flag in runtimeFeatureFlags.get(ext.key)" :key="flag.flagKey"
                 class="text-[8px] px-1 py-0.5 rounded font-mono"
-                :class="flag.enabled ? 'bg-green-600/15 text-green-300' : 'bg-gray-600/15 text-gray-500'">
+                :class="flag.enabled ? 'bg-green-600/15 text-success' : 'bg-surface-4/15 text-text-tertiary'">
                 {{ flag.flagKey }}:{{ flag.enabled ? 'on' : 'off' }}
               </span>
             </div>
@@ -327,7 +327,7 @@ const extensionFlagStatuses = computed(() => [
               <div class="flex items-center gap-md">
                 <h2 class="text-base font-semibold font-mono text-text-primary">{{ detail.key }}</h2>
                 <StatusBadge :variant="statusVariant(detail.status || 'ACTIVE')" :label="detail.status || 'ACTIVE'" size="md" />
-                <span v-if="selectedGqlExtension" class="text-xs px-1.5 py-0.5 rounded bg-gray-600/20 text-gray-400">
+                <span v-if="selectedGqlExtension" class="text-xs px-1.5 py-0.5 rounded bg-surface-4/20 text-text-secondary">
                   {{ selectedGqlExtension.runtimeType }}
                 </span>
               </div>
@@ -365,12 +365,12 @@ const extensionFlagStatuses = computed(() => [
              </div>
              <div class="c-card-body">
                <div class="space-y-1.5">
-                 <div v-for="flag in runtimeFeatureFlags.get(detail.key)" :key="flag.flagKey" class="flex items-center justify-between p-2 bg-gray-900/50 rounded">
+                 <div v-for="flag in runtimeFeatureFlags.get(detail.key)" :key="flag.flagKey" class="flex items-center justify-between p-2 bg-surface-0/50 rounded">
                    <div class="flex items-center gap-2">
-                     <span class="w-2 h-2 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-gray-500'"></span>
-                     <span class="text-xs font-mono text-gray-300">{{ flag.flagKey }}</span>
+                     <span class="w-2 h-2 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-surface-4'"></span>
+                     <span class="text-xs font-mono text-text-primary">{{ flag.flagKey }}</span>
                    </div>
-                   <span class="text-xs px-1.5 py-0.5 rounded" :class="flag.enabled ? 'bg-green-600/20 text-green-300' : 'bg-gray-600/20 text-gray-400'">
+                   <span class="text-xs px-1.5 py-0.5 rounded" :class="flag.enabled ? 'bg-success-muted text-success' : 'bg-surface-4/20 text-text-secondary'">
                      {{ flag.enabled ? 'Enabled' : 'Disabled' }}
                    </span>
                  </div>
@@ -391,12 +391,12 @@ const extensionFlagStatuses = computed(() => [
             </div>
             <div class="c-card-body">
               <div class="space-y-1.5">
-                <div v-for="rule in selectedGqlExtension.routeRules" :key="rule.scene" class="flex items-center justify-between p-2 bg-gray-900/50 rounded">
+                <div v-for="rule in selectedGqlExtension.routeRules" :key="rule.scene" class="flex items-center justify-between p-2 bg-surface-0/50 rounded">
                   <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full" :class="rule.enabled ? 'bg-green-500' : 'bg-gray-500'"></span>
-                    <span class="text-xs font-mono text-gray-300">{{ rule.scene }}</span>
+                    <span class="w-2 h-2 rounded-full" :class="rule.enabled ? 'bg-green-500' : 'bg-surface-4'"></span>
+                    <span class="text-xs font-mono text-text-primary">{{ rule.scene }}</span>
                   </div>
-                  <span class="text-xs text-gray-400">Priority: {{ rule.priority }}</span>
+                  <span class="text-xs text-text-secondary">Priority: {{ rule.priority }}</span>
                 </div>
               </div>
             </div>

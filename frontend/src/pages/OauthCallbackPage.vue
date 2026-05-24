@@ -21,7 +21,7 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-bg-base text-text-primary">
-    <div v-if="error" class="text-red-400 text-sm max-w-md text-center">
+    <div v-if="error" class="text-danger text-sm max-w-md text-center">
       登录失败：{{ error }}
     </div>
     <div v-else class="text-sm text-text-secondary">正在完成登录…</div>

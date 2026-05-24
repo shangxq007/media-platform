@@ -108,16 +108,16 @@ async function submitIncremental() {
 </script>
 
 <template>
-  <div class="rounded-lg border border-gray-700 bg-gray-900/60 p-md space-y-sm">
-    <span class="text-sm font-medium text-gray-200">增量渲染</span>
-    <p class="text-xs text-gray-400">
+  <div class="rounded-lg border border-border-subtle bg-surface-0/60 p-md space-y-sm">
+    <span class="text-sm font-medium text-text-primary">增量渲染</span>
+    <p class="text-xs text-text-secondary">
       对比基准作业做语义 Diff，复用未脏段缓存；推荐配合 Internal Timeline 1.0 JSON 提交。
     </p>
 
-    <label class="block text-xs text-gray-400">基准作业 ID</label>
+    <label class="block text-xs text-text-secondary">基准作业 ID</label>
     <select
       v-model="baseJobId"
-      class="w-full rounded border border-gray-600 bg-gray-800 px-sm py-xs text-sm"
+      class="w-full rounded border border-border-default bg-surface-2 px-sm py-xs text-sm"
     >
       <option value="">全量（无基准）</option>
       <option
@@ -129,14 +129,14 @@ async function submitIncremental() {
       </option>
     </select>
 
-    <label class="block text-xs text-gray-400">仅渲染段（可选，逗号分隔 seg_0,seg_1）</label>
+    <label class="block text-xs text-text-secondary">仅渲染段（可选，逗号分隔 seg_0,seg_1）</label>
     <input
       v-model="targetSegments"
       type="text"
-      class="w-full rounded border border-gray-600 bg-gray-800 px-sm py-xs text-sm font-mono"
+      class="w-full rounded border border-border-default bg-surface-2 px-sm py-xs text-sm font-mono"
     />
 
-    <label class="flex items-center gap-xs text-xs text-gray-300">
+    <label class="flex items-center gap-xs text-xs text-text-primary">
       <input
         v-model="useAiInstruction"
         type="checkbox"
@@ -146,7 +146,7 @@ async function submitIncremental() {
     <template v-if="useAiInstruction">
       <p
         v-if="editSessionId"
-        class="text-xs text-gray-500 font-mono"
+        class="text-xs text-text-tertiary font-mono"
       >
         会话: {{ editSessionId }}
       </p>
@@ -154,14 +154,14 @@ async function submitIncremental() {
         v-model="aiEditInstruction"
         rows="2"
         placeholder="自然语言改稿指令"
-        class="w-full rounded border border-gray-600 bg-gray-800 px-sm py-xs text-sm"
+        class="w-full rounded border border-border-default bg-surface-2 px-sm py-xs text-sm"
       />
     </template>
 
     <div class="flex gap-xs">
       <button
         type="button"
-        class="flex-1 rounded border border-gray-600 hover:bg-gray-800 disabled:opacity-50 py-xs text-xs"
+        class="flex-1 rounded border border-border-default hover:bg-surface-2 disabled:opacity-50 py-xs text-xs"
         :disabled="!canPreview || loadingPlan"
         @click="previewPlan"
       >
@@ -179,7 +179,7 @@ async function submitIncremental() {
 
     <div
       v-if="plan"
-      class="text-xs text-gray-500 space-y-1 max-h-32 overflow-y-auto font-mono"
+      class="text-xs text-text-tertiary space-y-1 max-h-32 overflow-y-auto font-mono"
     >
       <div>mode={{ plan.mode }} changes={{ plan.changeCount }} reuse={{ plan.reuseTaskIds.length }} execute={{ plan.executeTaskIds.length }}</div>
       <div

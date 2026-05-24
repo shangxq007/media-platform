@@ -145,9 +145,9 @@ function getTypeColor(type: string): string {
     case 'video': return 'border-clip-video bg-clip-video/10'
     case 'audio': return 'border-clip-audio bg-clip-audio/10'
     case 'text': return 'border-clip-text bg-clip-text/10'
-    case 'image': return 'border-purple-500 bg-purple-500/10'
-    case 'subtitle': return 'border-yellow-500 bg-yellow-500/10'
-    default: return 'border-gray-500 bg-gray-500/10'
+    case 'image': return 'border-accent-500 bg-purple-500/10'
+    case 'subtitle': return 'border-warning bg-yellow-500/10'
+    default: return 'border-border-default bg-surface-4/10'
   }
 }
 
@@ -157,7 +157,7 @@ function getThumbnailColor(type: string): string {
     case 'audio': return 'bg-green-900'
     case 'image': return 'bg-purple-900'
     case 'subtitle': return 'bg-yellow-900'
-    default: return 'bg-gray-700'
+    default: return 'bg-surface-3'
   }
 }
 
@@ -195,19 +195,19 @@ function getMetadataStatus(clip: Clip): string {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="p-2 border-b border-gray-700">
+    <div class="p-2 border-b border-border-subtle">
       <input
         v-model="searchQuery"
         type="text"
         placeholder="Search clips..."
-        class="w-full px-2 py-1 bg-gray-800 border border-gray-600 rounded text-sm text-white placeholder-gray-500"
+        class="w-full px-2 py-1 bg-surface-2 border border-border-default rounded text-sm text-white placeholder-gray-500"
       />
       <div class="flex gap-1 mt-2 flex-wrap">
         <button
           v-for="t in (['all', 'video', 'audio', 'image', 'subtitle', 'text'] as const)"
           :key="t"
           class="px-2 py-0.5 text-xs rounded capitalize"
-          :class="selectedType === t ? 'bg-clip-video text-white' : 'bg-gray-700 text-gray-400'"
+          :class="selectedType === t ? 'bg-clip-video text-white' : 'bg-surface-3 text-text-secondary'"
           @click="selectedType = t"
         >
           {{ t }}
@@ -219,7 +219,7 @@ function getMetadataStatus(clip: Clip): string {
       <div
         v-for="clip in allClips"
         :key="clip.id"
-        class="flex items-center gap-2 p-2 rounded border cursor-pointer hover:bg-gray-700/50 transition-colors"
+        class="flex items-center gap-2 p-2 rounded border cursor-pointer hover:bg-surface-3/50 transition-colors"
         :class="getTypeColor(clip.type)"
         draggable="true"
         @dragstart="onDragStart($event, clip)"
@@ -236,28 +236,28 @@ function getMetadataStatus(clip: Clip): string {
             <span
               v-if="getMetadataStatus(clip)"
               class="text-[9px] px-1 rounded"
-              :class="clip.uploadStatus === 'probing' ? 'bg-yellow-600/30 text-yellow-400' : 'bg-red-600/30 text-red-400'"
+              :class="clip.uploadStatus === 'probing' ? 'bg-yellow-600/30 text-warning' : 'bg-red-600/30 text-danger'"
             >
               {{ getMetadataStatus(clip) }}
             </span>
           </div>
-          <div class="flex items-center gap-2 text-[10px] text-gray-500">
+          <div class="flex items-center gap-2 text-[10px] text-text-tertiary">
             <span>{{ formatDuration(clip.duration) }}</span>
             <span v-if="clip.fileSize">{{ formatFileSize(clip.fileSize) }}</span>
             <span v-if="getResolution(clip)">{{ getResolution(clip) }}</span>
           </div>
         </div>
-        <span class="text-[9px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-400 capitalize flex-shrink-0">
+        <span class="text-[9px] px-1.5 py-0.5 rounded bg-surface-3 text-text-secondary capitalize flex-shrink-0">
           {{ clip.type }}
         </span>
         <div class="flex flex-col gap-0.5 flex-shrink-0">
           <button
-            class="text-green-400 hover:text-green-300 text-xs"
+            class="text-success hover:text-success text-xs"
             title="Insert at playhead"
             @click.stop="insertClipAtPlayhead(clip)"
           >➕</button>
           <button
-            class="text-red-400 hover:text-red-300 text-xs"
+            class="text-danger hover:text-danger text-xs"
             title="Delete clip"
             @click.stop="deleteClip(clip.id)"
           >✕</button>
@@ -272,7 +272,7 @@ function getMetadataStatus(clip: Clip): string {
       />
     </div>
 
-    <div class="p-2 border-t border-gray-700 space-y-2">
+    <div class="p-2 border-t border-border-subtle space-y-2">
       <MediaUploadDropzone @files-selected="onFilesSelected" />
       <UploadProgressList
         :items="uploadItems.filter(i => i.status === 'uploading' || i.status === 'failed')"
@@ -280,7 +280,7 @@ function getMetadataStatus(clip: Clip): string {
       />
       <button
         v-if="uploadItems.some(i => i.status === 'success')"
-        class="text-[10px] text-gray-500 hover:text-gray-400 w-full text-center"
+        class="text-[10px] text-text-tertiary hover:text-text-secondary w-full text-center"
         @click="clearCompletedUploads"
       >
         Clear completed

@@ -93,10 +93,10 @@ function maskSensitive(value: string): string {
 
 function categoryClass(category?: string): string {
   if (!category) return 'bg-surface-4/20 text-text-secondary'
-  if (category.startsWith('FEATURE_FLAG_')) return 'bg-accent-500/10 text-purple-300'
-  if (category.startsWith('POLICY_')) return 'bg-blue-600/20 text-info'
+  if (category.startsWith('FEATURE_FLAG_')) return 'bg-accent-500/10 text-accent-300'
+  if (category.startsWith('POLICY_')) return 'bg-info-muted text-info'
   if (category.startsWith('ACCESS_')) return 'bg-success-muted text-success'
-  if (category.startsWith('NAVIGATION_')) return 'bg-yellow-600/20 text-yellow-300'
+  if (category.startsWith('NAVIGATION_')) return 'bg-yellow-600/20 text-warning'
   return 'bg-surface-4/20 text-text-secondary'
 }
 
@@ -115,7 +115,7 @@ onMounted(loadRecords)
       </button>
     </div>
 
-    <div v-if="error" class="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-danger text-sm">
+    <div v-if="error" class="mb-4 p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
       {{ error }}
     </div>
 

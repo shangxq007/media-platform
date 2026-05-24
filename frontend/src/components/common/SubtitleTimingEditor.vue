@@ -58,12 +58,12 @@ function shiftAllCues(delta: number) {
 </script>
 
 <template>
-  <div v-if="activeTrack" class="border-t border-gray-700 bg-gray-800/50">
-    <div class="px-2 py-1 flex items-center justify-between border-b border-gray-700/50">
+  <div v-if="activeTrack" class="border-t border-border-subtle bg-surface-2/50">
+    <div class="px-2 py-1 flex items-center justify-between border-b border-border-subtle/50">
       <span class="text-xs text-white font-medium">{{ activeTrack.label }} — Timing</span>
       <div class="flex gap-1">
-        <button class="px-1.5 py-0.5 text-[10px] bg-gray-700 rounded text-white" @click="shiftAllCues(-0.5)">◀ 0.5s</button>
-        <button class="px-1.5 py-0.5 text-[10px] bg-gray-700 rounded text-white" @click="shiftAllCues(0.5)">0.5s ▶</button>
+        <button class="px-1.5 py-0.5 text-[10px] bg-surface-3 rounded text-white" @click="shiftAllCues(-0.5)">◀ 0.5s</button>
+        <button class="px-1.5 py-0.5 text-[10px] bg-surface-3 rounded text-white" @click="shiftAllCues(0.5)">0.5s ▶</button>
         <button class="px-1.5 py-0.5 text-[10px] bg-clip-video/30 rounded text-clip-video" @click="addCue()">+ Cue</button>
       </div>
     </div>
@@ -72,21 +72,21 @@ function shiftAllCues(delta: number) {
       <div
         v-for="cue in activeTrack.cues"
         :key="cue.id"
-        class="flex items-center gap-1 px-2 py-1 border-b border-gray-700/30 text-xs"
+        class="flex items-center gap-1 px-2 py-1 border-b border-border-subtle/30 text-xs"
         :class="editingCueId === cue.id ? 'bg-clip-video/10' : ''"
       >
-        <span class="text-gray-500 w-6 text-right">{{ cue.index }}</span>
-        <input :value="formatTime(cue.startTime)" class="w-20 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-white"
+        <span class="text-text-tertiary w-6 text-right">{{ cue.index }}</span>
+        <input :value="formatTime(cue.startTime)" class="w-20 bg-surface-2 border border-border-default rounded px-1 py-0.5 text-[10px] text-white"
           @change="updateCueTime(cue.id, 'startTime', ($event.target as HTMLInputElement).value)" />
-        <span class="text-gray-600">→</span>
-        <input :value="formatTime(cue.endTime)" class="w-20 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-white"
+        <span class="text-text-tertiary">→</span>
+        <input :value="formatTime(cue.endTime)" class="w-20 bg-surface-2 border border-border-default rounded px-1 py-0.5 text-[10px] text-white"
           @change="updateCueTime(cue.id, 'endTime', ($event.target as HTMLInputElement).value)" />
-        <input v-model="cue.text" class="flex-1 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-white min-w-0" />
-        <button class="text-red-400 hover:text-red-300 text-[10px]" @click="removeCue(cue.id)">✕</button>
+        <input v-model="cue.text" class="flex-1 bg-surface-2 border border-border-default rounded px-1 py-0.5 text-[10px] text-white min-w-0" />
+        <button class="text-danger hover:text-danger text-[10px]" @click="removeCue(cue.id)">✕</button>
       </div>
     </div>
 
-    <div v-if="!activeTrack.cues.length" class="p-2 text-xs text-gray-500 text-center">
+    <div v-if="!activeTrack.cues.length" class="p-2 text-xs text-text-tertiary text-center">
       No cues. Upload a subtitle file or add cues manually.
     </div>
   </div>

@@ -202,7 +202,7 @@ function onClipDrop(e: DragEvent) {
         </div>
         <span class="text-xs text-text-primary flex-1 font-medium">{{ effect.displayName }}</span>
         <span v-if="effect.providerMappings.includes('ofx')" class="text-[9px] text-info-500 px-1 rounded bg-info-500/10">OFX</span>
-        <span v-if="effect.packId !== 'builtin-core'" class="text-[9px] text-purple-400 px-1 rounded bg-purple-500/10">PACK</span>
+        <span v-if="effect.packId !== 'builtin-core'" class="text-[9px] text-accent-400 px-1 rounded bg-purple-500/10">PACK</span>
         <button
           v-if="timelineStore.selectedTrackClip"
           class="text-[10px] text-primary-400 hover:text-primary-300 px-1"
@@ -215,31 +215,31 @@ function onClipDrop(e: DragEvent) {
 
       <!-- Unavailable Effects -->
       <div v-if="unavailableEffects.length" class="pt-1">
-        <div class="text-[9px] text-gray-600 uppercase tracking-wider px-1 pb-1">Requires Upgrade</div>
+        <div class="text-[9px] text-text-tertiary uppercase tracking-wider px-1 pb-1">Requires Upgrade</div>
         <div
           v-for="effect in unavailableEffects"
           :key="effect.effectKey"
           class="flex items-center gap-2 p-2 rounded border border-gray-800 opacity-40"
         >
-          <span class="text-xs text-gray-500 flex-1">{{ effect.displayName }}</span>
+          <span class="text-xs text-text-tertiary flex-1">{{ effect.displayName }}</span>
           <span class="text-[9px] text-warning-500 px-1 rounded bg-warning-500/10">
             {{ effect.allowedTiers[effect.allowedTiers.length - 1] === 'FREE' ? 'PRO' : effect.allowedTiers.find(t => ['PRO','TEAM','ENTERPRISE'].indexOf(t) > ['PRO','TEAM','ENTERPRISE'].indexOf(currentTier)) || 'UPGRADE' }}
           </span>
         </div>
       </div>
 
-      <div v-if="!filteredEffects.length" class="p-3 text-center text-xs text-gray-500">
+      <div v-if="!filteredEffects.length" class="p-3 text-center text-xs text-text-tertiary">
         No effects in this category
       </div>
     </div>
 
     <!-- Selected Effect Config -->
-    <div v-if="selectedEffect" class="p-2 border-t border-gray-700 space-y-2">
+    <div v-if="selectedEffect" class="p-2 border-t border-border-subtle space-y-2">
       <div class="flex items-center justify-between">
         <span class="text-xs text-white font-medium">{{ selectedEffect.displayName }}</span>
-        <span class="text-[9px] font-mono text-gray-500">{{ selectedEffect.effectKey }}</span>
+        <span class="text-[9px] font-mono text-text-tertiary">{{ selectedEffect.effectKey }}</span>
       </div>
-      <p v-if="selectedEffect.description" class="text-[10px] text-gray-500">{{ selectedEffect.description }}</p>
+      <p v-if="selectedEffect.description" class="text-[10px] text-text-tertiary">{{ selectedEffect.description }}</p>
 
       <div v-if="Object.keys(selectedEffect.parameterSchema).length" class="space-y-2">
         <EffectParameterEditor
@@ -262,7 +262,7 @@ function onClipDrop(e: DragEvent) {
           {{ timelineStore.selectedTrackClip ? 'Apply to Clip' : 'Select a Clip First' }}
         </button>
         <button
-          class="py-1.5 px-3 bg-gray-700 text-gray-400 text-xs rounded hover:bg-gray-600 transition-colors"
+          class="py-1.5 px-3 bg-surface-3 text-text-secondary text-xs rounded hover:bg-surface-4 transition-colors"
           @click="clearSelection"
         >
           ✕
@@ -271,7 +271,7 @@ function onClipDrop(e: DragEvent) {
     </div>
 
     <!-- Effect Chain -->
-    <div v-if="selectedClipEffects.length || timelineStore.selectedTrackClip" class="border-t border-gray-700">
+    <div v-if="selectedClipEffects.length || timelineStore.selectedTrackClip" class="border-t border-border-subtle">
       <EffectChain
         :effects="selectedClipEffects"
         @remove="removeClipEffect"
@@ -281,10 +281,10 @@ function onClipDrop(e: DragEvent) {
     </div>
 
     <!-- Effect Parameter Editor (for applied effects) -->
-    <div v-if="editingEffect" class="border-t border-gray-700 p-2 space-y-2">
+    <div v-if="editingEffect" class="border-t border-border-subtle p-2 space-y-2">
       <div class="flex items-center justify-between">
         <span class="text-xs text-white font-medium">{{ editingEffect.effectKey }}</span>
-        <button class="text-[10px] text-gray-500 hover:text-white" @click="editingEffect = null">✕</button>
+        <button class="text-[10px] text-text-tertiary hover:text-white" @click="editingEffect = null">✕</button>
       </div>
       <template v-for="(paramVal, paramName) in editingEffect.parameters" :key="paramName">
         <EffectParameterEditor
@@ -297,8 +297,8 @@ function onClipDrop(e: DragEvent) {
     </div>
 
     <!-- No Clip Selected Hint -->
-    <div v-if="!timelineStore.selectedTrackClip" class="p-3 border-t border-gray-700 text-center">
-      <p class="text-[10px] text-gray-500">Select a clip on the timeline to apply effects</p>
+    <div v-if="!timelineStore.selectedTrackClip" class="p-3 border-t border-border-subtle text-center">
+      <p class="text-[10px] text-text-tertiary">Select a clip on the timeline to apply effects</p>
     </div>
   </div>
 </template>

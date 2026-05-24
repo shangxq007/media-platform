@@ -59,8 +59,8 @@ function handleColorInput(e: Event) {
 <template>
   <div class="space-y-1">
     <div class="flex items-center justify-between">
-      <label class="text-[10px] text-gray-400">{{ parameterName }}</label>
-      <span v-if="definition.description" class="text-[9px] text-gray-600" :title="definition.description">ⓘ</span>
+      <label class="text-[10px] text-text-secondary">{{ parameterName }}</label>
+      <span v-if="definition.description" class="text-[9px] text-text-tertiary" :title="definition.description">ⓘ</span>
     </div>
 
     <template v-if="definition.type === 'float'">
@@ -80,7 +80,7 @@ function handleColorInput(e: Event) {
           :min="definition.min ?? 0"
           :max="definition.max ?? 100"
           :step="0.01"
-          class="w-16 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-white font-mono text-right focus:outline-none focus:border-primary-400"
+          class="w-16 bg-surface-2 border border-border-default rounded px-1 py-0.5 text-[10px] text-white font-mono text-right focus:outline-none focus:border-primary-400"
           @input="handleNumberInput"
         />
       </div>
@@ -103,7 +103,7 @@ function handleColorInput(e: Event) {
           :min="definition.min ?? 0"
           :max="definition.max ?? 100"
           :step="1"
-          class="w-16 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-white font-mono text-right focus:outline-none focus:border-primary-400"
+          class="w-16 bg-surface-2 border border-border-default rounded px-1 py-0.5 text-[10px] text-white font-mono text-right focus:outline-none focus:border-primary-400"
           @input="handleNumberInput"
         />
       </div>
@@ -113,7 +113,7 @@ function handleColorInput(e: Event) {
       <div class="flex items-center gap-2">
         <button
           class="relative w-8 h-4 rounded-full transition-colors"
-          :class="Boolean(localValue) ? 'bg-primary-500' : 'bg-gray-600'"
+          :class="Boolean(localValue) ? 'bg-primary-500' : 'bg-surface-4'"
           @click="handleToggle({ target: { checked: !localValue } } as unknown as Event)"
         >
           <span
@@ -121,7 +121,7 @@ function handleColorInput(e: Event) {
             :class="Boolean(localValue) ? 'left-4.5' : 'left-0.5'"
           />
         </button>
-        <span class="text-[10px] text-gray-500">{{ Boolean(localValue) ? 'On' : 'Off' }}</span>
+        <span class="text-[10px] text-text-tertiary">{{ Boolean(localValue) ? 'On' : 'Off' }}</span>
       </div>
     </template>
 
@@ -130,13 +130,13 @@ function handleColorInput(e: Event) {
         <input
           type="color"
           :value="String(localValue ?? definition.defaultValue ?? '#ffffff')"
-          class="w-6 h-6 rounded border border-gray-600 cursor-pointer bg-transparent"
+          class="w-6 h-6 rounded border border-border-default cursor-pointer bg-transparent"
           @input="handleColorInput"
         />
         <input
           type="text"
           :value="String(localValue ?? definition.defaultValue ?? '#ffffff')"
-          class="flex-1 bg-gray-800 border border-gray-600 rounded px-1.5 py-0.5 text-[10px] text-white font-mono focus:outline-none focus:border-primary-400"
+          class="flex-1 bg-surface-2 border border-border-default rounded px-1.5 py-0.5 text-[10px] text-white font-mono focus:outline-none focus:border-primary-400"
           placeholder="#rrggbb"
           @input="handleTextInput"
         />
@@ -147,7 +147,7 @@ function handleColorInput(e: Event) {
       <input
         type="text"
         :value="String(localValue ?? definition.defaultValue ?? '')"
-        class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-primary-400"
+        class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-[10px] text-white focus:outline-none focus:border-primary-400"
         :placeholder="definition.description || ''"
         @input="handleTextInput"
       />

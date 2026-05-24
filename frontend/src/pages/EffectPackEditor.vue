@@ -374,7 +374,7 @@ function togglePackTier(tier: string) {
                       :key="tier"
                       class="text-xs px-2 py-1 rounded border"
                       :class="packForm.allowedTiers.includes(tier)
-                        ? 'bg-blue-600/30 border-blue-500 text-info'
+                        ? 'bg-blue-600/30 border-info text-info'
                         : 'bg-surface-2 border-border-default text-text-tertiary'"
                       @click="togglePackTier(tier)"
                     >
@@ -400,9 +400,9 @@ function togglePackTier(tier: string) {
                   <span
                     class="text-xs px-1.5 py-0.5 rounded shrink-0"
                     :class="{
-                      'bg-blue-600/20 text-info': eff.category === 'transition',
+                      'bg-info-muted text-info': eff.category === 'transition',
                       'bg-success-muted text-success': eff.category === 'video',
-                      'bg-yellow-600/20 text-yellow-300': eff.category === 'audio',
+                      'bg-yellow-600/20 text-warning': eff.category === 'audio',
                       'bg-pink-600/20 text-pink-300': eff.category === 'text',
                     }"
                   >
@@ -461,7 +461,7 @@ function togglePackTier(tier: string) {
                         :key="p"
                         class="text-xs px-2 py-1 rounded border"
                         :class="effectForm.providerMappings.includes(p)
-                          ? 'bg-green-600/30 border-green-500 text-success'
+                          ? 'bg-green-600/30 border-success text-success'
                           : 'bg-surface-2 border-border-default text-text-tertiary'"
                         @click="toggleProvider(p)"
                       >
@@ -486,7 +486,7 @@ function togglePackTier(tier: string) {
                         :key="tier"
                         class="text-xs px-2 py-1 rounded border"
                         :class="effectForm.allowedTiers.includes(tier)
-                          ? 'bg-blue-600/30 border-blue-500 text-info'
+                          ? 'bg-blue-600/30 border-info text-info'
                           : 'bg-surface-2 border-border-default text-text-tertiary'"
                         @click="toggleTier(tier, effectForm.allowedTiers)"
                       >
@@ -506,7 +506,7 @@ function togglePackTier(tier: string) {
                       :key="key"
                       class="flex items-center gap-2 p-2 rounded bg-surface-2/50 border border-border-subtle"
                     >
-                      <span class="text-xs font-mono text-purple-300 w-24 shrink-0">{{ key }}</span>
+                      <span class="text-xs font-mono text-accent-300 w-24 shrink-0">{{ key }}</span>
                       <span class="text-xs text-text-tertiary w-16 shrink-0">{{ def.type }}</span>
                       <input
                         v-if="def.type === 'string' || def.type === 'color'"

@@ -18,11 +18,11 @@ const displayKeys = computed(() => {
 
 const statusClass = computed(() => {
   switch (props.status) {
-    case 'ACTIVE': return 'bg-green-600/20 text-green-300'
-    case 'BETA': return 'bg-purple-600/20 text-purple-300'
-    case 'ROLLOUT': return 'bg-blue-600/20 text-blue-300'
-    case 'INACTIVE': return 'bg-gray-600/20 text-gray-400'
-    default: return 'bg-gray-600/20 text-gray-400'
+    case 'ACTIVE': return 'bg-success-muted text-success'
+    case 'BETA': return 'bg-accent-500/10 text-accent-300'
+    case 'ROLLOUT': return 'bg-info-muted text-info'
+    case 'INACTIVE': return 'bg-surface-4/20 text-text-secondary'
+    default: return 'bg-surface-4/20 text-text-secondary'
   }
 })
 
@@ -49,7 +49,7 @@ const statusLabel = computed(() => {
     <span
       v-for="key in displayKeys"
       :key="key"
-      class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-600/10 text-blue-300 border border-blue-700/30"
+      class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-600/10 text-info border border-info/30"
       :class="size === 'md' ? 'text-xs px-2 py-0.5' : ''"
     >
       🚩 {{ key }}

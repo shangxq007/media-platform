@@ -55,34 +55,34 @@ async function revoke(grantId: string) {
 
 <template>
   <WorkspacePageLayout title="Group Grants">
-  <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+  <div class="bg-surface-2 border border-border-subtle rounded-lg p-4 space-y-4">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-300">Group Grants</h3>
-      <button class="text-[10px] text-blue-400 hover:text-blue-300" @click="loadGrants">Refresh</button>
+      <h3 class="text-sm font-semibold text-text-primary">Group Grants</h3>
+      <button class="text-[10px] text-info hover:text-info" @click="loadGrants">Refresh</button>
     </div>
 
-    <div v-if="loading" class="text-gray-500 text-xs">Loading...</div>
-    <div v-else-if="grants.length === 0" class="text-gray-500 text-xs">No group grants</div>
+    <div v-if="loading" class="text-text-tertiary text-xs">Loading...</div>
+    <div v-else-if="grants.length === 0" class="text-text-tertiary text-xs">No group grants</div>
     <div v-else class="space-y-1">
-      <div v-for="grant in grants" :key="grant.grantId" class="flex items-center justify-between p-2 rounded bg-gray-700/20 text-xs">
+      <div v-for="grant in grants" :key="grant.grantId" class="flex items-center justify-between p-2 rounded bg-surface-3/20 text-xs">
         <div>
           <span class="text-white font-medium">{{ grant.groupName }}</span>
-          <span class="text-gray-400 ml-1">→ {{ grant.featureName }}</span>
-          <span v-if="grant.expiresAt" class="text-[10px] text-gray-500 ml-1">expires {{ grant.expiresAt }}</span>
+          <span class="text-text-secondary ml-1">→ {{ grant.featureName }}</span>
+          <span v-if="grant.expiresAt" class="text-[10px] text-text-tertiary ml-1">expires {{ grant.expiresAt }}</span>
         </div>
-        <button class="text-[10px] text-red-400 hover:text-red-300" @click="revoke(grant.grantId)">Revoke</button>
+        <button class="text-[10px] text-danger hover:text-danger" @click="revoke(grant.grantId)">Revoke</button>
       </div>
     </div>
 
-    <div class="pt-3 border-t border-gray-700 space-y-2">
-      <div class="text-[10px] text-gray-500 font-medium">New Group Grant</div>
-      <input v-model="newGroupId" placeholder="Group ID" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
-      <input v-model="newGroupName" placeholder="Group Name" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
-      <select v-model="newFeatureKey" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+    <div class="pt-3 border-t border-border-subtle space-y-2">
+      <div class="text-[10px] text-text-tertiary font-medium">New Group Grant</div>
+      <input v-model="newGroupId" placeholder="Group ID" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1 text-xs text-white" />
+      <input v-model="newGroupName" placeholder="Group Name" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1 text-xs text-white" />
+      <select v-model="newFeatureKey" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1 text-xs text-white">
         <option value="">Select feature...</option>
         <option v-for="feat in commonFeatures" :key="feat" :value="feat">{{ feat }}</option>
       </select>
-      <input v-model="newExpiry" type="date" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+      <input v-model="newExpiry" type="date" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1 text-xs text-white" />
       <button class="w-full px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded" :disabled="granting || !newGroupId || !newFeatureKey" @click="grant">
         {{ granting ? 'Granting...' : 'Grant' }}
       </button>

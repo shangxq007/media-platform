@@ -116,13 +116,13 @@ function shiftAllCues(delta: number) {
 <template>
   <div class="flex flex-col h-full">
     <!-- Upload Section -->
-    <div class="p-2 space-y-2 border-b border-gray-700">
+    <div class="p-2 space-y-2 border-b border-border-subtle">
       <h4 class="text-xs font-medium text-white">Upload Subtitles</h4>
 
       <div class="flex gap-2">
         <select
           v-model="language"
-          class="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white flex-1 focus:outline-none focus:border-primary-400"
+          class="bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white flex-1 focus:outline-none focus:border-primary-400"
         >
           <option v-for="lang in languages" :key="lang.value" :value="lang.value">
             {{ lang.label }}
@@ -130,7 +130,7 @@ function shiftAllCues(delta: number) {
         </select>
         <select
           v-model="burnIn"
-          class="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-primary-400"
+          class="bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-primary-400"
         >
           <option :value="true">Burn-in</option>
           <option :value="false">External</option>
@@ -140,7 +140,7 @@ function shiftAllCues(delta: number) {
       <label class="block">
         <span
           class="block w-full text-center py-1.5 text-xs rounded cursor-pointer transition-colors"
-          :class="uploading ? 'bg-gray-700 text-gray-400' : 'bg-primary-500/20 text-primary-400 hover:bg-primary-500/30'"
+          :class="uploading ? 'bg-surface-3 text-text-secondary' : 'bg-primary-500/20 text-primary-400 hover:bg-primary-500/30'"
         >
           {{ uploading ? 'Uploading...' : '+ Upload SRT/ASS/VTT' }}
         </span>
@@ -148,7 +148,7 @@ function shiftAllCues(delta: number) {
       </label>
 
       <label class="block">
-        <span class="block w-full text-center py-1.5 text-xs bg-gray-700 text-gray-400 rounded cursor-pointer hover:bg-gray-600 transition-colors">
+        <span class="block w-full text-center py-1.5 text-xs bg-surface-3 text-text-secondary rounded cursor-pointer hover:bg-surface-4 transition-colors">
           + Upload Font (TTF/OTF)
         </span>
         <input type="file" accept=".ttf,.otf" multiple class="hidden" @change="onFontUpload" />
@@ -156,15 +156,15 @@ function shiftAllCues(delta: number) {
     </div>
 
     <!-- Track Selector -->
-    <div v-if="subtitleStore.tracks.length" class="p-2 border-b border-gray-700 space-y-1">
-      <div class="text-[10px] text-gray-500 uppercase tracking-wider">Tracks</div>
+    <div v-if="subtitleStore.tracks.length" class="p-2 border-b border-border-subtle space-y-1">
+      <div class="text-[10px] text-text-tertiary uppercase tracking-wider">Tracks</div>
       <div
         v-for="track in subtitleStore.tracks"
         :key="track.id"
         class="p-1.5 rounded border text-xs cursor-pointer transition-colors"
         :class="subtitleStore.activeTrackId === track.id
           ? 'border-primary-400 bg-primary-500/10'
-          : 'border-gray-700 hover:border-gray-600'"
+          : 'border-border-subtle hover:border-border-default'"
         @click="subtitleStore.activeTrackId = track.id"
       >
         <div class="flex items-center justify-between">
@@ -176,9 +176,9 @@ function shiftAllCues(delta: number) {
             >
               {{ track.burnIn ? 'BURN' : 'EXT' }}
             </span>
-            <span class="text-gray-500 text-[10px]">{{ track.cues.length }}</span>
+            <span class="text-text-tertiary text-[10px]">{{ track.cues.length }}</span>
             <button
-              class="text-gray-600 hover:text-danger-500 transition-colors"
+              class="text-text-tertiary hover:text-danger-500 transition-colors"
               title="Remove track"
               @click.stop="subtitleStore.removeTrack(track.id)"
             >
@@ -189,7 +189,7 @@ function shiftAllCues(delta: number) {
         <div v-if="subtitleStore.fonts.length" class="mt-1">
           <select
             :value="track.fontId || ''"
-            class="w-full bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-white focus:outline-none"
+            class="w-full bg-surface-2 border border-border-default rounded px-1 py-0.5 text-[10px] text-white focus:outline-none"
             @change="subtitleStore.setTrackFont(track.id, ($event.target as HTMLInputElement).value)"
             @click.stop
           >
@@ -203,16 +203,16 @@ function shiftAllCues(delta: number) {
     </div>
 
     <!-- Track Controls -->
-    <div v-if="subtitleStore.activeTrack" class="px-2 py-1 border-b border-gray-700/50 flex items-center justify-between">
+    <div v-if="subtitleStore.activeTrack" class="px-2 py-1 border-b border-border-subtle/50 flex items-center justify-between">
       <div class="flex gap-1">
         <button
-          class="px-1.5 py-0.5 text-[10px] bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+          class="px-1.5 py-0.5 text-[10px] bg-surface-3 rounded text-text-secondary hover:text-white transition-colors"
           @click="shiftAllCues(-0.5)"
         >
           ◀ 0.5s
         </button>
         <button
-          class="px-1.5 py-0.5 text-[10px] bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+          class="px-1.5 py-0.5 text-[10px] bg-surface-3 rounded text-text-secondary hover:text-white transition-colors"
           @click="shiftAllCues(0.5)"
         >
           0.5s ▶
@@ -249,7 +249,7 @@ function shiftAllCues(delta: number) {
     </div>
 
     <!-- Cue Editor -->
-    <div v-if="editingCue && subtitleStore.activeTrack" class="p-2 border-t border-gray-700">
+    <div v-if="editingCue && subtitleStore.activeTrack" class="p-2 border-t border-border-subtle">
       <SubtitleCueEditor
         :cue="editingCue"
         :duration="timelineDuration"
@@ -262,21 +262,21 @@ function shiftAllCues(delta: number) {
     <div v-if="!subtitleStore.tracks.length" class="flex-1 flex items-center justify-center p-4">
       <div class="text-center">
         <div class="text-2xl mb-2">📝</div>
-        <p class="text-xs text-gray-500">No subtitle tracks</p>
-        <p class="text-[10px] text-gray-600 mt-1">Upload a file to get started</p>
+        <p class="text-xs text-text-tertiary">No subtitle tracks</p>
+        <p class="text-[10px] text-text-tertiary mt-1">Upload a file to get started</p>
       </div>
     </div>
 
     <!-- Fonts List -->
-    <div v-if="subtitleStore.fonts.length" class="p-2 border-t border-gray-700 space-y-1">
-      <div class="text-[10px] text-gray-500 uppercase tracking-wider">Fonts</div>
+    <div v-if="subtitleStore.fonts.length" class="p-2 border-t border-border-subtle space-y-1">
+      <div class="text-[10px] text-text-tertiary uppercase tracking-wider">Fonts</div>
       <div
         v-for="font in subtitleStore.fonts"
         :key="font.fontId"
-        class="p-1.5 rounded border border-gray-700 text-xs text-white flex justify-between"
+        class="p-1.5 rounded border border-border-subtle text-xs text-white flex justify-between"
       >
         <span>{{ font.family }} ({{ font.format.toUpperCase() }})</span>
-        <span class="text-gray-500">{{ (font.fileSize / 1024).toFixed(0) }}KB</span>
+        <span class="text-text-tertiary">{{ (font.fileSize / 1024).toFixed(0) }}KB</span>
       </div>
     </div>
 

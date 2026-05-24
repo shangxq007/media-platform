@@ -6,12 +6,12 @@ export interface OTIOClip {
     start_time: number
     duration: number
   }
-  transforms?: any[]
+  transforms?: unknown[]
 }
 
 export interface OTIOTrack {
   name: string
-  children: any[]
+  children: Record<string, unknown>[]
 }
 
 export interface OTIOTimeline {
@@ -19,10 +19,10 @@ export interface OTIOTimeline {
   tracks: OTIOTrack[]
 }
 
-export function exportToOTIO(timeline: any): OTIOTimeline {
+export function exportToOTIO(timeline: Record<string, unknown>): OTIOTimeline {
   const tracks: OTIOTrack[] = []
-  timeline.tracks.forEach((track: any) => {
-    const clips: any[] = track.clips.map((clip: any) => ({
+  timeline.tracks.forEach((track: Record<string, unknown>) => {
+    const clips: Record<string, unknown>[] = (track.clips as Record<string, unknown>[]).map((clip: Record<string, unknown>) => ({
       name: clip.clipId,
       source_range: {
         start_time: clip.clipStart,
@@ -38,7 +38,7 @@ export function exportToOTIO(timeline: any): OTIOTimeline {
   return { name: 'media-platform-timeline', tracks }
 }
 
-export function importFromOTIO(otioData: OTIOTimeline, timelineStore: any) {
+export function importFromOTIO(otioData: OTIOTimeline, timelineStore: Record<string, unknown>) {
   // Clear existing timeline
   timelineStore.state.tracks = []
 

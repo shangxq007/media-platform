@@ -32,11 +32,11 @@ const isImage = computed(() =>
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
         @click.self="$emit('close')"
       >
-        <div class="bg-gray-900 border border-gray-700 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+        <div class="bg-surface-0 border border-border-subtle rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
             <h3 class="text-sm font-medium text-white truncate">{{ artifact.name }}</h3>
             <button
-              class="text-gray-400 hover:text-white text-lg leading-none"
+              class="text-text-secondary hover:text-white text-lg leading-none"
               aria-label="Close preview"
               @click="$emit('close')"
             >
@@ -57,7 +57,7 @@ const isImage = computed(() =>
             </div>
 
             <div v-else-if="isAudio && artifact.outputUrl" class="w-full flex flex-col items-center gap-4">
-              <div class="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center">
+              <div class="w-24 h-24 rounded-full bg-surface-2 flex items-center justify-center">
                 <span class="text-4xl">🎵</span>
               </div>
               <audio
@@ -79,28 +79,28 @@ const isImage = computed(() =>
             </div>
 
             <div v-else class="text-center">
-              <div class="w-20 h-20 mx-auto mb-4 rounded-lg bg-gray-800 flex items-center justify-center">
+              <div class="w-20 h-20 mx-auto mb-4 rounded-lg bg-surface-2 flex items-center justify-center">
                 <span class="text-3xl">📄</span>
               </div>
-              <p class="text-sm text-gray-400 mb-2">Preview not available for {{ artifact.outputFormat.toUpperCase() }} format</p>
-              <p class="text-xs text-gray-500">Backend render is still stub — no actual media file generated</p>
+              <p class="text-sm text-text-secondary mb-2">Preview not available for {{ artifact.outputFormat.toUpperCase() }} format</p>
+              <p class="text-xs text-text-tertiary">Backend render is still stub — no actual media file generated</p>
               <a
                 v-if="artifact.outputUrl"
                 :href="artifact.outputUrl"
                 target="_blank"
-                class="inline-block mt-3 px-3 py-1.5 text-xs bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600/30"
+                class="inline-block mt-3 px-3 py-1.5 text-xs bg-info-muted text-info rounded hover:bg-blue-600/30"
               >
                 Open file externally
               </a>
             </div>
           </div>
 
-          <div class="px-4 py-3 border-t border-gray-700 flex items-center justify-between">
-            <div class="text-[10px] text-gray-500">
+          <div class="px-4 py-3 border-t border-border-subtle flex items-center justify-between">
+            <div class="text-[10px] text-text-tertiary">
               {{ artifact.outputFormat.toUpperCase() }} · {{ artifact.width }}×{{ artifact.height }}
             </div>
             <button
-              class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+              class="px-3 py-1 text-xs bg-surface-3 text-text-primary rounded hover:bg-surface-4"
               @click="$emit('close')"
             >
               Close

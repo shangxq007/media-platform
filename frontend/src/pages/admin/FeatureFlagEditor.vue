@@ -140,7 +140,7 @@ async function handleSave() {
         <button class="text-text-secondary hover:text-white text-xl leading-none" @click="emit('close')">×</button>
       </div>
 
-      <div v-if="saveError" class="mx-6 mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-danger text-sm">
+      <div v-if="saveError" class="mx-6 mt-4 p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
         {{ saveError }}
       </div>
 
@@ -267,7 +267,7 @@ async function handleSave() {
               <div class="flex items-center gap-3">
                 <span class="text-xs text-text-tertiary font-mono">#{{ rule.priority }}</span>
                 <span class="text-xs text-text-primary">{{ rule.name || 'Unnamed rule' }}</span>
-                <span class="text-xs px-1.5 py-0.5 rounded bg-blue-600/20 text-info">{{ rule.percentage }}%</span>
+                <span class="text-xs px-1.5 py-0.5 rounded bg-info-muted text-info">{{ rule.percentage }}%</span>
                 <span class="text-xs text-text-tertiary">{{ rule.conditions.length }} conditions</span>
               </div>
               <div class="flex gap-1">

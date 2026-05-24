@@ -33,12 +33,12 @@ export function useWorkflowStatus() {
 
   const statusColor = computed(() => {
     switch (status.value) {
-      case 'idle': return 'text-gray-400'
-      case 'running': return 'text-yellow-400'
-      case 'completed': return 'text-green-400'
-      case 'failed': return 'text-red-400'
-      case 'cancelled': return 'text-gray-500'
-      default: return 'text-gray-400'
+      case 'idle': return 'text-text-secondary'
+      case 'running': return 'text-warning'
+      case 'completed': return 'text-success'
+      case 'failed': return 'text-danger'
+      case 'cancelled': return 'text-text-tertiary'
+      default: return 'text-text-secondary'
     }
   })
 

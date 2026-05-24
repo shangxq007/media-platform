@@ -171,12 +171,12 @@ const showManifestPanel = computed(() => activeTab.value === 'manifest' && isPro
         <!-- GraphQL Status Bar -->
         <div v-if="currentTemplateId" class="px-md py-sm border-b border-default bg-bg-surface flex items-center justify-between text-xs flex-shrink-0">
           <div class="flex items-center gap-3">
-            <span v-if="restFallback" class="text-blue-400">REST fallback</span>
-            <span v-else-if="gqlTemplateDetail" class="text-green-400">GraphQL loaded</span>
-            <span v-else-if="loading || gqlLoading" class="text-yellow-400">Loading...</span>
-            <span v-if="error" class="text-red-400">{{ errorCode || error.message }}</span>
+            <span v-if="restFallback" class="text-info">REST fallback</span>
+            <span v-else-if="gqlTemplateDetail" class="text-success">GraphQL loaded</span>
+            <span v-else-if="loading || gqlLoading" class="text-warning">Loading...</span>
+            <span v-if="error" class="text-danger">{{ errorCode || error.message }}</span>
           </div>
-          <div class="flex items-center gap-3 text-gray-400">
+          <div class="flex items-center gap-3 text-text-secondary">
             <span v-if="gqlTemplateDetail">v{{ gqlTemplateDetail.currentVersion }}</span>
             <span v-if="gqlTemplateDetail">{{ gqlTemplateDetail.tags?.length || 0 }} tags</span>
             <span v-if="gqlTemplateDetail">{{ gqlTemplateDetail.executions?.length || 0 }} recent executions</span>
@@ -184,18 +184,18 @@ const showManifestPanel = computed(() => activeTab.value === 'manifest' && isPro
         </div>
 
         <!-- Feature Flag Status Bar -->
-        <div v-if="gqlTemplateDetail?.featureFlagStatus" class="px-4 py-1 border-b border-gray-700 bg-gray-800/30 flex items-center gap-4 text-[10px]">
-          <span class="text-gray-500">FF:</span>
-          <span :class="gqlTemplateDetail.featureFlagStatus.promptManagementEnabled ? 'text-green-400' : 'text-gray-500'">
+        <div v-if="gqlTemplateDetail?.featureFlagStatus" class="px-4 py-1 border-b border-border-subtle bg-surface-2/30 flex items-center gap-4 text-[10px]">
+          <span class="text-text-tertiary">FF:</span>
+          <span :class="gqlTemplateDetail.featureFlagStatus.promptManagementEnabled ? 'text-success' : 'text-text-tertiary'">
             management={{ gqlTemplateDetail.featureFlagStatus.promptManagementEnabled ? 'ON' : 'OFF' }}
           </span>
-          <span :class="gqlTemplateDetail.featureFlagStatus.riskReviewEnabled ? 'text-green-400' : 'text-gray-500'">
+          <span :class="gqlTemplateDetail.featureFlagStatus.riskReviewEnabled ? 'text-success' : 'text-text-tertiary'">
             risk={{ gqlTemplateDetail.featureFlagStatus.riskReviewEnabled ? 'ON' : 'OFF' }}
           </span>
-          <span :class="gqlTemplateDetail.featureFlagStatus.executionCostPreviewEnabled ? 'text-green-400' : 'text-gray-500'">
+          <span :class="gqlTemplateDetail.featureFlagStatus.executionCostPreviewEnabled ? 'text-success' : 'text-text-tertiary'">
             cost={{ gqlTemplateDetail.featureFlagStatus.executionCostPreviewEnabled ? 'ON' : 'OFF' }}
           </span>
-          <span :class="gqlTemplateDetail.featureFlagStatus.manifestPanelEnabled ? 'text-green-400' : 'text-gray-500'">
+          <span :class="gqlTemplateDetail.featureFlagStatus.manifestPanelEnabled ? 'text-success' : 'text-text-tertiary'">
             manifest={{ gqlTemplateDetail.featureFlagStatus.manifestPanelEnabled ? 'ON' : 'OFF' }}
           </span>
         </div>
@@ -217,8 +217,8 @@ const showManifestPanel = computed(() => activeTab.value === 'manifest' && isPro
           <div v-else class="flex-1 flex items-center justify-center">
             <div class="text-center space-y-3">
               <div class="text-3xl">🚩</div>
-              <p class="text-sm text-gray-400">Manifest panel is disabled by feature flag</p>
-              <p class="text-xs text-gray-500">Enable prompt.manifestPanel.enabled to access this feature</p>
+              <p class="text-sm text-text-secondary">Manifest panel is disabled by feature flag</p>
+              <p class="text-xs text-text-tertiary">Enable prompt.manifestPanel.enabled to access this feature</p>
             </div>
           </div>
         </template>

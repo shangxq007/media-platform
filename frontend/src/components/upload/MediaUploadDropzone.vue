@@ -53,7 +53,7 @@ function onFileChange(e: Event) {
     class="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors"
     :class="isDragging
       ? 'border-primary-400 bg-primary-500/10'
-      : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800/50'"
+      : 'border-border-default hover:border-border-default hover:bg-surface-2/50'"
     tabindex="0"
     role="button"
     aria-label="Upload media files"
@@ -65,11 +65,11 @@ function onFileChange(e: Event) {
     @keydown.space.prevent="onClick"
   >
     <div class="text-2xl mb-1" aria-hidden="true">📁</div>
-    <p class="text-xs text-gray-400">
+    <p class="text-xs text-text-secondary">
       <span v-if="isDragging">Drop files here</span>
       <span v-else>Drag & drop files or <span class="text-primary-400 underline">browse</span></span>
     </p>
-    <p class="text-[10px] text-gray-600 mt-1">
+    <p class="text-[10px] text-text-tertiary mt-1">
       Video, Audio, Image, SRT, ASS, VTT, JSON
     </p>
     <input

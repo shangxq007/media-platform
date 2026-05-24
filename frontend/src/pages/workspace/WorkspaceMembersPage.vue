@@ -40,15 +40,15 @@ async function selectMember(member: WorkspaceMember) {
       <button class="theme-btn theme-btn-secondary theme-btn-sm" type="button" @click="loadMembers">Refresh</button>
     </template>
 
-    <div v-if="loading" class="text-gray-400 text-sm">Loading...</div>
-    <div v-else-if="members.length === 0" class="text-gray-500 text-sm">No members found</div>
+    <div v-if="loading" class="text-text-secondary text-sm">Loading...</div>
+    <div v-else-if="members.length === 0" class="text-text-tertiary text-sm">No members found</div>
 
     <div v-else class="flex gap-6">
       <div class="flex-1">
-        <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+        <div class="bg-surface-2 border border-border-subtle rounded-lg overflow-hidden">
           <table class="w-full text-sm">
             <thead>
-              <tr class="border-b border-gray-700 text-xs text-gray-400">
+              <tr class="border-b border-border-subtle text-xs text-text-secondary">
                 <th class="text-left px-4 py-2">Member</th>
                 <th class="text-left px-4 py-2">Email</th>
                 <th class="text-left px-4 py-2">Role</th>
@@ -58,14 +58,14 @@ async function selectMember(member: WorkspaceMember) {
             </thead>
             <tbody>
               <tr v-for="member in members" :key="member.userId"
-                class="border-b border-gray-700/50 cursor-pointer hover:bg-gray-700/30"
+                class="border-b border-border-subtle/50 cursor-pointer hover:bg-surface-3/30"
                 :class="selectedMember?.userId === member.userId ? 'bg-blue-600/10' : ''"
                 @click="selectMember(member)">
                 <td class="px-4 py-2 text-xs text-white">{{ member.displayName }}</td>
-                <td class="px-4 py-2 text-xs text-gray-400">{{ member.email }}</td>
-                <td class="px-4 py-2"><span class="px-1.5 py-0.5 rounded bg-gray-700 text-[10px] text-gray-300">{{ member.role }}</span></td>
-                <td class="px-4 py-2 text-xs text-gray-400">{{ member.entitlements.length }}</td>
-                <td class="px-4 py-2 text-xs text-gray-500">{{ member.joinedAt }}</td>
+                <td class="px-4 py-2 text-xs text-text-secondary">{{ member.email }}</td>
+                <td class="px-4 py-2"><span class="px-1.5 py-0.5 rounded bg-surface-3 text-[10px] text-text-primary">{{ member.role }}</span></td>
+                <td class="px-4 py-2 text-xs text-text-secondary">{{ member.entitlements.length }}</td>
+                <td class="px-4 py-2 text-xs text-text-tertiary">{{ member.joinedAt }}</td>
               </tr>
             </tbody>
           </table>

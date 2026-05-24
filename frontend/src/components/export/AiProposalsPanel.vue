@@ -69,17 +69,17 @@ async function reject(id: string) {
     <div
       v-for="p in proposals"
       :key="p.id"
-      class="flex flex-col gap-xs border border-gray-700/60 rounded p-xs text-xs"
+      class="flex flex-col gap-xs border border-border-subtle/60 rounded p-xs text-xs"
     >
       <div class="flex justify-between items-start gap-sm">
         <div class="min-w-0">
-          <span class="font-mono text-gray-300">{{ p.id }}</span>
+          <span class="font-mono text-text-primary">{{ p.id }}</span>
           <span
             class="ml-1 px-1 rounded text-[10px]"
-            :class="p.status === 'PENDING' ? 'bg-amber-900 text-amber-300' : p.status === 'ACCEPTED' ? 'bg-emerald-900 text-emerald-300' : 'bg-gray-800 text-gray-400'"
+            :class="p.status === 'PENDING' ? 'bg-amber-900 text-amber-300' : p.status === 'ACCEPTED' ? 'bg-emerald-900 text-emerald-300' : 'bg-surface-2 text-text-secondary'"
           >{{ p.status }}</span>
-          <p class="text-gray-400 mt-0.5 truncate">{{ p.summary || '（无摘要）' }}</p>
-          <p class="text-[10px] text-gray-600">{{ p.operationCount }} 项 Patch · {{ p.createdAt }}</p>
+          <p class="text-text-secondary mt-0.5 truncate">{{ p.summary || '（无摘要）' }}</p>
+          <p class="text-[10px] text-text-tertiary">{{ p.operationCount }} 项 Patch · {{ p.createdAt }}</p>
         </div>
         <div
           v-if="p.status === 'PENDING'"
@@ -95,7 +95,7 @@ async function reject(id: string) {
           </button>
           <button
             type="button"
-            class="rounded border border-gray-600 px-2 py-0.5 text-[10px] disabled:opacity-50"
+            class="rounded border border-border-default px-2 py-0.5 text-[10px] disabled:opacity-50"
             :disabled="workingId !== null"
             @click="reject(p.id)"
           >
@@ -106,7 +106,7 @@ async function reject(id: string) {
     </div>
     <p
       v-if="pending.length === 0 && proposals.length"
-      class="text-[10px] text-gray-500"
+      class="text-[10px] text-text-tertiary"
     >
       无待处理建议
     </p>

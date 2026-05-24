@@ -16,7 +16,7 @@ const emit = defineEmits<{
 
 <template>
   <div class="space-y-1">
-    <label class="text-xs text-gray-400 block">{{ label }}</label>
+    <label class="text-xs text-text-secondary block">{{ label }}</label>
     <input
       :type="type || 'text'"
       :value="modelValue"
@@ -24,7 +24,7 @@ const emit = defineEmits<{
       :min="min"
       :max="max"
       :step="step"
-      class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+      class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white"
       @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
   </div>

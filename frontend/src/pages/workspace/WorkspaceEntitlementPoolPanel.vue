@@ -35,21 +35,21 @@ function barClass(pct: number): string {
 
 <template>
   <WorkspacePageLayout title="Entitlement Pool">
-  <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+  <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
     <div class="flex items-center justify-between mb-3">
-      <h3 class="text-sm font-semibold text-gray-300">Entitlement Pool</h3>
-      <button class="text-[10px] text-blue-400 hover:text-blue-300" @click="loadPool">Refresh</button>
+      <h3 class="text-sm font-semibold text-text-primary">Entitlement Pool</h3>
+      <button class="text-[10px] text-info hover:text-info" @click="loadPool">Refresh</button>
     </div>
 
-    <div v-if="loading" class="text-gray-500 text-xs">Loading...</div>
-    <div v-else-if="pools.length === 0" class="text-gray-500 text-xs">No pool data</div>
+    <div v-if="loading" class="text-text-tertiary text-xs">Loading...</div>
+    <div v-else-if="pools.length === 0" class="text-text-tertiary text-xs">No pool data</div>
     <div v-else class="space-y-3">
       <div v-for="pool in pools" :key="pool.featureKey">
         <div class="flex items-center justify-between text-xs mb-1">
-          <span class="text-gray-300">{{ pool.featureName }}</span>
-          <span class="text-gray-500">{{ pool.allocated }} / {{ pool.totalQuota }} {{ pool.unit }} ({{ pool.remaining }} remaining)</span>
+          <span class="text-text-primary">{{ pool.featureName }}</span>
+          <span class="text-text-tertiary">{{ pool.allocated }} / {{ pool.totalQuota }} {{ pool.unit }} ({{ pool.remaining }} remaining)</span>
         </div>
-        <div class="w-full bg-gray-700 rounded-full h-2">
+        <div class="w-full bg-surface-3 rounded-full h-2">
           <div class="h-2 rounded-full transition-all" :class="barClass(percent(pool))"
             :style="{ width: percent(pool) + '%' }" />
         </div>

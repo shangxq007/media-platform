@@ -117,44 +117,44 @@ onMounted(loadFlags)
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-xl font-bold">Feature Flag Management</h1>
-        <p class="text-sm text-gray-400 mt-1">Manage feature flags, targeting rules, and rollouts</p>
+        <p class="text-sm text-text-secondary mt-1">Manage feature flags, targeting rules, and rollouts</p>
       </div>
       <div class="flex gap-2">
         <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-sm rounded text-white" @click="createFlag">
           + New Flag
         </button>
-        <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded text-white" @click="loadFlags">
+        <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded text-white" @click="loadFlags">
           Refresh
         </button>
       </div>
     </div>
 
     <!-- Tabs -->
-    <div class="flex border-b border-gray-700 mb-4">
+    <div class="flex border-b border-border-subtle mb-4">
       <button
         class="px-4 py-2 text-sm"
-        :class="activeTab === 'flags' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white'"
+        :class="activeTab === 'flags' ? 'text-info border-b-2 border-blue-400' : 'text-text-secondary hover:text-white'"
         @click="activeTab = 'flags'"
       >
         Flags ({{ flags.length }})
       </button>
       <button
         class="px-4 py-2 text-sm"
-        :class="activeTab === 'preview' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white'"
+        :class="activeTab === 'preview' ? 'text-info border-b-2 border-blue-400' : 'text-text-secondary hover:text-white'"
         @click="activeTab = 'preview'"
       >
         Evaluation Preview
       </button>
       <button
         class="px-4 py-2 text-sm"
-        :class="activeTab === 'logs' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white'"
+        :class="activeTab === 'logs' ? 'text-info border-b-2 border-blue-400' : 'text-text-secondary hover:text-white'"
         @click="activeTab = 'logs'"
       >
         Evaluation Logs
       </button>
     </div>
 
-    <div v-if="error" class="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
+    <div v-if="error" class="mb-4 p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
       {{ error }}
     </div>
 
@@ -166,22 +166,22 @@ onMounted(loadFlags)
           <input
             v-model="searchQuery"
             type="text"
-            class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+            class="flex-1 bg-surface-2 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             placeholder="Search by key, name, or owner..."
           />
-          <select v-model="filterType" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200">
+          <select v-model="filterType" class="bg-surface-2 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary">
             <option value="ALL">All Types</option>
             <option value="BOOLEAN">Boolean</option>
             <option value="STRING">String</option>
             <option value="NUMBER">Number</option>
             <option value="JSON">JSON</option>
           </select>
-          <select v-model="filterStatus" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200">
+          <select v-model="filterStatus" class="bg-surface-2 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary">
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>
             <option value="DISABLED">Disabled</option>
           </select>
-          <span class="text-xs text-gray-500">{{ filteredFlags.length }} flags</span>
+          <span class="text-xs text-text-tertiary">{{ filteredFlags.length }} flags</span>
         </div>
 
         <EmptyState
@@ -197,10 +197,10 @@ onMounted(loadFlags)
           </template>
         </EmptyState>
 
-        <div v-else class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+        <div v-else class="bg-surface-2 border border-border-subtle rounded-lg overflow-hidden">
           <table class="w-full text-sm">
             <thead>
-              <tr class="border-b border-gray-700 text-xs text-gray-400">
+              <tr class="border-b border-border-subtle text-xs text-text-secondary">
                 <th class="text-left px-3 py-2">Key</th>
                 <th class="text-left px-3 py-2">Name</th>
                 <th class="text-left px-3 py-2">Type</th>
@@ -212,36 +212,36 @@ onMounted(loadFlags)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="flag in filteredFlags" :key="flag.flagKey" class="border-b border-gray-700/50 hover:bg-gray-700/30">
+              <tr v-for="flag in filteredFlags" :key="flag.flagKey" class="border-b border-border-subtle/50 hover:bg-surface-3/30">
                 <td class="px-3 py-2">
-                  <span class="text-xs font-mono text-blue-300">{{ flag.flagKey }}</span>
+                  <span class="text-xs font-mono text-info">{{ flag.flagKey }}</span>
                 </td>
-                <td class="px-3 py-2 text-xs text-gray-200">{{ flag.name }}</td>
+                <td class="px-3 py-2 text-xs text-text-primary">{{ flag.name }}</td>
                 <td class="px-3 py-2">
                   <StatusBadge :variant="typeVariant(flag.type)" :label="flag.type" />
                 </td>
                 <td class="px-3 py-2 text-center">
                   <span
                     class="text-xs px-1.5 py-0.5 rounded"
-                    :class="flag.enabled ? 'bg-green-600/20 text-green-300' : 'bg-gray-600/20 text-gray-400'"
+                    :class="flag.enabled ? 'bg-success-muted text-success' : 'bg-surface-4/20 text-text-secondary'"
                   >
                     {{ flag.enabled ? 'Active' : 'Disabled' }}
                   </span>
                 </td>
-                <td class="px-3 py-2 text-xs text-gray-400">{{ flag.owner }}</td>
-                <td class="px-3 py-2 text-xs text-gray-400">{{ flag.targetingRules.length }}</td>
-                <td class="px-3 py-2 text-xs text-gray-500">{{ flag.updatedAt?.slice(0, 10) || '—' }}</td>
+                <td class="px-3 py-2 text-xs text-text-secondary">{{ flag.owner }}</td>
+                <td class="px-3 py-2 text-xs text-text-secondary">{{ flag.targetingRules.length }}</td>
+                <td class="px-3 py-2 text-xs text-text-tertiary">{{ flag.updatedAt?.slice(0, 10) || '—' }}</td>
                 <td class="px-3 py-2">
                   <div class="flex items-center justify-center gap-1">
-                    <button class="text-[10px] text-blue-400 hover:text-blue-300 px-1" @click="editFlag(flag)">Edit</button>
+                    <button class="text-[10px] text-info hover:text-info px-1" @click="editFlag(flag)">Edit</button>
                     <button
                       class="text-[10px] px-1"
-                      :class="flag.enabled ? 'text-yellow-400 hover:text-yellow-300' : 'text-green-400 hover:text-green-300'"
+                      :class="flag.enabled ? 'text-warning hover:text-warning' : 'text-success hover:text-success'"
                       @click="toggleFlag(flag)"
                     >
                       {{ flag.enabled ? 'Disable' : 'Enable' }}
                     </button>
-                    <button class="text-[10px] text-red-400 hover:text-red-300 px-1" @click="archiveFlag(flag)">Archive</button>
+                    <button class="text-[10px] text-danger hover:text-danger px-1" @click="archiveFlag(flag)">Archive</button>
                   </div>
                 </td>
               </tr>

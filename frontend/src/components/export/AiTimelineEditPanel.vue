@@ -95,19 +95,19 @@ async function loadBaseFromJob() {
 </script>
 
 <template>
-  <div class="rounded-lg border border-gray-700 bg-gray-900/60 p-md space-y-sm">
+  <div class="rounded-lg border border-border-subtle bg-surface-0/60 p-md space-y-sm">
     <div class="flex items-center justify-between">
-      <span class="text-sm font-medium text-gray-200">AI 时间线编辑</span>
-      <span class="text-xs text-gray-500 font-mono">{{ editSessionId }}</span>
+      <span class="text-sm font-medium text-text-primary">AI 时间线编辑</span>
+      <span class="text-xs text-text-tertiary font-mono">{{ editSessionId }}</span>
     </div>
-    <p class="text-xs text-gray-400">
+    <p class="text-xs text-text-secondary">
       基于上一轮成片时间线用自然语言改素材、特效或结构；结果写入 Internal Timeline 1.0（经 LiteLLM / Stub）。
     </p>
 
-    <label class="block text-xs text-gray-400">基准作业（可选，留空则用当前编辑器时间线）</label>
+    <label class="block text-xs text-text-secondary">基准作业（可选，留空则用当前编辑器时间线）</label>
     <select
       v-model="baseJobId"
-      class="w-full rounded border border-gray-600 bg-gray-800 px-sm py-xs text-sm text-gray-100"
+      class="w-full rounded border border-border-default bg-surface-2 px-sm py-xs text-sm text-text-primary"
       @change="loadBaseFromJob"
     >
       <option value="">— 当前时间线 —</option>
@@ -120,15 +120,15 @@ async function loadBaseFromJob() {
       </option>
     </select>
 
-    <label class="block text-xs text-gray-400">意图标签（审计）</label>
+    <label class="block text-xs text-text-secondary">意图标签（审计）</label>
     <input
       v-model="intent"
       type="text"
       placeholder="e.g. replace_bgm, shorten_intro"
-      class="w-full rounded border border-gray-600 bg-gray-800 px-sm py-xs text-sm"
+      class="w-full rounded border border-border-default bg-surface-2 px-sm py-xs text-sm"
     />
 
-    <label class="flex items-center gap-xs text-xs text-gray-300">
+    <label class="flex items-center gap-xs text-xs text-text-primary">
       <input
         v-model="humanInTheLoop"
         type="checkbox"
@@ -136,12 +136,12 @@ async function loadBaseFromJob() {
       人工确认后再应用 Patch（写入 aiProposals）
     </label>
 
-    <label class="block text-xs text-gray-400">编辑指令</label>
+    <label class="block text-xs text-text-secondary">编辑指令</label>
     <textarea
       v-model="instruction"
       rows="3"
       placeholder="例如：将 BGM 音量降低 30%，片头增加 1 秒淡入"
-      class="w-full rounded border border-gray-600 bg-gray-800 px-sm py-xs text-sm resize-y"
+      class="w-full rounded border border-border-default bg-surface-2 px-sm py-xs text-sm resize-y"
     />
 
     <button
@@ -155,7 +155,7 @@ async function loadBaseFromJob() {
 
     <p
       v-if="lastResult"
-      class="text-xs text-gray-500"
+      class="text-xs text-text-tertiary"
     >
       {{ lastResult.provider }} / {{ lastResult.model }}
       <span v-if="lastResult.appliedPatch"> · JSON Patch</span>

@@ -80,31 +80,31 @@ async function save() {
 
 <template>
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 w-[600px] max-h-[80vh] overflow-y-auto space-y-4">
+    <div class="bg-surface-2 border border-border-subtle rounded-lg p-6 w-[600px] max-h-[80vh] overflow-y-auto space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold text-white">{{ bundle ? 'Edit Bundle' : 'New Bundle' }}</h2>
-        <button class="text-gray-400 hover:text-white" @click="emit('close')">✕</button>
+        <button class="text-text-secondary hover:text-white" @click="emit('close')">✕</button>
       </div>
 
       <div class="space-y-3">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Name</label>
-          <input v-model="form.name" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white" />
+          <label class="text-xs text-text-secondary block mb-1">Name</label>
+          <input v-model="form.name" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1.5 text-sm text-white" />
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Description</label>
-          <textarea v-model="form.description" rows="2" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white" />
+          <label class="text-xs text-text-secondary block mb-1">Description</label>
+          <textarea v-model="form.description" rows="2" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1.5 text-sm text-white" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs text-gray-400 block mb-1">Tier</label>
-            <select v-model="form.tier" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white">
+            <label class="text-xs text-text-secondary block mb-1">Tier</label>
+            <select v-model="form.tier" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1.5 text-sm text-white">
               <option v-for="t in tiers" :key="t" :value="t">{{ t }}</option>
             </select>
           </div>
           <div>
-            <label class="text-xs text-gray-400 block mb-1">Status</label>
-            <select v-model="form.status" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white">
+            <label class="text-xs text-text-secondary block mb-1">Status</label>
+            <select v-model="form.status" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1.5 text-sm text-white">
               <option value="DRAFT">DRAFT</option>
               <option value="ACTIVE">ACTIVE</option>
               <option value="ARCHIVED">ARCHIVED</option>
@@ -113,43 +113,43 @@ async function save() {
         </div>
 
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Features</label>
+          <label class="text-xs text-text-secondary block mb-1">Features</label>
           <div class="flex flex-wrap gap-1 mb-2">
-            <span v-for="(feat, idx) in form.features" :key="idx" class="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-600/20 text-blue-300 text-xs">
+            <span v-for="(feat, idx) in form.features" :key="idx" class="flex items-center gap-1 px-2 py-0.5 rounded bg-info-muted text-info text-xs">
               {{ feat }}
               <button class="hover:text-white" @click="removeFeature(idx)">×</button>
             </span>
           </div>
           <div class="flex gap-2">
-            <input v-model="newFeature" placeholder="Add feature..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" @keyup.enter="addFeature" />
-            <button class="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded" @click="addFeature">Add</button>
+            <input v-model="newFeature" placeholder="Add feature..." class="flex-1 bg-surface-3 border border-border-default rounded px-2 py-1 text-xs text-white" @keyup.enter="addFeature" />
+            <button class="px-2 py-1 bg-surface-4 hover:bg-surface-4 text-white text-xs rounded" @click="addFeature">Add</button>
           </div>
         </div>
 
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Quota</label>
+          <label class="text-xs text-text-secondary block mb-1">Quota</label>
           <div class="space-y-1 mb-2">
-            <div v-for="(val, key) in form.quota" :key="key" class="flex items-center justify-between p-1.5 rounded bg-gray-700/30 text-xs">
-              <span class="text-gray-300">{{ key }}</span>
+            <div v-for="(val, key) in form.quota" :key="key" class="flex items-center justify-between p-1.5 rounded bg-surface-3/30 text-xs">
+              <span class="text-text-primary">{{ key }}</span>
               <div class="flex items-center gap-2">
                 <span class="text-white">{{ val }}</span>
-                <button class="text-red-400 hover:text-red-300" @click="removeQuota(key)">×</button>
+                <button class="text-danger hover:text-danger" @click="removeQuota(key)">×</button>
               </div>
             </div>
           </div>
           <div class="flex gap-2">
-            <input v-model="newQuotaKey" placeholder="Key" class="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
-            <input v-model.number="newQuotaValue" type="number" placeholder="Value" class="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
-            <button class="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded" @click="addQuota">Add</button>
+            <input v-model="newQuotaKey" placeholder="Key" class="flex-1 bg-surface-3 border border-border-default rounded px-2 py-1 text-xs text-white" />
+            <input v-model.number="newQuotaValue" type="number" placeholder="Value" class="w-20 bg-surface-3 border border-border-default rounded px-2 py-1 text-xs text-white" />
+            <button class="px-2 py-1 bg-surface-4 hover:bg-surface-4 text-white text-xs rounded" @click="addQuota">Add</button>
           </div>
         </div>
       </div>
 
-      <div class="flex gap-2 pt-2 border-t border-gray-700">
+      <div class="flex gap-2 pt-2 border-t border-border-subtle">
         <button class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded" :disabled="saving || !form.name" @click="save">
           {{ saving ? 'Saving...' : 'Save' }}
         </button>
-        <button class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded" @click="emit('close')">Cancel</button>
+        <button class="px-4 py-2 bg-surface-4 hover:bg-surface-4 text-white text-sm rounded" @click="emit('close')">Cancel</button>
       </div>
     </div>
   </div>

@@ -42,26 +42,26 @@ async function saveEdit(featureKey: string) {
 
 <template>
   <WorkspacePageLayout title="Quota Allocations">
-  <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+  <div class="bg-surface-2 border border-border-subtle rounded-lg p-4 space-y-4">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-300">Quota Allocations</h3>
-      <button class="text-[10px] text-blue-400 hover:text-blue-300" @click="loadAllocations">Refresh</button>
+      <h3 class="text-sm font-semibold text-text-primary">Quota Allocations</h3>
+      <button class="text-[10px] text-info hover:text-info" @click="loadAllocations">Refresh</button>
     </div>
 
-    <div v-if="loading" class="text-gray-500 text-xs">Loading...</div>
-    <div v-else-if="allocations.length === 0" class="text-gray-500 text-xs">No allocations</div>
+    <div v-if="loading" class="text-text-tertiary text-xs">Loading...</div>
+    <div v-else-if="allocations.length === 0" class="text-text-tertiary text-xs">No allocations</div>
     <div v-else class="space-y-2">
-      <div v-for="pool in allocations" :key="pool.featureKey" class="flex items-center justify-between p-2 rounded bg-gray-700/20">
+      <div v-for="pool in allocations" :key="pool.featureKey" class="flex items-center justify-between p-2 rounded bg-surface-3/20">
         <div class="flex-1">
           <div class="text-xs text-white">{{ pool.featureName }}</div>
-          <div class="text-[10px] text-gray-500">{{ pool.allocated }} / {{ pool.totalQuota }} {{ pool.unit }}</div>
+          <div class="text-[10px] text-text-tertiary">{{ pool.allocated }} / {{ pool.totalQuota }} {{ pool.unit }}</div>
         </div>
         <div v-if="editingKey === pool.featureKey" class="flex items-center gap-2">
-          <input v-model.number="editValue" type="number" class="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+          <input v-model.number="editValue" type="number" class="w-20 bg-surface-3 border border-border-default rounded px-2 py-1 text-xs text-white" />
           <button class="px-2 py-1 bg-blue-600 text-white text-[10px] rounded" :disabled="saving" @click="saveEdit(pool.featureKey)">Save</button>
-          <button class="px-2 py-1 bg-gray-600 text-white text-[10px] rounded" @click="editingKey = null">Cancel</button>
+          <button class="px-2 py-1 bg-surface-4 text-white text-[10px] rounded" @click="editingKey = null">Cancel</button>
         </div>
-        <button v-else class="text-[10px] text-blue-400 hover:text-blue-300" @click="startEdit(pool)">Edit</button>
+        <button v-else class="text-[10px] text-info hover:text-info" @click="startEdit(pool)">Edit</button>
       </div>
     </div>
   </div>

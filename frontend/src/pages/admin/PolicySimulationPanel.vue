@@ -145,13 +145,13 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
         </button>
       </div>
 
-      <div v-if="error" class="p-3 bg-red-900/30 border border-red-700 rounded-lg text-danger text-sm">
+      <div v-if="error" class="p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
         {{ error }}
       </div>
 
       <template v-if="result">
         <!-- Decision Result -->
-        <div class="bg-surface-2 border rounded-lg p-4" :class="result.decision === 'ALLOW' ? 'border-green-700' : result.decision === 'DENY' ? 'border-red-700' : 'border-yellow-700'">
+        <div class="bg-surface-2 border rounded-lg p-4" :class="result.decision === 'ALLOW' ? 'border-success' : result.decision === 'DENY' ? 'border-danger' : 'border-warning'">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-text-primary">Decision Result</h2>
             <StatusBadge :variant="decisionVariant(result.decision)" :label="result.decision" size="md" />
@@ -201,7 +201,7 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
               </div>
               <span
                 class="text-xs px-1.5 py-0.5 rounded"
-                :class="ffr.result === 'ENABLED' ? 'bg-success-muted text-success' : 'bg-red-600/20 text-danger'"
+                :class="ffr.result === 'ENABLED' ? 'bg-success-muted text-success' : 'bg-danger-muted text-danger'"
               >
                 {{ ffr.result }}
               </span>

@@ -37,7 +37,7 @@ async function importTimeline(event: Event) {
 </script>
 
 <template>
-  <div class="p-2 border-t border-gray-700 space-y-2">
+  <div class="p-2 border-t border-border-subtle space-y-2">
     <h4 class="text-xs font-medium text-white">OTIO Timeline</h4>
     <div class="flex gap-2">
       <button
@@ -46,7 +46,7 @@ async function importTimeline(event: Event) {
       >
         📤 Export JSON
       </button>
-      <label class="px-3 py-1.5 bg-gray-700 text-white text-xs rounded cursor-pointer hover:bg-gray-600">
+      <label class="px-3 py-1.5 bg-surface-3 text-white text-xs rounded cursor-pointer hover:bg-surface-4">
         📥 Import JSON
         <input
           type="file"
@@ -57,6 +57,6 @@ async function importTimeline(event: Event) {
         />
       </label>
     </div>
-    <div v-if="importing" class="text-xs text-yellow-400">Importing...</div>
+    <div v-if="importing" class="text-xs text-warning">Importing...</div>
   </div>
 </template>

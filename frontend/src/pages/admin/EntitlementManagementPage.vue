@@ -53,27 +53,27 @@ async function loadData() {
   <div class="flex-1 overflow-y-auto p-6 space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold text-white">Entitlement Management</h1>
-      <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded text-white" @click="loadData">Refresh</button>
+      <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded text-white" @click="loadData">Refresh</button>
     </div>
 
-    <div class="flex gap-1 border-b border-gray-700">
-      <button class="px-4 py-2 text-sm" :class="activeTab === 'bundles' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'" @click="activeTab = 'bundles'">
+    <div class="flex gap-1 border-b border-border-subtle">
+      <button class="px-4 py-2 text-sm" :class="activeTab === 'bundles' ? 'text-white border-b-2 border-info' : 'text-text-secondary hover:text-white'" @click="activeTab = 'bundles'">
         Bundles ({{ bundles.length }})
       </button>
-      <button class="px-4 py-2 text-sm" :class="activeTab === 'overrides' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'" @click="activeTab = 'overrides'">
+      <button class="px-4 py-2 text-sm" :class="activeTab === 'overrides' ? 'text-white border-b-2 border-info' : 'text-text-secondary hover:text-white'" @click="activeTab = 'overrides'">
         Tenant Overrides ({{ overrides.length }})
       </button>
-      <button class="px-4 py-2 text-sm" :class="activeTab === 'grants' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'" @click="activeTab = 'grants'">
+      <button class="px-4 py-2 text-sm" :class="activeTab === 'grants' ? 'text-white border-b-2 border-info' : 'text-text-secondary hover:text-white'" @click="activeTab = 'grants'">
         User Grants ({{ grants.length }})
       </button>
-      <button class="px-4 py-2 text-sm" :class="activeTab === 'shared' ? 'text-white border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'" @click="activeTab = 'shared'">
+      <button class="px-4 py-2 text-sm" :class="activeTab === 'shared' ? 'text-white border-b-2 border-info' : 'text-text-secondary hover:text-white'" @click="activeTab = 'shared'">
         Shared Grants
       </button>
     </div>
 
-    <div v-if="loading" class="text-gray-400 text-sm">Loading...</div>
+    <div v-if="loading" class="text-text-secondary text-sm">Loading...</div>
     <template v-else>
-       <div v-if="featureFlaggedEntitlements.size > 0" class="mb-4 px-3 py-2 rounded bg-purple-900/20 border border-purple-700/50 text-xs text-purple-300">
+       <div v-if="featureFlaggedEntitlements.size > 0" class="mb-4 px-3 py-2 rounded bg-accent-500/10 border border-accent-500/50 text-xs text-accent-300">
          🚩 {{ featureFlaggedEntitlements.size }} entitlement bundle(s) are controlled by feature flags
        </div>
        <EntitlementBundleList v-if="activeTab === 'bundles'" :bundles="bundles" @refresh="loadData" />

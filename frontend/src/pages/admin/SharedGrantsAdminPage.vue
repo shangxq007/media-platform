@@ -84,72 +84,72 @@ async function revoke(grantId: string) {
   <div class="flex-1 overflow-y-auto p-6 space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold text-white">Shared Resource Grants</h1>
-      <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded text-white" @click="loadGrants">
+      <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded text-white" @click="loadGrants">
         Refresh
       </button>
     </div>
 
-    <section class="p-4 rounded-lg border border-gray-700 bg-gray-800/40 space-y-4">
+    <section class="p-4 rounded-lg border border-border-subtle bg-surface-2/40 space-y-4">
       <h2 class="text-sm font-semibold text-white">Grant access</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        <label class="text-sm text-gray-400">
+        <label class="text-sm text-text-secondary">
           Tenant ID
           <input
             v-model="tenantId"
-            class="block mt-1 w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
+            class="block mt-1 w-full px-2 py-1 bg-surface-0 border border-border-default rounded text-white text-sm"
             placeholder="tenant-1"
           />
         </label>
-        <label class="text-sm text-gray-400">
+        <label class="text-sm text-text-secondary">
           Resource type
           <select
             v-model="grantForm.resourceType"
-            class="block mt-1 w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
+            class="block mt-1 w-full px-2 py-1 bg-surface-0 border border-border-default rounded text-white text-sm"
           >
             <option value="project">project</option>
             <option value="export">export</option>
           </select>
         </label>
-        <label class="text-sm text-gray-400">
+        <label class="text-sm text-text-secondary">
           Resource ID
           <input
             v-model="grantForm.resourceId"
-            class="block mt-1 w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
+            class="block mt-1 w-full px-2 py-1 bg-surface-0 border border-border-default rounded text-white text-sm"
             placeholder="proj-abc"
           />
         </label>
-        <label class="text-sm text-gray-400">
+        <label class="text-sm text-text-secondary">
           Display name
           <input
             v-model="grantForm.resourceName"
-            class="block mt-1 w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
+            class="block mt-1 w-full px-2 py-1 bg-surface-0 border border-border-default rounded text-white text-sm"
             placeholder="Optional label"
           />
         </label>
-        <label class="text-sm text-gray-400">
+        <label class="text-sm text-text-secondary">
           Shared with (user ID)
           <input
             v-model="grantForm.sharedWithUserId"
-            class="block mt-1 w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
+            class="block mt-1 w-full px-2 py-1 bg-surface-0 border border-border-default rounded text-white text-sm"
             placeholder="user-2"
           />
         </label>
-        <label class="text-sm text-gray-400">
+        <label class="text-sm text-text-secondary">
           Permission
           <select
             v-model="grantForm.permission"
-            class="block mt-1 w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
+            class="block mt-1 w-full px-2 py-1 bg-surface-0 border border-border-default rounded text-white text-sm"
           >
             <option value="READ">READ</option>
             <option value="WRITE">WRITE</option>
             <option value="ADMIN">ADMIN</option>
           </select>
         </label>
-        <label class="text-sm text-gray-400">
+        <label class="text-sm text-text-secondary">
           Shared by (user ID)
           <input
             v-model="grantForm.sharedByUserId"
-            class="block mt-1 w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
+            class="block mt-1 w-full px-2 py-1 bg-surface-0 border border-border-default rounded text-white text-sm"
             placeholder="admin"
           />
         </label>
@@ -164,21 +164,21 @@ async function revoke(grantId: string) {
     </section>
 
     <div class="flex flex-wrap gap-3 items-end">
-      <label class="flex items-center gap-2 text-sm text-gray-400">
+      <label class="flex items-center gap-2 text-sm text-text-secondary">
         <input v-model="includeRevoked" type="checkbox" class="rounded" />
         Include revoked
       </label>
-      <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded text-white" @click="loadGrants">
+      <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded text-white" @click="loadGrants">
         Apply filters
       </button>
     </div>
 
-    <p v-if="success" class="text-green-400 text-sm">{{ success }}</p>
-    <p v-if="error" class="text-red-400 text-sm">{{ error }}</p>
-    <p v-else-if="loading" class="text-gray-400 text-sm">Loading...</p>
+    <p v-if="success" class="text-success text-sm">{{ success }}</p>
+    <p v-if="error" class="text-danger text-sm">{{ error }}</p>
+    <p v-else-if="loading" class="text-text-secondary text-sm">Loading...</p>
 
-    <table v-else class="w-full text-sm text-left text-gray-300 border border-gray-700 rounded overflow-hidden">
-      <thead class="bg-gray-800 text-gray-400 uppercase text-xs">
+    <table v-else class="w-full text-sm text-left text-text-primary border border-border-subtle rounded overflow-hidden">
+      <thead class="bg-surface-2 text-text-secondary uppercase text-xs">
         <tr>
           <th class="px-3 py-2">Grant</th>
           <th class="px-3 py-2">Resource</th>
@@ -189,7 +189,7 @@ async function revoke(grantId: string) {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="g in grants" :key="g.grantId" class="border-t border-gray-700 hover:bg-gray-800/50">
+        <tr v-for="g in grants" :key="g.grantId" class="border-t border-border-subtle hover:bg-surface-2/50">
           <td class="px-3 py-2 font-mono text-xs">{{ g.grantId }}</td>
           <td class="px-3 py-2">{{ g.type }} / {{ g.name || g.id }}</td>
           <td class="px-3 py-2">{{ g.sharedWithUserId }}</td>
@@ -198,7 +198,7 @@ async function revoke(grantId: string) {
           <td class="px-3 py-2 text-right">
             <button
               v-if="(g.grantStatus || g.status) === 'ACTIVE'"
-              class="text-red-400 hover:text-red-300 text-xs"
+              class="text-danger hover:text-danger text-xs"
               @click="revoke(g.grantId)"
             >
               Revoke
@@ -206,7 +206,7 @@ async function revoke(grantId: string) {
           </td>
         </tr>
         <tr v-if="grants.length === 0">
-          <td colspan="6" class="px-3 py-4 text-center text-gray-500">No grants found</td>
+          <td colspan="6" class="px-3 py-4 text-center text-text-tertiary">No grants found</td>
         </tr>
       </tbody>
     </table>

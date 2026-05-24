@@ -88,23 +88,23 @@ const effectiveOpenReplayActive = computed(() =>
         <div class="flex items-center gap-sm">
           <StatusBadge :variant="statusVariant(effectiveSentryActive ? 'active' : sentryStatus)" :label="effectiveSentryActive ? 'Active' : sentryStatus === 'error' ? 'Error' : 'Inactive'" dot />
           <span class="text-sm text-text-primary">Sentry</span>
-          <span v-if="!isMonitoringFlagEnabled('monitoring.sentryReplay.enabled')" class="text-[8px] px-1 py-0 rounded bg-yellow-600/20 text-yellow-300">FF OFF</span>
+          <span v-if="!isMonitoringFlagEnabled('monitoring.sentryReplay.enabled')" class="text-[8px] px-1 py-0 rounded bg-yellow-600/20 text-warning">FF OFF</span>
         </div>
         <div class="flex items-center gap-sm">
           <StatusBadge :variant="statusVariant(effectiveOpenReplayActive ? 'active' : openReplayStatus)" :label="effectiveOpenReplayActive ? 'Active' : openReplayStatus === 'error' ? 'Error' : 'Inactive'" dot />
           <span class="text-sm text-text-primary">OpenReplay</span>
-          <span v-if="!isMonitoringFlagEnabled('monitoring.openReplay.enabled')" class="text-[8px] px-1 py-0 rounded bg-yellow-600/20 text-yellow-300">FF OFF</span>
+          <span v-if="!isMonitoringFlagEnabled('monitoring.openReplay.enabled')" class="text-[8px] px-1 py-0 rounded bg-yellow-600/20 text-warning">FF OFF</span>
         </div>
       </div>
 
       <!-- Feature Flag States -->
       <div class="space-y-1.5 pt-2 border-t border-default">
-        <div class="text-[10px] text-gray-500 font-medium">Feature Flags</div>
+        <div class="text-[10px] text-text-tertiary font-medium">Feature Flags</div>
         <div class="flex flex-wrap gap-2">
           <span v-for="flag in monitoringFlagStatuses" :key="flag.key"
             class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded"
-            :class="flag.enabled ? 'bg-green-600/15 text-green-300' : 'bg-gray-600/15 text-gray-500'">
-            <span class="w-1.5 h-1.5 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-gray-500'"></span>
+            :class="flag.enabled ? 'bg-green-600/15 text-success' : 'bg-surface-4/15 text-text-tertiary'">
+            <span class="w-1.5 h-1.5 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-surface-4'"></span>
             {{ flag.label }}
           </span>
         </div>

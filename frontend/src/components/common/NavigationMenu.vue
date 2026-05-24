@@ -19,17 +19,17 @@ onMounted(() => {
         <router-link
           v-if="item.visible && item.enabled"
           :to="item.path"
-          class="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+          class="text-sm text-info hover:text-info transition-colors"
         >
           {{ item.title }}
         </router-link>
         <DisabledRouteHint
           v-else-if="item.visible && !item.enabled"
           :route-decision="item"
-          class="text-sm text-gray-500 cursor-not-allowed"
+          class="text-sm text-text-tertiary cursor-not-allowed"
         />
       </template>
     </template>
   </nav>
-  <span v-else-if="loading" class="text-xs text-gray-500">Loading...</span>
+  <span v-else-if="loading" class="text-xs text-text-tertiary">Loading...</span>
 </template>

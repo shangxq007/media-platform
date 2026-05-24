@@ -49,14 +49,14 @@ function formatTime(seconds: number): string {
 }
 
 function getClipColor(clip: Clip | undefined): string {
-  if (!clip) return 'bg-gray-600'
+  if (!clip) return 'bg-surface-4'
   switch (clip.type) {
     case 'video': return 'bg-blue-600'
     case 'audio': return 'bg-green-600'
     case 'text': return 'bg-red-600'
     case 'image': return 'bg-purple-600'
     case 'subtitle': return 'bg-yellow-600'
-    default: return 'bg-gray-600'
+    default: return 'bg-surface-4'
   }
 }
 
@@ -71,10 +71,10 @@ function getClipStyle(tc: TrackClip) {
 
 function getTrackColor(type: string): string {
   switch (type) {
-    case 'video': return 'border-blue-500/30'
-    case 'audio': return 'border-green-500/30'
-    case 'text': return 'border-red-500/30'
-    default: return 'border-gray-600'
+    case 'video': return 'border-info/30'
+    case 'audio': return 'border-success/30'
+    case 'text': return 'border-danger/30'
+    default: return 'border-border-default'
   }
 }
 
@@ -255,7 +255,7 @@ onUnmounted(() => {
 <template>
   <div class="flex-1 flex flex-col bg-timeline-bg overflow-hidden">
     <!-- Transport Controls -->
-    <div class="flex items-center gap-2 px-4 py-2 bg-panel-bg border-b border-gray-700">
+    <div class="flex items-center gap-2 px-4 py-2 bg-panel-bg border-b border-border-subtle">
       <button
         class="px-3 py-1 rounded text-sm"
         :class="store.state.playing ? 'bg-red-600' : 'bg-clip-video'"
@@ -263,7 +263,7 @@ onUnmounted(() => {
       >
         {{ store.state.playing ? '⏸ Pause' : '▶ Play' }}
       </button>
-      <span class="text-sm text-gray-400 font-mono">{{ formatTime(store.state.currentTime) }}</span>
+      <span class="text-sm text-text-secondary font-mono">{{ formatTime(store.state.currentTime) }}</span>
       <input
         type="range"
         :max="store.state.duration"
@@ -272,17 +272,17 @@ onUnmounted(() => {
         class="flex-1 mx-2"
         @input="onRangeInput"
       />
-      <span class="text-sm text-gray-400 font-mono">{{ formatTime(store.state.duration) }}</span>
+      <span class="text-sm text-text-secondary font-mono">{{ formatTime(store.state.duration) }}</span>
       <div class="flex items-center gap-1 ml-4">
-        <button class="px-2 py-1 text-xs bg-gray-700 rounded" @click="store.setZoom(store.state.zoom / 1.2)">−</button>
-        <span class="text-xs text-gray-400 w-12 text-center">{{ (store.state.zoom * 100).toFixed(0) }}%</span>
-        <button class="px-2 py-1 text-xs bg-gray-700 rounded" @click="store.setZoom(store.state.zoom * 1.2)">+</button>
+        <button class="px-2 py-1 text-xs bg-surface-3 rounded" @click="store.setZoom(store.state.zoom / 1.2)">−</button>
+        <span class="text-xs text-text-secondary w-12 text-center">{{ (store.state.zoom * 100).toFixed(0) }}%</span>
+        <button class="px-2 py-1 text-xs bg-surface-3 rounded" @click="store.setZoom(store.state.zoom * 1.2)">+</button>
       </div>
-      <div class="flex items-center gap-1 ml-4 border-l border-gray-600 pl-3">
-        <button class="px-2 py-1 text-xs bg-gray-700 rounded" :disabled="!history.canUndo()" @click="history.undo(store)">↶</button>
-        <button class="px-2 py-1 text-xs bg-gray-700 rounded" :disabled="!history.canRedo()" @click="history.redo(store)">↷</button>
+      <div class="flex items-center gap-1 ml-4 border-l border-border-default pl-3">
+        <button class="px-2 py-1 text-xs bg-surface-3 rounded" :disabled="!history.canUndo()" @click="history.undo(store)">↶</button>
+        <button class="px-2 py-1 text-xs bg-surface-3 rounded" :disabled="!history.canRedo()" @click="history.redo(store)">↷</button>
       </div>
-      <div class="ml-auto flex items-center gap-2 text-[10px] text-gray-500">
+      <div class="ml-auto flex items-center gap-2 text-[10px] text-text-tertiary">
         <span
           v-if="store.patchHighlightClipIds.length"
           class="text-amber-400"
@@ -298,30 +298,30 @@ onUnmounted(() => {
     <!-- Timeline Area -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Track Headers -->
-      <div class="flex-shrink-0 bg-panel-bg border-r border-gray-700" :style="{ width: HEADER_WIDTH + 'px' }">
-        <div class="h-8 border-b border-gray-700 flex items-center px-2">
-          <span class="text-xs text-gray-500">Tracks</span>
+      <div class="flex-shrink-0 bg-panel-bg border-r border-border-subtle" :style="{ width: HEADER_WIDTH + 'px' }">
+        <div class="h-8 border-b border-border-subtle flex items-center px-2">
+          <span class="text-xs text-text-tertiary">Tracks</span>
         </div>
         <div
           v-for="track in store.state.tracks"
           :key="track.id"
-          class="flex items-center justify-between px-2 border-b border-gray-700/50"
+          class="flex items-center justify-between px-2 border-b border-border-subtle/50"
           :style="{ height: TRACK_HEIGHT + 'px' }"
         >
           <div class="flex items-center gap-1 min-w-0 flex-1">
             <span class="text-xs" aria-hidden="true">{{ getTrackIcon(track.type) }}</span>
-            <span class="text-xs text-gray-300 truncate">{{ track.name }}</span>
+            <span class="text-xs text-text-primary truncate">{{ track.name }}</span>
           </div>
           <div class="flex gap-1">
             <button
               class="text-xs px-1 rounded"
-              :class="track.muted ? 'bg-red-600' : 'bg-gray-600'"
+              :class="track.muted ? 'bg-red-600' : 'bg-surface-4'"
               :title="track.muted ? 'Unmute' : 'Mute'"
               @click="toggleTrackMute(track)"
             >M</button>
             <button
               class="text-xs px-1 rounded"
-              :class="track.locked ? 'bg-yellow-600' : 'bg-gray-600'"
+              :class="track.locked ? 'bg-yellow-600' : 'bg-surface-4'"
               :title="track.locked ? 'Unlock' : 'Lock'"
               @click="toggleTrackLock(track)"
             >L</button>
@@ -331,7 +331,7 @@ onUnmounted(() => {
           v-if="store.state.tracks.length === 0"
           class="flex items-center justify-center h-20 px-2"
         >
-          <span class="text-[10px] text-gray-600">No tracks</span>
+          <span class="text-[10px] text-text-tertiary">No tracks</span>
         </div>
       </div>
 
@@ -342,14 +342,14 @@ onUnmounted(() => {
         @click="onTimelineClick"
       >
         <!-- Ruler -->
-        <div class="sticky top-0 h-8 bg-track-bg border-b border-gray-700 z-10" :style="{ width: timelineWidth + 'px', minWidth: '100%' }">
+        <div class="sticky top-0 h-8 bg-track-bg border-b border-border-subtle z-10" :style="{ width: timelineWidth + 'px', minWidth: '100%' }">
           <div
             v-for="marker in rulerMarkers"
             :key="marker.time"
-            class="absolute top-0 h-full border-l border-gray-600"
+            class="absolute top-0 h-full border-l border-border-default"
             :style="{ left: marker.time * PIXELS_PER_SECOND + 'px' }"
           >
-            <span class="text-xs text-gray-500 ml-1">{{ marker.label }}</span>
+            <span class="text-xs text-text-tertiary ml-1">{{ marker.label }}</span>
           </div>
         </div>
 
@@ -358,7 +358,7 @@ onUnmounted(() => {
           <div
             v-for="track in store.state.tracks"
             :key="track.id"
-            class="relative border-b border-gray-700/30"
+            class="relative border-b border-border-subtle/30"
             :class="getTrackColor(track.type)"
             :style="{ height: TRACK_HEIGHT + 'px', width: timelineWidth + 'px', minWidth: '100%' }"
             @dragover="onTrackDragOver"
@@ -369,7 +369,7 @@ onUnmounted(() => {
               v-if="track.clips.length === 0"
               class="absolute inset-0 flex items-center justify-center"
             >
-              <span class="text-[10px] text-gray-600">Drop clips here</span>
+              <span class="text-[10px] text-text-tertiary">Drop clips here</span>
             </div>
 
             <!-- Clips -->

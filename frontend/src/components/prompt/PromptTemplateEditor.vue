@@ -208,7 +208,7 @@ function getActionClass(action: string): string {
     <div class="flex border-b border-border-subtle">
       <button v-for="tab in ['edit', 'versions', 'render', 'risk']" :key="tab"
         class="px-4 py-2 text-sm capitalize"
-        :class="activeTab === tab ? 'text-white border-b-2 border-blue-500' : 'text-text-secondary hover:text:text-white'"
+        :class="activeTab === tab ? 'text-white border-b-2 border-info' : 'text-text-secondary hover:text:text-white'"
         @click="activeTab = tab as any">
         {{ tab }}
       </button>
@@ -244,11 +244,11 @@ function getActionClass(action: string): string {
           :disabled="saving" @click="saveTemplate">
           {{ saving ? 'Saving...' : 'Save' }}
         </button>
-        <button class="px-3 py-1 bg-surface-4 hover:bg-gray-500 text-white text-sm rounded"
+        <button class="px-3 py-1 bg-surface-4 hover:bg-surface-4 text-white text-sm rounded"
           @click="validateTemplate">Validate</button>
       </div>
       <div v-if="validationResult" class="p-2 rounded text-xs"
-        :class="validationResult.valid ? 'bg-green-900/30 text-success' : 'bg-red-900/30 text-danger'">
+        :class="validationResult.valid ? 'bg-green-900/30 text-success' : 'bg-danger-muted text-danger'">
         <div v-for="err in validationResult.errors" :key="err">{{ err }}</div>
         <div v-for="warn in validationResult.warnings" :key="warn" class="text-warning">{{ warn }}</div>
       </div>

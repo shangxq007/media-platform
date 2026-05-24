@@ -93,14 +93,14 @@ async function retry(job: DeliveryJob) {
 
 <template>
   <div
-    class="rounded border border-gray-700 bg-gray-800/40"
+    class="rounded border border-border-subtle bg-surface-2/40"
     :class="compact ? 'p-2' : 'p-3 mt-2'"
   >
     <div class="flex items-center justify-between mb-2">
-      <span class="text-xs font-medium text-gray-300">Outbound delivery</span>
+      <span class="text-xs font-medium text-text-primary">Outbound delivery</span>
       <button
         type="button"
-        class="text-[10px] text-gray-500 hover:text-gray-300"
+        class="text-[10px] text-text-tertiary hover:text-text-primary"
         :disabled="loading"
         @click="load"
       >
@@ -110,10 +110,10 @@ async function retry(job: DeliveryJob) {
 
     <LoadingState v-if="loading" message="Loading deliveries..." />
 
-    <p v-else-if="error" class="text-xs text-red-400">{{ error }}</p>
+    <p v-else-if="error" class="text-xs text-danger">{{ error }}</p>
 
     <template v-else>
-      <div v-if="jobs.length === 0" class="text-xs text-gray-500 mb-2">
+      <div v-if="jobs.length === 0" class="text-xs text-text-tertiary mb-2">
         No delivery jobs yet. Configure destinations under Settings → Delivery, or trigger manually below.
       </div>
 
@@ -121,21 +121,21 @@ async function retry(job: DeliveryJob) {
         <div
           v-for="job in jobs"
           :key="job.id"
-          class="flex flex-wrap items-center gap-2 text-[11px] p-1.5 rounded bg-gray-900/50"
+          class="flex flex-wrap items-center gap-2 text-[11px] p-1.5 rounded bg-surface-0/50"
         >
           <StatusBadge :variant="statusVariant(job.status)" :label="job.status" size="sm" />
-          <span class="font-mono text-gray-400 truncate max-w-[120px]" :title="job.id">{{ job.id.slice(0, 10) }}…</span>
-          <span class="text-gray-500">{{ formatBytes(job.bytesTransferred) }}</span>
-          <span v-if="job.remoteUri" class="text-gray-500 truncate max-w-[140px]" :title="job.remoteUri">
+          <span class="font-mono text-text-secondary truncate max-w-[120px]" :title="job.id">{{ job.id.slice(0, 10) }}…</span>
+          <span class="text-text-tertiary">{{ formatBytes(job.bytesTransferred) }}</span>
+          <span v-if="job.remoteUri" class="text-text-tertiary truncate max-w-[140px]" :title="job.remoteUri">
             {{ job.remoteUri }}
           </span>
-          <span v-if="job.errorMessage" class="text-red-400 truncate max-w-full" :title="job.errorMessage">
+          <span v-if="job.errorMessage" class="text-danger truncate max-w-full" :title="job.errorMessage">
             {{ job.errorMessage }}
           </span>
           <button
             v-if="job.status === 'FAILED'"
             type="button"
-            class="ml-auto text-[10px] text-blue-400 hover:underline"
+            class="ml-auto text-[10px] text-info hover:underline"
             :disabled="busy"
             @click="retry(job)"
           >
@@ -144,10 +144,10 @@ async function retry(job: DeliveryJob) {
         </div>
       </div>
 
-      <div v-if="destinations.length" class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-700">
+      <div v-if="destinations.length" class="flex flex-wrap items-center gap-2 pt-2 border-t border-border-subtle">
         <select
           v-model="selectedDestinationId"
-          class="flex-1 min-w-0 text-xs bg-gray-900 border border-gray-600 rounded px-2 py-1 text-gray-200"
+          class="flex-1 min-w-0 text-xs bg-surface-0 border border-border-default rounded px-2 py-1 text-text-primary"
         >
           <option v-for="d in destinations" :key="d.id" :value="d.id">
             {{ d.name }} ({{ d.protocol }})
@@ -155,15 +155,15 @@ async function retry(job: DeliveryJob) {
         </select>
         <button
           type="button"
-          class="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50"
+          class="text-xs px-2 py-1 rounded bg-surface-3 hover:bg-surface-4 text-white disabled:opacity-50"
           :disabled="busy || !selectedDestinationId"
           @click="triggerManual"
         >
           Deliver now
         </button>
       </div>
-      <p v-else class="text-[10px] text-gray-500 pt-1 border-t border-gray-700">
-        <router-link to="/me/delivery-destinations" class="text-blue-400 hover:underline">
+      <p v-else class="text-[10px] text-text-tertiary pt-1 border-t border-border-subtle">
+        <router-link to="/me/delivery-destinations" class="text-info hover:underline">
           Add a delivery destination
         </router-link>
         to push exports to SFTP, WebDAV, or S3.

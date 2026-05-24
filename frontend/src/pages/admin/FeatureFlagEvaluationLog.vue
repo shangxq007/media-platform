@@ -66,28 +66,28 @@ onMounted(loadLogs)
 
 <template>
   <div class="space-y-4">
-    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-      <h2 class="text-sm font-semibold text-gray-300 mb-3">Filters</h2>
+    <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+      <h2 class="text-sm font-semibold text-text-primary mb-3">Filters</h2>
       <div class="grid grid-cols-5 gap-3">
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Flag Key</label>
-          <input v-model="filterFlagKey" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="Any" />
+          <label class="block text-xs text-text-secondary mb-1">Flag Key</label>
+          <input v-model="filterFlagKey" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Any" />
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Tenant</label>
-          <input v-model="filterTenant" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="Any" />
+          <label class="block text-xs text-text-secondary mb-1">Tenant</label>
+          <input v-model="filterTenant" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Any" />
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Workspace</label>
-          <input v-model="filterWorkspace" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="Any" />
+          <label class="block text-xs text-text-secondary mb-1">Workspace</label>
+          <input v-model="filterWorkspace" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Any" />
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-1">User</label>
-          <input v-model="filterUser" type="text" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200" placeholder="Any" />
+          <label class="block text-xs text-text-secondary mb-1">User</label>
+          <input v-model="filterUser" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Any" />
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Result</label>
-          <select v-model="filterResult" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200">
+          <label class="block text-xs text-text-secondary mb-1">Result</label>
+          <select v-model="filterResult" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary">
             <option value="">Any</option>
             <option value="ENABLED">Enabled</option>
             <option value="DISABLED">Disabled</option>
@@ -99,7 +99,7 @@ onMounted(loadLogs)
       </button>
     </div>
 
-    <div v-if="error" class="p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
+    <div v-if="error" class="p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
       {{ error }}
     </div>
 
@@ -113,10 +113,10 @@ onMounted(loadLogs)
     />
 
     <template v-else>
-      <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+      <div class="bg-surface-2 border border-border-subtle rounded-lg overflow-hidden">
         <table class="w-full text-sm">
           <thead>
-            <tr class="border-b border-gray-700 text-xs text-gray-400">
+            <tr class="border-b border-border-subtle text-xs text-text-secondary">
               <th class="text-left px-3 py-2">Timestamp</th>
               <th class="text-left px-3 py-2">Flag Key</th>
               <th class="text-left px-3 py-2">Tenant</th>
@@ -128,40 +128,40 @@ onMounted(loadLogs)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(entry, idx) in entries" :key="entry.id || idx" class="border-b border-gray-700/50 hover:bg-gray-700/30">
-              <td class="px-3 py-2 text-xs text-gray-400">{{ entry.timestamp?.slice(0, 19) || '—' }}</td>
-              <td class="px-3 py-2 text-xs font-mono text-blue-300">{{ entry.flagKey }}</td>
-              <td class="px-3 py-2 text-xs text-gray-400">{{ entry.tenant || '—' }}</td>
-              <td class="px-3 py-2 text-xs text-gray-400">{{ entry.workspace || '—' }}</td>
-              <td class="px-3 py-2 text-xs text-gray-400">{{ entry.user || '—' }}</td>
+            <tr v-for="(entry, idx) in entries" :key="entry.id || idx" class="border-b border-border-subtle/50 hover:bg-surface-3/30">
+              <td class="px-3 py-2 text-xs text-text-secondary">{{ entry.timestamp?.slice(0, 19) || '—' }}</td>
+              <td class="px-3 py-2 text-xs font-mono text-info">{{ entry.flagKey }}</td>
+              <td class="px-3 py-2 text-xs text-text-secondary">{{ entry.tenant || '—' }}</td>
+              <td class="px-3 py-2 text-xs text-text-secondary">{{ entry.workspace || '—' }}</td>
+              <td class="px-3 py-2 text-xs text-text-secondary">{{ entry.user || '—' }}</td>
               <td class="px-3 py-2 text-center">
                 <span
                   class="text-xs px-1.5 py-0.5 rounded"
-                  :class="entry.result === 'ENABLED' ? 'bg-green-600/20 text-green-300' : 'bg-red-600/20 text-red-300'"
+                  :class="entry.result === 'ENABLED' ? 'bg-success-muted text-success' : 'bg-danger-muted text-danger'"
                 >
                   {{ entry.result }}
                 </span>
               </td>
-              <td class="px-3 py-2 text-xs text-gray-400">{{ entry.variant || '—' }}</td>
-              <td class="px-3 py-2 text-xs text-gray-400">{{ entry.matchedRule || '—' }}</td>
+              <td class="px-3 py-2 text-xs text-text-secondary">{{ entry.variant || '—' }}</td>
+              <td class="px-3 py-2 text-xs text-text-secondary">{{ entry.matchedRule || '—' }}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <div class="flex items-center justify-between">
-        <span class="text-xs text-gray-500">{{ total }} total entries</span>
+        <span class="text-xs text-text-tertiary">{{ total }} total entries</span>
         <div class="flex items-center gap-2">
           <button
-            class="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded disabled:opacity-50"
+            class="px-3 py-1 text-xs bg-surface-3 hover:bg-surface-4 text-white rounded disabled:opacity-50"
             :disabled="page === 0"
             @click="prevPage"
           >
             ← Prev
           </button>
-          <span class="text-xs text-gray-400">Page {{ page + 1 }} of {{ totalPages || 1 }}</span>
+          <span class="text-xs text-text-secondary">Page {{ page + 1 }} of {{ totalPages || 1 }}</span>
           <button
-            class="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded disabled:opacity-50"
+            class="px-3 py-1 text-xs bg-surface-3 hover:bg-surface-4 text-white rounded disabled:opacity-50"
             :disabled="page >= totalPages - 1"
             @click="nextPage"
           >

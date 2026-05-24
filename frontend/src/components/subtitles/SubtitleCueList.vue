@@ -126,8 +126,8 @@ function handleAddCue() {
 
 <template>
   <div class="flex flex-col">
-    <div class="flex items-center justify-between px-2 py-1 border-b border-gray-700/50 bg-gray-800/30">
-      <span class="text-[10px] text-gray-400">{{ track.cues.length }} cue(s) · {{ track.language }}</span>
+    <div class="flex items-center justify-between px-2 py-1 border-b border-border-subtle/50 bg-surface-2/30">
+      <span class="text-[10px] text-text-secondary">{{ track.cues.length }} cue(s) · {{ track.language }}</span>
       <button
         class="px-1.5 py-0.5 text-[10px] rounded bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors"
         @click="handleAddCue"
@@ -136,7 +136,7 @@ function handleAddCue() {
       </button>
     </div>
 
-    <div v-if="!track.cues.length" class="p-3 text-center text-xs text-gray-500">
+    <div v-if="!track.cues.length" class="p-3 text-center text-xs text-text-tertiary">
       No cues yet. Upload a subtitle file or add cues manually.
     </div>
 
@@ -144,9 +144,9 @@ function handleAddCue() {
       <div
         v-for="(cue, index) in sortedCues"
         :key="cue.id"
-        class="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-700/20 text-xs transition-colors cursor-pointer"
+        class="flex items-center gap-1.5 px-2 py-1.5 border-b border-border-subtle/20 text-xs transition-colors cursor-pointer"
         :class="[
-          selectedCueId === cue.id ? 'bg-primary-500/10 border-l-2 border-l-primary-400' : 'hover:bg-gray-800/40 border-l-2 border-l-transparent',
+          selectedCueId === cue.id ? 'bg-primary-500/10 border-l-2 border-l-primary-400' : 'hover:bg-surface-2/40 border-l-2 border-l-transparent',
           dragIndex === index ? 'opacity-50' : '',
           dropIndex === index ? 'border-t border-t-primary-400' : ''
         ]"
@@ -156,13 +156,13 @@ function handleAddCue() {
         @dragover="handleDragOver($event, index)"
         @dragend="handleDragEnd"
       >
-        <span class="text-gray-600 w-5 text-right shrink-0 select-none">{{ cue.index }}</span>
+        <span class="text-text-tertiary w-5 text-right shrink-0 select-none">{{ cue.index }}</span>
 
         <div class="flex-1 min-w-0 flex items-center gap-1">
           <template v-if="editingCueId === cue.id && editingField === 'startTime'">
             <input
               v-model="editValue"
-              class="w-20 bg-gray-800 border border-primary-400 rounded px-1 py-0.5 text-[10px] text-white focus:outline-none"
+              class="w-20 bg-surface-2 border border-primary-400 rounded px-1 py-0.5 text-[10px] text-white focus:outline-none"
               @keydown.enter="commitEdit(cue)"
               @keydown.escape="cancelEdit"
               @click.stop
@@ -170,19 +170,19 @@ function handleAddCue() {
           </template>
           <template v-else>
             <span
-              class="text-[10px] text-gray-400 font-mono hover:text-white shrink-0"
+              class="text-[10px] text-text-secondary font-mono hover:text-white shrink-0"
               @click.stop="startEdit(cue, 'startTime')"
             >
               {{ formatTime(cue.startTime) }}
             </span>
           </template>
 
-          <span class="text-gray-600 shrink-0">→</span>
+          <span class="text-text-tertiary shrink-0">→</span>
 
           <template v-if="editingCueId === cue.id && editingField === 'endTime'">
             <input
               v-model="editValue"
-              class="w-20 bg-gray-800 border border-primary-400 rounded px-1 py-0.5 text-[10px] text-white focus:outline-none"
+              class="w-20 bg-surface-2 border border-primary-400 rounded px-1 py-0.5 text-[10px] text-white focus:outline-none"
               @keydown.enter="commitEdit(cue)"
               @keydown.escape="cancelEdit"
               @click.stop
@@ -190,7 +190,7 @@ function handleAddCue() {
           </template>
           <template v-else>
             <span
-              class="text-[10px] text-gray-400 font-mono hover:text-white shrink-0"
+              class="text-[10px] text-text-secondary font-mono hover:text-white shrink-0"
               @click.stop="startEdit(cue, 'endTime')"
             >
               {{ formatTime(cue.endTime) }}
@@ -200,7 +200,7 @@ function handleAddCue() {
           <template v-if="editingCueId === cue.id && editingField === 'text'">
             <input
               v-model="editValue"
-              class="flex-1 min-w-0 bg-gray-800 border border-primary-400 rounded px-1 py-0.5 text-[10px] text-white focus:outline-none"
+              class="flex-1 min-w-0 bg-surface-2 border border-primary-400 rounded px-1 py-0.5 text-[10px] text-white focus:outline-none"
               @keydown.enter="commitEdit(cue)"
               @keydown.escape="cancelEdit"
               @click.stop
@@ -216,7 +216,7 @@ function handleAddCue() {
         </div>
 
         <button
-          class="shrink-0 text-gray-600 hover:text-danger-500 text-[10px] px-1 transition-colors"
+          class="shrink-0 text-text-tertiary hover:text-danger-500 text-[10px] px-1 transition-colors"
           title="Delete cue"
           @click="handleDelete(cue.id)"
         >

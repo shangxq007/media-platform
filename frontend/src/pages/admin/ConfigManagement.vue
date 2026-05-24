@@ -42,50 +42,50 @@ async function upsertConfig() {
         <input
           v-model="namespace"
           type="text"
-          class="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white w-48"
+          class="bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white w-48"
           placeholder="Namespace"
         />
-        <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded" @click="loadData">Refresh</button>
+        <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded" @click="loadData">Refresh</button>
         <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-sm rounded" @click="openCreate">+ Add Config</button>
       </div>
     </div>
 
     <!-- Create Form -->
-    <div v-if="showForm" class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6 max-w-lg">
-      <h3 class="text-xs font-semibold text-gray-300 mb-3">Add Configuration</h3>
+    <div v-if="showForm" class="bg-surface-2 border border-border-subtle rounded-lg p-4 mb-6 max-w-lg">
+      <h3 class="text-xs font-semibold text-text-primary mb-3">Add Configuration</h3>
       <div class="space-y-3">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Key</label>
-          <input v-model="formKey" type="text" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white" placeholder="config.key" />
+          <label class="text-xs text-text-secondary block mb-1">Key</label>
+          <input v-model="formKey" type="text" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1.5 text-sm text-white" placeholder="config.key" />
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Value</label>
-          <textarea v-model="formValue" rows="3" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-white font-mono resize-none" placeholder="value" />
+          <label class="text-xs text-text-secondary block mb-1">Value</label>
+          <textarea v-model="formValue" rows="3" class="w-full bg-surface-3 border border-border-default rounded px-2 py-1.5 text-sm text-white font-mono resize-none" placeholder="value" />
         </div>
         <div class="flex gap-2">
           <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-sm rounded" @click="upsertConfig">Save</button>
-          <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded" @click="showForm = false">Cancel</button>
+          <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded" @click="showForm = false">Cancel</button>
         </div>
       </div>
     </div>
 
-    <div v-if="loading" class="text-gray-400 text-sm">Loading...</div>
-    <div v-else-if="configs.length === 0" class="text-gray-500 text-sm">No configurations in namespace "{{ namespace }}"</div>
+    <div v-if="loading" class="text-text-secondary text-sm">Loading...</div>
+    <div v-else-if="configs.length === 0" class="text-text-tertiary text-sm">No configurations in namespace "{{ namespace }}"</div>
 
-    <div v-else class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+    <div v-else class="bg-surface-2 border border-border-subtle rounded-lg overflow-hidden">
       <table class="w-full text-sm">
         <thead>
-          <tr class="border-b border-gray-700 text-xs text-gray-400">
+          <tr class="border-b border-border-subtle text-xs text-text-secondary">
             <th class="text-left px-3 py-2">Key</th>
             <th class="text-left px-3 py-2">Value</th>
             <th class="text-left px-3 py-2">Updated</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in configs" :key="c.key" class="border-b border-gray-700/50 hover:bg-gray-700/30">
-            <td class="px-3 py-2 text-xs font-mono text-blue-300">{{ c.key }}</td>
-            <td class="px-3 py-2 text-xs text-gray-300 font-mono max-w-md truncate">{{ c.value }}</td>
-            <td class="px-3 py-2 text-xs text-gray-500">{{ c.updatedAt || '—' }}</td>
+          <tr v-for="c in configs" :key="c.key" class="border-b border-border-subtle/50 hover:bg-surface-3/30">
+            <td class="px-3 py-2 text-xs font-mono text-info">{{ c.key }}</td>
+            <td class="px-3 py-2 text-xs text-text-primary font-mono max-w-md truncate">{{ c.value }}</td>
+            <td class="px-3 py-2 text-xs text-text-tertiary">{{ c.updatedAt || '—' }}</td>
           </tr>
         </tbody>
       </table>

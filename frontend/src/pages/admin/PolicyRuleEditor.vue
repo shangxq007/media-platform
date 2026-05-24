@@ -80,110 +80,110 @@ function handleSave() {
 
 <template>
   <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60" @click.self="emit('close')">
-    <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+    <div class="bg-surface-2 border border-border-subtle rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
         <h2 class="text-lg font-semibold text-white">{{ rule ? 'Edit Rule' : 'New Rule' }}</h2>
-        <button class="text-gray-400 hover:text-white text-xl leading-none" @click="emit('close')">×</button>
+        <button class="text-text-secondary hover:text-white text-xl leading-none" @click="emit('close')">×</button>
       </div>
 
       <div class="px-6 py-4 space-y-4">
         <div class="grid grid-cols-3 gap-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Rule Name *</label>
+            <label class="block text-xs text-text-secondary mb-1">Rule Name *</label>
             <input
               v-model="form.name"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. Allow enterprise admins"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Effect *</label>
-            <select v-model="form.effect" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200">
+            <label class="block text-xs text-text-secondary mb-1">Effect *</label>
+            <select v-model="form.effect" class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary">
               <option v-for="eff in EFFECTS" :key="eff" :value="eff">{{ eff }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Priority *</label>
+            <label class="block text-xs text-text-secondary mb-1">Priority *</label>
             <input
               v-model.number="form.priority"
               type="number"
               min="1"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Status</label>
-          <select v-model="form.status" class="w-48 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200">
+          <label class="block text-xs text-text-secondary mb-1">Status</label>
+          <select v-model="form.status" class="w-48 bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary">
             <option value="ACTIVE">Active</option>
             <option value="INACTIVE">Inactive</option>
           </select>
         </div>
 
         <!-- Attribute Conditions -->
-        <div class="border-t border-gray-700 pt-4">
+        <div class="border-t border-border-subtle pt-4">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-medium text-gray-300">Attribute Conditions ({{ conditions.length }})</h3>
-            <button class="text-xs text-blue-400 hover:text-blue-300" @click="addCondition">+ Add Condition</button>
+            <h3 class="text-sm font-medium text-text-primary">Attribute Conditions ({{ conditions.length }})</h3>
+            <button class="text-xs text-info hover:text-info" @click="addCondition">+ Add Condition</button>
           </div>
-          <div v-if="conditions.length === 0" class="text-xs text-gray-500">No conditions — rule always matches</div>
+          <div v-if="conditions.length === 0" class="text-xs text-text-tertiary">No conditions — rule always matches</div>
           <div v-else class="space-y-2">
             <div v-for="(cond, idx) in conditions" :key="idx" class="flex items-center gap-2">
               <input
                 v-model="cond.attribute"
                 type="text"
-                class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                class="flex-1 bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 placeholder="Attribute (e.g. user.role)"
               />
               <select
                 v-model="cond.operator"
-                class="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200"
+                class="bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary"
               >
                 <option v-for="op in OPERATORS" :key="op" :value="op">{{ op }}</option>
               </select>
               <input
                 v-model="cond.value"
                 type="text"
-                class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                class="flex-1 bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 placeholder="Value"
               />
-              <button class="text-red-400 hover:text-red-300 text-sm px-2" @click="removeCondition(idx)">✕</button>
+              <button class="text-danger hover:text-danger text-sm px-2" @click="removeCondition(idx)">✕</button>
             </div>
           </div>
         </div>
 
         <!-- Feature Flag Conditions -->
-        <div class="border-t border-gray-700 pt-4">
+        <div class="border-t border-border-subtle pt-4">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-medium text-gray-300">Feature Flag Conditions ({{ featureFlagConditions.length }})</h3>
-            <button class="text-xs text-blue-400 hover:text-blue-300" @click="addFlagCondition">+ Add Flag Condition</button>
+            <h3 class="text-sm font-medium text-text-primary">Feature Flag Conditions ({{ featureFlagConditions.length }})</h3>
+            <button class="text-xs text-info hover:text-info" @click="addFlagCondition">+ Add Flag Condition</button>
           </div>
-          <div v-if="featureFlagConditions.length === 0" class="text-xs text-gray-500">No feature flag conditions</div>
+          <div v-if="featureFlagConditions.length === 0" class="text-xs text-text-tertiary">No feature flag conditions</div>
           <div v-else class="space-y-2">
             <div v-for="(fc, idx) in featureFlagConditions" :key="idx" class="flex items-center gap-2">
               <input
                 v-model="fc.flagKey"
                 type="text"
-                class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                class="flex-1 bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 placeholder="Flag key"
               />
               <input
                 v-model="fc.expectedValue"
                 type="text"
-                class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+                class="flex-1 bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
                 placeholder="Expected value (e.g. true)"
               />
-              <button class="text-red-400 hover:text-red-300 text-sm px-2" @click="removeFlagCondition(idx)">✕</button>
+              <button class="text-danger hover:text-danger text-sm px-2" @click="removeFlagCondition(idx)">✕</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-700">
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle">
         <button
-          class="px-4 py-1.5 text-sm text-gray-400 hover:text-white border border-gray-600 rounded-lg transition-colors"
+          class="px-4 py-1.5 text-sm text-text-secondary hover:text-white border border-border-default rounded-lg transition-colors"
           @click="emit('close')"
         >
           Cancel

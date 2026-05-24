@@ -79,22 +79,22 @@ function exportTimelineJSON() {
       </button>
     </div>
 
-    <div v-if="showNewProject" class="space-y-2 p-2 rounded bg-gray-800/50 border border-gray-700">
+    <div v-if="showNewProject" class="space-y-2 p-2 rounded bg-surface-2/50 border border-border-subtle">
       <input
         v-model="newProjectName"
         type="text"
         placeholder="Project name"
-        class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+        class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white"
       />
       <input
         v-model="newProjectDesc"
         type="text"
         placeholder="Description (optional)"
-        class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+        class="w-full bg-surface-2 border border-border-default rounded px-2 py-1 text-xs text-white"
       />
       <button
         class="w-full py-1.5 text-xs rounded"
-        :class="canSave && !saving ? 'bg-clip-video text-white' : 'bg-gray-600 text-gray-400 cursor-not-allowed'"
+        :class="canSave && !saving ? 'bg-clip-video text-white' : 'bg-surface-4 text-text-secondary cursor-not-allowed'"
         :disabled="!canSave || saving"
         @click="createProject"
       >
@@ -102,40 +102,40 @@ function exportTimelineJSON() {
       </button>
     </div>
 
-    <div v-if="projectStore.currentProject" class="p-2 rounded bg-gray-800/50 border border-gray-700">
-      <div class="text-xs text-gray-400">Current Project</div>
+    <div v-if="projectStore.currentProject" class="p-2 rounded bg-surface-2/50 border border-border-subtle">
+      <div class="text-xs text-text-secondary">Current Project</div>
       <div class="text-sm text-white font-medium">{{ projectStore.currentProject.name }}</div>
-      <div class="text-xs text-gray-500 mt-1">{{ projectStore.currentProject.description }}</div>
+      <div class="text-xs text-text-tertiary mt-1">{{ projectStore.currentProject.description }}</div>
     </div>
 
     <div class="space-y-1">
-      <div class="text-xs text-gray-400">Saved Projects</div>
+      <div class="text-xs text-text-secondary">Saved Projects</div>
       <div
         v-for="p in projectStore.projects"
         :key="p.id"
-        class="flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-700/50"
+        class="flex items-center justify-between p-2 rounded cursor-pointer hover:bg-surface-3/50"
         :class="projectStore.currentProject?.id === p.id ? 'bg-clip-video/10 border border-clip-video/30' : 'border border-transparent'"
         @click="selectProject({ ...p, name: p.name })"
       >
         <div>
           <div class="text-xs text-white">{{ p.name }}</div>
-          <div class="text-xs text-gray-500">{{ p.status || 'ACTIVE' }}</div>
+          <div class="text-xs text-text-tertiary">{{ p.status || 'ACTIVE' }}</div>
         </div>
       </div>
-      <div v-if="!projectStore.projects.length" class="text-xs text-gray-500 text-center py-2">
+      <div v-if="!projectStore.projects.length" class="text-xs text-text-tertiary text-center py-2">
         No projects yet
       </div>
     </div>
 
-    <div class="space-y-1 pt-2 border-t border-gray-700">
+    <div class="space-y-1 pt-2 border-t border-border-subtle">
       <button
-        class="w-full py-1.5 text-xs bg-gray-700 text-white rounded hover:bg-gray-600"
+        class="w-full py-1.5 text-xs bg-surface-3 text-white rounded hover:bg-surface-4"
         @click="saveTimeline"
       >
         💾 Save Timeline
       </button>
       <button
-        class="w-full py-1.5 text-xs bg-gray-700 text-white rounded hover:bg-gray-600"
+        class="w-full py-1.5 text-xs bg-surface-3 text-white rounded hover:bg-surface-4"
         @click="exportTimelineJSON"
       >
         📥 Export JSON

@@ -53,79 +53,79 @@ async function computeSegment(type: 'active' | 'power') {
         <input
           v-model="tenantId"
           type="text"
-          class="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-white w-48"
+          class="bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white w-48"
           placeholder="Tenant ID"
         />
-        <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded" @click="loadData">Refresh</button>
+        <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded" @click="loadData">Refresh</button>
       </div>
     </div>
 
-    <div v-if="loading" class="text-gray-400 text-sm">Loading...</div>
+    <div v-if="loading" class="text-text-secondary text-sm">Loading...</div>
     <template v-else>
       <div class="grid grid-cols-2 gap-6">
         <!-- Profiles -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">User Profiles ({{ profiles.length }})</h2>
-          <div v-if="profiles.length === 0" class="text-xs text-gray-500">No profiles</div>
+        <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+          <h2 class="text-sm font-semibold mb-3 text-text-primary">User Profiles ({{ profiles.length }})</h2>
+          <div v-if="profiles.length === 0" class="text-xs text-text-tertiary">No profiles</div>
           <div v-else class="space-y-1.5">
             <button
               v-for="p in profiles"
               :key="p.userId"
               class="w-full text-left px-2 py-1.5 rounded text-xs"
-              :class="selectedUserId === p.userId ? 'bg-blue-600/20 text-blue-300' : 'text-gray-300 hover:bg-gray-700/50'"
+              :class="selectedUserId === p.userId ? 'bg-info-muted text-info' : 'text-text-primary hover:bg-surface-3/50'"
               @click="viewProfile(p.userId!)"
             >
               <div class="flex items-center justify-between">
                 <span class="font-mono">{{ p.userId }}</span>
-                <span class="text-gray-500">{{ p.eventCount || 0 }} events</span>
+                <span class="text-text-tertiary">{{ p.eventCount || 0 }} events</span>
               </div>
-              <div class="text-gray-500 mt-0.5">Last active: {{ p.lastActive || '—' }}</div>
+              <div class="text-text-tertiary mt-0.5">Last active: {{ p.lastActive || '—' }}</div>
             </button>
           </div>
         </div>
 
         <!-- Profile Detail -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">Profile Detail</h2>
-          <div v-if="!selectedUserId" class="text-xs text-gray-500">Select a user</div>
+        <div class="bg-surface-2 border border-border-subtle rounded-lg p-4">
+          <h2 class="text-sm font-semibold mb-3 text-text-primary">Profile Detail</h2>
+          <div v-if="!selectedUserId" class="text-xs text-text-tertiary">Select a user</div>
           <template v-else>
             <div v-if="selectedProfile" class="space-y-2 text-xs">
-              <div class="flex justify-between"><span class="text-gray-400">User ID</span><span class="font-mono">{{ selectedProfile.userId }}</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Events</span><span>{{ selectedProfile.eventCount || 0 }}</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Last Active</span><span>{{ selectedProfile.lastActive || '—' }}</span></div>
+              <div class="flex justify-between"><span class="text-text-secondary">User ID</span><span class="font-mono">{{ selectedProfile.userId }}</span></div>
+              <div class="flex justify-between"><span class="text-text-secondary">Events</span><span>{{ selectedProfile.eventCount || 0 }}</span></div>
+              <div class="flex justify-between"><span class="text-text-secondary">Last Active</span><span>{{ selectedProfile.lastActive || '—' }}</span></div>
               <div v-if="selectedProfile.segments?.length" class="mt-2">
-                <span class="text-gray-400">Segments:</span>
+                <span class="text-text-secondary">Segments:</span>
                 <div class="flex flex-wrap gap-1 mt-1">
-                  <span v-for="seg in selectedProfile.segments" :key="seg" class="text-xs px-1.5 py-0.5 bg-purple-600/20 text-purple-300 rounded">{{ seg }}</span>
+                  <span v-for="seg in selectedProfile.segments" :key="seg" class="text-xs px-1.5 py-0.5 bg-accent-500/10 text-accent-300 rounded">{{ seg }}</span>
                 </div>
               </div>
             </div>
-            <div v-if="selectedHabits" class="mt-4 pt-3 border-t border-gray-700">
-              <h3 class="text-xs font-semibold text-gray-400 mb-2">Habits</h3>
+            <div v-if="selectedHabits" class="mt-4 pt-3 border-t border-border-subtle">
+              <h3 class="text-xs font-semibold text-text-secondary mb-2">Habits</h3>
               <div class="space-y-1 text-xs">
-                <div class="flex justify-between"><span class="text-gray-400">Most Used</span><span>{{ selectedHabits.mostUsedFeature || '—' }}</span></div>
-                <div class="flex justify-between"><span class="text-gray-400">Avg Session</span><span>{{ selectedHabits.avgSessionMinutes || 0 }} min</span></div>
-                <div class="flex justify-between"><span class="text-gray-400">Render Freq</span><span>{{ selectedHabits.renderFrequency || '—' }}</span></div>
+                <div class="flex justify-between"><span class="text-text-secondary">Most Used</span><span>{{ selectedHabits.mostUsedFeature || '—' }}</span></div>
+                <div class="flex justify-between"><span class="text-text-secondary">Avg Session</span><span>{{ selectedHabits.avgSessionMinutes || 0 }} min</span></div>
+                <div class="flex justify-between"><span class="text-text-secondary">Render Freq</span><span>{{ selectedHabits.renderFrequency || '—' }}</span></div>
               </div>
             </div>
           </template>
         </div>
 
         <!-- Segments -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 col-span-2">
+        <div class="bg-surface-2 border border-border-subtle rounded-lg p-4 col-span-2">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-gray-300">Segments</h2>
+            <h2 class="text-sm font-semibold text-text-primary">Segments</h2>
             <div class="flex gap-2">
-              <button class="text-xs px-2 py-1 bg-blue-600/20 text-blue-300 rounded" @click="computeSegment('active')">Compute Active</button>
-              <button class="text-xs px-2 py-1 bg-purple-600/20 text-purple-300 rounded" @click="computeSegment('power')">Compute Power Users</button>
+              <button class="text-xs px-2 py-1 bg-info-muted text-info rounded" @click="computeSegment('active')">Compute Active</button>
+              <button class="text-xs px-2 py-1 bg-accent-500/10 text-accent-300 rounded" @click="computeSegment('power')">Compute Power Users</button>
             </div>
           </div>
-          <div v-if="segments.length === 0" class="text-xs text-gray-500">No segments computed</div>
+          <div v-if="segments.length === 0" class="text-xs text-text-tertiary">No segments computed</div>
           <div v-else class="grid grid-cols-3 gap-3">
-            <div v-for="seg in segments" :key="seg.segmentId" class="bg-gray-700/50 rounded p-3">
+            <div v-for="seg in segments" :key="seg.segmentId" class="bg-surface-3/50 rounded p-3">
               <div class="text-sm font-medium">{{ seg.name }}</div>
-              <div class="text-xs text-gray-400 mt-1">{{ seg.userCount || 0 }} users</div>
-              <div class="text-xs text-gray-500 mt-0.5 font-mono">{{ seg.segmentId }}</div>
+              <div class="text-xs text-text-secondary mt-1">{{ seg.userCount || 0 }} users</div>
+              <div class="text-xs text-text-tertiary mt-0.5 font-mono">{{ seg.segmentId }}</div>
             </div>
           </div>
         </div>

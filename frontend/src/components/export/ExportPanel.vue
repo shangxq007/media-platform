@@ -802,7 +802,7 @@ function handleViewLogs(url: string) {
     </div>
 
     <!-- REST Fallback notice -->
-    <div v-if="restFallback" class="px-2 py-1 rounded bg-info-muted border border-blue-700/50 text-[10px] text-info">
+    <div v-if="restFallback" class="px-2 py-1 rounded bg-info-muted border border-info/50 text-[10px] text-info">
       Using REST fallback — GraphQL endpoint unavailable
     </div>
 
@@ -824,7 +824,7 @@ function handleViewLogs(url: string) {
     </div>
 
     <!-- Feature Flag Block Notice -->
-    <div v-if="featureFlagSubmitBlocked" class="p-2 rounded bg-warning-muted border border-yellow-700/50 text-xs">
+    <div v-if="featureFlagSubmitBlocked" class="p-2 rounded bg-warning-muted border border-warning/50 text-xs">
       <div class="flex items-center gap-1 text-warning font-medium">
         <span>🚩</span>
         <span>Feature Flag Block</span>
@@ -859,7 +859,7 @@ function handleViewLogs(url: string) {
 
     <!-- Budget Status -->
     <div v-if="budgetStatus" class="p-2 rounded border text-xs space-y-1"
-      :class="hasBudgetExceeded ? 'bg-red-900/30 border-red-700' : hasBudgetWarning ? 'bg-yellow-900/30 border-yellow-700' : 'bg-surface-2/50 border-border-subtle'">
+      :class="hasBudgetExceeded ? 'bg-danger-muted border-danger' : hasBudgetWarning ? 'bg-yellow-900/30 border-warning' : 'bg-surface-2/50 border-border-subtle'">
       <div class="flex items-center justify-between">
         <span class="text-text-secondary">Budget</span>
         <span v-if="hasBudgetExceeded" class="text-danger font-medium">Exceeded</span>
@@ -883,7 +883,7 @@ function handleViewLogs(url: string) {
     </div>
 
     <!-- Validation Not Allowed -->
-    <div v-if="validationResult && !validationResult.allowed" class="p-2 rounded bg-danger-muted border border-red-700/50 text-xs space-y-1">
+    <div v-if="validationResult && !validationResult.allowed" class="p-2 rounded bg-danger-muted border border-danger/50 text-xs space-y-1">
       <div class="flex items-center gap-1 text-danger font-medium">
         <span>⚠</span>
         <span>Export Blocked</span>
@@ -925,7 +925,7 @@ function handleViewLogs(url: string) {
     </div>
 
     <!-- Validation Allowed -->
-    <div v-if="validationResult && validationResult.allowed && validationResult.recommendations?.length" class="p-2 rounded bg-info-muted border border-blue-700/50 text-xs">
+    <div v-if="validationResult && validationResult.allowed && validationResult.recommendations?.length" class="p-2 rounded bg-info-muted border border-info/50 text-xs">
       <div v-for="(rec, i) in validationResult.recommendations" :key="i" class="text-info text-[10px]">
         {{ rec }}
       </div>
@@ -1170,7 +1170,7 @@ function handleViewLogs(url: string) {
       <button
         type="button"
         class="flex-1 py-1 rounded border"
-        :class="exportMode === 'legacy' ? 'border-blue-500 text-info bg-info-muted' : 'border-border-default text-text-secondary'"
+        :class="exportMode === 'legacy' ? 'border-info text-info bg-info-muted' : 'border-border-default text-text-secondary'"
         @click="exportMode = 'legacy'"
       >
         传统导出
@@ -1247,7 +1247,7 @@ function handleViewLogs(url: string) {
     </div>
 
     <!-- Error -->
-    <div v-if="projectStore.error" class="p-2 rounded bg-red-900/30 border border-red-700 text-xs text-danger">
+    <div v-if="projectStore.error" class="p-2 rounded bg-danger-muted border border-danger text-xs text-danger">
       {{ projectStore.error }}
     </div>
   </div>

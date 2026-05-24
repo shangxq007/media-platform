@@ -37,28 +37,28 @@ async function runPreview() {
 </script>
 
 <template>
-  <div class="rounded-lg border border-gray-700/80 bg-gray-900/40 p-sm space-y-sm">
+  <div class="rounded-lg border border-border-subtle/80 bg-surface-0/40 p-sm space-y-sm">
     <div class="flex items-center justify-between gap-sm">
-      <span class="text-xs font-medium text-gray-300">Internal Timeline 1.0 预览</span>
+      <span class="text-xs font-medium text-text-primary">Internal Timeline 1.0 预览</span>
       <button
         type="button"
-        class="rounded border border-gray-600 px-sm py-0.5 text-xs hover:bg-gray-800 disabled:opacity-50"
+        class="rounded border border-border-default px-sm py-0.5 text-xs hover:bg-surface-2 disabled:opacity-50"
         :disabled="!timelineJson.trim() || loading"
         @click="runPreview"
       >
         {{ loading ? '转换中…' : '预览转换' }}
       </button>
     </div>
-    <p class="text-[10px] text-gray-500">
+    <p class="text-[10px] text-text-tertiary">
       将编辑器 schema 2.0 规范化为服务端增量渲染使用的 Internal 1.0 JSON。
     </p>
 
     <div
       v-if="preview"
-      class="text-xs text-gray-400 space-y-1"
+      class="text-xs text-text-secondary space-y-1"
     >
       <div>
-        源: <span class="font-mono text-gray-300">{{ preview.sourceSchema }}</span>
+        源: <span class="font-mono text-text-primary">{{ preview.sourceSchema }}</span>
         <span v-if="preview.alreadyInternal" class="text-emerald-500 ml-1">已是 1.0</span>
       </div>
       <div class="grid grid-cols-2 gap-1 font-mono text-[10px]">
@@ -76,7 +76,7 @@ async function runPreview() {
       </button>
       <pre
         v-if="showDiff"
-        class="max-h-28 overflow-auto text-[10px] text-gray-500 bg-black/30 p-xs rounded"
+        class="max-h-28 overflow-auto text-[10px] text-text-tertiary bg-black/30 p-xs rounded"
       >{{ preview.internalTimelineJson.slice(0, 1200) }}{{ preview.internalTimelineJson.length > 1200 ? '…' : '' }}</pre>
     </div>
   </div>

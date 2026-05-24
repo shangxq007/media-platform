@@ -130,17 +130,17 @@ onMounted(() => {
       </button>
     </div>
 
-    <div v-if="error" class="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
+    <div v-if="error" class="mb-4 p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
       {{ error }}
     </div>
 
-    <div v-if="loading" class="text-gray-400 text-sm">Loading routes...</div>
+    <div v-if="loading" class="text-text-secondary text-sm">Loading routes...</div>
 
     <template v-else>
       <div class="flex items-center gap-4 mb-4">
         <select
           v-model="filterGroup"
-          class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
+          class="bg-surface-2 border border-border-subtle rounded px-2 py-1 text-sm text-text-primary"
         >
           <option value="">All Groups</option>
           <option v-for="group in menuGroups" :key="group" :value="group">{{ group }}</option>
@@ -148,7 +148,7 @@ onMounted(() => {
 
         <select
           v-model="filterStatus"
-          class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
+          class="bg-surface-2 border border-border-subtle rounded px-2 py-1 text-sm text-text-primary"
         >
           <option value="all">All Status</option>
           <option value="enabled">Enabled</option>
@@ -158,14 +158,14 @@ onMounted(() => {
 
         <select
           v-model="filterFlagStatus"
-          class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
+          class="bg-surface-2 border border-border-subtle rounded px-2 py-1 text-sm text-text-primary"
         >
           <option value="all">All Flags</option>
           <option value="flagged">Has Flags</option>
           <option value="unflagged">No Flags</option>
         </select>
 
-        <span class="text-xs text-gray-500">{{ filteredRoutes.length }} routes</span>
+        <span class="text-xs text-text-tertiary">{{ filteredRoutes.length }} routes</span>
        </div>
 
        <RouteDefinitionList

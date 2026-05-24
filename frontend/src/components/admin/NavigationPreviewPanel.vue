@@ -72,25 +72,25 @@ async function runPreview() {
 
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="emit('close')">
-    <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+    <div class="bg-surface-2 border border-border-subtle rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
         <h2 class="text-lg font-semibold text-white">Navigation Preview</h2>
-        <button class="text-gray-400 hover:text-white text-xl leading-none" @click="emit('close')">×</button>
+        <button class="text-text-secondary hover:text-white text-xl leading-none" @click="emit('close')">×</button>
       </div>
 
       <div class="px-6 py-4 space-y-4">
-        <div v-if="route" class="bg-gray-900 border border-gray-700 rounded-lg p-3">
-          <div class="text-xs text-gray-400 mb-1">Previewing for route:</div>
-          <div class="text-sm font-mono text-blue-300">{{ route.routeKey }}</div>
-          <div class="text-xs text-gray-500 mt-1">{{ route.path }} — {{ route.title }}</div>
+        <div v-if="route" class="bg-surface-0 border border-border-subtle rounded-lg p-3">
+          <div class="text-xs text-text-secondary mb-1">Previewing for route:</div>
+          <div class="text-sm font-mono text-info">{{ route.routeKey }}</div>
+          <div class="text-xs text-text-tertiary mt-1">{{ route.path }} — {{ route.title }}</div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Source</label>
+            <label class="block text-xs text-text-secondary mb-1">Source</label>
             <select
               v-model="previewContext.source"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             >
               <option value="WEB">WEB</option>
               <option value="MCP">MCP</option>
@@ -99,10 +99,10 @@ async function runPreview() {
             </select>
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Tier</label>
+            <label class="block text-xs text-text-secondary mb-1">Tier</label>
             <select
               v-model="previewContext.tier"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             >
               <option value="FREE">Free</option>
               <option value="BASIC">Basic</option>
@@ -114,31 +114,31 @@ async function runPreview() {
         </div>
 
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Roles (comma-separated)</label>
+          <label class="block text-xs text-text-secondary mb-1">Roles (comma-separated)</label>
           <input
             v-model="rolesInput"
             type="text"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+            class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             placeholder="e.g. ADMIN, TENANT_ADMIN"
           />
         </div>
 
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Permissions (comma-separated)</label>
+          <label class="block text-xs text-text-secondary mb-1">Permissions (comma-separated)</label>
           <input
             v-model="permissionsInput"
             type="text"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+            class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             placeholder="e.g. config:read, tenant:read"
           />
         </div>
 
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Features (comma-separated)</label>
+          <label class="block text-xs text-text-secondary mb-1">Features (comma-separated)</label>
           <input
             v-model="featuresInput"
             type="text"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+            class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             placeholder="e.g. ai-features, advanced-export"
           />
         </div>
@@ -151,15 +151,15 @@ async function runPreview() {
           {{ previewLoading ? 'Running preview...' : 'Run Preview' }}
         </button>
 
-        <div v-if="previewError" class="p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
+        <div v-if="previewError" class="p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
           {{ previewError }}
         </div>
 
         <div v-if="previewResult" class="space-y-3">
-          <h3 class="text-sm font-medium text-gray-300">Preview Result</h3>
+          <h3 class="text-sm font-medium text-text-primary">Preview Result</h3>
 
-          <div v-for="(routes, group) in previewResult.menuGroups" :key="group" class="bg-gray-900 border border-gray-700 rounded-lg p-3">
-            <div class="text-xs font-medium text-gray-400 mb-2 uppercase">{{ group }}</div>
+          <div v-for="(routes, group) in previewResult.menuGroups" :key="group" class="bg-surface-0 border border-border-subtle rounded-lg p-3">
+            <div class="text-xs font-medium text-text-secondary mb-2 uppercase">{{ group }}</div>
             <div class="space-y-1">
               <div
                 v-for="r in routes"
@@ -172,23 +172,23 @@ async function runPreview() {
                     :class="{
                       'bg-green-400': r.visible && r.enabled,
                       'bg-red-400': r.visible && !r.enabled,
-                      'bg-gray-600': !r.visible
+                      'bg-surface-4': !r.visible
                     }"
                   />
-                  <span :class="!r.visible ? 'text-gray-600' : r.enabled ? 'text-gray-200' : 'text-gray-400'">
+                  <span :class="!r.visible ? 'text-text-tertiary' : r.enabled ? 'text-text-primary' : 'text-text-secondary'">
                     {{ r.title }}
                   </span>
-                  <span class="text-xs font-mono text-gray-500">{{ r.path }}</span>
+                  <span class="text-xs font-mono text-text-tertiary">{{ r.path }}</span>
                 </div>
-                <span v-if="!r.enabled && r.reasonCode" class="text-xs text-yellow-400">
+                <span v-if="!r.enabled && r.reasonCode" class="text-xs text-warning">
                   {{ r.reasonCode }}
                 </span>
               </div>
-              <div v-if="routes.length === 0" class="text-xs text-gray-600">No visible routes</div>
+              <div v-if="routes.length === 0" class="text-xs text-text-tertiary">No visible routes</div>
             </div>
           </div>
 
-          <div v-if="Object.keys(previewResult.menuGroups).length === 0" class="text-sm text-gray-500">
+          <div v-if="Object.keys(previewResult.menuGroups).length === 0" class="text-sm text-text-tertiary">
             No visible routes for this context.
           </div>
         </div>

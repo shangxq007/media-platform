@@ -20,7 +20,7 @@ function getStatusColor(status: UploadItem['status']): string {
     case 'uploading': return 'bg-primary-500'
     case 'success': return 'bg-green-500'
     case 'failed': return 'bg-red-500'
-    case 'cancelled': return 'bg-gray-500'
+    case 'cancelled': return 'bg-surface-4'
   }
 }
 
@@ -39,21 +39,21 @@ function getStatusLabel(status: UploadItem['status']): string {
     <div
       v-for="item in items"
       :key="item.id"
-      class="p-2 rounded bg-gray-800/50 border border-gray-700"
+      class="p-2 rounded bg-surface-2/50 border border-border-subtle"
     >
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs text-white truncate flex-1" :title="item.name">{{ item.name }}</span>
-        <span class="text-[10px] text-gray-500 flex-shrink-0">{{ formatFileSize(item.file.size) }}</span>
+        <span class="text-[10px] text-text-tertiary flex-shrink-0">{{ formatFileSize(item.file.size) }}</span>
         <button
           v-if="item.status === 'uploading'"
-          class="text-gray-500 hover:text-red-400 text-xs flex-shrink-0"
+          class="text-text-tertiary hover:text-danger text-xs flex-shrink-0"
           aria-label="Cancel upload"
           @click="emit('cancel', item.id)"
         >
           ✕
         </button>
       </div>
-      <div class="mt-1 h-1 bg-gray-700 rounded-full overflow-hidden">
+      <div class="mt-1 h-1 bg-surface-3 rounded-full overflow-hidden">
         <div
           class="h-full rounded-full transition-all duration-200"
           :class="getStatusColor(item.status)"
@@ -61,10 +61,10 @@ function getStatusLabel(status: UploadItem['status']): string {
         />
       </div>
       <div class="flex items-center justify-between mt-0.5">
-        <span class="text-[10px]" :class="item.status === 'failed' ? 'text-red-400' : 'text-gray-500'">
+        <span class="text-[10px]" :class="item.status === 'failed' ? 'text-danger' : 'text-text-tertiary'">
           {{ item.error || getStatusLabel(item.status) }}
         </span>
-        <span v-if="item.status === 'uploading'" class="text-[10px] text-gray-500">
+        <span v-if="item.status === 'uploading'" class="text-[10px] text-text-tertiary">
           {{ item.progress }}%
         </span>
       </div>

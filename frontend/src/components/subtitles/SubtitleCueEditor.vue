@@ -83,19 +83,19 @@ function handleKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="p-3 border border-gray-700 rounded-lg bg-gray-800/60 space-y-3" @keydown="handleKeydown">
+  <div class="p-3 border border-border-subtle rounded-lg bg-surface-2/60 space-y-3" @keydown="handleKeydown">
     <div class="flex items-center justify-between">
       <span class="text-xs font-medium text-white">Edit Cue #{{ cue.index }}</span>
-      <span class="text-[10px] text-gray-500">Ctrl+Enter to save · Esc to cancel</span>
+      <span class="text-[10px] text-text-tertiary">Ctrl+Enter to save · Esc to cancel</span>
     </div>
 
     <div>
-      <label class="text-[10px] text-gray-500 block mb-1">Subtitle Text</label>
+      <label class="text-[10px] text-text-tertiary block mb-1">Subtitle Text</label>
       <textarea
         v-model="text"
         rows="2"
-        class="w-full bg-gray-800 border rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-primary-400 resize-none"
-        :class="errors.text ? 'border-danger-500' : 'border-gray-600'"
+        class="w-full bg-surface-2 border rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-primary-400 resize-none"
+        :class="errors.text ? 'border-danger-500' : 'border-border-default'"
         placeholder="Enter subtitle text..."
       />
       <span v-if="errors.text" class="text-[10px] text-danger-500">{{ errors.text }}</span>
@@ -103,44 +103,44 @@ function handleKeydown(e: KeyboardEvent) {
 
     <div class="grid grid-cols-2 gap-2">
       <div>
-        <label class="text-[10px] text-gray-500 block mb-1">Start Time</label>
+        <label class="text-[10px] text-text-tertiary block mb-1">Start Time</label>
         <input
           v-model="startTime"
           type="text"
-          class="w-full bg-gray-800 border rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-primary-400"
-          :class="errors.startTime ? 'border-danger-500' : 'border-gray-600'"
+          class="w-full bg-surface-2 border rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-primary-400"
+          :class="errors.startTime ? 'border-danger-500' : 'border-border-default'"
           placeholder="00:00:00.000"
         />
         <span v-if="errors.startTime" class="text-[10px] text-danger-500">{{ errors.startTime }}</span>
       </div>
       <div>
-        <label class="text-[10px] text-gray-500 block mb-1">End Time</label>
+        <label class="text-[10px] text-text-tertiary block mb-1">End Time</label>
         <input
           v-model="endTime"
           type="text"
-          class="w-full bg-gray-800 border rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-primary-400"
-          :class="errors.endTime ? 'border-danger-500' : 'border-gray-600'"
+          class="w-full bg-surface-2 border rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-primary-400"
+          :class="errors.endTime ? 'border-danger-500' : 'border-border-default'"
           placeholder="00:00:00.000"
         />
         <span v-if="errors.endTime" class="text-[10px] text-danger-500">{{ errors.endTime }}</span>
       </div>
     </div>
 
-    <div class="text-[10px] text-gray-500">
+    <div class="text-[10px] text-text-tertiary">
       Timeline duration: {{ duration.toFixed(1) }}s
     </div>
 
     <div class="flex gap-2 pt-1">
       <button
         class="flex-1 px-2 py-1.5 text-xs rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        :class="isValid ? 'bg-primary-500/20 text-primary-400 hover:bg-primary-500/30' : 'bg-gray-700 text-gray-500'"
+        :class="isValid ? 'bg-primary-500/20 text-primary-400 hover:bg-primary-500/30' : 'bg-surface-3 text-text-tertiary'"
         :disabled="!isValid"
         @click="handleSave"
       >
         Save
       </button>
       <button
-        class="flex-1 px-2 py-1.5 text-xs bg-gray-700 text-gray-400 rounded hover:bg-gray-600 transition-colors"
+        class="flex-1 px-2 py-1.5 text-xs bg-surface-3 text-text-secondary rounded hover:bg-surface-4 transition-colors"
         @click="emit('cancel')"
       >
         Cancel

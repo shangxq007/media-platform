@@ -123,11 +123,11 @@ function formatIso(iso?: { iso: string }): string {
       </div>
     </div>
 
-    <div v-if="restFallback" class="px-3 py-2 rounded bg-info-muted border border-blue-700/50 text-xs text-info">
+    <div v-if="restFallback" class="px-3 py-2 rounded bg-info-muted border border-info/50 text-xs text-info">
       Using REST fallback — GraphQL endpoint unavailable
     </div>
 
-    <div v-if="error" class="px-3 py-2 rounded bg-danger-muted border border-red-700/50 text-xs text-danger">
+    <div v-if="error" class="px-3 py-2 rounded bg-danger-muted border border-danger/50 text-xs text-danger">
       <div v-if="errorCode" class="font-mono text-[10px] text-danger mb-1">{{ errorCode }}</div>
       {{ error.message }}
     </div>
@@ -143,7 +143,7 @@ function formatIso(iso?: { iso: string }): string {
       <div class="grid grid-cols-5 gap-3">
         <div v-for="flag in monitoringFlagStatuses" :key="flag.key" class="flex items-center justify-between p-3 bg-surface-0/50 rounded">
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-gray-500'"></span>
+            <span class="w-2 h-2 rounded-full" :class="flag.enabled ? 'bg-green-500' : 'bg-surface-4'"></span>
             <span class="text-xs text-text-primary">{{ flag.label }}</span>
           </div>
           <span class="text-[10px] px-1.5 py-0.5 rounded"
@@ -163,7 +163,7 @@ function formatIso(iso?: { iso: string }): string {
         <div class="grid grid-cols-2 gap-4">
           <div class="flex items-center justify-between p-3 bg-surface-0/50 rounded">
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full" :class="monitoringStatus?.sentryEnabled && isMonitoringFlagEnabled('monitoring.sentryReplay.enabled') ? 'bg-green-500' : 'bg-gray-500'"></span>
+              <span class="w-2 h-2 rounded-full" :class="monitoringStatus?.sentryEnabled && isMonitoringFlagEnabled('monitoring.sentryReplay.enabled') ? 'bg-green-500' : 'bg-surface-4'"></span>
               <span class="text-xs text-text-secondary">Sentry</span>
             </div>
             <span class="text-xs font-medium" :class="monitoringStatus?.sentryEnabled && isMonitoringFlagEnabled('monitoring.sentryReplay.enabled') ? 'text-success' : 'text-text-tertiary'">
@@ -172,7 +172,7 @@ function formatIso(iso?: { iso: string }): string {
           </div>
           <div class="flex items-center justify-between p-3 bg-surface-0/50 rounded">
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full" :class="monitoringStatus?.openReplayEnabled && isMonitoringFlagEnabled('monitoring.openReplay.enabled') ? 'bg-green-500' : 'bg-gray-500'"></span>
+              <span class="w-2 h-2 rounded-full" :class="monitoringStatus?.openReplayEnabled && isMonitoringFlagEnabled('monitoring.openReplay.enabled') ? 'bg-green-500' : 'bg-surface-4'"></span>
               <span class="text-xs text-text-secondary">OpenReplay</span>
             </div>
             <span class="text-xs font-medium" :class="monitoringStatus?.openReplayEnabled && isMonitoringFlagEnabled('monitoring.openReplay.enabled') ? 'text-success' : 'text-text-tertiary'">
@@ -194,7 +194,7 @@ function formatIso(iso?: { iso: string }): string {
           <div class="text-xs text-text-secondary mb-1">Open Issues</div>
           <div class="text-2xl font-bold">{{ feedbackSummary?.openIssues ?? '—' }}</div>
         </div>
-        <div class="bg-surface-2 border rounded-lg p-4" :class="hasCriticalIssues ? 'border-red-700' : 'border-border-subtle'">
+        <div class="bg-surface-2 border rounded-lg p-4" :class="hasCriticalIssues ? 'border-danger' : 'border-border-subtle'">
           <div class="text-xs text-text-secondary mb-1">Critical Issues</div>
           <div class="text-2xl font-bold" :class="hasCriticalIssues ? 'text-danger' : ''">
             {{ feedbackSummary?.criticalIssues ?? '—' }}
@@ -257,7 +257,7 @@ function formatIso(iso?: { iso: string }): string {
       </div>
 
       <!-- Problematic Data -->
-       <div class="bg-surface-2 border rounded-lg p-4" :class="hasCriticalData ? 'border-red-700' : 'border-border-subtle'">
+       <div class="bg-surface-2 border rounded-lg p-4" :class="hasCriticalData ? 'border-danger' : 'border-border-subtle'">
         <h2 class="text-sm font-semibold mb-3 text-text-primary">Problematic Data</h2>
         <div class="grid grid-cols-4 gap-4">
           <div>

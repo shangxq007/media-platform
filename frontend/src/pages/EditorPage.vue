@@ -528,7 +528,7 @@ onMounted(() => {
             >
               <AppIcon :name="tab.icon" :size="16" />
               <span>{{ tab.label }}</span>
-              <span v-if="tab.beta" class="absolute top-1 right-1 text-[8px] px-1 rounded bg-purple-500/25 text-purple-300 font-semibold">β</span>
+              <span v-if="tab.beta" class="absolute top-1 right-1 text-[8px] px-1 rounded bg-purple-500/25 text-accent-300 font-semibold">β</span>
             </button>
           </div>
           <div class="flex-1 overflow-y-auto theme-scrollbar">

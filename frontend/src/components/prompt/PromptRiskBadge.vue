@@ -10,7 +10,7 @@ function getRiskClass(level?: string): string {
     case 'HIGH': return 'bg-orange-500 text-white'
     case 'MEDIUM': return 'bg-yellow-500 text-black'
     case 'LOW': return 'bg-green-500 text-white'
-    default: return 'bg-gray-600 text-white'
+    default: return 'bg-surface-4 text-white'
   }
 }
 

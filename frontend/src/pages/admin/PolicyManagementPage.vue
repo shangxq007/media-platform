@@ -176,36 +176,36 @@ onMounted(loadPolicies)
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-xl font-bold">Policy / ABAC Management</h1>
-        <p class="text-sm text-gray-400 mt-1">Manage attribute-based access control policies and rules</p>
+        <p class="text-sm text-text-secondary mt-1">Manage attribute-based access control policies and rules</p>
       </div>
       <div class="flex gap-2">
         <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-sm rounded text-white" @click="createPolicy">
           + New Policy
         </button>
-        <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-sm rounded text-white" @click="loadPolicies">
+        <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded text-white" @click="loadPolicies">
           Refresh
         </button>
       </div>
     </div>
 
-    <div class="flex border-b border-gray-700 mb-4">
+    <div class="flex border-b border-border-subtle mb-4">
       <button
         class="px-4 py-2 text-sm"
-        :class="activeTab === 'policies' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white'"
+        :class="activeTab === 'policies' ? 'text-info border-b-2 border-blue-400' : 'text-text-secondary hover:text-white'"
         @click="activeTab = 'policies'"
       >
         Policies ({{ policies.length }})
       </button>
       <button
         class="px-4 py-2 text-sm"
-        :class="activeTab === 'simulation' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white'"
+        :class="activeTab === 'simulation' ? 'text-info border-b-2 border-blue-400' : 'text-text-secondary hover:text-white'"
         @click="activeTab = 'simulation'"
       >
         Simulation
       </button>
     </div>
 
-    <div v-if="error" class="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-300 text-sm">
+    <div v-if="error" class="mb-4 p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
       {{ error }}
     </div>
 
@@ -217,16 +217,16 @@ onMounted(loadPolicies)
           <input
             v-model="searchQuery"
             type="text"
-            class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+            class="flex-1 bg-surface-2 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
             placeholder="Search by name or code..."
           />
-          <select v-model="filterStatus" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200">
+          <select v-model="filterStatus" class="bg-surface-2 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary">
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>
             <option value="DRAFT">Draft</option>
             <option value="ARCHIVED">Archived</option>
           </select>
-          <span class="text-xs text-gray-500">{{ filteredPolicies.length }} policies</span>
+          <span class="text-xs text-text-tertiary">{{ filteredPolicies.length }} policies</span>
         </div>
 
         <EmptyState
@@ -246,40 +246,40 @@ onMounted(loadPolicies)
           <div
             v-for="policy in filteredPolicies"
             :key="policy.policyId"
-            class="bg-gray-800 border border-gray-700 rounded-lg p-4"
+            class="bg-surface-2 border border-border-subtle rounded-lg p-4"
           >
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-3">
                 <h3 class="text-sm font-semibold text-white">{{ policy.name }}</h3>
-                <span class="text-xs font-mono text-blue-300">{{ policy.code }}</span>
+                <span class="text-xs font-mono text-info">{{ policy.code }}</span>
                 <StatusBadge
                   :variant="policy.status === 'ACTIVE' ? 'success' : policy.status === 'DRAFT' ? 'warning' : 'neutral'"
                   :label="policy.status"
                 />
-                <span class="text-xs text-gray-500">{{ policy.versionCount }} versions</span>
+                <span class="text-xs text-text-tertiary">{{ policy.versionCount }} versions</span>
               </div>
               <div class="flex gap-1">
-                <button class="text-[10px] text-blue-400 hover:text-blue-300 px-1" @click="editPolicy(policy)">Edit</button>
-                <button class="text-[10px] text-green-400 hover:text-green-300 px-1" @click="addRule(policy)">+ Rule</button>
-                <button v-if="policy.status !== 'ARCHIVED'" class="text-[10px] text-red-400 hover:text-red-300 px-1" @click="archivePolicy(policy)">Archive</button>
+                <button class="text-[10px] text-info hover:text-info px-1" @click="editPolicy(policy)">Edit</button>
+                <button class="text-[10px] text-success hover:text-success px-1" @click="addRule(policy)">+ Rule</button>
+                <button v-if="policy.status !== 'ARCHIVED'" class="text-[10px] text-danger hover:text-danger px-1" @click="archivePolicy(policy)">Archive</button>
               </div>
             </div>
-            <p class="text-xs text-gray-400 mb-3">{{ policy.description }}</p>
+            <p class="text-xs text-text-secondary mb-3">{{ policy.description }}</p>
             <div v-if="policy.rules.length > 0" class="space-y-1.5">
-              <div v-for="(rule, idx) in policy.rules" :key="rule.ruleId || idx" class="flex items-center justify-between p-2 bg-gray-900/50 rounded">
+              <div v-for="(rule, idx) in policy.rules" :key="rule.ruleId || idx" class="flex items-center justify-between p-2 bg-surface-0/50 rounded">
                 <div class="flex items-center gap-2">
-                  <span class="text-xs text-gray-500 font-mono">#{{ rule.priority }}</span>
-                  <span class="text-xs text-gray-200">{{ rule.name }}</span>
+                  <span class="text-xs text-text-tertiary font-mono">#{{ rule.priority }}</span>
+                  <span class="text-xs text-text-primary">{{ rule.name }}</span>
                   <StatusBadge :variant="effectVariant(rule.effect)" :label="rule.effect" />
-                  <span class="text-xs text-gray-500">{{ rule.conditions.length }} conditions</span>
-                  <span v-if="rule.featureFlagConditions.length > 0" class="text-xs px-1 py-0.5 rounded bg-purple-600/20 text-purple-300">
+                  <span class="text-xs text-text-tertiary">{{ rule.conditions.length }} conditions</span>
+                  <span v-if="rule.featureFlagConditions.length > 0" class="text-xs px-1 py-0.5 rounded bg-accent-500/10 text-accent-300">
                     {{ rule.featureFlagConditions.length }} flag refs
                   </span>
                 </div>
-                <button class="text-[10px] text-blue-400 hover:text-blue-300" @click="editRule(policy, rule)">Edit</button>
+                <button class="text-[10px] text-info hover:text-info" @click="editRule(policy, rule)">Edit</button>
               </div>
             </div>
-            <div v-else class="text-xs text-gray-500">No rules defined</div>
+            <div v-else class="text-xs text-text-tertiary">No rules defined</div>
           </div>
         </div>
       </template>
@@ -289,49 +289,49 @@ onMounted(loadPolicies)
 
     <!-- Policy Editor Modal -->
     <div v-if="showEditor" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="closeEditor">
-      <div class="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+      <div class="bg-surface-2 border border-border-subtle rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <h2 class="text-lg font-semibold text-white">{{ isEditingPolicy ? 'Edit Policy' : 'New Policy' }}</h2>
-          <button class="text-gray-400 hover:text-white text-xl leading-none" @click="closeEditor">×</button>
+          <button class="text-text-secondary hover:text-white text-xl leading-none" @click="closeEditor">×</button>
         </div>
         <div class="px-6 py-4 space-y-4">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Name *</label>
+            <label class="block text-xs text-text-secondary mb-1">Name *</label>
             <input
               v-model="editorForm.name"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. Enterprise Access Policy"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Code *</label>
+            <label class="block text-xs text-text-secondary mb-1">Code *</label>
             <input
               v-model="editorForm.code"
               type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
               placeholder="e.g. enterprise-access"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Description</label>
+            <label class="block text-xs text-text-secondary mb-1">Description</label>
             <textarea
               v-model="editorForm.description"
               rows="2"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200 resize-none"
+              class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary resize-none"
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Status</label>
-            <select v-model="editorForm.status" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200">
+            <label class="block text-xs text-text-secondary mb-1">Status</label>
+            <select v-model="editorForm.status" class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary">
               <option value="DRAFT">Draft</option>
               <option value="ACTIVE">Active</option>
               <option value="ARCHIVED">Archived</option>
             </select>
           </div>
         </div>
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-700">
-          <button class="px-4 py-1.5 text-sm text-gray-400 hover:text-white border border-gray-600 rounded-lg" @click="closeEditor">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle">
+          <button class="px-4 py-1.5 text-sm text-text-secondary hover:text-white border border-border-default rounded-lg" @click="closeEditor">
             Cancel
           </button>
           <button

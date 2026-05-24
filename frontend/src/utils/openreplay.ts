@@ -43,9 +43,9 @@ const config = ref<OpenReplayConfig>({
 
 const initialized = ref(false)
 const sessionId = ref<string | null>(null)
-let openReplaySdk: any = null
+let openReplaySdk: Record<string, unknown> | null = null
 
-export function initOpenReplay(sdk: any, userConfig: Partial<OpenReplayConfig> = {}) {
+export function initOpenReplay(sdk: Record<string, unknown>, userConfig: Partial<OpenReplayConfig> = {}) {
   Object.assign(config.value, userConfig)
 
   if (!config.value.projectKey || !config.value.enabled) {
@@ -79,7 +79,7 @@ export function initOpenReplay(sdk: any, userConfig: Partial<OpenReplayConfig> =
           textSanitizer: (text: string) => redactText(text),
           inputSanitizer: (text: string) => redactText(text),
           changeSanitizer: (text: string) => redactText(text),
-          networkSanitizer: (request: any) => sanitizeNetworkData(request),
+          networkSanitizer: (request: Record<string, unknown>) => sanitizeNetworkData(request),
         }
       })
       openReplaySdk = sdk
@@ -184,7 +184,7 @@ function redactText(text: string): string {
     .replace(/secret["\s:=]+[^\s"]+/gi, 'secret=[REDACTED]')
 }
 
-function sanitizeNetworkData(request: any): any {
+function sanitizeNetworkData(request: Record<string, unknown>): Record<string, unknown> {
   if (!request) return request
   if (request.headers) {
     const sensitive = ['authorization', 'cookie', 'x-api-key', 'x-auth-token']

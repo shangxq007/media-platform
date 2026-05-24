@@ -36,9 +36,9 @@ const config = ref<SentryConfig>({
 })
 
 const initialized = ref(false)
-let sentrySdk: any = null
+let sentrySdk: Record<string, unknown> | null = null
 
-export function initSentry(sdk: any, userConfig: Partial<SentryConfig> = {}) {
+export function initSentry(sdk: Record<string, unknown>, userConfig: Partial<SentryConfig> = {}) {
   Object.assign(config.value, userConfig)
   sentrySdk = sdk
 
@@ -57,10 +57,10 @@ export function initSentry(sdk: any, userConfig: Partial<SentryConfig> = {}) {
         replaysSessionSampleRate: config.value.replaysSessionSampleRate,
         replaysOnErrorSampleRate: config.value.replaysOnErrorSampleRate,
         integrations: sdk.getReplayIntegrations ? sdk.getReplayIntegrations() : [],
-        beforeSend(event: any) {
+        beforeSend(event: Record<string, unknown>) {
           return sanitizeEvent(event)
         },
-        beforeBreadcrumb(breadcrumb: any) {
+        beforeBreadcrumb(breadcrumb: Record<string, unknown>) {
           return sanitizeBreadcrumb(breadcrumb)
         }
       })
@@ -132,7 +132,7 @@ export function getSentryReplayId(): string | null {
   }
 }
 
-function sanitizeEvent(event: any): any {
+function sanitizeEvent(event: Record<string, unknown>): Record<string, unknown> {
   if (!event) return event
   // Redact sensitive data from event
   if (event.request) {
@@ -157,7 +157,7 @@ function sanitizeEvent(event: any): any {
   return event
 }
 
-function sanitizeBreadcrumb(breadcrumb: any): any {
+function sanitizeBreadcrumb(breadcrumb: Record<string, unknown>): Record<string, unknown> {
   if (!breadcrumb) return breadcrumb
   if (breadcrumb.data) {
     breadcrumb.data = redactSensitiveData(breadcrumb.data)
@@ -174,7 +174,7 @@ function redactHeaders(headers: Record<string, string>) {
   }
 }
 
-function redactSensitiveData(data: any): any {
+function redactSensitiveData(data: unknown): unknown {
   if (typeof data === 'string') {
     // Redact potential secrets in strings
     return data
@@ -185,7 +185,7 @@ function redactSensitiveData(data: any): any {
       .replace(/secret["\s:=]+[^\s"]+/gi, 'secret=[REDACTED]')
   }
   if (typeof data === 'object' && data !== null) {
-    const result: any = {}
+    const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
       const lowerKey = key.toLowerCase()
       if (lowerKey.includes('password') || lowerKey.includes('secret')
