@@ -116,7 +116,7 @@ function formatTime(dateStr?: string): string {
     <template v-else>
       <!-- Error banner -->
       <div v-if="errorCode" class="p-sm bg-danger-500/10 border border-danger-500/30 rounded text-xs text-danger-500 flex items-center gap-sm">
-        <span>⚠️</span>
+        <span>alert-triangle</span>
         <span>{{ error }}</span>
         <code class="ml-auto text-[10px] font-mono bg-danger-500/10 px-xs py-0.5 rounded">{{ errorCode }}</code>
       </div>
@@ -140,16 +140,16 @@ function formatTime(dateStr?: string): string {
       <!-- Overview Tab -->
       <template v-if="activeTab === 'overview'">
         <div class="grid grid-cols-4 gap-md">
-          <MetricCard :value="activeEvents.length" label="Active Events" icon="📋" />
+          <MetricCard :value="activeEvents.length" label="Active Events" icon="file-text" />
           <MetricCard :value="criticalEvents.length" label="Critical Events" icon="🚨" />
           <MetricCard :value="deliveriesTotal" label="Total Deliveries" icon="📨" />
-          <MetricCard :value="activeProviders.length" :label="`Active Providers (${downProviders.length} down)`" icon="🔌" />
+          <MetricCard :value="activeProviders.length" :label="`Active Providers (${downProviders.length} down)`" icon="plug" />
         </div>
 
         <!-- Provider health summary -->
         <div v-if="downProviders.length > 0" class="c-card border-danger-500 bg-danger-500/5">
           <div class="c-card-body flex items-center gap-md">
-            <span class="text-xl">⚠️</span>
+            <span class="text-xl">alert-triangle</span>
             <div class="flex-1">
               <div class="text-sm font-semibold text-danger-500">Provider Issues Detected</div>
               <div class="text-xs text-text-secondary mt-xs">
@@ -196,7 +196,7 @@ function formatTime(dateStr?: string): string {
 
         <div class="c-card">
           <div class="c-card-body">
-            <EmptyState v-if="eventDefs.length === 0" icon="📋" title="No event definitions" description="No notification event definitions configured." />
+            <EmptyState v-if="eventDefs.length === 0" icon="file-text" title="No event definitions" description="No notification event definitions configured." />
             <table v-else class="w-full text-sm">
               <thead>
                 <tr class="border-b border-default text-xs text-text-muted">

@@ -76,11 +76,11 @@ function typeVariant(type: string): 'success' | 'warning' | 'danger' | 'info' | 
 
 function typeIcon(type: string): string {
   switch (type) {
-    case 'SUCCESS': return '✅'
-    case 'WARNING': return '⚠️'
-    case 'ERROR': return '❌'
+    case 'SUCCESS': return 'check-circle'
+    case 'WARNING': return 'alert-triangle'
+    case 'ERROR': return 'x-circle'
     case 'INFO': return 'ℹ️'
-    default: return '📌'
+    default: return 'pin'
   }
 }
 
@@ -151,7 +151,7 @@ function formatTime(dateStr: string): string {
 
     <!-- Error banner -->
     <div v-if="error" class="p-sm bg-danger-500/10 border border-danger-500/30 rounded text-xs text-danger-500 flex items-center gap-sm">
-      <span>⚠️</span>
+      <span>alert-triangle</span>
       <span>{{ error }}</span>
       <code v-if="errorCode" class="ml-auto text-[10px] font-mono bg-danger-500/10 px-xs py-0.5 rounded">{{ errorCode }}</code>
     </div>
@@ -176,7 +176,7 @@ function formatTime(dateStr: string): string {
         </button>
       </div>
 
-      <EmptyState v-if="filteredNotifications.length === 0" icon="🔔" title="No notifications" description="You're all caught up! Notifications about your account will appear here." />
+      <EmptyState v-if="filteredNotifications.length === 0" icon="bell" title="No notifications" description="You're all caught up! Notifications about your account will appear here." />
 
       <PageSection v-else title="Recent">
         <div class="space-y-sm">

@@ -214,11 +214,11 @@ function severityVariant(severity: string): 'success' | 'warning' | 'danger' | '
 function channelIcon(type: string): string {
   switch (type) {
     case 'EMAIL': return '📧'
-    case 'SMS': return '📱'
-    case 'WEBHOOK': return '🔗'
-    case 'CHAT': return '💬'
-    case 'PUSH': return '🔔'
-    case 'IN_APP': return '📌'
+    case 'SMS': return 'globe'
+    case 'WEBHOOK': return 'share-2'
+    case 'CHAT': return 'message-circle'
+    case 'PUSH': return 'bell'
+    case 'IN_APP': return 'pin'
     default: return '📡'
   }
 }
@@ -250,7 +250,7 @@ function categoryLabel(category: string): string {
     <template v-else>
       <!-- Error banner -->
       <div v-if="error" class="p-sm bg-danger-500/10 border border-danger-500/30 rounded text-xs text-danger-500 flex items-center gap-sm">
-        <span>⚠️</span>
+        <span>alert-triangle</span>
         <span>{{ error }}</span>
         <code v-if="errorCode" class="ml-auto text-[10px] font-mono bg-danger-500/10 px-xs py-0.5 rounded">{{ errorCode }}</code>
       </div>
@@ -258,7 +258,7 @@ function categoryLabel(category: string): string {
       <!-- Critical events notice -->
       <div v-if="criticalEvents.length > 0" class="c-card border-warning-500/50 bg-warning-500/5">
         <div class="c-card-body flex items-start gap-md">
-          <span class="text-lg flex-shrink-0">⚠️</span>
+          <span class="text-lg flex-shrink-0">alert-triangle</span>
           <div>
             <div class="text-sm font-semibold text-warning-500">Critical Notifications</div>
             <div class="text-xs text-text-secondary mt-xs">

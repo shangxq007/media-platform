@@ -96,7 +96,7 @@ async function handleTopUp() {
       <!-- Low Balance Warning -->
       <div v-if="isLowBalance" class="bg-warning-500/10 border border-warning-500/30 rounded-lg p-md flex items-center justify-between">
         <div class="flex items-center gap-md">
-          <span class="text-lg">⚠️</span>
+          <span class="text-lg">alert-triangle</span>
           <div>
             <div class="text-sm font-medium text-warning-600">Low Balance</div>
             <div class="text-xs text-text-secondary">Your credit balance is running low. Add credits to avoid service interruption.</div>
@@ -107,8 +107,8 @@ async function handleTopUp() {
 
       <!-- Balance Overview -->
       <div class="grid grid-cols-3 gap-lg">
-        <MetricCard v-if="wallet" :value="`${wallet.balance.toFixed(2)} ${wallet.currency}`" label="Available Balance" icon="💰" />
-        <MetricCard v-if="wallet" :value="`${wallet.heldBalance.toFixed(2)} ${wallet.currency}`" label="Held Balance" icon="🔒" />
+        <MetricCard v-if="wallet" :value="`${wallet.balance.toFixed(2)} ${wallet.currency}`" label="Available Balance" icon="wallet" />
+        <MetricCard v-if="wallet" :value="`${wallet.heldBalance.toFixed(2)} ${wallet.currency}`" label="Held Balance" icon="lock" />
         <MetricCard :value="`${wallet ? (wallet.balance + wallet.heldBalance).toFixed(2) : '0.00'}`" label="Total Balance" icon="💎" />
       </div>
 
@@ -118,7 +118,7 @@ async function handleTopUp() {
           <div class="c-card">
             <div class="c-card-body">
               <div class="flex items-center gap-sm mb-sm">
-                <span class="text-lg">📈</span>
+                <span class="text-lg">line-chart</span>
                 <span class="text-sm font-medium text-text-primary">Earned</span>
               </div>
               <div class="text-2xl font-bold text-success-500">

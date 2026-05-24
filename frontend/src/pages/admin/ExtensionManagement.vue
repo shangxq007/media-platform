@@ -257,7 +257,7 @@ const extensionFlagStatuses = computed(() => [
     <!-- High-risk extension warnings -->
     <div v-if="selectedExtensionIsHighRisk" class="c-card border-danger-500 bg-danger-500/5">
       <div class="c-card-body flex items-center gap-md">
-        <span class="text-xl">⚠️</span>
+        <span class="text-xl">alert-triangle</span>
         <div class="flex-1">
           <div class="text-sm font-semibold text-danger-500">High-Risk Extension</div>
           <div class="text-xs text-text-secondary mt-xs">
@@ -315,7 +315,7 @@ const extensionFlagStatuses = computed(() => [
       <!-- Extension Detail -->
       <div class="flex-1 space-y-lg">
         <div v-if="!selectedKey" class="c-empty-state h-full flex flex-col items-center justify-center">
-          <div class="c-empty-state-icon text-3xl">🔌</div>
+          <div class="c-empty-state-icon text-3xl">plug</div>
           <div class="c-empty-state-title">Select an extension</div>
           <div class="c-empty-state-description">Choose an extension from the list to view details</div>
         </div>
@@ -409,7 +409,7 @@ const extensionFlagStatuses = computed(() => [
             </div>
             <div class="c-card-body">
               <div class="grid grid-cols-3 gap-md">
-                <MetricCard :value="`${selectedGqlExtension.resourceLimits.timeoutMs}ms`" label="Timeout" icon="⏱️" />
+                <MetricCard :value="`${selectedGqlExtension.resourceLimits.timeoutMs}ms`" label="Timeout" icon="clock" />
                 <MetricCard :value="selectedGqlExtension.resourceLimits.maxConcurrency" label="Max Concurrency" icon="⚡" />
                 <MetricCard :value="`${(selectedGqlExtension.resourceLimits.maxOutputBytes / 1024).toFixed(0)}KB`" label="Max Output" icon="📦" />
               </div>
@@ -459,9 +459,9 @@ const extensionFlagStatuses = computed(() => [
             <div class="c-card-body">
               <div class="grid grid-cols-4 gap-md">
                 <MetricCard :value="extensionQuota.executionQuota" label="Concurrency" icon="⚡" />
-                <MetricCard :value="extensionQuota.executionsUsed" label="Used" icon="📊" />
-                <MetricCard :value="extensionQuota.executionsRemaining" label="Remaining" icon="✅" />
-                <MetricCard :value="`$${extensionQuota.estimatedCost.toFixed(4)}`" label="Est. Cost" icon="💰" />
+                <MetricCard :value="extensionQuota.executionsUsed" label="Used" icon="chart-bar" />
+                <MetricCard :value="extensionQuota.executionsRemaining" label="Remaining" icon="check-circle" />
+                <MetricCard :value="`$${extensionQuota.estimatedCost.toFixed(4)}`" label="Est. Cost" icon="wallet" />
               </div>
             </div>
           </div>

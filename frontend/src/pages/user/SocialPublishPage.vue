@@ -16,7 +16,7 @@ const PLATFORMS = [
   { key: 'TWITTER', label: 'Twitter', icon: '𝕏', maxChars: 280 },
   { key: 'INSTAGRAM', label: 'Instagram', icon: '📷', maxChars: 2200 },
   { key: 'LINKEDIN', label: 'LinkedIn', icon: '💼', maxChars: 3000 },
-  { key: 'TIKTOK', label: 'TikTok', icon: '🎵', maxChars: 2200 },
+  { key: 'TIKTOK', label: 'TikTok', icon: 'music', maxChars: 2200 },
   { key: 'YOUTUBE', label: 'YouTube', icon: '▶️', maxChars: 5000 },
 ]
 
@@ -310,7 +310,7 @@ function formatTime(dateStr: string): string {
             <div v-else class="space-y-sm">
               <div v-for="plat in platforms" :key="plat.id" class="flex items-center justify-between p-sm rounded bg-bg-surface border border-default">
                 <div class="flex items-center gap-sm min-w-0">
-                  <span class="text-base">{{ PLATFORMS.find(p => p.key === plat.platformType)?.icon || '🔗' }}</span>
+                  <span class="text-base">{{ PLATFORMS.find(p => p.key === plat.platformType)?.icon || 'share-2' }}</span>
                   <div class="min-w-0">
                     <div class="text-xs font-medium text-text-primary truncate-text">{{ plat.platformUsername }}</div>
                     <div class="text-[10px] text-text-muted">{{ plat.platformType }}</div>

@@ -58,9 +58,9 @@ function copyId() {
 
     <div class="flex items-center gap-2 p-1.5 rounded bg-surface-0/40">
       <div class="w-10 h-10 rounded bg-surface-3 flex items-center justify-center flex-shrink-0">
-        <span class="text-lg" v-if="isVideo">🎬</span>
-        <span class="text-lg" v-else-if="isAudio">🎵</span>
-        <span class="text-lg" v-else-if="isImage">🖼️</span>
+        <span class="text-lg" v-if="isVideo">clapperboard</span>
+        <span class="text-lg" v-else-if="isAudio">music</span>
+        <span class="text-lg" v-else-if="isImage">image</span>
         <span class="text-lg" v-else>📄</span>
       </div>
       <div class="flex-1 min-w-0">
@@ -98,7 +98,7 @@ function copyId() {
         class="text-[10px] text-info hover:text-info px-1"
         @click="copyId"
       >
-        {{ copied ? '✓' : '📋' }}
+        {{ copied ? '✓' : 'file-text' }}
       </button>
     </div>
 
@@ -131,7 +131,7 @@ function copyId() {
         target="_blank"
         class="flex-1 px-2 py-1 text-[10px] bg-surface-4/20 text-text-secondary rounded hover:bg-surface-4/30 text-center"
       >
-        📋 Render Logs
+        file-text Render Logs
       </a>
     </div>
   </div>

@@ -11,14 +11,12 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class BillingLedgerService {
 
     private static final Logger log = LoggerFactory.getLogger(BillingLedgerService.class);
 
-    private final ConcurrentHashMap<String, BillingLedgerEntry> ledger = new ConcurrentHashMap<>();
     private final Optional<BillingLedgerJdbcRepository> jdbcRepository;
 
     public BillingLedgerService() {
@@ -30,10 +28,6 @@ public class BillingLedgerService {
         this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
     }
 
-    public void hydrateEntry(BillingLedgerEntry entry) {
-        ledger.put(entry.entryId(), entry);
-    }
-
     public BillingLedgerEntry writeEntry(String tenantId, String workspaceId, String userId,
                                           String entryType, long amountMinor, String currencyCode,
                                           String referenceType, String referenceId,
@@ -43,7 +37,6 @@ public class BillingLedgerService {
                 entryId, tenantId, workspaceId, userId,
                 entryType, amountMinor, currencyCode,
                 referenceType, referenceId, description, Instant.now());
-        ledger.put(entryId, entry);
         jdbcRepository.ifPresent(r -> r.saveEntry(entry));
         log.info("BillingLedgerService: wrote entry {} type={} amount={} {}",
                 entryId, entryType, amountMinor, currencyCode);
@@ -51,27 +44,27 @@ public class BillingLedgerService {
     }
 
     public BillingLedgerEntry getEntry(String entryId) {
-        return ledger.get(entryId);
+        return jdbcRepository.flatMap(r -> r.loadAll().stream()
+                .filter(e -> entryId.equals(e.entryId()))
+                .findFirst()).orElse(null);
     }
 
     public List<BillingLedgerEntry> getLedger(String tenantId) {
-        return ledger.values().stream()
-                .filter(e -> tenantId.equals(e.tenantId()))
-                .sorted((a, b) -> b.createdAt().compareTo(a.createdAt()))
-                .toList();
+        if (jdbcRepository.isPresent()) {
+            return jdbcRepository.get().findByTenant(tenantId);
+        }
+        return List.of();
     }
 
     public List<BillingLedgerEntry> getLedgerByTenantAndType(String tenantId, String entryType) {
-        return ledger.values().stream()
-                .filter(e -> tenantId.equals(e.tenantId()))
-                .filter(e -> entryType.equals(e.entryType()))
-                .sorted((a, b) -> b.createdAt().compareTo(a.createdAt()))
-                .toList();
+        if (jdbcRepository.isPresent()) {
+            return jdbcRepository.get().findByTenantAndType(tenantId, entryType);
+        }
+        return List.of();
     }
 
     public long getBalance(String tenantId) {
-        return ledger.values().stream()
-                .filter(e -> tenantId.equals(e.tenantId()))
+        return getLedger(tenantId).stream()
                 .mapToLong(e -> {
                     if (e.entryType().equals(BillingLedgerEntry.TYPE_REFUND)
                             || e.entryType().equals(BillingLedgerEntry.TYPE_CREDIT)

@@ -61,9 +61,9 @@ const quotaItems = computed<QuotaItem[]>(() => {
   return [
     { label: 'Render Minutes', icon: '⏱', used: usage.value.renderMinutesUsed, limit: usage.value.renderMinutesLimit, unit: 'min' },
     { label: 'GPU Minutes', icon: '⚡', used: 0, limit: usage.value.renderMinutesLimit, unit: 'min' },
-    { label: 'Storage', icon: '💾', used: usage.value.storageGbUsed, limit: usage.value.storageGbLimit, unit: 'GB' },
-    { label: 'API Calls', icon: '🔌', used: usage.value.apiCallsUsed, limit: usage.value.apiCallsLimit, unit: 'calls' },
-    { label: 'Exports', icon: '📤', used: usage.value.exportsUsed, limit: usage.value.exportsLimit, unit: 'exports' },
+    { label: 'Storage', icon: 'save', used: usage.value.storageGbUsed, limit: usage.value.storageGbLimit, unit: 'GB' },
+    { label: 'API Calls', icon: 'plug', used: usage.value.apiCallsUsed, limit: usage.value.apiCallsLimit, unit: 'calls' },
+    { label: 'Exports', icon: 'upload', used: usage.value.exportsUsed, limit: usage.value.exportsLimit, unit: 'exports' },
     { label: 'Prompt Executions', icon: '🤖', used: 0, limit: 1000, unit: 'runs' },
     { label: 'Extension Executions', icon: '🔧', used: 0, limit: 500, unit: 'runs' },
   ]
@@ -101,9 +101,9 @@ const periods: { key: Period; label: string }[] = [
       <!-- Summary Cards -->
       <div class="grid-metrics">
         <MetricCard :value="usage.renderMinutesUsed" :label="`of ${usage.renderMinutesLimit} minutes`" icon="⏱" />
-        <MetricCard :value="usage.storageGbUsed" :label="`of ${usage.storageGbLimit} GB`" icon="💾" />
-        <MetricCard :value="usage.apiCallsUsed" :label="`of ${usage.apiCallsLimit} calls`" icon="🔌" />
-        <MetricCard :value="usage.exportsUsed" :label="`of ${usage.exportsLimit} exports`" icon="📤" />
+        <MetricCard :value="usage.storageGbUsed" :label="`of ${usage.storageGbLimit} GB`" icon="save" />
+        <MetricCard :value="usage.apiCallsUsed" :label="`of ${usage.apiCallsLimit} calls`" icon="plug" />
+        <MetricCard :value="usage.exportsUsed" :label="`of ${usage.exportsLimit} exports`" icon="upload" />
       </div>
 
       <!-- Quota Details -->

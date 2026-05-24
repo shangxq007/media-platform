@@ -47,6 +47,18 @@ public class BillingLedgerJdbcRepository {
                 this::mapEntry);
     }
 
+    public List<BillingLedgerEntry> findByTenant(String tenantId) {
+        return jdbc.query(
+                "SELECT * FROM billing_ledger_entry WHERE tenant_id = ? ORDER BY created_at DESC",
+                this::mapEntry, tenantId);
+    }
+
+    public List<BillingLedgerEntry> findByTenantAndType(String tenantId, String entryType) {
+        return jdbc.query(
+                "SELECT * FROM billing_ledger_entry WHERE tenant_id = ? AND entry_type = ? ORDER BY created_at DESC",
+                this::mapEntry, tenantId, entryType);
+    }
+
     private BillingLedgerEntry mapEntry(ResultSet rs, int rowNum) throws SQLException {
         return new BillingLedgerEntry(
                 rs.getString("id"),

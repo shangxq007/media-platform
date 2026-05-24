@@ -131,10 +131,10 @@ function formatFileSize(bytes?: number): string {
 
 function getTypeIcon(type: string): string {
   switch (type) {
-    case 'video': return '🎬'
-    case 'audio': return '🎵'
-    case 'image': return '🖼️'
-    case 'subtitle': return '📝'
+    case 'video': return 'clapperboard'
+    case 'audio': return 'music'
+    case 'image': return 'image'
+    case 'subtitle': return 'file-text'
     case 'text': return '📄'
     default: return '📄'
   }

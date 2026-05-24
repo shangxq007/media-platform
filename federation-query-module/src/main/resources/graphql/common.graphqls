@@ -19,10 +19,7 @@ type Money {
     currency: String!
 }
 
-type DateTime {
-    iso: String!
-    epochMillis: Int!
-}
+scalar DateTime
 
 type Decision {
     allowed: Boolean!

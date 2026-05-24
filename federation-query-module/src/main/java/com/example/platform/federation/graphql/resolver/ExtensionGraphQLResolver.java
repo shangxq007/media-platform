@@ -17,7 +17,7 @@ import org.springframework.stereotype.Controller;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// @Controller disabled - GraphQL schema conflict
+@Controller
 public class ExtensionGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(ExtensionGraphQLResolver.class);
