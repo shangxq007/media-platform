@@ -18,6 +18,30 @@ render:
   providers:
     javacv:
       enabled: true
+    ffmpeg:
+      enabled: true
+    mlt:
+      enabled: true
+    natron:
+      enabled: true
+    gstreamer:
+      enabled: true
+    gpac:
+      enabled: true
+    shotstack:
+      enabled: true
+    remotion:
+      enabled: true
+    blender:
+      enabled: true
+    vapoursynth:
+      enabled: true
+    libass:
+      enabled: true
+    skia:
+      enabled: true
+    ofx:
+      enabled: true
   stale-compensator:
     enabled: true
     threshold: PT30M

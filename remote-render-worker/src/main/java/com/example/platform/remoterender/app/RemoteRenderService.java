@@ -1,33 +1,26 @@
 package com.example.platform.remoterender.app;
 
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionRequest;
-import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.remoterender.domain.RemoteRenderJob;
 import com.example.platform.remoterender.domain.WorkerStatus;
-import com.example.platform.render.domain.timeline.TimelineClip;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTrack;
-import com.example.platform.render.infrastructure.RenderPreset;
-import com.example.platform.render.infrastructure.ffmpeg.FFmpegCommandFactory;
-import com.example.platform.render.infrastructure.media.MediaAssetResolver;
+import com.example.platform.render.infrastructure.RenderProvider;
+import com.example.platform.render.infrastructure.RenderProvider.RenderResult;
+import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RemoteRenderService {
 
     private static final Logger log = LoggerFactory.getLogger(RemoteRenderService.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
@@ -43,25 +35,16 @@ public class RemoteRenderService {
     @Value("${app.remote-worker.callback-url:}")
     private String callbackUrl;
 
-    private final ProcessToolRunner processToolRunner;
-    private final FFmpegCommandFactory commandFactory;
-    private final TimelineScriptParser timelineScriptParser;
-    private final MediaAssetResolver assetResolver;
+    private final RenderProviderRouter providerRouter;
     private final WorkerRegistryService workerRegistry;
     private final Map<String, RemoteRenderJob> activeJobs = new ConcurrentHashMap<>();
-    private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+    private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
-    public RemoteRenderService(ProcessToolRunner processToolRunner,
-                                FFmpegCommandFactory commandFactory,
-                                TimelineScriptParser timelineScriptParser,
-                                MediaAssetResolver assetResolver,
+    public RemoteRenderService(RenderProviderRouter providerRouter,
                                 WorkerRegistryService workerRegistry) {
-        this.processToolRunner = processToolRunner;
-        this.commandFactory = commandFactory;
-        this.timelineScriptParser = timelineScriptParser;
-        this.assetResolver = assetResolver;
+        this.providerRouter = providerRouter;
         this.workerRegistry = workerRegistry;
     }
 
@@ -87,159 +70,52 @@ public class RemoteRenderService {
             job = job.withStarted();
             activeJobs.put(jobId, job);
             workerRegistry.updateWorkerStatus(job.workerId(), WorkerStatus.BUSY);
-            notifyCallback(job);
+            notifyCallback(job, 10);
 
             String profile = job.profile();
             String timelineJson = job.timelineJson();
-            RenderPreset preset = RenderPreset.fromProfile(profile);
 
-            Path outputDir = Path.of(storageRoot, "artifacts", "remote-" + jobId);
-            Files.createDirectories(outputDir);
-            String outputPath = outputDir.resolve("output.mp4").toString();
+            // Route to the correct provider based on profile
+            RenderProvider provider = providerRouter.route(profile);
+            String providerName = provider.getClass().getSimpleName();
+            log.info("RemoteRenderService: job={} routed to provider={} profile={}",
+                    jobId, providerName, profile);
 
-            // Step 1: Parse timeline
-            Optional<TimelineSpec> timelineOpt = timelineScriptParser.parse(timelineJson);
-            if (timelineOpt.isEmpty()) {
-                throw new IllegalStateException("Failed to parse timeline JSON for job " + jobId);
-            }
-            TimelineSpec timeline = timelineOpt.get();
+            notifyCallback(job, 30);
 
-            updateProgress(job, 10);
+            // Execute render via the selected provider
+            RenderResult result = provider.render(jobId, timelineJson, profile);
 
-            // Step 2: Resolve video clips (download remote assets if needed)
-            List<FFmpegCommandFactory.ResolvedClip> videoClips = new ArrayList<>();
-            for (TimelineClip clip : timelineScriptParser.videoClipsInOrder(timeline)) {
-                if (clip.assetRef() == null) continue;
-                String uri = clip.assetRef().storageUri();
-                String localPath = resolveToLocalPath(uri);
-                if (localPath == null) {
-                    log.warn("Skipping unreachable media: {}", uri);
-                    continue;
+            notifyCallback(job, 80);
+
+            // Verify output exists
+            if (result.storageUri() != null && result.storageUri().startsWith("localFsStorageProvider://")) {
+                String relative = result.storageUri().substring("localFsStorageProvider://".length());
+                Path localPath = Path.of(storageRoot, relative);
+                if (!Files.exists(localPath)) {
+                    throw new IllegalStateException("Provider " + providerName
+                            + " produced no output: " + localPath);
                 }
-                videoClips.add(new FFmpegCommandFactory.ResolvedClip(
-                        localPath, clip.assetInPoint(), clip.clipDuration()));
+                log.info("RemoteRenderService: output verified: {} ({} bytes)",
+                        localPath, Files.size(localPath));
             }
 
-            if (videoClips.isEmpty()) {
-                throw new IllegalStateException("No renderable clips found in timeline for job " + jobId);
-            }
-
-            updateProgress(job, 30);
-
-            // Step 3: Resolve audio tracks
-            List<List<FFmpegCommandFactory.ResolvedClip>> audioTracks = new ArrayList<>();
-            if (timeline.tracks() != null) {
-                for (TimelineTrack track : timeline.tracks()) {
-                    if (track.type() != TimelineTrack.TrackType.AUDIO || track.muted()) continue;
-                    List<FFmpegCommandFactory.ResolvedClip> trackClips = new ArrayList<>();
-                    if (track.clips() == null) continue;
-                    for (TimelineClip clip : track.clips()) {
-                        if (clip.assetRef() == null) continue;
-                        String uri = clip.assetRef().storageUri();
-                        String localPath = resolveToLocalPath(uri);
-                        if (localPath == null) continue;
-                        trackClips.add(new FFmpegCommandFactory.ResolvedClip(
-                                localPath, clip.assetInPoint(), clip.clipDuration()));
-                    }
-                    if (!trackClips.isEmpty()) audioTracks.add(trackClips);
-                }
-            }
-
-            updateProgress(job, 40);
-
-            // Step 4: Build FFmpeg command
-            com.example.platform.render.domain.RenderProfile renderProfile = toRenderProfile(preset);
-            List<String> args;
-            if (!audioTracks.isEmpty()) {
-                args = commandFactory.buildMultiTrackCommand(
-                        videoClips, audioTracks, outputPath, renderProfile);
-            } else {
-                JsonNode scriptRoot = parseRoot(timelineJson);
-                var segmentSlice = com.example.platform.render.app.timeline.SegmentRenderSlice.fromJson(scriptRoot);
-                args = commandFactory.buildRenderFromResolvedClips(
-                        videoClips, outputPath, renderProfile, segmentSlice);
-            }
-
-            updateProgress(job, 50);
-
-            // Step 5: Execute FFmpeg
-            log.info("Executing FFmpeg for job={} args={}", jobId, args);
-            ToolExecutionRequest request = ToolExecutionRequest.withTimeout("ffmpeg", args, 600_000);
-            ToolExecutionResult result = processToolRunner.execute(request);
-
-            if (!result.isSuccess()) {
-                throw new IllegalStateException("FFmpeg failed (exit=" + result.exitCode() + "): " + result.stderr());
-            }
-
-            updateProgress(job, 90);
-
-            // Step 6: Verify output
-            if (!Files.exists(Path.of(outputPath))) {
-                throw new IllegalStateException("FFmpeg produced no output file: " + outputPath);
-            }
-            long fileSize = Files.size(Path.of(outputPath));
-            log.info("FFmpeg output: {} ({} bytes)", outputPath, fileSize);
-
-            // Step 7: Complete
-            String artifactId = "art_remote_" + jobId;
-            String storageUri = "localFsStorageProvider://artifacts/remote-" + jobId + "/output.mp4";
-
-            job = job.withCompleted(artifactId, storageUri);
+            // Complete
+            job = job.withCompleted(result.artifactId(), result.storageUri());
             activeJobs.put(jobId, job);
-            notifyCallback(job);
+            notifyCallback(job, 100);
 
-            log.info("RemoteRenderService: job completed: {} artifact={}", jobId, artifactId);
+            log.info("RemoteRenderService: job completed: {} provider={} artifact={}",
+                    jobId, providerName, result.artifactId());
 
         } catch (Exception e) {
             log.error("RemoteRenderService: job execution failed: {}", jobId, e);
             job = job.withFailed("RENDER-500-001", "Remote render failed: " + e.getMessage());
             activeJobs.put(jobId, job);
-            notifyCallback(job);
+            notifyCallback(job, 0);
         } finally {
             workerRegistry.updateWorkerStatus(job.workerId(), WorkerStatus.IDLE);
         }
-    }
-
-    private void updateProgress(RemoteRenderJob job, int progress) {
-        job = job.withStatus("RUNNING");
-        activeJobs.put(job.jobId(), job);
-        notifyCallback(job, progress);
-    }
-
-    private String resolveToLocalPath(String uri) {
-        // Try local filesystem first
-        if (uri == null || uri.isBlank()) return null;
-        if (uri.startsWith("file://") || uri.startsWith("/")) {
-            String path = uri.startsWith("file://") ? uri.substring(7) : uri;
-            if (Files.isRegularFile(Path.of(path))) return path;
-        }
-        if (uri.startsWith("localFsStorageProvider://")) {
-            String relative = uri.substring("localFsStorageProvider://".length());
-            Path localPath = Path.of(storageRoot, relative);
-            if (Files.isRegularFile(localPath)) return localPath.toString();
-        }
-        // Try asset resolver for remote URIs
-        String resolved = assetResolver.resolveToLocalPath(uri);
-        if (resolved != null) return resolved;
-        return null;
-    }
-
-    private com.example.platform.render.domain.RenderProfile toRenderProfile(RenderPreset preset) {
-        return com.example.platform.render.domain.RenderProfile.of(
-                preset.key(),
-                preset.width() + "x" + preset.height(),
-                preset.videoCodec().replace("lib", "").replace("x264", "h264"));
-    }
-
-    private JsonNode parseRoot(String json) {
-        try { return MAPPER.readTree(json); }
-        catch (Exception e) { return MAPPER.createObjectNode(); }
-    }
-
-    private void notifyCallback(RemoteRenderJob job) {
-        int progress = "COMPLETED".equals(job.status()) ? 100
-                : ("RUNNING".equals(job.status()) ? 50 : 0);
-        notifyCallback(job, progress);
     }
 
     private void notifyCallback(RemoteRenderJob job, int progress) {
@@ -253,14 +129,14 @@ public class RemoteRenderService {
                     job.errorCode() != null ? job.errorCode() : "",
                     job.errorMessage() != null ? job.errorMessage().replace("\"", "'") : "");
 
-            var request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(callbackUrl + "/api/v1/remote-worker/jobs/" + job.jobId() + "/callback"))
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(callbackUrl + "/api/v1/remote-worker/jobs/" + job.jobId() + "/callback"))
                     .header("Content-Type", "application/json")
-                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(payload))
+                    .POST(HttpRequest.BodyPublishers.ofString(payload))
                     .timeout(Duration.ofSeconds(5))
                     .build();
 
-            httpClient.sendAsync(request, java.net.http.HttpResponse.BodyHandlers.ofString())
+            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .exceptionally(ex -> {
                         log.warn("Callback error for job={}: {}", job.jobId(), ex.getMessage());
                         return null;
@@ -291,7 +167,7 @@ public class RemoteRenderService {
         }
         job = job.withStatus("CANCELLED");
         activeJobs.put(jobId, job);
-        notifyCallback(job);
+        notifyCallback(job, 0);
         return job;
     }
 }
