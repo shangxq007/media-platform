@@ -51,7 +51,7 @@ watch(() => props.route, (route) => {
       requiredEntitlements: route.requiredEntitlements?.join(', ') ?? '',
       requiredTier: route.requiredTier ?? '',
       requiredFeatures: route.requiredFeatures?.join(', ') ?? '',
-      requiredFeatureFlags: (route as any).requiredFeatureFlags?.join(', ') ?? '',
+      requiredFeatureFlags: (route as Record<string, unknown>).requiredFeatureFlags?.join(', ') ?? '',
       supportedSources: route.supportedSources?.join(', ') ?? '',
       visible: route.visible !== false,
       enabled: route.enabled !== false,
@@ -92,7 +92,7 @@ function handleSave() {
   if (form.value.requiredEntitlements) data.requiredEntitlements = parseList(form.value.requiredEntitlements)
   if (form.value.requiredTier) data.requiredTier = form.value.requiredTier
   if (form.value.requiredFeatures) data.requiredFeatures = parseList(form.value.requiredFeatures)
-  if (form.value.requiredFeatureFlags) (data as any).requiredFeatureFlags = parseList(form.value.requiredFeatureFlags)
+  if (form.value.requiredFeatureFlags) (data as Record<string, unknown>).requiredFeatureFlags = parseList(form.value.requiredFeatureFlags)
   if (form.value.supportedSources) data.supportedSources = parseList(form.value.supportedSources)
 
   emit('save', data)

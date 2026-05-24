@@ -2,10 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { PromptAPI } from '@/api/prompt'
 
-const validationResult = ref<any>(null)
+const validationResult = ref<Record<string, unknown> | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
-const scanResult = ref<any>(null)
+const scanResult = ref<Record<string, unknown> | null>(null)
 
 onMounted(validateManifest)
 

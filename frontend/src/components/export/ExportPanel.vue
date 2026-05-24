@@ -270,7 +270,7 @@ const featureFlagSubmitBlocked = computed(() => {
   return null
 })
 
-const filteredPresets = computed(() => availablePresets.value.filter((p: any) => {
+const filteredPresets = computed(() => availablePresets.value.filter((p: Record<string, unknown>) => {
   if (p.name.startsWith('gpu_')) return gpuAvailable.value && isExportFlagEnabled('export.gpu.v2')
   if (p.name.includes('4k')) return currentTier.value === 'TEAM' || currentTier.value === 'ENTERPRISE'
   return true
@@ -278,7 +278,7 @@ const filteredPresets = computed(() => availablePresets.value.filter((p: any) =>
 
 const unavailablePresets = computed(() => {
   const allowed = new Set(filteredPresets.value.map((p: ExportPreset) => p.name))
-  return availablePresets.value.filter((p: any) => !allowed.has(p.name))
+  return availablePresets.value.filter((p: Record<string, unknown>) => !allowed.has(p.name))
 })
 
 const recommendedPreset = computed(() => validationResult.value?.recommendedPreset || null)

@@ -112,7 +112,7 @@ const invoiceColumns = [
             <div class="text-sm font-medium text-text-primary">
               ${{ plan.monthlyPrice.toFixed(2) }}/mo · ${{ plan.annualPrice.toFixed(2) }}/yr {{ plan.currency }}
             </div>
-            <div v-if="'trialDays' in plan && (plan as any).trialDays > 0" class="text-xs text-info-500">{{ (plan as any).trialDays }}-day trial available</div>
+            <div v-if="'trialDays' in plan && (plan as Record<string, unknown>).trialDays > 0" class="text-xs text-info-500">{{ (plan as any).trialDays }}-day trial available</div>
           </div>
         </div>
 

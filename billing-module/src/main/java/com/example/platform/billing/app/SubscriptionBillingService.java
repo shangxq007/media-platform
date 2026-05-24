@@ -23,8 +23,7 @@ public class SubscriptionBillingService {
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionBillingService.class);
 
-    private final ConcurrentHashMap<String, SubscriptionPlan> plans = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, SubscriptionContract> subscriptions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SubscriptionPlan> planCache = new ConcurrentHashMap<>();
     private final Optional<SubscriptionJdbcRepository> jdbcRepository;
 
     public SubscriptionBillingService() {
@@ -34,18 +33,6 @@ public class SubscriptionBillingService {
     @Autowired
     public SubscriptionBillingService(Optional<SubscriptionJdbcRepository> jdbcRepository) {
         this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
-    }
-
-    private boolean dbBacked() {
-        return jdbcRepository.isPresent();
-    }
-
-    public void hydratePlan(SubscriptionPlan plan) {
-        plans.put(plan.planKey(), plan);
-    }
-
-    public void hydrateContract(SubscriptionContract contract) {
-        subscriptions.put(contract.contractId(), contract);
     }
 
     public SubscriptionPlan createPlan(String planKey, String name, String description,
@@ -63,26 +50,22 @@ public class SubscriptionBillingService {
     }
 
     public SubscriptionPlan getPlan(String planKey) {
-        SubscriptionPlan cached = plans.get(planKey);
-        if (cached != null) {
-            return cached;
-        }
+        SubscriptionPlan cached = planCache.get(planKey);
+        if (cached != null) return cached;
+
         return jdbcRepository.flatMap(r -> r.findPlanByKey(planKey))
-                .map(p -> {
-                    hydratePlan(p);
-                    return p;
-                })
+                .map(p -> { planCache.put(p.planKey(), p); return p; })
                 .orElse(null);
     }
 
     public List<SubscriptionPlan> listPlans() {
-        if (dbBacked()) {
+        if (jdbcRepository.isPresent()) {
             return jdbcRepository.get().loadAllPlans().stream()
                     .filter(p -> "ACTIVE".equals(p.status()))
-                    .peek(this::hydratePlan)
+                    .peek(p -> planCache.put(p.planKey(), p))
                     .toList();
         }
-        return plans.values().stream()
+        return planCache.values().stream()
                 .filter(p -> "ACTIVE".equals(p.status()))
                 .toList();
     }
@@ -124,7 +107,6 @@ public class SubscriptionBillingService {
                 SubscriptionContractRole.ADD_ON);
     }
 
-    /** Primary base plan subscription for tenant + user. */
     public SubscriptionContract getCurrentSubscription(String tenantId, String userId) {
         return listActiveSubscriptions(tenantId, userId).stream()
                 .filter(c -> c.contractRole() == SubscriptionContractRole.BASE)
@@ -135,24 +117,16 @@ public class SubscriptionBillingService {
     public List<SubscriptionContract> listActiveSubscriptions(String tenantId, String userId) {
         String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
         Instant now = Instant.now();
-        if (dbBacked()) {
+        if (jdbcRepository.isPresent()) {
             return jdbcRepository.get().findActiveByTenantAndUser(effectiveTenant, userId, now);
         }
-        return subscriptions.values().stream()
-                .filter(s -> effectiveTenant.equals(s.tenantId()) && userId.equals(s.userId()))
-                .filter(s -> s.isActiveAt(now))
-                .toList();
+        return List.of();
     }
 
-    /**
-     * Merges {@code includedQuota} from all active contracts for the subject (additive per meter key).
-     */
     public Map<String, Long> getEffectiveIncludedQuota(String tenantId, String userId) {
         Map<String, Long> merged = new HashMap<>();
         for (SubscriptionContract contract : listActiveSubscriptions(tenantId, userId)) {
-            if (contract.includedQuota() == null) {
-                continue;
-            }
+            if (contract.includedQuota() == null) continue;
             contract.includedQuota().forEach((key, value) ->
                     merged.merge(key, value, Long::sum));
         }
@@ -197,10 +171,7 @@ public class SubscriptionBillingService {
     }
 
     private SubscriptionPlan requirePlan(String planKey) {
-        SubscriptionPlan plan = plans.get(planKey);
-        if (plan == null) {
-            plan = getPlan(planKey);
-        }
+        SubscriptionPlan plan = getPlan(planKey);
         if (plan == null) {
             throw new IllegalArgumentException("Plan not found: " + planKey);
         }
@@ -208,36 +179,26 @@ public class SubscriptionBillingService {
     }
 
     private static Map<String, Long> emptyQuotaUsed(Map<String, Long> includedQuota) {
-        if (includedQuota == null || includedQuota.isEmpty()) {
-            return Map.of();
-        }
+        if (includedQuota == null || includedQuota.isEmpty()) return Map.of();
         return includedQuota.keySet().stream()
                 .collect(Collectors.toMap(k -> k, k -> 0L));
     }
 
     private void persistPlan(SubscriptionPlan plan) {
-        plans.put(plan.planKey(), plan);
+        planCache.put(plan.planKey(), plan);
         jdbcRepository.ifPresent(r -> r.savePlan(plan));
     }
 
     private void persistContract(SubscriptionContract contract) {
-        if (dbBacked()) {
-            jdbcRepository.get().saveContract(contract);
-        } else {
-            subscriptions.put(contract.contractId(), contract);
-        }
+        jdbcRepository.ifPresent(r -> r.saveContract(contract));
     }
 
     private SubscriptionContract requireContract(String contractId) {
-        if (dbBacked()) {
+        if (jdbcRepository.isPresent()) {
             return jdbcRepository.get().findContractById(contractId)
                     .orElseThrow(() -> new IllegalArgumentException("Subscription not found: " + contractId));
         }
-        SubscriptionContract existing = subscriptions.get(contractId);
-        if (existing == null) {
-            throw new IllegalArgumentException("Subscription not found: " + contractId);
-        }
-        return existing;
+        throw new IllegalArgumentException("Subscription not found (no DB): " + contractId);
     }
 
     public void processBillingCycle() {
@@ -252,13 +213,11 @@ public class SubscriptionBillingService {
 
     public List<SubscriptionContract> listActiveSubscriptionsAllTenants() {
         Instant now = Instant.now();
-        if (dbBacked()) {
+        if (jdbcRepository.isPresent()) {
             return jdbcRepository.get().loadAllContracts().stream()
                     .filter(s -> s.isActiveAt(now))
                     .toList();
         }
-        return subscriptions.values().stream()
-                .filter(s -> s.isActiveAt(now))
-                .toList();
+        return List.of();
     }
 }

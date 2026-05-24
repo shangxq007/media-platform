@@ -33,7 +33,7 @@ export const useSubtitleStore = defineStore('subtitle', () => {
       }
       tracks.value.push(track)
       activeTrackId.value = track.id
-    } catch (err: any) {
+    } catch (err: unknown) {
       error.value = `Failed to parse subtitle: ${err.message}`
     } finally {
       loading.value = false

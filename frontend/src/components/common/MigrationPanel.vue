@@ -3,8 +3,8 @@ import { ref, computed } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 
 const timelineStore = useTimelineStore()
-const dryRunResult = ref<any>(null)
-const migrateResult = ref<any>(null)
+const dryRunResult = ref<Record<string, unknown> | null>(null)
+const migrateResult = ref<Record<string, unknown> | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
