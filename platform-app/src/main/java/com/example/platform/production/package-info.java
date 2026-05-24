@@ -1,8 +1,10 @@
 @org.springframework.modulith.ApplicationModule(
         allowedDependencies = {
             "shared",
-            "commerce :: infrastructure",
-            "billing :: infrastructure",
-            "policy :: feature-flags"
+            "security",
+            "app",
+            "commerce",
+            "billing",
+            "policy"
         })
 package com.example.platform.production;
