@@ -46,7 +46,8 @@ class GraphQLSchemaLoadTest {
         assertTrue(content.contains("type PageInfo"), "common.graphqls must define PageInfo");
         assertTrue(content.contains("type ErrorInfo"), "common.graphqls must define ErrorInfo");
         assertTrue(content.contains("type Money"), "common.graphqls must define Money");
-        assertTrue(content.contains("type DateTime"), "common.graphqls must define DateTime");
+        assertTrue(content.contains("scalar DateTime") || content.contains("type DateTime"),
+                "common.graphqls must define DateTime (scalar or type)");
         assertTrue(content.contains("type Decision"), "common.graphqls must define Decision");
         assertTrue(content.contains("type Capability"), "common.graphqls must define Capability");
         assertTrue(content.contains("scalar Map"), "common.graphqls must define Map scalar");

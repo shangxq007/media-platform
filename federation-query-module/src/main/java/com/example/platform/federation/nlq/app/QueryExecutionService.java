@@ -80,7 +80,11 @@ public class QueryExecutionService {
             };
 
             Map<String, Object> params = (parameters != null) ? parameters : Map.of();
-            rows = namedParameterJdbcTemplate.query(sql, params, rowMapper);
+            if (params.isEmpty()) {
+                rows = jdbcTemplate.query(sql, rowMapper);
+            } else {
+                rows = namedParameterJdbcTemplate.query(sql, params, rowMapper);
+            }
             rowCount = rows.size();
             truncated = rowCount >= maxRows;
 

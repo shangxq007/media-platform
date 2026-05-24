@@ -178,12 +178,8 @@ public class SubscriptionJdbcRepository {
         Map<String, Object> meta = metaRaw != null && !metaRaw.isBlank()
                 ? Jsons.fromJson(metaRaw, CONTRACT_META)
                 : Map.of();
-        @SuppressWarnings("unchecked")
-        Map<String, Long> includedQuota = meta.get("includedQuota") instanceof Map
-                ? (Map<String, Long>) meta.get("includedQuota") : Map.of();
-        @SuppressWarnings("unchecked")
-        Map<String, Long> includedQuotaUsed = meta.get("includedQuotaUsed") instanceof Map
-                ? (Map<String, Long>) meta.get("includedQuotaUsed") : Map.of();
+        Map<String, Long> includedQuota = toLongMap(meta.get("includedQuota"));
+        Map<String, Long> includedQuotaUsed = toLongMap(meta.get("includedQuotaUsed"));
         String tenantId = rs.getString("tenant_id");
         if (tenantId == null || tenantId.isBlank()) {
             tenantId = meta.get("tenantId") != null ? meta.get("tenantId").toString() : rs.getString("subject_id");
@@ -225,5 +221,16 @@ public class SubscriptionJdbcRepository {
 
     private static Instant toInstant(Timestamp ts) {
         return ts != null ? ts.toInstant() : Instant.now();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Long> toLongMap(Object value) {
+        if (!(value instanceof Map)) return Map.of();
+        Map<String, Object> raw = (Map<String, Object>) value;
+        Map<String, Long> result = new java.util.HashMap<>();
+        raw.forEach((k, v) -> {
+            if (v instanceof Number n) result.put(k, n.longValue());
+        });
+        return Map.copyOf(result);
     }
 }

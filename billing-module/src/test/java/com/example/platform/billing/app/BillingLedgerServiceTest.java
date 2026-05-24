@@ -1,10 +1,14 @@
 package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.BillingLedgerEntry;
+import com.example.platform.billing.infrastructure.BillingLedgerJdbcRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,7 +18,27 @@ class BillingLedgerServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BillingLedgerService();
+        var ds = new DriverManagerDataSource();
+        ds.setDriverClassName("org.h2.Driver");
+        ds.setUrl("jdbc:h2:mem:ledger_test_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
+        var jdbc = new JdbcTemplate(ds);
+        jdbc.execute("""
+            create table if not exists billing_ledger_entry (
+                id varchar(64) primary key,
+                tenant_id varchar(64) not null,
+                workspace_id varchar(64),
+                user_id varchar(128),
+                entry_type varchar(32) not null,
+                amount_minor bigint not null,
+                currency_code varchar(8) not null,
+                reference_type varchar(64),
+                reference_id varchar(128),
+                description text,
+                created_at timestamp not null
+            )
+        """);
+        var repo = new BillingLedgerJdbcRepository(jdbc);
+        service = new BillingLedgerService(Optional.of(repo));
     }
 
     @Test
