@@ -1,6 +1,10 @@
 package com.example.platform.render.app.planner;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.jooq.DSLContext;
@@ -30,6 +34,7 @@ public class PipelinePlanPersistenceService {
                     .set(field("pipeline_plan_json"), json)
                     .where(field("id").eq(jobId))
                     .execute();
+            log.debug("Saved pipeline plan for job {}", jobId);
         } catch (Exception e) {
             log.warn("Could not persist pipeline plan for job {}: {}", jobId, e.getMessage());
         }
@@ -44,6 +49,79 @@ public class PipelinePlanPersistenceService {
                     .execute();
         } catch (Exception e) {
             log.warn("Could not persist pipeline execution state for job {}: {}", jobId, e.getMessage());
+        }
+    }
+
+    public void updateWaveState(String jobId, int waveIndex, String waveStatus,
+                                 List<Map<String, String>> taskResults) {
+        try {
+            Map<String, Object> state = loadExecutionState(jobId).orElseGet(LinkedHashMap::new);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> waves = (List<Map<String, Object>>) state.computeIfAbsent(
+                    "waves", k -> new ArrayList<Map<String, Object>>());
+
+            // Ensure wave slot exists
+            while (waves.size() <= waveIndex) {
+                waves.add(new LinkedHashMap<>());
+            }
+
+            Map<String, Object> waveState = waves.get(waveIndex);
+            waveState.put("index", waveIndex);
+            waveState.put("status", waveStatus);
+            waveState.put("updatedAt", Instant.now().toString());
+            if (taskResults != null) {
+                waveState.put("taskResults", taskResults);
+            }
+
+            state.put("currentWave", waveIndex);
+            state.put("status", deriveOverallStatus(waves));
+            state.put("updatedAt", Instant.now().toString());
+
+            saveExecutionState(jobId, state);
+            log.debug("Job {} wave {} → {}", jobId, waveIndex, waveStatus);
+        } catch (Exception e) {
+            log.warn("Could not update wave state for job {}: {}", jobId, e.getMessage());
+        }
+    }
+
+    public void markPlanCompleted(String jobId) {
+        try {
+            Map<String, Object> state = loadExecutionState(jobId).orElseGet(LinkedHashMap::new);
+            state.put("status", "COMPLETED");
+            state.put("completedAt", Instant.now().toString());
+            state.put("updatedAt", Instant.now().toString());
+            saveExecutionState(jobId, state);
+        } catch (Exception e) {
+            log.warn("Could not mark plan completed for job {}: {}", jobId, e.getMessage());
+        }
+    }
+
+    public void markPlanFailed(String jobId, String failedTask, String error) {
+        try {
+            Map<String, Object> state = loadExecutionState(jobId).orElseGet(LinkedHashMap::new);
+            state.put("status", "FAILED");
+            state.put("failedTask", failedTask);
+            state.put("error", error != null ? error : "");
+            state.put("failedAt", Instant.now().toString());
+            state.put("updatedAt", Instant.now().toString());
+            saveExecutionState(jobId, state);
+        } catch (Exception e) {
+            log.warn("Could not mark plan failed for job {}: {}", jobId, e.getMessage());
+        }
+    }
+
+    public Optional<String> getLastCompletedWave(String jobId) {
+        try {
+            Map<String, Object> state = loadExecutionState(jobId).orElse(null);
+            if (state == null) return Optional.empty();
+            Object currentWave = state.get("currentWave");
+            if (currentWave instanceof Number n) {
+                return Optional.of(String.valueOf(n.intValue()));
+            }
+            return Optional.empty();
+        } catch (Exception e) {
+            return Optional.empty();
         }
     }
 
@@ -77,5 +155,17 @@ public class PipelinePlanPersistenceService {
             log.debug("No pipeline plan for job {}: {}", jobId, e.getMessage());
             return Optional.empty();
         }
+    }
+
+    private String deriveOverallStatus(List<Map<String, Object>> waves) {
+        boolean anyFailed = waves.stream()
+                .anyMatch(w -> "FAILED".equals(w.get("status")));
+        if (anyFailed) return "FAILED";
+
+        boolean allCompleted = waves.stream()
+                .allMatch(w -> "COMPLETED".equals(w.get("status")));
+        if (allCompleted && !waves.isEmpty()) return "COMPLETED";
+
+        return "EXECUTING";
     }
 }

@@ -76,10 +76,15 @@ public class PipelineDagExecutorService {
         if (!dagEnabled || timeline == null) {
             return false;
         }
+
         TimelineExtensions ext = extensionsReader.fromSpec(timeline);
+
+        // 1. External render nodes always need DAG
         if (!ext.externalRenderNodes().isEmpty()) {
             return true;
         }
+
+        // 2. Streaming output formats need DAG (packaging stage)
         String format = timeline.outputSpec() != null ? timeline.outputSpec().format() : "mp4";
         if (format != null && (format.equalsIgnoreCase("dash")
                 || format.equalsIgnoreCase("hls")
@@ -87,10 +92,32 @@ public class PipelineDagExecutorService {
                 || format.equalsIgnoreCase("dash_drm"))) {
             return true;
         }
+
+        // 3. Count independent rendering concerns
+        int concerns = 0;
+
         long videoTracks = timeline.tracks().stream()
                 .filter(t -> t.type() == com.example.platform.render.domain.timeline.TimelineTrack.TrackType.VIDEO)
                 .count();
-        return videoTracks >= 2;
+        if (videoTracks >= 2) concerns++;
+
+        boolean hasAudioTracks = timeline.tracks().stream()
+                .anyMatch(t -> t.type() == com.example.platform.render.domain.timeline.TimelineTrack.TrackType.AUDIO
+                        && !t.muted() && t.clips() != null && !t.clips().isEmpty());
+        if (hasAudioTracks && videoTracks >= 1) concerns++;
+
+        boolean hasSubtitles = (timeline.textOverlays() != null && !timeline.textOverlays().isEmpty())
+                || timeline.tracks().stream().anyMatch(t ->
+                        t.type() == com.example.platform.render.domain.timeline.TimelineTrack.TrackType.SUBTITLE);
+        if (hasSubtitles) concerns++;
+
+        boolean hasEffects = timeline.tracks().stream()
+                .flatMap(t -> t.clips() != null ? t.clips().stream() : java.util.stream.Stream.empty())
+                .anyMatch(c -> c.effects() != null && !c.effects().isEmpty());
+        if (hasEffects) concerns++;
+
+        // Multiple independent concerns benefit from DAG orchestration
+        return concerns >= 2;
     }
 
     public DagExecutionResult execute(String jobId, TimelineSpec timeline, String profile,
@@ -103,34 +130,49 @@ public class PipelineDagExecutorService {
      * Executes a pre-built plan (e.g. from {@link com.example.platform.render.app.timeline.IncrementalRenderPlanService}).
      */
     public DagExecutionResult executeWithPlan(String jobId, TimelineSpec timeline, PipelineExecutionPlan plan,
-                                              String profile, String tier, String outputFormat) {
+                                               String profile, String tier, String outputFormat) {
         planPersistence.savePlan(jobId, plan);
+        planPersistence.updateWaveState(jobId, -1, "STARTED", null);
 
         Map<String, String> completedArtifacts = new LinkedHashMap<>();
         List<DagTaskResult> taskResults = new ArrayList<>();
+        int waveIndex = 0;
 
         for (List<PipelineTask> wave : PipelineDagTopology.executionWaves(plan)) {
             List<PipelineTask> externalTasks = wave.stream()
                     .filter(t -> t.type() == PipelineTaskType.EXTERNAL_RENDER)
                     .toList();
             if (externalTasks.isEmpty()) {
+                waveIndex++;
                 continue;
             }
+
+            planPersistence.updateWaveState(jobId, waveIndex, "EXECUTING", null);
+
             List<DagTaskResult> waveResults = parallelExternal
                     ? executeExternalWaveParallel(jobId, externalTasks, timeline, profile, completedArtifacts)
                     : executeExternalWaveSequential(jobId, externalTasks, timeline, profile, completedArtifacts);
+
+            List<Map<String, String>> waveTaskResults = new ArrayList<>();
             for (DagTaskResult result : waveResults) {
                 taskResults.add(result);
+                waveTaskResults.add(Map.of(
+                        "taskId", result.taskId(),
+                        "success", String.valueOf(result.success()),
+                        "storageUri", result.storageUri() != null ? result.storageUri() : "",
+                        "error", result.errorMessage() != null ? result.errorMessage() : ""));
                 if (!result.success()) {
-                    planPersistence.saveExecutionState(jobId, Map.of(
-                            "failedTask", result.taskId(),
-                            "error", result.errorMessage() != null ? result.errorMessage() : ""));
+                    planPersistence.updateWaveState(jobId, waveIndex, "FAILED", waveTaskResults);
+                    planPersistence.markPlanFailed(jobId, result.taskId(), result.errorMessage());
                     return DagExecutionResult.failed(plan, taskResults, result.errorMessage());
                 }
                 if (result.storageUri() != null) {
                     completedArtifacts.put(result.taskId(), result.storageUri());
                 }
             }
+
+            planPersistence.updateWaveState(jobId, waveIndex, "COMPLETED", waveTaskResults);
+            waveIndex++;
         }
 
         TimelineSpec enriched = enrichTimelineWithExternalArtifacts(timeline, completedArtifacts);
@@ -176,6 +218,12 @@ public class PipelineDagExecutorService {
         String storageUri = pipelineResult.storageUri();
         if (storageUri == null && !pipelineResult.stages().isEmpty()) {
             storageUri = pipelineResult.stages().get(pipelineResult.stages().size() - 1).storageUri();
+        }
+
+        if (pipelineResult.success()) {
+            planPersistence.markPlanCompleted(jobId);
+        } else {
+            planPersistence.markPlanFailed(jobId, "pipeline", pipelineResult.errorMessage());
         }
 
         return DagExecutionResult.success(plan, taskResults, pipelineResult, storageUri, timelineJson);
