@@ -34,6 +34,30 @@ const subtitleStore = useSubtitleStore()
 const subtitleMode = ref<'none' | 'burn-in' | 'external' | 'multi-external'>('none')
 const selectedSubtitleLanguages = ref<string[]>([])
 
+interface ExportPreset {
+  name: string
+  displayName: string
+  resolution: string
+  format: string
+  watermark: boolean
+  renderLocation: 'CLIENT' | 'SERVER'
+  [key: string]: unknown
+}
+
+interface ProviderInfo {
+  name: string
+  status: string
+  [key: string]: unknown
+}
+
+interface WorkerInfo {
+  workerId: string
+  address: string
+  status: string
+  activeJobs: number
+  [key: string]: unknown
+}
+
 const currentTier = ref('FREE')
 const selectedPreset = ref('client_720p_watermarked')
 const submitting = ref(false)
@@ -45,9 +69,9 @@ const clientExportAbort = ref<AbortController | null>(null)
 const clientCompositor = new ClientCompositor()
 const lastJob = ref<RenderJob | null>(null)
 const pollInterval = ref<ReturnType<typeof setInterval> | null>(null)
-const availablePresets = ref<any[]>([])
-const providerInfo = ref<any>(null)
-const workers = ref<any[]>([])
+const availablePresets = ref<ExportPreset[]>([])
+const providerInfo = ref<ProviderInfo | null>(null)
+const workers = ref<WorkerInfo[]>([])
 const selectedWorkerType = ref<'local' | 'remote'>('local')
 const loadingWorkers = ref(false)
 const restFallback = ref(false)
@@ -109,11 +133,11 @@ const settings = ref<ExportSettings>({
 const timelineSummary = computed(() => ({
   duration: timelineStore.state.duration,
   tracks: timelineStore.state.tracks.length,
-  clips: timelineStore.state.tracks.reduce((sum: number, t: any) => sum + t.clips.length, 0),
+  clips: timelineStore.state.tracks.reduce((sum: number, t: Record<string, unknown>) => sum + t.clips.length, 0),
   subtitles: subtitleStore.tracks.length,
   effects: timelineStore.state.tracks.reduce(
-    (sum: number, t: any) =>
-      sum + t.clips.reduce((s: number, tc: any) => s + (tc.effects?.length || 0), 0),
+    (sum: number, t: Record<string, unknown>) =>
+      sum + t.clips.reduce((s: number, tc: Record<string, unknown>) => s + (tc.effects?.length || 0), 0),
     0
   ),
 }))
@@ -130,13 +154,13 @@ const tierBadgeClass = computed(() => {
 })
 
 const presetInfo = computed(() => {
-  const preset = availablePresets.value.find((p: any) => p.name === selectedPreset.value)
+  const preset = availablePresets.value.find((p: ExportPreset) => p.name === selectedPreset.value)
   return preset || null
 })
 
 const canExport = computed(() =>
   projectStore.hasProject &&
-  timelineStore.state.tracks.some((t: any) => t.clips.length > 0)
+  timelineStore.state.tracks.some((t: Record<string, unknown>) => (t.clips as unknown[])?.length.length > 0)
 )
 
 const recentJobs = computed(() =>
@@ -253,7 +277,7 @@ const filteredPresets = computed(() => availablePresets.value.filter((p: any) =>
 }))
 
 const unavailablePresets = computed(() => {
-  const allowed = new Set(filteredPresets.value.map((p: any) => p.name))
+  const allowed = new Set(filteredPresets.value.map((p: ExportPreset) => p.name))
   return availablePresets.value.filter((p: any) => !allowed.has(p.name))
 })
 
@@ -469,7 +493,7 @@ function getWorkerStatusClass(status: string): string {
 }
 
 function updateSettingsFromPreset(presetName: string) {
-  const preset = availablePresets.value.find((p: any) => p.name === presetName)
+  const preset = availablePresets.value.find((p: ExportPreset) => p.name === presetName)
   if (preset) {
     const [_width, height] = (preset.resolution || '1280x720').split('x')
     settings.value.resolution = parseInt(height) >= 1080 ? (parseInt(height) >= 2160 ? '4k' : '1080p') : '720p'
@@ -649,7 +673,7 @@ async function submitRender() {
     renderJobId.value = job.id
     renderJobStatus.value = 'queued'
     startPolling(job.id)
-  } catch (err: any) {
+  } catch (err: unknown) {
     const errorCode = err.response?.data?.errorCode || 'COMMON-500-001'
     const errorMsg = err.response?.data?.message || err.message || 'Failed to submit render job'
     projectStore.setError(`${errorCode}: ${errorMsg}`)
@@ -735,7 +759,7 @@ function getStatusColor(status: string): string {
   }
 }
 
-function getPresetDisabledReason(preset: any): string {
+function getPresetDisabledReason(preset: ExportPreset): string {
   if (preset.name.startsWith('gpu_') && !gpuAvailable.value) {
     return 'GPU rendering requires TEAM tier or above'
   }

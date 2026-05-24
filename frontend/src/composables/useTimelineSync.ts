@@ -188,7 +188,7 @@ export function useTimelineSync(deps?: UseTimelineSyncDeps) {
 
       lastPulledAt.value = new Date()
       return { status: 'ok' as const }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const code = err.response?.data?.errorCode
       if (code && String(code).includes('404')) {
         return { status: 'empty' as const }
@@ -257,7 +257,7 @@ export function useTimelineSync(deps?: UseTimelineSyncDeps) {
         }
         return
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const code = err.response?.data?.errorCode || 'COMMON-500-001'
       syncError.value = `${code}: ${getErrorMessage(code)}`
     }
@@ -313,7 +313,7 @@ export function useTimelineSync(deps?: UseTimelineSyncDeps) {
       metaStore.setPendingConflict(null)
       metaStore.clearHighlightedRevisionIds()
       return result
-    } catch (err: any) {
+    } catch (err: unknown) {
       const code = err.response?.data?.errorCode || 'COMMON-500-001'
       syncError.value = `${code}: ${getErrorMessage(code)}`
       return null

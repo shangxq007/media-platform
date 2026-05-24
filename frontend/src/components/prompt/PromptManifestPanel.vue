@@ -22,7 +22,7 @@ async function validateManifest() {
     if (manifestResp.ok) {
       validationResult.value = await manifestResp.json()
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     error.value = e.message || 'Failed to validate manifest'
   } finally {
     loading.value = false
@@ -35,7 +35,7 @@ async function scanPromptFiles() {
   try {
     // Sample scan with empty files for now
     scanResult.value = await PromptAPI.scanFiles([], [])
-  } catch (e: any) {
+  } catch (e: unknown) {
     error.value = e.message || 'Failed to scan files'
   } finally {
     loading.value = false

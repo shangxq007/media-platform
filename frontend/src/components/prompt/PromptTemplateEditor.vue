@@ -36,7 +36,7 @@ const validationResult = ref<PromptValidationResult | null>(null)
 
 // Risk
 const riskContent = ref('')
-const riskAnalysis = ref<any>(null)
+const riskAnalysis = ref<Record<string, unknown> | null>(null)
 const analyzing = ref(false)
 
 // Task 24: Prompt quota info
@@ -61,7 +61,7 @@ async function loadTemplate() {
     editDescription.value = template.value?.description || ''
     editCategory.value = template.value?.category || ''
     editTags.value = template.value?.tags?.join(', ') || ''
-  } catch (e: any) {
+  } catch (e: unknown) {
     emit('error', e.message || 'Failed to load template')
   } finally {
     loading.value = false
@@ -109,7 +109,7 @@ async function saveTemplate() {
       })
     }
     await loadTemplate()
-  } catch (e: any) {
+  } catch (e: unknown) {
     emit('error', e.message || 'Failed to save')
   } finally {
     saving.value = false
@@ -125,7 +125,7 @@ async function renderPreview() {
       variables: vars,
       dryRun: true
     })
-  } catch (e: any) {
+  } catch (e: unknown) {
     emit('error', e.message || 'Render failed')
   } finally {
     rendering.value = false
@@ -135,7 +135,7 @@ async function renderPreview() {
 async function validateTemplate() {
   try {
     validationResult.value = await PromptAPI.validate(props.templateId)
-  } catch (e: any) {
+  } catch (e: unknown) {
     emit('error', e.message || 'Validation failed')
   }
 }
@@ -151,7 +151,7 @@ async function analyzeRisk() {
       environment: 'dev',
       category: editCategory.value || 'general'
     })
-  } catch (e: any) {
+  } catch (e: unknown) {
     emit('error', e.message || 'Risk analysis failed')
   } finally {
     analyzing.value = false

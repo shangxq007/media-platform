@@ -93,7 +93,7 @@
 }
 .editor-tab.is-active {
   color: var(--accent-400);
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--accent-500); opacity: 0.08;
   border-bottom-color: var(--accent-400);
 }
 
@@ -172,11 +172,11 @@
 }
 .effect-card:hover {
   border-color: var(--accent-500);
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--accent-500); opacity: 0.06;
 }
 .effect-card.is-selected {
   border-color: var(--accent-400);
-  background: rgba(99, 102, 241, 0.12);
+  background: var(--accent-500); opacity: 0.12;
 }
 .effect-card-icon {
   width: 32px;
@@ -185,7 +185,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.15);
+  background: var(--accent-500); opacity: 0.15;
   color: var(--accent-400);
 }
 
@@ -217,7 +217,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.10);
+  background: var(--accent-500); opacity: 0.10;
   color: var(--accent-400);
 }
 
@@ -246,5 +246,5 @@
 .studio-pack-card-header {
   padding: var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, transparent 60%);
+  background: linear-gradient(135deg, var(--accent-500) 0%, transparent 60%);
 }

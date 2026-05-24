@@ -39,9 +39,9 @@ const filteredRoutes = computed(() => {
     result = result.filter(r => r.visible === false)
   }
   if (filterFlagStatus.value === 'flagged') {
-    result = result.filter(r => (r as any)?.requiredFeatureFlags?.length > 0)
+    result = result.filter(r => (r as unknown)?.requiredFeatureFlags?.length > 0)
   } else if (filterFlagStatus.value === 'unflagged') {
-    result = result.filter(r => !((r as any)?.requiredFeatureFlags?.length > 0))
+    result = result.filter(r => !((r as unknown)?.requiredFeatureFlags?.length > 0))
   }
   return result
 })
@@ -93,7 +93,7 @@ async function onSave(routeData: Partial<FrontendRouteDefinition>) {
     if (editingRoute.value && editingRoute.value.routeKey) {
       await RouteManagementClient.updateRoute(editingRoute.value.routeKey, routeData)
     } else {
-      await RouteManagementClient.createRoute(routeData as any)
+      await RouteManagementClient.createRoute(routeData as unknown)
     }
     showEditor.value = false
     editingRoute.value = null

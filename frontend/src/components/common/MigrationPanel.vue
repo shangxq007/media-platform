@@ -35,7 +35,7 @@ async function runDryRun() {
     })
     if (!resp.ok) throw new Error(`API error: ${resp.status}`)
     dryRunResult.value = await resp.json()
-  } catch (err: any) {
+  } catch (err: unknown) {
     error.value = err.message
   } finally {
     loading.value = false
@@ -66,7 +66,7 @@ async function runMigration() {
     if (migrateResult.value.status === 'COMPLETED' && migrateResult.value.migratedPayload) {
       timelineStore.loadFromJSON(migrateResult.value.migratedPayload.payload)
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     error.value = err.message
   } finally {
     loading.value = false
