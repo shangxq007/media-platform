@@ -16,7 +16,20 @@ public class DefaultSandboxSecurityPolicy implements SandboxSecurityPolicy {
             "Runtime.getRuntime", "ProcessBuilder", "exec(", "System.exit",
             "java.io.File", "java.nio.file", "Socket(", "ServerSocket(",
             "URL(", "ClassLoader", "reflect.", "Unsafe",
-            "System.setProperty", "System.getenv"
+            "System.setProperty", "System.getenv",
+            "groovy.lang.GroovyShell", "groovy.lang.GroovyClassLoader",
+            "org.codehaus.groovy.runtime", "invokeMethod",
+            "metaClass", ".class.", "getClass()", "forName(",
+            "getMethod(", "getDeclaredMethod(", "getConstructor(",
+            "setAccessible(", "newInstance(", "invoke(",
+            "Thread.sleep", "Thread.start", "Thread.stop",
+            "java.lang.Process", "java.lang.reflect",
+            "javax.script.ScriptEngineManager",
+            "java.net.URL", "java.net.HttpURLConnection",
+            "java.io.BufferedReader", "java.io.InputStreamReader",
+            "java.io.FileInputStream", "java.io.FileOutputStream",
+            "java.lang.System.console", "java.lang.System.load",
+            "java.lang.System.loadLibrary", "java.lang.Runtime.exec"
     );
 
     @Override

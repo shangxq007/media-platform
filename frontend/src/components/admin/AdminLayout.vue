@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppShell from '@/components/ui/AppShell.vue'
 import AppSidebar from '@/components/ui/AppSidebar.vue'
 import AppBreadcrumb from '@/components/ui/AppBreadcrumb.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 
 const route = useRoute()
@@ -38,43 +39,43 @@ const navGroups = computed<AdminNavGroup[]>(() => [
     label: 'Platform',
     collapsible: true,
     items: [
-      { key: 'dashboard', label: 'Dashboard', path: '/admin', icon: '📊' },
-      { key: 'tenants', label: 'Tenants', path: '/admin/tenants', icon: '🏢' },
-      { key: 'render-jobs', label: 'Render Jobs', path: '/admin/render-jobs', icon: '🎬' },
-      { key: 'delivery', label: 'Artifact Delivery', path: '/admin/delivery', icon: '📦' },
-      { key: 'extensions', label: 'Extensions', path: '/admin/extensions', icon: '🔌' },
-      { key: 'analytics', label: 'Analytics', path: '/admin/analytics', icon: '📈' },
-       { key: 'notifications', label: 'Notifications', path: '/admin/notifications', icon: '🔔' },
-       { key: 'audit', label: 'Audit & Outbox', path: '/admin/audit', icon: '📋' },
-       { key: 'audit-log', label: 'Audit Log', path: '/admin/audit-log', icon: '📝' },
-       { key: 'feedback-admin', label: 'Feedback Admin', path: '/admin/feedback', icon: '💬' },
-       { key: 'config', label: 'Config', path: '/admin/config', icon: '⚙️' },
-      { key: 'feature-flags', label: 'Feature Flags', path: '/admin/feature-flags', icon: '🚩' },
-       { key: 'feature-flag-mgmt', label: 'Flag Management', path: '/admin/feature-flags/manage', icon: '🎯' },
-       { key: 'policy-mgmt', label: 'Policy / ABAC', path: '/admin/policies', icon: '📜' },
-       { key: 'routes', label: 'Route Management', path: '/admin/routes', icon: '🔀' },
+      { key: 'dashboard', label: 'Dashboard', path: '/admin', icon: 'layout-dashboard' },
+      { key: 'tenants', label: 'Tenants', path: '/admin/tenants', icon: 'landmark' },
+      { key: 'render-jobs', label: 'Render Jobs', path: '/admin/render-jobs', icon: 'clapperboard' },
+      { key: 'delivery', label: 'Artifact Delivery', path: '/admin/delivery', icon: 'package' },
+      { key: 'extensions', label: 'Extensions', path: '/admin/extensions', icon: 'git-branch' },
+      { key: 'analytics', label: 'Analytics', path: '/admin/analytics', icon: 'line-chart' },
+      { key: 'notifications', label: 'Notifications', path: '/admin/notifications', icon: 'bell' },
+      { key: 'audit', label: 'Audit & Outbox', path: '/admin/audit', icon: 'shield' },
+      { key: 'audit-log', label: 'Audit Log', path: '/admin/audit-log', icon: 'file-text' },
+      { key: 'feedback-admin', label: 'Feedback Admin', path: '/admin/feedback', icon: 'message-circle' },
+      { key: 'config', label: 'Config', path: '/admin/config', icon: 'settings' },
+      { key: 'feature-flags', label: 'Feature Flags', path: '/admin/feature-flags', icon: 'flag' },
+      { key: 'feature-flag-mgmt', label: 'Flag Management', path: '/admin/feature-flags/manage', icon: 'target' },
+      { key: 'policy-mgmt', label: 'Policy / ABAC', path: '/admin/policies', icon: 'shield' },
+      { key: 'routes', label: 'Route Management', path: '/admin/routes', icon: 'arrow-left-right' },
     ]
   },
   {
     label: 'Entitlements',
     collapsible: true,
     items: [
-      { key: 'entitlement-bundles', label: 'Bundles', path: '/admin/entitlements/bundles', icon: '📦' },
-      { key: 'entitlement-overrides', label: 'Tenant Overrides', path: '/admin/entitlements/overrides', icon: '🔧', badge: 'Admin', badgeVariant: 'admin' as const },
-      { key: 'entitlement-grants', label: 'User Grants', path: '/admin/entitlements/grants', icon: '🎫', badge: 'Admin', badgeVariant: 'admin' as const },
-      { key: 'entitlement-quota', label: 'Quota Policies', path: '/admin/entitlements/quota', icon: '📊', badge: 'Pro', badgeVariant: 'pro' as const },
+      { key: 'entitlement-bundles', label: 'Bundles', path: '/admin/entitlements/bundles', icon: 'package' },
+      { key: 'entitlement-overrides', label: 'Tenant Overrides', path: '/admin/entitlements/overrides', icon: 'settings', badge: 'Admin', badgeVariant: 'admin' as const },
+      { key: 'entitlement-grants', label: 'User Grants', path: '/admin/entitlements/grants', icon: 'users', badge: 'Admin', badgeVariant: 'admin' as const },
+      { key: 'entitlement-quota', label: 'Quota Policies', path: '/admin/entitlements/quota', icon: 'gauge', badge: 'Pro', badgeVariant: 'pro' as const },
     ]
   },
   {
     label: 'Billing',
     collapsible: true,
     items: [
-      { key: 'billing-plans', label: 'Plans', path: '/admin/billing/plans', icon: '📋' },
-      { key: 'billing-pricing', label: 'Pricing Rules', path: '/admin/billing/pricing', icon: '💲', badge: 'Beta', badgeVariant: 'beta' as const },
-      { key: 'billing-usage', label: 'Usage Ledger', path: '/admin/billing/usage', icon: '📈' },
-      { key: 'billing-credits', label: 'Credit Wallets', path: '/admin/billing/credits', icon: '💰' },
-      { key: 'billing-quotes', label: 'Quotes', path: '/admin/billing/quotes', icon: '🧾', badge: 'Beta', badgeVariant: 'beta' as const },
-      { key: 'billing-invoices', label: 'Invoices', path: '/admin/billing/invoices', icon: '📄' },
+      { key: 'billing-plans', label: 'Plans', path: '/admin/billing/plans', icon: 'file-text' },
+      { key: 'billing-pricing', label: 'Pricing Rules', path: '/admin/billing/pricing', icon: 'wallet', badge: 'Beta', badgeVariant: 'beta' as const },
+      { key: 'billing-usage', label: 'Usage Ledger', path: '/admin/billing/usage', icon: 'bar-chart-3' },
+      { key: 'billing-credits', label: 'Credit Wallets', path: '/admin/billing/credits', icon: 'credit-card' },
+      { key: 'billing-quotes', label: 'Quotes', path: '/admin/billing/quotes', icon: 'receipt', badge: 'Beta', badgeVariant: 'beta' as const },
+      { key: 'billing-invoices', label: 'Invoices', path: '/admin/billing/invoices', icon: 'file-text' },
     ]
   }
 ])
@@ -149,7 +150,7 @@ const pageSubtitle = computed(() => {
       >
         <template #title>
           <div class="flex items-center gap-xs">
-            <span class="text-base">🛡️</span>
+            <AppIcon name="shield" :size="20" />
             <span>Admin Panel</span>
           </div>
         </template>
@@ -161,7 +162,7 @@ const pageSubtitle = computed(() => {
               class="flex items-center gap-sm text-sm text-text-secondary hover:text-text-primary transition-colors w-full"
               @click="router.push('/me')"
             >
-              <span class="text-base">📊</span>
+              <AppIcon name="layout-dashboard" :size="16" />
               <span v-if="!isCollapsed">User Dashboard</span>
             </button>
             <button
@@ -169,7 +170,7 @@ const pageSubtitle = computed(() => {
               class="flex items-center gap-sm text-sm text-text-secondary hover:text-text-primary transition-colors w-full"
               @click="router.push('/')"
             >
-              <span class="text-base">✂️</span>
+              <AppIcon name="clapperboard" :size="16" />
               <span v-if="!isCollapsed">Video Editor</span>
             </button>
           </div>

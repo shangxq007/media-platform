@@ -34,25 +34,4 @@ public class MediaProbeService {
         return probeAdapter.probe(jobId, absolutePath);
     }
 
-    @Deprecated
-    public MediaValidationReport probeLegacy(String jobId, String relativePath) {
-        MediaProbeResult result = probe(jobId, relativePath);
-        return new MediaValidationReport(
-                result.jobId(),
-                result.valid(),
-                result.valid() ? "OK" : result.errorMessage(),
-                result.filePath(),
-                result.fileSizeBytes(),
-                result.durationMs(),
-                result.width(),
-                result.height(),
-                result.videoCodec(),
-                result.audioCodec(),
-                result.frameRate(),
-                result.bitrate(),
-                result.audioChannels(),
-                result.sampleRate(),
-                result.warnings()
-        );
-    }
 }

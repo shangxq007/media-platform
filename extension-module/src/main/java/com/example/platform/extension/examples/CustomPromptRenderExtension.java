@@ -2,7 +2,7 @@ package com.example.platform.extension.examples;
 
 import com.example.platform.extension.domain.*;
 
-public class CustomPromptRenderExtension implements PromptExtensionSPIV2 {
+public class CustomPromptRenderExtension implements PromptExtensionSPI {
 
     @Override
     public String extensionKey() {

@@ -493,6 +493,7 @@ async function submitClientExport() {
   renderError.value = null
   clientExportAbort.value = new AbortController()
 
+  let sessionId: string | null = null
   try {
     const timelineJson = buildTimelineJson()
     const snapshot = await RenderAPI.saveTimelineSnapshot(
@@ -501,14 +502,21 @@ async function submitClientExport() {
       { ensureInternal: true }
     )
 
-    let sessionId: string | null = null
     if (saveToProject.value) {
-      const session = await ClientExportAPI.startSession(
-        projectStore.currentProject.id,
-        snapshot.snapshotId,
-        selectedPreset.value
-      )
+      const session = await ClientExportAPI.startSession({
+        projectId: projectStore.currentProject.id,
+        tier: currentTier.value,
+        preset: selectedPreset.value,
+        timelineSnapshotId: snapshot.snapshotId,
+      })
       sessionId = session.sessionId
+      if (session.renderLocation === 'CLIENT') {
+        clientExportMessage.value = `Browser export: ${session.resolution} ${session.format}`
+      }
+    }
+
+    if (sessionId) {
+      ClientExportAPI.updateProgress(sessionId, 'EXPORTING', 0).catch(() => {})
     }
 
     const result = await clientCompositor.exportTimeline(timelineJson, {
@@ -518,6 +526,9 @@ async function submitClientExport() {
         clientExportProgress.value = p.progress
         clientExportMessage.value = p.message ?? p.phase
         renderProgress.value = p.progress
+        if (sessionId && p.progress % 10 === 0) {
+          ClientExportAPI.updateProgress(sessionId, 'EXPORTING', p.progress).catch(() => {})
+        }
       },
     })
 
@@ -554,11 +565,17 @@ async function submitClientExport() {
     if (err instanceof DOMException && err.name === 'AbortError') {
       renderJobStatus.value = 'cancelled'
       panelMessage.value = '已取消浏览器导出'
+      if (sessionId) {
+        ClientExportAPI.cancelSession(sessionId).catch(() => {})
+      }
     } else {
       const msg = err instanceof Error ? err.message : 'Browser export failed'
       renderError.value = msg
       renderJobStatus.value = 'failed'
       projectStore.setError(msg)
+      if (sessionId) {
+        ClientExportAPI.failSession(sessionId, 'BROWSER_EXPORT_ERROR', msg).catch(() => {})
+      }
     }
   } finally {
     submitting.value = false

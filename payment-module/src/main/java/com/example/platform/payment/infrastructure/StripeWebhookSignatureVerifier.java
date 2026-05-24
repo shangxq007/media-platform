@@ -1,6 +1,7 @@
 package com.example.platform.payment.infrastructure;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -43,7 +44,9 @@ public final class StripeWebhookSignatureVerifier {
             }
             String payload = timestamp + "." + body;
             String expected = hmacHex(webhookSecret, payload);
-            return constantTimeEquals(expected, v1);
+            return MessageDigest.isEqual(
+                    expected.getBytes(StandardCharsets.UTF_8),
+                    v1.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             return false;
         }
@@ -72,17 +75,4 @@ public final class StripeWebhookSignatureVerifier {
         return sb.toString();
     }
 
-    private static boolean constantTimeEquals(String a, String b) {
-        if (a == null || b == null) {
-            return false;
-        }
-        if (a.length() != b.length()) {
-            return false;
-        }
-        int result = 0;
-        for (int i = 0; i < a.length(); i++) {
-            result |= a.charAt(i) ^ b.charAt(i);
-        }
-        return result == 0;
-    }
 }

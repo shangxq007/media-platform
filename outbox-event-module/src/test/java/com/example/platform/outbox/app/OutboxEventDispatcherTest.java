@@ -176,7 +176,7 @@ class OutboxEventDispatcherTest {
     void legacyDispatchBatchDelegatesToProcessBatch() {
         when(service.pendingForDispatch(100)).thenReturn(List.of());
 
-        int processed = dispatcher.dispatchBatch(100);
+        int processed = dispatcher.processBatch(100);
 
         assertEquals(0, processed);
     }

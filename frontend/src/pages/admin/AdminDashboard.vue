@@ -156,9 +156,9 @@ const hasCriticalFeedback = computed(() => (gqlData.value?.feedbackSummary.criti
 <template>
   <div class="flex-1 overflow-y-auto p-6">
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-xl font-bold">Admin Dashboard</h1>
+      <h1 class="text-h2 font-semibold text-text-primary">Admin Dashboard</h1>
       <div class="flex items-center gap-3">
-        <select v-model="range" class="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white" @change="refetch">
+        <select v-model="range" class="theme-input text-xs h-8" @change="refetch">
           <option value="1d">Last 24h</option>
           <option value="7d">Last 7 days</option>
           <option value="30d">Last 30 days</option>
@@ -167,35 +167,35 @@ const hasCriticalFeedback = computed(() => (gqlData.value?.feedbackSummary.criti
       </div>
     </div>
 
-    <div v-if="restFallback" class="mb-4 px-3 py-2 rounded bg-blue-900/20 border border-blue-700/50 text-xs text-blue-300">
+    <div v-if="restFallback" class="mb-4 px-3 py-2 rounded-lg bg-info-muted border border-info/30 text-xs text-info">
       Using REST fallback — GraphQL endpoint unavailable
     </div>
 
-    <div v-if="error" class="mb-4 px-3 py-2 rounded bg-red-900/20 border border-red-700/50 text-xs text-red-300">
-      <div v-if="errorCode" class="font-mono text-[10px] text-red-400 mb-1">{{ errorCode }}</div>
+    <div v-if="error" class="mb-4 px-3 py-2 rounded-lg bg-danger-muted border border-danger/30 text-xs text-danger">
+      <div v-if="errorCode" class="font-mono text-micro mb-1 opacity-80">{{ errorCode }}</div>
       {{ error.message }}
     </div>
 
-    <div v-if="loading && gqlLoading" class="text-gray-400 text-sm">Loading...</div>
+    <div v-if="loading && gqlLoading" class="text-text-tertiary text-sm">Loading...</div>
 
     <template v-else>
       <!-- Stats Grid -->
-      <div class="grid grid-cols-4 gap-4 mb-8">
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="text-xs text-gray-400 mb-1">Tenants</div>
-          <div class="text-2xl font-bold">{{ accessOverview?.tenants ?? '—' }}</div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="c-metric-card">
+          <div class="c-metric-label">Tenants</div>
+          <div class="c-metric-value">{{ accessOverview?.tenants ?? '—' }}</div>
         </div>
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="text-xs text-gray-400 mb-1">Users</div>
-          <div class="text-2xl font-bold">{{ accessOverview?.users ?? '—' }}</div>
+        <div class="c-metric-card">
+          <div class="c-metric-label">Users</div>
+          <div class="c-metric-value">{{ accessOverview?.users ?? '—' }}</div>
         </div>
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="text-xs text-gray-400 mb-1">Extensions</div>
-          <div class="text-2xl font-bold">{{ extensions.length }}</div>
+        <div class="c-metric-card">
+          <div class="c-metric-label">Extensions</div>
+          <div class="c-metric-value">{{ extensions.length }}</div>
         </div>
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="text-xs text-gray-400 mb-1">Outbox Failed</div>
-          <div class="text-2xl font-bold" :class="(outboxOverview?.failed ?? 0) > 0 ? 'text-red-400' : ''">
+        <div class="c-metric-card">
+          <div class="c-metric-label">Outbox Failed</div>
+          <div class="c-metric-value" :class="(outboxOverview?.failed ?? 0) > 0 ? 'text-danger' : ''">
             {{ outboxOverview?.failed ?? '—' }}
           </div>
         </div>
@@ -203,219 +203,244 @@ const hasCriticalFeedback = computed(() => (gqlData.value?.feedbackSummary.criti
 
       <!-- Feature Flag & Policy Summary -->
       <div class="grid grid-cols-2 gap-4 mb-8">
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-gray-300">🚩 Feature Flags</h2>
-            <router-link to="/admin/feature-flags" class="text-xs text-blue-400 hover:text-blue-300">Manage →</router-link>
+        <div class="c-card">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Feature Flags</h2>
+            <router-link to="/admin/feature-flags" class="text-caption text-accent-400 hover:text-accent-300">Manage →</router-link>
           </div>
-          <div v-if="!featureFlagSummary" class="text-xs text-gray-500">Loading...</div>
-          <div v-else class="grid grid-cols-3 gap-3">
-            <div>
-              <div class="text-xs text-gray-400">Total</div>
-              <div class="text-lg font-bold text-gray-200">{{ featureFlagSummary.total }}</div>
+          <div class="c-card-body">
+            <div v-if="!featureFlagSummary" class="text-caption text-text-tertiary">Loading...</div>
+            <div v-else class="grid grid-cols-3 gap-4">
+              <div>
+                <div class="text-caption text-text-tertiary">Total</div>
+                <div class="text-h3 text-text-primary">{{ featureFlagSummary.total }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Active</div>
+                <div class="text-h3 text-success">{{ featureFlagSummary.active }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Beta</div>
+                <div class="text-h3 text-accent-400">{{ featureFlagSummary.beta }}</div>
+              </div>
             </div>
-            <div>
-              <div class="text-xs text-gray-400">Active</div>
-              <div class="text-lg font-bold text-green-400">{{ featureFlagSummary.active }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Beta</div>
-              <div class="text-lg font-bold text-purple-400">{{ featureFlagSummary.beta }}</div>
-            </div>
-          </div>
-          <div v-if="featureFlagSummary?.recentChanges?.length" class="mt-3 pt-3 border-t border-gray-700">
-            <div class="text-xs text-gray-400 mb-1">Recent changes</div>
-            <div v-for="(change, idx) in featureFlagSummary.recentChanges.slice(0, 3)" :key="idx" class="flex items-center gap-2 text-[10px] text-gray-400">
-              <span class="font-mono text-blue-300">{{ change.flagKey }}</span>
-              <span>{{ change.change }}</span>
+            <div v-if="featureFlagSummary?.recentChanges?.length" class="mt-4 pt-4 border-t border-border-subtle">
+              <div class="text-caption text-text-tertiary mb-2">Recent changes</div>
+              <div v-for="(change, idx) in featureFlagSummary.recentChanges.slice(0, 3)" :key="idx" class="flex items-center gap-2 text-micro text-text-tertiary">
+                <span class="font-mono text-accent-300">{{ change.flagKey }}</span>
+                <span>{{ change.change }}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-gray-300">📜 Policies</h2>
-            <router-link to="/admin/feature-flags" class="text-xs text-blue-400 hover:text-blue-300">Manage →</router-link>
+        <div class="c-card">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Policies</h2>
+            <router-link to="/admin/policies" class="text-caption text-accent-400 hover:text-accent-300">Manage →</router-link>
           </div>
-          <div v-if="!policySummary" class="text-xs text-gray-500">Loading...</div>
-          <div v-else class="grid grid-cols-2 gap-3">
-            <div>
-              <div class="text-xs text-gray-400">Total</div>
-              <div class="text-lg font-bold text-gray-200">{{ policySummary.total }}</div>
+          <div class="c-card-body">
+            <div v-if="!policySummary" class="text-caption text-text-tertiary">Loading...</div>
+            <div v-else class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="text-caption text-text-tertiary">Total</div>
+                <div class="text-h3 text-text-primary">{{ policySummary.total }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Active</div>
+                <div class="text-h3 text-success">{{ policySummary.active }}</div>
+              </div>
             </div>
-            <div>
-              <div class="text-xs text-gray-400">Active</div>
-              <div class="text-lg font-bold text-green-400">{{ policySummary.active }}</div>
-            </div>
-          </div>
-          <div v-if="policySummary?.recentChanges?.length" class="mt-3 pt-3 border-t border-gray-700">
-            <div class="text-xs text-gray-400 mb-1">Recent changes</div>
-            <div v-for="(change, idx) in policySummary.recentChanges.slice(0, 3)" :key="idx" class="flex items-center gap-2 text-[10px] text-gray-400">
-              <span class="font-mono text-blue-300">{{ change.policyCode }}</span>
-              <span>{{ change.change }}</span>
+            <div v-if="policySummary?.recentChanges?.length" class="mt-4 pt-4 border-t border-border-subtle">
+              <div class="text-caption text-text-tertiary mb-2">Recent changes</div>
+              <div v-for="(change, idx) in policySummary.recentChanges.slice(0, 3)" :key="idx" class="flex items-center gap-2 text-micro text-text-tertiary">
+                <span class="font-mono text-accent-300">{{ change.policyCode }}</span>
+                <span>{{ change.change }}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Quick Links -->
-      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
-        <h2 class="text-sm font-semibold text-gray-300 mb-3">Quick Links</h2>
-        <div class="flex flex-wrap gap-2">
-          <router-link to="/admin/feature-flags" class="text-xs px-3 py-1.5 rounded bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 border border-blue-700/30 transition-colors">
-            🚩 Feature Flag Management
-          </router-link>
-          <router-link to="/admin/routes" class="text-xs px-3 py-1.5 rounded bg-green-600/20 text-green-300 hover:bg-green-600/30 border border-green-700/30 transition-colors">
-            🔀 Route Management
-          </router-link>
-          <router-link to="/admin/audit" class="text-xs px-3 py-1.5 rounded bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 border border-purple-700/30 transition-colors">
-            📋 Audit & Outbox
-          </router-link>
-          <router-link to="/admin/monitoring" class="text-xs px-3 py-1.5 rounded bg-yellow-600/20 text-yellow-300 hover:bg-yellow-600/30 border border-yellow-700/30 transition-colors">
-            📊 Monitoring
-          </router-link>
-          <router-link to="/admin/extensions" class="text-xs px-3 py-1.5 rounded bg-orange-600/20 text-orange-300 hover:bg-orange-600/30 border border-orange-700/30 transition-colors">
-            🔌 Extensions
-          </router-link>
+      <div class="c-card mb-8">
+        <div class="c-card-body">
+          <h2 class="text-body font-semibold text-text-primary mb-3">Quick Links</h2>
+          <div class="flex flex-wrap gap-2">
+            <router-link to="/admin/feature-flags" class="theme-btn theme-btn-ghost theme-btn-sm border border-border-subtle">
+              Feature Flags
+            </router-link>
+            <router-link to="/admin/routes" class="theme-btn theme-btn-ghost theme-btn-sm border border-border-subtle">
+              Routes
+            </router-link>
+            <router-link to="/admin/audit" class="theme-btn theme-btn-ghost theme-btn-sm border border-border-subtle">
+              Audit & Outbox
+            </router-link>
+            <router-link to="/admin/monitoring" class="theme-btn theme-btn-ghost theme-btn-sm border border-border-subtle">
+              Monitoring
+            </router-link>
+            <router-link to="/admin/extensions" class="theme-btn theme-btn-ghost theme-btn-sm border border-border-subtle">
+              Extensions
+            </router-link>
+          </div>
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-6">
          <!-- Render Stats (GraphQL) -->
-        <div v-if="gqlData" class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">Render Stats (GraphQL)</h2>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <div class="text-xs text-gray-400">Submitted</div>
-              <div class="text-lg font-bold text-gray-200">{{ gqlData.renderStats.submitted }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Completed</div>
-              <div class="text-lg font-bold text-green-400">{{ gqlData.renderStats.completed }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Failed</div>
-              <div class="text-lg font-bold text-red-400">{{ gqlData.renderStats.failed }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Avg Duration</div>
-              <div class="text-lg font-bold text-gray-200">{{ gqlData.renderStats.avgDurationSeconds }}s</div>
+        <div v-if="gqlData" class="c-card">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Render Stats</h2>
+          </div>
+          <div class="c-card-body">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="text-caption text-text-tertiary">Submitted</div>
+                <div class="text-h3 text-text-primary">{{ gqlData.renderStats.submitted }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Completed</div>
+                <div class="text-h3 text-success">{{ gqlData.renderStats.completed }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Failed</div>
+                <div class="text-h3 text-danger">{{ gqlData.renderStats.failed }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Avg Duration</div>
+                <div class="text-h3 text-text-primary">{{ gqlData.renderStats.avgDurationSeconds }}s</div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Render Jobs (REST) -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">Render Jobs</h2>
-          <div v-if="renderJobs.length === 0" class="text-xs text-gray-500">No jobs</div>
-          <div v-else class="space-y-2">
-            <div v-for="(count, status) in jobStatusCounts" :key="status" class="flex items-center justify-between">
-              <span class="text-xs text-gray-400">{{ status }}</span>
-              <span class="text-sm font-mono">{{ count }}</span>
+        <div class="c-card">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Render Jobs</h2>
+          </div>
+          <div class="c-card-body">
+            <div v-if="renderJobs.length === 0" class="text-caption text-text-tertiary">No jobs</div>
+            <div v-else class="space-y-3">
+              <div v-for="(count, status) in jobStatusCounts" :key="status" class="flex items-center justify-between">
+                <span class="text-caption text-text-secondary">{{ status }}</span>
+                <span class="text-body font-mono text-text-primary">{{ count }}</span>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Provider Health (GraphQL) -->
-        <div v-if="gqlData?.providerHealth?.length" class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">Provider Health</h2>
-          <div class="space-y-1.5">
-            <div v-for="provider in gqlData.providerHealth" :key="provider.providerKey" class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full" :class="provider.status === 'HEALTHY' ? 'bg-green-500' : provider.status === 'DEGRADED' ? 'bg-yellow-500' : 'bg-red-500'"></span>
-                <span class="text-xs font-mono text-gray-300">{{ provider.providerKey }}</span>
-              </div>
-              <div class="flex items-center gap-3 text-xs text-gray-400">
-                <span>{{ provider.latencyMs }}ms</span>
-                <span :class="provider.errorRate > 0.05 ? 'text-red-400' : ''">{{ (provider.errorRate * 100).toFixed(1) }}% err</span>
+        <div v-if="gqlData?.providerHealth?.length" class="c-card">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Provider Health</h2>
+          </div>
+          <div class="c-card-body">
+            <div class="space-y-2">
+              <div v-for="provider in gqlData.providerHealth" :key="provider.providerKey" class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full" :class="provider.status === 'HEALTHY' ? 'bg-success' : provider.status === 'DEGRADED' ? 'bg-warning' : 'bg-danger'"></span>
+                  <span class="text-caption font-mono text-text-primary">{{ provider.providerKey }}</span>
+                </div>
+                <div class="flex items-center gap-3 text-caption text-text-tertiary">
+                  <span>{{ provider.latencyMs }}ms</span>
+                  <span :class="provider.errorRate > 0.05 ? 'text-danger' : ''">{{ (provider.errorRate * 100).toFixed(1) }}% err</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Extensions -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">Extensions</h2>
-          <div v-if="extensions.length === 0" class="text-xs text-gray-500">No extensions loaded</div>
-          <div v-else class="space-y-1.5">
-            <div v-for="ext in extensions" :key="ext.key" class="flex items-center justify-between">
-              <span class="text-xs font-mono text-gray-300">{{ ext.key }}</span>
-              <span
-                class="text-xs px-1.5 py-0.5 rounded"
-                :class="ext.status === 'ACTIVE' ? 'bg-green-600/20 text-green-300' : 'bg-gray-600/20 text-gray-400'"
-              >
-                {{ ext.status || 'loaded' }}
-              </span>
+        <div class="c-card">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Extensions</h2>
+          </div>
+          <div class="c-card-body">
+            <div v-if="extensions.length === 0" class="text-caption text-text-tertiary">No extensions loaded</div>
+            <div v-else class="space-y-2">
+              <div v-for="ext in extensions" :key="ext.key" class="flex items-center justify-between">
+                <span class="text-caption font-mono text-text-primary">{{ ext.key }}</span>
+                <span class="theme-badge" :class="ext.status === 'ACTIVE' ? 'bg-success-muted text-success' : 'bg-surface-4 text-text-tertiary'">
+                  {{ ext.status || 'loaded' }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Billing Summary (GraphQL) -->
-        <div v-if="gqlData" class="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">Billing Summary</h2>
-          <div class="grid grid-cols-3 gap-3">
-            <div>
-              <div class="text-xs text-gray-400">Usage</div>
-              <div class="text-lg font-bold text-gray-200">
-                ${{ gqlData.billingSummary.usageAmount.amount.toFixed(2) }}
+        <div v-if="gqlData" class="c-card">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Billing Summary</h2>
+          </div>
+          <div class="c-card-body">
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <div class="text-caption text-text-tertiary">Usage</div>
+                <div class="text-h3 text-text-primary">${{ gqlData.billingSummary.usageAmount.amount.toFixed(2) }}</div>
               </div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Revenue</div>
-              <div class="text-lg font-bold text-green-400">
-                ${{ gqlData.billingSummary.estimatedRevenue.amount.toFixed(2) }}
+              <div>
+                <div class="text-caption text-text-tertiary">Revenue</div>
+                <div class="text-h3 text-success">${{ gqlData.billingSummary.estimatedRevenue.amount.toFixed(2) }}</div>
               </div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Credits</div>
-              <div class="text-lg font-bold text-blue-400">
-                ${{ gqlData.billingSummary.creditBalanceTotal.amount.toFixed(2) }}
+              <div>
+                <div class="text-caption text-text-tertiary">Credits</div>
+                <div class="text-h3 text-accent-400">${{ gqlData.billingSummary.creditBalanceTotal.amount.toFixed(2) }}</div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Feedback Summary (GraphQL) -->
-        <div v-if="gqlData" class="bg-gray-800 border rounded-lg p-4" :class="hasCriticalFeedback ? 'border-red-700' : 'border-gray-700'">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">Feedback Summary</h2>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <div class="text-xs text-gray-400">Open Issues</div>
-              <div class="text-lg font-bold text-gray-200">{{ gqlData.feedbackSummary.openIssues }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Critical</div>
-              <div class="text-lg font-bold" :class="hasCriticalFeedback ? 'text-red-400' : ''">
-                {{ gqlData.feedbackSummary.criticalIssues }}
+        <div v-if="gqlData" class="c-card" :class="hasCriticalFeedback ? 'border-danger/30' : ''">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Feedback Summary</h2>
+          </div>
+          <div class="c-card-body">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="text-caption text-text-tertiary">Open Issues</div>
+                <div class="text-h3 text-text-primary">{{ gqlData.feedbackSummary.openIssues }}</div>
               </div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Linked Renders</div>
-              <div class="text-lg font-bold text-gray-200">{{ gqlData.feedbackSummary.linkedRenderJobs }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Linked Prompts</div>
-              <div class="text-lg font-bold text-gray-200">{{ gqlData.feedbackSummary.linkedPromptExecutions }}</div>
+              <div>
+                <div class="text-caption text-text-tertiary">Critical</div>
+                <div class="text-h3" :class="hasCriticalFeedback ? 'text-danger' : 'text-text-primary'">
+                  {{ gqlData.feedbackSummary.criticalIssues }}
+                </div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Linked Renders</div>
+                <div class="text-h3 text-text-primary">{{ gqlData.feedbackSummary.linkedRenderJobs }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Linked Prompts</div>
+                <div class="text-h3 text-text-primary">{{ gqlData.feedbackSummary.linkedPromptExecutions }}</div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Outbox -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 col-span-2">
-          <h2 class="text-sm font-semibold mb-3 text-gray-300">Outbox</h2>
-          <div class="grid grid-cols-3 gap-4">
-            <div>
-              <div class="text-xs text-gray-400">Pending</div>
-              <div class="text-lg font-bold text-yellow-400">{{ outboxOverview?.pending ?? '—' }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Processed</div>
-              <div class="text-lg font-bold text-green-400">{{ outboxOverview?.processed ?? '—' }}</div>
-            </div>
-            <div>
-              <div class="text-xs text-gray-400">Failed</div>
-              <div class="text-lg font-bold" :class="(outboxOverview?.failed ?? 0) > 0 ? 'text-red-400' : ''">
-                {{ outboxOverview?.failed ?? '—' }}
+        <div class="c-card md:col-span-2">
+          <div class="c-card-header">
+            <h2 class="text-body font-semibold text-text-primary">Outbox</h2>
+          </div>
+          <div class="c-card-body">
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <div class="text-caption text-text-tertiary">Pending</div>
+                <div class="text-h3 text-warning">{{ outboxOverview?.pending ?? '—' }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Processed</div>
+                <div class="text-h3 text-success">{{ outboxOverview?.processed ?? '—' }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-text-tertiary">Failed</div>
+                <div class="text-h3" :class="(outboxOverview?.failed ?? 0) > 0 ? 'text-danger' : 'text-text-primary'">
+                  {{ outboxOverview?.failed ?? '—' }}
+                </div>
               </div>
             </div>
           </div>

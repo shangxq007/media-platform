@@ -603,6 +603,10 @@ public class PromptTemplateService {
         jdbcRepository.ifPresent(r -> r.saveExecution(run));
     }
 
+    public void saveExecution(PromptExecutionRun run) {
+        storeExecution(run);
+    }
+
     private boolean codeExists(String code) {
         if (templatesByCode.containsKey(code)) {
             return true;
@@ -639,7 +643,17 @@ public class PromptTemplateService {
     }
 
     private String computeChecksum(String content) {
-        return Integer.toHexString(Objects.hash(content));
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return Integer.toHexString(content.hashCode());
+        }
     }
 
     private boolean isSensitiveVariable(String name) {

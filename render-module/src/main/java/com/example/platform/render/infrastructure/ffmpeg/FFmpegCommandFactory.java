@@ -221,6 +221,123 @@ public class FFmpegCommandFactory {
         return args;
     }
 
+    public List<String> buildMultiTrackCommand(
+            List<ResolvedClip> videoClips,
+            List<List<ResolvedClip>> audioTracks,
+            String outputUri,
+            RenderProfile profile) {
+
+        List<String> args = new ArrayList<>();
+        List<String> filterParts = new ArrayList<>();
+        int inputIndex = 0;
+
+        // Video inputs
+        for (ResolvedClip clip : videoClips) {
+            if (clip.startSeconds() > 0) {
+                args.add("-ss");
+                args.add(String.valueOf(clip.startSeconds()));
+            }
+            if (clip.durationSeconds() > 0) {
+                args.add("-t");
+                args.add(String.valueOf(clip.durationSeconds()));
+            }
+            args.add("-i");
+            args.add(clip.localPath());
+            inputIndex++;
+        }
+
+        // Audio inputs
+        int audioInputStart = inputIndex;
+        for (List<ResolvedClip> audioTrack : audioTracks) {
+            for (ResolvedClip clip : audioTrack) {
+                if (clip.startSeconds() > 0) {
+                    args.add("-ss");
+                    args.add(String.valueOf(clip.startSeconds()));
+                }
+                if (clip.durationSeconds() > 0) {
+                    args.add("-t");
+                    args.add(String.valueOf(clip.durationSeconds()));
+                }
+                args.add("-i");
+                args.add(clip.localPath());
+                inputIndex++;
+            }
+        }
+
+        // Build filter graph
+        if (videoClips.size() == 1 && audioTracks.isEmpty()) {
+            // Single video, no extra audio — direct copy
+            args.add("-map");
+            args.add("0:v:0");
+            args.add("-map");
+            args.add("0:a:0?");
+        } else if (videoClips.size() == 1 && audioTracks.size() == 1 && audioTracks.get(0).size() == 1) {
+            // Single video + single audio track — direct mapping
+            args.add("-map");
+            args.add("0:v:0");
+            args.add("-map");
+            args.add(audioInputStart + ":a:0");
+        } else {
+            // Complex: concat video clips + amix audio
+            StringBuilder filter = new StringBuilder();
+
+            // Video concat
+            if (videoClips.size() > 1) {
+                for (int i = 0; i < videoClips.size(); i++) {
+                    filter.append("[").append(i).append(":v:0]");
+                }
+                filter.append("concat=n=").append(videoClips.size()).append(":v=1:a=0[vout];");
+            } else {
+                filter.append("[0:v:0]null[vout];");
+            }
+
+            // Audio mix
+            List<String> audioLabels = new ArrayList<>();
+            int audioIdx = audioInputStart;
+            for (int t = 0; t < audioTracks.size(); t++) {
+                List<ResolvedClip> track = audioTracks.get(t);
+                for (int c = 0; c < track.size(); c++) {
+                    String label = "a" + t + "_" + c;
+                    filter.append("[").append(audioIdx).append(":a:0]aresample=44100[").append(label).append("];");
+                    audioLabels.add("[" + label + "]");
+                    audioIdx++;
+                }
+            }
+
+            // Also include audio from video clips
+            for (int i = 0; i < videoClips.size(); i++) {
+                String label = "va" + i;
+                filter.append("[").append(i).append(":a:0]aresample=44100[").append(label).append("];");
+                audioLabels.add("[" + label + "]");
+            }
+
+            if (audioLabels.size() > 1) {
+                for (String label : audioLabels) {
+                    filter.append(label);
+                }
+                filter.append("amix=inputs=").append(audioLabels.size()).append(":duration=longest:normalize=0[aout]");
+            } else if (audioLabels.size() == 1) {
+                filter.append(audioLabels.get(0)).append("anull[aout]");
+            }
+
+            args.add("-filter_complex");
+            args.add(filter.toString());
+            args.add("-map");
+            args.add("[vout]");
+            if (!audioLabels.isEmpty()) {
+                args.add("-map");
+                args.add("[aout]");
+            }
+        }
+
+        appendOutputEncoding(args, profile);
+        args.add("-y");
+        args.add(outputUri);
+        log.debug("Built multi-track command: videoClips={} audioTracks={} output={}",
+                videoClips.size(), audioTracks.size(), outputUri);
+        return args;
+    }
+
     public List<String> buildTranscodeFromTimeline(TimelineSpec timeline, String outputUri) {
         RenderProfile profile = timelineProfile(timeline);
         List<ResolvedClip> clips = new ArrayList<>();

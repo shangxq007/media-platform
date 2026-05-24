@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 interface NavItem {
   key: string
@@ -105,6 +106,11 @@ function handleKeyNav(e: KeyboardEvent, item: NavItem) {
   }
 }
 
+function isLucideIcon(icon?: string): boolean {
+  if (!icon) return false
+  return /^[a-z][a-z0-9-]*$/.test(icon) && icon.length > 1
+}
+
 const sidebarStyle = () => ({
   width: isCollapsed.value ? props.collapsedWidth : props.width,
 })
@@ -202,7 +208,8 @@ const sidebarStyle = () => ({
               aria-disabled="true"
               :aria-label="`${item.label} - ${item.disabledReason || 'Disabled'}`"
             >
-              <span v-if="item.icon" class="text-base flex-shrink-0 grayscale" aria-hidden="true">{{ item.icon }}</span>
+              <AppIcon v-if="item.icon && isLucideIcon(item.icon)" :name="item.icon" :size="18" class="flex-shrink-0 opacity-60 grayscale" />
+              <span v-else-if="item.icon" class="text-base flex-shrink-0 grayscale" aria-hidden="true">{{ item.icon }}</span>
               <span v-if="!isCollapsed" class="truncate-text line-through">{{ item.label }}</span>
               <span
                 v-if="item.requiredUpgrade && !isCollapsed"
@@ -226,7 +233,8 @@ const sidebarStyle = () => ({
               @click="handleNav(item)"
               @keydown="handleKeyNav($event, item)"
             >
-              <span v-if="item.icon" class="text-base flex-shrink-0" aria-hidden="true">{{ item.icon }}</span>
+              <AppIcon v-if="item.icon && isLucideIcon(item.icon)" :name="item.icon" :size="18" class="flex-shrink-0" />
+              <span v-else-if="item.icon" class="text-base flex-shrink-0" aria-hidden="true">{{ item.icon }}</span>
               <span v-if="!isCollapsed" class="truncate-text flex-1">{{ item.label }}</span>
               <span
                 v-if="item.badge && !isCollapsed"
@@ -255,7 +263,7 @@ const sidebarStyle = () => ({
 </template>
 
 <style scoped>
-.group-header:hover .text-text-muted {
-  color: var(--color-text-secondary);
+.group-header:hover span {
+  color: var(--text-secondary);
 }
 </style>

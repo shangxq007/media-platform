@@ -94,14 +94,6 @@ public class SharedResourceService {
         return grant;
     }
 
-    /** @deprecated use {@link #grantAccess} */
-    @Deprecated
-    public SharedResourceJdbcRepository.SharedResourceGrant grantProjectAccess(
-            String tenantId, String projectId, String projectName, String sharedByUserId,
-            String sharedWithUserId, String permission) {
-        return grantAccess(tenantId, "project", projectId, projectName, sharedByUserId, sharedWithUserId, permission);
-    }
-
     public List<Map<String, Object>> listGrantsForTenant(String tenantId, boolean includeRevoked) {
         List<Map<String, Object>> items = new ArrayList<>();
         jdbcRepository.ifPresent(r -> {

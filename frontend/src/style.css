@@ -18,16 +18,27 @@ html, body, #app {
   height: 100%;
   width: 100%;
   overflow: hidden;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #1a1a2e;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #4361ee;
-  border-radius: 4px;
+  background: var(--border-default);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+::selection {
+  background: var(--accent-500);
+  color: var(--text-inverse);
 }

@@ -123,7 +123,7 @@ class OutboxEventServiceTest {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "value"));
 
-        service.markPublished(id);
+        service.markProcessed(id);
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -139,7 +139,7 @@ class OutboxEventServiceTest {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "value"));
 
-        service.markFailed(id);
+        service.markFailedWithDetails(id, "TEST", "test error");
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -156,9 +156,9 @@ class OutboxEventServiceTest {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "value"));
 
-        service.markFailed(id);
-        service.markFailed(id);
-        service.markFailed(id);
+        service.markFailedWithDetails(id, "TEST", "test error");
+        service.markFailedWithDetails(id, "TEST", "test error");
+        service.markFailedWithDetails(id, "TEST", "test error");
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -174,7 +174,7 @@ class OutboxEventServiceTest {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "value"));
 
-        service.markDeadLetter(id);
+        service.markDeadLetter(id, "test reason");
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -188,9 +188,9 @@ class OutboxEventServiceTest {
     void markDeadLetterDoesNotOverrideProcessed() {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "value"));
-        service.markPublished(id);
+        service.markProcessed(id);
 
-        service.markDeadLetter(id);
+        service.markDeadLetter(id, "test reason");
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -205,7 +205,7 @@ class OutboxEventServiceTest {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "value"));
 
-        service.markFailed(id);
+        service.markFailedWithDetails(id, "TEST", "test error");
 
         List<Map<String, Object>> pending = service.pendingForDispatch(100);
         assertTrue(pending.stream().noneMatch(r -> id.equals(String.valueOf(r.get("id")))));
@@ -224,7 +224,7 @@ class OutboxEventServiceTest {
     void overviewReturnsDeadLetterCount() {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "value"));
-        service.markDeadLetter(id);
+        service.markDeadLetter(id, "test reason");
 
         Map<String, Object> overview = service.overview();
         assertNotNull(overview.get("deadLetter"));

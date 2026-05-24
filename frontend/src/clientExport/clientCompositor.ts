@@ -23,6 +23,18 @@ async function loadVideo(url: string): Promise<HTMLVideoElement> {
   return video
 }
 
+async function loadAudio(url: string): Promise<HTMLAudioElement> {
+  const audio = document.createElement('audio')
+  audio.crossOrigin = 'anonymous'
+  audio.preload = 'auto'
+  audio.src = normalizeSourceUrl(url)
+  await new Promise<void>((resolve, reject) => {
+    audio.onloadeddata = () => resolve()
+    audio.onerror = () => reject(new Error(`Failed to load audio: ${url}`))
+  })
+  return audio
+}
+
 function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: number) {
   const text = 'Media Platform — Free'
   ctx.save()
@@ -74,6 +86,8 @@ export class ClientCompositor {
     options.onProgress?.({ phase: 'preparing', progress: 0, message: 'Loading media' })
 
     const videoCache = new Map<string, HTMLVideoElement>()
+    const audioElements: HTMLAudioElement[] = []
+
     for (const clip of timeline.clips) {
       if (!clip.sourceUrl || videoCache.has(clip.id)) {
         continue
@@ -85,12 +99,47 @@ export class ClientCompositor {
       }
     }
 
+    for (const track of timeline.tracks) {
+      if (track.type !== 'audio') continue
+      for (const clip of track.clips ?? []) {
+        if (!clip.sourceUrl) continue
+        try {
+          const audio = await loadAudio(clip.sourceUrl)
+          audio.currentTime = clip.clipStart ?? 0
+          audioElements.push(audio)
+        } catch (e) {
+          console.warn('Skip audio clip', clip.clipId, e)
+        }
+      }
+    }
+
     const totalFrames = Math.max(1, Math.ceil(duration * fps))
-    const stream = canvas.captureStream(fps)
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-      ? 'video/webm;codecs=vp9'
-      : 'video/webm'
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_000_000 })
+    const canvasStream = canvas.captureStream(fps)
+
+    let combinedStream: MediaStream
+    if (audioElements.length > 0) {
+      const audioCtx = new AudioContext()
+      const destination = audioCtx.createMediaStreamDestination()
+      for (const audio of audioElements) {
+        const source = audioCtx.createMediaElementSource(audio)
+        source.connect(destination)
+        source.connect(audioCtx.destination)
+      }
+      const audioTrack = destination.stream.getAudioTracks()[0]
+      combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...(audioTrack ? [audioTrack] : []),
+      ])
+    } else {
+      combinedStream = canvasStream
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm'
+    const recorder = new MediaRecorder(combinedStream, { mimeType, videoBitsPerSecond: 4_000_000 })
     const chunks: Blob[] = []
 
     const recorded = new Promise<Blob>((resolve, reject) => {
@@ -105,9 +154,15 @@ export class ClientCompositor {
 
     recorder.start(100)
 
+    for (const audio of audioElements) {
+      audio.currentTime = 0
+      audio.play().catch(() => {})
+    }
+
     for (let frame = 0; frame < totalFrames; frame++) {
       if (options.signal?.aborted) {
         recorder.stop()
+        for (const audio of audioElements) audio.pause()
         throw new DOMException('Export cancelled', 'AbortError')
       }
       const t = frame / fps
@@ -148,6 +203,7 @@ export class ClientCompositor {
 
     options.onProgress?.({ phase: 'encoding', progress: 99, message: 'Finalizing' })
     recorder.stop()
+    for (const audio of audioElements) audio.pause()
     const blob = await recorded
     options.onProgress?.({ phase: 'done', progress: 100 })
 

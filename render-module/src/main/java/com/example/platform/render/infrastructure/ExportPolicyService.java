@@ -12,7 +12,7 @@ import java.util.Map;
 public class ExportPolicyService {
 
     private static final Map<String, ExportTier> DEFAULT_TIERS = Map.of(
-            "FREE", new ExportTier("FREE", 1, List.of("client_720p_watermarked", "free_720p_watermarked"), true, false),
+            "FREE", new ExportTier("FREE", 1, List.of("free_720p_watermarked"), true, false),
             "PRO", new ExportTier("PRO", 2, List.of("pro_1080p", "default_1080p", "default_720p", "social_720p"), false, false),
             "TEAM", new ExportTier("TEAM", 3, List.of("team_4k", "ofx_1080p", "ofx_720p", "pro_1080p", "default_1080p"), false, false),
             "ENTERPRISE", new ExportTier("ENTERPRISE", 4, List.of("enterprise_4k_ofx", "team_4k", "ofx_1080p", "pro_1080p", "default_1080p"), false, false),
@@ -76,6 +76,9 @@ public class ExportPolicyService {
      * Get a specific preset.
      */
     public ExportPreset getPreset(String presetName) {
+        if (presetName == null) {
+            return null;
+        }
         return DEFAULT_PRESETS.getOrDefault(presetName,
                 DEFAULT_PRESETS.get("free_720p_watermarked"));
     }

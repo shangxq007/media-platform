@@ -2,7 +2,7 @@ package com.example.platform.extension.examples;
 
 import com.example.platform.extension.domain.*;
 
-public class QualityCheckWorkflowStepExtension implements WorkflowStepExtensionSPIV2 {
+public class QualityCheckWorkflowStepExtension implements WorkflowStepExtensionSPI {
 
     @Override
     public String stepKey() {

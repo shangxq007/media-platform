@@ -467,31 +467,6 @@ public class OutboxEventService {
     }
 
     // -------------------------------------------------------------------------
-    // Legacy compatibility methods
-    // -------------------------------------------------------------------------
-
-    /** @deprecated Use {@link #markProcessed(String)} instead. */
-    @Deprecated
-    @Transactional
-    public void markPublished(String outboxId) {
-        markProcessed(outboxId);
-    }
-
-    /** @deprecated Use {@link #markFailedWithDetails(String, String, String)} instead. */
-    @Deprecated
-    @Transactional
-    public void markFailed(String outboxId) {
-        markFailedWithDetails(outboxId, "LEGACY", "Legacy markFailed called without error details");
-    }
-
-    /** @deprecated Use {@link #markDeadLetter(String, String)} instead. */
-    @Deprecated
-    @Transactional
-    public void markDeadLetter(String outboxId) {
-        markDeadLetter(outboxId, "Legacy markDeadLetter called without reason");
-    }
-
-    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 

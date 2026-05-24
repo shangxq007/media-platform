@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
@@ -23,6 +24,7 @@ public class QueryExecutionService {
     private static final Logger log = LoggerFactory.getLogger(QueryExecutionService.class);
 
     private final JdbcTemplate jdbcTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final SqlCostEstimator sqlCostEstimator;
     private final ResultRedactionService resultRedactionService;
     private final ResultSummarizer resultSummarizer;
@@ -32,6 +34,7 @@ public class QueryExecutionService {
             ResultRedactionService resultRedactionService, ResultSummarizer resultSummarizer,
             ChartSuggestionService chartSuggestionService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
         this.sqlCostEstimator = sqlCostEstimator;
         this.resultRedactionService = resultRedactionService;
         this.resultSummarizer = resultSummarizer;
@@ -76,8 +79,8 @@ public class QueryExecutionService {
                 return row;
             };
 
-            String parameterizedSql = applyParameters(sql, parameters);
-            rows = jdbcTemplate.query(parameterizedSql, rowMapper);
+            Map<String, Object> params = (parameters != null) ? parameters : Map.of();
+            rows = namedParameterJdbcTemplate.query(sql, params, rowMapper);
             rowCount = rows.size();
             truncated = rowCount >= maxRows;
 
@@ -106,22 +109,4 @@ public class QueryExecutionService {
             durationMs, summary, chartSuggestions, warnings, null);
     }
 
-    private String applyParameters(String sql, Map<String, Object> parameters) {
-        if (parameters == null || parameters.isEmpty()) {
-            return sql;
-        }
-        String result = sql;
-        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
-            String placeholder = ":" + entry.getKey();
-            Object value = entry.getValue();
-            String replacement;
-            if (value instanceof String) {
-                replacement = "'" + ((String) value).replace("'", "''") + "'";
-            } else {
-                replacement = String.valueOf(value);
-            }
-            result = result.replace(placeholder, replacement);
-        }
-        return result;
-    }
 }

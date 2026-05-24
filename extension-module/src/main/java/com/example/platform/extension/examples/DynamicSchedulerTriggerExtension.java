@@ -4,7 +4,7 @@ import com.example.platform.extension.domain.*;
 
 import java.util.Map;
 
-public class DynamicSchedulerTriggerExtension implements ProviderExtensionSPIV2 {
+public class DynamicSchedulerTriggerExtension implements ProviderExtensionSPI {
 
     @Override
     public String providerKey() {

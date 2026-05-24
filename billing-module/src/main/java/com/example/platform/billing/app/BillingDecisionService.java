@@ -49,9 +49,16 @@ public class BillingDecisionService {
                 && context.availableCreditMinor() > 0) {
             details.put("partialCredit", true);
             details.put("remainingAfterCredit", estimatedAmountMinor - context.availableCreditMinor());
-            status = BillingDecision.STATUS_APPROVED;
+            if (context.availableCreditMinor() >= estimatedAmountMinor) {
+                status = BillingDecision.STATUS_APPROVED;
+            } else {
+                status = BillingDecision.STATUS_DENIED;
+                details.put("reason", "Insufficient credits: need " + estimatedAmountMinor
+                        + " but only " + context.availableCreditMinor() + " available");
+            }
         } else {
-            status = BillingDecision.STATUS_APPROVED;
+            status = BillingDecision.STATUS_DENIED;
+            details.put("reason", "No payment method or credits available for amount " + estimatedAmountMinor);
         }
 
         BillingDecision decision = new BillingDecision(

@@ -3,25 +3,6 @@ import EditorPage from '@/pages/EditorPage.vue'
 import PromptManagementPage from '@/pages/PromptManagementPage.vue'
 import EffectPackEditor from '@/pages/EffectPackEditor.vue'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
-import AdminDashboard from '@/pages/admin/AdminDashboard.vue'
-import TenantManagement from '@/pages/admin/TenantManagement.vue'
-import RenderJobManagement from '@/pages/admin/RenderJobManagement.vue'
-import ExtensionManagement from '@/pages/admin/ExtensionManagement.vue'
-import QuotaBilling from '@/pages/admin/QuotaBilling.vue'
-import UserAnalytics from '@/pages/admin/UserAnalytics.vue'
-import NotificationManagement from '@/pages/admin/NotificationManagement.vue'
-import NotificationAdminPage from '@/pages/admin/NotificationAdminPage.vue'
-import NotificationEventDefinitionPage from '@/pages/admin/NotificationEventDefinitionPage.vue'
-import NotificationDeliveryLogPage from '@/pages/admin/NotificationDeliveryLogPage.vue'
-import AuditCompliance from '@/pages/admin/AuditCompliance.vue'
-import ConfigManagement from '@/pages/admin/ConfigManagement.vue'
-import FeatureFlags from '@/pages/admin/FeatureFlags.vue'
-import RouteManagementPage from '@/pages/admin/RouteManagementPage.vue'
-import MonitoringFeedbackPage from '@/pages/admin/MonitoringFeedbackPage.vue'
-import FeatureFlagManagementPage from '@/pages/admin/FeatureFlagManagementPage.vue'
-import PolicyManagementPage from '@/pages/admin/PolicyManagementPage.vue'
-import FeedbackAdminPage from '@/pages/admin/FeedbackAdminPage.vue'
-import AuditLogPage from '@/pages/admin/AuditLogPage.vue'
 
 // Task 21: User-side entitlement & billing pages
 import MyCapabilitiesPage from '@/pages/entitlement/MyCapabilitiesPage.vue'
@@ -38,17 +19,8 @@ import MyExportsPage from '@/pages/user/MyExportsPage.vue'
 import MyNotificationsPage from '@/pages/user/MyNotificationsPage.vue'
 import MySharedResourcesPage from '@/pages/user/MySharedResourcesPage.vue'
 
-// Task 23: Platform admin entitlement & billing pages
-import QuotaPolicyEditor from '@/pages/admin/QuotaPolicyEditor.vue'
-import BillingPlanManagementPage from '@/pages/admin/BillingPlanManagementPage.vue'
-import PricingRuleEditor from '@/pages/admin/PricingRuleEditor.vue'
-import UsageLedgerPage from '@/pages/admin/UsageLedgerPage.vue'
-import InvoicePreviewPage from '@/pages/admin/InvoicePreviewPage.vue'
-
 import AnalyticsAssistantPage from '@/pages/analytics/AnalyticsAssistantPage.vue'
 import MyReportsPage from '@/pages/analytics/MyReportsPage.vue'
-import DatasetCatalogPage from '@/pages/admin/DatasetCatalogPage.vue'
-import QueryAuditPage from '@/pages/admin/QueryAuditPage.vue'
 
 // System pages
 import ForbiddenPage from '@/pages/system/ForbiddenPage.vue'
@@ -112,43 +84,43 @@ const staticRoutes: RouteRecordRaw[] = [
     path: '/admin',
     component: AdminLayout,
     children: [
-      { path: '', name: 'admin-dashboard', component: AdminDashboard },
-      { path: 'tenants', name: 'admin-tenants', component: TenantManagement },
-      { path: 'render-jobs', name: 'admin-render-jobs', component: RenderJobManagement },
+      { path: '', name: 'admin-dashboard', component: () => import('@/pages/admin/AdminDashboard.vue') },
+      { path: 'tenants', name: 'admin-tenants', component: () => import('@/pages/admin/TenantManagement.vue') },
+      { path: 'render-jobs', name: 'admin-render-jobs', component: () => import('@/pages/admin/RenderJobManagement.vue') },
       { path: 'delivery', name: 'admin-delivery', component: () => import('@/pages/admin/DeliveryAdminPage.vue') },
-      { path: 'extensions', name: 'admin-extensions', component: ExtensionManagement },
-      { path: 'quota-billing', name: 'admin-quota-billing', component: QuotaBilling },
-      { path: 'analytics', name: 'admin-analytics', component: UserAnalytics },
-      { path: 'notifications', name: 'admin-notifications', component: NotificationManagement },
-      { path: 'notifications/overview', name: 'admin-notifications-overview', component: NotificationAdminPage },
-      { path: 'notifications/events', name: 'admin-notification-events', component: NotificationEventDefinitionPage },
-      { path: 'notifications/deliveries', name: 'admin-notification-deliveries', component: NotificationDeliveryLogPage },
-      { path: 'audit', name: 'admin-audit', component: AuditCompliance },
-      { path: 'config', name: 'admin-config', component: ConfigManagement },
-      { path: 'feature-flags', name: 'admin-feature-flags', component: FeatureFlags },
-      { path: 'feature-flags/manage', name: 'admin-feature-flag-mgmt', component: FeatureFlagManagementPage },
-      { path: 'policies', name: 'admin-policies', component: PolicyManagementPage },
-      { path: 'routes', name: 'admin-routes', component: RouteManagementPage },
-      { path: 'monitoring', name: 'admin-monitoring', component: MonitoringFeedbackPage },
-      { path: 'audit-log', name: 'admin-audit-log', component: AuditLogPage },
-      { path: 'feedback', name: 'admin-feedback', component: FeedbackAdminPage },
+      { path: 'extensions', name: 'admin-extensions', component: () => import('@/pages/admin/ExtensionManagement.vue') },
+      { path: 'quota-billing', name: 'admin-quota-billing', component: () => import('@/pages/admin/QuotaBilling.vue') },
+      { path: 'analytics', name: 'admin-analytics', component: () => import('@/pages/admin/UserAnalytics.vue') },
+      { path: 'notifications', name: 'admin-notifications', component: () => import('@/pages/admin/NotificationManagement.vue') },
+      { path: 'notifications/overview', name: 'admin-notifications-overview', component: () => import('@/pages/admin/NotificationAdminPage.vue') },
+      { path: 'notifications/events', name: 'admin-notification-events', component: () => import('@/pages/admin/NotificationEventDefinitionPage.vue') },
+      { path: 'notifications/deliveries', name: 'admin-notification-deliveries', component: () => import('@/pages/admin/NotificationDeliveryLogPage.vue') },
+      { path: 'audit', name: 'admin-audit', component: () => import('@/pages/admin/AuditCompliance.vue') },
+      { path: 'config', name: 'admin-config', component: () => import('@/pages/admin/ConfigManagement.vue') },
+      { path: 'feature-flags', name: 'admin-feature-flags', component: () => import('@/pages/admin/FeatureFlags.vue') },
+      { path: 'feature-flags/manage', name: 'admin-feature-flag-mgmt', component: () => import('@/pages/admin/FeatureFlagManagementPage.vue') },
+      { path: 'policies', name: 'admin-policies', component: () => import('@/pages/admin/PolicyManagementPage.vue') },
+      { path: 'routes', name: 'admin-routes', component: () => import('@/pages/admin/RouteManagementPage.vue') },
+      { path: 'monitoring', name: 'admin-monitoring', component: () => import('@/pages/admin/MonitoringFeedbackPage.vue') },
+      { path: 'audit-log', name: 'admin-audit-log', component: () => import('@/pages/admin/AuditLogPage.vue') },
+      { path: 'feedback', name: 'admin-feedback', component: () => import('@/pages/admin/FeedbackAdminPage.vue') },
 
       // NLQ admin routes
-      { path: 'analytics/datasets', name: 'admin-nlq-datasets', component: DatasetCatalogPage },
-      { path: 'analytics/query-audit', name: 'admin-nlq-query-audit', component: QueryAuditPage },
+      { path: 'analytics/datasets', name: 'admin-nlq-datasets', component: () => import('@/pages/admin/DatasetCatalogPage.vue') },
+      { path: 'analytics/query-audit', name: 'admin-nlq-query-audit', component: () => import('@/pages/admin/QueryAuditPage.vue') },
 
       // Task 23: Admin entitlement & billing routes
       { path: 'entitlements/bundles', name: 'admin-entitlement-bundles', component: () => import('@/pages/admin/EntitlementBundleList.vue') },
       { path: 'entitlements/overrides', name: 'admin-entitlement-overrides', component: () => import('@/pages/admin/TenantOverridePanel.vue') },
       { path: 'entitlements/grants', name: 'admin-entitlement-grants', component: () => import('@/pages/admin/UserGrantPanel.vue') },
       { path: 'entitlements/shared-grants', name: 'admin-shared-grants', component: () => import('@/pages/admin/SharedGrantsAdminPage.vue') },
-      { path: 'entitlements/quota', name: 'admin-entitlement-quota', component: QuotaPolicyEditor },
-      { path: 'billing/plans', name: 'admin-billing-plans', component: BillingPlanManagementPage },
-      { path: 'billing/pricing', name: 'admin-billing-pricing', component: PricingRuleEditor },
-      { path: 'billing/usage', name: 'admin-billing-usage', component: UsageLedgerPage },
+      { path: 'entitlements/quota', name: 'admin-entitlement-quota', component: () => import('@/pages/admin/QuotaPolicyEditor.vue') },
+      { path: 'billing/plans', name: 'admin-billing-plans', component: () => import('@/pages/admin/BillingPlanManagementPage.vue') },
+      { path: 'billing/pricing', name: 'admin-billing-pricing', component: () => import('@/pages/admin/PricingRuleEditor.vue') },
+      { path: 'billing/usage', name: 'admin-billing-usage', component: () => import('@/pages/admin/UsageLedgerPage.vue') },
       { path: 'billing/credits', name: 'admin-billing-credits', component: () => import('@/pages/admin/CreditWalletAdminPanel.vue') },
       { path: 'billing/quotes', name: 'admin-billing-quotes', component: () => import('@/pages/admin/BillingQuotePanel.vue') },
-      { path: 'billing/invoices', name: 'admin-billing-invoices', component: InvoicePreviewPage },
+      { path: 'billing/invoices', name: 'admin-billing-invoices', component: () => import('@/pages/admin/InvoicePreviewPage.vue') },
     ]
   }
 ]

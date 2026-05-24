@@ -1,11 +1,8 @@
 package com.example.platform.render.infrastructure;
 
 import com.example.platform.render.infrastructure.ffmpeg.FFmpegRenderProvider;
-import com.example.platform.render.infrastructure.ffmpeg.FfmpegRenderProvider;
 import com.example.platform.render.infrastructure.gpac.GPACRenderProvider;
-import com.example.platform.render.infrastructure.gpac.GpacRenderProvider;
 import com.example.platform.render.infrastructure.gstreamer.GStreamerRenderProvider;
-import com.example.platform.render.infrastructure.mlt.MeltCommandFactory;
 import com.example.platform.render.infrastructure.mlt.MltRenderProvider;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +18,7 @@ class RenderProviderRegistrationTest {
         JavaCVMediaProbeAdapter adapter = new JavaCVMediaProbeAdapter();
         MediaProbeService probeService = new MediaProbeService(adapter);
         return new JavaCVRenderProvider(new JavaCVRenderService(probeService), new JavaCVTranscodeService(probeService),
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.timeline.TimelineScriptParser(), null);
     }
 
     @Test
@@ -56,7 +53,7 @@ class RenderProviderRegistrationTest {
     @Test
     void ffmpegProviderRegistersCorrectly() {
         FFmpegRenderProvider capability = new FFmpegRenderProvider(null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.timeline.TimelineScriptParser(), null);
         assertNotNull(capability);
         assertTrue(capability.supports("h264"));
         assertTrue(capability.supports("mp4"));
@@ -66,7 +63,7 @@ class RenderProviderRegistrationTest {
     @Test
     void gstreamerProviderRegistersCorrectly() {
         GStreamerRenderProvider capability = new GStreamerRenderProvider(null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.timeline.TimelineScriptParser(), null);
         assertNotNull(capability);
         assertTrue(capability.supports("pipeline"));
         assertTrue(capability.supports("streaming"));
@@ -76,7 +73,7 @@ class RenderProviderRegistrationTest {
     @Test
     void gpacProviderRegistersCorrectly() {
         GPACRenderProvider capability = new GPACRenderProvider(null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.timeline.TimelineScriptParser(), null);
         assertNotNull(capability);
         assertTrue(capability.supports("mp4"));
         assertTrue(capability.supports("dash"));
@@ -87,7 +84,7 @@ class RenderProviderRegistrationTest {
     @Test
     void mltProviderRegistersCorrectly() {
         MltRenderProvider capability = new MltRenderProvider(null, null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.timeline.TimelineScriptParser(), null);
         assertNotNull(capability);
         assertTrue(capability.supports("timeline"));
         assertTrue(capability.supports("multi-track"));
@@ -177,7 +174,7 @@ class RenderProviderRegistrationTest {
     @Test
     void ffmpegProviderIsNotDeadCode() {
         FFmpegRenderProvider provider = new FFmpegRenderProvider(null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.timeline.TimelineScriptParser(), null);
         assertNotNull(provider);
         assertFalse(provider.getSupportedProfiles().isEmpty());
         assertTrue(provider.supports("h264"));
@@ -189,7 +186,7 @@ class RenderProviderRegistrationTest {
     @Test
     void gstreamerProviderIsNotDeadCode() {
         GStreamerRenderProvider provider = new GStreamerRenderProvider(null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.timeline.TimelineScriptParser(), null);
         assertNotNull(provider);
         assertFalse(provider.getSupportedProfiles().isEmpty());
         assertTrue(provider.supports("pipeline"));
@@ -199,7 +196,7 @@ class RenderProviderRegistrationTest {
     @Test
     void gpacProviderIsNotDeadCode() {
         GPACRenderProvider provider = new GPACRenderProvider(null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.timeline.TimelineScriptParser(), null);
         assertNotNull(provider);
         assertFalse(provider.getSupportedProfiles().isEmpty());
         assertTrue(provider.supports("mp4"));
@@ -207,26 +204,4 @@ class RenderProviderRegistrationTest {
         assertTrue(provider.supports("hls"));
     }
 
-    @Test
-    void deprecatedFfmpegWrapperDelegates() {
-        FfmpegRenderProvider wrapper = new FfmpegRenderProvider(null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
-        assertNotNull(wrapper);
-        assertFalse(wrapper.getSupportedProfiles().isEmpty());
-    }
-
-    @Test
-    void deprecatedGpacWrapperDelegates() {
-        GpacRenderProvider wrapper = new GpacRenderProvider(null, null,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
-        assertNotNull(wrapper);
-        assertFalse(wrapper.getSupportedProfiles().isEmpty());
-    }
-
-    @Test
-    void deprecatedMeltWrapperDelegates() {
-        MeltCommandFactory wrapper = new MeltCommandFactory();
-        assertNotNull(wrapper);
-        assertFalse(wrapper.buildRenderCommand("/tmp/p.xml", "/tmp/o.mp4", "profile").isEmpty());
-    }
 }

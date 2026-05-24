@@ -5,6 +5,7 @@ dependencies {
     api(project(":ai-module"))
     api(project(":storage-module"))
     api(project(":extension-module"))
+    api(project(":entitlement-module"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")
     api("org.springframework.boot:spring-boot-starter-jdbc")

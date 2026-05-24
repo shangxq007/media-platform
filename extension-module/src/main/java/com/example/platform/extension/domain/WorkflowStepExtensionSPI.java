@@ -6,47 +6,30 @@ package com.example.platform.extension.domain;
  */
 public interface WorkflowStepExtensionSPI {
 
-    /**
-     * Unique identifier for this workflow step.
-     */
     String stepKey();
-
-    /**
-     * Step type (PRE_PROCESS, POST_PROCESS, VALIDATION, CUSTOM).
-     */
     String stepType();
-
-    /**
-     * Semantic version.
-     */
     String version();
-
-    /**
-     * Input schema (JSON Schema).
-     */
     String inputSchema();
-
-    /**
-     * Output schema (JSON Schema).
-     */
     String outputSchema();
 
-    /**
-     * Execute the workflow step.
-     * @param stepInput JSON string containing step input
-     * @param workflowContext JSON string containing workflow context (jobId, tenantId, etc.)
-     * @return JSON string containing step output
-     * @throws ExtensionExecutionException on failure
-     */
-    String executeStep(String stepInput, String workflowContext) throws ExtensionExecutionException;
+    ExtensionTrustLevel trustLevel();
 
-    /**
-     * Called when the extension is being unloaded.
-     */
+    ExtensionResult execute(ExtensionContext context, String stepInput) throws ExtensionExecutionException;
+
+    default String executeStep(String stepInput, String workflowContext) throws ExtensionExecutionException {
+        ExtensionContext ctx = ExtensionContext.builder()
+                .extensionKey(stepKey())
+                .extensionVersion(version())
+                .trustLevel(trustLevel())
+                .build();
+        ExtensionResult result = execute(ctx, stepInput);
+        return result.outputJson();
+    }
+
+    default ExtensionResourceLimits resourceLimits() {
+        return ExtensionResourceLimits.forTrustLevel(trustLevel());
+    }
+
     void onUnload();
-
-    /**
-     * Called before rollback.
-     */
     default void onRollback(String targetVersion) {}
 }

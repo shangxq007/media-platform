@@ -58,9 +58,7 @@ public class ExtensionRegistryService {
         }
 
         ExtensionResourceLimits limits = ExtensionResourceLimits.forTrustLevel(trustLevel);
-        if (extension instanceof ProviderExtensionSPIV2 v2) {
-            limits = v2.resourceLimits().overrideWith(limits);
-        }
+        limits = extension.resourceLimits().overrideWith(limits);
         resourceLimiter.registerLimits(key, limits);
 
         auditService.recordRegistration(key, extension.version(),
@@ -88,9 +86,7 @@ public class ExtensionRegistryService {
         }
 
         ExtensionResourceLimits limits = ExtensionResourceLimits.forTrustLevel(trustLevel);
-        if (extension instanceof PromptExtensionSPIV2 v2) {
-            limits = v2.resourceLimits().overrideWith(limits);
-        }
+        limits = extension.resourceLimits().overrideWith(limits);
         resourceLimiter.registerLimits(key, limits);
 
         auditService.recordRegistration(key, extension.version(),
@@ -117,9 +113,7 @@ public class ExtensionRegistryService {
         }
 
         ExtensionResourceLimits limits = ExtensionResourceLimits.forTrustLevel(trustLevel);
-        if (extension instanceof WorkflowStepExtensionSPIV2 v2) {
-            limits = v2.resourceLimits().overrideWith(limits);
-        }
+        limits = extension.resourceLimits().overrideWith(limits);
         resourceLimiter.registerLimits(key, limits);
 
         auditService.recordRegistration(key, extension.version(),
@@ -171,12 +165,8 @@ public class ExtensionRegistryService {
 
         ExtensionResourceLimits limits = resourceLimiter.getLimits(key);
         Object spi = spiInstances.get(key);
-        if (spi instanceof PromptExtensionSPIV2 v2) {
-            return v2.execute(context, templateBody, variables);
-        }
-        if (spi instanceof PromptExtensionSPI v1) {
-            String result = v1.execute(templateBody, variables, "{}");
-            return ExtensionResult.success(result);
+        if (spi instanceof PromptExtensionSPI ext) {
+            return ext.execute(context, templateBody, variables);
         }
         return sandboxExecutionService.executeExtension(context, templateBody, limits);
     }
@@ -199,12 +189,8 @@ public class ExtensionRegistryService {
 
         ExtensionResourceLimits limits = resourceLimiter.getLimits(key);
         Object spi = spiInstances.get(key);
-        if (spi instanceof WorkflowStepExtensionSPIV2 v2) {
-            return v2.execute(context, stepInput);
-        }
-        if (spi instanceof WorkflowStepExtensionSPI v1) {
-            String result = v1.executeStep(stepInput, "{}");
-            return ExtensionResult.success(result);
+        if (spi instanceof WorkflowStepExtensionSPI ext) {
+            return ext.execute(context, stepInput);
         }
         return sandboxExecutionService.executeExtension(context, stepInput, limits);
     }

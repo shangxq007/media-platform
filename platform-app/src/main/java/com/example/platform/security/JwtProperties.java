@@ -17,7 +17,6 @@ public record JwtProperties(String secretKey, long expirationMs) {
         return secretKey == null || secretKey.isBlank() || INSECURE_DEV_DEFAULT.equals(secretKey);
     }
 
-    /** Dev-only fallback when {@code APP_JWT_SECRET} is unset; never use in production. */
     public String resolvedSecretKey() {
         if (secretKey != null && !secretKey.isBlank()) {
             return secretKey;

@@ -33,4 +33,5 @@ USER spring:spring
 COPY --from=backend-build /workspace/app.jar /app/app.jar
 EXPOSE 8080
 ENV JAVA_OPTS=""
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 --start-period=30s CMD curl -f http://localhost:8080/healthz || exit 1
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

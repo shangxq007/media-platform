@@ -163,15 +163,6 @@ public class OutboxEventDispatcher {
         return processed;
     }
 
-    /**
-     * Legacy dispatchBatch for backward compatibility.
-     * @deprecated Use {@link #processBatch(int)} instead.
-     */
-    @Deprecated
-    public int dispatchBatch(int limit) {
-        return processBatch(limit);
-    }
-
     // -------------------------------------------------------------------------
     // retryDueEvents — retry failed events whose backoff has expired
     // -------------------------------------------------------------------------

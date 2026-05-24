@@ -26,12 +26,12 @@ class BillingDecisionServiceTest {
     }
 
     @Test
-    void shouldApproveWithoutCredits() {
+    void shouldDenyWithoutCredits() {
         BillingDecisionService.BillingContext ctx = new BillingDecisionService.BillingContext(
                 "t1", "u1", PricingModel.USAGE_BASED, 500, "USD", null, false);
         BillingDecision decision = service.decideBilling("render", ctx);
         assertNotNull(decision);
-        assertEquals(BillingDecision.STATUS_APPROVED, decision.status());
+        assertEquals(BillingDecision.STATUS_DENIED, decision.status());
         assertFalse(decision.useCredits());
     }
 
@@ -44,12 +44,12 @@ class BillingDecisionServiceTest {
     }
 
     @Test
-    void shouldDetectPartialCredit() {
+    void shouldDenyPartialCredit() {
         BillingDecisionService.BillingContext ctx = new BillingDecisionService.BillingContext(
                 "t1", "u1", PricingModel.USAGE_BASED, 1000, "USD", 500L, true);
         BillingDecision decision = service.decideBilling("render", ctx);
         assertNotNull(decision);
-        assertEquals(BillingDecision.STATUS_APPROVED, decision.status());
+        assertEquals(BillingDecision.STATUS_DENIED, decision.status());
         assertFalse(decision.useCredits());
     }
 

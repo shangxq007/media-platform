@@ -3,8 +3,10 @@ package com.example.platform.render.infrastructure.ffmpeg;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
+import com.example.platform.render.infrastructure.media.MediaAssetResolver;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.timeline.TimelineClip;
+import com.example.platform.render.domain.timeline.TimelineTrack;
 import com.example.platform.render.app.timeline.SegmentRenderSlice;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
@@ -39,13 +41,16 @@ public class FFmpegRenderProvider implements RenderProvider {
     private final ProcessToolRunner processToolRunner;
     private final FFmpegCommandFactory commandFactory;
     private final TimelineScriptParser timelineScriptParser;
+    private final MediaAssetResolver assetResolver;
 
     public FFmpegRenderProvider(ProcessToolRunner processToolRunner,
             FFmpegCommandFactory commandFactory,
-            TimelineScriptParser timelineScriptParser) {
+            TimelineScriptParser timelineScriptParser,
+            MediaAssetResolver assetResolver) {
         this.processToolRunner = processToolRunner;
         this.commandFactory = commandFactory;
         this.timelineScriptParser = timelineScriptParser;
+        this.assetResolver = assetResolver;
     }
 
     public void setStorageRoot(String storageRoot) {
@@ -76,8 +81,18 @@ public class FFmpegRenderProvider implements RenderProvider {
                         "en");
             }
 
-            List<String> args = commandFactory.buildRenderFromResolvedClips(
-                    resolvedClips, outputPath, renderProfile, segmentSlice);
+            Optional<TimelineSpec> timeline = timelineScriptParser.parse(aiScript);
+            List<List<FFmpegCommandFactory.ResolvedClip>> audioTracks =
+                    timeline.map(this::resolveAudioTracks).orElse(List.of());
+
+            List<String> args;
+            if (!audioTracks.isEmpty()) {
+                args = commandFactory.buildMultiTrackCommand(
+                        resolvedClips, audioTracks, outputPath, renderProfile);
+            } else {
+                args = commandFactory.buildRenderFromResolvedClips(
+                        resolvedClips, outputPath, renderProfile, segmentSlice);
+            }
             ToolExecutionRequest request = ToolExecutionRequest.withTimeout("ffmpeg", args, 600_000);
             ToolExecutionResult result = processToolRunner.execute(request);
 
@@ -136,15 +151,52 @@ public class FFmpegRenderProvider implements RenderProvider {
                 continue;
             }
             String uri = clip.assetRef().storageUri();
-            if (!timelineScriptParser.mediaFileExists(uri, storageRoot)) {
-                log.warn("FFmpegRenderProvider: skipping missing media: {}", uri);
+            String localPath = resolveToLocalPath(uri);
+            if (localPath == null) {
+                log.warn("FFmpegRenderProvider: skipping unreachable media: {}", uri);
                 continue;
             }
-            String localPath = timelineScriptParser.resolveLocalPath(uri, storageRoot);
             resolved.add(new FFmpegCommandFactory.ResolvedClip(
                     localPath, clip.assetInPoint(), clip.clipDuration()));
         }
         return resolved;
+    }
+
+    private List<List<FFmpegCommandFactory.ResolvedClip>> resolveAudioTracks(TimelineSpec timeline) {
+        List<List<FFmpegCommandFactory.ResolvedClip>> audioTracks = new ArrayList<>();
+        if (timeline.tracks() == null) return audioTracks;
+
+        for (TimelineTrack track : timeline.tracks()) {
+            if (track.type() != TimelineTrack.TrackType.AUDIO || track.muted()) continue;
+            List<FFmpegCommandFactory.ResolvedClip> trackClips = new ArrayList<>();
+            if (track.clips() == null) continue;
+            for (TimelineClip clip : track.clips()) {
+                if (clip.assetRef() == null) continue;
+                String uri = clip.assetRef().storageUri();
+                String localPath = resolveToLocalPath(uri);
+                if (localPath == null) {
+                    log.warn("FFmpegRenderProvider: skipping unreachable audio: {}", uri);
+                    continue;
+                }
+                trackClips.add(new FFmpegCommandFactory.ResolvedClip(
+                        localPath, clip.assetInPoint(), clip.clipDuration()));
+            }
+            if (!trackClips.isEmpty()) {
+                audioTracks.add(trackClips);
+            }
+        }
+        return audioTracks;
+    }
+
+    private String resolveToLocalPath(String uri) {
+        if (timelineScriptParser.mediaFileExists(uri, storageRoot)) {
+            return timelineScriptParser.resolveLocalPath(uri, storageRoot);
+        }
+        String downloaded = assetResolver.resolveToLocalPath(uri);
+        if (downloaded != null) {
+            return downloaded;
+        }
+        return null;
     }
 
     private RenderProfile toRenderProfile(String profile) {

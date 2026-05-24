@@ -2,7 +2,7 @@ package com.example.platform.extension.examples;
 
 import com.example.platform.extension.domain.*;
 
-public class ThirdPartyRenderProviderExtension implements ProviderExtensionSPIV2 {
+public class ThirdPartyRenderProviderExtension implements ProviderExtensionSPI {
 
     @Override
     public String providerKey() {

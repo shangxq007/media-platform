@@ -51,26 +51,6 @@ class MediaProbeServiceTest {
     }
 
     @Test
-    void probeLegacyReturnsMediaValidationReport(@TempDir Path tempDir) {
-        probeService.setStorageRoot(tempDir.toString());
-
-        JavaCVRenderService renderService = new JavaCVRenderService(probeService);
-        JavaCVTranscodeService transcodeService = new JavaCVTranscodeService(probeService);
-        JavaCVRenderProvider provider = new JavaCVRenderProvider(renderService, transcodeService,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
-        provider.setStorageRoot(tempDir.toString());
-
-        provider.render("job-1", "{\"tracks\":[]}", "default_720p");
-
-        MediaValidationReport report = probeService.probeLegacy("job-1", "artifacts/job-1/output.mp4");
-
-        assertTrue(report.valid());
-        assertTrue(report.hasVideo());
-        assertEquals(1280, report.width());
-        assertEquals(720, report.height());
-    }
-
-    @Test
     void probeAbsoluteDelegatesToAdapter(@TempDir Path tempDir) {
         probeService.setStorageRoot(tempDir.toString());
 

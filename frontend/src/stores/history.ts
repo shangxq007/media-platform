@@ -1,10 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Track } from '@/types'
+import type { Track, Clip } from '@/types'
 
 export interface HistoryState {
   tracks: Track[]
-  clips: any[]
+  clips: Clip[]
+}
+
+interface TimelineSnapshot {
+  state: { tracks: Track[] }
+  clips: Clip[]
 }
 
 export const useHistoryStore = defineStore('history', () => {
@@ -12,7 +17,7 @@ export const useHistoryStore = defineStore('history', () => {
   const redoStack = ref<HistoryState[]>([])
   const maxHistorySize = 50
 
-  function saveState(timelineStore: any) {
+  function saveState(timelineStore: TimelineSnapshot) {
     const state: HistoryState = {
       tracks: JSON.parse(JSON.stringify(timelineStore.state.tracks)),
       clips: JSON.parse(JSON.stringify(timelineStore.clips))
@@ -32,7 +37,7 @@ export const useHistoryStore = defineStore('history', () => {
     return redoStack.value.length > 0
   }
 
-  function undo(timelineStore: any) {
+  function undo(timelineStore: TimelineSnapshot) {
     if (!canUndo()) return
     redoStack.value.push({
       tracks: JSON.parse(JSON.stringify(timelineStore.state.tracks)),
@@ -43,7 +48,7 @@ export const useHistoryStore = defineStore('history', () => {
     timelineStore.clips = state.clips
   }
 
-  function redo(timelineStore: any) {
+  function redo(timelineStore: TimelineSnapshot) {
     if (!canRedo()) return
     const state = redoStack.value.pop()!
     undoStack.value.push({

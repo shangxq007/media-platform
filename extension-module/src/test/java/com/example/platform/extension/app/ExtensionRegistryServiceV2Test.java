@@ -164,7 +164,8 @@ class ExtensionRegistryServiceV2Test {
             public String version() { return version; }
             public String inputSchema() { return "{}"; }
             public String outputSchema() { return "{}"; }
-            public String execute(String input) { return "{}"; }
+            public ExtensionTrustLevel trustLevel() { return ExtensionTrustLevel.FULLY_TRUSTED; }
+            public ExtensionResult execute(ExtensionContext ctx, String input) { return ExtensionResult.success("{}"); }
             public boolean isAvailable() { return true; }
             public void onUnload() {}
         };
@@ -175,7 +176,8 @@ class ExtensionRegistryServiceV2Test {
             public String extensionKey() { return key; }
             public String extensionType() { return "TEMPLATE"; }
             public String version() { return version; }
-            public String execute(String body, String vars, String ctx) { return "{}"; }
+            public ExtensionTrustLevel trustLevel() { return ExtensionTrustLevel.FULLY_TRUSTED; }
+            public ExtensionResult execute(ExtensionContext ctx, String body, String vars) { return ExtensionResult.success("{}"); }
             public String validate(String input) { return "{\"valid\":true}"; }
             public void onUnload() {}
         };
@@ -188,7 +190,8 @@ class ExtensionRegistryServiceV2Test {
             public String version() { return version; }
             public String inputSchema() { return "{}"; }
             public String outputSchema() { return "{}"; }
-            public String executeStep(String input, String ctx) { return "{}"; }
+            public ExtensionTrustLevel trustLevel() { return ExtensionTrustLevel.FULLY_TRUSTED; }
+            public ExtensionResult execute(ExtensionContext ctx, String input) { return ExtensionResult.success("{}"); }
             public void onUnload() {}
         };
     }

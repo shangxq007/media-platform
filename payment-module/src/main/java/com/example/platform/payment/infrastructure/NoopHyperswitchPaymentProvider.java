@@ -31,6 +31,6 @@ public class NoopHyperswitchPaymentProvider implements PaymentProvider {
         if (parsed.checkoutSessionId() != null) {
             return parsed;
         }
-        return new WebhookParseResult("payment.succeeded", 1, "hs-demo", true, "paid", null, null, null);
+        return new WebhookParseResult("payment.succeeded", 1, "hs-demo", false, "paid", null, null, null);
     }
 }

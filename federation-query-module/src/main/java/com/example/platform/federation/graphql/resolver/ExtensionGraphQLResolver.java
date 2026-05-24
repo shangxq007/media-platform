@@ -12,6 +12,7 @@ import com.example.platform.federation.graphql.dto.RouteRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.stereotype.Controller;
 
 import java.util.List;
 import java.util.stream.Collectors;

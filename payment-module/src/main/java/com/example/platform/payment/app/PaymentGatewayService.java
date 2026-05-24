@@ -6,6 +6,7 @@ import com.example.platform.payment.infrastructure.PaymentAttemptRepository;
 import com.example.platform.payment.infrastructure.PaymentWebhookProperties;
 import com.example.platform.payment.infrastructure.ProviderWebhookEventRepository;
 import com.example.platform.payment.infrastructure.StripePaymentProperties;
+import com.example.platform.payment.infrastructure.HyperswitchWebhookSignatureVerifier;
 import com.example.platform.payment.infrastructure.StripeWebhookSignatureVerifier;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.payment.PaymentSucceededPort;
@@ -131,15 +132,11 @@ public class PaymentGatewayService {
             return StripeWebhookSignatureVerifier.verify(headers, body, stripeProperties.getWebhookSecret());
         }
         if ("hyperswitch".equals(providerCode) && hyperswitchProperties.isEnabled()) {
-            String hmac = headerValue(headers, "X-Hmac-SHA256");
-            if (hmac == null || hmac.isBlank()) {
-                return false;
-            }
             String secret = hyperswitchProperties.getWebhookSecret();
             if (secret == null || secret.isBlank()) {
                 return false;
             }
-            return providerClaimedValid;
+            return HyperswitchWebhookSignatureVerifier.verify(headers, body, secret);
         }
         return providerClaimedValid;
     }

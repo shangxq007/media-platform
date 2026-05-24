@@ -1,44 +1,39 @@
 package com.example.platform.production;
 
 import com.example.platform.app.AppCorsProperties;
-import com.example.platform.billing.infrastructure.SubscriptionJdbcRepository;
-import com.example.platform.commerce.infrastructure.CheckoutSessionRepository;
-import com.example.platform.commerce.infrastructure.CommerceCartRepository;
-import com.example.platform.policy.featureflag.FeatureFlagJdbcStore;
 import com.example.platform.security.JwtProperties;
 import com.example.platform.shared.runtime.PlatformRuntimeProperties;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
-/**
- * Fail-fast checks when {@code platform.runtime.production-checks-enabled=true} (prod profile).
- */
 @Component
+@EnableConfigurationProperties(JwtProperties.class)
 public class ProductionSafetyValidator {
 
     private final Environment environment;
     private final PlatformRuntimeProperties runtimeProperties;
     private final JwtProperties jwtProperties;
     private final AppCorsProperties corsProperties;
-    private final org.springframework.beans.factory.ObjectProvider<CheckoutSessionRepository> checkoutSessions;
-    private final org.springframework.beans.factory.ObjectProvider<CommerceCartRepository> commerceCarts;
-    private final org.springframework.beans.factory.ObjectProvider<SubscriptionJdbcRepository> subscriptionStore;
-    private final org.springframework.beans.factory.ObjectProvider<FeatureFlagJdbcStore> featureFlagStore;
+    private final org.springframework.beans.factory.ObjectProvider<?> checkoutSessions;
+    private final org.springframework.beans.factory.ObjectProvider<?> commerceCarts;
+    private final org.springframework.beans.factory.ObjectProvider<?> subscriptionStore;
+    private final org.springframework.beans.factory.ObjectProvider<?> featureFlagStore;
 
     public ProductionSafetyValidator(
             Environment environment,
             PlatformRuntimeProperties runtimeProperties,
             JwtProperties jwtProperties,
             AppCorsProperties corsProperties,
-            org.springframework.beans.factory.ObjectProvider<CheckoutSessionRepository> checkoutSessions,
-            org.springframework.beans.factory.ObjectProvider<CommerceCartRepository> commerceCarts,
-            org.springframework.beans.factory.ObjectProvider<SubscriptionJdbcRepository> subscriptionStore,
-            org.springframework.beans.factory.ObjectProvider<FeatureFlagJdbcStore> featureFlagStore) {
+            org.springframework.beans.factory.ObjectProvider<?> checkoutSessions,
+            org.springframework.beans.factory.ObjectProvider<?> commerceCarts,
+            org.springframework.beans.factory.ObjectProvider<?> subscriptionStore,
+            org.springframework.beans.factory.ObjectProvider<?> featureFlagStore) {
         this.environment = environment;
         this.runtimeProperties = runtimeProperties;
         this.jwtProperties = jwtProperties;
@@ -95,6 +90,12 @@ public class ProductionSafetyValidator {
             String webhookSecret = environment.getProperty("platform.payment.stripe.webhook-secret", "");
             if (webhookSecret == null || webhookSecret.isBlank()) {
                 errors.add("platform.payment.stripe.webhook-secret required when Stripe is enabled");
+            }
+        }
+        if (hyperswitch) {
+            String hsWebhookSecret = environment.getProperty("platform.payment.hyperswitch.webhook-secret", "");
+            if (hsWebhookSecret == null || hsWebhookSecret.isBlank()) {
+                errors.add("platform.payment.hyperswitch.webhook-secret required when Hyperswitch is enabled");
             }
         }
 

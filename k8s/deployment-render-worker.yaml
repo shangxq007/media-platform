@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: render-worker
+  namespace: media-platform
+  labels:
+    app: media-platform
+    component: render-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-platform
+      component: render-worker
+  template:
+    metadata:
+      labels:
+        app: media-platform
+        component: render-worker
+    spec:
+      containers:
+        - name: render-worker
+          image: media-platform-render-worker:latest
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8081"
+            - name: APP_REMOTE_WORKER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: APP_REMOTE_WORKER_API_KEY
+                  optional: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"

@@ -6,44 +6,29 @@ package com.example.platform.extension.domain;
  */
 public interface PromptExtensionSPI {
 
-    /**
-     * Unique identifier for this prompt extension.
-     */
     String extensionKey();
-
-    /**
-     * Extension type (TEMPLATE, RENDER_SCRIPT, POST_PROCESSOR, VALIDATOR).
-     */
     String extensionType();
-
-    /**
-     * Semantic version.
-     */
     String version();
 
-    /**
-     * Execute the prompt extension.
-     * @param templateBody the prompt template body
-     * @param variables JSON string of variables
-     * @param contextJson JSON string of execution context (tenantId, userId, etc.)
-     * @return JSON string containing the result (rendered prompt, validation result, etc.)
-     * @throws ExtensionExecutionException on failure
-     */
-    String execute(String templateBody, String variables, String contextJson) throws ExtensionExecutionException;
+    ExtensionTrustLevel trustLevel();
 
-    /**
-     * Validate input before execution.
-     * @return JSON string with {valid: bool, errors: [...]}
-     */
+    ExtensionResult execute(ExtensionContext context, String templateBody, String variables) throws ExtensionExecutionException;
+
+    default String execute(String templateBody, String variables, String contextJson) throws ExtensionExecutionException {
+        ExtensionContext ctx = ExtensionContext.builder()
+                .extensionKey(extensionKey())
+                .extensionVersion(version())
+                .trustLevel(trustLevel())
+                .build();
+        ExtensionResult result = execute(ctx, templateBody, variables);
+        return result.outputJson();
+    }
+
+    default ExtensionResourceLimits resourceLimits() {
+        return ExtensionResourceLimits.forTrustLevel(trustLevel());
+    }
+
     String validate(String inputJson);
-
-    /**
-     * Called when the extension is being unloaded.
-     */
     void onUnload();
-
-    /**
-     * Called before rollback.
-     */
     default void onRollback(String targetVersion) {}
 }

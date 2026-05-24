@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: media-platform
+  labels:
+    app: media-platform
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: media-platform
+      component: api
+  template:
+    metadata:
+      labels:
+        app: media-platform
+        component: api
+    spec:
+      containers:
+        - name: api
+          image: media-platform:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: data
+              mountPath: /data/platform
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: app-data

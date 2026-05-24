@@ -26,7 +26,7 @@ class FFmpegRenderProviderTest {
     void setUp(@TempDir Path tempDir) throws Exception {
         mockToolRunner = mock(ProcessToolRunner.class);
         FFmpegCommandFactory factory = new FFmpegCommandFactory();
-        provider = new FFmpegRenderProvider(mockToolRunner, factory, new TimelineScriptParser());
+        provider = new FFmpegRenderProvider(mockToolRunner, factory, new TimelineScriptParser(), null);
         provider.setStorageRoot(tempDir.toString());
 
         Path input = tempDir.resolve("input.mp4");

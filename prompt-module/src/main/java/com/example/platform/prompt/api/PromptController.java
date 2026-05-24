@@ -175,6 +175,7 @@ public class PromptController {
                 run.tokenEstimate(), run.costEstimate(),
                 run.startedAt(), run.finishedAt(), null, null,
                 run.relatedPromptFile(), run.relatedManifestEntry());
+        templateService.saveExecution(reviewed);
         return Map.of("executionId", executionId, "status", "REVIEWED", "reviewedBy", request.reviewerUserId());
     }
 
@@ -218,11 +219,19 @@ public class PromptController {
             errors.add("Missing 'prompts' key in manifest");
         }
 
+        Object promptsObj = manifest.get("prompts");
+        int promptCount = 0;
+        if (promptsObj instanceof List<?> prompts) {
+            promptCount = prompts.size();
+        } else if (promptsObj instanceof Map<?, ?> promptsMap) {
+            promptCount = promptsMap.size();
+        }
+
         return Map.of(
                 "valid", errors.isEmpty(),
                 "errors", errors,
                 "warnings", warnings,
-                "promptCount", manifest.getOrDefault("prompts", Map.of()).hashCode()
+                "promptCount", promptCount
         );
     }
 

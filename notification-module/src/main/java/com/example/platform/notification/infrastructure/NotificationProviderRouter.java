@@ -39,12 +39,22 @@ public class NotificationProviderRouter {
             log.debug("NotificationProviderRouter: routing to novu for channel={}", channel);
             return novuProvider.send(command);
         }
-        NotificationProvider provider = providerByCode.get(channel);
+        NotificationProvider provider = findByChannel(channel);
         if (provider != null) {
             log.debug("NotificationProviderRouter: routing to provider={} for channel={}", provider.providerCode(), channel);
             return provider.send(command);
         }
         log.debug("NotificationProviderRouter: falling back to local provider for channel={}", channel);
         return localProvider.send(command);
+    }
+
+    private NotificationProvider findByChannel(String channel) {
+        if (channel == null) return null;
+        for (NotificationProvider provider : providerByCode.values()) {
+            if (channel.equalsIgnoreCase(provider.channel())) {
+                return provider;
+            }
+        }
+        return providerByCode.get(channel);
     }
 }
