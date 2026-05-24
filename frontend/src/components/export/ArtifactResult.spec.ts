@@ -140,21 +140,21 @@ describe('ArtifactResult', () => {
     const wrapper = mount(ArtifactResult, {
       props: { artifact: mockArtifact },
     })
-    expect(wrapper.text()).toContain('🎬')
+    expect(wrapper.text()).toContain('film')
   })
 
   it('shows audio icon for mp3', () => {
     const wrapper = mount(ArtifactResult, {
       props: { artifact: { ...mockArtifact, outputFormat: 'mp3' } },
     })
-    expect(wrapper.text()).toContain('🎵')
+    expect(wrapper.text()).toContain('music')
   })
 
   it('shows image icon for png', () => {
     const wrapper = mount(ArtifactResult, {
       props: { artifact: { ...mockArtifact, outputFormat: 'png' } },
     })
-    expect(wrapper.text()).toContain('🖼️')
+    expect(wrapper.text()).toContain('image')
   })
 
   it('hides render logs link when no URL', () => {

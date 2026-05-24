@@ -142,7 +142,7 @@ function formatTime(dateStr?: string): string {
         <div class="grid grid-cols-4 gap-md">
           <MetricCard :value="activeEvents.length" label="Active Events" icon="file-text" />
           <MetricCard :value="criticalEvents.length" label="Critical Events" icon="🚨" />
-          <MetricCard :value="deliveriesTotal" label="Total Deliveries" icon="📨" />
+          <MetricCard :value="deliveriesTotal" label="Total Deliveries" icon="inbox" />
           <MetricCard :value="activeProviders.length" :label="`Active Providers (${downProviders.length} down)`" icon="plug" />
         </div>
 
@@ -168,7 +168,7 @@ function formatTime(dateStr?: string): string {
             <button class="text-xs text-primary-500 hover:text-primary-400" @click="activeTab = 'deliveries'">View all →</button>
           </div>
           <div class="c-card-body">
-            <EmptyState v-if="recentDeliveries.length === 0" icon="📭" title="No recent deliveries" description="Delivery records will appear here." />
+            <EmptyState v-if="recentDeliveries.length === 0" icon="mail" title="No recent deliveries" description="Delivery records will appear here." />
             <div v-else class="space-y-sm">
               <div v-for="d in recentDeliveries" :key="d.id" class="flex items-center justify-between p-sm rounded border border-default">
                 <div class="flex items-center gap-md">
@@ -241,7 +241,7 @@ function formatTime(dateStr?: string): string {
 
         <div class="c-card">
           <div class="c-card-body">
-            <EmptyState v-if="recentDeliveries.length === 0" icon="📭" title="No delivery logs" description="Delivery records will appear here." />
+            <EmptyState v-if="recentDeliveries.length === 0" icon="mail" title="No delivery logs" description="Delivery records will appear here." />
             <table v-else class="w-full text-sm">
               <thead>
                 <tr class="border-b border-default text-xs text-text-muted">

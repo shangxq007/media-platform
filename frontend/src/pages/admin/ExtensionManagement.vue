@@ -411,7 +411,7 @@ const extensionFlagStatuses = computed(() => [
               <div class="grid grid-cols-3 gap-md">
                 <MetricCard :value="`${selectedGqlExtension.resourceLimits.timeoutMs}ms`" label="Timeout" icon="clock" />
                 <MetricCard :value="selectedGqlExtension.resourceLimits.maxConcurrency" label="Max Concurrency" icon="⚡" />
-                <MetricCard :value="`${(selectedGqlExtension.resourceLimits.maxOutputBytes / 1024).toFixed(0)}KB`" label="Max Output" icon="📦" />
+                <MetricCard :value="`${(selectedGqlExtension.resourceLimits.maxOutputBytes / 1024).toFixed(0)}KB`" label="Max Output" icon="package" />
               </div>
             </div>
           </div>

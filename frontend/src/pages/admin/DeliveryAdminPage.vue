@@ -109,7 +109,7 @@ function applyFilter() {
       <PageSection title="Delivery jobs">
         <EmptyState
           v-if="jobs.length === 0"
-          icon="📦"
+          icon="package"
           title="No delivery jobs"
           description="Jobs appear when renders complete and policies or manual delivery run."
         />
@@ -154,7 +154,7 @@ function applyFilter() {
       </PageSection>
 
       <PageSection title="Destinations (all tenants)">
-        <EmptyState v-if="destinations.length === 0" icon="🗄️" title="No destinations" />
+        <EmptyState v-if="destinations.length === 0" icon="archive" title="No destinations" />
         <div v-else class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>

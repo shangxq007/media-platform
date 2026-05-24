@@ -62,7 +62,7 @@ defineSlots<{
 
     <div v-else-if="empty" class="c-empty-state">
       <slot name="empty">
-        <div class="c-empty-state-icon">📭</div>
+        <div class="c-empty-state-icon">mail</div>
         <div class="c-empty-state-title">No data</div>
         <div class="c-empty-state-description">No records found matching your criteria.</div>
       </slot>

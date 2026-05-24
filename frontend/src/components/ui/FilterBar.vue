@@ -24,7 +24,7 @@ defineSlots<{
         :placeholder="searchPlaceholder"
         class="theme-input w-full pl-8"
       />
-      <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted text-sm">🔍</span>
+      <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted text-sm">search</span>
     </div>
 
     <slot name="filters" />

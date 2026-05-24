@@ -35,7 +35,7 @@ vi.mock('@/api/me', () => ({
       recentProjects: [],
       quickActions: [
         { key: 'new_project', label: 'New Project', icon: '➕', path: '/project/new', enabled: true, visible: true },
-        { key: 'upload_media', label: 'Upload Media', icon: '📁', path: '/', enabled: true, visible: true },
+        { key: 'upload_media', label: 'Upload Media', icon: 'folder-open', path: '/', enabled: true, visible: true },
       ],
       usage: {
         period: '2026-05',

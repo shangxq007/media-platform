@@ -80,7 +80,7 @@ function confirmCancel() {
         title="Copy job ID"
         @click="copyJobId"
       >
-        📋
+        clipboard
       </button>
     </div>
 
@@ -119,7 +119,7 @@ function confirmCancel() {
         class="flex-1 px-2 py-1 text-[10px] bg-info-muted text-info rounded hover:bg-blue-600/30"
         @click="$emit('retry')"
       >
-        🔄 Retry
+        refresh-cw Retry
       </button>
       <button
         v-if="isRunningOrQueued"

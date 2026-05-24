@@ -63,8 +63,8 @@ const txColumns = [
       </div>
       <div v-else class="space-y-lg">
         <div class="grid grid-cols-2 gap-md">
-          <MetricCard :value="`${wallet.balance.toFixed(2)} ${wallet.currency}`" label="Available Balance" icon="💰" />
-          <MetricCard :value="`${wallet.heldBalance.toFixed(2)} ${wallet.currency}`" label="Held Balance" icon="🔒" />
+          <MetricCard :value="`${wallet.balance.toFixed(2)} ${wallet.currency}`" label="Available Balance" icon="dollar-sign" />
+          <MetricCard :value="`${wallet.heldBalance.toFixed(2)} ${wallet.currency}`" label="Held Balance" icon="lock" />
         </div>
 
         <div v-if="transactions.length">

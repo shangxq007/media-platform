@@ -213,7 +213,7 @@ function severityVariant(severity: string): 'success' | 'warning' | 'danger' | '
 
 function channelIcon(type: string): string {
   switch (type) {
-    case 'EMAIL': return '📧'
+    case 'EMAIL': return 'at-sign'
     case 'SMS': return 'globe'
     case 'WEBHOOK': return 'share-2'
     case 'CHAT': return 'message-circle'
@@ -306,7 +306,7 @@ function categoryLabel(category: string): string {
                 </div>
               </div>
 
-              <EmptyState v-if="configurableEvents.length === 0" icon="📭" title="No configurable events" description="No notification events are available for configuration." />
+              <EmptyState v-if="configurableEvents.length === 0" icon="mail" title="No configurable events" description="No notification events are available for configuration." />
 
               <div v-else class="space-y-sm">
                 <div v-for="event in configurableEvents" :key="event.eventKey"

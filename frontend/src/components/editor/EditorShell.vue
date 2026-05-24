@@ -79,13 +79,13 @@ defineEmits<{
           class="theme-btn theme-btn-secondary theme-btn-sm"
           @click="$emit('save')"
         >
-          💾 Save
+          hard-drive Save
         </button>
         <button
           class="theme-btn theme-btn-primary theme-btn-sm"
           @click="$emit('export')"
         >
-          📤 Export
+          upload Export
         </button>
       </div>
     </header>

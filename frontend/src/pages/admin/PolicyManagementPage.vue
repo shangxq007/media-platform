@@ -231,7 +231,7 @@ onMounted(loadPolicies)
 
         <EmptyState
           v-if="filteredPolicies.length === 0"
-          icon="📜"
+          icon="file-text"
           title="No policies found"
           description="Create your first ABAC policy to get started."
         >

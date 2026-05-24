@@ -123,7 +123,7 @@ const hasNext = computed(() => currentPage.value < totalPages.value - 1)
     <template v-else>
       <!-- Error banner -->
       <div v-if="errorCode && error" class="p-sm bg-danger-500/10 border border-danger-500/30 rounded text-xs text-danger-500 flex items-center gap-sm">
-        <span>⚠️</span>
+        <span>alert-triangle</span>
         <span>{{ error }}</span>
         <code class="ml-auto text-[10px] font-mono bg-danger-500/10 px-xs py-0.5 rounded">{{ errorCode }}</code>
       </div>
@@ -174,7 +174,7 @@ const hasNext = computed(() => currentPage.value < totalPages.value - 1)
       <!-- Table -->
       <div class="c-card">
         <div class="c-card-body">
-          <EmptyState v-if="items.length === 0" icon="📭" title="No delivery logs" description="No delivery records match the current filters." />
+          <EmptyState v-if="items.length === 0" icon="mail" title="No delivery logs" description="No delivery records match the current filters." />
           <table v-else class="w-full text-sm">
             <thead>
               <tr class="border-b border-default text-xs text-text-muted">

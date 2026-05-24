@@ -263,11 +263,11 @@ function tierClass(tier: string, enabled: boolean): string {
             </div>
             <div class="text-text-tertiary">
               <p v-if="!governanceOverview?.unleashEnabled">
-                ⚠️ Unleash is disabled. Using InMemoryProvider — flags return default values only.
+                alert-triangle Unleash is disabled. Using InMemoryProvider — flags return default values only.
                 Enable by setting <code class="bg-surface-3 px-1 rounded">app.features.unleash.enabled: true</code>
               </p>
               <p v-else>
-                ✅ Unleash is connected. Feature flags are managed dynamically via Unleash dashboard.
+                check Unleash is connected. Feature flags are managed dynamically via Unleash dashboard.
               </p>
             </div>
           </div>

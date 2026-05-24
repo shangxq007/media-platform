@@ -15,7 +15,7 @@ const router = useRouter()
 const PLATFORMS = [
   { key: 'TWITTER', label: 'Twitter', icon: '𝕏', maxChars: 280 },
   { key: 'INSTAGRAM', label: 'Instagram', icon: '📷', maxChars: 2200 },
-  { key: 'LINKEDIN', label: 'LinkedIn', icon: '💼', maxChars: 3000 },
+  { key: 'LINKEDIN', label: 'LinkedIn', icon: 'briefcase', maxChars: 3000 },
   { key: 'TIKTOK', label: 'TikTok', icon: 'music', maxChars: 2200 },
   { key: 'YOUTUBE', label: 'YouTube', icon: '▶️', maxChars: 5000 },
 ]
@@ -245,7 +245,7 @@ function formatTime(dateStr: string): string {
             <div
               class="border-2 border-dashed border-default rounded-lg p-lg text-center cursor-pointer hover:border-primary-200 transition-colors"
               @click="mediaInput?.click()">
-              <div class="text-2xl mb-sm">📎</div>
+              <div class="text-2xl mb-sm">paperclip</div>
               <p class="text-sm text-text-secondary">Click to upload or drag and drop</p>
               <p class="text-xs text-text-muted mt-xs">PNG, JPG, GIF, MP4 up to 50MB</p>
               <input ref="mediaInput" type="file" multiple accept="image/*,video/*" class="hidden" @change="handleMediaSelect" />

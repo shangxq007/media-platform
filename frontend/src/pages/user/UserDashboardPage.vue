@@ -144,7 +144,7 @@ function handleQuickAction(action: { key: string; path: string; enabled: boolean
       <!-- Workspace & Credits Overview -->
       <div class="grid grid-cols-3 gap-lg">
         <MetricCard :value="capabilities?.tier || '—'" label="Current Tier" icon="◆" />
-        <MetricCard :value="credits ? `${credits.balance.toFixed(2)} ${credits.currency}` : '—'" label="Credits Balance" icon="💰" />
+        <MetricCard :value="credits ? `${credits.balance.toFixed(2)} ${credits.currency}` : '—'" label="Credits Balance" icon="dollar-sign" />
         <MetricCard :value="capabilities?.entitlementPolicy.monthlyRenderMinutes || 0" label="Render Minutes / mo" icon="⏱" />
       </div>
 

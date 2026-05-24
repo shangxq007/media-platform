@@ -67,7 +67,7 @@ onUnmounted(() => {
       aria-haspopup="true"
       @click="toggle"
     >
-      <span class="text-sm">🔔</span>
+      <span class="text-sm">bell</span>
       <span
         v-if="unreadCount > 0"
         class="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-danger-500 text-[10px] text-white font-medium flex items-center justify-center"

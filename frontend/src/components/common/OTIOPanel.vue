@@ -44,10 +44,10 @@ async function importTimeline(event: Event) {
         class="px-3 py-1.5 bg-clip-video/20 text-clip-video text-xs rounded hover:bg-clip-video/30"
         @click="exportTimeline"
       >
-        📤 Export JSON
+        upload Export JSON
       </button>
       <label class="px-3 py-1.5 bg-surface-3 text-white text-xs rounded cursor-pointer hover:bg-surface-4">
-        📥 Import JSON
+        download Import JSON
         <input
           type="file"
           accept=".json"

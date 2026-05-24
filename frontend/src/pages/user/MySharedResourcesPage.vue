@@ -101,7 +101,7 @@ function permissionVariant(perm: string): 'success' | 'info' | 'neutral' {
 }
 
 function resourceIcon(type: string): string {
-  return type === 'project' ? '📁' : '📤'
+  return type === 'project' ? 'folder-open' : 'upload'
 }
 </script>
 
@@ -121,7 +121,7 @@ function resourceIcon(type: string): string {
         <input v-model="search" type="text" placeholder="Search shared resources..." class="theme-input flex-1" />
       </div>
 
-      <EmptyState v-if="filteredResources.length === 0" icon="🔗" title="No shared resources" description="Resources shared with you by team members will appear here.">
+      <EmptyState v-if="filteredResources.length === 0" icon="share-2" title="No shared resources" description="Resources shared with you by team members will appear here.">
         <template #action>
           <button class="theme-btn theme-btn-primary" @click="router.push('/me/projects')">View My Projects</button>
         </template>

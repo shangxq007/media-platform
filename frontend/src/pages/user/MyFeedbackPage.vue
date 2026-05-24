@@ -86,7 +86,7 @@ async function handleSubmit() {
     <ErrorState v-else-if="error" :description="error" @retry="loadFeedback" />
 
     <template v-else>
-      <EmptyState v-if="feedbackItems.length === 0" icon="💬" title="No feedback submitted" description="Submit feedback to help us improve the platform.">
+      <EmptyState v-if="feedbackItems.length === 0" icon="message-circle" title="No feedback submitted" description="Submit feedback to help us improve the platform.">
         <template #action>
           <button class="theme-btn theme-btn-primary" @click="showSubmitDialog = true">Submit Feedback</button>
         </template>

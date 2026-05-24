@@ -326,7 +326,7 @@ async function removePolicy(pol: DeliveryPolicy) {
       <PageSection title="Destinations">
         <EmptyState
           v-if="destinations.length === 0"
-          icon="📦"
+          icon="package"
           title="No destinations"
           description="Add SFTP, WebDAV, or S3 mirror targets for automatic export delivery."
         />
@@ -412,7 +412,7 @@ async function removePolicy(pol: DeliveryPolicy) {
 
         <EmptyState
           v-if="selectedProjectId && policies.length === 0"
-          icon="📋"
+          icon="clipboard"
           title="No policies for this project"
           description="Add a policy to deliver exports automatically when renders finish."
         />

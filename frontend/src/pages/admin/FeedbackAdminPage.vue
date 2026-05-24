@@ -205,7 +205,7 @@ onMounted(loadFeedback)
               target="_blank"
               class="text-orange-400 hover:text-orange-300"
             >
-              🔗 Sentry #{{ item.sentryIssueId.slice(0, 8) }}
+              share-2 Sentry #{{ item.sentryIssueId.slice(0, 8) }}
             </a>
             <a
               v-if="item.openReplaySessionUrl"

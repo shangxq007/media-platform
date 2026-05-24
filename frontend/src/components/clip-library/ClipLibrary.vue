@@ -135,8 +135,8 @@ function getTypeIcon(type: string): string {
     case 'audio': return 'music'
     case 'image': return 'image'
     case 'subtitle': return 'file-text'
-    case 'text': return '📄'
-    default: return '📄'
+    case 'text': return 'file'
+    default: return 'file'
   }
 }
 

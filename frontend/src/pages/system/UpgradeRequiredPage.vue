@@ -99,7 +99,7 @@ function copyDiagnostic() {
               Upgrade Plan
             </button>
             <button class="theme-btn theme-btn-ghost" title="Copy diagnostic info" @click="copyDiagnostic">
-              📋 Copy Info
+              clipboard Copy Info
             </button>
           </div>
         </div>

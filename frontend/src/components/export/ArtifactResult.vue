@@ -61,7 +61,7 @@ function copyId() {
         <span class="text-lg" v-if="isVideo">clapperboard</span>
         <span class="text-lg" v-else-if="isAudio">music</span>
         <span class="text-lg" v-else-if="isImage">image</span>
-        <span class="text-lg" v-else>📄</span>
+        <span class="text-lg" v-else>file</span>
       </div>
       <div class="flex-1 min-w-0">
         <div class="text-xs text-white truncate">{{ artifact.name }}</div>
@@ -123,7 +123,7 @@ function copyId() {
         class="flex-1 px-2 py-1 text-[10px] bg-accent-500/10 text-accent-400 rounded hover:bg-purple-600/30"
         @click="$emit('openCatalog', artifact.catalogId!)"
       >
-        📂 Open in Catalog
+        folder Open in Catalog
       </button>
       <a
         v-if="artifact.renderLogsUrl"

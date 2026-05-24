@@ -95,7 +95,7 @@ function formatDuration(seconds: number): string {
     <ErrorState v-else-if="error" title="Unable to load exports" :description="error" @retry="loadExports" />
 
     <template v-else>
-      <EmptyState v-if="exports.length === 0" icon="📤" title="No exports yet" description="Export a project from the editor to see it here.">
+      <EmptyState v-if="exports.length === 0" icon="upload" title="No exports yet" description="Export a project from the editor to see it here.">
         <template #action>
           <button class="theme-btn theme-btn-primary" @click="router.push('/')">Open Editor</button>
         </template>

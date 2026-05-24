@@ -79,7 +79,7 @@ function statusBadge(route: FrontendRouteDefinition): { label: string; cls: stri
                 title="Edit route"
                 @click="emit('edit', route)"
               >
-                ✏️
+                edit-2
               </button>
               <button
                 v-if="route.enabled !== false"

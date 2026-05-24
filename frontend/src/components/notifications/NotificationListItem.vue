@@ -17,11 +17,11 @@ const emit = defineEmits<{
 
 const typeIcon = computed(() => {
   switch (props.type) {
-    case 'SUCCESS': return '✅'
-    case 'WARNING': return '⚠️'
-    case 'ERROR': return '❌'
+    case 'SUCCESS': return 'check'
+    case 'WARNING': return 'alert-triangle'
+    case 'ERROR': return 'x'
     case 'INFO': return 'ℹ️'
-    default: return '📌'
+    default: return 'map-pin'
   }
 })
 

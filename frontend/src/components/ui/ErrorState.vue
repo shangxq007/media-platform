@@ -54,7 +54,7 @@ async function copyError() {
 
 <template>
   <div class="c-error-state">
-    <div class="text-3xl mb-md">⚠️</div>
+    <div class="text-3xl mb-md">alert-triangle</div>
     <div class="text-lg font-semibold text-text-primary mb-xs">{{ title }}</div>
     <div class="text-sm text-text-secondary mb-md">{{ description }}</div>
 

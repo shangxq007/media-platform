@@ -152,7 +152,7 @@ onMounted(loadRecords)
 
     <EmptyState
       v-else-if="filteredRecords.length === 0"
-      icon="📋"
+      icon="clipboard"
       title="No audit records found"
       description="No audit records match the current filters."
     />

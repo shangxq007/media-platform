@@ -68,7 +68,7 @@ function goToSettings() {
 
     <div v-else-if="notifications.length === 0" class="flex-1 py-lg px-md">
       <EmptyState
-        icon="🔔"
+        icon="bell"
         title="No notifications"
         description="You're all caught up! We'll notify you when something needs your attention."
       />

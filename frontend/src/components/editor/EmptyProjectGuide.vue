@@ -25,7 +25,7 @@ function onFileChange(e: Event) {
 <template>
   <div class="flex flex-col items-center justify-center py-xl px-lg text-center">
     <div class="w-20 h-20 rounded-full bg-primary-50 flex items-center justify-center mb-lg">
-      <span class="text-3xl" aria-hidden="true">🎬</span>
+      <span class="text-3xl" aria-hidden="true">film</span>
     </div>
     <h2 class="text-lg font-semibold text-text-primary mb-sm">Start Your Project</h2>
     <p class="text-sm text-text-secondary max-w-md mb-lg">
@@ -36,7 +36,7 @@ function onFileChange(e: Event) {
         class="theme-btn theme-btn-primary theme-btn-lg w-full"
         @click="triggerFileUpload"
       >
-        <span aria-hidden="true">📁</span>
+        <span aria-hidden="true">folder-open</span>
         Upload Files
       </button>
       <button
@@ -50,7 +50,7 @@ function onFileChange(e: Event) {
         class="theme-btn theme-btn-ghost theme-btn-lg w-full"
         @click="emit('importSubtitle')"
       >
-        <span aria-hidden="true">📝</span>
+        <span aria-hidden="true">edit-3</span>
         Import Subtitle
       </button>
     </div>

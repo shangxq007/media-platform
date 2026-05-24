@@ -4,7 +4,7 @@ withDefaults(defineProps<{
   title: string
   description?: string
 }>(), {
-  icon: '📭',
+  icon: 'mail',
 })
 
 defineSlots<{

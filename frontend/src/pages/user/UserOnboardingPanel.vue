@@ -29,7 +29,7 @@ const checklist = computed(() => [
     key: 'project',
     label: 'Create your first project',
     description: 'Start a new editing project',
-    icon: '📁',
+    icon: 'folder-open',
     path: '/project/new',
     done: props.onboarding.hasProjects,
   },
@@ -45,7 +45,7 @@ const checklist = computed(() => [
     key: 'export',
     label: 'Complete your first export',
     description: 'Export a project to share',
-    icon: '📤',
+    icon: 'upload',
     path: '/',
     done: props.onboarding.hasCompletedFirstExport,
   },
@@ -53,7 +53,7 @@ const checklist = computed(() => [
     key: 'billing',
     label: 'Set up billing',
     description: 'Configure your subscription',
-    icon: '💳',
+    icon: 'credit-card',
     path: '/me/billing',
     done: props.onboarding.hasSetBilling,
   },
@@ -73,8 +73,8 @@ const isComplete = computed(() => completedCount.value === totalCount.value)
           <h2 class="section-title">Getting Started</h2>
           <p class="text-xs text-text-secondary mt-xs">{{ completedCount }}/{{ totalCount }} steps completed</p>
         </div>
-        <span v-if="isComplete" class="text-lg">🎉</span>
-        <span v-else class="text-lg">🚀</span>
+        <span v-if="isComplete" class="text-lg">party-popper</span>
+        <span v-else class="text-lg">zap</span>
       </div>
     </div>
     <div class="c-card-body">
@@ -89,7 +89,7 @@ const isComplete = computed(() => completedCount.value === totalCount.value)
           class="flex items-center gap-md p-sm rounded transition-colors"
           :class="item.done ? 'bg-success-500/5' : 'bg-bg-surface hover:bg-bg-surface-hover'">
           <span class="text-lg flex-shrink-0" aria-hidden="true">
-            {{ item.done ? '✅' : item.icon }}
+            {{ item.done ? 'check' : item.icon }}
           </span>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-sm">
@@ -110,7 +110,7 @@ const isComplete = computed(() => completedCount.value === totalCount.value)
 
       <!-- Completion message -->
       <div v-if="isComplete" class="mt-md p-sm bg-success-500/10 rounded text-center">
-        <span class="text-sm text-success-600 font-medium">🎉 You're all set! You've completed all the getting started steps.</span>
+        <span class="text-sm text-success-600 font-medium">party-popper You're all set! You've completed all the getting started steps.</span>
       </div>
     </div>
   </div>

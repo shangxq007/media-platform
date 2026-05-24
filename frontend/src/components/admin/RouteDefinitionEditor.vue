@@ -179,7 +179,7 @@ function handleSave() {
               v-model="form.icon"
               type="text"
               class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary"
-              placeholder="e.g. 📊"
+              placeholder="e.g. bar-chart-3"
             />
           </div>
           <div>

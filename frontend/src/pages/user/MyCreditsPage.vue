@@ -130,7 +130,7 @@ async function handleTopUp() {
           <div class="c-card">
             <div class="c-card-body">
               <div class="flex items-center gap-sm mb-sm">
-                <span class="text-lg">📉</span>
+                <span class="text-lg">trending-down</span>
                 <span class="text-sm font-medium text-text-primary">Spent</span>
               </div>
               <div class="text-2xl font-bold text-danger-500">

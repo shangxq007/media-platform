@@ -94,9 +94,9 @@ function percent(used: number, limit: number): number {
           <MetricCard :value="capabilities.tier" label="Current Tier" icon="◆" />
           <MetricCard :value="capabilities.entitlementPolicy.monthlyRenderMinutes" label="Render Minutes / mo" icon="⏱" />
           <MetricCard :value="capabilities.entitlementPolicy.maxConcurrentJobs" label="Concurrent Jobs" icon="⚡" />
-          <MetricCard :value="capabilities.exportCapabilities.allowedFormats.length" label="Export Formats" icon="📦" />
-          <MetricCard v-if="credits" :value="`${credits.balance.toFixed(2)}`" label="Credits" icon="💰" />
-          <MetricCard v-if="plan" :value="`$${plan.monthlyPrice.toFixed(2)}/mo`" label="Plan Price" icon="💳" />
+          <MetricCard :value="capabilities.exportCapabilities.allowedFormats.length" label="Export Formats" icon="package" />
+          <MetricCard v-if="credits" :value="`${credits.balance.toFixed(2)}`" label="Credits" icon="dollar-sign" />
+          <MetricCard v-if="plan" :value="`$${plan.monthlyPrice.toFixed(2)}/mo`" label="Plan Price" icon="credit-card" />
         </div>
       </PageSection>
 

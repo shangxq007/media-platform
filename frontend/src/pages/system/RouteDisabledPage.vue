@@ -54,7 +54,7 @@ function copyDiagnostic() {
     <div class="max-w-lg mx-auto mt-xl">
       <div class="c-card" role="alert">
         <div class="c-card-body flex flex-col items-center text-center py-xl">
-          <div class="text-5xl mb-lg" aria-hidden="true">🔒</div>
+          <div class="text-5xl mb-lg" aria-hidden="true">lock</div>
 
           <h1 class="text-xl font-semibold text-text-primary mb-sm">{{ pageName }} is unavailable</h1>
 
@@ -94,7 +94,7 @@ function copyDiagnostic() {
               Upgrade Plan
             </button>
             <button class="theme-btn theme-btn-ghost" title="Copy diagnostic info" @click="copyDiagnostic">
-              📋 Copy Info
+              clipboard Copy Info
             </button>
           </div>
         </div>

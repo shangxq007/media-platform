@@ -148,7 +148,7 @@ function formatDateTime(dateStr: string): string {
         </button>
       </div>
 
-      <EmptyState v-if="filteredPosts.length === 0" icon="📋" title="No posts found" description="No posts match the selected filter. Try a different filter or create a new post.">
+      <EmptyState v-if="filteredPosts.length === 0" icon="clipboard" title="No posts found" description="No posts match the selected filter. Try a different filter or create a new post.">
         <template #action>
           <button class="theme-btn theme-btn-primary theme-btn-sm" @click="$router.push('/me/publish')">Create Post</button>
         </template>
@@ -183,8 +183,8 @@ function formatDateTime(dateStr: string): string {
 
                   <div class="flex items-center gap-md text-xs text-text-muted flex-wrap">
                     <span>Created: {{ formatTime(post.createdAt) }}</span>
-                    <span v-if="post.scheduledAt">📅 Scheduled: {{ formatDateTime(post.scheduledAt) }}</span>
-                    <span v-if="post.publishedAt">✅ Published: {{ formatDateTime(post.publishedAt) }}</span>
+                    <span v-if="post.scheduledAt">calendar Scheduled: {{ formatDateTime(post.scheduledAt) }}</span>
+                    <span v-if="post.publishedAt">check Published: {{ formatDateTime(post.publishedAt) }}</span>
                   </div>
                 </div>
 

@@ -86,7 +86,7 @@ function changePage(page: number) {
     <template v-else>
       <FilterBar v-model:search="search" search-placeholder="Search projects..." />
 
-      <EmptyState v-if="filteredProjects.length === 0" icon="📂" title="No projects found" description="Create your first project to get started.">
+      <EmptyState v-if="filteredProjects.length === 0" icon="folder" title="No projects found" description="Create your first project to get started.">
         <template #action>
           <button class="theme-btn theme-btn-primary" @click="navigateToNew">Create Project</button>
         </template>

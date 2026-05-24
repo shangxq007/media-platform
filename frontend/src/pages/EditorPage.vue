@@ -555,7 +555,7 @@ onMounted(() => {
       </div>
 
       <div v-if="showMigrationBanner" class="bg-warning-500/10 border-t border-warning-500/30 px-md py-sm flex items-center justify-between flex-shrink-0">
-        <span class="text-xs text-warning-600">⚠️ Timeline schema v1 detected. Migration to v2 available.</span>
+        <span class="text-xs text-warning-600">alert-triangle Timeline schema v1 detected. Migration to v2 available.</span>
         <button class="theme-btn theme-btn-secondary theme-btn-sm" @click="activeRightTab = 'effects'">
           Review Migration
         </button>
@@ -567,7 +567,7 @@ onMounted(() => {
         role="status"
         aria-live="polite"
       >
-        <span class="text-xs text-success-600">✅ Demo project loaded successfully! Explore the editor with sample clips and subtitles.</span>
+        <span class="text-xs text-success-600">check Demo project loaded successfully! Explore the editor with sample clips and subtitles.</span>
         <button class="theme-btn theme-btn-ghost theme-btn-sm" @click="showDemoToast = false" aria-label="Dismiss notification">
           ✕
         </button>

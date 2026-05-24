@@ -58,7 +58,7 @@ const isImage = computed(() =>
 
             <div v-else-if="isAudio && artifact.outputUrl" class="w-full flex flex-col items-center gap-4">
               <div class="w-24 h-24 rounded-full bg-surface-2 flex items-center justify-center">
-                <span class="text-4xl">🎵</span>
+                <span class="text-4xl">music</span>
               </div>
               <audio
                 :src="artifact.outputUrl"
@@ -80,7 +80,7 @@ const isImage = computed(() =>
 
             <div v-else class="text-center">
               <div class="w-20 h-20 mx-auto mb-4 rounded-lg bg-surface-2 flex items-center justify-center">
-                <span class="text-3xl">📄</span>
+                <span class="text-3xl">file</span>
               </div>
               <p class="text-sm text-text-secondary mb-2">Preview not available for {{ artifact.outputFormat.toUpperCase() }} format</p>
               <p class="text-xs text-text-tertiary">Backend render is still stub — no actual media file generated</p>

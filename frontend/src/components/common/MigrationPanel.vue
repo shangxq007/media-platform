@@ -101,7 +101,7 @@ async function runMigration() {
         :disabled="loading"
         @click="runDryRun"
       >
-        {{ loading ? 'Running...' : '🔍 Dry Run' }}
+        {{ loading ? 'Running...' : 'search Dry Run' }}
       </button>
       <button
         class="w-full py-2 bg-clip-video/20 text-clip-video text-xs rounded hover:bg-clip-video/30"

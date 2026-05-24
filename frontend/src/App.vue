@@ -195,7 +195,7 @@ onUnmounted(() => {
       <div class="h-full flex flex-col min-h-0">
         <div v-if="isUsingFallback" class="bg-warning-500/10 border-b border-warning-500/30 px-md py-xs flex items-center gap-md flex-shrink-0">
           <span class="text-xs text-warning-600 font-medium">
-            ⚠️ Using local navigation — backend navigation unavailable
+            alert-triangle Using local navigation — backend navigation unavailable
           </span>
         </div>
 

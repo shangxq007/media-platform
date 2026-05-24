@@ -80,10 +80,10 @@ function getTrackColor(type: string): string {
 
 function getTrackIcon(type: string): string {
   switch (type) {
-    case 'video': return '🎬'
-    case 'audio': return '🎵'
-    case 'text': return '📝'
-    default: return '📄'
+    case 'video': return 'film'
+    case 'audio': return 'music'
+    case 'text': return 'edit-3'
+    default: return 'file'
   }
 }
 
@@ -416,7 +416,7 @@ onUnmounted(() => {
           :style="{ width: timelineWidth + 'px', minWidth: '100%' }"
         >
           <EmptyState
-            icon="🎞️"
+            icon="film"
             title="Timeline is empty"
             description="Upload clips or try a demo project to populate the timeline"
           />

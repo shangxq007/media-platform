@@ -188,8 +188,8 @@ const invoiceColumns = [
         <div class="grid grid-cols-2 gap-lg">
           <MetricCard :value="'$0.00'" label="Render Minutes" icon="⏱" />
           <MetricCard :value="'$0.00'" label="GPU Minutes" icon="⚡" />
-          <MetricCard :value="'$0.00'" label="Storage" icon="💾" />
-          <MetricCard :value="'$0.00'" label="API Calls" icon="🔌" />
+          <MetricCard :value="'$0.00'" label="Storage" icon="hard-drive" />
+          <MetricCard :value="'$0.00'" label="API Calls" icon="plug" />
         </div>
       </PageSection>
 

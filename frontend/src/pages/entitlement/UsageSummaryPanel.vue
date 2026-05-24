@@ -68,7 +68,7 @@ function quotaItems(): QuotaItem[] {
           <MetricCard
             :value="usage.storageGbUsed"
             :label="`of ${usage.storageGbLimit} GB`"
-            icon="💾" />
+            icon="hard-drive" />
         </div>
 
         <div class="space-y-md">

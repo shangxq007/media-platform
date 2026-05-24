@@ -177,7 +177,7 @@ const archivedEvents = computed(() => eventDefs.value.filter(e => e.archived))
     <template v-else>
       <!-- Error banner -->
       <div v-if="errorCode && error" class="p-sm bg-danger-500/10 border border-danger-500/30 rounded text-xs text-danger-500 flex items-center gap-sm">
-        <span>⚠️</span>
+        <span>alert-triangle</span>
         <span>{{ error }}</span>
         <code class="ml-auto text-[10px] font-mono bg-danger-500/10 px-xs py-0.5 rounded">{{ errorCode }}</code>
       </div>
@@ -273,7 +273,7 @@ const archivedEvents = computed(() => eventDefs.value.filter(e => e.archived))
           <h3 class="text-sm font-semibold text-text-primary">Active Events ({{ activeEvents.length }})</h3>
         </div>
         <div class="c-card-body">
-          <EmptyState v-if="activeEvents.length === 0" icon="📋" title="No active events" description="Create a new event definition to get started." />
+          <EmptyState v-if="activeEvents.length === 0" icon="clipboard" title="No active events" description="Create a new event definition to get started." />
           <table v-else class="w-full text-sm">
             <thead>
               <tr class="border-b border-default text-xs text-text-muted">

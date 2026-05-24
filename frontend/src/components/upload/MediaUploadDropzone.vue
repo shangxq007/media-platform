@@ -64,7 +64,7 @@ function onFileChange(e: Event) {
     @keydown.enter.prevent="onClick"
     @keydown.space.prevent="onClick"
   >
-    <div class="text-2xl mb-1" aria-hidden="true">📁</div>
+    <div class="text-2xl mb-1" aria-hidden="true">folder-open</div>
     <p class="text-xs text-text-secondary">
       <span v-if="isDragging">Drop files here</span>
       <span v-else>Drag & drop files or <span class="text-primary-400 underline">browse</span></span>

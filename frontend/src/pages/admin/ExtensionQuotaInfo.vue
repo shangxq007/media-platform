@@ -40,9 +40,9 @@ const riskLevel = computed(() => {
     <div class="c-card-body space-y-lg">
       <div class="grid grid-cols-4 gap-md">
         <MetricCard :value="quota.executionQuota" label="Execution Quota" icon="⚡" :loading="loading" />
-        <MetricCard :value="quota.executionsUsed" label="Executions Used" icon="📊" :loading="loading" />
-        <MetricCard :value="quota.executionsRemaining" label="Remaining" icon="✅" :loading="loading" />
-        <MetricCard :value="`$${quota.estimatedCost.toFixed(4)}`" :label="`Est. Cost / ${quota.currency}`" icon="💰" :loading="loading" />
+        <MetricCard :value="quota.executionsUsed" label="Executions Used" icon="bar-chart-3" :loading="loading" />
+        <MetricCard :value="quota.executionsRemaining" label="Remaining" icon="check" :loading="loading" />
+        <MetricCard :value="`$${quota.estimatedCost.toFixed(4)}`" :label="`Est. Cost / ${quota.currency}`" icon="dollar-sign" :loading="loading" />
       </div>
 
       <!-- Usage bar -->
@@ -60,7 +60,7 @@ const riskLevel = computed(() => {
       <!-- Permission restrictions -->
       <div v-if="quota.riskLevel === 'HIGH' || quota.riskLevel === 'CRITICAL'" class="p-sm rounded bg-warning-500/10 border border-warning-200">
         <div class="flex items-center gap-xs text-xs text-warning-600">
-          <span>⚠️</span>
+          <span>alert-triangle</span>
           <span>Elevated risk level — execution is rate-limited and audited</span>
         </div>
       </div>

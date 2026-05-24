@@ -65,7 +65,7 @@ const quotaItems = computed<QuotaItem[]>(() => {
     { label: 'API Calls', icon: 'plug', used: usage.value.apiCallsUsed, limit: usage.value.apiCallsLimit, unit: 'calls' },
     { label: 'Exports', icon: 'upload', used: usage.value.exportsUsed, limit: usage.value.exportsLimit, unit: 'exports' },
     { label: 'Prompt Executions', icon: '🤖', used: 0, limit: 1000, unit: 'runs' },
-    { label: 'Extension Executions', icon: '🔧', used: 0, limit: 500, unit: 'runs' },
+    { label: 'Extension Executions', icon: 'tool', used: 0, limit: 500, unit: 'runs' },
   ]
 })
 

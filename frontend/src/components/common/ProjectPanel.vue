@@ -132,13 +132,13 @@ function exportTimelineJSON() {
         class="w-full py-1.5 text-xs bg-surface-3 text-white rounded hover:bg-surface-4"
         @click="saveTimeline"
       >
-        💾 Save Timeline
+        hard-drive Save Timeline
       </button>
       <button
         class="w-full py-1.5 text-xs bg-surface-3 text-white rounded hover:bg-surface-4"
         @click="exportTimelineJSON"
       >
-        📥 Export JSON
+        download Export JSON
       </button>
     </div>
   </div>

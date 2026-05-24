@@ -72,7 +72,7 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
   <div class="space-y-6">
     <EmptyState
       v-if="props.policies.length === 0"
-      icon="📜"
+      icon="file-text"
       title="No policies available"
       description="Create policies first to use the simulation panel."
     />

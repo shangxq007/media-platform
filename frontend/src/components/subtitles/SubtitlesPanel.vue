@@ -261,7 +261,7 @@ function shiftAllCues(delta: number) {
     <!-- No Track State -->
     <div v-if="!subtitleStore.tracks.length" class="flex-1 flex items-center justify-center p-4">
       <div class="text-center">
-        <div class="text-2xl mb-2">📝</div>
+        <div class="text-2xl mb-2">edit-3</div>
         <p class="text-xs text-text-tertiary">No subtitle tracks</p>
         <p class="text-[10px] text-text-tertiary mt-1">Upload a file to get started</p>
       </div>

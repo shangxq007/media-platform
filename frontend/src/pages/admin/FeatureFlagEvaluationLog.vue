@@ -107,7 +107,7 @@ onMounted(loadLogs)
 
     <EmptyState
       v-else-if="entries.length === 0"
-      icon="📋"
+      icon="clipboard"
       title="No evaluation logs"
       description="No evaluation logs found matching the current filters."
     />

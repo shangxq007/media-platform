@@ -99,9 +99,9 @@ async function submitFeedback() {
 }
 
 const feedbackTypes = [
-  { value: 'bug' as const, label: 'Bug', icon: '🐛' },
-  { value: 'feature' as const, label: 'Feature', icon: '💡' },
-  { value: 'other' as const, label: 'Other', icon: '💬' },
+  { value: 'bug' as const, label: 'Bug', icon: 'alert-circle' },
+  { value: 'feature' as const, label: 'Feature', icon: 'bulb' },
+  { value: 'other' as const, label: 'Other', icon: 'message-circle' },
 ]
 
 const severityLevels = [
@@ -134,7 +134,7 @@ const severityLevels = [
         <!-- Header -->
         <div class="c-dialog-header">
           <div class="flex items-center gap-sm">
-            <span class="text-lg">💬</span>
+            <span class="text-lg">message-circle</span>
             <h3 class="text-lg font-semibold text-text-primary">Send Feedback</h3>
           </div>
           <button class="theme-btn theme-btn-ghost theme-btn-sm" @click="closeFeedbackModal">✕</button>

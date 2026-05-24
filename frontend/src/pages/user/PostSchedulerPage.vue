@@ -106,7 +106,7 @@ function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'info
     <template v-else>
       <!-- Upcoming -->
       <PageSection title="Upcoming" :description="`${upcomingPosts.length} post(s) scheduled`">
-        <EmptyState v-if="upcomingPosts.length === 0" icon="📅" title="No upcoming posts" description="Schedule a post from the publish page to see it here.">
+        <EmptyState v-if="upcomingPosts.length === 0" icon="calendar" title="No upcoming posts" description="Schedule a post from the publish page to see it here.">
           <template #action>
             <button class="theme-btn theme-btn-primary theme-btn-sm" @click="router.push('/me/publish')">Create Post</button>
           </template>
@@ -131,7 +131,7 @@ function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'info
                     </div>
                   </div>
                   <div class="flex items-center gap-md text-xs text-text-muted">
-                    <span>📅 {{ post.scheduledAt ? formatDateTime(post.scheduledAt) : '—' }}</span>
+                    <span>calendar {{ post.scheduledAt ? formatDateTime(post.scheduledAt) : '—' }}</span>
                     <span>Created: {{ formatDateTime(post.createdAt) }}</span>
                   </div>
                 </div>
@@ -160,7 +160,7 @@ function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'info
                   </div>
                   <p class="text-sm text-text-secondary line-clamp-2 mb-sm">{{ post.contentText }}</p>
                   <div class="text-xs text-text-muted">
-                    📅 {{ post.scheduledAt ? formatDateTime(post.scheduledAt) : '—' }}
+                    calendar {{ post.scheduledAt ? formatDateTime(post.scheduledAt) : '—' }}
                   </div>
                 </div>
               </div>

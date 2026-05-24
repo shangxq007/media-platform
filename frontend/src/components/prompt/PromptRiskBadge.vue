@@ -17,9 +17,9 @@ function getRiskClass(level?: string): string {
 function getActionIcon(action?: string): string {
   switch (action) {
     case 'BLOCK': return '🚫'
-    case 'REQUIRE_REVIEW': return '⚠️'
+    case 'REQUIRE_REVIEW': return 'alert-triangle'
     case 'WARN': return '⚡'
-    case 'ALLOW': return '✅'
+    case 'ALLOW': return 'check'
     default: return '❓'
   }
 }
