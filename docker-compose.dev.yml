@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: platform
       POSTGRES_USER: platform
-      POSTGRES_PASSWORD: platform_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-platform_dev_password}
     ports:
       - "5432:5432"
     volumes:
@@ -24,15 +24,17 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/platform
       SPRING_DATASOURCE_USERNAME: platform
-      SPRING_DATASOURCE_PASSWORD: platform_dev_password
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-platform_dev_password}
       SPRING_FLYWAY_ENABLED: "true"
-      APP_JWT_SECRET: dev-only-insecure-key-replace-in-production-min-256-bits!!
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-only-insecure-key-replace-in-production-min-256-bits!!}
       APP_SECURITY_ENABLED: "true"
       APP_SECURITY_OAUTH2_ENABLED: "false"
-      APP_STORAGE_LOCAL_ROOT: /tmp/platform
+      APP_STORAGE_LOCAL_ROOT: /data/platform
+    volumes:
+      - mediadata:/data/platform
     depends_on:
       db:
         condition: service_healthy
@@ -41,22 +43,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 40s
 
   render-worker:
     build:
-      context: remote-render-worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: remote-render-worker/Dockerfile
     ports:
       - "8081:8081"
     environment:
       SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/platform
       SPRING_DATASOURCE_USERNAME: platform
-      SPRING_DATASOURCE_PASSWORD: platform_dev_password
-      APP_REMOTE_WORKER_API_KEY: dev-worker-key
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-platform_dev_password}
+      APP_STORAGE_LOCAL_ROOT: /data/platform
+      APP_REMOTE_WORKER_API_KEY: ${APP_REMOTE_WORKER_API_KEY:-dev-worker-key}
+      APP_REMOTE_WORKER_CALLBACK_URL: http://app:8080
+    volumes:
+      - mediadata:/data/platform
     depends_on:
       db:
+        condition: service_healthy
+      app:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
@@ -67,3 +75,4 @@ services:
 
 volumes:
   pgdata:
+  mediadata:
