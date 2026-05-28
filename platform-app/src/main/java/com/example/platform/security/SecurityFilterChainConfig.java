@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
@@ -49,9 +50,35 @@ public class SecurityFilterChainConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .headers(headers -> headers
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives(buildCspDirectives()))
+                .contentTypeOptions(contentTypeOptions -> {})
+                .referrerPolicy(referrer -> referrer
+                    .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .frameOptions(frame -> frame.deny())
+                .permissionsPolicyHeader(permissions -> permissions
+                    .policy("camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()")))
             .authorizeHttpRequests(SecurityHttpRules::applyApiAuthorization)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    public static String buildCspDirectives() {
+        return "default-src 'self';"
+                + " base-uri 'self';"
+                + " object-src 'none';"
+                + " frame-ancestors 'none';"
+                + " form-action 'self';"
+                + " img-src 'self' data: blob: https:;"
+                + " font-src 'self' data:;"
+                + " style-src 'self' 'unsafe-inline';"
+                + " script-src 'self';"
+                + " connect-src 'self' https: wss:;"
+                + " media-src 'self' blob: data: https:;"
+                + " worker-src 'self' blob:;"
+                + " child-src 'self' blob:;"
+                + " manifest-src 'self';";
     }
 }

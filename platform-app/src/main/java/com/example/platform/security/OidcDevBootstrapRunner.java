@@ -9,11 +9,14 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Ensures default tenant + legacy {@code user-1} for local Authentik / OIDC profile联调.
+ * Ensures default tenant + legacy {@code user-1} for local OIDC dev/test bootstrap.
+ *
+ * <p>DEV-ONLY: This runner is strictly limited to dev/local/test profiles.
+ * It will NOT run in production OIDC environments.
  */
 @Component
-@Profile("oidc")
-@ConditionalOnProperty(name = "app.security.oauth2.enabled", havingValue = "true")
+@Profile({"dev", "local", "test"})
+@ConditionalOnProperty(name = "app.security.oidc-dev-bootstrap.enabled", havingValue = "true", matchIfMissing = false)
 public class OidcDevBootstrapRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(OidcDevBootstrapRunner.class);

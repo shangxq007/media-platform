@@ -90,7 +90,7 @@ function resetContext() {
         <div class="grid grid-cols-3 gap-3">
           <div>
             <label class="block text-xs text-text-secondary mb-1">Tenant</label>
-            <input v-model="context.tenant" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary" placeholder="tenant-1" />
+            <input v-model="context.tenant" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-3 py-1.5 text-sm text-text-primary" placeholder="Tenant ID" />
           </div>
           <div>
             <label class="block text-xs text-text-secondary mb-1">Workspace</label>

@@ -2,12 +2,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { FeatureFlagAPI } from '@/api/admin/feature-flags'
 import type { AdminFeatureFlag } from '@/api/admin/feature-flags'
+import { useAdminTenantSelection } from '@/composables/useAdminTenantSelection'
 
 type Tab = 'entitlement' | 'unleash'
 
 const loading = ref(true)
 const activeTab = ref<Tab>('entitlement')
-const tenantId = ref('tenant-1')
+const { tenants: _tenants, selectedTenantId, loading: _tenantsLoading } = useAdminTenantSelection()
 
 // Entitlement feature flags
 const capabilities = ref<{
@@ -37,7 +38,7 @@ async function loadData() {
   loading.value = true
   try {
     const [caps, gov] = await Promise.allSettled([
-      FeatureFlagAPI.getCapabilities(tenantId.value),
+      FeatureFlagAPI.getCapabilities(selectedTenantId.value),
       FeatureFlagAPI.getPolicyGovernanceOverview(),
     ])
     if (caps.status === 'fulfilled') capabilities.value = caps.value
@@ -81,7 +82,7 @@ function tierClass(tier: string, enabled: boolean): string {
       <h1 class="text-xl font-bold">Feature Flags</h1>
       <div class="flex items-center gap-3">
         <input
-          v-model="tenantId"
+          v-model="selectedTenantId"
           type="text"
           class="bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white w-48"
           placeholder="Tenant ID"

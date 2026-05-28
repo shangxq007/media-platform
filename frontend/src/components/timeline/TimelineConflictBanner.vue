@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { PendingTimelineConflict } from '@/utils/timelineConflictMerge'
 import TimelineHighlightNavigator from './TimelineHighlightNavigator.vue'
 
-const props = defineProps<{
+defineProps<{
   conflict: PendingTimelineConflict | null
 }>()
 </script>

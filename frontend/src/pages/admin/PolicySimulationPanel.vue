@@ -107,7 +107,7 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
           </div>
           <div>
             <label class="block text-xs text-text-secondary mb-1">Tenant</label>
-            <input v-model="context.tenant" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="tenant-1" />
+            <input v-model="context.tenant" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Tenant ID" />
           </div>
           <div>
             <label class="block text-xs text-text-secondary mb-1">Workspace</label>

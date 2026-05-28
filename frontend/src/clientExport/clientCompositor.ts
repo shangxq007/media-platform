@@ -102,9 +102,10 @@ export class ClientCompositor {
     for (const track of timeline.tracks) {
       if (track.type !== 'audio') continue
       for (const clip of track.clips ?? []) {
-        if (!clip.sourceUrl) continue
+        const clipWithUrl = clip as typeof clip & { sourceUrl?: string }
+        if (!clipWithUrl.sourceUrl) continue
         try {
-          const audio = await loadAudio(clip.sourceUrl)
+          const audio = await loadAudio(clipWithUrl.sourceUrl)
           audio.currentTime = clip.clipStart ?? 0
           audioElements.push(audio)
         } catch (e) {

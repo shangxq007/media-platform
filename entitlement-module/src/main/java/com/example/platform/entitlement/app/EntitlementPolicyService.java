@@ -58,10 +58,8 @@ public class EntitlementPolicyService implements EntitlementPort {
     }
 
     private void initializeDefaultTiers() {
-        userTiers.put("tenant-1", "FREE");
-        userTiers.put("tenant-pro", "PRO");
-        userTiers.put("tenant-team", "TEAM");
-        userTiers.put("tenant-enterprise", "ENTERPRISE");
+        // No hardcoded tenant seed data. Tenant tiers are loaded from DB via hydrateTier()
+        // or set by admin API. getTier() returns "FREE" for any unknown tenant via getOrDefault.
     }
 
     private void initializeDefaultFeatureFlags() {
@@ -121,7 +119,7 @@ public class EntitlementPolicyService implements EntitlementPort {
     }
 
     public String getDecisionSource(String tenantId) {
-        return decisionSources.getOrDefault(tenantId, "tier");
+        return decisionSources.get(tenantId);
     }
 
     public String getTier(String tenantId) {

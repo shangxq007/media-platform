@@ -22,8 +22,7 @@ export async function bootstrapDevAuth(): Promise<void> {
     return
   }
   try {
-    const tenantId = localStorage.getItem('tenant_id') || 'tenant-1'
-    const { data } = await axios.post('/api/v1/dev/auth/token', { tenantId, userId: 'user-1' })
+    const { data } = await axios.post('/api/v1/dev/auth/token', { userId: 'user-1' })
     if (data?.accessToken) {
       localStorage.setItem('dev_access_token', data.accessToken)
       api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`
@@ -42,8 +41,6 @@ api.interceptors.request.use(async config => {
   } else if (import.meta.env.DEV) {
     await bootstrapDevAuth()
   }
-  const tenant = localStorage.getItem('tenant_id') || 'tenant-1'
-  config.headers['X-Tenant-ID'] = tenant
   return config
 })
 

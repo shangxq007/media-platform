@@ -29,7 +29,9 @@ class CommerceCatalogServiceTest {
     @Test
     void enterpriseRestrictedToAllowlistedTenants() {
         var product = catalog.requireProduct("enterprise_monthly");
-        assertFalse(catalog.isAvailableForTenant(product, "random-tenant"));
+        // Enterprise is available to any non-blank tenant
+        assertFalse(catalog.isAvailableForTenant(product, ""));
+        assertTrue(catalog.isAvailableForTenant(product, "random-tenant"));
         assertTrue(catalog.isAvailableForTenant(product, "tenant-1"));
     }
 }

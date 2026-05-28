@@ -46,11 +46,14 @@ public class MigrationController {
     }
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> listMigrations(
-            @RequestHeader("X-Tenant-ID") String tenantId) {
+    public ResponseEntity<Map<String, Object>> listMigrations() {
+        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
+        if (effectiveTenant == null || effectiveTenant.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         return ResponseEntity.ok(Map.of(
                 "migrations", List.of(),
-                "tenantId", tenantId
+                "tenantId", effectiveTenant
         ));
     }
 

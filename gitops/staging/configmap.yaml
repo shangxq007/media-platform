@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: media-platform-staging
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresql.media-platform.svc.cluster.local:5432/platform"
+  SPRING_DATASOURCE_USERNAME: "platform"
+  SPRING_FLYWAY_ENABLED: "true"
+  APP_SECURITY_ENABLED: "true"
+  APP_SECURITY_OAUTH2_ENABLED: "true"
+  APP_STORAGE_LOCAL_ROOT: "/data/platform"
+  SERVER_PORT: "8080"
+  APP_REMOTE_WORKER_CALLBACK_URL: "http://api.media-platform.svc.cluster.local:8080"
+  # Egress proxy smoke test — disabled by default, enable in staging first
+  EGRESS_PROXY_SMOKE_ENABLED: "false"
+  EGRESS_PROXY_SMOKE_URL: ""
+  EGRESS_PROXY_SMOKE_INCLUDE_IN_READINESS: "false"
+  # JVM proxy properties — disabled by default, enable if Java clients don't honor env proxy
+  EGRESS_PROXY_JVM_ENABLED: "false"

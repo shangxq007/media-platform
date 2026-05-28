@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: egress-proxy
+  namespace: media-platform-staging
+  labels:
+    app: egress-proxy
+    component: network-egress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: egress-proxy
+  template:
+    metadata:
+      labels:
+        app: egress-proxy
+        component: network-egress
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 13
+        runAsGroup: 13
+        fsGroup: 13
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: squid
+          image: ghcr.io/example/egress-proxy:v1.0.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 3128
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: 3128
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 3128
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/squid/squid.conf
+              subPath: squid.conf
+              readOnly: true
+            - name: config
+              mountPath: /etc/squid/allowed-domains.txt
+              subPath: allowed-domains.txt
+              readOnly: true
+            - name: cache
+              mountPath: /var/spool/squid
+            - name: logs
+              mountPath: /var/log/squid
+            - name: run
+              mountPath: /run/squid
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: egress-proxy-config
+        - name: cache
+          emptyDir:
+            sizeLimit: 200Mi
+        - name: logs
+          emptyDir:
+            sizeLimit: 50Mi
+        - name: run
+          emptyDir:
+            sizeLimit: 10Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 50Mi

@@ -21,9 +21,10 @@ public class BillingCycleController {
 
     @PostMapping("/run")
     public BillingCycleService.BillingCycleResult runCycle(
-            @RequestParam String tenantId,
+            @RequestParam(required = false) String tenantId,
             @RequestParam String userId) {
-        return billingCycleService.runCycle(tenantId, userId);
+        String effectiveTenant = resolveTenantId(tenantId);
+        return billingCycleService.runCycle(effectiveTenant, userId);
     }
 
     @PostMapping("/process-due")
@@ -32,5 +33,19 @@ public class BillingCycleController {
         return subscriptionBillingService.listActiveSubscriptionsAllTenants().stream()
                 .map(c -> billingCycleService.runCycle(c.tenantId(), c.userId()))
                 .toList();
+    }
+
+    private static final String TENANT_CONTEXT_REQUIRED = "Tenant context is required";
+
+    private String resolveTenantId(String requestedTenantId) {
+        String contextTenant = com.example.platform.shared.web.TenantContext.get();
+        if (contextTenant == null || contextTenant.isBlank()) {
+            throw new IllegalArgumentException(TENANT_CONTEXT_REQUIRED);
+        }
+        if (requestedTenantId != null && !requestedTenantId.isBlank()
+                && !requestedTenantId.equals(contextTenant)) {
+            throw new SecurityException("Tenant ID does not match authenticated tenant");
+        }
+        return contextTenant;
     }
 }

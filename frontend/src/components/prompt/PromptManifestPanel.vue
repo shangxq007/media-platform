@@ -23,7 +23,7 @@ async function validateManifest() {
       validationResult.value = await manifestResp.json()
     }
   } catch (e: unknown) {
-    error.value = e.message || 'Failed to validate manifest'
+    error.value = e instanceof Error ? e.message : 'Failed to validate manifest'
   } finally {
     loading.value = false
   }
@@ -36,7 +36,7 @@ async function scanPromptFiles() {
     // Sample scan with empty files for now
     scanResult.value = await PromptAPI.scanFiles([], [])
   } catch (e: unknown) {
-    error.value = e.message || 'Failed to scan files'
+    error.value = e instanceof Error ? e.message : 'Failed to scan files'
   } finally {
     loading.value = false
   }
@@ -61,7 +61,7 @@ function getStatusClass(valid: boolean): string {
         </button>
       </div>
       <div v-if="validationResult" class="text-xs space-y-1">
-        <div :class="getStatusClass(validationResult.valid)">
+        <div :class="getStatusClass(!!validationResult.valid)">
           {{ validationResult.valid ? '✓ Valid' : '✗ Invalid' }}
         </div>
         <div v-for="err in (validationResult.errors || [])" :key="err" class="text-danger">{{ err }}</div>

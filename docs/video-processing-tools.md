@@ -410,12 +410,13 @@ COPY app.jar /app/
 # docker-compose.distributed.yml
 services:
   api:
-    image: media-platform-api
+    # NOTE: Use explicit image tag (Git SHA or semver), never :latest in production.
+    image: platform-api:dev
     deploy:
       replicas: 3
       
   render-worker-javacv:
-    image: media-platform-javacv
+    image: platform-javacv:dev
     deploy:
       replicas: 2
       resources:
@@ -424,7 +425,7 @@ services:
           memory: 8G
           
   render-worker-ofx:
-    image: media-platform-ofx
+    image: platform-ofx:dev
     deploy:
       replicas: 1
       resources:

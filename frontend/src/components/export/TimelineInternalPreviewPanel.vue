@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { AiTimelineAPI, type TimelineInternalPreviewResponse } from '@/api/ai-timeline'
-import { getTenantId } from '@/utils/tenant'
+import { useProjectStore } from '@/stores/project'
 
 const props = defineProps<{
   projectId: string
@@ -22,7 +22,7 @@ async function runPreview() {
   preview.value = null
   try {
     const res = await AiTimelineAPI.previewInternal(
-      getTenantId(),
+      useProjectStore().currentTenant,
       props.projectId,
       props.timelineJson
     )

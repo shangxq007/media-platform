@@ -22,8 +22,6 @@ export const graphqlClient = new GraphQLClient(endpoint, {
         headers['Authorization'] = `Bearer ${devToken}`
       }
     }
-    const tenantId = localStorage.getItem('tenant_id') || 'tenant-1'
-    headers['X-Tenant-ID'] = tenantId
     return { ...request, headers }
   },
 })

@@ -111,11 +111,34 @@ public class S3BlobStorageProvider implements BlobStorage {
 
     @Override
     public Optional<byte[]> get(String bucket, String objectKey) {
+        String resolvedBucket = bucket != null && !bucket.isBlank() ? bucket : properties.getDefaultBucket();
         GetObjectRequest request = GetObjectRequest.builder()
-                .bucket(bucket)
+                .bucket(resolvedBucket)
                 .key(objectKey)
                 .build();
-        return Optional.of(s3Client.getObjectAsBytes(request).asByteArray());
+        try {
+            return Optional.of(s3Client.getObjectAsBytes(request).asByteArray());
+        } catch (software.amazon.awssdk.services.s3.model.S3Exception e) {
+            if (isObjectNotFound(e)) {
+                log.debug("S3 object not found: bucket={} key={}", resolvedBucket, objectKey);
+                return Optional.empty();
+            }
+            throw new IllegalStateException(
+                    "S3 get failed: bucket=" + resolvedBucket + " key=" + objectKey
+                            + " status=" + e.statusCode() + " error=" + e.awsErrorDetails().errorCode(), e);
+        }
+    }
+
+    /**
+     * Checks if the S3Exception indicates that the object (or bucket) does not exist.
+     * Returns true for 404 NoSuchKey/NotFound, false for other errors (403, 500, etc.).
+     */
+    private static boolean isObjectNotFound(software.amazon.awssdk.services.s3.model.S3Exception e) {
+        if (e.statusCode() != 404) {
+            return false;
+        }
+        String errorCode = e.awsErrorDetails() != null ? e.awsErrorDetails().errorCode() : null;
+        return "NoSuchKey".equals(errorCode) || "NotFound".equals(errorCode);
     }
 
     @Override

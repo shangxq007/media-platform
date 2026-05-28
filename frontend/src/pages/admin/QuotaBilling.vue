@@ -2,9 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { QuotaBillingAPI } from '@/api/admin/quota-billing'
 import type { QuotaBucket, TenantUsage, BillingState } from '@/api/admin/quota-billing'
+import { useAdminTenantSelection } from '@/composables/useAdminTenantSelection'
 
 const loading = ref(true)
-const tenantId = ref('tenant-1')
+const { tenants: _tenants, selectedTenantId, loading: _tenantsLoading } = useAdminTenantSelection()
 const quotas = ref<QuotaBucket[]>([])
 const usage = ref<TenantUsage | null>(null)
 const billing = ref<BillingState | null>(null)
@@ -17,11 +18,11 @@ async function loadData() {
   loading.value = true
   try {
     const [q, u, b, r, e] = await Promise.allSettled([
-      QuotaBillingAPI.getQuota(tenantId.value),
-      QuotaBillingAPI.getUsage(tenantId.value),
-      QuotaBillingAPI.getBillingState(tenantId.value),
-      QuotaBillingAPI.getTotalRevenue(tenantId.value),
-      QuotaBillingAPI.getRecentCommerceEvents(tenantId.value),
+      QuotaBillingAPI.getQuota(selectedTenantId.value),
+      QuotaBillingAPI.getUsage(selectedTenantId.value),
+      QuotaBillingAPI.getBillingState(selectedTenantId.value),
+      QuotaBillingAPI.getTotalRevenue(selectedTenantId.value),
+      QuotaBillingAPI.getRecentCommerceEvents(selectedTenantId.value),
     ])
     if (q.status === 'fulfilled') quotas.value = q.value
     if (u.status === 'fulfilled') usage.value = u.value
@@ -33,7 +34,7 @@ async function loadData() {
 }
 
 async function resetQuota() {
-  await QuotaBillingAPI.resetQuota(tenantId.value)
+    await QuotaBillingAPI.resetQuota(selectedTenantId.value)
   await loadData()
 }
 
@@ -49,7 +50,7 @@ function quotaPercent(q: QuotaBucket): number {
       <h1 class="text-xl font-bold">Quota & Billing</h1>
       <div class="flex items-center gap-3">
         <input
-          v-model="tenantId"
+          v-model="selectedTenantId"
           type="text"
           class="bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white w-48"
           placeholder="Tenant ID"

@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,9 +24,11 @@ public class MediaProbeController {
 
     @PostMapping
     public Map<String, Object> probeAsset(
-            @RequestHeader(value = "X-Tenant-ID", required = false) String tenantId,
             @RequestBody ProbeRequest request) {
-        String effectiveTenant = tenantId != null ? tenantId : "tenant-1";
+        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
+        if (effectiveTenant == null || effectiveTenant.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
 
         ProbeAndPersistResult result = probeService.probeAndPersist(
                 effectiveTenant, request.projectId(), request.assetId(), request.assetUri());
@@ -39,6 +40,10 @@ public class MediaProbeController {
     public Map<String, Object> getLatestProbe(
             @PathVariable String tenantId,
             @PathVariable String assetId) {
+        String contextTenant = com.example.platform.shared.web.TenantContext.get();
+        if (contextTenant != null && !contextTenant.equals(tenantId)) {
+            throw new IllegalArgumentException("Tenant ID does not match authenticated tenant");
+        }
         MediaProbeResult probe = probeService.getLatestProbe(tenantId, assetId);
         if (probe == null) {
             return Map.of("found", false);
@@ -59,7 +64,8 @@ public class MediaProbeController {
         m.put("fps", probe.fps());
         m.put("videoCodec", probe.videoCodec() != null ? probe.videoCodec() : "");
         m.put("audioCodec", probe.audioCodec() != null ? probe.audioCodec() : "");
-        m.put("hasAudio", probe.hasAudio());
+        m.put("hasAudioStream", probe.hasAudioStream());
+        m.put("hasUsableAudio", probe.hasUsableAudio());
         m.put("rotation", probe.rotation());
         m.put("bitrate", probe.bitrate());
         m.put("isVfr", probe.isVfr());

@@ -14,7 +14,7 @@ onMounted(async () => {
   try {
     const map = new Map<string, string[]>()
     for (const plan of plans.value) {
-      const flagKeys = (plan as any)?.featureFlagKeys as string[] | undefined
+      const flagKeys = plan.featureFlagKeys
       if (flagKeys?.length) {
         map.set(plan.planId, flagKeys)
       }

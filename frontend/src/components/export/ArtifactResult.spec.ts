@@ -140,7 +140,7 @@ describe('ArtifactResult', () => {
     const wrapper = mount(ArtifactResult, {
       props: { artifact: mockArtifact },
     })
-    expect(wrapper.text()).toContain('film')
+    expect(wrapper.text()).toContain('clapperboard')
   })
 
   it('shows audio icon for mp3', () => {

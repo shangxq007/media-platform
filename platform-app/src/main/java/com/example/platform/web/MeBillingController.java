@@ -270,16 +270,34 @@ public class MeBillingController {
     }
 
     private BillingSubject resolveSubject(HttpServletRequest req) {
+        // Resolve userId from JWT subject or SecurityContext
         Object subject = req.getAttribute("jwt.subject");
-        String userId = subject != null ? subject.toString() : "anonymous";
-        Object tenantAttr = req.getAttribute("jwt.tenantId");
-        String tenantId = tenantAttr != null ? tenantAttr.toString() : TenantContext.get();
+        String userId = null;
+        if (subject != null && !subject.toString().isBlank()) {
+            userId = subject.toString();
+        }
+        if (userId == null || userId.isBlank()) {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && auth.getName() != null) {
+                userId = auth.getName();
+            }
+        }
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("User identity is required");
+        }
+
+        // Resolve tenantId from trusted sources only: TenantContext or JWT claim
+        String tenantId = TenantContext.get();
         if (tenantId == null || tenantId.isBlank()) {
-            tenantId = "tenant-1";
+            Object tenantAttr = req.getAttribute("jwt.tenantId");
+            if (tenantAttr != null && !tenantAttr.toString().isBlank()) {
+                tenantId = tenantAttr.toString();
+            }
         }
-        if ("anonymous".equals(userId)) {
-            userId = tenantId + "-billing-owner";
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
         }
+
         return new BillingSubject(tenantId, userId);
     }
 

@@ -4,6 +4,7 @@ import com.example.platform.remoterender.app.RemoteRenderService;
 import com.example.platform.remoterender.app.WorkerRegistryService;
 import com.example.platform.remoterender.domain.RemoteRenderJob;
 import com.example.platform.remoterender.domain.WorkerStatus;
+import com.example.platform.render.infrastructure.RenderProviderRouter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.mock;
@@ -23,10 +24,8 @@ class RemoteRenderWorkerTest {
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
         workerRegistry = new WorkerRegistryService();
-        com.example.platform.render.infrastructure.JavaCVRenderService javacvService =
-                new com.example.platform.render.infrastructure.JavaCVRenderService(mock(com.example.platform.render.infrastructure.MediaProbeService.class));
-        javacvService.setStorageRoot(tempDir.toString());
-        renderService = new RemoteRenderService(javacvService, workerRegistry);
+        RenderProviderRouter providerRouter = mock(RenderProviderRouter.class);
+        renderService = new RemoteRenderService(providerRouter, workerRegistry);
     }
 
     @Test

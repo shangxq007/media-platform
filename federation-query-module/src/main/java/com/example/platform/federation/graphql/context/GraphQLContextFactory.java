@@ -28,9 +28,10 @@ public class GraphQLContextFactory implements WebGraphQlInterceptor {
     public Mono<WebGraphQlResponse> intercept(WebGraphQlRequest request, Chain chain) {
         HttpHeaders headers = request.getHeaders();
 
-        String tenantId = firstHeader(headers, "X-Tenant-Id") != null
-                ? firstHeader(headers, "X-Tenant-Id")
-                : TenantContext.get();
+        // Tenant ID is resolved exclusively from the server-side TenantContext
+        // (set by authentication filters from JWT/OAuth2 claims).
+        // The X-Tenant-Id header is NOT trusted to prevent tenant spoofing.
+        String tenantId = TenantContext.get();
         String workspaceId = firstHeader(headers, "X-Workspace-Id");
         String userId = firstHeader(headers, "X-User-Id");
         String requestSource = firstHeader(headers, "X-Request-Source") != null

@@ -76,7 +76,7 @@ public class ProblematicDataDetectionService {
                     record.problematicType().name(), record.severity().name(),
                     record.detectionRule(), record.description(),
                     record.context(), record.detectedAt().toInstant()));
-            auditService.record("system", "PROBLEMATIC_DATA_DETECTED", "AUDIT",
+            auditService.record("SYSTEM", "problematic-data-detector", "PROBLEMATIC_DATA_DETECTED",
                     "problematic_data", record.recordId(), Map.of(
                             "dataType", record.dataType(),
                             "severity", record.severity().name(),
@@ -153,15 +153,11 @@ public class ProblematicDataDetectionService {
                     record.problematicType().name(), record.severity().name(),
                     record.detectionRule(), record.description(),
                     record.context(), record.detectedAt().toInstant()));
-            auditService.record("system", "PROBLEMATIC_DATA_DETECTED", "AUDIT",
+            auditService.record("SYSTEM", "problematic-data-detector", "PROBLEMATIC_DATA_DETECTED",
                     "problematic_data", record.recordId(), Map.of(
                             "dataType", record.dataType(),
                             "severity", record.severity().name(),
                             "rule", record.detectionRule()));
-        }
-
-        if (!detected.isEmpty()) {
-            log.warn("Detected {} problematic data records for renderJob={}", detected.size(), renderJobId);
         }
 
         return detected;
@@ -204,7 +200,7 @@ public class ProblematicDataDetectionService {
                     record.problematicType().name(), record.severity().name(),
                     record.detectionRule(), record.description(),
                     record.context(), record.detectedAt().toInstant()));
-            auditService.record("system", "PROBLEMATIC_DATA_DETECTED", "AUDIT",
+            auditService.record("SYSTEM", "problematic-data-detector", "PROBLEMATIC_DATA_DETECTED",
                     "problematic_data", record.recordId(), Map.of(
                             "dataType", record.dataType(),
                             "severity", record.severity().name(),
@@ -244,7 +240,7 @@ public class ProblematicDataDetectionService {
                     record.problematicType().name(), record.severity().name(),
                     record.detectionRule(), record.description(),
                     record.context(), record.detectedAt().toInstant()));
-            auditService.record("system", "PROBLEMATIC_DATA_DETECTED", "AUDIT",
+            auditService.record("SYSTEM", "problematic-data-detector", "PROBLEMATIC_DATA_DETECTED",
                     "problematic_data", record.recordId(), Map.of(
                             "dataType", record.dataType(),
                             "severity", record.severity().name(),

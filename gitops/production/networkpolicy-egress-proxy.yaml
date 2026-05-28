@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-proxy-network-policy
+  namespace: media-platform-production
+  labels:
+    app: egress-proxy
+    component: network-egress
+    component-type: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: egress-proxy
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only allow platform-api and render-worker to access the proxy
+    - from:
+        - podSelector:
+            matchLabels:
+              app: media-platform
+              component: api
+        - podSelector:
+            matchLabels:
+              app: media-platform
+              component: render-worker
+      ports:
+        - protocol: TCP
+          port: 3128
+
+  egress:
+    # 1. Allow DNS resolution (kube-dns only, port 53)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # 2. Allow external HTTPS (CONNECT tunnel) and HTTP
+    #    The egress proxy MUST be able to reach external services.
+    #    Squid ACL blocks metadata IP, loopback, and private networks.
+    #    NOTE: This ipBlock 0.0.0.0/0 is intentionally broad for the egress proxy ONLY.
+    #    It is NOT allowed on application pods. The proxy's Squid ACL provides hostname-level
+    #    filtering. For stricter CIDR-based control, replace with explicit ipBlock ranges.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.0.0/16
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 127.0.0.0/8

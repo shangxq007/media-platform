@@ -1,5 +1,7 @@
 package com.example.platform.render.app.cache;
 
+import com.example.platform.shared.tenant.StorageKeyPolicy;
+import com.example.platform.shared.tenant.StorageKeyPolicy;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.StorageObjectRef;
 import java.util.Map;
@@ -71,7 +73,8 @@ public class RenderCacheTenantGuard {
     }
 
     /**
-     * Ensures a remote storage URI object key is prefixed with {@code tenantId/}.
+     * Ensures a remote storage URI object key is prefixed with {@code tenant/{tenantId}/}
+     * using {@link StorageKeyPolicy#hasTenantPrefix}.
      */
     public void assertRemoteUriTenantPrefix(String tenantId, String storageUri) {
         if (storageUri == null || storageUri.isBlank() || tenantId == null || tenantId.isBlank()) {
@@ -81,8 +84,7 @@ public class RenderCacheTenantGuard {
         if (ref.isEmpty()) {
             return;
         }
-        String prefix = tenantId + "/";
-        if (!ref.get().objectKey().startsWith(prefix)) {
+        if (!StorageKeyPolicy.hasTenantPrefix(ref.get().objectKey(), tenantId)) {
             auditDeny("CACHE_KEY_TENANT", tenantId, null, ref.get().objectKey(), ref.get().bucket());
             throw new IllegalArgumentException("Cache object denied for tenant");
         }

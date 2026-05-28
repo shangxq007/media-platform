@@ -105,6 +105,7 @@ vi.mock('@/stores/timeline', () => ({
     loadDemoProject: vi.fn(),
     loadFromJSON: vi.fn(),
     setCurrentTime: vi.fn(),
+    patchHighlightClipIds: [],
   }),
 }))
 
@@ -205,9 +206,8 @@ describe('EditorPage', () => {
         plugins: [router],
       },
     })
-    const text = wrapper.text()
-    expect(text).toContain('↩️')
-    expect(text).toContain('↪️')
+    expect(wrapper.find('button[title="Undo"]').exists()).toBe(true)
+    expect(wrapper.find('button[title="Redo"]').exists()).toBe(true)
   })
 
   it('has save and export buttons', () => {

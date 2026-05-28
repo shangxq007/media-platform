@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: render-worker
+  namespace: media-platform-staging
+  labels:
+    app: media-platform
+    component: render-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-platform
+      component: render-worker
+  template:
+    metadata:
+      labels:
+        app: media-platform
+        component: render-worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10002
+        runAsGroup: 10002
+        fsGroup: 10002
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: render-worker
+          # NOTE: Replace with your registry and explicit image tag (Git SHA or semver).
+          # Example: registry.example.com/platform-render-worker:2025.05.25-abc1234
+          # Never use :latest in production.
+          image: ghcr.io/example/platform-render-worker:v1.0.0
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8090
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8090"
+            - name: HTTP_PROXY
+              value: http://egress-proxy:3128
+            - name: HTTPS_PROXY
+              value: http://egress-proxy:3128
+            - name: NO_PROXY
+              value: localhost,127.0.0.1,.svc,.cluster.local,postgresql,minio,platform-api,sandbox-worker,egress-proxy
+            - name: http_proxy
+              value: http://egress-proxy:3128
+            - name: https_proxy
+              value: http://egress-proxy:3128
+            - name: no_proxy
+              value: localhost,127.0.0.1,.svc,.cluster.local,postgresql,minio,platform-api,sandbox-worker,egress-proxy
+            - name: APP_REMOTE_WORKER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: APP_REMOTE_WORKER_API_KEY
+                  optional: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          volumeMounts:
+            - name: data
+              mountPath: /data/platform
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: app-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 2Gi

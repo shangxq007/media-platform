@@ -2,1063 +2,1603 @@
   "errors": {
     "COMMON-400-001": {
       "numericCode": 400001,
-      "messages": { "en": "Invalid request", "zh": "请求参数无效" },
+      "messages": {
+        "en": "Invalid request",
+        "zh": "请求参数无效"
+      },
       "module": "common",
       "status": 400
     },
     "COMMON-404-001": {
       "numericCode": 404001,
-      "messages": { "en": "Resource not found", "zh": "资源不存在" },
+      "messages": {
+        "en": "Resource not found",
+        "zh": "资源不存在"
+      },
       "module": "common",
       "status": 404
     },
     "COMMON-409-001": {
       "numericCode": 409001,
-      "messages": { "en": "Conflict", "zh": "资源冲突" },
+      "messages": {
+        "en": "Conflict",
+        "zh": "资源冲突"
+      },
       "module": "common",
       "status": 409
     },
     "COMMON-500-001": {
       "numericCode": 500001,
-      "messages": { "en": "Internal server error", "zh": "服务器内部错误" },
+      "messages": {
+        "en": "Internal server error",
+        "zh": "服务器内部错误"
+      },
       "module": "common",
       "status": 500
     },
     "COMMON-502-001": {
       "numericCode": 502001,
-      "messages": { "en": "Integration error", "zh": "外部服务集成错误" },
+      "messages": {
+        "en": "Integration error",
+        "zh": "外部服务集成错误"
+      },
       "module": "common",
       "status": 502
     },
     "COMMON-401-001": {
       "numericCode": 401001,
-      "messages": { "en": "Authentication required", "zh": "需要身份验证" },
+      "messages": {
+        "en": "Authentication required",
+        "zh": "需要身份验证"
+      },
       "module": "common",
       "status": 401
     },
     "COMMON-403-001": {
       "numericCode": 403001,
-      "messages": { "en": "Insufficient permission", "zh": "权限不足" },
+      "messages": {
+        "en": "Insufficient permission",
+        "zh": "权限不足"
+      },
       "module": "common",
       "status": 403
     },
     "RENDER-400-001": {
       "numericCode": 400101,
-      "messages": { "en": "Invalid render job request", "zh": "渲染任务请求无效" },
+      "messages": {
+        "en": "Invalid render job request",
+        "zh": "渲染任务请求无效"
+      },
       "module": "render",
       "status": 400
     },
     "RENDER-404-001": {
       "numericCode": 404101,
-      "messages": { "en": "Render job not found", "zh": "渲染任务不存在" },
+      "messages": {
+        "en": "Render job not found",
+        "zh": "渲染任务不存在"
+      },
       "module": "render",
       "status": 404
     },
     "RENDER-422-001": {
       "numericCode": 422101,
-      "messages": { "en": "Render quality check failed", "zh": "渲染质量检查未通过" },
+      "messages": {
+        "en": "Render quality check failed",
+        "zh": "渲染质量检查未通过"
+      },
       "module": "render",
       "status": 422
     },
     "RENDER-500-001": {
       "numericCode": 500101,
-      "messages": { "en": "Render execution failed", "zh": "渲染执行失败" },
+      "messages": {
+        "en": "Render execution failed",
+        "zh": "渲染执行失败"
+      },
       "module": "render",
       "status": 500
     },
     "RENDER-503-001": {
-      "numericCode": 503101,
-      "messages": { "en": "No render provider available", "zh": "无可用渲染提供者" },
+      "numericCode": 5032015,
+      "messages": {
+        "en": "No render provider available",
+        "zh": "无可用渲染提供者"
+      },
       "module": "render",
       "status": 503
     },
     "MEDIA-PROBE-500-001": {
       "numericCode": 5001101,
-      "messages": { "en": "Media probe failed", "zh": "媒体探测失败" },
+      "messages": {
+        "en": "Media probe failed",
+        "zh": "媒体探测失败"
+      },
       "module": "media-probe",
       "status": 500
     },
     "MEDIA-PROBE-400-001": {
       "numericCode": 4001101,
-      "messages": { "en": "Unsupported media format for probe", "zh": "不支持的媒体探测格式" },
+      "messages": {
+        "en": "Unsupported media format for probe",
+        "zh": "不支持的媒体探测格式"
+      },
       "module": "media-probe",
       "status": 400
     },
     "MEDIA-PROBE-404-001": {
       "numericCode": 4041101,
-      "messages": { "en": "Media file not found for probe", "zh": "媒体探测文件不存在" },
+      "messages": {
+        "en": "Media file not found for probe",
+        "zh": "媒体探测文件不存在"
+      },
       "module": "media-probe",
       "status": 404
     },
     "MEDIA-PROBE-408-001": {
       "numericCode": 4081101,
-      "messages": { "en": "Media probe timed out", "zh": "媒体探测超时" },
+      "messages": {
+        "en": "Media probe timed out",
+        "zh": "媒体探测超时"
+      },
       "module": "media-probe",
       "status": 408
     },
     "SUBTITLE-BURN-500-001": {
-      "numericCode": 5001201,
-      "messages": { "en": "Subtitle burn-in failed", "zh": "字幕烧录失败" },
+      "numericCode": 5032018,
+      "messages": {
+        "en": "Subtitle burn-in failed",
+        "zh": "字幕烧录失败"
+      },
       "module": "subtitle-burn-in",
       "status": 500
     },
     "SUBTITLE-BURN-400-001": {
       "numericCode": 4001201,
-      "messages": { "en": "Unsupported subtitle format", "zh": "不支持的字幕格式" },
+      "messages": {
+        "en": "Unsupported subtitle format",
+        "zh": "不支持的字幕格式"
+      },
       "module": "subtitle-burn-in",
       "status": 400
     },
     "SUBTITLE-BURN-404-001": {
-      "numericCode": 4041201,
-      "messages": { "en": "Subtitle font not found", "zh": "字幕字体不存在" },
+      "numericCode": 5032016,
+      "messages": {
+        "en": "Subtitle font not found",
+        "zh": "字幕字体不存在"
+      },
       "module": "subtitle-burn-in",
       "status": 404
     },
     "SUBTITLE-BURN-422-001": {
-      "numericCode": 4221201,
-      "messages": { "en": "Subtitle glyph missing in font", "zh": "字体中缺少字幕字形" },
+      "numericCode": 5032017,
+      "messages": {
+        "en": "Subtitle glyph missing in font",
+        "zh": "字体中缺少字幕字形"
+      },
       "module": "subtitle-burn-in",
       "status": 422
     },
     "SUBTITLE-400-001": {
       "numericCode": 400201,
-      "messages": { "en": "Subtitle parsing failed", "zh": "字幕解析失败" },
+      "messages": {
+        "en": "Subtitle parsing failed",
+        "zh": "字幕解析失败"
+      },
       "module": "subtitle",
       "status": 400
     },
     "SUBTITLE-400-002": {
       "numericCode": 400202,
-      "messages": { "en": "Unsupported subtitle format", "zh": "不支持的字幕格式" },
+      "messages": {
+        "en": "Unsupported subtitle format",
+        "zh": "不支持的字幕格式"
+      },
       "module": "subtitle",
       "status": 400
     },
     "SUBTITLE-404-001": {
       "numericCode": 404201,
-      "messages": { "en": "Subtitle font not found", "zh": "字幕字体不存在" },
+      "messages": {
+        "en": "Subtitle font not found",
+        "zh": "字幕字体不存在"
+      },
       "module": "subtitle",
       "status": 404
     },
     "SUBTITLE-422-001": {
       "numericCode": 422201,
-      "messages": { "en": "Font glyph coverage insufficient", "zh": "字体字形覆盖不足" },
+      "messages": {
+        "en": "Font glyph coverage insufficient",
+        "zh": "字体字形覆盖不足"
+      },
       "module": "subtitle",
       "status": 422
     },
     "EFFECT-400-001": {
       "numericCode": 400301,
-      "messages": { "en": "Invalid effect parameters", "zh": "特效参数无效" },
+      "messages": {
+        "en": "Invalid effect parameters",
+        "zh": "特效参数无效"
+      },
       "module": "effect",
       "status": 400
     },
     "EFFECT-404-001": {
-      "numericCode": 404301,
-      "messages": { "en": "Effect not found", "zh": "特效不存在" },
+      "numericCode": 5032003,
+      "messages": {
+        "en": "Effect not found",
+        "zh": "特效不存在"
+      },
       "module": "effect",
       "status": 404
     },
     "EFFECT-403-001": {
       "numericCode": 403301,
-      "messages": { "en": "Effect not available for current tier", "zh": "当前等级不可用此特效" },
+      "messages": {
+        "en": "Effect not available for current tier",
+        "zh": "当前等级不可用此特效"
+      },
       "module": "effect",
       "status": 403
     },
     "TIMELINE-400-001": {
       "numericCode": 400401,
-      "messages": { "en": "Invalid timeline data", "zh": "时间线数据无效" },
+      "messages": {
+        "en": "Invalid timeline data",
+        "zh": "时间线数据无效"
+      },
       "module": "timeline",
       "status": 400
     },
     "TIMELINE-422-001": {
       "numericCode": 422401,
-      "messages": { "en": "Timeline schema version incompatible", "zh": "时间线 schema 版本不兼容" },
+      "messages": {
+        "en": "Timeline schema version incompatible",
+        "zh": "时间线 schema 版本不兼容"
+      },
       "module": "timeline",
       "status": 422
     },
     "MIGRATION-400-001": {
       "numericCode": 400501,
-      "messages": { "en": "Migration plan not found", "zh": "迁移计划不存在" },
+      "messages": {
+        "en": "Migration plan not found",
+        "zh": "迁移计划不存在"
+      },
       "module": "migration",
       "status": 400
     },
     "MIGRATION-409-001": {
-      "numericCode": 409501,
-      "messages": { "en": "Migration conflict detected", "zh": "检测到迁移冲突" },
+      "numericCode": 5032004,
+      "messages": {
+        "en": "Migration conflict detected",
+        "zh": "检测到迁移冲突"
+      },
       "module": "migration",
       "status": 409
     },
     "MIGRATION-422-001": {
       "numericCode": 422501,
-      "messages": { "en": "Migration validation failed", "zh": "迁移验证失败" },
+      "messages": {
+        "en": "Migration validation failed",
+        "zh": "迁移验证失败"
+      },
       "module": "migration",
       "status": 422
     },
     "ENTITLEMENT-403-001": {
       "numericCode": 403601,
-      "messages": { "en": "Preset not allowed for current tier", "zh": "当前等级不允许使用此预设" },
+      "messages": {
+        "en": "Preset not allowed for current tier",
+        "zh": "当前等级不允许使用此预设"
+      },
       "module": "entitlement",
       "status": 403
     },
     "ENTITLEMENT-403-002": {
       "numericCode": 403602,
-      "messages": { "en": "Provider not allowed for current tier", "zh": "当前等级不允许使用此渲染提供者" },
+      "messages": {
+        "en": "Provider not allowed for current tier",
+        "zh": "当前等级不允许使用此渲染提供者"
+      },
       "module": "entitlement",
       "status": 403
     },
     "ENTITLEMENT-403-003": {
       "numericCode": 403603,
-      "messages": { "en": "GPU rendering not allowed for current tier", "zh": "当前等级不允许使用GPU渲染" },
+      "messages": {
+        "en": "GPU rendering not allowed for current tier",
+        "zh": "当前等级不允许使用GPU渲染"
+      },
       "module": "entitlement",
       "status": 403
     },
     "ENTITLEMENT-403-004": {
       "numericCode": 403604,
-      "messages": { "en": "Export format not allowed for current tier", "zh": "当前等级不允许使用此导出格式" },
+      "messages": {
+        "en": "Export format not allowed for current tier",
+        "zh": "当前等级不允许使用此导出格式"
+      },
       "module": "entitlement",
       "status": 403
     },
     "ENTITLEMENT-403-005": {
       "numericCode": 403605,
-      "messages": { "en": "Resolution exceeds current tier limit", "zh": "分辨率超出当前等级限制" },
+      "messages": {
+        "en": "Resolution exceeds current tier limit",
+        "zh": "分辨率超出当前等级限制"
+      },
       "module": "entitlement",
       "status": 403
     },
     "COST-402-001": {
       "numericCode": 402701,
-      "messages": { "en": "Budget exceeded. Please reduce export quality or contact administrator", "zh": "预算已超出，请降低导出质量或联系管理员" },
+      "messages": {
+        "en": "Budget exceeded. Please reduce export quality or contact administrator",
+        "zh": "预算已超出，请降低导出质量或联系管理员"
+      },
       "module": "cost",
       "status": 402
     },
     "COST-402-002": {
       "numericCode": 402702,
-      "messages": { "en": "Cost reservation failed", "zh": "成本预留失败" },
+      "messages": {
+        "en": "Cost reservation failed",
+        "zh": "成本预留失败"
+      },
       "module": "cost",
       "status": 402
     },
     "COST-402-003": {
       "numericCode": 402703,
-      "messages": { "en": "Approaching budget limit. Consider upgrading your plan", "zh": "接近预算限额，请考虑升级套餐" },
+      "messages": {
+        "en": "Approaching budget limit. Consider upgrading your plan",
+        "zh": "接近预算限额，请考虑升级套餐"
+      },
       "module": "cost",
       "status": 402
     },
     "USAGE-429-001": {
       "numericCode": 429801,
-      "messages": { "en": "Unusual usage detected. Your exports have been temporarily adjusted", "zh": "检测到异常用量，导出已临时调整" },
+      "messages": {
+        "en": "Unusual usage detected. Your exports have been temporarily adjusted",
+        "zh": "检测到异常用量，导出已临时调整"
+      },
       "module": "usage",
       "status": 429
     },
     "USAGE-429-002": {
       "numericCode": 429802,
-      "messages": { "en": "Soft limit applied. Service quality has been adjusted", "zh": "已应用软限制，服务质量已调整" },
+      "messages": {
+        "en": "Soft limit applied. Service quality has been adjusted",
+        "zh": "已应用软限制，服务质量已调整"
+      },
       "module": "usage",
       "status": 429
     },
     "USAGE-429-003": {
       "numericCode": 429803,
-      "messages": { "en": "Degraded to recommended preset due to usage patterns", "zh": "由于用量模式已降级到推荐预设" },
+      "messages": {
+        "en": "Degraded to recommended preset due to usage patterns",
+        "zh": "由于用量模式已降级到推荐预设"
+      },
       "module": "usage",
       "status": 429
     },
     "RECON-409-001": {
       "numericCode": 409901,
-      "messages": { "en": "Reconciliation difference found", "zh": "对账发现差异" },
+      "messages": {
+        "en": "Reconciliation difference found",
+        "zh": "对账发现差异"
+      },
       "module": "reconciliation",
       "status": 409
     },
     "PROVIDER-503-001": {
       "numericCode": 503101,
-      "messages": { "en": "Third-party provider is currently unhealthy", "zh": "第三方服务提供者当前不健康" },
+      "messages": {
+        "en": "Third-party provider is currently unhealthy",
+        "zh": "第三方服务提供者当前不健康"
+      },
       "module": "provider",
       "status": 503
     },
     "PROMPT-400-001": {
       "numericCode": 400601,
-      "messages": { "en": "Invalid prompt template request", "zh": "提示词模板请求无效" },
+      "messages": {
+        "en": "Invalid prompt template request",
+        "zh": "提示词模板请求无效"
+      },
       "module": "prompt",
       "status": 400
     },
     "PROMPT-400-002": {
       "numericCode": 400602,
-      "messages": { "en": "Missing required prompt variables", "zh": "缺少必需的提示词变量" },
+      "messages": {
+        "en": "Missing required prompt variables",
+        "zh": "缺少必需的提示词变量"
+      },
       "module": "prompt",
       "status": 400
     },
     "PROMPT-400-003": {
       "numericCode": 400603,
-      "messages": { "en": "Prompt variable validation failed", "zh": "提示词变量校验失败" },
+      "messages": {
+        "en": "Prompt variable validation failed",
+        "zh": "提示词变量校验失败"
+      },
       "module": "prompt",
       "status": 400
     },
     "PROMPT-404-001": {
-      "numericCode": 404601,
-      "messages": { "en": "Prompt template not found", "zh": "提示词模板不存在" },
+      "numericCode": 5032011,
+      "messages": {
+        "en": "Prompt template not found",
+        "zh": "提示词模板不存在"
+      },
       "module": "prompt",
       "status": 404
     },
     "PROMPT-409-001": {
-      "numericCode": 409601,
-      "messages": { "en": "Prompt template code already exists", "zh": "提示词模板编码已存在" },
+      "numericCode": 5032012,
+      "messages": {
+        "en": "Prompt template code already exists",
+        "zh": "提示词模板编码已存在"
+      },
       "module": "prompt",
       "status": 409
     },
     "PROMPT-403-001": {
-      "numericCode": 403601,
-      "messages": { "en": "Prompt blocked by safety policy", "zh": "提示词被安全策略拦截" },
+      "numericCode": 5032009,
+      "messages": {
+        "en": "Prompt blocked by safety policy",
+        "zh": "提示词被安全策略拦截"
+      },
       "module": "prompt",
       "status": 403
     },
     "PROMPT-403-002": {
-      "numericCode": 403602,
-      "messages": { "en": "Prompt requires manual review", "zh": "提示词需要人工复核" },
+      "numericCode": 5032010,
+      "messages": {
+        "en": "Prompt requires manual review",
+        "zh": "提示词需要人工复核"
+      },
       "module": "prompt",
       "status": 403
     },
     "PROMPT-422-001": {
-      "numericCode": 422601,
-      "messages": { "en": "Prompt risk analysis failed", "zh": "提示词风险分析失败" },
+      "numericCode": 5032013,
+      "messages": {
+        "en": "Prompt risk analysis failed",
+        "zh": "提示词风险分析失败"
+      },
       "module": "prompt",
       "status": 422
     },
     "PROMPT-422-002": {
-      "numericCode": 422602,
-      "messages": { "en": "Secret detected in prompt content", "zh": "提示词内容中检测到密钥" },
+      "numericCode": 5032014,
+      "messages": {
+        "en": "Secret detected in prompt content",
+        "zh": "提示词内容中检测到密钥"
+      },
       "module": "prompt",
       "status": 422
     },
     "PROMPT-500-001": {
       "numericCode": 500601,
-      "messages": { "en": "Prompt execution failed", "zh": "提示词执行失败" },
+      "messages": {
+        "en": "Prompt execution failed",
+        "zh": "提示词执行失败"
+      },
       "module": "prompt",
       "status": 500
     },
     "MONITORING-500-001": {
-      "numericCode": 500701,
-      "messages": { "en": "Monitoring service error", "zh": "监控服务异常" },
+      "numericCode": 5032005,
+      "messages": {
+        "en": "Monitoring service error",
+        "zh": "监控服务异常"
+      },
       "module": "monitoring",
       "status": 500
     },
     "MONITORING-503-001": {
-      "numericCode": 503701,
-      "messages": { "en": "Session replay service unavailable", "zh": "会话回放服务不可用" },
+      "numericCode": 5032006,
+      "messages": {
+        "en": "Session replay service unavailable",
+        "zh": "会话回放服务不可用"
+      },
       "module": "monitoring",
       "status": 503
     },
     "FEEDBACK-400-001": {
       "numericCode": 400801,
-      "messages": { "en": "Invalid feedback submission", "zh": "反馈提交无效" },
+      "messages": {
+        "en": "Invalid feedback submission",
+        "zh": "反馈提交无效"
+      },
       "module": "feedback",
       "status": 400
     },
     "FEEDBACK-500-001": {
       "numericCode": 500801,
-      "messages": { "en": "Feedback submission failed", "zh": "反馈提交失败" },
+      "messages": {
+        "en": "Feedback submission failed",
+        "zh": "反馈提交失败"
+      },
       "module": "feedback",
       "status": 500
     },
     "SECURITY-429-001": {
       "numericCode": 429901,
-      "messages": { "en": "Rate limit exceeded", "zh": "请求频率超限" },
+      "messages": {
+        "en": "Rate limit exceeded",
+        "zh": "请求频率超限"
+      },
       "module": "security",
       "status": 429
     },
     "SECURITY-401-001": {
       "numericCode": 401901,
-      "messages": { "en": "API key authentication required", "zh": "需要 API Key 认证" },
+      "messages": {
+        "en": "API key authentication required",
+        "zh": "需要 API Key 认证"
+      },
       "module": "security",
       "status": 401
     },
     "SECURITY-403-001": {
       "numericCode": 403901,
-      "messages": { "en": "IP not in whitelist", "zh": "IP 不在白名单中" },
+      "messages": {
+        "en": "IP not in whitelist",
+        "zh": "IP 不在白名单中"
+      },
       "module": "security",
       "status": 403
     },
     "ENTITLEMENT-404-001": {
       "numericCode": 404601,
-      "messages": { "en": "Entitlement grant not found", "zh": "权益授权不存在" },
+      "messages": {
+        "en": "Entitlement grant not found",
+        "zh": "权益授权不存在"
+      },
       "module": "entitlement",
       "status": 404
     },
     "ENTITLEMENT-404-002": {
       "numericCode": 404602,
-      "messages": { "en": "Entitlement override not found", "zh": "权益覆盖不存在" },
+      "messages": {
+        "en": "Entitlement override not found",
+        "zh": "权益覆盖不存在"
+      },
       "module": "entitlement",
       "status": 404
     },
     "ENTITLEMENT-404-003": {
       "numericCode": 404603,
-      "messages": { "en": "Entitlement bundle not found", "zh": "权益包不存在" },
+      "messages": {
+        "en": "Entitlement bundle not found",
+        "zh": "权益包不存在"
+      },
       "module": "entitlement",
       "status": 404
     },
     "ENTITLEMENT-404-004": {
       "numericCode": 404604,
-      "messages": { "en": "Quota profile not found", "zh": "配额配置不存在" },
+      "messages": {
+        "en": "Quota profile not found",
+        "zh": "配额配置不存在"
+      },
       "module": "entitlement",
       "status": 404
     },
     "ENTITLEMENT-404-005": {
       "numericCode": 404605,
-      "messages": { "en": "Workspace entitlement pool not found", "zh": "工作空间权益池不存在" },
+      "messages": {
+        "en": "Workspace entitlement pool not found",
+        "zh": "工作空间权益池不存在"
+      },
       "module": "entitlement",
       "status": 404
     },
     "ENTITLEMENT-409-001": {
       "numericCode": 409601,
-      "messages": { "en": "Entitlement grant already exists", "zh": "权益授权已存在" },
+      "messages": {
+        "en": "Entitlement grant already exists",
+        "zh": "权益授权已存在"
+      },
       "module": "entitlement",
       "status": 409
     },
     "ENTITLEMENT-409-002": {
       "numericCode": 409602,
-      "messages": { "en": "Entitlement bundle key already exists", "zh": "权益包编码已存在" },
+      "messages": {
+        "en": "Entitlement bundle key already exists",
+        "zh": "权益包编码已存在"
+      },
       "module": "entitlement",
       "status": 409
     },
     "ENTITLEMENT-409-003": {
       "numericCode": 409603,
-      "messages": { "en": "Quota profile key already exists", "zh": "配额配置编码已存在" },
+      "messages": {
+        "en": "Quota profile key already exists",
+        "zh": "配额配置编码已存在"
+      },
       "module": "entitlement",
       "status": 409
     },
     "ENTITLEMENT-410-001": {
       "numericCode": 410601,
-      "messages": { "en": "Entitlement grant has expired", "zh": "权益授权已过期" },
+      "messages": {
+        "en": "Entitlement grant has expired",
+        "zh": "权益授权已过期"
+      },
       "module": "entitlement",
       "status": 410
     },
     "ENTITLEMENT-410-002": {
       "numericCode": 410602,
-      "messages": { "en": "Entitlement override has expired", "zh": "权益覆盖已过期" },
+      "messages": {
+        "en": "Entitlement override has expired",
+        "zh": "权益覆盖已过期"
+      },
       "module": "entitlement",
       "status": 410
     },
     "ENTITLEMENT-422-001": {
       "numericCode": 422601,
-      "messages": { "en": "Insufficient workspace pool quota", "zh": "工作空间权益池配额不足" },
+      "messages": {
+        "en": "Insufficient workspace pool quota",
+        "zh": "工作空间权益池配额不足"
+      },
       "module": "entitlement",
       "status": 422
     },
     "ENTITLEMENT-422-002": {
       "numericCode": 422602,
-      "messages": { "en": "Invalid entitlement grant request", "zh": "权益授权请求无效" },
+      "messages": {
+        "en": "Invalid entitlement grant request",
+        "zh": "权益授权请求无效"
+      },
       "module": "entitlement",
       "status": 422
     },
     "ENTITLEMENT-422-003": {
       "numericCode": 422603,
-      "messages": { "en": "Invalid entitlement override request", "zh": "权益覆盖请求无效" },
+      "messages": {
+        "en": "Invalid entitlement override request",
+        "zh": "权益覆盖请求无效"
+      },
       "module": "entitlement",
       "status": 422
     },
     "ENTITLEMENT-422-004": {
       "numericCode": 422604,
-      "messages": { "en": "Invalid quota allocation request", "zh": "配额分配请求无效" },
+      "messages": {
+        "en": "Invalid quota allocation request",
+        "zh": "配额分配请求无效"
+      },
       "module": "entitlement",
       "status": 422
     },
     "ENTITLEMENT-422-005": {
       "numericCode": 422605,
-      "messages": { "en": "Cannot revoke already revoked grant", "zh": "无法撤销已撤销的授权" },
+      "messages": {
+        "en": "Cannot revoke already revoked grant",
+        "zh": "无法撤销已撤销的授权"
+      },
       "module": "entitlement",
       "status": 422
     },
     "ENTITLEMENT-429-001": {
       "numericCode": 429601,
-      "messages": { "en": "Quota limit exceeded", "zh": "配额限制已超出" },
+      "messages": {
+        "en": "Quota limit exceeded",
+        "zh": "配额限制已超出"
+      },
       "module": "entitlement",
-      "status": 422
+      "status": 429
     },
     "ENTITLEMENT-429-002": {
       "numericCode": 429602,
-      "messages": { "en": "API rate limit exceeded", "zh": "API 速率限制已超出" },
+      "messages": {
+        "en": "API rate limit exceeded",
+        "zh": "API 速率限制已超出"
+      },
       "module": "entitlement",
       "status": 429
     },
     "ENTITLEMENT-403-006": {
       "numericCode": 403606,
-      "messages": { "en": "Feature not allowed by entitlement", "zh": "权益不允许此功能" },
+      "messages": {
+        "en": "Feature not allowed by entitlement",
+        "zh": "权益不允许此功能"
+      },
       "module": "entitlement",
       "status": 403
     },
     "ENTITLEMENT-403-009": {
       "numericCode": 403609,
-      "messages": { "en": "Entitlement decision denied", "zh": "权益决策被拒绝" },
+      "messages": {
+        "en": "Entitlement decision denied",
+        "zh": "权益决策被拒绝"
+      },
       "module": "entitlement",
       "status": 403
     },
     "ENTITLEMENT-409-004": {
       "numericCode": 409604,
-      "messages": { "en": "Entitlement policy conflict", "zh": "权益策略冲突" },
+      "messages": {
+        "en": "Entitlement policy conflict",
+        "zh": "权益策略冲突"
+      },
       "module": "entitlement",
       "status": 409
     },
     "ENTITLEMENT-422-006": {
       "numericCode": 422606,
-      "messages": { "en": "Invalid entitlement scope", "zh": "权益范围无效" },
+      "messages": {
+        "en": "Invalid entitlement scope",
+        "zh": "权益范围无效"
+      },
       "module": "entitlement",
       "status": 422
     },
     "ENTITLEMENT-422-007": {
       "numericCode": 422607,
-      "messages": { "en": "Invalid entitlement subject", "zh": "权益主体无效" },
+      "messages": {
+        "en": "Invalid entitlement subject",
+        "zh": "权益主体无效"
+      },
       "module": "entitlement",
       "status": 422
     },
     "ENTITLEMENT-422-008": {
       "numericCode": 422608,
-      "messages": { "en": "Entitlement revoke failed", "zh": "权益撤销失败" },
+      "messages": {
+        "en": "Entitlement revoke failed",
+        "zh": "权益撤销失败"
+      },
       "module": "entitlement",
       "status": 422
     },
     "ACCESS-403-001": {
       "numericCode": 4031001,
-      "messages": { "en": "Access permission missing", "zh": "缺少访问权限" },
+      "messages": {
+        "en": "Access permission missing",
+        "zh": "缺少访问权限"
+      },
       "module": "access",
       "status": 403
     },
     "ACCESS-403-002": {
       "numericCode": 4031002,
-      "messages": { "en": "Access role required", "zh": "需要访问角色" },
+      "messages": {
+        "en": "Access role required",
+        "zh": "需要访问角色"
+      },
       "module": "access",
       "status": 403
     },
     "ACCESS-403-003": {
       "numericCode": 4031003,
-      "messages": { "en": "Access denied by policy", "zh": "策略拒绝访问" },
+      "messages": {
+        "en": "Access denied by policy",
+        "zh": "策略拒绝访问"
+      },
       "module": "access",
       "status": 403
     },
     "ACCESS-429-001": {
       "numericCode": 4291001,
-      "messages": { "en": "Access requires review", "zh": "访问需要审核" },
+      "messages": {
+        "en": "Access requires review",
+        "zh": "访问需要审核"
+      },
       "module": "access",
       "status": 429
     },
     "NAVIGATION-404-001": {
-      "numericCode": 4041101,
-      "messages": { "en": "Navigation route not found", "zh": "导航路由不存在" },
+      "numericCode": 5032007,
+      "messages": {
+        "en": "Navigation route not found",
+        "zh": "导航路由不存在"
+      },
       "module": "navigation",
       "status": 404
     },
     "NAVIGATION-403-001": {
       "numericCode": 4031101,
-      "messages": { "en": "Navigation route disabled", "zh": "导航路由已禁用" },
+      "messages": {
+        "en": "Navigation route disabled",
+        "zh": "导航路由已禁用"
+      },
       "module": "navigation",
       "status": 403
     },
     "NAVIGATION-403-002": {
       "numericCode": 4031102,
-      "messages": { "en": "Navigation permission missing", "zh": "缺少导航权限" },
+      "messages": {
+        "en": "Navigation permission missing",
+        "zh": "缺少导航权限"
+      },
       "module": "navigation",
       "status": 403
     },
     "NAVIGATION-403-003": {
       "numericCode": 4031103,
-      "messages": { "en": "Navigation entitlement required", "zh": "需要导航权益" },
+      "messages": {
+        "en": "Navigation entitlement required",
+        "zh": "需要导航权益"
+      },
       "module": "navigation",
       "status": 403
     },
     "NAVIGATION-403-004": {
       "numericCode": 4031104,
-      "messages": { "en": "Navigation tier required", "zh": "需要导航等级" },
+      "messages": {
+        "en": "Navigation tier required",
+        "zh": "需要导航等级"
+      },
       "module": "navigation",
       "status": 403
     },
     "BILLING-404-001": {
       "numericCode": 4041201,
-      "messages": { "en": "Billing plan not found", "zh": "计费套餐不存在" },
+      "messages": {
+        "en": "Billing plan not found",
+        "zh": "计费套餐不存在"
+      },
       "module": "billing",
       "status": 404
     },
     "BILLING-404-002": {
       "numericCode": 4041202,
-      "messages": { "en": "Billing pricing rule not found", "zh": "计费定价规则不存在" },
+      "messages": {
+        "en": "Billing pricing rule not found",
+        "zh": "计费定价规则不存在"
+      },
       "module": "billing",
       "status": 404
     },
     "BILLING-404-003": {
       "numericCode": 4041203,
-      "messages": { "en": "Billing meter not found", "zh": "计费计量器不存在" },
+      "messages": {
+        "en": "Billing meter not found",
+        "zh": "计费计量器不存在"
+      },
       "module": "billing",
       "status": 404
     },
     "BILLING-422-001": {
       "numericCode": 4221201,
-      "messages": { "en": "Billing quote failed", "zh": "计费报价失败" },
+      "messages": {
+        "en": "Billing quote failed",
+        "zh": "计费报价失败"
+      },
       "module": "billing",
       "status": 422
     },
     "BILLING-402-001": {
       "numericCode": 4021201,
-      "messages": { "en": "Billing credit insufficient", "zh": "计费余额不足" },
+      "messages": {
+        "en": "Billing credit insufficient",
+        "zh": "计费余额不足"
+      },
       "module": "billing",
       "status": 402
     },
     "BILLING-409-001": {
       "numericCode": 4091201,
-      "messages": { "en": "Billing reservation failed", "zh": "计费预留失败" },
+      "messages": {
+        "en": "Billing reservation failed",
+        "zh": "计费预留失败"
+      },
       "module": "billing",
       "status": 409
     },
     "BILLING-422-002": {
       "numericCode": 4221202,
-      "messages": { "en": "Billing usage record failed", "zh": "计费用量记录失败" },
+      "messages": {
+        "en": "Billing usage record failed",
+        "zh": "计费用量记录失败"
+      },
       "module": "billing",
       "status": 422
     },
     "BILLING-500-001": {
       "numericCode": 5001201,
-      "messages": { "en": "Billing ledger write failed", "zh": "计费账本写入失败" },
+      "messages": {
+        "en": "Billing ledger write failed",
+        "zh": "计费账本写入失败"
+      },
       "module": "billing",
       "status": 500
     },
     "BILLING-404-004": {
       "numericCode": 4041204,
-      "messages": { "en": "Billing subscription not found", "zh": "计费订阅不存在" },
+      "messages": {
+        "en": "Billing subscription not found",
+        "zh": "计费订阅不存在"
+      },
       "module": "billing",
       "status": 404
     },
     "BILLING-409-002": {
       "numericCode": 4091202,
-      "messages": { "en": "Billing custom price conflict", "zh": "计费自定义价格冲突" },
+      "messages": {
+        "en": "Billing custom price conflict",
+        "zh": "计费自定义价格冲突"
+      },
       "module": "billing",
       "status": 409
     },
     "BILLING-503-001": {
       "numericCode": 5031201,
-      "messages": { "en": "Billing payment provider stub", "zh": "计费支付提供者存根" },
+      "messages": {
+        "en": "Billing payment provider stub",
+        "zh": "计费支付提供者存根"
+      },
       "module": "billing",
       "status": 503
     },
     "POLICY-500-001": {
-      "numericCode": 500701,
-      "messages": { "en": "Policy evaluation failed", "zh": "策略评估失败" },
+      "numericCode": 5032008,
+      "messages": {
+        "en": "Policy evaluation failed",
+        "zh": "策略评估失败"
+      },
       "module": "policy",
       "status": 500
     },
     "POLICY-422-001": {
       "numericCode": 422701,
-      "messages": { "en": "Policy condition invalid", "zh": "策略条件无效" },
+      "messages": {
+        "en": "Policy condition invalid",
+        "zh": "策略条件无效"
+      },
       "module": "policy",
       "status": 422
     },
     "WORKSPACE-404-001": {
       "numericCode": 4041301,
-      "messages": { "en": "Workspace not found", "zh": "工作空间不存在" },
+      "messages": {
+        "en": "Workspace not found",
+        "zh": "工作空间不存在"
+      },
       "module": "workspace",
       "status": 404
     },
     "WORKSPACE-404-002": {
       "numericCode": 4041302,
-      "messages": { "en": "Workspace member not found", "zh": "工作空间成员不存在" },
+      "messages": {
+        "en": "Workspace member not found",
+        "zh": "工作空间成员不存在"
+      },
       "module": "workspace",
       "status": 404
     },
     "WORKSPACE-404-003": {
       "numericCode": 4041303,
-      "messages": { "en": "Workspace role not found", "zh": "工作空间角色不存在" },
+      "messages": {
+        "en": "Workspace role not found",
+        "zh": "工作空间角色不存在"
+      },
       "module": "workspace",
       "status": 404
     },
     "WORKSPACE-404-004": {
       "numericCode": 4041304,
-      "messages": { "en": "Workspace group not found", "zh": "工作空间组不存在" },
+      "messages": {
+        "en": "Workspace group not found",
+        "zh": "工作空间组不存在"
+      },
       "module": "workspace",
       "status": 404
     },
     "WORKSPACE-429-001": {
       "numericCode": 4291301,
-      "messages": { "en": "Workspace entitlement pool exhausted", "zh": "工作空间权益池已耗尽" },
+      "messages": {
+        "en": "Workspace entitlement pool exhausted",
+        "zh": "工作空间权益池已耗尽"
+      },
       "module": "workspace",
       "status": 429
     },
     "WORKSPACE-409-001": {
       "numericCode": 4091301,
-      "messages": { "en": "Workspace grant over allocation", "zh": "工作空间授权超额分配" },
+      "messages": {
+        "en": "Workspace grant over allocation",
+        "zh": "工作空间授权超额分配"
+      },
       "module": "workspace",
       "status": 409
     },
     "GRAPHQL-400-001": {
       "numericCode": 4001401,
-      "messages": { "en": "GraphQL query too complex", "zh": "GraphQL 查询过于复杂" },
+      "messages": {
+        "en": "GraphQL query too complex",
+        "zh": "GraphQL 查询过于复杂"
+      },
       "module": "graphql",
       "status": 400
     },
     "GRAPHQL-400-002": {
       "numericCode": 4001402,
-      "messages": { "en": "GraphQL query too deep", "zh": "GraphQL 查询嵌套过深" },
+      "messages": {
+        "en": "GraphQL query too deep",
+        "zh": "GraphQL 查询嵌套过深"
+      },
       "module": "graphql",
       "status": 400
     },
     "GRAPHQL-400-003": {
       "numericCode": 4001403,
-      "messages": { "en": "GraphQL page size exceeded", "zh": "GraphQL 分页大小超出限制" },
+      "messages": {
+        "en": "GraphQL page size exceeded",
+        "zh": "GraphQL 分页大小超出限制"
+      },
       "module": "graphql",
       "status": 400
     },
     "GRAPHQL-403-001": {
       "numericCode": 4031401,
-      "messages": { "en": "GraphQL access denied", "zh": "GraphQL 访问被拒绝" },
+      "messages": {
+        "en": "GraphQL access denied",
+        "zh": "GraphQL 访问被拒绝"
+      },
       "module": "graphql",
       "status": 403
     },
     "GRAPHQL-403-002": {
       "numericCode": 4031402,
-      "messages": { "en": "GraphQL field access denied", "zh": "GraphQL 字段访问被拒绝" },
+      "messages": {
+        "en": "GraphQL field access denied",
+        "zh": "GraphQL 字段访问被拒绝"
+      },
       "module": "graphql",
       "status": 403
     },
     "GRAPHQL-400-004": {
       "numericCode": 4001404,
-      "messages": { "en": "GraphQL schema error", "zh": "GraphQL schema 错误" },
+      "messages": {
+        "en": "GraphQL schema error",
+        "zh": "GraphQL schema 错误"
+      },
       "module": "graphql",
       "status": 400
     },
     "GRAPHQL-500-001": {
       "numericCode": 5001401,
-      "messages": { "en": "GraphQL resolver failed", "zh": "GraphQL 解析器执行失败" },
+      "messages": {
+        "en": "GraphQL resolver failed",
+        "zh": "GraphQL 解析器执行失败"
+      },
       "module": "graphql",
       "status": 500
     },
     "GRAPHQL-500-002": {
       "numericCode": 5001402,
-      "messages": { "en": "GraphQL data loader failed", "zh": "GraphQL 数据加载器失败" },
+      "messages": {
+        "en": "GraphQL data loader failed",
+        "zh": "GraphQL 数据加载器失败"
+      },
       "module": "graphql",
       "status": 500
     },
     "GRAPHQL-405-001": {
       "numericCode": 4051401,
-      "messages": { "en": "GraphQL operation not allowed", "zh": "GraphQL 操作不允许" },
+      "messages": {
+        "en": "GraphQL operation not allowed",
+        "zh": "GraphQL 操作不允许"
+      },
       "module": "graphql",
       "status": 405
     },
     "GRAPHQL-404-001": {
       "numericCode": 4041401,
-      "messages": { "en": "GraphQL playground disabled", "zh": "GraphQL 调试工具已禁用" },
+      "messages": {
+        "en": "GraphQL playground disabled",
+        "zh": "GraphQL 调试工具已禁用"
+      },
       "module": "graphql",
       "status": 404
     },
     "FF-404-001": {
       "numericCode": 404701,
-      "messages": { "en": "Feature flag not found", "zh": "功能标志不存在" },
+      "messages": {
+        "en": "Feature flag not found",
+        "zh": "功能标志不存在"
+      },
       "module": "feature-flag",
       "status": 404
     },
     "FF-400-002": {
       "numericCode": 400702,
-      "messages": { "en": "Feature flag is disabled", "zh": "功能标志已禁用" },
+      "messages": {
+        "en": "Feature flag is disabled",
+        "zh": "功能标志已禁用"
+      },
       "module": "feature-flag",
       "status": 400
     },
     "FF-500-001": {
       "numericCode": 500701,
-      "messages": { "en": "Feature flag evaluation failed", "zh": "功能标志评估失败" },
+      "messages": {
+        "en": "Feature flag evaluation failed",
+        "zh": "功能标志评估失败"
+      },
       "module": "feature-flag",
       "status": 500
     },
     "FF-503-001": {
       "numericCode": 503701,
-      "messages": { "en": "Feature flag provider unavailable", "zh": "功能标志提供者不可用" },
+      "messages": {
+        "en": "Feature flag provider unavailable",
+        "zh": "功能标志提供者不可用"
+      },
       "module": "feature-flag",
       "status": 503
     },
     "FF-400-003": {
       "numericCode": 400703,
-      "messages": { "en": "Feature flag context is invalid", "zh": "功能标志上下文无效" },
+      "messages": {
+        "en": "Feature flag context is invalid",
+        "zh": "功能标志上下文无效"
+      },
       "module": "feature-flag",
       "status": 400
     },
     "FF-400-004": {
       "numericCode": 400704,
-      "messages": { "en": "Feature flag targeting rule is invalid", "zh": "功能标志目标规则无效" },
+      "messages": {
+        "en": "Feature flag targeting rule is invalid",
+        "zh": "功能标志目标规则无效"
+      },
       "module": "feature-flag",
       "status": 400
     },
     "FF-400-005": {
       "numericCode": 400705,
-      "messages": { "en": "Feature flag variant is invalid", "zh": "功能标志变体无效" },
+      "messages": {
+        "en": "Feature flag variant is invalid",
+        "zh": "功能标志变体无效"
+      },
       "module": "feature-flag",
       "status": 400
     },
     "FF-400-006": {
       "numericCode": 400706,
-      "messages": { "en": "Feature flag rollout percentage is invalid", "zh": "功能标志灰度百分比无效" },
+      "messages": {
+        "en": "Feature flag rollout percentage is invalid",
+        "zh": "功能标志灰度百分比无效"
+      },
       "module": "feature-flag",
       "status": 400
     },
     "FF-403-001": {
       "numericCode": 403701,
-      "messages": { "en": "Feature flag access denied", "zh": "功能标志访问被拒绝" },
+      "messages": {
+        "en": "Feature flag access denied",
+        "zh": "功能标志访问被拒绝"
+      },
       "module": "feature-flag",
       "status": 403
     },
     "FF-403-002": {
       "numericCode": 403702,
-      "messages": { "en": "Feature flag operation not allowed", "zh": "功能标志操作不允许" },
+      "messages": {
+        "en": "Feature flag operation not allowed",
+        "zh": "功能标志操作不允许"
+      },
       "module": "feature-flag",
       "status": 403
     },
     "FF-500-002": {
       "numericCode": 500702,
-      "messages": { "en": "OpenFeature initialization failed", "zh": "OpenFeature 初始化失败" },
+      "messages": {
+        "en": "OpenFeature initialization failed",
+        "zh": "OpenFeature 初始化失败"
+      },
       "module": "feature-flag",
       "status": 500
     },
     "FF-403-003": {
       "numericCode": 403703,
-      "messages": { "en": "Policy denied by feature flag", "zh": "策略被功能标志拒绝" },
+      "messages": {
+        "en": "Policy denied by feature flag",
+        "zh": "策略被功能标志拒绝"
+      },
       "module": "feature-flag",
       "status": 403
     },
     "FF-403-004": {
       "numericCode": 403704,
-      "messages": { "en": "Navigation disabled by feature flag", "zh": "导航被功能标志禁用" },
+      "messages": {
+        "en": "Navigation disabled by feature flag",
+        "zh": "导航被功能标志禁用"
+      },
       "module": "feature-flag",
       "status": 403
     },
     "NLQ-400-001": {
       "numericCode": 4001501,
-      "messages": { "en": "Natural language query is disabled", "zh": "自然语言查询已禁用" },
+      "messages": {
+        "en": "Natural language query is disabled",
+        "zh": "自然语言查询已禁用"
+      },
       "module": "nlq",
       "status": 400
     },
     "NLQ-400-002": {
       "numericCode": 4001502,
-      "messages": { "en": "Generated SQL failed safety validation", "zh": "生成的SQL未通过安全校验" },
+      "messages": {
+        "en": "Generated SQL failed safety validation",
+        "zh": "生成的SQL未通过安全校验"
+      },
       "module": "nlq",
       "status": 400
     },
     "NLQ-400-003": {
       "numericCode": 4001503,
-      "messages": { "en": "SQL operation not allowed", "zh": "SQL操作不允许" },
+      "messages": {
+        "en": "SQL operation not allowed",
+        "zh": "SQL操作不允许"
+      },
       "module": "nlq",
       "status": 400
     },
     "NLQ-400-004": {
       "numericCode": 4001504,
-      "messages": { "en": "Query missing required scope conditions", "zh": "查询缺少必需的范围条件" },
+      "messages": {
+        "en": "Query missing required scope conditions",
+        "zh": "查询缺少必需的范围条件"
+      },
       "module": "nlq",
       "status": 400
     },
     "NLQ-400-005": {
       "numericCode": 4001505,
-      "messages": { "en": "Query must include a LIMIT clause", "zh": "查询必须包含LIMIT子句" },
+      "messages": {
+        "en": "Query must include a LIMIT clause",
+        "zh": "查询必须包含LIMIT子句"
+      },
       "module": "nlq",
       "status": 400
     },
     "NLQ-400-006": {
       "numericCode": 4001506,
-      "messages": { "en": "Query exceeds complexity threshold", "zh": "查询超出复杂度阈值" },
+      "messages": {
+        "en": "Query exceeds complexity threshold",
+        "zh": "查询超出复杂度阈值"
+      },
       "module": "nlq",
       "status": 400
     },
     "NLQ-402-001": {
       "numericCode": 4021501,
-      "messages": { "en": "Query cost exceeds allowed threshold", "zh": "查询成本超出允许阈值" },
+      "messages": {
+        "en": "Query cost exceeds allowed threshold",
+        "zh": "查询成本超出允许阈值"
+      },
       "module": "nlq",
       "status": 402
     },
     "NLQ-403-001": {
       "numericCode": 4031501,
-      "messages": { "en": "Access denied for requested datasets", "zh": "请求的数据集访问被拒绝" },
+      "messages": {
+        "en": "Access denied for requested datasets",
+        "zh": "请求的数据集访问被拒绝"
+      },
       "module": "nlq",
       "status": 403
     },
     "NLQ-404-001": {
       "numericCode": 4041501,
-      "messages": { "en": "Report not found", "zh": "报告不存在" },
+      "messages": {
+        "en": "Report not found",
+        "zh": "报告不存在"
+      },
       "module": "nlq",
       "status": 404
     },
     "NLQ-408-001": {
       "numericCode": 4081501,
-      "messages": { "en": "Query execution timed out", "zh": "查询执行超时" },
+      "messages": {
+        "en": "Query execution timed out",
+        "zh": "查询执行超时"
+      },
       "module": "nlq",
       "status": 408
     },
     "NLQ-410-001": {
       "numericCode": 4101501,
-      "messages": { "en": "Query preview has expired", "zh": "查询预览已过期" },
+      "messages": {
+        "en": "Query preview has expired",
+        "zh": "查询预览已过期"
+      },
       "module": "nlq",
       "status": 410
     },
     "NLQ-425-001": {
       "numericCode": 4251501,
-      "messages": { "en": "Execution requires explicit confirmation", "zh": "执行需要明确确认" },
+      "messages": {
+        "en": "Execution requires explicit confirmation",
+        "zh": "执行需要明确确认"
+      },
       "module": "nlq",
       "status": 425
     },
     "NLQ-503-001": {
       "numericCode": 5031501,
-      "messages": { "en": "AI provider unavailable, using fallback", "zh": "AI提供者不可用，使用回退" },
+      "messages": {
+        "en": "AI provider unavailable, using fallback",
+        "zh": "AI提供者不可用，使用回退"
+      },
       "module": "nlq",
       "status": 503
     },
     "NOTIFICATION-404-001": {
       "numericCode": 4042001,
-      "messages": { "en": "Notification event not found", "zh": "通知事件不存在" },
+      "messages": {
+        "en": "Notification event not found",
+        "zh": "通知事件不存在"
+      },
       "module": "notification",
       "status": 404
     },
     "NOTIFICATION-400-001": {
       "numericCode": 4002001,
-      "messages": { "en": "Notification event is not subscribable", "zh": "通知事件不可订阅" },
+      "messages": {
+        "en": "Notification event is not subscribable",
+        "zh": "通知事件不可订阅"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-404-002": {
       "numericCode": 4042002,
-      "messages": { "en": "Notification subscription not found", "zh": "通知订阅不存在" },
+      "messages": {
+        "en": "Notification subscription not found",
+        "zh": "通知订阅不存在"
+      },
       "module": "notification",
       "status": 404
     },
     "NOTIFICATION-400-002": {
       "numericCode": 4002002,
-      "messages": { "en": "Notification subscription update failed", "zh": "通知订阅更新失败" },
+      "messages": {
+        "en": "Notification subscription update failed",
+        "zh": "通知订阅更新失败"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-404-003": {
       "numericCode": 4042003,
-      "messages": { "en": "Notification channel binding not found", "zh": "通知渠道绑定不存在" },
+      "messages": {
+        "en": "Notification channel binding not found",
+        "zh": "通知渠道绑定不存在"
+      },
       "module": "notification",
       "status": 404
     },
     "NOTIFICATION-400-003": {
       "numericCode": 4002003,
-      "messages": { "en": "Notification channel type unsupported", "zh": "不支持的通知渠道类型" },
+      "messages": {
+        "en": "Notification channel type unsupported",
+        "zh": "不支持的通知渠道类型"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-400-004": {
       "numericCode": 4002004,
-      "messages": { "en": "Notification channel verification failed", "zh": "通知渠道验证失败" },
+      "messages": {
+        "en": "Notification channel verification failed",
+        "zh": "通知渠道验证失败"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-400-005": {
       "numericCode": 4002005,
-      "messages": { "en": "Notification channel test failed", "zh": "通知渠道测试失败" },
+      "messages": {
+        "en": "Notification channel test failed",
+        "zh": "通知渠道测试失败"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-400-006": {
       "numericCode": 4002006,
-      "messages": { "en": "Invalid webhook URL", "zh": "Webhook URL 无效" },
+      "messages": {
+        "en": "Invalid webhook URL",
+        "zh": "Webhook URL 无效"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-403-001": {
       "numericCode": 4032001,
-      "messages": { "en": "Webhook URL resolved to private/internal IP and was blocked", "zh": "Webhook URL 解析到内部/私有 IP，已被阻止" },
+      "messages": {
+        "en": "Webhook URL resolved to private/internal IP and was blocked",
+        "zh": "Webhook URL 解析到内部/私有 IP，已被阻止"
+      },
       "module": "notification",
       "status": 403
     },
     "NOTIFICATION-400-007": {
       "numericCode": 4002007,
-      "messages": { "en": "Webhook signature verification failed", "zh": "Webhook 签名验证失败" },
+      "messages": {
+        "en": "Webhook signature verification failed",
+        "zh": "Webhook 签名验证失败"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-503-001": {
       "numericCode": 5032001,
-      "messages": { "en": "Notification provider unavailable", "zh": "通知提供者不可用" },
+      "messages": {
+        "en": "Notification provider unavailable",
+        "zh": "通知提供者不可用"
+      },
       "module": "notification",
       "status": 503
     },
     "NOTIFICATION-503-002": {
       "numericCode": 5032002,
-      "messages": { "en": "Novu notification provider is not configured", "zh": "Novu 通知提供者未配置" },
+      "messages": {
+        "en": "Novu notification provider is not configured",
+        "zh": "Novu 通知提供者未配置"
+      },
       "module": "notification",
       "status": 503
     },
     "NOTIFICATION-400-008": {
       "numericCode": 4002008,
-      "messages": { "en": "Notification delivery failed", "zh": "通知投递失败" },
+      "messages": {
+        "en": "Notification delivery failed",
+        "zh": "通知投递失败"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-400-009": {
       "numericCode": 4002009,
-      "messages": { "en": "Notification delivery retry exhausted", "zh": "通知投递重试次数已耗尽" },
+      "messages": {
+        "en": "Notification delivery retry exhausted",
+        "zh": "通知投递重试次数已耗尽"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-403-002": {
       "numericCode": 4032002,
-      "messages": { "en": "Notification access denied", "zh": "通知访问被拒绝" },
+      "messages": {
+        "en": "Notification access denied",
+        "zh": "通知访问被拒绝"
+      },
       "module": "notification",
       "status": 403
     },
     "NOTIFICATION-402-001": {
       "numericCode": 4022001,
-      "messages": { "en": "Entitlement required for this notification feature", "zh": "此通知功能需要权益授权" },
+      "messages": {
+        "en": "Entitlement required for this notification feature",
+        "zh": "此通知功能需要权益授权"
+      },
       "module": "notification",
       "status": 402
     },
     "NOTIFICATION-429-001": {
       "numericCode": 4292001,
-      "messages": { "en": "Notification quota exceeded", "zh": "通知配额已超出" },
+      "messages": {
+        "en": "Notification quota exceeded",
+        "zh": "通知配额已超出"
+      },
       "module": "notification",
       "status": 429
     },
     "NOTIFICATION-400-010": {
       "numericCode": 4002010,
-      "messages": { "en": "Critical notification event cannot be disabled", "zh": "关键通知事件不可关闭" },
+      "messages": {
+        "en": "Critical notification event cannot be disabled",
+        "zh": "关键通知事件不可关闭"
+      },
       "module": "notification",
       "status": 400
     },
     "NOTIFICATION-400-011": {
       "numericCode": 4002011,
-      "messages": { "en": "Notification preference is invalid", "zh": "通知偏好设置无效" },
+      "messages": {
+        "en": "Notification preference is invalid",
+        "zh": "通知偏好设置无效"
+      },
       "module": "notification",
       "status": 400
     },
     "ASSET-404-001": {
       "numericCode": 404301,
-      "messages": { "en": "Timeline asset not found in registry", "zh": "时间线资产未在注册表中找到" },
+      "messages": {
+        "en": "Timeline asset not found in registry",
+        "zh": "时间线资产未在注册表中找到"
+      },
       "module": "asset",
       "status": 404
     },
     "ASSET-409-001": {
       "numericCode": 409301,
-      "messages": { "en": "Timeline asset is still referenced and cannot be removed", "zh": "时间线资产仍被引用，无法删除" },
+      "messages": {
+        "en": "Timeline asset is still referenced and cannot be removed",
+        "zh": "时间线资产仍被引用，无法删除"
+      },
       "module": "asset",
       "status": 409
     },
     "ASSET-410-001": {
       "numericCode": 410301,
-      "messages": { "en": "Timeline asset has been tombstoned", "zh": "时间线资产已标记删除（tombstone）" },
+      "messages": {
+        "en": "Timeline asset has been tombstoned",
+        "zh": "时间线资产已标记删除（tombstone）"
+      },
       "module": "asset",
       "status": 410
     },
     "STORAGE-404-001": {
       "numericCode": 404401,
-      "messages": { "en": "Storage object not found", "zh": "存储对象不存在" },
+      "messages": {
+        "en": "Storage object not found",
+        "zh": "存储对象不存在"
+      },
       "module": "storage",
       "status": 404
     },
     "STORAGE-403-001": {
       "numericCode": 403401,
-      "messages": { "en": "Storage orphan purge requires a valid approval token", "zh": "存储孤儿清理需要有效的审批令牌" },
+      "messages": {
+        "en": "Storage orphan purge requires a valid approval token",
+        "zh": "存储孤儿清理需要有效的审批令牌"
+      },
       "module": "storage",
       "status": 403
     },
+    "STORAGE-400-001": {
+      "numericCode": 400402,
+      "messages": {
+        "en": "Invalid storage path: path traversal or illegal characters detected",
+        "zh": "非法存储路径: 检测到路径遍历或非法字符"
+      },
+      "module": "storage",
+      "status": 400
+    },
     "ARTIFACT-404-001": {
       "numericCode": 404501,
-      "messages": { "en": "Artifact not found in catalog", "zh": "制品目录中未找到该制品" },
+      "messages": {
+        "en": "Artifact not found in catalog",
+        "zh": "制品目录中未找到该制品"
+      },
       "module": "artifact",
       "status": 404
     },
     "ARTIFACT-409-001": {
       "numericCode": 409501,
-      "messages": { "en": "Artifact is still referenced and cannot be purged", "zh": "制品仍被引用，无法清除" },
+      "messages": {
+        "en": "Artifact is still referenced and cannot be purged",
+        "zh": "制品仍被引用，无法清除"
+      },
       "module": "artifact",
       "status": 409
     },
     "ARTIFACT-410-001": {
       "numericCode": 410501,
-      "messages": { "en": "Artifact has been tombstoned", "zh": "制品已标记删除（tombstone）" },
+      "messages": {
+        "en": "Artifact has been tombstoned",
+        "zh": "制品已标记删除（tombstone）"
+      },
       "module": "artifact",
       "status": 410
     }

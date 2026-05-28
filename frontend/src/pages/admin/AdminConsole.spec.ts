@@ -148,7 +148,7 @@ describe('AdminConsole hidden from normal user', () => {
     })
     await new Promise(r => setTimeout(r, 50))
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('Feature Flag Management')
+    expect(wrapper.text()).toContain('Feature Flags')
   })
 
   it('shows feature flags summary section', async () => {

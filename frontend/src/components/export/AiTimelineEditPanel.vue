@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { AiTimelineAPI, IncrementalRenderAPI } from '@/api'
 import type { AiProposalDto } from '@/api/ai-timeline'
 import type { RenderJob } from '@/types'
-import { getTenantId } from '@/utils/tenant'
+import { useProjectStore } from '@/stores/project'
 import { useExportUiStore } from '@/stores/exportUi'
 
 const props = defineProps<{
@@ -50,7 +50,7 @@ async function runEdit() {
   loading.value = true
   lastResult.value = null
   try {
-    const tenantId = getTenantId()
+    const tenantId = useProjectStore().currentTenant
     const body = {
       instruction: instruction.value.trim(),
       editSessionId: editSessionId.value?.trim() || undefined,
@@ -78,7 +78,7 @@ async function runEdit() {
 
 async function loadBaseFromJob() {
   if (!baseJobId.value) return
-  const tenantId = getTenantId()
+  const tenantId = useProjectStore().currentTenant
   try {
     const { timelineJson } = await IncrementalRenderAPI.getJobTimeline(
       tenantId,

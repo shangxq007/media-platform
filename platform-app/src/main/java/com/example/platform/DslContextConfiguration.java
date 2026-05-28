@@ -43,12 +43,9 @@ public class DslContextConfiguration implements BeanFactoryPostProcessor {
                     .load();
             flyway.migrate();
             flywayMigrated = true;
-            try {
-                BuiltinDataInitializer initializer = beanFactory.getBean(BuiltinDataInitializer.class);
-                initializer.init();
-            } catch (Exception e) {
-                log.warn("BuiltinDataInitializer not available: {}", e.getMessage());
-            }
+            // Note: BuiltinDataInitializer.init() is NOT called here because
+            // BeanFactoryPostProcessor runs before all beans are fully initialized.
+            // Instead, BuiltinDataBootstrapRunner (below) handles this after startup.
         } catch (Exception e) {
             throw new RuntimeException("Flyway migration failed", e);
         }

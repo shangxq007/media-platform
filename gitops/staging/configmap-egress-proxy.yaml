@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: egress-proxy-config
+  namespace: media-platform-staging
+  labels:
+    app: egress-proxy
+    component: network-egress
+data:
+  allowed-domains.txt: |
+    # ── Production Allowed Domains ──────────────────────────────────
+    # Each line is a domain suffix. Squid dstdomain ACL matches requests
+    # whose destination hostname ends with the listed domain.
+    #
+    # Leading dot (.) matches the domain and all subdomains:
+    #   .example.com matches foo.example.com, bar.baz.example.com
+    #
+    # No wildcard (*) or bare dot (.) allowed — readiness validation rejects them.
+    #
+    # REPLACE these placeholder domains with your actual production endpoints.
+    # ────────────────────────────────────────────────────────────────
+
+    # OIDC issuer / JWKS endpoint
+    .oidc.example.com
+
+    # S3 / R2 / MinIO external endpoint
+    .s3.example.com
+
+    # Audit alert webhook endpoint
+    .alerts.example.com
+
+    # LiteLLM / AI provider endpoints
+    .litellm.example.com
+
+    # Payment provider (Stripe / Hyperswitch)
+    .stripe.com
+
+    # Monitoring (Sentry, OpenReplay)
+    .sentry.io
+    .openreplay.com
+
+  squid.conf: |
+    # ── Egress Proxy — Allowed-Domains Mode ─────────────────────────
+    # Squid forward proxy for media-platform external egress.
+    # Only allows access to domains listed in allowed-domains.txt.
+    # All other external traffic is denied.
+    # ────────────────────────────────────────────────────────────────
+
+    # Listen on port 3128
+    http_port 3128
+
+    # ── Logging ─────────────────────────────────────────────────────
+    access_log stdio:/dev/stdout squid
+    cache_log /dev/stderr
+
+    # Stateless container — minimal cache
+    cache_dir ufs /var/spool/squid 100 16 256
+    cache_mem 32 MB
+    maximum_object_size 16 MB
+
+    # ── ACL: Always blocked ─────────────────────────────────────────
+    acl metadata_ip dst 169.254.169.254/32
+    acl link_local dst 169.254.0.0/16
+
+    acl loopback dst 127.0.0.0/8
+    acl loopback_v6 dst ::1/128
+
+    acl private_rfc1918 dst 10.0.0.0/8
+    acl private_rfc1918 dst 172.16.0.0/12
+    acl private_rfc1918 dst 192.168.0.0/16
+
+    # ── ACL: Allowed HTTP methods / ports ───────────────────────────
+    acl Safe_ports port 80 443 8080 8443
+    acl SSL_ports port 443 8443
+    acl CONNECT method CONNECT
+
+    # ── ACL: Allowed destination domains ────────────────────────────
+    # File-based ACL: one domain suffix per line.
+    # Leading dot matches domain and all subdomains.
+    # If the file is empty or missing, no domains are allowed → deny all.
+    acl allowed_domains dstdomain "/etc/squid/allowed-domains.txt"
+
+    # ── Access rules (order matters) ────────────────────────────────
+    # 1. Always deny unsafe destinations
+    http_access deny metadata_ip
+    http_access deny link_local
+    http_access deny loopback
+    http_access deny loopback_v6
+    http_access deny private_rfc1918
+
+    # 2. Deny non-safe ports and non-SSL CONNECT
+    http_access deny !Safe_ports
+    http_access deny CONNECT !SSL_ports
+
+    # 3. Allow only listed domains — all other traffic is denied
+    http_access allow allowed_domains
+
+    # 4. Deny everything else (no open proxy)
+    http_access deny all
+
+    # ── Forwarded header ────────────────────────────────────────────
+    forwarded_for delete
+    via off
+
+    # ── Timeouts ────────────────────────────────────────────────────
+    connect_timeout 30 seconds
+    read_timeout 60 seconds
+    request_timeout 60 seconds
+
+    # ── PID file ────────────────────────────────────────────────────
+    pid_filename /tmp/squid.pid

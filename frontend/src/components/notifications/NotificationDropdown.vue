@@ -19,7 +19,7 @@ async function loadNotifications() {
   try {
     const result = await MeEntitlementAPI.getMyNotifications(0, 10)
     notifications.value = result.notifications
-  } catch (e: unknown) {
+  } catch {
     notifications.value = []
   } finally {
     loading.value = false

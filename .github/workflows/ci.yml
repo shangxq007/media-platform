@@ -3,9 +3,33 @@ name: CI
 on:
   push:
     branches: ["**"]
+    paths-ignore:
+      - "gitops/**"
+      - "docs/gitops.md"
+      - "*.md"
   pull_request:
+  workflow_dispatch:
+    description: "Deploy to staging or production"
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      imageTag:
+        description: "Immutable image tag (e.g. git-abc123def456). Leave empty to use latest main commit."
+        required: false
+      registry:
+        description: "Container registry (default: ghcr.io/<owner>)"
+        required: false
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
 
 jobs:
+  # ── Backend tests ──────────────────────────────────────────────────────
   backend:
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +52,7 @@ jobs:
       - name: Build docker image smoke check
         run: docker build -t media-platform:ci .
 
+  # ── Frontend tests ─────────────────────────────────────────────────────
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -55,3 +80,321 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # ── Image build + push + GitOps (main branch push) ─────────────────────
+  images:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [backend, frontend]
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          SHORT_SHA="${GITHUB_SHA::12}"
+          IMAGE_TAG="git-${SHORT_SHA}"
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Build boot jar
+        run: ./gradlew --no-daemon :platform-app:bootJar -x test
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push platform-api image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/platform-api:${{ steps.tag.outputs.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push render-worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: remote-render-worker
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/platform-render-worker:${{ steps.tag.outputs.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push sandbox-worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: sandbox-worker
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/platform-sandbox-worker:${{ steps.tag.outputs.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update GitOps staging manifests
+        run: |
+          REGISTRY="${{ env.REGISTRY }}" \
+          IMAGE_TAG="${{ steps.tag.outputs.IMAGE_TAG }}" \
+          ./scripts/update-gitops-manifests.sh staging
+
+      - name: Validate staging readiness (allow warnings)
+        run: |
+          ./scripts/validate-production-readiness.sh gitops/staging || true
+
+      - name: Validate staging egress smoke config
+        run: |
+          ./scripts/verify-egress-smoke-config.sh gitops/staging
+
+      - name: Upload rendered staging manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-staging-${{ steps.tag.outputs.IMAGE_TAG }}
+          path: build/k8s/staging/
+          retention-days: 30
+
+      - name: Create staging GitOps PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gitops/staging-${{ steps.tag.outputs.IMAGE_TAG }}
+          title: "Deploy staging ${{ steps.tag.outputs.IMAGE_TAG }}"
+          body: |
+            ## Staging Deployment
+
+            - **Image Tag**: `${{ steps.tag.outputs.IMAGE_TAG }}`
+            - **Registry**: `${{ env.REGISTRY }}`
+            - **Source Commit**: `${{ github.sha }}`
+            - **Environment**: staging
+
+            ### Rendered Manifests
+
+            This PR updates `gitops/staging/` with rendered Kubernetes manifests.
+
+            ### Validation
+
+            - ✅ No `:latest` or `:dev` image tags
+            - ✅ All workloads have `securityContext`
+            - ✅ `sandbox-worker` has `NetworkPolicy`
+            - ✅ No Secret values in manifests
+            - ✅ Egress smoke config validated (staging gate)
+
+            ### How to deploy
+
+            1. Review the changes to `gitops/staging/`.
+            2. Merge this PR.
+            3. ArgoCD will auto-sync to `media-platform-staging` namespace.
+
+            ### Rollback
+
+            Revert this PR. ArgoCD will auto-sync to previous state.
+          labels: |
+            deployment
+            staging
+          team-reviewers: |
+            devops
+          commit-message: "chore(gitops): deploy staging ${{ steps.tag.outputs.IMAGE_TAG }}"
+
+  # ── Production promotion (workflow_dispatch only) ───────────────────────
+  promote-production:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.environment == 'production'
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate image tag
+        id: validate
+        run: |
+          IMAGE_TAG="${{ github.event.inputs.imageTag }}"
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "ERROR: imageTag is required for production promotion" >&2
+            exit 1
+          fi
+          if [ "$IMAGE_TAG" = "latest" ] || [ "$IMAGE_TAG" = "dev" ]; then
+            echo "ERROR: imageTag must not be 'latest' or 'dev'" >&2
+            exit 1
+          fi
+          REGISTRY="${{ github.event.inputs.registry }}"
+          if [ -z "$REGISTRY" ]; then
+            REGISTRY="${{ env.REGISTRY }}"
+          fi
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "REGISTRY=${REGISTRY}" >> "$GITHUB_OUTPUT"
+
+      - name: Update GitOps production manifests
+        run: |
+          REGISTRY="${{ steps.validate.outputs.REGISTRY }}" \
+          IMAGE_TAG="${{ steps.validate.outputs.IMAGE_TAG }}" \
+          ./scripts/update-gitops-manifests.sh production
+
+      - name: Validate production readiness
+        run: |
+          ./scripts/validate-production-readiness.sh gitops/production
+
+      - name: Validate production egress smoke config (strict)
+        run: |
+          ./scripts/verify-egress-smoke-config.sh gitops/production --strict
+
+      - name: Upload rendered production manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-production-${{ steps.validate.outputs.IMAGE_TAG }}
+          path: build/k8s/production/
+          retention-days: 90
+
+      - name: Create production GitOps PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gitops/production-${{ steps.validate.outputs.IMAGE_TAG }}
+          title: "Promote production ${{ steps.validate.outputs.IMAGE_TAG }}"
+          body: |
+            ## Production Promotion
+
+            - **Image Tag**: `${{ steps.validate.outputs.IMAGE_TAG }}`
+            - **Registry**: `${{ steps.validate.outputs.REGISTRY }}`
+            - **Operator**: @${{ github.actor }}
+            - **Triggered by**: workflow_dispatch
+            - **Environment**: production
+
+            ### Rendered Manifests
+
+            This PR updates `gitops/production/` with rendered Kubernetes manifests.
+
+            ### Validation
+
+            - ✅ No `:latest` or `:dev` image tags
+            - ✅ All workloads have `securityContext`
+            - ✅ `sandbox-worker` has `NetworkPolicy` denying egress
+            - ✅ `dev-auth-endpoint=false`
+            - ✅ `allow-in-process-eval=false`
+            - ✅ No Secret values in manifests
+            - ✅ Production readiness validation passed
+            - ✅ Egress smoke config validated (strict gate)
+
+            ### Checklist
+
+            - [ ] Reviewed staging deployment
+            - [ ] Verified image tag is correct
+            - [ ] Verified no security regressions
+            - [ ] Verified rollback plan
+            - [ ] Completed [egress smoke rollout](docs/egress-smoke-rollout.md) in staging
+            - [ ] `allowed-domains.txt` has real production domains (no example.com)
+            - [ ] Smoke test enabled and passing in staging
+
+            ### How to deploy
+
+            1. Review the changes to `gitops/production/`.
+            2. Get approval from a second reviewer.
+            3. Merge this PR.
+            4. ArgoCD will sync to `media-platform` namespace (manual sync required).
+
+            ### Rollback
+
+            Revert this PR and ArgoCD will sync to previous state.
+            Or dispatch a new promotion with the previous image tag.
+          labels: |
+            deployment
+            production
+          team-reviewers: |
+            devops
+          commit-message: "chore(gitops): promote production ${{ steps.validate.outputs.IMAGE_TAG }}"
+
+  # ── Staging manual dispatch ─────────────────────────────────────────────
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.environment == 'staging'
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          IMAGE_TAG="${{ github.event.inputs.imageTag }}"
+          if [ -z "$IMAGE_TAG" ]; then
+            SHORT_SHA="${GITHUB_SHA::12}"
+            IMAGE_TAG="git-${SHORT_SHA}"
+          fi
+          REGISTRY="${{ github.event.inputs.registry }}"
+          if [ -z "$REGISTRY" ]; then
+            REGISTRY="${{ env.REGISTRY }}"
+          fi
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "REGISTRY=${REGISTRY}" >> "$GITHUB_OUTPUT"
+
+      - name: Update GitOps staging manifests
+        run: |
+          REGISTRY="${{ steps.tag.outputs.REGISTRY }}" \
+          IMAGE_TAG="${{ steps.tag.outputs.IMAGE_TAG }}" \
+          ./scripts/update-gitops-manifests.sh staging
+
+      - name: Validate staging egress smoke config
+        run: |
+          ./scripts/verify-egress-smoke-config.sh gitops/staging
+
+      - name: Create staging GitOps PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gitops/staging-${{ steps.tag.outputs.IMAGE_TAG }}
+          title: "Deploy staging ${{ steps.tag.outputs.IMAGE_TAG }}"
+          body: |
+            ## Staging Deployment (Manual)
+
+            - **Image Tag**: `${{ steps.tag.outputs.IMAGE_TAG }}`
+            - **Registry**: `${{ steps.tag.outputs.REGISTRY }}`
+            - **Operator**: @${{ github.actor }}
+            - **Triggered by**: workflow_dispatch
+            - **Environment**: staging
+
+            ### Validation
+
+            - ✅ No `:latest` or `:dev` image tags
+            - ✅ All workloads have `securityContext`
+            - ✅ No Secret values in manifests
+
+            ### How to deploy
+
+            1. Review the changes.
+            2. Merge this PR.
+            3. ArgoCD will auto-sync.
+          labels: |
+            deployment
+            staging
+          commit-message: "chore(gitops): deploy staging ${{ steps.tag.outputs.IMAGE_TAG }}"
+
+

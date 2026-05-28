@@ -48,7 +48,6 @@ public class MediaProbePortAdapter implements MediaProbePort {
                     internal.audioCodec(),
                     internal.sampleRate(),
                     internal.audioChannels(),
-                    internal.hasAudio(),
                     0,
                     internal.color() != null ? internal.color().colorSpace() : "",
                     internal.bitrate(),
@@ -76,7 +75,7 @@ public class MediaProbePortAdapter implements MediaProbePort {
 
     private boolean isNormalizeRequired(com.example.platform.render.infrastructure.MediaProbeResult r) {
         if (!r.valid()) return true;
-        if (!r.hasAudio()) return true;
+        if (!r.hasUsableAudio()) return true;
         if (r.frameRate() == 0) return true;
         return false;
     }
@@ -96,7 +95,7 @@ public class MediaProbePortAdapter implements MediaProbePort {
     private int countStreams(com.example.platform.render.infrastructure.MediaProbeResult r) {
         int count = 0;
         if (r.hasVideo()) count++;
-        if (r.hasAudio()) count++;
+        if (r.hasAudioStream()) count++;
         return count;
     }
 }

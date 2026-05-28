@@ -151,14 +151,90 @@ class RoleRepositoryTest {
     }
 
     @Test
-    void deleteUserRoleAssignment() {
+    void deleteUserRoleAssignment_byWorkspaceScope_onlyDeletesInTargetWorkspace() {
+        Instant now = Instant.now();
+        repository.save(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
+        // User usr_1 has ADMIN in ws_1 and ws_2
+        repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_1", null, now));
+        repository.saveUserRoleAssignment(new UserRoleAssignment("ura_2", null, "ws_2", "usr_1", "rol_1", null, now));
+
+        // Revoke ADMIN only in ws_1
+        repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
+
+        // ws_1 assignment should be deleted
+        List<UserRoleAssignment> ws1Assignments = repository.findUserRoleAssignmentsByWorkspaceId("ws_1");
+        assertTrue(ws1Assignments.isEmpty(), "ws_1 ADMIN should be deleted");
+
+        // ws_2 assignment should still exist
+        List<UserRoleAssignment> ws2Assignments = repository.findUserRoleAssignmentsByWorkspaceId("ws_2");
+        assertEquals(1, ws2Assignments.size(), "ws_2 ADMIN should still exist");
+        assertEquals("usr_1", ws2Assignments.get(0).userId());
+    }
+
+    @Test
+    void deleteUserRoleAssignment_byWorkspaceScope_doesNotAffectOtherUsers() {
+        Instant now = Instant.now();
+        repository.save(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
+        // Both usr_1 and usr_2 have ADMIN in ws_1
+        repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_1", null, now));
+        repository.saveUserRoleAssignment(new UserRoleAssignment("ura_2", null, "ws_1", "usr_2", "rol_1", null, now));
+
+        // Revoke usr_1's ADMIN in ws_1
+        repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
+
+        // usr_1 should have no assignments
+        List<UserRoleAssignment> usr1Assignments = repository.findUserRoleAssignmentsByUserId("usr_1");
+        assertTrue(usr1Assignments.isEmpty(), "usr_1 should have no assignments");
+
+        // usr_2 should still have ADMIN in ws_1
+        List<UserRoleAssignment> usr2Assignments = repository.findUserRoleAssignmentsByUserId("usr_2");
+        assertEquals(1, usr2Assignments.size(), "usr_2 should still have ADMIN");
+    }
+
+    @Test
+    void deleteUserRoleAssignment_byWorkspaceScope_idempotent() {
         Instant now = Instant.now();
         repository.save(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_1", null, now));
 
+        // Delete twice — second call should be idempotent (no error)
+        repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
+        assertDoesNotThrow(() -> repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1"));
+
+        List<UserRoleAssignment> assignments = repository.findUserRoleAssignmentsByUserId("usr_1");
+        assertTrue(assignments.isEmpty());
+    }
+
+    @Test
+    void deleteUserRoleAssignment_byWorkspaceScope_doesNotAffectOtherRoles() {
+        Instant now = Instant.now();
+        repository.save(new Role("rol_admin", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
+        repository.save(new Role("rol_editor", "EDITOR", "Editor", null, Role.RoleScope.WORKSPACE, now));
+        // User has both ADMIN and EDITOR in ws_1
+        repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_admin", null, now));
+        repository.saveUserRoleAssignment(new UserRoleAssignment("ura_2", null, "ws_1", "usr_1", "rol_editor", null, now));
+
+        // Revoke only ADMIN
+        repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
+
+        // EDITOR should still exist
+        List<UserRoleAssignment> remaining = repository.findUserRoleAssignmentsByUserId("usr_1");
+        assertEquals(1, remaining.size(), "EDITOR role should remain");
+        assertEquals("rol_editor", remaining.get(0).roleId());
+    }
+
+    @Test
+    void deleteUserRoleAssignment_deprecatedGlobalMethod_stillWorks() {
+        // The deprecated global method should still work for DevWorkspaceBootstrapService
+        Instant now = Instant.now();
+        repository.save(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
+        repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_1", null, now));
+        repository.saveUserRoleAssignment(new UserRoleAssignment("ura_2", null, "ws_2", "usr_1", "rol_1", null, now));
+
+        // Global delete removes ALL workspaces
         repository.deleteUserRoleAssignment("usr_1", "ADMIN");
 
-        List<UserRoleAssignment> userAssignments = repository.findUserRoleAssignmentsByUserId("usr_1");
-        assertTrue(userAssignments.isEmpty());
+        List<UserRoleAssignment> assignments = repository.findUserRoleAssignmentsByUserId("usr_1");
+        assertTrue(assignments.isEmpty(), "Global delete should remove all workspaces");
     }
 }

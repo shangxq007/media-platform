@@ -42,17 +42,16 @@ onMounted(async () => {
 
 async function loadTenants() {
   try {
-    // Create a default tenant if none exist
-    const result = await IdentityAPI.getAccessOverview()
-    if (result.tenants === 0) {
-      const t = await IdentityAPI.createTenant('Default Tenant')
-      tenants.value = [t]
-    }
+    const list = await IdentityAPI.listAllTenants()
+    tenants.value = list
   } catch {
-    tenants.value = [{ id: 'tenant-1', name: 'Default Tenant', status: 'ACTIVE' }]
+    // If admin API is unavailable, show empty list — do not fabricate tenants
+    tenants.value = []
   }
-  selectedTenantId.value = tenants.value[0]?.id || 'tenant-1'
-  await loadTabData()
+  selectedTenantId.value = tenants.value[0]?.id || ''
+  if (selectedTenantId.value) {
+    await loadTabData()
+  }
 }
 
 async function loadTabData() {

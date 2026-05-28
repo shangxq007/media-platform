@@ -159,7 +159,7 @@ export function useTimelineSync(deps?: UseTimelineSyncDeps) {
           baselineRevisionNumber: baseline?.serverRevision ?? null,
           baselineRevisionId: baseline?.headRevisionId ?? null,
           localTrackCount: localPayload.tracks?.length ?? 0,
-          serverTrackCount: serverPayload.tracks?.length ?? 0,
+          serverTrackCount: serverPayload.state.tracks?.length ?? 0,
           localClipCount: countClips(localPayload),
           serverClipCount: countClips(serverPayload),
           baselineHash,
@@ -189,11 +189,12 @@ export function useTimelineSync(deps?: UseTimelineSyncDeps) {
       lastPulledAt.value = new Date()
       return { status: 'ok' as const }
     } catch (err: unknown) {
-      const code = err.response?.data?.errorCode
+      const errObj = err as { response?: { data?: { errorCode?: string } }; message?: string }
+      const code = errObj.response?.data?.errorCode
       if (code && String(code).includes('404')) {
         return { status: 'empty' as const }
       }
-      const message = code ? getErrorMessage(code) : err.message || 'Failed to load timeline'
+      const message = code ? getErrorMessage(code) : (err instanceof Error ? err.message : 'Failed to load timeline')
       syncError.value = code ? `${code}: ${message}` : message
       return { status: 'error' as const }
     } finally {
@@ -258,7 +259,8 @@ export function useTimelineSync(deps?: UseTimelineSyncDeps) {
         return
       }
     } catch (err: unknown) {
-      const code = err.response?.data?.errorCode || 'COMMON-500-001'
+      const errObj = err as { response?: { data?: { errorCode?: string } }; message?: string }
+      const code = errObj.response?.data?.errorCode || 'COMMON-500-001'
       syncError.value = `${code}: ${getErrorMessage(code)}`
     }
   }
@@ -314,7 +316,8 @@ export function useTimelineSync(deps?: UseTimelineSyncDeps) {
       metaStore.clearHighlightedRevisionIds()
       return result
     } catch (err: unknown) {
-      const code = err.response?.data?.errorCode || 'COMMON-500-001'
+      const errObj = err as { response?: { data?: { errorCode?: string } }; message?: string }
+      const code = errObj.response?.data?.errorCode || 'COMMON-500-001'
       syncError.value = `${code}: ${getErrorMessage(code)}`
       return null
     } finally {

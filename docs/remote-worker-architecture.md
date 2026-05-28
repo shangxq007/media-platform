@@ -177,8 +177,10 @@ spec:
   template:
     spec:
       containers:
-        - name: worker
-          image: media-platform:remote-worker-gpu
+         - name: worker
+           # NOTE: Use explicit image tag (Git SHA or semver), never :latest in production.
+           # Example: registry.example.com/platform-render-worker:2025.05.25-abc1234
+           image: platform-render-worker:dev
           resources:
             limits:
               nvidia.com/gpu: 1

@@ -18,9 +18,26 @@ spec:
         app: media-platform
         component: api
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api
-          image: media-platform:latest
+          # NOTE: Replace with your registry and explicit image tag (Git SHA or semver).
+          # Example: registry.example.com/platform-api:2025.05.25-abc1234
+          # Never use :latest in production.
+          image: platform-api:dev
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8080
           envFrom:
@@ -52,7 +69,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data/platform
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: app-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 500Mi

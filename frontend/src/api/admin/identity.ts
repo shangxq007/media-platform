@@ -90,6 +90,12 @@ export const IdentityAPI = {
     const { data } = await api.get('/identity/access/overview')
     return data
   },
+
+  // Admin: list all tenants (platform admin only)
+  async listAllTenants(): Promise<AdminTenant[]> {
+    const { data } = await api.get('/identity/admin/tenants')
+    return data
+  },
   async getServiceAccounts(): Promise<ServiceAccount[]> {
     const { data } = await api.get('/identity/access/service-accounts')
     return data

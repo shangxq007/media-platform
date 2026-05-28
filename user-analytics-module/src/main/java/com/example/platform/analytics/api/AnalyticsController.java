@@ -33,8 +33,11 @@ public class AnalyticsController {
 
     @PostMapping("/events")
     public ResponseEntity<UserBehaviorEventResponse> ingestEvent(
-            @RequestHeader("X-Tenant-ID") String tenantId,
             @RequestBody IngestEventRequest request) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         UserBehaviorEvent event = eventService.ingestEvent(
                 tenantId, request.userId(), request.eventType(),
                 request.action(), request.resourceType(), request.resourceId(),
@@ -44,8 +47,11 @@ public class AnalyticsController {
 
     @GetMapping("/events")
     public ResponseEntity<List<UserBehaviorEventResponse>> listEvents(
-            @RequestHeader("X-Tenant-ID") String tenantId,
             @RequestParam(defaultValue = "100") int limit) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         List<UserBehaviorEventResponse> responses = eventService.findEventsByTenant(tenantId, limit)
                 .stream().map(this::toEventResponse).toList();
         return ResponseEntity.ok(responses);
@@ -53,16 +59,22 @@ public class AnalyticsController {
 
     @GetMapping("/profiles/{userId}")
     public ResponseEntity<UserProfileResponse> getProfile(
-            @RequestHeader("X-Tenant-ID") String tenantId,
             @PathVariable String userId) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         UserProfile profile = profileService.aggregateProfile(tenantId, userId);
         return ResponseEntity.ok(toProfileResponse(profile));
     }
 
     @GetMapping("/profiles")
     public ResponseEntity<List<UserProfileResponse>> listProfiles(
-            @RequestHeader("X-Tenant-ID") String tenantId,
             @RequestParam(defaultValue = "100") int limit) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         List<UserProfileResponse> responses = profileService.listProfilesByTenant(tenantId, limit)
                 .stream().map(this::toProfileResponse).toList();
         return ResponseEntity.ok(responses);
@@ -70,16 +82,22 @@ public class AnalyticsController {
 
     @GetMapping("/habits/{userId}")
     public ResponseEntity<UserHabitsResponse> getHabits(
-            @RequestHeader("X-Tenant-ID") String tenantId,
             @PathVariable String userId) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         UserHabits habits = habitsService.computeHabits(tenantId, userId);
         return ResponseEntity.ok(toHabitsResponse(habits));
     }
 
     @GetMapping("/segments/{segmentId}")
     public ResponseEntity<UserSegmentResponse> getSegment(
-            @RequestHeader("X-Tenant-ID") String tenantId,
             @PathVariable String segmentId) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         return segmentService.findSegment(tenantId, segmentId)
                 .map(this::toSegmentResponse)
                 .map(ResponseEntity::ok)
@@ -87,8 +105,11 @@ public class AnalyticsController {
     }
 
     @GetMapping("/segments")
-    public ResponseEntity<List<UserSegmentResponse>> listSegments(
-            @RequestHeader("X-Tenant-ID") String tenantId) {
+    public ResponseEntity<List<UserSegmentResponse>> listSegments() {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         List<UserSegmentResponse> responses = segmentService.listSegmentsByTenant(tenantId)
                 .stream().map(this::toSegmentResponse).toList();
         return ResponseEntity.ok(responses);
@@ -96,8 +117,11 @@ public class AnalyticsController {
 
     @PostMapping("/segments/active")
     public ResponseEntity<UserSegmentResponse> computeActiveSegment(
-            @RequestHeader("X-Tenant-ID") String tenantId,
             @RequestParam(defaultValue = "30") int activeWithinDays) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         UserSegment segment = segmentService.computeActiveUsersSegment(tenantId, activeWithinDays);
         return ResponseEntity.ok(toSegmentResponse(segment));
     }
@@ -121,8 +145,11 @@ public class AnalyticsController {
 
     @PostMapping("/segments/power-users")
     public ResponseEntity<UserSegmentResponse> computePowerUsersSegment(
-            @RequestHeader("X-Tenant-ID") String tenantId,
             @RequestParam(defaultValue = "100") int minActions) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         UserSegment segment = segmentService.computePowerUsersSegment(tenantId, minActions);
         return ResponseEntity.ok(toSegmentResponse(segment));
     }

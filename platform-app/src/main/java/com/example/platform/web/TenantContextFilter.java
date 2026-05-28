@@ -11,33 +11,23 @@ import org.slf4j.MDC;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Establishes {@link TenantContext} from {@code X-Tenant-ID} when JWT did not set it
- * (e.g. local dev with {@code app.security.enabled=false}).
+ * Clears {@link TenantContext} after each request to prevent thread-local leakage.
+ *
+ * <p>TenantContext is now established exclusively by authentication filters
+ * ({@link com.example.platform.security.JwtAuthFilter},
+ * {@link com.example.platform.security.OAuth2RequestContextFilter}) from verified JWT claims.
+ * The {@code X-Tenant-ID} header is no longer trusted as a tenant source.
+ *
+ * <p>The {@code X-Tenant-ID} header fallback was previously used for local dev
+ * with {@code app.security.enabled=false}. This has been removed as a security hardening
+ * measure. If a request reaches this filter without TenantContext set, it means no valid
+ * authentication was provided, and downstream code should reject the request.
  */
 public class TenantContextFilter extends OncePerRequestFilter {
-
-    private static final String TENANT_HEADER = "X-Tenant-ID";
-
-    private final boolean allowTenantHeaderFallback;
-
-    public TenantContextFilter() {
-        this(true);
-    }
-
-    public TenantContextFilter(boolean allowTenantHeaderFallback) {
-        this.allowTenantHeaderFallback = allowTenantHeaderFallback;
-    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        if (allowTenantHeaderFallback && TenantContext.get() == null) {
-            String tenantId = request.getHeader(TENANT_HEADER);
-            if (tenantId != null && !tenantId.isBlank()) {
-                TenantContext.set(tenantId.trim());
-                MDC.put(TraceKeys.TENANT_ID, tenantId.trim());
-            }
-        }
         try {
             filterChain.doFilter(request, response);
         } finally {

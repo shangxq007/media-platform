@@ -105,8 +105,9 @@ function percent(used: number, limit: number): number {
           <FeatureBadge
             v-for="sub in activeSubscriptions"
             :key="sub.contractId"
+            :feature="sub.planKey"
             :label="`${sub.planKey} (${sub.contractRole})`"
-            :enabled="sub.lifecycleState === 'ACTIVE'"
+            :variant="sub.lifecycleState === 'ACTIVE' ? 'premium' : 'default'"
           />
         </div>
       </PageSection>

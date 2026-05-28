@@ -17,30 +17,33 @@ app.use(router)
 
 // Initialize monitoring SDKs
 function initMonitoring() {
-  const tenantId = localStorage.getItem('tenant_id') || 'tenant-1'
-  const userId = localStorage.getItem('user_id') || 'user-1'
+  // NOTE: tenantId is NOT trusted from localStorage — it's only used here for
+  // monitoring context (Sentry/OpenReplay). The real tenant is resolved server-side
+  // from the authentication token. An empty string is used as fallback, not 'tenant-1'.
+  const tenantId = localStorage.getItem('tenant_id') || ''
+  const userId = localStorage.getItem('user_id') || ''
   setSentryUser({ id: userId, tenantId })
   setOpenReplayUser({ id: userId, tenantId })
 
-  // Sentry initialization - lazy loaded (runtime import to avoid Vite pre-resolution)
+  // Sentry initialization - lazy loaded via dynamic import (externalized by Vite)
   const sentryDsn = import.meta.env?.VITE_SENTRY_DSN || ''
   if (sentryDsn) {
-    const sentryImport = new Function('m', 'return import(m)')
-    sentryImport('@sentry/vue').then((SentryVue: { init?: (opts: unknown) => void }) => {
-      if (SentryVue && SentryVue.init) {
-        initSentry(SentryVue, { dsn: sentryDsn })
-        SentryVue.init({ app, dsn: sentryDsn, tracesSampleRate: 1.0 })
+    import('@sentry/vue').then((SentryVue) => {
+      const sdk = SentryVue as unknown as Record<string, unknown>
+      if (sdk && sdk.init) {
+        initSentry(sdk, { dsn: sentryDsn })
+        ;(sdk.init as (opts: Record<string, unknown>) => void)({ app, dsn: sentryDsn, tracesSampleRate: 1.0 })
       }
     }).catch(() => console.info('[Sentry] @sentry/vue not available'))
   }
 
-  // OpenReplay initialization - lazy loaded (runtime import to avoid Vite pre-resolution)
+  // OpenReplay initialization - lazy loaded via dynamic import (externalized by Vite)
   const orKey = import.meta.env?.VITE_OPENREPLAY_PROJECT_KEY || ''
   if (orKey) {
-    const dynamicImport = new Function('m', 'return import(m)')
-    dynamicImport('@openreplay/tracker').then((Tracker: { default?: new (opts: unknown) => unknown }) => {
-      if (Tracker && Tracker.default) {
-        const tracker = new Tracker.default({ projectKey: orKey })
+    import('@openreplay/tracker').then((Tracker) => {
+      const trackerModule = Tracker as unknown as { default?: new (opts: Record<string, unknown>) => Record<string, unknown> }
+      if (trackerModule && trackerModule.default) {
+        const tracker = new trackerModule.default({ projectKey: orKey })
         initOpenReplay(tracker, { projectKey: orKey, enabled: true })
       }
     }).catch(() => console.info('[OpenReplay] @openreplay/tracker not available'))

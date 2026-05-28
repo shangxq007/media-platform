@@ -110,6 +110,18 @@ public class TenantProjectService {
     }
 
     /**
+     * List all tenants for platform admin. No TenantContext restriction —
+     * caller must have ADMIN role (enforced by controller).
+     *
+     * @param limit max number to return (clamped to [1, 500])
+     */
+    public List<TenantResponse> listAllTenants(int limit) {
+        return tenantRepository.findAll(limit).stream()
+                .map(TenantResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Verifies that the current TenantContext matches the given tenantId.
      * Throws IllegalArgumentException (mapped to 404) on mismatch to avoid
      * leaking cross-tenant resource existence.

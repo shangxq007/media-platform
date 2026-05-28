@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { SharedResourcesAdminAPI, type SharedResourceGrantRow } from '@/api/admin/shared-resources-admin'
+import { useAdminTenantSelection } from '@/composables/useAdminTenantSelection'
 
 const grants = ref<SharedResourceGrantRow[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
 const includeRevoked = ref(false)
-const tenantId = ref('tenant-1')
+const { tenants: _tenants, selectedTenantId, loading: _tenantsLoading } = useAdminTenantSelection()
 const granting = ref(false)
 
 const grantForm = ref({
@@ -26,7 +27,7 @@ async function loadGrants() {
   error.value = null
   try {
     grants.value = await SharedResourcesAdminAPI.listGrants(
-      tenantId.value || undefined,
+      selectedTenantId.value || undefined,
       includeRevoked.value,
     )
   } catch (e: unknown) {
@@ -46,7 +47,7 @@ async function submitGrant() {
   success.value = null
   try {
     const result = await SharedResourcesAdminAPI.grantSharedResource({
-      tenantId: tenantId.value || undefined,
+      tenantId: selectedTenantId.value || undefined,
       resourceType: grantForm.value.resourceType,
       resourceId: grantForm.value.resourceId.trim(),
       resourceName: grantForm.value.resourceName.trim() || grantForm.value.resourceId.trim(),
@@ -95,9 +96,9 @@ async function revoke(grantId: string) {
         <label class="text-sm text-text-secondary">
           Tenant ID
           <input
-            v-model="tenantId"
+            v-model="selectedTenantId"
             class="block mt-1 w-full px-2 py-1 bg-surface-0 border border-border-default rounded text-white text-sm"
-            placeholder="tenant-1"
+            placeholder="Tenant ID"
           />
         </label>
         <label class="text-sm text-text-secondary">

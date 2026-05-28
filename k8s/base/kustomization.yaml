@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - pvc.yaml
+  - hpa.yaml
+  - deployment-api.yaml
+  - deployment-render-worker.yaml
+  - deployment-sandbox-worker.yaml
+  - deployment-egress-proxy.yaml
+  - service-api.yaml
+  - service-render-worker.yaml
+  - service-sandbox-worker.yaml
+  - service-egress-proxy.yaml
+  - configmap-egress-proxy.yaml
+  - ingress.yaml
+  - networkpolicy-sandbox-worker.yaml
+  - networkpolicy-api-egress.yaml
+  - networkpolicy-render-worker-egress.yaml
+  - networkpolicy-egress-proxy.yaml

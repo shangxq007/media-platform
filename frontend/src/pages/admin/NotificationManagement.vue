@@ -2,9 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { NotificationAPI } from '@/api/admin/notification'
 import type { AdminNotification, NotificationDelivery } from '@/api/admin/notification'
+import { useAdminTenantSelection } from '@/composables/useAdminTenantSelection'
 
 const loading = ref(true)
-const tenantId = ref('tenant-1')
+const { tenants: _tenants, selectedTenantId, loading: _tenantsLoading } = useAdminTenantSelection()
 const notifications = ref<AdminNotification[]>([])
 const selectedId = ref<string | null>(null)
 const deliveries = ref<NotificationDelivery[]>([])
@@ -17,7 +18,7 @@ onMounted(loadData)
 async function loadData() {
   loading.value = true
   try {
-    notifications.value = await NotificationAPI.listNotifications(tenantId.value)
+    notifications.value = await NotificationAPI.listNotifications(selectedTenantId.value)
   } catch { /* backend may not be running */ }
   loading.value = false
 }
@@ -25,19 +26,19 @@ async function loadData() {
 async function viewDeliveries(notificationId: string) {
   selectedId.value = notificationId
   try {
-    deliveries.value = await NotificationAPI.getDeliveries(tenantId.value, notificationId)
+    deliveries.value = await NotificationAPI.getDeliveries(selectedTenantId.value, notificationId)
   } catch { /* backend may not be running */ }
 }
 
 async function retryNotification(notificationId: string) {
-  await NotificationAPI.retryNotification(tenantId.value, notificationId)
+  await NotificationAPI.retryNotification(selectedTenantId.value, notificationId)
   await loadData()
 }
 
 async function publishEvent() {
   try {
     const payload = JSON.parse(publishPayload.value)
-    await NotificationAPI.publishEvent({ type: publishType.value, tenantId: tenantId.value, payload })
+    await NotificationAPI.publishEvent({ type: publishType.value, tenantId: selectedTenantId.value, payload })
     showPublish.value = false
     publishType.value = ''
     publishPayload.value = '{}'
@@ -52,7 +53,7 @@ async function publishEvent() {
       <h1 class="text-xl font-bold">Notification Management</h1>
       <div class="flex items-center gap-3">
         <input
-          v-model="tenantId"
+          v-model="selectedTenantId"
           type="text"
           class="bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white w-48"
           placeholder="Tenant ID"

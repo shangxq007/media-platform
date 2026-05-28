@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +30,13 @@ public class AnalyticsRebuildJob {
     private final Timer profileRebuildTimer;
     private final Timer segmentRebuildTimer;
     private final Map<String, Instant> lastRunTimes = new ConcurrentHashMap<>();
+
+    /**
+     * Comma-separated list of tenant IDs to rebuild. If empty, rebuilds all tenants from DB.
+     * Configured via app.analytics.scheduler.tenants.
+     */
+    @Value("${app.analytics.scheduler.tenants:}")
+    private String configuredTenants;
 
     public AnalyticsRebuildJob(UserProfileService profileService,
                                UserSegmentService segmentService,
@@ -59,19 +67,29 @@ public class AnalyticsRebuildJob {
         log.info("Starting scheduled user profile rebuild");
         Timer.Sample sample = Timer.start();
         try {
-            List<UserProfile> profiles = profileService.listProfilesByTenant("tenant-1", 10000);
-            int count = 0;
-            for (UserProfile p : profiles) {
+            List<String> tenants = resolveTargetTenants();
+            int totalCount = 0;
+            for (String tenantId : tenants) {
                 try {
-                    profileService.aggregateProfile(p.tenantId(), p.userId());
-                    count++;
+                    List<UserProfile> profiles = profileService.listProfilesByTenant(tenantId, 10000);
+                    int count = 0;
+                    for (UserProfile p : profiles) {
+                        try {
+                            profileService.aggregateProfile(p.tenantId(), p.userId());
+                            count++;
+                        } catch (Exception e) {
+                            log.warn("Failed to rebuild profile for user {}: {}", p.userId(), e.getMessage());
+                        }
+                    }
+                    totalCount += count;
+                    log.debug("Rebuilt {} profiles for tenant {}", count, tenantId);
                 } catch (Exception e) {
-                    log.warn("Failed to rebuild profile for user {}: {}", p.userId(), e.getMessage());
+                    log.warn("Failed to rebuild profiles for tenant {}: {}", tenantId, e.getMessage());
                 }
             }
-            profileRebuildCounter.increment(count);
+            profileRebuildCounter.increment(totalCount);
             lastRunTimes.put(jobKey, Instant.now());
-            log.info("Completed profile rebuild: {} profiles", count);
+            log.info("Completed profile rebuild: {} profiles across {} tenants", totalCount, tenants.size());
         } finally {
             sample.stop(profileRebuildTimer);
         }
@@ -100,19 +118,28 @@ public class AnalyticsRebuildJob {
         log.info("Starting manual profile rebuild");
         Timer.Sample sample = Timer.start();
         try {
-            List<UserProfile> profiles = profileService.listProfilesByTenant("tenant-1", 10000);
-            int count = 0;
-            for (UserProfile p : profiles) {
+            List<String> tenants = resolveTargetTenants();
+            int totalCount = 0;
+            for (String tenantId : tenants) {
                 try {
-                    profileService.aggregateProfile(p.tenantId(), p.userId());
-                    count++;
-                    profileRebuildCounter.increment();
+                    List<UserProfile> profiles = profileService.listProfilesByTenant(tenantId, 10000);
+                    int count = 0;
+                    for (UserProfile p : profiles) {
+                        try {
+                            profileService.aggregateProfile(p.tenantId(), p.userId());
+                            count++;
+                            profileRebuildCounter.increment();
+                        } catch (Exception e) {
+                            log.warn("Failed to rebuild profile for user {}: {}", p.userId(), e.getMessage());
+                        }
+                    }
+                    totalCount += count;
                 } catch (Exception e) {
-                    log.warn("Failed to rebuild profile for user {}: {}", p.userId(), e.getMessage());
+                    log.warn("Failed to rebuild profiles for tenant {}: {}", tenantId, e.getMessage());
                 }
             }
-            log.info("Manual profile rebuild complete: {} profiles", count);
-            return count;
+            log.info("Manual profile rebuild complete: {} profiles across {} tenants", totalCount, tenants.size());
+            return totalCount;
         } finally {
             sample.stop(profileRebuildTimer);
         }
@@ -131,31 +158,48 @@ public class AnalyticsRebuildJob {
     }
 
     public int computeDefaultSegments() {
+        List<String> tenants = resolveTargetTenants();
         int total = 0;
-        String tenantId = "tenant-1";
-
-        segmentService.computeNewUsersSegment(tenantId, 7);
-        total++;
-
-        segmentService.computeActiveUsersSegment(tenantId, 30);
-        total++;
-
-        segmentService.computePowerUsersSegment(tenantId, 100);
-        total++;
-
-        segmentService.computeAtRiskUsersSegment(tenantId, 30);
-        total++;
-
-        segmentService.computeDormantUsersSegment(tenantId, 60);
-        total++;
-
-        segmentService.computeFailedRenderUsersSegment(tenantId, 3);
-        total++;
-
-        log.info("Computed default segments: new={}, active={}, power={}, at_risk={}, dormant={}, failed_render={}",
-                "new_users", "active_users", "power_users", "at_risk_users", "dormant_users", "failed_render_users");
+        for (String tenantId : tenants) {
+            segmentService.computeNewUsersSegment(tenantId, 7);
+            total++;
+            segmentService.computeActiveUsersSegment(tenantId, 30);
+            total++;
+            segmentService.computePowerUsersSegment(tenantId, 100);
+            total++;
+            segmentService.computeAtRiskUsersSegment(tenantId, 30);
+            total++;
+            segmentService.computeDormantUsersSegment(tenantId, 60);
+            total++;
+            segmentService.computeFailedRenderUsersSegment(tenantId, 3);
+            total++;
+        }
+        log.info("Computed default segments for {} tenants: {} total segments", tenants.size(), total);
         segmentRebuildCounter.increment(total);
         return total;
+    }
+
+    /**
+     * Resolve target tenants from configuration or database.
+     * If app.analytics.scheduler.tenants is configured, use that list.
+     * Otherwise, query all distinct tenant IDs from the profile service.
+     */
+    private List<String> resolveTargetTenants() {
+        if (configuredTenants != null && !configuredTenants.isBlank()) {
+            return List.of(configuredTenants.split(","));
+        }
+        // Fallback: query all tenants from DB
+        try {
+            List<String> allTenants = profileService.listAllTenantIds();
+            if (allTenants != null && !allTenants.isEmpty()) {
+                return allTenants;
+            }
+        } catch (Exception e) {
+            log.warn("Failed to query tenant list from DB: {}", e.getMessage());
+        }
+        // If no tenants found, return empty list — do not default to "tenant-1"
+        log.warn("No target tenants resolved for analytics rebuild");
+        return List.of();
     }
 
     private boolean shouldRun(String jobKey) {

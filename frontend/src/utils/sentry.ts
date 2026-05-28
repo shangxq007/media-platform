@@ -36,9 +36,22 @@ const config = ref<SentryConfig>({
 })
 
 const initialized = ref(false)
-let sentrySdk: Record<string, unknown> | null = null
 
-export function initSentry(sdk: Record<string, unknown>, userConfig: Partial<SentryConfig> = {}) {
+interface SentrySdk {
+  init?: (options: Record<string, unknown>) => void
+  getReplayIntegrations?: () => unknown[]
+  getReplayId?: () => string | null
+  setUser?: (user: Record<string, unknown>) => void
+  setContext?: (key: string, context: Record<string, unknown>) => void
+  setTag?: (key: string, value: string) => void
+  captureException?: (error: Error, options?: Record<string, unknown>) => void
+  captureMessage?: (message: string, level?: string) => void
+  [key: string]: unknown
+}
+
+let sentrySdk: SentrySdk | null = null
+
+export function initSentry(sdk: SentrySdk, userConfig: Partial<SentryConfig> = {}) {
   Object.assign(config.value, userConfig)
   sentrySdk = sdk
 
@@ -75,7 +88,7 @@ export function initSentry(sdk: Record<string, unknown>, userConfig: Partial<Sen
 export function setSentryUser(user: SentryUser) {
   if (!initialized.value || !sentrySdk) return
   try {
-    sentrySdk.setUser(user)
+    sentrySdk.setUser?.(user as Record<string, unknown>)
   } catch (e) {
     console.warn('[Sentry] setUser failed:', e)
   }
@@ -84,7 +97,7 @@ export function setSentryUser(user: SentryUser) {
 export function setSentryContext(context: SentryContext) {
   if (!initialized.value || !sentrySdk) return
   try {
-    sentrySdk.setContext('mediaPlatform', context)
+    sentrySdk.setContext?.('mediaPlatform', context)
   } catch (e) {
     console.warn('[Sentry] setContext failed:', e)
   }
@@ -93,7 +106,7 @@ export function setSentryContext(context: SentryContext) {
 export function setSentryTag(key: string, value: string) {
   if (!initialized.value || !sentrySdk) return
   try {
-    sentrySdk.setTag(key, value)
+    sentrySdk.setTag?.(key, value)
   } catch (e) {
     console.warn('[Sentry] setTag failed:', e)
   }
@@ -105,7 +118,7 @@ export function captureSentryException(error: Error, context?: SentryContext) {
     return
   }
   try {
-    sentrySdk.captureException(error, {
+    sentrySdk.captureException?.(error, {
       contexts: context ? { mediaPlatform: context } : undefined
     })
   } catch (e) {
@@ -116,7 +129,7 @@ export function captureSentryException(error: Error, context?: SentryContext) {
 export function captureSentryMessage(message: string, level: 'info' | 'warning' | 'error' = 'info') {
   if (!initialized.value || !sentrySdk) return
   try {
-    sentrySdk.captureMessage(message, level)
+    sentrySdk.captureMessage?.(message, level)
   } catch (e) {
     console.warn('[Sentry] captureMessage failed:', e)
   }
@@ -134,21 +147,29 @@ export function getSentryReplayId(): string | null {
 
 function sanitizeEvent(event: Record<string, unknown>): Record<string, unknown> {
   if (!event) return event
-  // Redact sensitive data from event
   if (event.request) {
-    if (event.request.headers) {
-      redactHeaders(event.request.headers)
+    const request = event.request as Record<string, unknown>
+    if (request.headers) {
+      redactHeaders(request.headers as Record<string, string>)
     }
-    if (event.request.data) {
-      event.request.data = redactSensitiveData(event.request.data)
+    if (request.data) {
+      request.data = redactSensitiveData(request.data)
     }
   }
-  if (event.exception?.values) {
-    for (const value of event.exception.values) {
-      if (value.stacktrace?.frames) {
-        for (const frame of value.stacktrace.frames) {
-          if (frame.vars) {
-            frame.vars = redactSensitiveData(frame.vars)
+  if (event.exception) {
+    const exception = event.exception as Record<string, unknown>
+    if (exception.values) {
+      const values = exception.values as Record<string, unknown>[]
+      for (const value of values) {
+        if (value.stacktrace) {
+          const stacktrace = value.stacktrace as Record<string, unknown>
+          if (stacktrace.frames) {
+            const frames = stacktrace.frames as Record<string, unknown>[]
+            for (const frame of frames) {
+              if (frame.vars) {
+                frame.vars = redactSensitiveData(frame.vars)
+              }
+            }
           }
         }
       }

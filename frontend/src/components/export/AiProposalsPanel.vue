@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { AiTimelineAPI, type AiProposalDto } from '@/api/ai-timeline'
-import { getTenantId } from '@/utils/tenant'
+import { useProjectStore } from '@/stores/project'
 
 const props = defineProps<{
   projectId: string
@@ -25,7 +25,7 @@ async function adopt(id: string) {
   workingId.value = id
   try {
     const res = await AiTimelineAPI.adoptProposal(
-      getTenantId(),
+      useProjectStore().currentTenant,
       props.projectId,
       id,
       props.timelineJson,
@@ -46,7 +46,7 @@ async function reject(id: string) {
   workingId.value = id
   try {
     const res = await AiTimelineAPI.rejectProposal(
-      getTenantId(),
+      useProjectStore().currentTenant,
       props.projectId,
       id,
       props.timelineJson

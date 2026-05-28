@@ -95,9 +95,14 @@ export interface FeatureFlagEvaluationLogEntry {
 }
 
 export const FeatureFlagAPI = {
-  async getCapabilities(tenantId?: string, userId?: string) {
+  /**
+   * Admin-only: Query feature flag capabilities for the current tenant.
+   * The tenant is resolved server-side from TenantContext (admin must be authenticated).
+   * NOTE: tenantId parameter is deprecated — backend no longer trusts X-Tenant-ID header.
+   * TODO: Implement admin cross-tenant capability query via dedicated admin endpoint.
+   */
+  async getCapabilities(_tenantId?: string, userId?: string) {
     const headers: Record<string, string> = {}
-    if (tenantId) headers['X-Tenant-ID'] = tenantId
     if (userId) headers['X-User-ID'] = userId
     const { data } = await api.get('/entitlements/me/capabilities', { headers })
     return data

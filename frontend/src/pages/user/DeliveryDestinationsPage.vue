@@ -3,15 +3,13 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { DeliveryAPI, type DeliveryDestination, type DeliveryPolicy } from '@/api/delivery'
 import { ProjectAPI } from '@/api'
 import type { Project } from '@/types'
-import { getTenantId } from '@/utils/tenant'
+import { useProjectStore } from '@/stores/project'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import PageSection from '@/components/ui/PageSection.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
-
-const tenantId = getTenantId()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -61,6 +59,7 @@ async function loadDestinations() {
   loading.value = true
   error.value = null
   try {
+    const tenantId = useProjectStore().currentTenant
     destinations.value = await DeliveryAPI.listDestinations(tenantId)
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load destinations'
@@ -75,6 +74,7 @@ async function loadPolicies() {
     return
   }
   try {
+    const tenantId = useProjectStore().currentTenant
     policies.value = await DeliveryAPI.listPolicies(tenantId, selectedProjectId.value)
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load policies'
@@ -127,6 +127,7 @@ async function submitDestination() {
   saving.value = true
   error.value = null
   try {
+    const tenantId = useProjectStore().currentTenant
     await DeliveryAPI.createDestination(tenantId, {
       name: createForm.name.trim(),
       protocol: createForm.protocol,
@@ -149,6 +150,7 @@ async function probeDestination(dest: DeliveryDestination) {
   probingId.value = dest.id
   probeMessage.value[dest.id] = ''
   try {
+    const tenantId = useProjectStore().currentTenant
     const result = await DeliveryAPI.probeDestination(tenantId, dest.id)
     probeMessage.value[dest.id] = result.ok
       ? 'Connection OK'
@@ -165,6 +167,7 @@ async function submitPolicy() {
   saving.value = true
   error.value = null
   try {
+    const tenantId = useProjectStore().currentTenant
     await DeliveryAPI.createPolicy(tenantId, selectedProjectId.value, {
       destinationId: policyForm.destinationId,
       pathTemplate: policyForm.pathTemplate,
@@ -186,6 +189,7 @@ function destinationName(id: string): string {
 async function toggleDestination(dest: DeliveryDestination) {
   saving.value = true
   try {
+    const tenantId = useProjectStore().currentTenant
     await DeliveryAPI.updateDestination(tenantId, dest.id, { enabled: !dest.enabled })
     await loadDestinations()
   } catch (e: unknown) {
@@ -199,6 +203,7 @@ async function removeDestination(dest: DeliveryDestination) {
   if (!confirm(`Delete destination "${dest.name}"?`)) return
   saving.value = true
   try {
+    const tenantId = useProjectStore().currentTenant
     await DeliveryAPI.deleteDestination(tenantId, dest.id)
     await loadDestinations()
   } catch (e: unknown) {
@@ -212,6 +217,7 @@ async function removePolicy(pol: DeliveryPolicy) {
   if (!selectedProjectId.value || !confirm('Delete this delivery policy?')) return
   saving.value = true
   try {
+    const tenantId = useProjectStore().currentTenant
     await DeliveryAPI.deletePolicy(tenantId, selectedProjectId.value, pol.id)
     await loadPolicies()
   } catch (e: unknown) {

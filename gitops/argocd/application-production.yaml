@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: media-platform-production
+  namespace: argocd
+spec:
+  project: default
+  source:
+    # TODO: Replace with your actual GitOps repo URL
+    repoURL: https://github.com/your-org/platform.git
+    targetRevision: main
+    path: gitops/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: media-platform
+  syncPolicy:
+    # Production: NO automated sync — requires manual approval
+    # Only prune and selfHeal on manual sync
+    syncOptions:
+      - CreateNamespace=true
+  # TODO: Add your cluster URL
+  # destination:
+  #   server: https://your-prod-cluster

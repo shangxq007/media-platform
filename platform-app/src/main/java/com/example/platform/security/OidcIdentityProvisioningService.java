@@ -130,9 +130,9 @@ public class OidcIdentityProvisioningService {
     private void syncRoleAssignments(String userId, String workspaceId, List<String> platformRoleKeys) {
         for (String roleKey : List.of("ADMIN", "EDITOR", "VIEWER")) {
             try {
-                roleRepository.deleteUserRoleAssignment(userId, roleKey);
+                roleRepository.deleteUserRoleAssignmentByWorkspace(userId, roleKey, workspaceId);
             } catch (Exception ex) {
-                log.debug("No assignment to delete for user={} role={}", userId, roleKey);
+                log.debug("No assignment to delete for user={} role={} workspace={}", userId, roleKey, workspaceId);
             }
         }
         for (String roleKey : platformRoleKeys) {

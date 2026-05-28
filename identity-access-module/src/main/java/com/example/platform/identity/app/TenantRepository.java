@@ -38,9 +38,14 @@ public class TenantRepository {
     }
 
     public List<Tenant> findAll() {
+        return findAll(100);
+    }
+
+    public List<Tenant> findAll(int limit) {
         return dsl.select()
                 .from(table("tenant"))
                 .orderBy(field("created_at").desc())
+                .limit(limit)
                 .fetch(this::mapRecord);
     }
 

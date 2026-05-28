@@ -21,31 +21,32 @@ export interface OTIOTimeline {
 
 export function exportToOTIO(timeline: Record<string, unknown>): OTIOTimeline {
   const tracks: OTIOTrack[] = []
-  timeline.tracks.forEach((track: Record<string, unknown>) => {
-    const clips: Record<string, unknown>[] = (track.clips as Record<string, unknown>[]).map((clip: Record<string, unknown>) => ({
+  const timelineTracks = timeline.tracks as Record<string, unknown>[] | undefined
+  if (!timelineTracks) return { name: 'media-platform-timeline', tracks: [] }
+  timelineTracks.forEach((track: Record<string, unknown>) => {
+    const trackClips = track.clips as Record<string, unknown>[] | undefined
+    const clips: Record<string, unknown>[] = (trackClips ?? []).map((clip: Record<string, unknown>) => ({
       name: clip.clipId,
       source_range: {
-        start_time: clip.clipStart,
-        duration: clip.clipEnd - clip.clipStart
+        start_time: clip.clipStart as number,
+        duration: (clip.clipEnd as number) - (clip.clipStart as number)
       },
       transforms: []
     }))
     tracks.push({
-      name: track.name,
+      name: track.name as string,
       children: clips
     })
   })
   return { name: 'media-platform-timeline', tracks }
 }
 
-export function importFromOTIO(otioData: OTIOTimeline, timelineStore: Record<string, unknown>) {
-  // Clear existing timeline
+export function importFromOTIO(otioData: OTIOTimeline, timelineStore: { state: { tracks: unknown[] }; addTrack: (name: string, type: "audio" | "video" | "image" | "text" | "subtitle") => unknown }) {
   timelineStore.state.tracks = []
 
   otioData.tracks.forEach((otioTrack: OTIOTrack) => {
     const type = otioTrack.name.includes('video') ? 'video' : 
                 otioTrack.name.includes('audio') ? 'audio' : 'text'
     timelineStore.addTrack(otioTrack.name, type)
-    // TODO: Add clips to track based on otioTrack.children
   })
 }

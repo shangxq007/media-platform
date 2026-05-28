@@ -53,11 +53,11 @@ function statusBadge(route: FrontendRouteDefinition): { label: string; cls: stri
                {{ statusBadge(route).label }}
              </span>
            </td>
-           <td class="px-4 py-2">
-             <div v-if="(route as unknown)?.requiredFeatureFlags?.length" class="flex flex-wrap gap-1">
-               <span
-                 v-for="flag in (route as unknown).requiredFeatureFlags"
-                 :key="flag"
+            <td class="px-4 py-2">
+              <div v-if="((route as unknown as Record<string, unknown>).requiredFeatureFlags as string[] | undefined)?.length" class="flex flex-wrap gap-1">
+                <span
+                  v-for="flag in ((route as unknown as Record<string, unknown>).requiredFeatureFlags as string[])"
+                  :key="flag"
                  class="text-[10px] px-1.5 py-0.5 rounded bg-accent-500/10 text-accent-300 font-mono"
                >
                  {{ flag }}

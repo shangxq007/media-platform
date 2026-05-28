@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: sandbox-worker
+  profiles:
+    active: dev
+
+server:
+  port: 8091
+
+sandbox:
+  worker:
+    max-execution-seconds: 5
+    max-output-bytes: 1048576
+    max-code-bytes: 65536
+    timeout-buffer-ms: 500
+    languages:
+      - python
+      - py
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.example.platform.sandbox.worker: DEBUG

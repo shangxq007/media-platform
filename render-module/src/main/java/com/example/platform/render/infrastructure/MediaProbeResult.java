@@ -35,7 +35,21 @@ public record MediaProbeResult(
         return width > 0 && height > 0 && videoCodec != null && !videoCodec.isEmpty();
     }
 
-    public boolean hasAudio() {
-        return audioChannels > 0 && audioCodec != null && !audioCodec.isEmpty();
+    /**
+     * Returns true if the media has at least one audio stream.
+     */
+    public boolean hasAudioStream() {
+        return audioChannels > 0
+                || (audioCodec != null && !audioCodec.isEmpty());
+    }
+
+    /**
+     * Returns true if the media has audio usable for processing
+     * (mixing, waveform, auto-captions). Requires both codec and channels.
+     */
+    public boolean hasUsableAudio() {
+        return hasAudioStream()
+                && audioCodec != null && !audioCodec.isBlank()
+                && audioChannels > 0;
     }
 }

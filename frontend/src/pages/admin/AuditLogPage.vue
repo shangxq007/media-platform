@@ -1,74 +1,87 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { AuditAPI } from '@/api/admin/audit'
-import type { AuditRecord } from '@/api/admin/audit'
+import type { AuditRecordSummary, AuditRecordDetail } from '@/api/admin/audit'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
-interface EnrichedAuditRecord extends AuditRecord {
-  beforeJson?: string
-  afterJson?: string
-  matchedRule?: string
-  resourceDisplay?: string
+const loading = ref(true)
+const exporting = ref(false)
+const records = ref<AuditRecordSummary[]>([])
+const error = ref<string | null>(null)
+const selectedRecord = ref<AuditRecordDetail | null>(null)
+const showDetail = ref(false)
+
+// Filters
+const filterCategory = ref('')
+const filterAction = ref('')
+const filterActorId = ref('')
+const filterResult = ref('')
+const filterTargetTenantId = ref('')
+const filterFrom = ref('')
+const filterTo = ref('')
+
+// Pagination
+const page = ref(0)
+const pageSize = ref(50)
+const total = ref(0)
+const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
+
+// Sensitive keys to redact in payload display
+const SENSITIVE_KEYS = new Set([
+  'authorization', 'cookie', 'token', 'accesstoken', 'refreshtoken',
+  'apikey', 'api_key', 'key', 'secret', 'password', 'passwd',
+  'signedurl', 'signed_url', 'virtualkey', 'virtual_key',
+  'litellmkey', 'litellm_key', 'bearer', 'apikey'
+]);
+
+function sanitizePayload(payload: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!payload) return {};
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    const normalizedKey = key.toLowerCase().replace(/[-_]/g, '');
+    if (SENSITIVE_KEYS.has(normalizedKey)) {
+      result[key] = '[REDACTED]';
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = sanitizePayload(value as Record<string, unknown>);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
 }
 
-const loading = ref(true)
-const records = ref<EnrichedAuditRecord[]>([])
-const error = ref<string | null>(null)
+const sanitizedPayload = computed(() => sanitizePayload(selectedRecord.value?.payload));
 
-const filterCategory = ref('')
-const filterTenant = ref('')
-const filterWorkspace = ref('')
-const filterUser = ref('')
-const filterActor = ref('')
-const expandedRecord = ref<string | null>(null)
+// Categories for dropdown
+const categories = ref<string[]>([])
+const resultOptions = ['SUCCESS', 'DENIED', 'FAILED', 'ERROR']
 
-const page = ref(0)
-const pageSize = 25
-const total = ref(0)
-
-const totalPages = computed(() => Math.ceil(total.value / pageSize))
-
-const categories = [
-  'ALL',
-  'FEATURE_FLAG_CREATE', 'FEATURE_FLAG_UPDATE', 'FEATURE_FLAG_DELETE',
-  'FEATURE_FLAG_ENABLE', 'FEATURE_FLAG_DISABLE', 'FEATURE_FLAG_ARCHIVE',
-  'POLICY_CREATE', 'POLICY_UPDATE', 'POLICY_DELETE', 'POLICY_ARCHIVE',
-  'ACCESS_GRANT', 'ACCESS_DENY', 'ACCESS_REVIEW',
-  'NAVIGATION_ACCESS', 'NAVIGATION_DENY',
-  'CONFIG_CHANGE', 'TENANT_CHANGE',
-]
-
-const filteredRecords = computed(() => {
-  let result = records.value
-  if (filterCategory.value && filterCategory.value !== 'ALL') {
-    result = result.filter(r => r.category === filterCategory.value)
+async function loadCategories() {
+  try {
+    categories.value = await AuditAPI.listAuditCategories()
+  } catch {
+    categories.value = []
   }
-  if (filterTenant.value) {
-    result = result.filter(r => r.details?.includes(filterTenant.value))
-  }
-  if (filterWorkspace.value) {
-    result = result.filter(r => r.details?.includes(filterWorkspace.value))
-  }
-  if (filterUser.value) {
-    result = result.filter(r => r.resourceId?.includes(filterUser.value))
-  }
-  if (filterActor.value) {
-    result = result.filter(r => r.actor?.includes(filterActor.value))
-  }
-  return result
-})
+}
 
 async function loadRecords() {
   loading.value = true
   error.value = null
   try {
-    const allRecords = await AuditAPI.listRecent()
-    records.value = allRecords.map(r => ({
-      ...r,
-      resourceDisplay: r.resourceType && r.resourceId ? `${r.resourceType}:${r.resourceId}` : '—',
-    }))
-    total.value = records.value.length
+    const response = await AuditAPI.listAuditRecords({
+      page: page.value,
+      size: pageSize.value,
+      category: filterCategory.value || undefined,
+      action: filterAction.value || undefined,
+      actorId: filterActorId.value || undefined,
+      result: filterResult.value || undefined,
+      targetTenantId: filterTargetTenantId.value || undefined,
+      from: filterFrom.value || undefined,
+      to: filterTo.value || undefined,
+    })
+    records.value = response.items
+    total.value = response.total
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -76,31 +89,92 @@ async function loadRecords() {
   }
 }
 
-function toggleExpand(record: EnrichedAuditRecord) {
-  const id = record.id || ''
-  expandedRecord.value = expandedRecord.value === id ? null : id
+async function openDetail(record: AuditRecordSummary) {
+  try {
+    selectedRecord.value = await AuditAPI.getAuditRecord(record.id)
+    showDetail.value = true
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  }
 }
 
-function maskSensitive(value: string): string {
-  const sensitivePatterns = [/password/i, /secret/i, /token/i, /key/i, /credential/i]
-  for (const pattern of sensitivePatterns) {
-    if (pattern.test(value)) {
-      return '••••••••'
-    }
+function closeDetail() {
+  showDetail.value = false
+  selectedRecord.value = null
+}
+
+function applyFilters() {
+  page.value = 0
+  loadRecords()
+}
+
+function resetFilters() {
+  filterCategory.value = ''
+  filterAction.value = ''
+  filterActorId.value = ''
+  filterResult.value = ''
+  filterTargetTenantId.value = ''
+  filterFrom.value = ''
+  filterTo.value = ''
+  page.value = 0
+  loadRecords()
+}
+
+async function exportCsv() {
+  exporting.value = true
+  error.value = null
+  try {
+    const blob = await AuditAPI.exportAuditRecords({
+      category: filterCategory.value || undefined,
+      action: filterAction.value || undefined,
+      actorId: filterActorId.value || undefined,
+      result: filterResult.value || undefined,
+      targetTenantId: filterTargetTenantId.value || undefined,
+      from: filterFrom.value || undefined,
+      to: filterTo.value || undefined,
+      limit: 1000,
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `audit-records-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    exporting.value = false
   }
-  return value
 }
 
 function categoryClass(category?: string): string {
   if (!category) return 'bg-surface-4/20 text-text-secondary'
-  if (category.startsWith('FEATURE_FLAG_')) return 'bg-accent-500/10 text-accent-300'
-  if (category.startsWith('POLICY_')) return 'bg-info-muted text-info'
-  if (category.startsWith('ACCESS_')) return 'bg-success-muted text-success'
-  if (category.startsWith('NAVIGATION_')) return 'bg-yellow-600/20 text-warning'
+  if (category.startsWith('ADMIN_')) return 'bg-accent-500/10 text-accent-300'
+  if (category.startsWith('RENDER_')) return 'bg-info-muted text-info'
+  if (category.startsWith('DATA_')) return 'bg-success-muted text-success'
+  if (category.startsWith('IDENTITY_')) return 'bg-purple-500/10 text-purple-300'
   return 'bg-surface-4/20 text-text-secondary'
 }
 
-onMounted(loadRecords)
+function resultClass(result?: string | null): string {
+  if (!result) return 'bg-surface-4/20 text-text-secondary'
+  if (result === 'SUCCESS') return 'bg-success-muted text-success'
+  if (result === 'DENIED') return 'bg-danger-muted text-danger'
+  if (result === 'FAILED') return 'bg-warning-muted text-warning'
+  if (result === 'ERROR') return 'bg-danger-muted text-danger'
+  return 'bg-surface-4/20 text-text-secondary'
+}
+
+watch([filterCategory, filterAction, filterActorId, filterResult, filterTargetTenantId, filterFrom, filterTo], () => {
+  page.value = 0
+})
+
+onMounted(async () => {
+  await loadCategories()
+  await loadRecords()
+})
 </script>
 
 <template>
@@ -108,11 +182,21 @@ onMounted(loadRecords)
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-xl font-bold">Audit Log</h1>
-        <p class="text-sm text-text-secondary mt-1">Comprehensive audit trail with sensitive field masking</p>
+        <p class="text-sm text-text-secondary mt-1">Server-side filtered audit trail with pagination</p>
       </div>
-      <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded text-white" @click="loadRecords">
-        Refresh
-      </button>
+      <div class="flex gap-2">
+        <button class="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-sm rounded text-white" @click="loadRecords">
+          Refresh
+        </button>
+        <button
+          class="px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-sm rounded text-white disabled:opacity-50"
+          :disabled="exporting"
+          @click="exportCsv"
+        >
+          <span v-if="exporting">Exporting...</span>
+          <span v-else>Export CSV</span>
+        </button>
+      </div>
     </div>
 
     <div v-if="error" class="mb-4 p-3 bg-danger-muted border border-danger rounded-lg text-danger text-sm">
@@ -121,29 +205,51 @@ onMounted(loadRecords)
 
     <!-- Filters -->
     <div class="bg-surface-2 border border-border-subtle rounded-lg p-4 mb-4">
-      <h2 class="text-sm font-semibold text-text-primary mb-3">Filters</h2>
-      <div class="grid grid-cols-5 gap-3">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-text-primary">Filters</h2>
+        <button class="text-xs text-text-secondary hover:text-text-primary" @click="resetFilters">
+          Reset
+        </button>
+      </div>
+      <div class="grid grid-cols-4 gap-3">
         <div>
           <label class="block text-xs text-text-secondary mb-1">Category</label>
-          <select v-model="filterCategory" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary">
-            <option v-for="cat in categories" :key="cat" :value="cat === 'ALL' ? '' : cat">{{ cat }}</option>
+          <select v-model="filterCategory" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" @change="applyFilters">
+            <option value="">All</option>
+            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs text-text-secondary mb-1">Tenant</label>
-          <input v-model="filterTenant" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Filter by tenant" />
+          <label class="block text-xs text-text-secondary mb-1">Action</label>
+          <input v-model="filterAction" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Filter by action" @keyup.enter="applyFilters" />
         </div>
         <div>
-          <label class="block text-xs text-text-secondary mb-1">Workspace</label>
-          <input v-model="filterWorkspace" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Filter by workspace" />
+          <label class="block text-xs text-text-secondary mb-1">Actor ID</label>
+          <input v-model="filterActorId" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Filter by actor" @keyup.enter="applyFilters" />
         </div>
         <div>
-          <label class="block text-xs text-text-secondary mb-1">User</label>
-          <input v-model="filterUser" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Filter by user" />
+          <label class="block text-xs text-text-secondary mb-1">Result</label>
+          <select v-model="filterResult" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" @change="applyFilters">
+            <option value="">All</option>
+            <option v-for="r in resultOptions" :key="r" :value="r">{{ r }}</option>
+          </select>
         </div>
         <div>
-          <label class="block text-xs text-text-secondary mb-1">Actor</label>
-          <input v-model="filterActor" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Filter by actor" />
+          <label class="block text-xs text-text-secondary mb-1">Target Tenant</label>
+          <input v-model="filterTargetTenantId" type="text" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" placeholder="Filter by tenant" @keyup.enter="applyFilters" />
+        </div>
+        <div>
+          <label class="block text-xs text-text-secondary mb-1">From</label>
+          <input v-model="filterFrom" type="datetime-local" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" @change="applyFilters" />
+        </div>
+        <div>
+          <label class="block text-xs text-text-secondary mb-1">To</label>
+          <input v-model="filterTo" type="datetime-local" class="w-full bg-surface-0 border border-border-subtle rounded px-2 py-1.5 text-sm text-text-primary" @change="applyFilters" />
+        </div>
+        <div class="flex items-end">
+          <button class="w-full px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-sm rounded text-white" @click="applyFilters">
+            Apply
+          </button>
         </div>
       </div>
     </div>
@@ -151,7 +257,7 @@ onMounted(loadRecords)
     <LoadingState v-if="loading" message="Loading audit logs..." />
 
     <EmptyState
-      v-else-if="filteredRecords.length === 0"
+      v-else-if="records.length === 0"
       icon="clipboard"
       title="No audit records found"
       description="No audit records match the current filters."
@@ -162,61 +268,48 @@ onMounted(loadRecords)
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-border-subtle text-xs text-text-secondary">
-              <th class="text-left px-3 py-2 w-8"></th>
               <th class="text-left px-3 py-2">Timestamp</th>
               <th class="text-left px-3 py-2">Category</th>
-              <th class="text-left px-3 py-2">Operation</th>
-              <th class="text-left px-3 py-2">Resource</th>
+              <th class="text-left px-3 py-2">Action</th>
               <th class="text-left px-3 py-2">Actor</th>
-              <th class="text-left px-3 py-2">Details</th>
+              <th class="text-left px-3 py-2">Resource</th>
+              <th class="text-left px-3 py-2">Target Tenant</th>
+              <th class="text-left px-3 py-2">Result</th>
             </tr>
           </thead>
           <tbody>
-            <template v-for="record in filteredRecords" :key="record.id || Math.random()">
-              <tr
-                class="border-b border-border-subtle/50 hover:bg-surface-3/30 cursor-pointer"
-                @click="toggleExpand(record)"
-              >
-                <td class="px-3 py-2 text-center">
-                  <span class="text-xs text-text-tertiary">{{ expandedRecord === record.id ? '▼' : '▶' }}</span>
-                </td>
-                <td class="px-3 py-2 text-xs text-text-secondary whitespace-nowrap">{{ record.createdAt?.slice(0, 19) || '—' }}</td>
-                <td class="px-3 py-2">
-                  <span class="text-xs px-1.5 py-0.5 rounded" :class="categoryClass(record.category)">
-                    {{ record.category || '—' }}
-                  </span>
-                </td>
-                <td class="px-3 py-2 text-xs text-text-primary">{{ record.action || '—' }}</td>
-                <td class="px-3 py-2 text-xs font-mono text-text-secondary">{{ record.resourceDisplay }}</td>
-                <td class="px-3 py-2 text-xs text-text-secondary">{{ record.actor || '—' }}</td>
-                <td class="px-3 py-2 text-xs text-text-tertiary truncate max-w-xs">{{ maskSensitive(record.details || '—') }}</td>
-              </tr>
-              <tr v-if="expandedRecord === record.id" class="bg-surface-0/50">
-                <td colspan="7" class="px-6 py-3">
-                  <div class="grid grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <div class="text-text-secondary mb-1">Full Details</div>
-                      <pre class="text-text-primary bg-surface-2 rounded p-2 overflow-x-auto max-h-32">{{ record.details || '—' }}</pre>
-                    </div>
-                    <div>
-                      <div class="text-text-secondary mb-1">Before / After</div>
-                      <div v-if="record.beforeJson" class="mb-2">
-                        <span class="text-text-tertiary">Before:</span>
-                        <pre class="text-danger bg-surface-2 rounded p-2 overflow-x-auto max-h-24 mt-1">{{ record.beforeJson }}</pre>
-                      </div>
-                      <div v-if="record.afterJson">
-                        <span class="text-text-tertiary">After:</span>
-                        <pre class="text-success bg-surface-2 rounded p-2 overflow-x-auto max-h-24 mt-1">{{ record.afterJson }}</pre>
-                      </div>
-                      <div v-if="record.matchedRule" class="mt-2">
-                        <span class="text-text-tertiary">Matched Rule:</span>
-                        <span class="text-info ml-1">{{ record.matchedRule }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </template>
+            <tr
+              v-for="record in records"
+              :key="record.id"
+              class="border-b border-border-subtle/50 hover:bg-surface-3/30 cursor-pointer"
+              @click="openDetail(record)"
+            >
+              <td class="px-3 py-2 text-xs text-text-secondary whitespace-nowrap">
+                {{ record.createdAt?.slice(0, 19) || '—' }}
+              </td>
+              <td class="px-3 py-2">
+                <span class="text-xs px-1.5 py-0.5 rounded" :class="categoryClass(record.category)">
+                  {{ record.category || '—' }}
+                </span>
+              </td>
+              <td class="px-3 py-2 text-xs text-text-primary font-mono">
+                {{ record.action || '—' }}
+              </td>
+              <td class="px-3 py-2 text-xs text-text-secondary">
+                {{ record.actorId || '—' }}
+              </td>
+              <td class="px-3 py-2 text-xs text-text-secondary font-mono">
+                {{ record.resourceType && record.resourceId ? `${record.resourceType}:${record.resourceId}` : '—' }}
+              </td>
+              <td class="px-3 py-2 text-xs text-text-secondary">
+                {{ record.targetTenantId || '—' }}
+              </td>
+              <td class="px-3 py-2">
+                <span class="text-xs px-1.5 py-0.5 rounded" :class="resultClass(record.result)">
+                  {{ record.result || '—' }}
+                </span>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -242,5 +335,58 @@ onMounted(loadRecords)
         </div>
       </div>
     </template>
+
+    <!-- Detail Drawer -->
+    <div v-if="showDetail" class="fixed inset-0 z-50 flex justify-end" @click.self="closeDetail">
+      <div class="w-full max-w-lg bg-surface-1 border-l border-border-subtle overflow-y-auto shadow-xl">
+        <div class="flex items-center justify-between p-4 border-b border-border-subtle">
+          <h2 class="text-lg font-semibold">Audit Record Detail</h2>
+          <button class="text-text-secondary hover:text-text-primary" @click="closeDetail">✕</button>
+        </div>
+        <div v-if="selectedRecord" class="p-4 space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div class="text-text-secondary text-xs mb-1">ID</div>
+              <div class="font-mono text-xs">{{ selectedRecord.id }}</div>
+            </div>
+            <div>
+              <div class="text-text-secondary text-xs mb-1">Timestamp</div>
+              <div>{{ selectedRecord.createdAt }}</div>
+            </div>
+            <div>
+              <div class="text-text-secondary text-xs mb-1">Category</div>
+              <span class="text-xs px-1.5 py-0.5 rounded" :class="categoryClass(selectedRecord.category)">
+                {{ selectedRecord.category }}
+              </span>
+            </div>
+            <div>
+              <div class="text-text-secondary text-xs mb-1">Action</div>
+              <div class="font-mono text-xs">{{ selectedRecord.action }}</div>
+            </div>
+            <div>
+              <div class="text-text-secondary text-xs mb-1">Actor Type</div>
+              <div>{{ selectedRecord.actorType }}</div>
+            </div>
+            <div>
+              <div class="text-text-secondary text-xs mb-1">Actor ID</div>
+              <div>{{ selectedRecord.actorId }}</div>
+            </div>
+            <div>
+              <div class="text-text-secondary text-xs mb-1">Resource Type</div>
+              <div>{{ selectedRecord.resourceType }}</div>
+            </div>
+            <div>
+              <div class="text-text-secondary text-xs mb-1">Resource ID</div>
+              <div class="font-mono text-xs">{{ selectedRecord.resourceId }}</div>
+            </div>
+          </div>
+          <div>
+            <div class="text-text-secondary text-xs mb-1">Payload (sanitized)</div>
+            <pre class="text-text-primary bg-surface-2 rounded p-2 overflow-x-auto max-h-64 text-xs">{{ JSON.stringify(sanitizedPayload, null, 2) }}</pre>
+          </div>
+        </div>
+        <div v-else class="p-4 text-text-secondary">Loading...</div>
+      </div>
+    </div>
   </div>
 </template>

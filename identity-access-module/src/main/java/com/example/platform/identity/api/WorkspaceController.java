@@ -11,6 +11,7 @@ import com.example.platform.entitlement.domain.WorkspaceEntitlementPool;
 import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.WorkspaceService;
+import com.example.platform.shared.audit.AdminAuditPublisher;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -28,21 +29,28 @@ public class WorkspaceController {
     private final WorkspaceEntitlementPoolService poolService;
     private final EntitlementService entitlementService;
     private final EntitlementPolicyService entitlementPolicyService;
+    private final AdminAuditPublisher auditPublisher;
 
     public WorkspaceController(WorkspaceService workspaceService,
             WorkspaceEntitlementPoolService poolService,
             EntitlementService entitlementService,
-            EntitlementPolicyService entitlementPolicyService) {
+            EntitlementPolicyService entitlementPolicyService,
+            AdminAuditPublisher auditPublisher) {
         this.workspaceService = workspaceService;
         this.poolService = poolService;
         this.entitlementService = entitlementService;
         this.entitlementPolicyService = entitlementPolicyService;
+        this.auditPublisher = auditPublisher;
     }
 
     @PostMapping
-    public WorkspaceResponse createWorkspace(@RequestParam String tenantId,
-            @Valid @RequestBody CreateWorkspaceRequest request) {
-        return workspaceService.createWorkspace(tenantId, request);
+    public WorkspaceResponse createWorkspace(@RequestParam(required = false) String tenantId,
+            @Valid @RequestBody CreateWorkspaceRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        // Resolve tenant: use caller-supplied tenantId only if admin;
+        // otherwise derive from TenantContext (current authenticated tenant).
+        String effectiveTenant = resolveTenantId(tenantId, httpRequest);
+        return workspaceService.createWorkspace(effectiveTenant, request);
     }
 
     @GetMapping("/{workspaceId}")
@@ -126,10 +134,13 @@ public class WorkspaceController {
     @PostMapping("/{workspaceId}/entitlements/preview")
     public EntitlementDecision previewEntitlements(
             @PathVariable String workspaceId,
-            @RequestBody PreviewRequest request,
-            @RequestHeader(value = "X-Tenant-ID", required = false) String tenantId) {
+            @RequestBody PreviewRequest request) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         return entitlementPolicyService.validateExportDecision(
-                tenantId != null ? tenantId : workspaceId,
+                tenantId,
                 request.userId(), request.preset(), request.outputFormat(),
                 request.estimatedDurationSeconds() != null ? request.estimatedDurationSeconds() : 60L);
     }
@@ -139,6 +150,60 @@ public class WorkspaceController {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         pd.setTitle("Resource Not Found");
         return pd;
+    }
+
+    /**
+     * Resolve tenant ID for workspace creation.
+     * If caller supplies a tenantId different from TenantContext, require admin role.
+     * Otherwise, use TenantContext (current authenticated tenant).
+     */
+    private String resolveTenantId(String requestedTenantId, jakarta.servlet.http.HttpServletRequest request) {
+        String contextTenant = com.example.platform.shared.web.TenantContext.get();
+        if (contextTenant == null || contextTenant.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
+        if (requestedTenantId != null && !requestedTenantId.isBlank()
+                && !requestedTenantId.equals(contextTenant)) {
+            // Cross-tenant workspace creation requires admin role
+            if (!isAdmin(request)) {
+                auditPublisher.publish(
+                        extractActor(request), extractRoles(request),
+                        "ADMIN_CREATE_WORKSPACE_CROSS_TENANT", "workspace", null, requestedTenantId, "DENIED");
+                throw new SecurityException("Admin role required to create workspace in another tenant");
+            }
+            return requestedTenantId;
+        }
+        return contextTenant;
+    }
+
+    private boolean isAdmin(jakarta.servlet.http.HttpServletRequest request) {
+        // OAuth2 / Spring Security path
+        if (request.isUserInRole("ADMIN")) return true;
+        // Legacy HMAC JWT path: check jwt.roles request attribute
+        Object rolesAttr = request.getAttribute("jwt.roles");
+        if (rolesAttr instanceof java.util.List<?> roles) {
+            return roles.stream().anyMatch(r -> r != null && "ADMIN".equalsIgnoreCase(r.toString().trim()));
+        } else if (rolesAttr instanceof String rolesStr) {
+            for (String r : rolesStr.split(",")) {
+                if ("ADMIN".equalsIgnoreCase(r.trim())) return true;
+            }
+        }
+        return false;
+    }
+
+    private static String extractActor(jakarta.servlet.http.HttpServletRequest request) {
+        Object subject = request.getAttribute("jwt.subject");
+        return subject != null && !subject.toString().isBlank() ? subject.toString() : "anonymous";
+    }
+
+    private static String extractRoles(jakarta.servlet.http.HttpServletRequest request) {
+        Object rolesAttr = request.getAttribute("jwt.roles");
+        if (rolesAttr instanceof java.util.List<?> roles) {
+            return String.join(",", roles.stream().map(Object::toString).toList());
+        } else if (rolesAttr instanceof String rolesStr) {
+            return rolesStr;
+        }
+        return "none";
     }
 
     public record CreateWorkspaceGrantRequest(

@@ -11,7 +11,7 @@ import TimelineRevisionCompareDialog from './TimelineRevisionCompareDialog.vue'
 import TimelinePatchStepsDialog from './TimelinePatchStepsDialog.vue'
 import { useTimelineSyncMetaStore } from '@/stores/timelineSyncMeta'
 import { useTimelineStore } from '@/stores/timeline'
-import { applyPatchPathHighlights, loadRevisionInternalJson } from '@/utils/timelinePatchHighlight'
+import { applyPatchPathHighlights } from '@/utils/timelinePatchHighlight'
 
 const props = defineProps<{
   projectId: string | null | undefined

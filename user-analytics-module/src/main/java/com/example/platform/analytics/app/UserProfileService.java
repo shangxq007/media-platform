@@ -92,6 +92,14 @@ public class UserProfileService {
         return profileRepository.findByTenantIdAndUserId(tenantId, userId);
     }
 
+    /**
+     * List all distinct tenant IDs that have user profiles.
+     * Used by analytics rebuild job to discover tenants dynamically.
+     */
+    public List<String> listAllTenantIds() {
+        return profileRepository.findAllDistinctTenantIds();
+    }
+
     private UserProfile createDefaultProfile(String tenantId, String userId) {
         UserProfile profile = new UserProfile(
                 Ids.newId("prof"),

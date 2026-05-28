@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import PageSection from '@/components/ui/PageSection.vue'
 import FormSection from '@/components/ui/FormSection.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
-
+import { MeEntitlementAPI } from '@/api/me'
 
 const saving = ref(false)
+const saveMessage = ref<string | null>(null)
+const saveMessageType = ref<'success' | 'error' | 'info'>('info')
 const showDeleteDialog = ref(false)
 
 const profile = reactive({
@@ -28,41 +30,78 @@ const preferences = reactive({
   language: 'en',
 })
 
-async function handleSaveProfile() {
-  saving.value = true
+// Load notification preferences from API
+onMounted(async () => {
   try {
-    await new Promise(r => setTimeout(r, 500))
-  } finally {
-    saving.value = false
+    const prefs = await MeEntitlementAPI.getNotificationPreferences()
+    if (prefs) {
+      notifications.emailUpdates = prefs.globalEnabled !== false
+      notifications.exportComplete = prefs.globalEnabled !== false
+      notifications.billingAlerts = prefs.criticalOverride !== false
+    }
+  } catch {
+    // API not available or not authenticated — use defaults
   }
+
+  // Load local-only preferences from localStorage
+  const savedTheme = localStorage.getItem('pref_theme')
+  const savedLang = localStorage.getItem('pref_language')
+  if (savedTheme) preferences.theme = savedTheme
+  if (savedLang) preferences.language = savedLang
+})
+
+function showMessage(msg: string, type: 'success' | 'error' | 'info' = 'success') {
+  saveMessage.value = msg
+  saveMessageType.value = type
+  setTimeout(() => { saveMessage.value = null }, 4000)
 }
 
+// Profile — no backend API yet (button is disabled)
+
+// Notifications — real API
 async function handleSaveNotifications() {
   saving.value = true
+  saveMessage.value = null
   try {
-    await new Promise(r => setTimeout(r, 500))
+    await MeEntitlementAPI.updateNotificationPreferences({
+      globalEnabled: notifications.emailUpdates,
+      criticalOverride: notifications.billingAlerts,
+    })
+    showMessage('Notification preferences saved to server.', 'success')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Failed to save notification preferences'
+    showMessage(msg, 'error')
   } finally {
     saving.value = false
   }
 }
 
+// Appearance — local-only (no backend API)
 async function handleSavePreferences() {
-  saving.value = true
-  try {
-    await new Promise(r => setTimeout(r, 500))
-  } finally {
-    saving.value = false
-  }
+  localStorage.setItem('pref_theme', preferences.theme)
+  localStorage.setItem('pref_language', preferences.language)
+  showMessage('Appearance preferences saved locally on this device only. They will not sync to other devices or the server.', 'info')
 }
 
 function handleDeleteAccount() {
   showDeleteDialog.value = false
+  showMessage('Account deletion is not yet implemented.', 'error')
 }
 </script>
 
 <template>
   <div class="flex-1 overflow-y-auto layout-content-padded space-y-xl">
     <PageHeader title="Settings" subtitle="Manage your account settings and preferences" />
+
+    <!-- Save message banner -->
+    <div v-if="saveMessage" :class="[
+      'p-sm rounded text-xs flex items-center gap-sm',
+      saveMessageType === 'success' ? 'bg-success/10 text-success border border-success/30' :
+      saveMessageType === 'error' ? 'bg-danger-500/10 text-danger-500 border border-danger-500/30' :
+      'bg-info/10 text-info border border-info/30'
+    ]">
+      {{ saveMessage }}
+    </div>
 
     <!-- Profile Settings -->
     <PageSection title="Profile" description="Your personal information">
@@ -83,10 +122,10 @@ function handleDeleteAccount() {
               <div class="c-form-hint">Link to your profile picture</div>
             </div>
           </FormSection>
-          <div class="mt-md pt-md border-t border-default flex justify-end">
-            <button class="theme-btn theme-btn-primary" :disabled="saving" @click="handleSaveProfile">
-              <span v-if="saving" class="c-spinner c-spinner-sm mr-xs" />
-              {{ saving ? 'Saving...' : 'Save Profile' }}
+          <div class="mt-md pt-md border-t border-default flex items-center justify-between">
+            <span class="text-xs text-text-muted">Profile saving requires a server API (coming soon).</span>
+            <button class="theme-btn theme-btn-secondary" disabled title="Profile saving is not yet supported by the server">
+              Save Profile
             </button>
           </div>
         </div>
@@ -167,10 +206,10 @@ function handleDeleteAccount() {
               </select>
             </div>
           </FormSection>
-          <div class="mt-md pt-md border-t border-default flex justify-end">
-            <button class="theme-btn theme-btn-primary" :disabled="saving" @click="handleSavePreferences">
-              <span v-if="saving" class="c-spinner c-spinner-sm mr-xs" />
-              {{ saving ? 'Saving...' : 'Save Appearance' }}
+          <div class="mt-md pt-md border-t border-default flex items-center justify-between">
+            <span class="text-xs text-text-muted">Saved locally on this device only.</span>
+            <button class="theme-btn theme-btn-secondary" :disabled="saving" @click="handleSavePreferences">
+              Save Locally
             </button>
           </div>
         </div>
@@ -186,7 +225,9 @@ function handleDeleteAccount() {
               <div class="text-sm font-medium text-text-primary">Delete Account</div>
               <div class="text-xs text-text-muted">Permanently delete your account and all associated data.</div>
             </div>
-            <button class="theme-btn theme-btn-danger" @click="showDeleteDialog = true">Delete Account</button>
+            <button class="theme-btn theme-btn-danger" disabled title="Account deletion is not yet implemented">
+              Delete Account
+            </button>
           </div>
         </div>
       </div>

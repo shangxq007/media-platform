@@ -6,7 +6,6 @@ import com.example.platform.render.app.autocaptions.AutoCaptionsService.AutoCapt
 import java.util.Map;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,9 +21,11 @@ public class AutoCaptionsController {
 
     @PostMapping
     public Map<String, Object> generateCaptions(
-            @RequestHeader(value = "X-Tenant-ID", required = false) String tenantId,
             @RequestBody GenerateCaptionsRequest request) {
-        String effectiveTenant = tenantId != null ? tenantId : "tenant-1";
+        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
+        if (effectiveTenant == null || effectiveTenant.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
 
         AutoCaptionsResult result = autoCaptionsService.generateCaptions(new AutoCaptionsRequest(
                 effectiveTenant,

@@ -101,6 +101,13 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
         return count != null ? count : 0L;
     }
 
+    @Override
+    public List<String> findAllDistinctTenantIds() {
+        return jdbc.queryForList(
+                "SELECT DISTINCT tenant_id FROM user_profile",
+                String.class);
+    }
+
     private UserProfile map(ResultSet rs, int rowNum) throws SQLException {
         return new UserProfile(
                 rs.getString("profile_id"),

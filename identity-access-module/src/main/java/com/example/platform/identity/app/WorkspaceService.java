@@ -84,7 +84,8 @@ public class WorkspaceService {
     public void revokeRoleFromMember(String workspaceId, String memberId, String roleKey) {
         WorkspaceMember member = workspaceMemberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
-        roleRepository.deleteUserRoleAssignment(member.userId(), roleKey);
+        // Use workspace-scoped deletion to avoid removing the user's role in OTHER workspaces.
+        roleRepository.deleteUserRoleAssignmentByWorkspace(member.userId(), roleKey, workspaceId);
         auditPort.record("SYSTEM", "ROLE_REVOKE", "PERMISSION",
                 "USER_ROLE_ASSIGNMENT", memberId,
                 Map.of("workspaceId", workspaceId, "userId", member.userId(), "roleKey", roleKey));

@@ -42,9 +42,11 @@ public class EntitlementController {
 
     @GetMapping("/entitlements/me/capabilities")
     public Map<String, Object> getMyCapabilities(
-            @RequestHeader(value = "X-Tenant-ID", required = false) String tenantId,
             @RequestHeader(value = "X-User-ID", required = false) String userId) {
-        String effectiveTenant = tenantId != null ? tenantId : "tenant-1";
+        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
+        if (effectiveTenant == null || effectiveTenant.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         String effectiveUser = userId != null ? userId : "user-1";
         String tier = entitlementPolicyService.getTier(effectiveTenant);
         EntitlementPolicy policy = entitlementPolicyService.getPolicy(effectiveTenant);
@@ -63,10 +65,12 @@ public class EntitlementController {
 
     @PostMapping("/render/export/validate")
     public Map<String, Object> validateExport(
-            @RequestHeader(value = "X-Tenant-ID", required = false) String tenantId,
             @RequestHeader(value = "X-User-ID", required = false) String userId,
             @RequestBody ExportValidationRequest request) {
-        String effectiveTenant = tenantId != null ? tenantId : "tenant-1";
+        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
+        if (effectiveTenant == null || effectiveTenant.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         String effectiveUser = userId != null ? userId : "user-1";
         long duration = request.estimatedDurationSeconds() != null ? request.estimatedDurationSeconds() : 60L;
 
@@ -128,10 +132,12 @@ public class EntitlementController {
 
     @PostMapping("/entitlements/access-check")
     public Map<String, Object> accessCheck(
-            @RequestHeader(value = "X-Tenant-ID", required = false) String tenantId,
             @RequestHeader(value = "X-User-ID", required = false) String userId,
             @RequestBody AccessCheckBody body) {
-        String effectiveTenant = tenantId != null ? tenantId : body.tenantId();
+        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
+        if (effectiveTenant == null || effectiveTenant.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
         String effectiveUser = userId != null ? userId : body.userId();
         AccessCheckRequest request = new AccessCheckRequest(
                 effectiveTenant,

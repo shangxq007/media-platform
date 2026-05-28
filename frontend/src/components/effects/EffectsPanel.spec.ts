@@ -1,7 +1,24 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import EffectsPanel from './EffectsPanel.vue'
+
+vi.mock('@/stores/effectPack', () => ({
+  useEffectPackStore: () => ({
+    allPacks: [
+      { packId: 'builtin-core', version: '2.0.0', name: 'Core Effects', builtin: true, effects: [] },
+    ],
+    allEffects: new Map([
+      ['video.fade_in', { effectKey: 'video.fade_in', displayName: 'Fade In', category: 'transition', allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'], packId: 'builtin-core', packVersion: '2.0.0', providerMappings: ['javacv'], parameterSchema: {}, defaultValues: {} }],
+      ['video.fade_out', { effectKey: 'video.fade_out', displayName: 'Fade Out', category: 'transition', allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'], packId: 'builtin-core', packVersion: '2.0.0', providerMappings: ['javacv'], parameterSchema: {}, defaultValues: {} }],
+      ['video.blur', { effectKey: 'video.blur', displayName: 'Blur', category: 'video', allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'], packId: 'builtin-core', packVersion: '2.0.0', providerMappings: ['javacv'], parameterSchema: {}, defaultValues: {} }],
+      ['video.vignette', { effectKey: 'video.vignette', displayName: 'Vignette', category: 'video', allowedTiers: ['PRO', 'TEAM', 'ENTERPRISE'], packId: 'builtin-core', packVersion: '2.0.0', providerMappings: ['javacv'], parameterSchema: {}, defaultValues: {} }],
+    ]),
+    allowedPackIds: ['builtin-core', 'basic'],
+    loadFromApi: vi.fn(),
+    setAllowedPackIds: vi.fn(),
+  }),
+}))
 
 describe('EffectsPanel', () => {
   beforeEach(() => {
@@ -18,7 +35,7 @@ describe('EffectsPanel', () => {
 
   it('renders tier selector', () => {
     const wrapper = mount(EffectsPanel)
-    expect(wrapper.text()).toContain('Tier:')
+    expect(wrapper.text()).toContain('Plan tier')
   })
 
   it('renders pack browser toggle', () => {
@@ -31,7 +48,7 @@ describe('EffectsPanel', () => {
     const wrapper = mount(EffectsPanel)
     const packBtn = wrapper.find('button[title="Browse effect packs"]')
     await packBtn.trigger('click')
-    expect(wrapper.text()).toContain('Effect Packs')
+    expect(wrapper.text()).toContain('Effect packs')
   })
 
   it('shows no clip hint when no clip selected', () => {
@@ -50,7 +67,7 @@ describe('EffectsPanel', () => {
     const effectItems = wrapper.findAll('[draggable="true"]')
     if (effectItems.length > 0) {
       await effectItems[0].trigger('click')
-      expect(effectItems[0].classes()).toContain('bg-primary-500/20')
+      expect(effectItems[0].classes()).toContain('is-selected')
     }
   })
 

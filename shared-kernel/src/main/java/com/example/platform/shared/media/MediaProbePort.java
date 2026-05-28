@@ -21,7 +21,6 @@ public interface MediaProbePort {
             String audioCodec,
             int audioSampleRate,
             int audioChannels,
-            boolean hasAudio,
             int rotation,
             String colorSpace,
             long bitrate,
@@ -35,7 +34,7 @@ public interface MediaProbePort {
         public static MediaProbeResult failed(String assetUri, String error) {
             return new MediaProbeResult(
                     assetUri, false, "", 0, 0, 0, 0, 0,
-                    "", "", 0, 0, false, 0, "", 0, false, 0,
+                    "", "", 0, 0, 0, "", 0, false, 0,
                     false, true, List.of(), error);
         }
 
@@ -43,8 +42,24 @@ public interface MediaProbePort {
             return width > 0 && height > 0 && videoCodec != null && !videoCodec.isEmpty();
         }
 
-        public boolean hasAudio() {
-            return audioChannels > 0 && audioCodec != null && !audioCodec.isEmpty();
+        /**
+         * Returns true if the media has at least one audio stream.
+         * Derived from audioChannels and audioCodec to avoid ambiguity with usability checks.
+         */
+        public boolean hasAudioStream() {
+            return audioChannels > 0
+                    || (audioCodec != null && !audioCodec.isEmpty());
+        }
+
+        /**
+         * Returns true if the media has audio that is usable for processing
+         * (e.g. mixing, waveform, auto-captions). Requires both a valid codec
+         * and at least one audio channel.
+         */
+        public boolean hasUsableAudio() {
+            return hasAudioStream()
+                    && audioCodec != null && !audioCodec.isBlank()
+                    && audioChannels > 0;
         }
     }
 }

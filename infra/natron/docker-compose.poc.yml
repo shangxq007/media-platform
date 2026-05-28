@@ -1,4 +1,5 @@
 # Natron Worker POC — local smoke test
+# DEV-ONLY: Uses :latest for local POC. Do not use in production.
 # docker compose -f platform/infra/natron/docker-compose.poc.yml build
 # docker compose -f platform/infra/natron/docker-compose.poc.yml run --rm natron-poc-script --help
 

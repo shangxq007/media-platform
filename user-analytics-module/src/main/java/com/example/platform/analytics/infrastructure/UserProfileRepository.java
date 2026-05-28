@@ -10,4 +10,5 @@ public interface UserProfileRepository {
     Optional<UserProfile> findByTenantIdAndUserId(String tenantId, String userId);
     List<UserProfile> findByTenantId(String tenantId, int limit);
     long countByTenantId(String tenantId);
+    List<String> findAllDistinctTenantIds();
 }

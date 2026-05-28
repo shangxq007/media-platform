@@ -17,6 +17,10 @@ class AccessDecisionServiceTest {
     @BeforeEach
     void setUp() {
         EntitlementPolicyService policyService = new EntitlementPolicyService(java.util.Optional.empty(), java.util.Optional.empty());
+        // Explicitly set tiers for test fixtures (no longer seeded in production code)
+        policyService.setTier("tenant-enterprise", "ENTERPRISE");
+        policyService.setTier("tenant-1", "FREE");
+        policyService.setTier("tenant-pro", "PRO");
         entitlementDecisionService = new EntitlementDecisionService(
                 policyService, java.util.Optional.empty(), java.util.Optional.empty(),
                 java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty());

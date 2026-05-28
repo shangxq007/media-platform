@@ -137,9 +137,36 @@ public class RoleRepository {
                 .fetch(this::mapUserRoleAssignmentRecord);
     }
 
+    /**
+     * Delete role assignments for a user across ALL workspaces matching the role key.
+     * Used by dev/bootstrap to clear a user's roles before re-assigning.
+     *
+     * @deprecated Use {@link #deleteUserRoleAssignmentByWorkspace(String, String, String)} for
+     *             workspace-scoped revocation to avoid cross-workspace data loss.
+     */
+    @Deprecated
     public void deleteUserRoleAssignment(String userId, String roleKey) {
         dsl.deleteFrom(table("user_role_assignment"))
                 .where(field("user_id").eq(userId))
+                .and(field("role_id").in(
+                        dsl.select(field("id"))
+                                .from(table("role"))
+                                .where(field("role_key").eq(roleKey))))
+                .execute();
+    }
+
+    /**
+     * Delete a role assignment for a user in a SPECIFIC workspace.
+     * This is the correct method for workspace-scoped role revocation.
+     *
+     * @param userId      the user ID
+     * @param roleKey     the role key (e.g. "ADMIN")
+     * @param workspaceId the workspace ID scope
+     */
+    public void deleteUserRoleAssignmentByWorkspace(String userId, String roleKey, String workspaceId) {
+        dsl.deleteFrom(table("user_role_assignment"))
+                .where(field("user_id").eq(userId))
+                .and(field("workspace_id").eq(workspaceId))
                 .and(field("role_id").in(
                         dsl.select(field("id"))
                                 .from(table("role"))

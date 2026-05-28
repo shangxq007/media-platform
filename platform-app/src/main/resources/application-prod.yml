@@ -43,6 +43,8 @@ app:
   security:
     enabled: true
     dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
     jwt:
       secret-key: ${APP_JWT_SECRET}
     cors:
@@ -61,6 +63,13 @@ app:
   temporal:
     environment: ${PLATFORM_ENV:prod}
     fail-on-missing-worker: ${TEMPORAL_FAIL_ON_MISSING_WORKER:true}
+  # Production sandbox: MUST be disabled or external. In-process eval is unsafe.
+  # If external worker is deployed, set execution-mode=external and configure sandbox.worker.base-url
+  sandbox:
+    enabled: false
+    execution-mode: disabled
+    allow-in-process-eval: false
+    allowed-languages: []
 
 management:
   endpoint:

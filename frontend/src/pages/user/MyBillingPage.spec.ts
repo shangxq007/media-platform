@@ -27,6 +27,8 @@ vi.mock('@/api/me', () => ({
       features: ['HD Export', 'Custom Fonts', 'Priority Support'],
       isActive: true,
     }),
+    getActiveSubscriptions: vi.fn().mockResolvedValue([]),
+    getEffectiveQuota: vi.fn().mockResolvedValue({}),
     getBillingHistory: vi.fn().mockResolvedValue({
       entries: [
         { id: 'le1', type: 'CHARGE', amount: 29.99, currency: 'USD', status: 'COMPLETED', description: 'Monthly subscription', createdAt: '2026-05-01T00:00:00Z' },

@@ -109,9 +109,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     const json = toJSON();
     const tracks = json.tracks as Array<Record<string, unknown>> | undefined;
     for (const track of tracks || []) {
-      for (const clip of track.children || []) {
-        if (clip.effects && clip.effects.length > 0) {
-          for (const effect of clip.effects) {
+      const children = track.children as Array<Record<string, unknown>> | undefined
+      for (const clip of children || []) {
+        const effects = clip.effects as Array<Record<string, unknown>> | undefined
+        if (effects && effects.length > 0) {
+          for (const effect of effects) {
             if (!effect.effectKey && effect.effectId) {
               effect.effectKey = effect.effectId;
               delete effect.effectId;

@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  namespace: media-platform-staging
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    # Edge-layer security headers. Content-Security-Policy is managed by Spring Security
+    # at the application layer to avoid duplicate headers. These add_header directives
+    # are additive; if Spring Security also sets the same header, the values are identical
+    # and the duplicate is harmless (browsers use the first or strictest value).
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header X-Frame-Options "DENY" always;
+      add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()" always
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.media-platform.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - api.media-platform.example.com
+      secretName: api-tls

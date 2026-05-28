@@ -181,7 +181,7 @@ describe('NavigationMenu loads MeOverview', () => {
         id: 'user-1',
         displayName: 'Test User',
         currentTenant: {
-          id: 'tenant-1',
+          id: 'test-tenant',
           name: 'Test Tenant',
           tier: 'PRO',
         },

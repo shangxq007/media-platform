@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: render-worker
+  namespace: media-platform-staging
+spec:
+  selector:
+    app: media-platform
+    component: render-worker
+  ports:
+    - port: 80
+      targetPort: 8081
+  type: ClusterIP

@@ -86,7 +86,7 @@ function applyFilter() {
     <div class="flex flex-wrap gap-md items-end">
       <label class="text-sm">
         <span class="text-text-muted block mb-xs">Tenant ID</span>
-        <input v-model="filter.tenantId" class="theme-input min-w-[160px]" placeholder="tenant-1" />
+        <input v-model="filter.tenantId" class="theme-input min-w-[160px]" placeholder="Filter by tenant ID" />
       </label>
       <label class="text-sm">
         <span class="text-text-muted block mb-xs">Status</span>

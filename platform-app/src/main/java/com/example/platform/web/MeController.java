@@ -1,6 +1,6 @@
 package com.example.platform.web;
 
-import com.example.platform.audit.app.AuditService;
+import com.example.platform.audit.app.AuditCategory;
 import com.example.platform.entitlement.app.EntitlementPolicyService;
 import com.example.platform.entitlement.app.EntitlementService;
 import com.example.platform.identity.app.PermissionService;
@@ -10,6 +10,7 @@ import com.example.platform.identity.domain.Project;
 import com.example.platform.policy.featureflag.FeatureFlagService;
 import com.example.platform.policy.featureflag.domain.FeatureFlagDefinition;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.web.collaboration.SharedResourceService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,7 +34,7 @@ public class MeController {
     private final EntitlementService entitlementService;
     private final EntitlementPolicyService entitlementPolicyService;
     private final FeatureFlagService featureFlagService;
-    private final AuditService auditService;
+    private final AuditPort auditPort;
     private final SharedResourceService sharedResourceService;
 
     public MeController(TenantRepository tenantRepository,
@@ -42,7 +43,7 @@ public class MeController {
                         EntitlementService entitlementService,
                         EntitlementPolicyService entitlementPolicyService,
                         FeatureFlagService featureFlagService,
-                        AuditService auditService,
+                        AuditPort auditPort,
                         SharedResourceService sharedResourceService) {
         this.tenantRepository = tenantRepository;
         this.projectRepository = projectRepository;
@@ -50,7 +51,7 @@ public class MeController {
         this.entitlementService = entitlementService;
         this.entitlementPolicyService = entitlementPolicyService;
         this.featureFlagService = featureFlagService;
-        this.auditService = auditService;
+        this.auditPort = auditPort;
         this.sharedResourceService = sharedResourceService;
     }
 
@@ -78,10 +79,12 @@ public class MeController {
 
         Map<String, Object> capabilities = new LinkedHashMap<>();
         try {
-            String effectiveTenant = tenantId != null ? tenantId : "tenant-1";
-            String tier = entitlementPolicyService.getTier(effectiveTenant);
+            if (tenantId == null || tenantId.isBlank()) {
+                throw new IllegalArgumentException("Tenant context is required");
+            }
+            String tier = entitlementPolicyService.getTier(tenantId);
             capabilities.put("tier", tier);
-            var policy = entitlementPolicyService.getPolicy(effectiveTenant);
+            var policy = entitlementPolicyService.getPolicy(tenantId);
             if (policy != null) {
                 capabilities.put("monthlyRenderMinutes", policy.monthlyRenderMinutes());
                 capabilities.put("maxConcurrentJobs", policy.maxConcurrentJobs());
@@ -92,7 +95,7 @@ public class MeController {
                 capabilities.put("allowedExportFormats", policy.exportFormats());
                 capabilities.put("allowedPresets", List.of("720p", "1080p", "4k"));
             }
-            var exportCaps = entitlementPolicyService.getExportCapabilities(effectiveTenant);
+            var exportCaps = entitlementPolicyService.getExportCapabilities(tenantId);
             if (exportCaps != null) {
                 capabilities.put("exportFormats", exportCaps.allowedFormats());
                 capabilities.put("exportPresets", exportCaps.allowedPresets());
@@ -139,16 +142,18 @@ public class MeController {
         Map<String, Object> usage = new LinkedHashMap<>();
         usage.put("period", java.time.YearMonth.now().toString());
         try {
-            var policy = entitlementPolicyService.getPolicy(tenantId != null ? tenantId : "tenant-1");
-            if (policy != null) {
-                usage.put("renderMinutesUsed", 0);
-                usage.put("renderMinutesLimit", policy.monthlyRenderMinutes());
-                usage.put("storageGbUsed", 0);
-                usage.put("storageGbLimit", 10);
-                usage.put("apiCallsUsed", 0);
-                usage.put("apiCallsLimit", 10000);
-                usage.put("exportsUsed", 0);
-                usage.put("exportsLimit", policy.maxConcurrentJobs() * 10);
+            if (tenantId != null && !tenantId.isBlank()) {
+                var policy = entitlementPolicyService.getPolicy(tenantId);
+                if (policy != null) {
+                    usage.put("renderMinutesUsed", 0);
+                    usage.put("renderMinutesLimit", policy.monthlyRenderMinutes());
+                    usage.put("storageGbUsed", 0);
+                    usage.put("storageGbLimit", 10);
+                    usage.put("apiCallsUsed", 0);
+                    usage.put("apiCallsLimit", 10000);
+                    usage.put("exportsUsed", 0);
+                    usage.put("exportsLimit", policy.maxConcurrentJobs() * 10);
+                }
             }
         } catch (Exception e) {
             log.warn("Failed to resolve usage: {}", e.getMessage());
@@ -163,7 +168,8 @@ public class MeController {
         onboarding.put("hasSetBilling", false);
         dashboard.put("onboarding", onboarding);
 
-        auditService.record("USER", userId, "VIEW_DASHBOARD", "DASHBOARD", "summary", null);
+        auditPort.record("USER", "VIEW_DASHBOARD", AuditCategory.IDENTITY.name(),
+                "DASHBOARD", "summary", null);
         return ResponseEntity.ok(dashboard);
     }
 
@@ -284,7 +290,7 @@ public class MeController {
         }
 
         String id = Ids.newId("fb");
-        auditService.record("USER", userId, "SUBMIT_FEEDBACK", "FEEDBACK", id,
+        auditPort.record("USER", "SUBMIT_FEEDBACK", AuditCategory.IDENTITY.name(), "FEEDBACK", id,
                 Map.of("type", type, "severity", severity));
 
         Map<String, Object> result = new LinkedHashMap<>();

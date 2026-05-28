@@ -26,7 +26,7 @@ async function importTimeline(event: Event) {
     const file = input.files[0]
     const text = await file.text()
     const otioData = JSON.parse(text)
-    importFromOTIO(otioData, store)
+    importFromOTIO(otioData, { state: store.state, addTrack: store.addTrack })
   } catch (err) {
     alert(`Failed to import timeline: ${(err as Error).message}`)
   } finally {

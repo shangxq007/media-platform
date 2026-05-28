@@ -35,9 +35,8 @@ describe('OTIO Utils', () => {
     expect(otio.tracks).toHaveLength(2)
     expect(otio.tracks[0].name).toBe('Video 1')
     expect(otio.tracks[0].children).toHaveLength(1)
-    expect(otio.tracks[0].children[0].name).toBe('clip_1')
-    expect(otio.tracks[0].children[0].source_range.start_time).toBe(0)
-    expect(otio.tracks[0].children[0].source_range.duration).toBe(5)
+    expect((otio.tracks[0].children[0] as Record<string, unknown>).name).toBe('clip_1')
+    expect((otio.tracks[0].children[0] as Record<string, unknown>).source_range).toEqual(expect.objectContaining({ start_time: 0, duration: 5 }))
   })
 
   it('exports empty tracks', () => {

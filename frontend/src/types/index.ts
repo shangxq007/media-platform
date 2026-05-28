@@ -683,6 +683,7 @@ export interface EntitlementBundle {
   description: string
   tier: string
   features: string[]
+  featureFlagKeys?: string[]
   quota: Record<string, number>
   status: 'ACTIVE' | 'ARCHIVED' | 'DRAFT'
   createdAt: string
@@ -740,6 +741,7 @@ export interface BillingPlan {
   trialDays: number
   isActive: boolean
   features: string[]
+  featureFlagKeys?: string[]
   quota: PlanQuota
   createdAt: string
   updatedAt: string

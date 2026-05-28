@@ -1,9 +1,15 @@
 # OIDC Resource Server (Authentik) — activate with: spring.profiles.active=oidc
 # Requires reachable issuer-uri and matching Authentik Application (Public + PKCE).
+#
+# NOTE: dev-auth-endpoint and oidc-dev-bootstrap are intentionally disabled in OIDC profile.
+# They are only enabled in dev/local/test profiles for local development.
+# Production OIDC environments should NOT expose dev auth endpoints or create default tenants.
 app:
   security:
     enabled: true
-    dev-auth-endpoint: true
+    dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
     oauth2:
       enabled: true
       issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:}
@@ -11,7 +17,7 @@ app:
       legacy-hmac-jwt-enabled: ${APP_SECURITY_OAUTH2_LEGACY_HMAC_JWT_ENABLED:true}
       jit-provisioning-enabled: true
       trust-jwt-tenant-only: true
-      default-tenant-id: ${APP_SECURITY_OAUTH2_DEFAULT_TENANT_ID:tenant-1}
+      default-tenant-id: ${APP_OIDC_DEFAULT_TENANT_ID:}
 
 spring:
   config:

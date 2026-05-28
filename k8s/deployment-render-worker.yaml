@@ -18,11 +18,28 @@ spec:
         app: media-platform
         component: render-worker
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10002
+        runAsGroup: 10002
+        fsGroup: 10002
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: render-worker
-          image: media-platform-render-worker:latest
+          # NOTE: Replace with your registry and explicit image tag (Git SHA or semver).
+          # Example: registry.example.com/platform-render-worker:2025.05.25-abc1234
+          # Never use :latest in production.
+          image: platform-render-worker:dev
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
-            - containerPort: 8081
+            - containerPort: 8090
           envFrom:
             - configMapRef:
                 name: app-config
@@ -30,7 +47,7 @@ spec:
                 name: app-secrets
           env:
             - name: SERVER_PORT
-              value: "8081"
+              value: "8090"
             - name: APP_REMOTE_WORKER_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -40,13 +57,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 8081
+              port: 8090
             initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /healthz
-              port: 8081
+              port: 8090
             initialDelaySeconds: 10
             periodSeconds: 5
           resources:
@@ -59,7 +76,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data/platform
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: app-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 2Gi

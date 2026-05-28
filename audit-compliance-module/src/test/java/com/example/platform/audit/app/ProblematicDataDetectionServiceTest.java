@@ -165,7 +165,7 @@ class ProblematicDataDetectionServiceTest {
         service.detectRenderJobIssues("job-6", "tenant-1", "user-1", data);
 
         verify(auditService, atLeastOnce()).record(
-                eq("system"), eq("PROBLEMATIC_DATA_DETECTED"), eq("AUDIT"),
+                eq("SYSTEM"), eq("problematic-data-detector"), eq("PROBLEMATIC_DATA_DETECTED"),
                 eq("problematic_data"), anyString(), any(Map.class));
     }
 }

@@ -60,7 +60,7 @@ public class ProblematicDataAutoFixService {
             };
 
             if (fixed != record) {
-                auditService.record("system", "PROBLEMATIC_DATA_AUTO_FIXED", "AUDIT",
+                auditService.record("SYSTEM", "problematic-data-autofix", "PROBLEMATIC_DATA_AUTO_FIXED",
                         "problematic_data", fixed.recordId(), Map.of(
                                 "dataType", fixed.dataType(),
                                 "fixApplied", fixed.autoFixApplied() != null ? fixed.autoFixApplied() : "none",
@@ -82,7 +82,7 @@ public class ProblematicDataAutoFixService {
 
         ProblematicDataRecord quarantined = record.withStatus(ProblematicDataStatus.QUARANTINED);
 
-        auditService.record("system", "PROBLEMATIC_DATA_QUARANTINED", "AUDIT",
+        auditService.record("SYSTEM", "problematic-data-autofix", "PROBLEMATIC_DATA_QUARANTINED",
                 "problematic_data", quarantined.recordId(), Map.of(
                         "dataType", quarantined.dataType(),
                         "quarantineTable", quarantineTable,

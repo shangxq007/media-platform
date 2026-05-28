@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { MeEntitlementAPI } from '@/api/me'
 import type { SubscriptionPlan, BillingLedgerEntry, Invoice } from '@/types'
 import type { ActiveSubscription } from '@/api/me'
@@ -85,6 +85,12 @@ const invoiceColumns = [
   { key: 'issued', label: 'Issued', width: '120px' },
   { key: 'due', label: 'Due', width: '120px' },
 ]
+
+const trialDays = computed(() => {
+  const p = plan.value as Record<string, unknown> | null
+  const val = p?.trialDays
+  return typeof val === 'number' ? val : 0
+})
 </script>
 
 <template>
@@ -112,7 +118,7 @@ const invoiceColumns = [
             <div class="text-sm font-medium text-text-primary">
               ${{ plan.monthlyPrice.toFixed(2) }}/mo · ${{ plan.annualPrice.toFixed(2) }}/yr {{ plan.currency }}
             </div>
-            <div v-if="'trialDays' in plan && (plan as Record<string, unknown>).trialDays > 0" class="text-xs text-info-500">{{ (plan as any).trialDays }}-day trial available</div>
+            <div v-if="trialDays > 0" class="text-xs text-info-500">{{ trialDays }}-day trial available</div>
           </div>
         </div>
 

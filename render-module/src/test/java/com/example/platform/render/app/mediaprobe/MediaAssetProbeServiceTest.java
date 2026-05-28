@@ -62,7 +62,7 @@ class MediaAssetProbeServiceTest {
                 return new MediaProbeResult(
                         assetUri, true, "mp4", 10_000_000, 60000,
                         1920, 1080, 30.0, "h264", "aac",
-                        44100, 2, true, 0, "bt709", 8_000_000, false, 2,
+                        44100, 2, 0, "bt709", 8_000_000, false, 2,
                         true, false, List.of(), null);
             }
 
@@ -98,7 +98,7 @@ class MediaAssetProbeServiceTest {
         assertNotNull(probe);
         assertTrue(probe.valid());
         assertEquals("h264", probe.videoCodec());
-        assertTrue(probe.hasAudio());
+        assertTrue(probe.hasUsableAudio());
     }
 
     @Test

@@ -2,9 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { AdminAnalyticsAPI } from '@/api/admin/analytics'
 import type { UserProfile, UserHabit, UserSegment } from '@/api/admin/analytics'
+import { useAdminTenantSelection } from '@/composables/useAdminTenantSelection'
 
 const loading = ref(true)
-const tenantId = ref('tenant-1')
+const { tenants: _tenants, selectedTenantId, loading: _tenantsLoading } = useAdminTenantSelection()
 const profiles = ref<UserProfile[]>([])
 const segments = ref<UserSegment[]>([])
 const selectedUserId = ref<string | null>(null)
@@ -17,8 +18,8 @@ async function loadData() {
   loading.value = true
   try {
     const [p, s] = await Promise.allSettled([
-      AdminAnalyticsAPI.listProfiles(tenantId.value),
-      AdminAnalyticsAPI.listSegments(tenantId.value),
+      AdminAnalyticsAPI.listProfiles(selectedTenantId.value),
+      AdminAnalyticsAPI.listSegments(selectedTenantId.value),
     ])
     if (p.status === 'fulfilled') profiles.value = p.value
     if (s.status === 'fulfilled') segments.value = s.value
@@ -39,8 +40,8 @@ async function viewProfile(userId: string) {
 }
 
 async function computeSegment(type: 'active' | 'power') {
-  if (type === 'active') await AdminAnalyticsAPI.computeActiveSegment(tenantId.value)
-  else await AdminAnalyticsAPI.computePowerUsersSegment(tenantId.value)
+    if (type === 'active') await AdminAnalyticsAPI.computeActiveSegment(selectedTenantId.value)
+    else await AdminAnalyticsAPI.computePowerUsersSegment(selectedTenantId.value)
   await loadData()
 }
 </script>
@@ -51,7 +52,7 @@ async function computeSegment(type: 'active' | 'power') {
       <h1 class="text-xl font-bold">User Analytics</h1>
       <div class="flex items-center gap-3">
         <input
-          v-model="tenantId"
+          v-model="selectedTenantId"
           type="text"
           class="bg-surface-2 border border-border-default rounded px-2 py-1.5 text-sm text-white w-48"
           placeholder="Tenant ID"

@@ -42,4 +42,12 @@ public class InMemoryUserProfileRepository implements UserProfileRepository {
                 .filter(p -> p.tenantId().equals(tenantId))
                 .count();
     }
+
+    @Override
+    public List<String> findAllDistinctTenantIds() {
+        return profiles.values().stream()
+                .map(UserProfile::tenantId)
+                .distinct()
+                .collect(Collectors.toList());
+    }
 }

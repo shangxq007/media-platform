@@ -112,6 +112,16 @@ export interface TimelineRevisionListOptions {
   source?: string
 }
 
+export interface TimelineRevisionAuthorFacet {
+  authorUserId: string
+  revisionCount: number
+}
+
+export interface TimelineRevisionFacets {
+  sources: string[]
+  authors: TimelineRevisionAuthorFacet[]
+}
+
 export const TimelineRevisionAPI = {
   async list(
     projectId: string,

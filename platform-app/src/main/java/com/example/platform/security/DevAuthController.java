@@ -16,11 +16,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Issues a dev JWT when security is enabled — for local frontend against {@code bootRun}.
+ * Issues a dev JWT for local frontend against {@code bootRun}.
+ *
+ * <p>DEV-ONLY: This endpoint is gated by {@code app.security.dev-auth-endpoint=true}
+ * and is never enabled in production. The "tenant-1" default is a development convenience.
  */
 @RestController
 @RequestMapping("/api/v1/dev/auth")
-@ConditionalOnProperty(name = "app.security.dev-auth-endpoint", havingValue = "true")
+@ConditionalOnProperty(name = "app.security.dev-auth-endpoint", havingValue = "true", matchIfMissing = false)
 public class DevAuthController {
 
     private final JwtProperties jwtProperties;
@@ -31,6 +34,8 @@ public class DevAuthController {
 
     @PostMapping("/token")
     public ResponseEntity<Map<String, Object>> issueToken(@RequestBody(required = false) DevTokenRequest body) {
+        // DEV-ONLY: This endpoint is gated by @ConditionalOnProperty("app.security.dev-auth-endpoint=true").
+        // The "tenant-1" default is intentionally a development convenience and is NEVER used in production.
         String tenantId = body != null && body.tenantId() != null ? body.tenantId() : "tenant-1";
         String userId = body != null && body.userId() != null ? body.userId() : "user-1";
 

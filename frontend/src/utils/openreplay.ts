@@ -43,9 +43,24 @@ const config = ref<OpenReplayConfig>({
 
 const initialized = ref(false)
 const sessionId = ref<string | null>(null)
-let openReplaySdk: Record<string, unknown> | null = null
 
-export function initOpenReplay(sdk: Record<string, unknown>, userConfig: Partial<OpenReplayConfig> = {}) {
+interface OpenReplaySdk {
+  start?: (options?: Record<string, unknown>) => Promise<unknown>
+  setUserID?: (id: string) => void
+  setMetadata?: (key: string, value: string) => void
+  event?: (name: string, data?: Record<string, unknown>) => void
+  handleError?: (type: string, error: Error) => void
+  getSessionID?: () => string | null
+  getSessionToken?: () => string | null
+  addIssue?: (issue: Record<string, unknown>) => void
+  track?: (name: string, data?: unknown) => void
+  addEvent?: (name: string, data?: unknown) => void
+  [key: string]: unknown
+}
+
+let openReplaySdk: OpenReplaySdk | null = null
+
+export function initOpenReplay(sdk: OpenReplaySdk, userConfig: Partial<OpenReplayConfig> = {}) {
   Object.assign(config.value, userConfig)
 
   if (!config.value.projectKey || !config.value.enabled) {
@@ -55,7 +70,7 @@ export function initOpenReplay(sdk: Record<string, unknown>, userConfig: Partial
 
   try {
     if (sdk && sdk.start) {
-      sdk.start({
+      sdk.start?.({
         projectKey: config.value.projectKey,
         ingestPoint: config.value.ingestPoint,
         resourceBaseHref: config.value.resourceBaseHref,
@@ -85,7 +100,7 @@ export function initOpenReplay(sdk: Record<string, unknown>, userConfig: Partial
       openReplaySdk = sdk
       initialized.value = true
       if (sdk.getSessionID) {
-        sessionId.value = sdk.getSessionID()
+        sessionId.value = sdk.getSessionID?.() ?? null
       }
       console.info('[OpenReplay] Initialized')
     }
@@ -97,16 +112,10 @@ export function initOpenReplay(sdk: Record<string, unknown>, userConfig: Partial
 export function setOpenReplayUser(user: OpenReplayUser) {
   if (!initialized.value || !openReplaySdk) return
   try {
-    if (openReplaySdk.setUserID) {
-      openReplaySdk.setUserID(user.id || '')
-    }
-    if (openReplaySdk.setMetadata) {
-      openReplaySdk.setMetadata({
-        tenantId: user.tenantId || '',
-        name: user.name || '',
-        email: user.email || ''
-      })
-    }
+    openReplaySdk.setUserID?.(user.id || '')
+    openReplaySdk.setMetadata?.('tenantId', user.tenantId || '')
+    openReplaySdk.setMetadata?.('name', user.name || '')
+    openReplaySdk.setMetadata?.('email', user.email || '')
   } catch (e) {
     console.warn('[OpenReplay] setUser failed:', e)
   }
@@ -121,8 +130,8 @@ export function submitOpenReplayFeedback(feedback: FeedbackData): Promise<boolea
   try {
     return new Promise((resolve) => {
       try {
-        if (openReplaySdk.addIssue) {
-          openReplaySdk.addIssue({
+        if (openReplaySdk?.addIssue) {
+          openReplaySdk.addIssue?.({
             type: feedback.type,
             title: feedback.title,
             description: feedback.description,
@@ -135,8 +144,8 @@ export function submitOpenReplayFeedback(feedback: FeedbackData): Promise<boolea
             }
           })
           resolve(true)
-        } else if (openReplaySdk.track) {
-          openReplaySdk.track('user_feedback', feedback)
+        } else if (openReplaySdk?.track) {
+          openReplaySdk.track?.('user_feedback', feedback)
           resolve(true)
         } else {
           resolve(false)
@@ -155,10 +164,10 @@ export function submitOpenReplayFeedback(feedback: FeedbackData): Promise<boolea
 export function recordOpenReplayEvent(eventName: string, data?: Record<string, unknown>) {
   if (!initialized.value || !openReplaySdk) return
   try {
-    if (openReplaySdk.track) {
-      openReplaySdk.track(eventName, data)
-    } else if (openReplaySdk.addEvent) {
-      openReplaySdk.addEvent(eventName, data)
+    if (openReplaySdk?.track) {
+      openReplaySdk.track?.(eventName, data)
+    } else if (openReplaySdk?.addEvent) {
+      openReplaySdk.addEvent?.(eventName, data)
     }
   } catch (e) {
     console.warn('[OpenReplay] recordEvent failed:', e)
@@ -187,10 +196,11 @@ function redactText(text: string): string {
 function sanitizeNetworkData(request: Record<string, unknown>): Record<string, unknown> {
   if (!request) return request
   if (request.headers) {
+    const headers = request.headers as Record<string, string>
     const sensitive = ['authorization', 'cookie', 'x-api-key', 'x-auth-token']
-    for (const key of Object.keys(request.headers)) {
+    for (const key of Object.keys(headers)) {
       if (sensitive.includes(key.toLowerCase())) {
-        request.headers[key] = '[REDACTED]'
+        headers[key] = '[REDACTED]'
       }
     }
   }

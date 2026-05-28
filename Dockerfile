@@ -28,7 +28,8 @@ RUN chmod +x gradlew \
 # -----------------------------------------------------------------------------
 FROM eclipse-temurin:25-jre-jammy
 WORKDIR /app
-RUN groupadd --system spring && useradd --system --gid spring spring
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/*
+RUN groupadd --gid 10001 spring && useradd --uid 10001 --gid 10001 spring
 USER spring:spring
 COPY --from=backend-build /workspace/app.jar /app/app.jar
 EXPOSE 8080

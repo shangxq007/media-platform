@@ -16,9 +16,11 @@ import java.util.Map;
 @Service
 public class AuditService {
     private final DSLContext dsl;
+    private final AuditAlertService alertService;
 
-    public AuditService(DSLContext dsl) {
+    public AuditService(DSLContext dsl, AuditAlertService alertService) {
         this.dsl = dsl;
+        this.alertService = alertService;
     }
 
     public Map<String, Object> overview() {
@@ -48,6 +50,7 @@ public class AuditService {
     public String record(String actorType, String actorId, String action,
             String resourceType, String resourceId, Object payload, AuditCategory category) {
         String id = Ids.newId("aud");
+        String categoryName = category == null ? AuditCategory.UNKNOWN.name() : category.name();
         dsl.insertInto(table("audit_records"))
                 .columns(
                         field("id"),
@@ -68,10 +71,17 @@ public class AuditService {
                         resourceType,
                         resourceId,
                         payload == null ? null : Jsons.toJson(payload),
-                        category == null ? null : category.name(),
+                        categoryName,
                         OffsetDateTime.now()
                 )
                 .execute();
+
+        // Evaluate alert rules (non-blocking, failures are logged and swallowed)
+        String result = extractResultFromPayload(payload);
+        alertService.evaluate(categoryName, action, actorType, actorId,
+                resourceType, resourceId, extractTenantFromPayload(payload),
+                result, "", "");
+
         return id;
     }
 
@@ -122,5 +132,45 @@ public class AuditService {
                 .and(field("resource_id").eq(resourceId))
                 .orderBy(field("created_at").desc())
                 .fetchMaps();
+    }
+
+    // ==================== Payload field extraction helpers ====================
+
+    @SuppressWarnings("unchecked")
+    private static String extractResultFromPayload(Object payload) {
+        if (payload instanceof Map<?, ?> map) {
+            Object result = map.get("result");
+            return result != null ? result.toString() : null;
+        }
+        if (payload instanceof String str && !str.isBlank()) {
+            try {
+                Map<?, ?> map = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readValue(str, Map.class);
+                Object result = map.get("result");
+                return result != null ? result.toString() : null;
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static String extractTenantFromPayload(Object payload) {
+        if (payload instanceof Map<?, ?> map) {
+            Object tenant = map.get("targetTenantId");
+            return tenant != null ? tenant.toString() : null;
+        }
+        if (payload instanceof String str && !str.isBlank()) {
+            try {
+                Map<?, ?> map = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readValue(str, Map.class);
+                Object tenant = map.get("targetTenantId");
+                return tenant != null ? tenant.toString() : null;
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
     }
 }

@@ -143,16 +143,73 @@ class WorkspaceServiceTest {
     }
 
     @Test
-    void revokeRoleDeletesAssignment() {
+    void revokeRoleDeletesAssignmentInWorkspaceScope() {
         WorkspaceMember member = new WorkspaceMember("wsm_1", "ws_1", "usr_1", "EDITOR",
                 WorkspaceMember.MemberStatus.ACTIVE, Instant.now(), Instant.now());
         when(workspaceMemberRepository.findById("wsm_1")).thenReturn(Optional.of(member));
 
         workspaceService.revokeRoleFromMember("ws_1", "wsm_1", "ADMIN");
 
-        verify(roleRepository).deleteUserRoleAssignment("usr_1", "ADMIN");
+        // Must use workspace-scoped deletion, NOT the deprecated global deletion
+        verify(roleRepository).deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
+        verify(roleRepository, never()).deleteUserRoleAssignment(anyString(), anyString());
         verify(auditPort).record(eq("SYSTEM"), eq("ROLE_REVOKE"), eq("PERMISSION"),
                 eq("USER_ROLE_ASSIGNMENT"), eq("wsm_1"), any());
+    }
+
+    @Test
+    void revokeRoleDoesNotDeleteOtherWorkspaceRoles() {
+        // Setup: user usr_1 is in workspace ws_1 (ADMIN) and ws_2 (VIEWER)
+        WorkspaceMember memberWs1 = new WorkspaceMember("wsm_1", "ws_1", "usr_1", "ADMIN",
+                WorkspaceMember.MemberStatus.ACTIVE, Instant.now(), Instant.now());
+        when(workspaceMemberRepository.findById("wsm_1")).thenReturn(Optional.of(memberWs1));
+
+        workspaceService.revokeRoleFromMember("ws_1", "wsm_1", "ADMIN");
+
+        // Verify only workspace-scoped deletion is called
+        verify(roleRepository).deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
+        // Verify the deprecated global deletion is NOT called
+        verify(roleRepository, never()).deleteUserRoleAssignment(eq("usr_1"), anyString());
+    }
+
+    @Test
+    void revokeRoleThrowsWhenMemberNotFound() {
+        when(workspaceMemberRepository.findById("wsm_unknown")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> workspaceService.revokeRoleFromMember("ws_1", "wsm_unknown", "ADMIN"));
+        verify(roleRepository, never()).deleteUserRoleAssignmentByWorkspace(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void revokeRoleOnlyAffectsSpecifiedRole() {
+        // Setup: user has both ADMIN and EDITOR in workspace ws_1
+        WorkspaceMember member = new WorkspaceMember("wsm_1", "ws_1", "usr_1", "ADMIN",
+                WorkspaceMember.MemberStatus.ACTIVE, Instant.now(), Instant.now());
+        when(workspaceMemberRepository.findById("wsm_1")).thenReturn(Optional.of(member));
+
+        workspaceService.revokeRoleFromMember("ws_1", "wsm_1", "ADMIN");
+
+        // Only ADMIN should be deleted, EDITOR should remain
+        verify(roleRepository).deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
+        verify(roleRepository, never()).deleteUserRoleAssignmentByWorkspace(
+                eq("usr_1"), eq("EDITOR"), anyString());
+    }
+
+    @Test
+    void revokeRoleDoesNotAffectOtherUsers() {
+        // Setup: user usr_1 has ADMIN in ws_1
+        WorkspaceMember member = new WorkspaceMember("wsm_1", "ws_1", "usr_1", "ADMIN",
+                WorkspaceMember.MemberStatus.ACTIVE, Instant.now(), Instant.now());
+        when(workspaceMemberRepository.findById("wsm_1")).thenReturn(Optional.of(member));
+
+        workspaceService.revokeRoleFromMember("ws_1", "wsm_1", "ADMIN");
+
+        // Only usr_1's ADMIN in ws_1 should be deleted
+        verify(roleRepository).deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
+        // No deletion for other users
+        verify(roleRepository, never()).deleteUserRoleAssignmentByWorkspace(
+                eq("usr_2"), anyString(), anyString());
     }
 
     @Test

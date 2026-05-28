@@ -51,6 +51,8 @@ vi.mock('@/api/me', () => ({
         { flagKey: 'nav.beta_features', displayName: 'Beta Features Nav', enabled: true, scope: 'USER', targetTier: 'PRO', description: 'Navigation entry for beta features panel' },
       ],
     }),
+    getActiveSubscriptions: vi.fn().mockResolvedValue([]),
+    getEffectiveQuota: vi.fn().mockResolvedValue({}),
     getUsageSummary: vi.fn().mockResolvedValue({
       tenantId: 't1', userId: 'u1', period: '2026-05',
       renderMinutesUsed: 120, renderMinutesLimit: 600,

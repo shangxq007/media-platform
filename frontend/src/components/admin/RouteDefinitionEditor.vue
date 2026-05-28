@@ -51,7 +51,7 @@ watch(() => props.route, (route) => {
       requiredEntitlements: route.requiredEntitlements?.join(', ') ?? '',
       requiredTier: route.requiredTier ?? '',
       requiredFeatures: route.requiredFeatures?.join(', ') ?? '',
-      requiredFeatureFlags: (route as Record<string, unknown>).requiredFeatureFlags?.join(', ') ?? '',
+      requiredFeatureFlags: ((route as unknown as Record<string, unknown>).requiredFeatureFlags as string[] | undefined)?.join(', ') ?? '',
       supportedSources: route.supportedSources?.join(', ') ?? '',
       visible: route.visible !== false,
       enabled: route.enabled !== false,

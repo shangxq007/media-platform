@@ -14,7 +14,7 @@ onMounted(async () => {
     const bundles = await EntitlementAdminAPI.getBundles()
     const flagged = new Set<string>()
     for (const b of bundles) {
-      if ((b as any)?.featureFlagKeys?.length) {
+      if (b.featureFlagKeys?.length) {
         flagged.add(b.bundleId)
       }
     }

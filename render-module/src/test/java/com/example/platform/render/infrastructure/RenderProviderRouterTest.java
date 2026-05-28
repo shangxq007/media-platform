@@ -28,7 +28,10 @@ class RenderProviderRouterTest {
                 registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
                         new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
-        RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
+        RenderProviderRouter router = new RenderProviderRouter(
+                new RenderProviderResolver(registry, selectionPolicy),
+                fallbackPolicy,
+                new com.example.platform.render.domain.timeline.TimelineExtensionsReader());
 
         RenderProvider result = router.route("ofx_1080p");
         assertInstanceOf(OFXRenderProvider.class, result);
@@ -47,7 +50,10 @@ class RenderProviderRouterTest {
                 registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
                         new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
-        RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
+        RenderProviderRouter router = new RenderProviderRouter(
+                new RenderProviderResolver(registry, selectionPolicy),
+                fallbackPolicy,
+                new com.example.platform.render.domain.timeline.TimelineExtensionsReader());
 
         RenderProvider result = router.route("default_1080p");
         assertInstanceOf(JavaCVRenderProvider.class, result);
@@ -66,7 +72,10 @@ class RenderProviderRouterTest {
                 registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
                         new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
-        RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
+        RenderProviderRouter router = new RenderProviderRouter(
+                new RenderProviderResolver(registry, selectionPolicy),
+                fallbackPolicy,
+                new com.example.platform.render.domain.timeline.TimelineExtensionsReader());
 
         RenderProvider result = router.route("ofx_1080p", List.of("video.blur"));
         assertInstanceOf(OFXRenderProvider.class, result);
@@ -85,7 +94,10 @@ class RenderProviderRouterTest {
                 registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
                         new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
-        RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
+        RenderProviderRouter router = new RenderProviderRouter(
+                new RenderProviderResolver(registry, selectionPolicy),
+                fallbackPolicy,
+                new com.example.platform.render.domain.timeline.TimelineExtensionsReader());
 
         RenderProvider result = router.route("default_1080p", List.of());
         assertInstanceOf(JavaCVRenderProvider.class, result);
@@ -102,7 +114,10 @@ class RenderProviderRouterTest {
                 registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
                         new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
-        RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
+        RenderProviderRouter router = new RenderProviderRouter(
+                new RenderProviderResolver(registry, selectionPolicy),
+                fallbackPolicy,
+                new com.example.platform.render.domain.timeline.TimelineExtensionsReader());
 
         RenderProvider result = router.route("default_1080p");
         assertInstanceOf(JavaCVRenderProvider.class, result);

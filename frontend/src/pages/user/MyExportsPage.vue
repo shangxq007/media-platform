@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useProjectStore } from '@/stores/project'
 import { useRouter } from 'vue-router'
 import { useExportUiStore } from '@/stores/exportUi'
 import type { RenderJobDetailed } from '@/types'
@@ -11,11 +12,11 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import { MeEntitlementAPI } from '@/api/me'
 import { formatApiError } from '@/utils/apiError'
-import { getTenantId } from '@/utils/tenant'
 import DeliveryStatusPanel from '@/components/export/DeliveryStatusPanel.vue'
 
 const router = useRouter()
 const exportUi = useExportUiStore()
+const projectStore = useProjectStore()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -144,7 +145,7 @@ function formatDuration(seconds: number): string {
 
                 <DeliveryStatusPanel
                   v-if="exp.status === 'completed' && exp.projectId"
-                  :tenant-id="getTenantId()"
+                  :tenant-id="projectStore.currentTenant"
                   :project-id="exp.projectId"
                   :job-id="exp.id"
                   compact

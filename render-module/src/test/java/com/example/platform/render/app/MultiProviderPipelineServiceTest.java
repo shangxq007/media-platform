@@ -91,7 +91,10 @@ class MultiProviderPipelineServiceTest {
                 registry, new com.example.platform.render.infrastructure.effects.EffectProviderRouter(
                         new EffectMappingService()));
         RenderProviderFallbackPolicy fallbackPolicy = new RenderProviderFallbackPolicy(registry, selectionPolicy);
-        RenderProviderRouter router = new RenderProviderRouter(fallbackPolicy);
+        RenderProviderRouter router = new RenderProviderRouter(
+                new RenderProviderResolver(registry, selectionPolicy),
+                fallbackPolicy,
+                new TimelineExtensionsReader());
         ExportPolicyService exportPolicy = new ExportPolicyService();
         EffectMappingService effectMapping = new EffectMappingService();
         SubtitleBurnInService subtitleBurnInService = new SubtitleBurnInService(null);

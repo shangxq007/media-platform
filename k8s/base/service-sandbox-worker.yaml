@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandbox-worker
+  labels:
+    app: sandbox-worker
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8091
+      targetPort: 8091
+      protocol: TCP
+  selector:
+    app: sandbox-worker

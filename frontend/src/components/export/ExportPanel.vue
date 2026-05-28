@@ -19,7 +19,6 @@ import TimelineInternalPreviewPanel from './TimelineInternalPreviewPanel.vue'
 import AiProposalsPanel from './AiProposalsPanel.vue'
 import type { AiProposalDto } from '@/api/ai-timeline'
 import { useExportUiStore } from '@/stores/exportUi'
-import { getTenantId } from '@/utils/tenant'
 import { buildEditorTimelineJson } from '@/utils/timelineExport'
 import ArtifactPreviewModal from './ArtifactPreviewModal.vue'
 import UpgradeHint from '@/components/ui/UpgradeHint.vue'
@@ -46,7 +45,13 @@ interface ExportPreset {
 
 interface ProviderInfo {
   name: string
+  key?: string
   status: string
+  capabilities?: {
+    formats?: string[]
+    codecs?: string[]
+    [key: string]: unknown
+  }
   [key: string]: unknown
 }
 
@@ -133,11 +138,11 @@ const settings = ref<ExportSettings>({
 const timelineSummary = computed(() => ({
   duration: timelineStore.state.duration,
   tracks: timelineStore.state.tracks.length,
-  clips: timelineStore.state.tracks.reduce((sum: number, t: Record<string, unknown>) => sum + t.clips.length, 0),
+  clips: timelineStore.state.tracks.reduce((sum: number, t) => sum + (t.clips?.length ?? 0), 0),
   subtitles: subtitleStore.tracks.length,
   effects: timelineStore.state.tracks.reduce(
-    (sum: number, t: Record<string, unknown>) =>
-      sum + t.clips.reduce((s: number, tc: Record<string, unknown>) => s + (tc.effects?.length || 0), 0),
+    (sum: number, t) =>
+      sum + (t.clips?.reduce((s: number, tc: { effects?: unknown[] }) => s + (tc.effects?.length || 0), 0) ?? 0),
     0
   ),
 }))
@@ -160,7 +165,7 @@ const presetInfo = computed(() => {
 
 const canExport = computed(() =>
   projectStore.hasProject &&
-  timelineStore.state.tracks.some((t: Record<string, unknown>) => (t.clips as unknown[])?.length.length > 0)
+  timelineStore.state.tracks.some((t) => (t.clips?.length ?? 0) > 0)
 )
 
 const recentJobs = computed(() =>
@@ -208,7 +213,7 @@ function onPanelError(msg: string) {
 }
 
 async function onIncrementalSubmitted(jobId: string) {
-  const tenantId = getTenantId()
+  const tenantId = projectStore.currentTenant
   const projectId = projectStore.currentProject?.id
   renderJobId.value = jobId
   renderJobStatus.value = 'queued'
@@ -270,15 +275,15 @@ const featureFlagSubmitBlocked = computed(() => {
   return null
 })
 
-const filteredPresets = computed(() => availablePresets.value.filter((p: Record<string, unknown>) => {
+const filteredPresets = computed(() => availablePresets.value.filter((p) => {
   if (p.name.startsWith('gpu_')) return gpuAvailable.value && isExportFlagEnabled('export.gpu.v2')
   if (p.name.includes('4k')) return currentTier.value === 'TEAM' || currentTier.value === 'ENTERPRISE'
   return true
 }))
 
 const unavailablePresets = computed(() => {
-  const allowed = new Set(filteredPresets.value.map((p: ExportPreset) => p.name))
-  return availablePresets.value.filter((p: Record<string, unknown>) => !allowed.has(p.name))
+  const allowed = new Set(filteredPresets.value.map((p) => p.name))
+  return availablePresets.value.filter((p) => !allowed.has(p.name))
 })
 
 const recommendedPreset = computed(() => validationResult.value?.recommendedPreset || null)
@@ -373,7 +378,7 @@ async function loadProjectRenderJobs() {
   const projectId = projectStore.currentProject?.id
   if (!projectId) return
   try {
-    const jobs = await IncrementalRenderAPI.listJobs(getTenantId(), projectId)
+    const jobs = await IncrementalRenderAPI.listJobs(projectStore.currentTenant, projectId)
     projectStore.setRenderJobs(jobs)
   } catch {
     try {
@@ -437,7 +442,7 @@ async function loadCapabilities() {
 
 async function loadPresets() {
   try {
-    const resp = await fetch('/api/v1/render/presets', { headers: { 'X-Tenant-ID': 'tenant-1' } })
+    const resp = await fetch('/api/v1/render/presets')
     if (resp.ok) {
       const data = await resp.json()
       availablePresets.value = data.presets || []
@@ -446,23 +451,23 @@ async function loadPresets() {
     }
   } catch {
     availablePresets.value = [
-      { name: 'client_720p_watermarked', displayName: 'Free 720p (Browser)', resolution: '1280x720', watermark: true },
-      { name: 'free_720p_watermarked', displayName: 'Free 720p (Cloud)', resolution: '1280x720', watermark: true },
-      { name: 'preview_720p', displayName: 'Preview 720p', resolution: '1280x720', watermark: false },
-      { name: 'default_720p', displayName: 'Standard 720p', resolution: '1280x720', watermark: false },
-      { name: 'default_1080p', displayName: 'Standard 1080p', resolution: '1920x1080', watermark: false },
-      { name: 'pro_1080p', displayName: 'Pro 1080p', resolution: '1920x1080', watermark: false },
-      { name: 'team_4k', displayName: 'Team 4K', resolution: '3840x2160', watermark: false },
-      { name: 'gpu_h264', displayName: 'GPU H.264 (NVENC)', resolution: '1920x1080', watermark: false },
-      { name: 'gpu_h265', displayName: 'GPU H.265 (NVENC)', resolution: '1920x1080', watermark: false },
-      { name: 'hq_1080p', displayName: 'HQ 1080p', resolution: '1920x1080', watermark: false },
-      { name: 'h265', displayName: 'H.265/HEVC', resolution: '1920x1080', watermark: false },
-      { name: 'vp9', displayName: 'VP9', resolution: '1920x1080', watermark: false },
-      { name: 'mobile_480p', displayName: 'Mobile 480p', resolution: '854x480', watermark: false },
-      { name: 'social_1080p', displayName: 'Social 1080p', resolution: '1920x1080', watermark: false },
-      { name: 'social_720p', displayName: 'Social 720p', resolution: '1280x720', watermark: false },
-      { name: 'ofx_1080p', displayName: 'OFX 1080p', resolution: '1920x1080', watermark: false },
-      { name: 'ofx_720p', displayName: 'OFX 720p', resolution: '1280x720', watermark: false }
+      { name: 'client_720p_watermarked', displayName: 'Free 720p (Browser)', resolution: '1280x720', format: 'mp4', watermark: true, renderLocation: 'CLIENT' as const },
+      { name: 'free_720p_watermarked', displayName: 'Free 720p (Cloud)', resolution: '1280x720', format: 'mp4', watermark: true, renderLocation: 'SERVER' as const },
+      { name: 'preview_720p', displayName: 'Preview 720p', resolution: '1280x720', format: 'mp4', watermark: false, renderLocation: 'CLIENT' as const },
+      { name: 'default_720p', displayName: 'Standard 720p', resolution: '1280x720', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'default_1080p', displayName: 'Standard 1080p', resolution: '1920x1080', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'pro_1080p', displayName: 'Pro 1080p', resolution: '1920x1080', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'team_4k', displayName: 'Team 4K', resolution: '3840x2160', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'gpu_h264', displayName: 'GPU H.264 (NVENC)', resolution: '1920x1080', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'gpu_h265', displayName: 'GPU H.265 (NVENC)', resolution: '1920x1080', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'hq_1080p', displayName: 'HQ 1080p', resolution: '1920x1080', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'h265', displayName: 'H.265/HEVC', resolution: '1920x1080', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'vp9', displayName: 'VP9', resolution: '1920x1080', format: 'webm', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'mobile_480p', displayName: 'Mobile 480p', resolution: '854x480', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'social_1080p', displayName: 'Social 1080p', resolution: '1920x1080', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'social_720p', displayName: 'Social 720p', resolution: '1280x720', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'ofx_1080p', displayName: 'OFX 1080p', resolution: '1920x1080', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const },
+      { name: 'ofx_720p', displayName: 'OFX 720p', resolution: '1280x720', format: 'mp4', watermark: false, renderLocation: 'SERVER' as const }
     ]
   }
 }
@@ -470,7 +475,7 @@ async function loadPresets() {
 async function loadWorkers() {
   loadingWorkers.value = true
   try {
-    const resp = await fetch('/api/v1/remote-worker/workers', { headers: { 'X-Tenant-ID': 'tenant-1' } })
+    const resp = await fetch('/api/v1/remote-worker/workers')
     if (resp.ok) {
       const data = await resp.json()
       workers.value = Object.values(data.workers || {})
@@ -674,8 +679,10 @@ async function submitRender() {
     renderJobStatus.value = 'queued'
     startPolling(job.id)
   } catch (err: unknown) {
-    const errorCode = err.response?.data?.errorCode || 'COMMON-500-001'
-    const errorMsg = err.response?.data?.message || err.message || 'Failed to submit render job'
+    const errObj = err as Record<string, unknown>
+    const responseData = errObj?.response ? (errObj.response as Record<string, unknown>)?.data as Record<string, unknown> : undefined
+    const errorCode = String(responseData?.errorCode || 'COMMON-500-001')
+    const errorMsg = String(responseData?.message || (err instanceof Error ? err.message : 'Failed to submit render job'))
     projectStore.setError(`${errorCode}: ${errorMsg}`)
     renderError.value = `${errorCode}: ${errorMsg}`
     renderErrorCode.value = errorCode
@@ -687,7 +694,7 @@ async function submitRender() {
 
 function startPolling(jobId: string) {
   if (pollInterval.value) clearInterval(pollInterval.value)
-  const tenantId = getTenantId()
+  const tenantId = projectStore.currentTenant
   const projectId = projectStore.currentProject?.id
   pollInterval.value = setInterval(async () => {
     try {
@@ -1169,7 +1176,7 @@ function handleViewLogs(url: string) {
 
     <DeliveryStatusPanel
       v-if="renderJobId && renderJobStatus === 'completed' && projectStore.currentProject?.id"
-      :tenant-id="getTenantId()"
+      :tenant-id="projectStore.currentTenant"
       :project-id="projectStore.currentProject.id"
       :job-id="renderJobId"
     />

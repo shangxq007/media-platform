@@ -5,5 +5,5 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(PlatformRuntimeProperties.class)
+@EnableConfigurationProperties({PlatformRuntimeProperties.class, EgressProxySmokeProperties.class})
 public class PlatformRuntimeConfiguration {}

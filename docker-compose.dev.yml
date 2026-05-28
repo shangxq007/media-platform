@@ -50,7 +50,7 @@ services:
       context: .
       dockerfile: remote-render-worker/Dockerfile
     ports:
-      - "8081:8081"
+      - "8090:8090"
     environment:
       SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/platform
@@ -67,11 +67,28 @@ services:
       app:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost:8090/healthz"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  sandbox-worker:
+    build:
+      context: .
+      dockerfile: sandbox-worker/Dockerfile
+    ports:
+      - "8091:8091"
+    environment:
+      SANDBOX_WORKER_MAX_EXECUTION_SECONDS: "5"
+      SANDBOX_WORKER_MAX_OUTPUT_BYTES: "1048576"
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+              "import urllib.request; urllib.request.urlopen('http://localhost:8091/v1/sandbox/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   pgdata:

@@ -32,6 +32,7 @@ include(
     "policy-governance-module",
     "artifact-catalog-module",
     "sandbox-runtime-module",
+    "sandbox-worker",
     "federation-query-module",
     "user-analytics-module",
     "compatibility-migration-module",

@@ -1,0 +1,100 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: media-platform
+
+resources:
+  - ../base
+
+commonLabels:
+  environment: production
+
+images:
+  - name: platform-api
+    newName: registry.example.com/platform-api
+    newTag: latest
+  - name: platform-render-worker
+    newName: registry.example.com/platform-render-worker
+    newTag: latest
+  - name: platform-sandbox-worker
+    newName: registry.example.com/platform-sandbox-worker
+    newTag: latest
+
+patches:
+  - target:
+      kind: Deployment
+      name: api
+    patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: api
+      spec:
+        replicas: 2
+        template:
+          spec:
+            containers:
+              - name: api
+                resources:
+                  requests:
+                    memory: "512Mi"
+                    cpu: "250m"
+                  limits:
+                    memory: "2Gi"
+                    cpu: "1000m"
+
+  - target:
+      kind: Deployment
+      name: render-worker
+    patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: render-worker
+      spec:
+        replicas: 2
+
+  - target:
+      kind: Ingress
+      name: api-ingress
+    patch: |
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: api-ingress
+      spec:
+        rules:
+          - host: api.example.com
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: api
+                      port:
+                        number: 80
+        tls:
+          - hosts:
+              - api.example.com
+            secretName: api-tls
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=prod,oidc
+      - APP_SECURITY_DEV_AUTH_ENDPOINT=false
+      - APP_SECURITY_OIDC_DEV_BOOTSTRAP=false
+      - SANDBOX_EXECUTION_MODE=external
+      - SANDBOX_WORKER_URL=http://sandbox-worker:8091
+      - APP_STORAGE_LOCAL_ROOT=/data/platform
+      - LOG_LEVEL=INFO
+
+secretGenerator:
+  - name: app-secrets
+    behavior: merge
+    literals:
+      - SPRING_DATASOURCE_PASSWORD=CHANGE_ME_IN_PRODUCTION
+      - APP_JWT_SECRET=CHANGE_ME_IN_PRODUCTION_MIN_256_BITS
+      - APP_REMOTE_WORKER_API_KEY=CHANGE_ME_IN_PRODUCTION

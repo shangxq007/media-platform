@@ -26,6 +26,7 @@ import { useTimelineSyncMetaStore } from '@/stores/timelineSyncMeta'
 import { isDemoProjectId } from '@/utils/timelineImport'
 import { loadConflictClipHighlights } from '@/utils/timelinePatchHighlight'
 import { useEditorFeatureFlags } from '@/composables/useFeatureFlag'
+import { useEditorTimelineLifecycle } from '@/composables/useEditorTimelineLifecycle'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import ProgramMonitor from '@/components/editor/ProgramMonitor.vue'
 import { buildEditorTimelineJson } from '@/utils/timelineExport'
@@ -98,7 +99,7 @@ useEditorTimelineLifecycle({
   onReconnect: () => {
     const pid = projectStore.currentProject?.id
     if (pid && !isDemoProjectId(pid)) {
-      return pullTimeline(pid)
+      void pullTimeline(pid)
     }
   },
 })
@@ -138,7 +139,7 @@ onUnmounted(() => {
 
 const showMigrationBanner = computed(() => {
   const json = timelineStore.toJSON()
-  const version = json.schemaVersion || '1.0.0'
+  const version = String(json.schemaVersion ?? '1.0.0')
   return version.startsWith('1.')
 })
 
@@ -330,7 +331,6 @@ watch(
 )
 
 onMounted(() => {
-  projectStore.setTenant('tenant-1')
   const pid = projectStore.currentProject?.id
   if (pid && !isDemoProjectId(pid)) {
     void loadProjectTimeline(pid)

@@ -78,11 +78,8 @@ class CheckoutOrchestratorBusinessLifecycleTest {
 
     @Test
     void businessRuleValidation() {
-        assertThrows(IllegalArgumentException.class, () -> orchestrator.createSession(
-                new CreateCheckoutSessionRequest(
-                        "unauthorized-tenant", "enterprise_monthly", null, "subscription",
-                        "https://example.com/success", "https://example.com/cancel")));
-
+        // Enterprise is now available to any non-blank tenant — no longer throws for "unauthorized-tenant"
+        // Subscription without success URL should still throw
         assertThrows(IllegalArgumentException.class, () -> orchestrator.createSession(
                 new CreateCheckoutSessionRequest(
                         "tenant-1", "basic_monthly", null, "subscription", null, "https://example.com/cancel")));

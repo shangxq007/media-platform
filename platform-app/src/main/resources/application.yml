@@ -112,6 +112,8 @@ app:
     event-id-header: X-Event-ID
   identity:
     api-key-auth-enabled: false
+    builtin-data:
+      enabled: true
   render:
     worker-queue:
       enabled: false
@@ -120,6 +122,8 @@ app:
   security:
     enabled: true
     dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
     oauth2:
       enabled: ${APP_SECURITY_OAUTH2_ENABLED:false}
       issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:}
@@ -195,6 +199,42 @@ app:
     scheduler:
       profiles-cron: "0 0 2 * * ?"
       segments-cron: "0 0 3 * * ?"
+  # Audit security alerts
+  audit:
+    alerts:
+      publisher:
+        # slf4j (default), noop, or webhook
+        type: ${AUDIT_ALERTS_PUBLISHER_TYPE:slf4j}
+        webhook:
+          url: ${AUDIT_ALERTS_WEBHOOK_URL:}
+          connect-timeout-ms: ${AUDIT_ALERTS_WEBHOOK_CONNECT_TIMEOUT:1000}
+          read-timeout-ms: ${AUDIT_ALERTS_WEBHOOK_READ_TIMEOUT:3000}
+          authorization-header: ${AUDIT_ALERTS_WEBHOOK_AUTHORIZATION_HEADER:}
+          # SSRF protection: block private/localhost/link-local/metadata IPs by default
+          allow-private-network: ${AUDIT_ALERTS_WEBHOOK_ALLOW_PRIVATE_NETWORK:false}
+          # Comma-separated exact hostnames allowed (empty = only SSRF blocklist applies)
+          allowed-hosts: ${AUDIT_ALERTS_WEBHOOK_ALLOWED_HOSTS:}
+          # Comma-separated domain suffixes allowed (must start with '.')
+          allowed-domain-suffixes: ${AUDIT_ALERTS_WEBHOOK_ALLOWED_DOMAIN_SUFFIXES:}
+      denied-burst:
+        enabled: ${AUDIT_ALERTS_DENIED_BURST_ENABLED:true}
+        threshold: ${AUDIT_ALERTS_DENIED_BURST_THRESHOLD:5}
+        window-seconds: ${AUDIT_ALERTS_DENIED_BURST_WINDOW:600}
+        cooldown-seconds: ${AUDIT_ALERTS_DENIED_BURST_COOLDOWN:1800}
+        max-actors: ${AUDIT_ALERTS_MAX_ACTORS:10000}
+  sandbox:
+    # PRODUCTION DEFAULT: disabled. Do NOT enable in-process eval in production.
+    # For production, use execution-mode=external with a properly isolated worker.
+    enabled: ${SANDBOX_ENABLED:false}
+    execution-mode: ${SANDBOX_EXECUTION_MODE:disabled}
+    allow-in-process-eval: ${SANDBOX_ALLOW_IN_PROCESS_EVAL:false}
+    allowed-languages: ${SANDBOX_ALLOWED_LANGUAGES:}
+    max-execution-seconds: ${SANDBOX_MAX_EXECUTION_SECONDS:5}
+    max-output-bytes: ${SANDBOX_MAX_OUTPUT_BYTES:1048576}
+    worker:
+      base-url: ${SANDBOX_WORKER_BASE_URL:}
+      connect-timeout-ms: ${SANDBOX_WORKER_CONNECT_TIMEOUT_MS:1000}
+      read-timeout-ms: ${SANDBOX_WORKER_READ_TIMEOUT_MS:5000}
   ai:
     default-provider: stubChatProvider
     providers:
@@ -397,3 +437,20 @@ platform:
   filter:
     rate-limit:
       enabled: false
+
+# Egress proxy smoke test and JVM proxy configuration.
+# Smoke test verifies that Java HTTP clients can reach external services through the egress proxy.
+# JVM proxy properties are a fallback for clients that don't read HTTP_PROXY env vars.
+egress:
+  proxy:
+    smoke:
+      enabled: ${EGRESS_PROXY_SMOKE_ENABLED:false}
+      url: ${EGRESS_PROXY_SMOKE_URL:}
+      timeout-ms: ${EGRESS_PROXY_SMOKE_TIMEOUT_MS:3000}
+      expected-status: ${EGRESS_PROXY_SMOKE_EXPECTED_STATUS:200}
+      include-in-readiness: ${EGRESS_PROXY_SMOKE_INCLUDE_IN_READINESS:false}
+    jvm:
+      enabled: ${EGRESS_PROXY_JVM_ENABLED:false}
+      host: ${EGRESS_PROXY_JVM_HOST:egress-proxy}
+      port: ${EGRESS_PROXY_JVM_PORT:3128}
+      non-proxy-hosts: ${EGRESS_PROXY_JVM_NON_PROXY_HOSTS:localhost|127.*|*.svc|*.cluster.local|postgresql|minio|platform-api|sandbox-worker|egress-proxy}

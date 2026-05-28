@@ -2,15 +2,26 @@
 import { ref, computed } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 
+interface MigrationDryRunResult {
+  status?: string
+  warnings?: string[]
+}
+
+interface MigrationResult {
+  status?: string
+  migratedPayload?: { payload: Record<string, unknown> }
+  errors?: Array<{ errorCode: string; message: string }>
+}
+
 const timelineStore = useTimelineStore()
-const dryRunResult = ref<Record<string, unknown> | null>(null)
-const migrateResult = ref<Record<string, unknown> | null>(null)
+const dryRunResult = ref<MigrationDryRunResult | null>(null)
+const migrateResult = ref<MigrationResult | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
 const currentVersion = computed(() => {
   const json = timelineStore.toJSON()
-  return json.schemaVersion || '1.0.0'
+  return String(json.schemaVersion ?? '1.0.0')
 })
 
 const needsMigration = computed(() => currentVersion.value.startsWith('1.'))
@@ -22,21 +33,20 @@ async function runDryRun() {
     const timelineJson = timelineStore.toJSON()
     const resp = await fetch('/api/v1/internal/migrations/dry-run', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Tenant-ID': 'tenant-1' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         schemaFamily: 'OTIO_TIMELINE',
         schemaVersion: currentVersion.value,
         targetVersion: '2.0.0',
         payload: timelineJson,
         metadata: {},
-        tenantId: 'tenant-1',
         sourceObjectRef: 'current-timeline'
       })
     })
     if (!resp.ok) throw new Error(`API error: ${resp.status}`)
     dryRunResult.value = await resp.json()
   } catch (err: unknown) {
-    error.value = err.message
+    error.value = err instanceof Error ? err.message : String(err)
   } finally {
     loading.value = false
   }
@@ -49,25 +59,24 @@ async function runMigration() {
     const timelineJson = timelineStore.toJSON()
     const resp = await fetch('/api/v1/internal/migrations/run', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Tenant-ID': 'tenant-1' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         schemaFamily: 'OTIO_TIMELINE',
         schemaVersion: currentVersion.value,
         targetVersion: '2.0.0',
         payload: timelineJson,
         metadata: {},
-        tenantId: 'tenant-1',
-        userId: 'current-user',
         sourceObjectRef: 'current-timeline'
       })
     })
     if (!resp.ok) throw new Error(`API error: ${resp.status}`)
     migrateResult.value = await resp.json()
-    if (migrateResult.value.status === 'COMPLETED' && migrateResult.value.migratedPayload) {
-      timelineStore.loadFromJSON(migrateResult.value.migratedPayload.payload)
+    if (migrateResult.value?.status === 'COMPLETED' && migrateResult.value?.migratedPayload) {
+      const payload = migrateResult.value.migratedPayload as Record<string, unknown>
+      timelineStore.loadFromJSON(payload.payload as Parameters<typeof timelineStore.loadFromJSON>[0])
     }
   } catch (err: unknown) {
-    error.value = err.message
+    error.value = err instanceof Error ? err.message : String(err)
   } finally {
     loading.value = false
   }

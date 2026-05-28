@@ -33,7 +33,8 @@ export function useRenderJob() {
       startPolling(job.id)
       return job
     } catch (err: unknown) {
-      const errorCode = err.response?.data?.errorCode || 'RENDER-500-001'
+      const errObj = err as { response?: { data?: { errorCode?: string } }; message?: string }
+      const errorCode = errObj.response?.data?.errorCode || 'RENDER-500-001'
       const message = getErrorMessage(errorCode)
       error.value = `${errorCode}: ${message}`
       status.value = 'failed'
@@ -86,7 +87,7 @@ export function useRenderJob() {
       status.value = 'cancelled'
       error.value = null
     } catch (err: unknown) {
-      error.value = err.message || 'Failed to cancel job'
+      error.value = err instanceof Error ? err.message : 'Failed to cancel job'
     }
   }
 

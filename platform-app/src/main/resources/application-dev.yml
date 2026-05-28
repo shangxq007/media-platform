@@ -1,14 +1,26 @@
 # Local development profile — relax security for IDE / bootRun without tokens.
+# Dev auth endpoint and OIDC dev bootstrap are disabled by default even in dev.
+# Enable explicitly for local testing: --app.security.dev-auth-endpoint=true
 app:
   security:
     enabled: false
     dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
   identity:
     api-key-auth-enabled: false
   render:
     worker-queue:
       enabled: true
       consume-enabled: false
+  # Dev sandbox: external mode with local worker. In-process available via explicit override.
+  sandbox:
+    enabled: true
+    execution-mode: external
+    allow-in-process-eval: false
+    allowed-languages: python
+    worker:
+      base-url: http://sandbox-worker:8091
 
 render:
   providers:

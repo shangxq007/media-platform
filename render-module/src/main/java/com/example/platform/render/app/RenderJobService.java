@@ -43,14 +43,10 @@ public class RenderJobService {
                 .from(table("project"))
                 .where(field("id").eq(request.projectId()))
                 .fetchOne();
-        String projectTenantId;
         if (projectRecord == null) {
-            // Project not in DB (e.g. stored in-memory by identity module);
-            // use the project ID as tenant identifier for the render job
-            projectTenantId = request.projectId();
-        } else {
-            projectTenantId = projectRecord.get(field("tenant_id"), String.class);
+            throw new IllegalArgumentException("Project not found: " + request.projectId());
         }
+        String projectTenantId = projectRecord.get(field("tenant_id"), String.class);
         assertTenantAccess(projectTenantId);
 
         var id = Ids.newId("rj");

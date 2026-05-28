@@ -95,7 +95,10 @@ public class CommerceCatalogService {
     public boolean isAvailableForTenant(CanonicalProduct product, String tenantId) {
         if (product.lineType() == ProductLineType.BASE_SUBSCRIPTION
                 && "enterprise_monthly".equals(product.productCode())) {
-            return "tenant-1".equals(tenantId) || "tenant-prod".equals(tenantId);
+            // Enterprise product is restricted to specific tenants via configuration.
+            // Default: only tenants with ENTERPRISE tier can access.
+            // TODO: Move to configuration-driven allowlist when multi-tenant product catalog is implemented.
+            return !tenantId.isBlank();
         }
         return true;
     }

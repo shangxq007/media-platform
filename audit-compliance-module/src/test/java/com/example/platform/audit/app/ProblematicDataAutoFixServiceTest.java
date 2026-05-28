@@ -31,8 +31,8 @@ class ProblematicDataAutoFixServiceTest {
 
         assertEquals(ProblematicDataStatus.AUTO_FIXED, fixed.status());
         assertNotNull(fixed.autoFixApplied());
-        verify(auditService).record(eq("system"), eq("PROBLEMATIC_DATA_AUTO_FIXED"),
-                eq("AUDIT"), eq("problematic_data"), anyString(), any(Map.class));
+        verify(auditService).record(eq("SYSTEM"), eq("problematic-data-autofix"),
+                eq("PROBLEMATIC_DATA_AUTO_FIXED"), eq("problematic_data"), anyString(), any(Map.class));
     }
 
     @Test
@@ -84,8 +84,8 @@ class ProblematicDataAutoFixServiceTest {
         var quarantined = service.quarantine(record, "quarantined_render_jobs");
 
         assertEquals(ProblematicDataStatus.QUARANTINED, quarantined.status());
-        verify(auditService).record(eq("system"), eq("PROBLEMATIC_DATA_QUARANTINED"),
-                eq("AUDIT"), eq("problematic_data"), anyString(), any(Map.class));
+        verify(auditService).record(eq("SYSTEM"), eq("problematic-data-autofix"),
+                eq("PROBLEMATIC_DATA_QUARANTINED"), eq("problematic_data"), anyString(), any(Map.class));
     }
 
     @Test

@@ -7,5 +7,6 @@ public final class TraceKeys {
     public static final String PROJECT_ID = "projectId";
     public static final String JOB_ID = "jobId";
     public static final String WORKFLOW_ID = "workflowId";
+    public static final String PRINCIPAL = "principal";
     private TraceKeys() {}
 }

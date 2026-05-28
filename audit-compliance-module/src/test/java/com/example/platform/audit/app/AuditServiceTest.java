@@ -44,7 +44,7 @@ class AuditServiceTest {
                     + ")");
         }
 
-        service = new AuditService(dsl);
+        service = new AuditService(dsl, new AuditAlertService(AuditAlertProperties.defaults(), new NoopSecurityAlertAdapter()));
     }
 
     @Test
@@ -82,7 +82,7 @@ class AuditServiceTest {
     }
 
     @Test
-    void recordWithNullCategoryStoresNull() {
+    void recordWithNullCategoryStoresUnknown() {
         String id = service.record("user", "u-1", "update", "config", "cfg-1",
                 Map.of("key", "value"), null);
 
@@ -92,7 +92,8 @@ class AuditServiceTest {
                 .fetchMaps();
 
         assertEquals(1, rows.size());
-        assertEquals(null, rows.get(0).get("category"));
+        assertEquals("UNKNOWN", rows.get(0).get("category"),
+                "Null category should be stored as UNKNOWN");
     }
 
     @Test

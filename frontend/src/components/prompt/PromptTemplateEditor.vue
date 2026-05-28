@@ -36,7 +36,14 @@ const validationResult = ref<PromptValidationResult | null>(null)
 
 // Risk
 const riskContent = ref('')
-const riskAnalysis = ref<Record<string, unknown> | null>(null)
+interface RiskAnalysisResult {
+  riskLevel: string
+  action: string
+  explanation?: string
+  secretFindings?: string[]
+  commandFindings?: string[]
+}
+const riskAnalysis = ref<RiskAnalysisResult | null>(null)
 const analyzing = ref(false)
 
 // Task 24: Prompt quota info
@@ -62,7 +69,7 @@ async function loadTemplate() {
     editCategory.value = template.value?.category || ''
     editTags.value = template.value?.tags?.join(', ') || ''
   } catch (e: unknown) {
-    emit('error', e.message || 'Failed to load template')
+    emit('error', e instanceof Error ? e.message : 'Failed to load template')
   } finally {
     loading.value = false
   }
@@ -110,7 +117,7 @@ async function saveTemplate() {
     }
     await loadTemplate()
   } catch (e: unknown) {
-    emit('error', e.message || 'Failed to save')
+    emit('error', e instanceof Error ? e.message : 'Failed to save')
   } finally {
     saving.value = false
   }
@@ -126,7 +133,7 @@ async function renderPreview() {
       dryRun: true
     })
   } catch (e: unknown) {
-    emit('error', e.message || 'Render failed')
+    emit('error', e instanceof Error ? e.message : 'Render failed')
   } finally {
     rendering.value = false
   }
@@ -136,7 +143,7 @@ async function validateTemplate() {
   try {
     validationResult.value = await PromptAPI.validate(props.templateId)
   } catch (e: unknown) {
-    emit('error', e.message || 'Validation failed')
+    emit('error', e instanceof Error ? e.message : 'Validation failed')
   }
 }
 
@@ -146,13 +153,11 @@ async function analyzeRisk() {
     riskAnalysis.value = await PromptAPI.analyzeRisk({
       content: riskContent.value || editBody.value,
       variables: JSON.parse(renderVariables.value || '{}'),
-      tenantId: 'tenant-1',
-      userId: 'user-1',
       environment: 'dev',
       category: editCategory.value || 'general'
     })
   } catch (e: unknown) {
-    emit('error', e.message || 'Risk analysis failed')
+    emit('error', e instanceof Error ? e.message : 'Risk analysis failed')
   } finally {
     analyzing.value = false
   }
@@ -209,7 +214,7 @@ function getActionClass(action: string): string {
       <button v-for="tab in ['edit', 'versions', 'render', 'risk']" :key="tab"
         class="px-4 py-2 text-sm capitalize"
         :class="activeTab === tab ? 'text-white border-b-2 border-info' : 'text-text-secondary hover:text:text-white'"
-        @click="activeTab = tab as any">
+        @click="activeTab = tab as typeof activeTab.value">
         {{ tab }}
       </button>
     </div>

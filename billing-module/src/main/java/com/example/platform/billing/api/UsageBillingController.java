@@ -6,7 +6,6 @@ import com.example.platform.billing.domain.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,20 +33,22 @@ public class UsageBillingController {
 
     @PostMapping("/quote")
     public QuoteResponse quote(@RequestBody QuoteRequest request) {
+        String tenantId = resolveTenantId(request.tenantId());
         PricingRuleService.PricingPreviewResult preview = pricingRuleService.previewPricing(
-                request.tenantId(), request.meterKey(), request.quantity(), Map.of());
+                tenantId, request.meterKey(), request.quantity(), Map.of());
         PricingRule rule = findRuleForMeter(request.meterKey());
         String pricingModel = rule != null ? rule.pricingModel().name() : "USAGE_BASED";
         return new QuoteResponse(
-                request.tenantId(), request.meterKey(), request.quantity(),
+                tenantId, request.meterKey(), request.quantity(),
                 request.unit(), preview.estimatedAmountMinor(), preview.currencyCode(), pricingModel);
     }
 
     @PostMapping("/usage/record")
     public UsageRecordResponse recordUsage(@RequestBody RecordUsageRequest request) {
+        String tenantId = resolveTenantId(request.tenantId());
         Instant recordedAt = request.recordedAt() != null ? request.recordedAt() : Instant.now();
         UsageRecord record = usageMeteringService.recordUsage(
-                request.tenantId(), request.workspaceId(), request.userId(),
+                tenantId, request.workspaceId(), request.userId(),
                 request.meterKey(), request.quantity(), request.unit(),
                 recordedAt, request.idempotencyKey());
 
@@ -66,7 +67,8 @@ public class UsageBillingController {
     public List<UsageRecordResponse> listUsage(
             @RequestParam(required = false) String tenantId,
             @RequestParam(required = false) String meterKey) {
-        return usageMeteringService.getUsage(tenantId, meterKey).stream()
+        String effectiveTenant = resolveTenantId(tenantId);
+        return usageMeteringService.getUsage(effectiveTenant, meterKey).stream()
                 .map(r -> new UsageRecordResponse(
                         r.recordId(), r.tenantId(), r.workspaceId(),
                         r.userId(), r.meterKey(), r.quantity(),
@@ -75,8 +77,9 @@ public class UsageBillingController {
     }
 
     @GetMapping("/ledger")
-    public List<BillingLedgerResponse> getLedger(@RequestParam String tenantId) {
-        return billingLedgerService.getLedger(tenantId).stream()
+    public List<BillingLedgerResponse> getLedger(@RequestParam(required = false) String tenantId) {
+        String effectiveTenant = resolveTenantId(tenantId);
+        return billingLedgerService.getLedger(effectiveTenant).stream()
                 .map(e -> new BillingLedgerResponse(
                         e.entryId(), e.tenantId(), e.workspaceId(),
                         e.userId(), e.entryType(), e.amountMinor(),
@@ -85,27 +88,23 @@ public class UsageBillingController {
                 .toList();
     }
 
+    private String resolveTenantId(String requestedTenantId) {
+        String contextTenant = com.example.platform.shared.web.TenantContext.get();
+        if (contextTenant == null || contextTenant.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
+        if (requestedTenantId != null && !requestedTenantId.isBlank()
+                && !requestedTenantId.equals(contextTenant)) {
+            throw new SecurityException("Tenant ID does not match authenticated tenant");
+        }
+        return contextTenant;
+    }
+
     private PricingRule findRuleForMeter(String meterKey) {
         return pricingRuleService.listPricingRules().stream()
                 .filter(r -> meterKey.equals(r.meterKey()))
                 .filter(r -> "ACTIVE".equals(r.status()))
                 .findFirst()
                 .orElse(null);
-    }
-
-    private long calculateTieredAmount(double quantity, PricingRule rule) {
-        long totalMinor = 0;
-        double remaining = quantity;
-        for (PricingTier tier : rule.tiers()) {
-            if (remaining <= 0) break;
-            double tierQuantity = Math.min(remaining, tier.upToQuantity());
-            totalMinor += Math.round(tierQuantity * tier.unitPriceMinor()) + tier.flatFeeMinor();
-            remaining -= tierQuantity;
-        }
-        if (remaining > 0) {
-            PricingTier lastTier = rule.tiers().get(rule.tiers().size() - 1);
-            totalMinor += Math.round(remaining * lastTier.unitPriceMinor());
-        }
-        return totalMinor;
     }
 }

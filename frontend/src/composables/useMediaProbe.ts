@@ -17,7 +17,8 @@ export interface MediaProbeResult {
   fps: number
   videoCodec: string
   audioCodec: string
-  hasAudio: boolean
+  hasAudioStream: boolean
+  hasUsableAudio: boolean
   rotation: number
   bitrate: number
   isVfr: boolean

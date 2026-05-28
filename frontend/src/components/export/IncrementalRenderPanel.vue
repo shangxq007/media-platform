@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { IncrementalRenderAPI } from '@/api'
 import type { IncrementalRenderPlanResponse } from '@/api/render-incremental'
 import type { RenderJob } from '@/types'
-import { getTenantId } from '@/utils/tenant'
+import { useProjectStore } from '@/stores/project'
 import { useExportUiStore } from '@/stores/exportUi'
 
 const props = defineProps<{
@@ -56,7 +56,8 @@ async function previewPlan() {
   loadingPlan.value = true
   plan.value = null
   try {
-    const tenantId = getTenantId()
+    const projectStore = useProjectStore()
+    const tenantId = projectStore.currentTenant
     let oldJson: string | undefined
     if (baseJobId.value) {
       const loaded = await IncrementalRenderAPI.getJobTimeline(
@@ -82,7 +83,8 @@ async function previewPlan() {
 async function submitIncremental() {
   submitting.value = true
   try {
-    const tenantId = getTenantId()
+    const projectStore = useProjectStore()
+    const tenantId = projectStore.currentTenant
     const segmentIds = targetSegments.value
       .split(',')
       .map(s => s.trim())
