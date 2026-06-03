@@ -1,0 +1,475 @@
+{
+  "schemaVersion": "1.0",
+  "id": "tl_demo_v1_001",
+  "revision": 42,
+  "name": "产品发布片 · 多后端增量渲染示例",
+  "tenantId": "ten_demo",
+  "project": {
+    "id": "prj_001",
+    "width": 1920,
+    "height": 1080,
+    "frameRate": { "num": 30, "den": 1 },
+    "duration": { "frame": 900, "rate": { "num": 30, "den": 1 } },
+    "color": {
+      "workingSpace": "Rec.709",
+      "outputTransfer": "bt709",
+      "hdr": false
+    },
+    "safeArea": { "title": 0.9, "action": 0.93 }
+  },
+  "assetRegistry": {
+    "assets": {
+      "ast_interview": {
+        "id": "ast_interview",
+        "kind": "VIDEO",
+        "uri": "s3://tenant-demo/assets/interview.mp4",
+        "checksum": "sha256:abc123",
+        "probe": {
+          "width": 1920,
+          "height": 1080,
+          "duration": { "frame": 3600, "rate": { "num": 30, "den": 1 } }
+        },
+        "color": { "primaries": "bt709", "transfer": "bt709", "hdr": false },
+        "cache": {
+          "proxyUri": "s3://tenant-demo/cache/ast_interview_proxy_720p.mp4",
+          "cacheKey": "asset:ast_interview:proxy:v1"
+        },
+        "security": { "scanStatus": "PASSED" }
+      },
+      "ast_broll": {
+        "id": "ast_broll",
+        "kind": "VIDEO",
+        "uri": "s3://tenant-demo/assets/broll_lab.mp4",
+        "cache": { "cacheKey": "asset:ast_broll:proxy:v1" }
+      },
+      "ast_logo": {
+        "id": "ast_logo",
+        "kind": "IMAGE",
+        "uri": "s3://tenant-demo/assets/logo.png",
+        "cache": { "cacheKey": "asset:ast_logo:scaled_512:v1" }
+      },
+      "ast_voice": {
+        "id": "ast_voice",
+        "kind": "AUDIO",
+        "uri": "s3://tenant-demo/assets/voice.wav"
+      },
+      "ast_bgm": {
+        "id": "ast_bgm",
+        "kind": "AUDIO",
+        "uri": "s3://tenant-demo/assets/bgm.mp3"
+      },
+      "ast_sfx_whoosh": {
+        "id": "ast_sfx_whoosh",
+        "kind": "AUDIO",
+        "uri": "s3://tenant-demo/assets/whoosh.wav"
+      }
+    }
+  },
+  "styles": {
+    "style_ass_main": {
+      "id": "style_ass_main",
+      "engine": "libass",
+      "assHeader": "[Script Info]\nPlayResX: 1920\nPlayResY: 1080",
+      "fontFamily": "Noto Sans CJK SC",
+      "primaryColor": "#FFFFFF",
+      "outline": 2
+    },
+    "style_karaoke": {
+      "id": "style_karaoke",
+      "engine": "libass",
+      "karaoke": true
+    }
+  },
+  "templates": {
+    "tpl_remotion_title": {
+      "id": "tpl_remotion_title",
+      "backend": "remotion",
+      "compositionId": "DynamicTitle",
+      "projectDir": "s3://tenant-demo/templates/remotion/title-pack/",
+      "paramSchema": { "title": "string", "subtitle": "string" }
+    },
+    "tpl_blender_logo": {
+      "id": "tpl_blender_logo",
+      "backend": "blender",
+      "blendUri": "s3://tenant-demo/templates/blender/logo_reveal_v3.blend",
+      "allowScripts": false
+    },
+    "tpl_natron_glow": {
+      "id": "tpl_natron_glow",
+      "backend": "natron",
+      "graphId": "glow_edge_v2",
+      "allowedPlugins": ["OFX.net.sf.cimg", "OFX.io.natron.glow"]
+    }
+  },
+  "composition": {
+    "tracks": [
+      {
+        "id": "trk_v_main",
+        "type": "VIDEO",
+        "role": "primary",
+        "zIndex": 0,
+        "clips": [
+          {
+            "id": "clip_main_01",
+            "assetId": "ast_interview",
+            "timelineRange": {
+              "start": { "frame": 150, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 750, "rate": { "num": 30, "den": 1 } }
+            },
+            "sourceRange": {
+              "start": { "frame": 0, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 750, "rate": { "num": 30, "den": 1 } }
+            },
+            "speed": { "factor": 1.0, "preservePitch": true },
+            "editMode": "OVERWRITE",
+            "effects": [
+              {
+                "id": "fx_fade_in",
+                "effectKey": "video.fade_in",
+                "parameters": { "durationFrames": 15 }
+              }
+            ],
+            "render": {
+              "strategy": "COMPOSE_IN_FINAL",
+              "backendHint": "auto",
+              "cachePolicy": { "reusable": true, "scope": "CLIP", "cacheKeyInputs": ["clip_main_01", "revision"] }
+            }
+          }
+        ]
+      },
+      {
+        "id": "trk_v_pip",
+        "type": "VIDEO",
+        "role": "pip",
+        "zIndex": 10,
+        "clips": [
+          {
+            "id": "clip_pip_broll",
+            "assetId": "ast_broll",
+            "timelineRange": {
+              "start": { "frame": 300, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 180, "rate": { "num": 30, "den": 1 } }
+            },
+            "sourceRange": {
+              "start": { "frame": 0, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 180, "rate": { "num": 30, "den": 1 } }
+            },
+            "transform": {
+              "x": 1320,
+              "y": 720,
+              "width": 480,
+              "height": 270,
+              "opacity": 1.0,
+              "cornerRadius": 8
+            },
+            "render": {
+              "strategy": "PRE_RENDER_ALPHA",
+              "backendHint": "ffmpeg",
+              "intermediateFormat": "prores_4444",
+              "alphaOutput": true,
+              "cachePolicy": { "scope": "LAYER", "cacheKeyInputs": ["clip_pip_broll", "transformHash"] }
+            }
+          }
+        ]
+      },
+      {
+        "id": "trk_a_voice",
+        "type": "AUDIO",
+        "role": "voice",
+        "busId": "bus_voice",
+        "clips": [
+          {
+            "id": "clip_voice",
+            "assetId": "ast_voice",
+            "timelineRange": {
+              "start": { "frame": 150, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 720, "rate": { "num": 30, "den": 1 } }
+            },
+            "sourceRange": {
+              "start": { "frame": 0, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 720, "rate": { "num": 30, "den": 1 } }
+            }
+          }
+        ]
+      },
+      {
+        "id": "trk_a_bgm",
+        "type": "AUDIO",
+        "role": "bgm",
+        "busId": "bus_bgm",
+        "clips": [
+          {
+            "id": "clip_bgm",
+            "assetId": "ast_bgm",
+            "timelineRange": {
+              "start": { "frame": 0, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 900, "rate": { "num": 30, "den": 1 } }
+            },
+            "effects": [
+              { "id": "fx_vol", "effectKey": "audio.volume", "parameters": { "gain": 0.25 } }
+            ]
+          }
+        ]
+      }
+    ],
+    "audioBuses": [
+      {
+        "id": "bus_voice",
+        "role": "voice",
+        "loudnessTargetLufs": -16
+      },
+      {
+        "id": "bus_bgm",
+        "role": "bgm",
+        "ducking": { "targetBusId": "bus_voice", "reductionDb": 12, "attackMs": 200, "releaseMs": 800 }
+      }
+    ],
+    "subtitleTracks": [
+      {
+        "id": "sub_zh",
+        "language": "zh-CN",
+        "role": "primary",
+        "format": "ASS",
+        "styleId": "style_ass_main",
+        "cues": [
+          {
+            "id": "cue_zh_1",
+            "timelineRange": {
+              "start": { "frame": 180, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 90, "rate": { "num": 30, "den": 1 } }
+            },
+            "text": "新品发布"
+          },
+          {
+            "id": "cue_zh_2",
+            "timelineRange": {
+              "start": { "frame": 450, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 120, "rate": { "num": 30, "den": 1 } }
+            },
+            "text": "限时优惠 · 立即体验",
+            "styleOverride": { "color": "#FFD700" }
+          }
+        ],
+        "delivery": {
+          "burnIn": true,
+          "sidecar": ["srt", "webvtt"],
+          "collisionPolicy": "STACK"
+        }
+      },
+      {
+        "id": "sub_en",
+        "language": "en-US",
+        "role": "translation",
+        "format": "SRT",
+        "cues": [
+          {
+            "id": "cue_en_1",
+            "timelineRange": {
+              "start": { "frame": 180, "rate": { "num": 30, "den": 1 } },
+              "duration": { "frame": 90, "rate": { "num": 30, "den": 1 } }
+            },
+            "text": "New Product Launch"
+          }
+        ],
+        "delivery": { "burnIn": false, "sidecar": ["webvtt"] }
+      }
+    ],
+    "transitions": [
+      {
+        "id": "tr_dissolve_1",
+        "type": "CROSS_DISSOLVE",
+        "betweenClipIds": ["clip_main_01"],
+        "duration": { "frame": 15, "rate": { "num": 30, "den": 1 } },
+        "render": { "backendHint": "mlt" }
+      }
+    ],
+    "markers": [
+      { "id": "m_chapter_1", "name": "正片", "frame": 150, "color": "#00FF00" }
+    ]
+  },
+  "renderGraph": {
+    "layers": [
+      {
+        "id": "layer_sub_zh",
+        "kind": "SUBTITLE",
+        "subtitleTrackId": "sub_zh",
+        "language": "zh-CN",
+        "zIndex": 200,
+        "timelineRange": {
+          "start": { "frame": 150, "rate": { "num": 30, "den": 1 } },
+          "duration": { "frame": 750, "rate": { "num": 30, "den": 1 } }
+        },
+        "render": {
+          "strategy": "PRE_RENDER_ALPHA",
+          "backendHint": "libass",
+          "intermediateFormat": "prores_4444",
+          "alphaOutput": true,
+          "outputMode": "BURNED",
+          "cachePolicy": {
+            "reusable": true,
+            "scope": "LAYER",
+            "cacheKeyInputs": ["layer_sub_zh", "style_ass_main", "revision"],
+            "invalidationPolicy": "ON_STYLE_OR_CUE_CHANGE"
+          }
+        }
+      },
+      {
+        "id": "layer_sticker_logo",
+        "kind": "STICKER",
+        "zIndex": 210,
+        "timelineRange": {
+          "start": { "frame": 0, "rate": { "num": 30, "den": 1 } },
+          "duration": { "frame": 900, "rate": { "num": 30, "den": 1 } }
+        },
+        "stickers": [
+          {
+            "id": "stk_logo",
+            "assetId": "ast_logo",
+            "transform": { "x": 48, "y": 48, "width": 160, "height": 48, "opacity": 0.85 }
+          }
+        ],
+        "render": {
+          "strategy": "PRE_RENDER_ALPHA",
+          "backendHint": "skia",
+          "cachePolicy": { "scope": "LAYER", "cacheKeyInputs": ["layer_sticker_logo", "transformHash"] }
+        }
+      },
+      {
+        "id": "layer_watermark",
+        "kind": "WATERMARK",
+        "zIndex": 220,
+        "text": "DEMO ONLY",
+        "transform": { "x": 1680, "y": 980, "opacity": 0.4 },
+        "render": { "strategy": "COMPOSE_IN_FINAL", "backendHint": "ffmpeg" }
+      }
+    ],
+    "externalRenderNodes": [
+      {
+        "id": "xr_blender_intro",
+        "backend": "blender",
+        "templateId": "tpl_blender_logo",
+        "timelineRange": {
+          "start": { "frame": 0, "rate": { "num": 30, "den": 1 } },
+          "duration": { "frame": 150, "rate": { "num": 30, "den": 1 } }
+        },
+        "output": { "format": "prores_4444", "alpha": true },
+        "params": { "blendUri": "s3://tenant-demo/templates/blender/logo_reveal_v3.blend" },
+        "render": {
+          "strategy": "EXTERNAL_SEGMENT",
+          "cachePolicy": { "scope": "LAYER", "cacheKeyInputs": ["xr_blender_intro", "templateParamsHash"] }
+        }
+      },
+      {
+        "id": "xr_remotion_chart",
+        "backend": "remotion",
+        "templateId": "tpl_remotion_title",
+        "timelineRange": {
+          "start": { "frame": 240, "rate": { "num": 30, "den": 1 } },
+          "duration": { "frame": 210, "rate": { "num": 30, "den": 1 } }
+        },
+        "output": { "format": "png_sequence", "alpha": true },
+        "params": {
+          "compositionId": "StatsBars",
+          "props": { "title": "增长 128%", "bars": [40, 65, 90, 128] }
+        },
+        "dependsOn": [],
+        "render": { "strategy": "EXTERNAL_SEGMENT", "backendHint": "remotion" }
+      },
+      {
+        "id": "xr_natron_glow",
+        "backend": "natron",
+        "templateId": "tpl_natron_glow",
+        "attachToClipId": "clip_main_01",
+        "timelineRange": {
+          "start": { "frame": 150, "rate": { "num": 30, "den": 1 } },
+          "duration": { "frame": 750, "rate": { "num": 30, "den": 1 } }
+        },
+        "output": { "format": "png_sequence", "alpha": true },
+        "render": { "strategy": "EXTERNAL_SEGMENT", "backendHint": "natron" }
+      }
+    ],
+    "audioMix": {
+      "id": "mix_final",
+      "busIds": ["bus_voice", "bus_bgm"],
+      "render": {
+        "strategy": "PRE_RENDER_STEM",
+        "backendHint": "ffmpeg",
+        "cachePolicy": { "scope": "STEM", "cacheKeyInputs": ["mix_final", "revision"] }
+      }
+    },
+    "finalComposer": {
+      "selector": "auto",
+      "preferredBackends": ["mlt", "ffmpeg"],
+      "rules": [
+        { "when": { "videoTrackCountGte": 2 }, "use": "mlt" },
+        { "when": { "hasAlphaLayers": true }, "use": "mlt" },
+        { "when": { "hasComplexTransitions": true }, "use": "mlt" },
+        { "default": "ffmpeg" }
+      ]
+    },
+    "segmentPolicy": {
+      "enabled": true,
+      "segmentDuration": { "frame": 120, "rate": { "num": 30, "den": 1 } },
+      "overlapFrames": 2,
+      "cacheScope": "SEGMENT"
+    }
+  },
+  "outputs": [
+    {
+      "id": "out_mezzanine",
+      "role": "mezzanine",
+      "videoCodec": "h264",
+      "audioCodec": "aac",
+      "resolution": { "width": 1920, "height": 1080 },
+      "bitrateMbps": 25,
+      "subtitlePolicy": { "burnIn": true, "languages": ["zh-CN"] }
+    },
+    {
+      "id": "out_social_720p",
+      "role": "delivery",
+      "videoCodec": "h264",
+      "resolution": { "width": 1280, "height": 720 },
+      "bitrateMbps": 5
+    },
+    {
+      "id": "out_clean",
+      "role": "delivery",
+      "subtitlePolicy": { "burnIn": false, "sidecarLanguages": ["zh-CN", "en-US"] }
+    }
+  ],
+  "packaging": {
+    "format": "hls",
+    "packager": "shaka",
+    "segmentDurationSec": 4,
+    "drm": { "enabled": false },
+    "renditions": [
+      { "id": "r_1080p", "outputId": "out_mezzanine", "maxBitrate": 5000000 },
+      { "id": "r_720p", "outputId": "out_social_720p", "maxBitrate": 2500000 }
+    ]
+  },
+  "security": {
+    "tenantId": "ten_demo",
+    "sandboxProfile": "restricted",
+    "resourceLimits": { "maxCpu": 4, "maxMemoryMb": 8192, "maxGpu": 0, "timeoutSec": 3600 },
+    "allowedUriSchemes": ["s3", "tenant"],
+    "fontWhitelist": ["Noto Sans CJK SC", "Inter"],
+    "natronPluginWhitelist": ["OFX.io.natron.glow"]
+  },
+  "metadata": {
+    "platform.editor": "web-v2",
+    "platform.cache.revision": "42",
+    "platform.incremental.baseRevision": "41"
+  },
+  "otio": {
+    "exportOnComplete": false,
+    "roundTrip": { "lossy": false },
+    "mapping": {
+      "timelineName": "产品发布片",
+      "metadataKeys": [
+        "platform.finalComposer",
+        "platform.externalRenderNodes",
+        "platform.packaging"
+      ]
+    }
+  }
+}

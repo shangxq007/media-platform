@@ -61,7 +61,10 @@ public class TimelineScriptParser {
             }
             return Optional.of(enrichFromRoot(root, spec));
         } catch (Exception e) {
-            log.warn("Failed to parse timeline script: {}", e.getMessage());
+            try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                    "[TimelineScriptParser] parse failed: " + e.getClass().getName() + ": " + e.getMessage() + "\n",
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (Exception ignored) {}
             return Optional.empty();
         }
     }
@@ -76,7 +79,8 @@ public class TimelineScriptParser {
         if (tracksNode != null && tracksNode.isArray()) {
             int layer = 0;
             for (JsonNode trackNode : tracksNode) {
-                tracks.add(parseTrack(trackNode, layer++));
+                TimelineTrack track = parseTrack(trackNode, layer++);
+                if (track != null) tracks.add(track);
             }
         }
 

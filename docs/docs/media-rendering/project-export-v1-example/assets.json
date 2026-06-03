@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "project-export-v1",
+  "exportMode": "metadata_only",
+  "assets": [
+    {
+      "assetId": "color_bars_1080p",
+      "filename": "color_bars_1080p.mp4",
+      "type": "video",
+      "mimeType": "video/mp4",
+      "sizeBytes": 524288,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "duration": 10.0,
+      "width": 1920,
+      "height": 1080,
+      "frameRate": 30,
+      "codec": "h264",
+      "storageRef": null,
+      "downloadUrl": null
+    },
+    {
+      "assetId": "grid_motion_1080p",
+      "filename": "grid_motion_1080p.mp4",
+      "type": "video",
+      "mimeType": "video/mp4",
+      "sizeBytes": 786432,
+      "sha256": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+      "duration": 10.0,
+      "width": 1920,
+      "height": 1080,
+      "frameRate": 30,
+      "codec": "h264",
+      "storageRef": null,
+      "downloadUrl": null
+    },
+    {
+      "assetId": "logo_transparent",
+      "filename": "logo_transparent.png",
+      "type": "image",
+      "mimeType": "image/png",
+      "sizeBytes": 131072,
+      "sha256": "f0e1d2c3b4a5968778695a4b3c2d1e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d",
+      "width": 512,
+      "height": 512,
+      "storageRef": null,
+      "downloadUrl": null
+    }
+  ],
+  "signedUrls": null,
+  "signedUrlPolicy": {
+    "ttlSeconds": 86400,
+    "revocable": true,
+    "auditRecord": true
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "$schema": "render-plan-v1",
+  "version": "render-plan-v1",
+  "projectId": "golden-render-project-v1",
+  "description": "Render plan for Golden Render Project v1 — 30s standard acceptance render.",
+  "outputProfiles": [
+    {
+      "id": "preview_480p",
+      "name": "Preview 480p",
+      "width": 854,
+      "height": 480,
+      "frameRate": 30,
+      "videoCodec": "libx264",
+      "audioCodec": "aac",
+      "videoBitrate": "1M",
+      "audioBitrate": "128k"
+    },
+    {
+      "id": "final_1080p",
+      "name": "Final 1080p",
+      "width": 1920,
+      "height": 1080,
+      "frameRate": 30,
+      "videoCodec": "libx264",
+      "audioCodec": "aac",
+      "videoBitrate": "5M",
+      "audioBitrate": "192k"
+    },
+    {
+      "id": "debug_overlay",
+      "name": "Debug Overlay",
+      "width": 1920,
+      "height": 1080,
+      "frameRate": 30,
+      "videoCodec": "libx264",
+      "audioCodec": "aac",
+      "videoBitrate": "8M",
+      "audioBitrate": "192k"
+    }
+  ],
+  "tracks": [
+    {
+      "trackId": "video_main",
+      "type": "video",
+      "name": "Main Video",
+      "clips": [
+        { "assetId": "color_bars_1080p", "startMs": 0, "durationMs": 10000, "sourceOffsetMs": 0 },
+        { "assetId": "grid_motion_1080p", "startMs": 10000, "durationMs": 10000, "sourceOffsetMs": 0 },
+        { "assetId": "moving_box_1080p", "startMs": 20000, "durationMs": 10000, "sourceOffsetMs": 0 }
+      ]
+    },
+    {
+      "trackId": "video_overlay",
+      "type": "video",
+      "name": "Overlay",
+      "clips": [
+        { "assetId": "logo_transparent", "startMs": 2000, "durationMs": 8000, "position": { "x": 1600, "y": 20, "width": 300, "height": 300 } },
+        { "assetId": "product_card", "startMs": 12000, "durationMs": 6000, "position": { "x": 100, "y": 700, "width": 400, "height": 400 } }
+      ]
+    },
+    {
+      "trackId": "text_track",
+      "type": "text",
+      "name": "Text",
+      "clips": [
+        { "text": "Golden Render Project v1", "startMs": 1000, "durationMs": 5000, "position": { "x": 960, "y": 100 }, "style": { "fontSize": 48, "color": "#FFFFFF" } },
+        { "text": "Standard Acceptance Test", "startMs": 7000, "durationMs": 5000, "position": { "x": 960, "y": 100 }, "style": { "fontSize": 36, "color": "#CCCCCC" } }
+      ]
+    },
+    {
+      "trackId": "audio_main",
+      "type": "audio",
+      "name": "Main Audio",
+      "clips": [
+        { "assetId": "voiceover", "startMs": 1000, "durationMs": 15000, "volume": 1.0 }
+      ]
+    },
+    {
+      "trackId": "audio_music",
+      "type": "audio",
+      "name": "Music",
+      "clips": [
+        { "assetId": "music_bgm", "startMs": 0, "durationMs": 30000, "volume": 0.3 }
+      ]
+    },
+    {
+      "trackId": "audio_sfx",
+      "type": "audio",
+      "name": "SFX",
+      "clips": [
+        { "assetId": "sfx_click", "startMs": 1000, "durationMs": 500, "volume": 0.8 },
+        { "assetId": "sfx_whoosh", "startMs": 10000, "durationMs": 1500, "volume": 0.6 }
+      ]
+    }
+  ],
+  "operations": [
+    { "type": "fade_in", "trackId": "video_main", "clipIndex": 0, "durationMs": 1000, "effectKey": "video.fade_in" },
+    { "type": "fade_out", "trackId": "video_main", "clipIndex": 2, "durationMs": 1000, "effectKey": "video.fade_out" },
+    { "type": "cross_dissolve", "trackId": "video_main", "fromClipIndex": 0, "toClipIndex": 1, "durationMs": 1000, "effectKey": "video.cross_dissolve" },
+    { "type": "overlay", "trackId": "video_overlay", "effectKey": "video.overlay" },
+    { "type": "subtitle_burn_in", "trackId": "text_track", "subtitleAssetId": "subtitles_zh", "effectKey": "text.subtitle_burn_in" },
+    { "type": "volume", "trackId": "audio_music", "volume": 0.3, "effectKey": "audio.volume" },
+    { "type": "color_adjustment", "trackId": "video_main", "clipIndex": 1, "effectKey": "video.brightness" },
+    { "type": "filter", "trackId": "video_main", "clipIndex": 2, "effectKey": "video.blur" }
+  ],
+  "unsupported": [
+    { "type": "keying", "reason": "Chroma key runtime not implemented in v1", "assetId": "green_screen_test" },
+    { "type": "deform", "reason": "Deform runtime not implemented in v1" },
+    { "type": "advanced_tracking", "reason": "Motion tracking not implemented in v1" },
+    { "type": "crop_runtime", "reason": "Crop effect runtime not implemented in v1" },
+    { "type": "transform_runtime", "reason": "Transform effect runtime not implemented in v1" }
+  ]
+}

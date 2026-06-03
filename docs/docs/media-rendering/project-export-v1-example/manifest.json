@@ -1,0 +1,48 @@
+{
+  "$schema": "project-export-v1",
+  "schemaVersion": "project-export-v1",
+  "exportId": "export_550e8400-e29b-41d4-a716-446655440000",
+  "exportMode": "metadata_only",
+  "exportedAt": "2026-06-02T23:44:00Z",
+  "exportedBy": "user:example-user-123",
+  "project": {
+    "projectId": "golden-render-project-v1",
+    "name": "Golden Render Project v1",
+    "description": "Standard acceptance project for validating core render capabilities.",
+    "createdAt": "2026-05-29T00:00:00Z",
+    "updatedAt": "2026-06-02T23:44:00Z",
+    "durationMs": 25000,
+    "frameRate": 30,
+    "resolution": { "width": 1920, "height": 1080 },
+    "status": "completed"
+  },
+  "compatibility": {
+    "minPlatformVersion": "1.0.0",
+    "effectTaxonomyVersion": "v1",
+    "spatialPlanVersion": "v1",
+    "otioSchema": "Timeline.1"
+  },
+  "security": {
+    "containsSignedUrls": false,
+    "containsMedia": false,
+    "containsSecrets": false,
+    "containsCredentials": false,
+    "promptRedacted": true,
+    "historyRedacted": true,
+    "storageRefsRedacted": true
+  },
+  "assets": {
+    "mode": "metadata_only",
+    "count": 17,
+    "totalSizeBytes": 0,
+    "signedUrlTtlSeconds": null
+  },
+  "outputs": {
+    "count": 3,
+    "formats": ["mp4"]
+  },
+  "checksums": {
+    "algorithm": "sha256",
+    "file": "checksums/sha256sums.txt"
+  }
+}

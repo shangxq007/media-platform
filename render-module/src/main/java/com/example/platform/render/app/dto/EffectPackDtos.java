@@ -15,7 +15,9 @@ public final class EffectPackDtos {
             Map<String, Object> parameterSchema,
             Map<String, Object> defaultValues,
             List<String> providerMappings,
-            List<String> allowedTiers) {}
+            List<String> allowedTiers,
+            String taxonomyCategory,
+            Boolean isEffect) {}
 
     public record EffectPackDto(
             String packId,

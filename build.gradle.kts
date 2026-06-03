@@ -13,6 +13,7 @@ version = "0.2.0-SNAPSHOT"
 
 subprojects {
     apply(plugin = "java")
+    apply(plugin = "jacoco")
     apply(plugin = "io.spring.dependency-management")
 
     repositories { mavenCentral() }
@@ -37,4 +38,27 @@ subprojects {
     }
 
     tasks.withType<Test> { useJUnitPlatform() }
+
+    // JaCoCo code coverage configuration
+    extensions.configure<JacocoPluginExtension>("jacoco") {
+        toolVersion = "0.8.13"
+    }
+
+    tasks.withType<JacocoReport> {
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+            csv.required.set(false)
+        }
+        // Exclude classes that JaCoCo cannot analyze (e.g. generated code, Java 25 features)
+        classDirectories.setFrom(
+            files(classDirectories.files.map { dir ->
+                fileTree(dir) {
+                    exclude("**/generated/**")
+                    exclude("**/*_Impl.class")
+                    exclude("**/Q*.class")
+                }
+            })
+        )
+    }
 }

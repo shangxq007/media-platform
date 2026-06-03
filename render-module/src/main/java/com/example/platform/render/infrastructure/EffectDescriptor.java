@@ -11,5 +11,7 @@ public record EffectDescriptor(
         List<EffectParameterSchema> paramSchemas,
         List<String> providerKeys,
         Map<String, Object> defaultParams,
-        List<String> allowedTiers
+        List<String> allowedTiers,
+        String taxonomyCategory,
+        Boolean isEffect
 ) {}

@@ -1,0 +1,147 @@
+{
+  "$schema": "otio-draft-v1",
+  "OTIO_SCHEMA": "Timeline.1",
+  "name": "golden-render-project-v1",
+  "metadata": {
+    "mediaPlatform": {
+      "projectId": "golden-render-project-v1",
+      "renderPlanPath": "manifests/golden-render-plan.json",
+      "spatialPlanPath": "manifests/golden-spatial-plan.json",
+      "assetBindings": {
+        "color_bars_1080p": "assets/video/color_bars_1080p.mp4",
+        "grid_motion_1080p": "assets/video/grid_motion_1080p.mp4",
+        "moving_box_1080p": "assets/video/moving_box_1080p.mp4",
+        "portrait_test_1080x1920": "assets/video/portrait_test_1080x1920.mp4",
+        "square_test_1080x1080": "assets/video/square_test_1080x1080.mp4",
+        "green_screen_test": "assets/video/green_screen_test.mp4",
+        "logo_transparent": "assets/image/logo_transparent.png",
+        "product_card": "assets/image/product_card.png",
+        "lower_third_bg": "assets/image/lower_third_bg.png",
+        "mask_shape": "assets/image/mask_shape.png",
+        "music_bgm": "assets/audio/music_bgm.wav",
+        "voiceover": "assets/audio/voiceover.wav",
+        "sfx_click": "assets/audio/sfx_click.wav",
+        "sfx_whoosh": "assets/audio/sfx_whoosh.wav",
+        "subtitles_zh": "assets/subtitle/subtitles_zh.srt",
+        "subtitles_en": "assets/subtitle/subtitles_en.srt",
+        "subtitles_webvtt": "assets/subtitle/subtitles_webvtt.vtt"
+      }
+    }
+  },
+  "tracks": [
+    {
+      "OTIO_SCHEMA": "Track.1",
+      "name": "Main Video",
+      "kind": "Video",
+      "children": [
+        {
+          "OTIO_SCHEMA": "Clip.1",
+          "name": "color_bars_1080p",
+          "source_range": {
+            "start_time": 0,
+            "duration": 10
+          }
+        },
+        {
+          "OTIO_SCHEMA": "Gap.1",
+          "name": "gap_1s",
+          "source_range": {
+            "start_time": 0,
+            "duration": 1
+          }
+        },
+        {
+          "OTIO_SCHEMA": "Clip.1",
+          "name": "grid_motion_1080p",
+          "source_range": {
+            "start_time": 0,
+            "duration": 10
+          }
+        },
+        {
+          "OTIO_SCHEMA": "Gap.1",
+          "name": "gap_1s",
+          "source_range": {
+            "start_time": 0,
+            "duration": 1
+          }
+        },
+        {
+          "OTIO_SCHEMA": "Clip.1",
+          "name": "moving_box_1080p",
+          "source_range": {
+            "start_time": 0,
+            "duration": 10
+          }
+        }
+      ],
+      "markers": [
+        { "name": "fade_in_start", "start_time": 0 },
+        { "name": "cross_dissolve", "start_time": 9 },
+        { "name": "fade_out_end", "start_time": 29 }
+      ]
+    },
+    {
+      "OTIO_SCHEMA": "Track.1",
+      "name": "Overlay",
+      "kind": "Video",
+      "children": [
+        {
+          "OTIO_SCHEMA": "Clip.1",
+          "name": "logo_transparent",
+          "source_range": {
+            "start_time": 2,
+            "duration": 8
+          }
+        },
+        {
+          "OTIO_SCHEMA": "Clip.1",
+          "name": "product_card",
+          "source_range": {
+            "start_time": 12,
+            "duration": 6
+          }
+        }
+      ]
+    },
+    {
+      "OTIO_SCHEMA": "Track.1",
+      "name": "Audio",
+      "kind": "Audio",
+      "children": [
+        {
+          "OTIO_SCHEMA": "Clip.1",
+          "name": "music_bgm",
+          "source_range": {
+            "start_time": 0,
+            "duration": 30
+          }
+        },
+        {
+          "OTIO_SCHEMA": "Clip.1",
+          "name": "voiceover",
+          "source_range": {
+            "start_time": 1,
+            "duration": 15
+          }
+        }
+      ]
+    },
+    {
+      "OTIO_SCHEMA": "Track.1",
+      "name": "Subtitles",
+      "kind": "Subtitle",
+      "children": [
+        {
+          "OTIO_SCHEMA": "Clip.1",
+          "name": "subtitles_zh",
+          "source_range": {
+            "start_time": 1,
+            "duration": 29
+          }
+        }
+      ]
+    }
+  ],
+  "global_start_time": 0
+}

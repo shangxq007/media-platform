@@ -20,6 +20,25 @@ export default defineConfig({
     environment: 'happy-dom',
     root: fileURLToPath(new URL('.', import.meta.url)),
     setupFiles: ['./src/test-setup.ts'],
-    include: ['src/**/*.spec.ts']
-  }
+    include: ['src/**/*.spec.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,vue}'],
+      exclude: [
+        'src/**/*.spec.ts',
+        'src/**/*.d.ts',
+        'src/test-setup.ts',
+        'src/**/index.ts',
+        'src/**/*.stories.ts',
+      ],
+      thresholds: {
+        statements: 0,
+        branches: 0,
+        functions: 0,
+        lines: 0,
+      },
+    },
+  },
 })

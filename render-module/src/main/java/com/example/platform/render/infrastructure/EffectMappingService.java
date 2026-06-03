@@ -188,7 +188,7 @@ public class EffectMappingService {
                            List<EffectParameterSchema> params, List<String> providers,
                            Map<String, Object> defaults, List<String> allowedTiers) {
         descriptors.put(key, new EffectDescriptor(key, displayName, category, description, params, providers,
-                defaults, allowedTiers));
+                defaults, allowedTiers, "filter", true)); // Default taxonomy category and effect flag
         for (String provider : providers) {
             mappings.computeIfAbsent(key, k -> new ArrayList<>())
                     .add(new EffectProviderMapping(key, provider, displayName, Map.of()));

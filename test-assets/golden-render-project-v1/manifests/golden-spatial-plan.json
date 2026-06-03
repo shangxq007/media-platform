@@ -1,0 +1,91 @@
+{
+  "$schema": "spatial-plan-v1",
+  "version": "spatial-plan-v1",
+  "projectId": "golden-render-project-v1",
+  "description": "Spatial plan for Golden Render Project v1 — defines coordinate system and spatial operations.",
+  "coordinatePrecision": "normalized_ppm",
+  "coordinateSystem": {
+    "unit": "normalized_ppm",
+    "range": [0, 1000000],
+    "origin": "top-left",
+    "xDirection": "right",
+    "yDirection": "down",
+    "spaces": ["source", "clip", "canvas", "safe-area"]
+  },
+  "canvas": {
+    "width": 1920,
+    "height": 1080,
+    "widthPpm": 1000000,
+    "heightPpm": 1000000
+  },
+  "operations": [
+    {
+      "id": "crop-grid-center",
+      "type": "crop",
+      "description": "Crop center region of grid_motion_1080p",
+      "status": "supported",
+      "reason": null,
+      "source": { "space": "source", "assetId": "grid_motion_1080p" },
+      "region": { "x": 250000, "y": 250000, "width": 500000, "height": 500000 },
+      "clampToFrame": true
+    },
+    {
+      "id": "logo-top-right",
+      "type": "overlay",
+      "description": "Place logo at top-right corner with 20px margin",
+      "status": "supported",
+      "source": { "space": "canvas", "assetId": "logo_transparent" },
+      "position": { "x": 843750, "y": 20000, "width": 156250, "height": 156250 },
+      "opacity": 1000000,
+      "blendMode": "normal"
+    },
+    {
+      "id": "pip-product-card",
+      "type": "composite",
+      "description": "Picture-in-picture: product card at bottom-left",
+      "status": "supported",
+      "source": { "space": "canvas", "assetId": "product_card" },
+      "position": { "x": 52083, "y": 364583, "width": 208333, "height": 208333 },
+      "opacity": 1000000,
+      "blendMode": "normal"
+    },
+    {
+      "id": "lower-third-placement",
+      "type": "composite",
+      "description": "Lower third banner at bottom of frame",
+      "status": "supported",
+      "source": { "space": "canvas", "assetId": "lower_third_bg" },
+      "position": { "x": 0, "y": 406250, "width": 1000000, "height": 82291 },
+      "opacity": 600000,
+      "blendMode": "normal"
+    },
+    {
+      "id": "blur-region-demo",
+      "type": "filter",
+      "description": "Blur region on moving_box_1080p (spatial filter mask)",
+      "status": "unsupported",
+      "reason": "Spatial blur mask runtime not implemented in v1",
+      "source": { "space": "source", "assetId": "moving_box_1080p" },
+      "region": { "x": 400000, "y": 300000, "width": 500000, "height": 500000 }
+    },
+    {
+      "id": "safe-area-demo",
+      "type": "guide",
+      "description": "Safe area overlay for 10% margin",
+      "status": "supported",
+      "space": "safe-area",
+      "insets": { "top": 100000, "right": 100000, "bottom": 100000, "left": 100000 }
+    }
+  ],
+  "roundingPolicy": {
+    "edgeBased": true,
+    "mode": "nearest",
+    "minPixelSize": 1,
+    "clampToFrame": true
+  },
+  "overflowPolicy": {
+    "composite": "clip",
+    "crop": "reject",
+    "overlay": "clip"
+  }
+}

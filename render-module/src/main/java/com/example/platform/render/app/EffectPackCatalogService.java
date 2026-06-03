@@ -243,7 +243,9 @@ public class EffectPackCatalogService {
                     readMap(row.get(field("parameter_schema"), String.class)),
                     readMap(row.get(field("default_values"), String.class)),
                     readStringList(row.get(field("provider_mappings"), String.class)),
-                    readStringList(row.get(field("allowed_tiers"), String.class))));
+                    readStringList(row.get(field("allowed_tiers"), String.class)),
+                    row.get(field("taxonomy_category"), String.class),
+                    row.get(field("is_effect"), Boolean.class)));
         }
         return effects;
     }
@@ -265,7 +267,9 @@ public class EffectPackCatalogService {
                     readMap(effectRow.get(field("parameter_schema"), String.class)),
                     readMap(effectRow.get(field("default_values"), String.class)),
                     readStringList(effectRow.get(field("provider_mappings"), String.class)),
-                    readStringList(effectRow.get(field("allowed_tiers"), String.class))));
+                    readStringList(effectRow.get(field("allowed_tiers"), String.class)),
+                    effectRow.get(field("taxonomy_category"), String.class),
+                    effectRow.get(field("is_effect"), Boolean.class)));
         }
         return new EffectPackDto(
                 row.get(field("pack_id"), String.class),

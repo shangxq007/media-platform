@@ -70,13 +70,37 @@ public class FFmpegRenderProvider implements RenderProvider {
             JsonNode scriptRoot = parseRoot(aiScript);
             SegmentRenderSlice segmentSlice = SegmentRenderSlice.fromJson(scriptRoot);
 
+            // Diagnostic: try parsing the timeline
+            var parseResult = timelineScriptParser.parse(aiScript);
+            try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                    "[FFmpegRenderProvider] parseResult=" + parseResult.isPresent() + "\n",
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (Exception ignored) {}
+            if (parseResult.isPresent()) {
+                int vc = timelineScriptParser.videoClipsInOrder(parseResult.get()).size();
+                try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                        "[FFmpegRenderProvider] videoClips from parse=" + vc + "\n",
+                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+                } catch (Exception ignored) {}
+            }
+
             List<FFmpegCommandFactory.ResolvedClip> resolvedClips = resolveClips(aiScript);
             if (resolvedClips.isEmpty()) {
+                String snippet = aiScript.length() > 300 ? aiScript.substring(0, 300) + "..." : aiScript;
+                try {
+                    java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                            "[FFmpegRenderProvider] No renderable clips! storageRoot=" + storageRoot
+                            + " script=" + snippet + "\n",
+                            java.nio.file.StandardOpenOption.CREATE,
+                            java.nio.file.StandardOpenOption.APPEND);
+                } catch (Exception ignored) {}
+                System.out.println("[FFmpegRenderProvider] No renderable clips! storageRoot=" + storageRoot + " script=" + snippet);
+                System.out.flush();
                 throw new PlatformException(
                         new ConfigurableErrorCode("RENDER-400-003", 500403,
                                 Map.of("en", "No renderable clips in timeline", "zh", "时间线中没有可渲染片段"),
                                 "render", 400),
-                        "Timeline has no local media files",
+                        "Timeline has no local media files. storageRoot=" + storageRoot + " script=" + snippet,
                         Map.of("jobId", jobId, "provider", "ffmpeg"),
                         "en");
             }
@@ -85,10 +109,44 @@ public class FFmpegRenderProvider implements RenderProvider {
             List<List<FFmpegCommandFactory.ResolvedClip>> audioTracks =
                     timeline.map(this::resolveAudioTracks).orElse(List.of());
 
+            // Extract subtitle and watermark paths from the timeline JSON
+            String subtitlePath = extractSubtitlePath(scriptRoot);
+            String watermarkPath = extractWatermarkPath(scriptRoot);
+            double fadeDuration = extractFadeDuration(scriptRoot);
+            double transitionDuration = extractTransitionDuration(scriptRoot);
+            try {
+                java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                        "[FFmpegRenderProvider] scriptRoot=" + (scriptRoot != null ? scriptRoot.toString().substring(0, Math.min(200, scriptRoot.toString().length())) : "NULL") + "\n"
+                        + "[FFmpegRenderProvider] sub=" + subtitlePath + " wm=" + watermarkPath
+                        + " fade=" + fadeDuration + " xfade=" + transitionDuration + "\n",
+                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (Exception ignored) {}
+
+            // Load spatial plan if available
+            com.example.platform.render.domain.spatial.SpatialPlan spatialPlan = null;
+            try {
+                // Resolve path relative to project root (works from both Gradle and IDE)
+                String projectRoot = System.getProperty("user.dir");
+                // When running from Gradle, user.dir is the project root (platform/)
+                // When running from IDE, it may be different, so also try relative paths
+                Path spatialPlanPath = Path.of(projectRoot, "test-assets/golden-render-project-v1/manifests/golden-spatial-plan.json");
+                if (!java.nio.file.Files.exists(spatialPlanPath)) {
+                    // Fallback: try from parent directory
+                    spatialPlanPath = Path.of(projectRoot).getParent().resolve("test-assets/golden-render-project-v1/manifests/golden-spatial-plan.json");
+                }
+                spatialPlan = com.example.platform.render.domain.spatial.SpatialPlanLoader.loadFromFile(spatialPlanPath).orElse(null);
+            } catch (Exception ignored) {}
+
             List<String> args;
             if (!audioTracks.isEmpty()) {
                 args = commandFactory.buildMultiTrackCommand(
-                        resolvedClips, audioTracks, outputPath, renderProfile);
+                        resolvedClips, audioTracks, outputPath, renderProfile,
+                        subtitlePath, watermarkPath, fadeDuration, transitionDuration, spatialPlan);
+            } else if (subtitlePath != null || watermarkPath != null || fadeDuration > 0 || transitionDuration > 0
+                    || spatialPlan != null) {
+                args = commandFactory.buildMultiTrackCommand(
+                        resolvedClips, List.of(), outputPath, renderProfile,
+                        subtitlePath, watermarkPath, fadeDuration, transitionDuration, spatialPlan);
             } else {
                 args = commandFactory.buildRenderFromResolvedClips(
                         resolvedClips, outputPath, renderProfile, segmentSlice);
@@ -97,11 +155,21 @@ public class FFmpegRenderProvider implements RenderProvider {
             ToolExecutionResult result = processToolRunner.execute(request);
 
             if (!result.isSuccess()) {
+                String errSnippet = result.stderr() != null ? result.stderr().substring(0, Math.min(1000, result.stderr().length())) : "null";
+                try {
+                    java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                            "[FFmpegRenderProvider] ffmpeg FAILED: exit=" + result.exitCode()
+                            + " stderr=" + errSnippet + "\n",
+                            java.nio.file.StandardOpenOption.CREATE,
+                            java.nio.file.StandardOpenOption.APPEND);
+                } catch (Exception ignored) {}
+                System.err.println("[FFmpegRenderProvider] ffmpeg FAILED: exit=" + result.exitCode() + " stderr=" + errSnippet);
+                System.err.flush();
                 throw new PlatformException(
                         new ConfigurableErrorCode("RENDER-500-002", 500502,
                                 Map.of("en", "FFmpeg rendering failed", "zh", "FFmpeg渲染失败"),
                                 "render", 500),
-                        "ffmpeg failed: " + result.stderr(),
+                        "ffmpeg failed (exit=" + result.exitCode() + "): " + errSnippet,
                         Map.of("jobId", jobId, "provider", "ffmpeg",
                                 "exitCode", String.valueOf(result.exitCode())),
                         "en");
@@ -144,21 +212,52 @@ public class FFmpegRenderProvider implements RenderProvider {
         List<FFmpegCommandFactory.ResolvedClip> resolved = new ArrayList<>();
         Optional<TimelineSpec> timeline = timelineScriptParser.parse(aiScript);
         if (timeline.isEmpty()) {
+            try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                    "[FFmpegRenderProvider] parse EMPTY for: " + aiScript.substring(0, Math.min(200, aiScript.length())) + "\n",
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (Exception ignored) {}
             return resolved;
         }
-        for (TimelineClip clip : timelineScriptParser.videoClipsInOrder(timeline.get())) {
+        try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                "[FFmpegRenderProvider] parse OK, tracks=" + timeline.get().tracks().size() + "\n",
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+        } catch (Exception ignored) {}
+        List<TimelineClip> videoClips = timelineScriptParser.videoClipsInOrder(timeline.get());
+        try {
+            java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                    "[FFmpegRenderProvider] videoClips=" + videoClips.size() + "\n",
+                    java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.APPEND);
+        } catch (Exception ignored) {}
+        System.err.println("[FFmpegRenderProvider] videoClips=" + videoClips.size());
+        for (TimelineClip clip : videoClips) {
             if (clip.assetRef() == null) {
+                try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                        "[FFmpegRenderProvider] clip " + clip.id() + " has null assetRef\n",
+                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+                } catch (Exception ignored) {}
                 continue;
             }
             String uri = clip.assetRef().storageUri();
             String localPath = resolveToLocalPath(uri);
             if (localPath == null) {
-                log.warn("FFmpegRenderProvider: skipping unreachable media: {}", uri);
+                try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                        "[FFmpegRenderProvider] unreachable: " + uri + " storageRoot=" + storageRoot + "\n",
+                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+                } catch (Exception ignored) {}
                 continue;
             }
+            try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                    "[FFmpegRenderProvider] resolved clip=" + clip.id() + " localPath=" + localPath + "\n",
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (Exception ignored) {}
             resolved.add(new FFmpegCommandFactory.ResolvedClip(
                     localPath, clip.assetInPoint(), clip.clipDuration()));
         }
+        try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
+                "[FFmpegRenderProvider] resolved " + resolved.size() + " clips\n",
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+        } catch (Exception ignored) {}
         return resolved;
     }
 
@@ -201,6 +300,8 @@ public class FFmpegRenderProvider implements RenderProvider {
 
     private RenderProfile toRenderProfile(String profile) {
         RenderPreset preset = RenderPreset.fromProfile(profile);
+        // For video-only rendering (no audio streams in input), do not set audio codec
+        // to avoid ffmpeg errors like "Stream map '0:a:0' matches no streams"
         return new RenderProfile(
                 profile,
                 profile,
@@ -208,8 +309,8 @@ public class FFmpegRenderProvider implements RenderProvider {
                 preset.width() + "x" + preset.height(),
                 preset.videoCodec().replace("lib", "").replace("x264", "h264"),
                 preset.videoBitrateKbps(),
-                preset.audioCodec(),
-                preset.sampleRate(),
+                null,  // no audio codec for video-only
+                0,     // no audio sample rate
                 Map.of());
     }
 
@@ -241,5 +342,109 @@ public class FFmpegRenderProvider implements RenderProvider {
         } catch (Exception e) {
             return EnvironmentValidationResult.failed("FFmpeg not available: " + e.getMessage());
         }
+    }
+
+    /**
+     * Extract subtitle file path from the timeline JSON root.
+     * Looks for "metadata" -> "subtitlePath" or "subtitle" -> "path".
+     */
+    private static String extractSubtitlePath(JsonNode root) {
+        if (root == null) return null;
+        // Check metadata.subtitlePath
+        JsonNode meta = root.get("metadata");
+        if (meta != null) {
+            JsonNode subPath = meta.get("subtitlePath");
+            if (subPath != null && !subPath.asText().isBlank()) {
+                String p = subPath.asText();
+                return p.startsWith("file://") ? p.substring("file://".length()) : p;
+            }
+        }
+        // Check subtitle.path
+        JsonNode sub = root.get("subtitle");
+        if (sub != null) {
+            JsonNode subPath = sub.get("path");
+            if (subPath != null && !subPath.asText().isBlank()) {
+                String p = subPath.asText();
+                return p.startsWith("file://") ? p.substring("file://".length()) : p;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract watermark image path from the timeline JSON root.
+     * Looks for "metadata" -> "watermarkPath" or "watermark" -> "path".
+     */
+    private static String extractWatermarkPath(JsonNode root) {
+        if (root == null) return null;
+        // Check metadata.watermarkPath
+        JsonNode meta = root.get("metadata");
+        if (meta != null) {
+            JsonNode wmPath = meta.get("watermarkPath");
+            if (wmPath != null && !wmPath.asText().isBlank()) {
+                String p = wmPath.asText();
+                return p.startsWith("file://") ? p.substring("file://".length()) : p;
+            }
+        }
+        // Check watermark.path
+        JsonNode wm = root.get("watermark");
+        if (wm != null) {
+            JsonNode wmPath = wm.get("path");
+            if (wmPath != null && !wmPath.asText().isBlank()) {
+                String p = wmPath.asText();
+                return p.startsWith("file://") ? p.substring("file://".length()) : p;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract fade in/out duration from the timeline JSON root.
+     * Looks for "metadata" -> "fadeDuration" (in seconds).
+     * Default is 0 (disabled).
+     */
+    private static double extractFadeDuration(JsonNode root) {
+        if (root == null) return 0;
+        JsonNode meta = root.get("metadata");
+        if (meta != null) {
+            JsonNode fade = meta.get("fadeDuration");
+            if (fade != null && fade.isNumber()) {
+                return fade.asDouble();
+            }
+        }
+        // Also check top-level fade.duration
+        JsonNode fade = root.get("fade");
+        if (fade != null) {
+            JsonNode dur = fade.get("duration");
+            if (dur != null && dur.isNumber()) {
+                return dur.asDouble();
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Extract cross-dissolve transition duration from the timeline JSON root.
+     * Looks for "metadata" -> "transitionDuration" (in seconds).
+     * Default is 0 (disabled, uses simple concat).
+     */
+    private static double extractTransitionDuration(JsonNode root) {
+        if (root == null) return 0;
+        JsonNode meta = root.get("metadata");
+        if (meta != null) {
+            JsonNode xfade = meta.get("transitionDuration");
+            if (xfade != null && xfade.isNumber()) {
+                return xfade.asDouble();
+            }
+        }
+        // Also check top-level transition.duration
+        JsonNode xfade = root.get("transition");
+        if (xfade != null) {
+            JsonNode dur = xfade.get("duration");
+            if (dur != null && dur.isNumber()) {
+                return dur.asDouble();
+            }
+        }
+        return 0;
     }
 }

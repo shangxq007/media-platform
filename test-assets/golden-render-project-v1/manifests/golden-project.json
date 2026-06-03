@@ -1,0 +1,41 @@
+{
+  "$schema": "golden-project-v1",
+  "schemaVersion": "golden-project-v1",
+  "projectId": "golden-render-project-v1",
+  "name": "Golden Render Project v1",
+  "description": "Standard acceptance project for validating core render capabilities of the media platform.",
+  "durationMs": 30000,
+  "frameRate": 30,
+  "resolution": {
+    "width": 1920,
+    "height": 1080
+  },
+  "assets": [
+    { "assetId": "color_bars_1080p", "type": "video", "path": "assets/video/color_bars_1080p.mp4", "expectedDurationMs": 10000, "expectedWidth": 1920, "expectedHeight": 1080, "purpose": "Primary video track, color reference" },
+    { "assetId": "grid_motion_1080p", "type": "video", "path": "assets/video/grid_motion_1080p.mp4", "expectedDurationMs": 10000, "expectedWidth": 1920, "expectedHeight": 1080, "purpose": "Overlay track, motion reference for crop/transform" },
+    { "assetId": "moving_box_1080p", "type": "video", "path": "assets/video/moving_box_1080p.mp4", "expectedDurationMs": 10000, "expectedWidth": 1920, "expectedHeight": 1080, "purpose": "Blur region / tracking reference" },
+    { "assetId": "portrait_test_1080x1920", "type": "video", "path": "assets/video/portrait_test_1080x1920.mp4", "expectedDurationMs": 10000, "expectedWidth": 1080, "expectedHeight": 1920, "purpose": "Vertical video test" },
+    { "assetId": "square_test_1080x1080", "type": "video", "path": "assets/video/square_test_1080x1080.mp4", "expectedDurationMs": 8000, "expectedWidth": 1080, "expectedHeight": 1080, "purpose": "Square format test" },
+    { "assetId": "green_screen_test", "type": "video", "path": "assets/video/green_screen_test.mp4", "expectedDurationMs": 6000, "expectedWidth": 1920, "expectedHeight": 1080, "purpose": "Keying test (unsupported in v1)" },
+    { "assetId": "logo_transparent", "type": "image", "path": "assets/image/logo_transparent.png", "expectedWidth": 512, "expectedHeight": 512, "purpose": "Watermark / overlay" },
+    { "assetId": "product_card", "type": "image", "path": "assets/image/product_card.png", "expectedWidth": 1000, "expectedHeight": 1000, "purpose": "PIP / overlay" },
+    { "assetId": "lower_third_bg", "type": "image", "path": "assets/image/lower_third_bg.png", "expectedWidth": 1920, "expectedHeight": 300, "purpose": "Lower third placement" },
+    { "assetId": "mask_shape", "type": "image", "path": "assets/image/mask_shape.png", "expectedWidth": 512, "expectedHeight": 512, "purpose": "Mask test (unsupported in v1)" },
+    { "assetId": "music_bgm", "type": "audio", "path": "assets/audio/music_bgm.wav", "expectedDurationMs": 30000, "purpose": "Background music" },
+    { "assetId": "voiceover", "type": "audio", "path": "assets/audio/voiceover.wav", "expectedDurationMs": 15000, "purpose": "Voiceover track" },
+    { "assetId": "sfx_click", "type": "audio", "path": "assets/audio/sfx_click.wav", "expectedDurationMs": 500, "purpose": "Sound effect" },
+    { "assetId": "sfx_whoosh", "type": "audio", "path": "assets/audio/sfx_whoosh.wav", "expectedDurationMs": 1500, "purpose": "Sound effect" },
+    { "assetId": "subtitles_zh", "type": "subtitle", "path": "assets/subtitle/subtitles_zh.srt", "format": "srt", "purpose": "Chinese subtitles" },
+    { "assetId": "subtitles_en", "type": "subtitle", "path": "assets/subtitle/subtitles_en.srt", "format": "srt", "purpose": "English subtitles" },
+    { "assetId": "subtitles_webvtt", "type": "subtitle", "path": "assets/subtitle/subtitles_webvtt.vtt", "format": "webvtt", "purpose": "WebVTT subtitles" }
+  ],
+  "tracks": [
+    { "trackId": "video_main", "type": "video", "name": "Main Video" },
+    { "trackId": "video_overlay", "type": "video", "name": "Overlay" },
+    { "trackId": "text_track", "type": "text", "name": "Text" },
+    { "trackId": "audio_main", "type": "audio", "name": "Main Audio" },
+    { "trackId": "audio_music", "type": "audio", "name": "Music" },
+    { "trackId": "audio_sfx", "type": "audio", "name": "SFX" }
+  ],
+  "validationPoints": [2000, 7000, 12000, 17000, 22000, 28000]
+}

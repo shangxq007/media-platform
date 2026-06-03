@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "2.0",
+  "id": "tl_demo_001",
+  "name": "Demo: Multi-backend + HLS",
+  "project": {
+    "width": 1920,
+    "height": 1080,
+    "frameRate": 30,
+    "colorSpace": "Rec.709"
+  },
+  "finalComposer": "auto",
+  "tracks": [
+    {
+      "id": "v1",
+      "type": "VIDEO",
+      "clips": [
+        {
+          "id": "c1",
+          "assetRef": { "storageUri": "s3://bucket/mezzanine/interview.mp4" },
+          "timelineStart": 0,
+          "assetInPoint": 0,
+          "assetOutPoint": 30,
+          "effects": [
+            { "effectKey": "video.fade_in", "parameters": { "duration": 0.5 } },
+            { "effectKey": "video.cross_dissolve", "parameters": { "duration": 0.5 } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a1",
+      "type": "AUDIO",
+      "clips": [
+        {
+          "id": "c_bgm",
+          "assetRef": { "storageUri": "s3://bucket/audio/bgm.wav" },
+          "timelineStart": 0,
+          "assetInPoint": 0,
+          "assetOutPoint": 30,
+          "effects": [{ "effectKey": "audio.volume", "parameters": { "gain": 0.3 } }]
+        }
+      ]
+    }
+  ],
+  "textOverlays": [
+    {
+      "id": "t1",
+      "text": "新品发布",
+      "startTime": 1.0,
+      "duration": 3.0,
+      "fontFamily": "Noto Sans CJK",
+      "color": "#FFFFFF"
+    }
+  ],
+  "externalRenderNodes": [
+    {
+      "id": "xr_blender_logo",
+      "backend": "blender",
+      "templateId": "logo_reveal_v3",
+      "timelineStart": 0,
+      "duration": 5,
+      "output": { "format": "prores_4444", "alpha": true }
+    },
+    {
+      "id": "xr_remotion_chart",
+      "backend": "remotion",
+      "templateId": "stats_bars_v1",
+      "timelineStart": 8,
+      "duration": 7,
+      "output": { "format": "png_sequence", "alpha": true }
+    },
+    {
+      "id": "xr_natron_glow",
+      "backend": "natron",
+      "graphId": "glow_edge_v2",
+      "attachToClipId": "c1",
+      "duration": 30,
+      "output": { "format": "png_sequence", "alpha": true }
+    }
+  ],
+  "markers": [
+    { "id": "m1", "name": "Chapter 1", "timeSeconds": 0 }
+  ],
+  "outputSpec": {
+    "format": "mp4",
+    "resolution": "1920x1080",
+    "frameRate": 30,
+    "width": 1920,
+    "height": 1080
+  },
+  "packaging": {
+    "format": "hls",
+    "segmentDurationSec": 4,
+    "packager": "gpac"
+  },
+  "otio": {
+    "exportOnComplete": false,
+    "roundTrip": { "lossy": false }
+  }
+}

@@ -26,6 +26,7 @@ const EDITOR_FLAG_KEYS = [
   'editor.demoProject.enabled',
   'editor.subtitlePanel.v2',
   'editor.effectChain.v2',
+  'editor.effectTaxonomy.enabled',
 ] as const
 
 const PROMPT_FLAG_KEYS = [

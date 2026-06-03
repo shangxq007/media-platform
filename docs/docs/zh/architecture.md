@@ -1,0 +1,188 @@
+# 项目架构
+
+> **最后更新:** 2026-05-14  
+> **综合整理（分卷）：** 见 [platform-guide/README.md](platform-guide/README.md)
+
+---
+
+## 架构概览
+
+媒体平台采用 **模块化单体** 架构，基于 Spring Modulith 实现模块边界。所有模块在同一个 JVM 进程中运行，通过端口接口和事件进行通信。
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        platform-app                              │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    API 层 (REST)                          │   │
+│  │  OpenAPI v3 + Swagger UI                                  │   │
+│  │  API Key / JWT 认证                                       │   │
+│  │  速率限制 + IP 白名单                                      │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    业务模块层                              │   │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐    │   │
+│  │  │ Render   │ │ Prompt   │ │ Billing  │ │ Audit    │    │   │
+│  │  │ Module   │ │ Module   │ │ Module   │ │ Module   │    │   │
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘    │   │
+│  │       │             │            │            │           │   │
+│  │  ┌────┴─────────────┴────────────┴────────────┴─────┐    │   │
+│  │  │              shared-kernel (端口接口 + 事件)        │    │   │
+│  │  └──────────────────────────────────────────────────┘    │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    基础设施层                              │   │
+│  │  PostgreSQL │ Redis │ MinIO │ Temporal │ Sentry          │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 模块关系图
+
+```
+                    ┌─────────────────┐
+                    │  platform-app   │
+                    │   (组合根)       │
+                    └────────┬────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+   ┌────▼────┐         ┌────▼────┐         ┌────▼────┐
+   │ shared  │◄────────│  render │────────►│workflow │
+   │ -kernel │         │ module  │         │ module  │
+   └────┬────┘         └────┬────┘         └─────────┘
+        │                   │
+   ┌────┴────┐         ┌────▼────┐
+   │  audit  │◄────────│ prompt  │
+   │ module  │         │ module  │
+   └────┬────┘         └─────────┘
+        │
+   ┌────▼────┐         ┌─────────┐
+   │ billing │◄────────│entitle- │
+   │ module  │         │ment     │
+   └─────────┘         └─────────┘
+```
+
+---
+
+## 数据流
+
+### 渲染任务数据流
+```
+用户提交 → ExportPanel → RenderController → RenderJobService
+    → RenderJobValidationService (权益/成本/预算检查)
+    → RenderJobStateMachine (状态转换)
+    → [可选] IncrementalRenderPlanService + PipelineDagExecutorService (1.0 增量 DAG)
+    → ProviderRouter (选择提供者)
+    → JavaCV/OFX/GPAC/GStreamer/MLT/FFMPEG
+    → RenderQualityCheckService (质量检查)
+    → ArtifactCatalogService (工件记录)
+    → [可选] SegmentArtifactUploadService → S3BlobStorageProvider / LocalFs（平台内）
+    → [可选] 交付子系统（异步）→ 用户 NAS/SFTP/WebDAV/自有桶 见 delivery-subsystem.md
+```
+
+### Internal Timeline 1.0 与增量渲染
+
+- **真源格式：** Internal Timeline Schema 1.0（见 `docs/media-rendering/13-internal-timeline-schema-v1.md`）
+- **中文运维：** [docs/zh/incremental-rendering.md](incremental-rendering.md)
+- **成品出站：** [docs/zh/delivery-subsystem.md](delivery-subsystem.md) — `delivery-module`，渲染完成后异步交付
+- **密钥 / 对象存储 / 工作流：** [secrets-management.md](secrets-management.md)、[vault-and-rustfs-setup.md](vault-and-rustfs-setup.md) — Vault + RustFS + Temporal（`media-platform-tasks`）
+- **AI 网关 / 时间线编辑：** [ai-gateway-architecture.md](ai-gateway-architecture.md)、[ai-timeline-editing.md](ai-timeline-editing.md)
+- **组件：** `TimelineCanonicalizer`、`IncrementalRenderPlanService`、`SegmentTimelinePlanner`、`PipelineDagExecutorService`
+- **存储：** `segmentCacheIndex` / `mezzanineCacheIndex` + 可选 S3 上传与 content-hash 校验
+    → NotificationService (通知)
+    → AuditService (审计)
+```
+
+### 提示词执行数据流
+```
+用户创建模板 → PromptController → PromptTemplateService
+    → PromptSafetyPolicyService (安全扫描)
+    → PromptVariableSchema (变量校验)
+    → 渲染预览/执行
+    → PromptExecutionRun (执行记录)
+    → PromptEvaluationService (评估)
+    → AuditService (审计)
+```
+
+---
+
+## 工作流
+
+### Temporal 工作流
+```
+RenderWorkflow (Temporal)
+    └── RenderPipelineWorkflow
+        ├── RenderActivity (渲染)
+        ├── StorageActivity (存储)
+        ├── NotificationActivity (通知)
+        └── AuditActivity (审计)
+```
+
+### LiteFlow 流水线
+```
+RenderPipeline (LiteFlow)
+    ├── EffectsNode (特效)
+    ├── TranscodeNode (转码)
+    └── PackagingNode (打包)
+```
+
+---
+
+## ProviderRouter 路由逻辑
+
+```
+请求 → ProviderRouter
+    ├── 检查层级权限 (EntitlementPolicy)
+    ├── 检查 GPU 可用性
+    ├── 选择最优提供者
+    │   ├── GPU 预设 → remote-javacv
+    │   ├── OFX 预设 → ofx
+    │   ├── 默认 → javacv
+    └── 执行渲染
+        ├── 成功 → 返回结果
+        └── 失败 → 自动切换备用提供者
+```
+
+---
+
+## 安全架构
+
+```
+┌─────────────────────────────────────────┐
+│              API 网关层                   │
+│  HTTPS/TLS │ 速率限制 │ IP 白名单        │
+├─────────────────────────────────────────┤
+│              认证层                       │
+│  API Key │ JWT (计划) │ OAuth2 (计划)   │
+├─────────────────────────────────────────┤
+│              授权层                       │
+│  层级策略 │ 功能标志 │ 配额检查          │
+├─────────────────────────────────────────┤
+│              数据层                       │
+│  敏感数据脱敏 │ 审计日志 │ 数据隔离       │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## 扩展架构
+
+```
+┌─────────────────────────────────────────┐
+│              扩展层                       │
+│  ProviderSPI │ PromptSPI │ WorkflowSPI  │
+├─────────────────────────────────────────┤
+│              沙箱层                       │
+│  超时限制 │ 输出限制 │ 网络/文件隔离     │
+├─────────────────────────────────────────┤
+│              注册层                       │
+│  ExtensionRegistry │ 版本管理 │ 回滚     │
+├─────────────────────────────────────────┤
+│              审计层                       │
+│  操作记录 │ 执行日志 │ 告警              │
+└─────────────────────────────────────────┘
+```

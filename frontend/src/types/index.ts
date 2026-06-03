@@ -126,6 +126,10 @@ export interface EffectPackEffect {
   providerMappings: string[]
   allowedTiers: string[]
   thumbnailUrl?: string
+  taxonomyCategory?: string
+  isEffect?: boolean
+  defaultParams?: Record<string, any>
+  paramSchemas?: EffectParameterDef[]
 }
 
 export interface EffectParameterDef {

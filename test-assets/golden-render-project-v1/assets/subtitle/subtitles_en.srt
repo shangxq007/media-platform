@@ -1,0 +1,27 @@
+1
+00:00:01,000 --> 00:00:04,000
+Welcome to the Media Platform
+
+2
+00:00:05,000 --> 00:00:08,000
+This is a standard acceptance project
+for validating render capabilities
+
+3
+00:00:10,000 --> 00:00:14,000
+Supports multi-track video compositing
+including transitions, filters, subtitle burn-in
+
+4
+00:00:16,000 --> 00:00:20,000
+Audio tracks support background music
+sound effects and voiceover mixing
+
+5
+00:00:22,000 --> 00:00:26,000
+Spatial coordinate system supports
+crop, transform, composite operations
+
+6
+00:00:27,000 --> 00:00:30,000
+Thank you for using the Media Platform

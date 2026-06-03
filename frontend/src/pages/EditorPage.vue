@@ -11,6 +11,7 @@ import TimelineHighlightNavigator from '@/components/timeline/TimelineHighlightN
 import ClipLibrary from '@/components/clip-library/ClipLibrary.vue'
 import ExportPanel from '@/components/export/ExportPanel.vue'
 import EffectsPanel from '@/components/effects/EffectsPanel.vue'
+import EffectsPanelWithTaxonomy from '@/components/effects/EffectsPanelWithTaxonomy.vue'
 import SubtitlesPanel from '@/components/subtitles/SubtitlesPanel.vue'
 import PropertiesPanel from '@/components/editor/PropertiesPanel.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -163,6 +164,7 @@ const showTryDemoButton = computed(() => isEditorFlagEnabled('editor.demoProject
 const useNewTimeline = computed(() => isEditorFlagEnabled('editor.newTimeline.enabled'))
 const useSubtitlePanelV2 = computed(() => isEditorFlagEnabled('editor.subtitlePanel.v2'))
 const useEffectChainV2 = computed(() => isEditorFlagEnabled('editor.effectChain.v2'))
+const useEffectTaxonomy = computed(() => isEditorFlagEnabled('editor.effectTaxonomy.enabled'))
 
 const rightTabs = computed(() => [
   { key: 'effects' as const, label: 'Effects', icon: 'sparkles', beta: useEffectChainV2.value },
@@ -533,7 +535,14 @@ onMounted(() => {
           </div>
           <div class="flex-1 overflow-y-auto theme-scrollbar">
             <div v-if="activeRightTab === 'effects'" id="panel-effects" role="tabpanel" aria-label="Effects panel">
-              <EffectsPanel />
+<EffectsPanelWithTaxonomy 
+                  v-if="useEffectTaxonomy"
+                  :effect-packs="[]" 
+                  :applied-effects="[]"
+                  @effect-apply="() => {}"
+                  @effect-remove="() => {}"
+                />
+               <EffectsPanel v-else />
             </div>
             <div v-else-if="activeRightTab === 'subtitles'" id="panel-subtitles" role="tabpanel" aria-label="Subtitles panel">
               <SubtitlesPanel />
