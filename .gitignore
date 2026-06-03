@@ -61,3 +61,11 @@ node_modules/
 
 # jOOQ generated sources — do not commit
 **/build/generated-sources/jooq/
+
+# Golden Render Project — generated media assets (regenerate via scripts/)
+test-assets/golden-render-project-v1/assets/video/*.mp4
+test-assets/golden-render-project-v1/assets/audio/*.wav
+test-assets/golden-render-project-v1/outputs/*.mp4
+test-assets/golden-render-project-v1/outputs/frames/*.png
+test-assets/golden-render-project-v1/outputs/reports/*.txt
+test-assets/golden-render-project-v1/expected/reports/*.txt

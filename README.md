@@ -41,9 +41,11 @@ Modulith 违规预算见 [docs/modulith-debt-register.md](docs/modulith-debt-reg
 
 ## 文档
 
-- 中文平台指南（分卷）：`../docs/zh/platform-guide/README.md`
-- 工作区文档中心：`../docs/README.md`
-- 架构评估：`../docs/review/05-architecture-evaluation.md`
+- 中文平台指南（分卷）：`docs/zh/platform-guide/README.md`
+- 工作区文档中心：`docs/README.md`
+- 架构评估：`docs/review/05-architecture-evaluation.md`
+- Golden Render Project：`test-assets/golden-rend-project-v1/README.md`
+- Project Export/Import：`docs/media-rendering/project-export.md`
 
 ## 测试
 

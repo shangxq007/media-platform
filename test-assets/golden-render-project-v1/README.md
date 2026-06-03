@@ -37,11 +37,11 @@ golden-render-project-v1/
 ### 1. Generate Assets
 
 ```bash
-cd test-assets/golden-render-project-v1
+cd platform/test-assets/golden-render-project-v1
 ./scripts/generate-assets.sh
 ```
 
-Requires: `ffmpeg`
+Requires: `ffmpeg`. Generates all synthetic video/audio/image assets locally.
 
 ### 2. Validate Assets
 
@@ -50,8 +50,6 @@ Requires: `ffmpeg`
 ```
 
 ### 3. Run Golden Render Tests
-
-From the `platform/` directory:
 
 ```bash
 cd platform
@@ -62,41 +60,47 @@ This runs:
 - `shouldRenderSingleClip1080p` — single video clip smoke test
 - `shouldRenderMultiClip30sTimeline` — 5-clip video-only timeline (25s)
 - `shouldRenderGoldenTimelineWithAudio` — 5-clip video + BGM audio (25s)
+- `shouldRenderGoldenTimelineWithAudioSubtitleAndWatermark` — full pipeline (25s)
+- `shouldRenderGoldenTimelineWithFadeInOut` — temporal effects (25s)
+- `shouldRenderGoldenTimelineWithCrossDissolve` — transition effects (13s)
+- `shouldRenderCropValidationOutput` — spatial crop verification
 
 ### 4. Extract Frames
 
 ```bash
-./scripts/extract-frames.sh outputs/final_1080p.mp4
+./scripts/extract-frames.sh outputs/final_1080p.mp4 outputs/frames
 ```
 
 ### 5. Validate Output
 
 ```bash
-# Basic validation (audio optional)
 ./scripts/validate-output.sh outputs/final_1080p.mp4
-
-# Require audio stream
 ./scripts/validate-output.sh outputs/final_1080p.mp4 --require-audio
 ```
 
 ## Capability Matrix
 
-| Capability | Status | Notes |
-|------------|--------|-------|
-| Multi-clip video concat | ✅ Supported | P4-GOLDEN-3: 5 clips × 5s = 25s |
-| Audio track (BGM) | ✅ Supported | P4-GOLDEN-4: single AAC audio track |
-| Video + Audio output | ✅ Supported | H.264 + AAC in MP4 |
-| Transitions | ❌ Unsupported | fade_in, fade_out, cross_dissolve |
-| Overlay / Composite | ❌ Unsupported | logo, product card PIP |
-| Text / Subtitle | ❌ Unsupported | SRT, WebVTT, burn-in |
-| Audio Mixing | ❌ Unsupported | voiceover, SFX, ducking |
-| Color Adjustment | ❌ Unsupported | brightness, contrast |
-| Filter Effects | ❌ Unsupported | blur, sharpen |
-| Crop | ❌ Unsupported | Runtime not implemented in v1 |
-| Transform | ❌ Unsupported | Runtime not implemented in v1 |
-| Keying | ❌ Unsupported | Runtime not implemented in v1 |
-| Deform | ❌ Unsupported | Runtime not implemented in v1 |
-| Advanced Tracking | ❌ Unsupported | Not implemented |
+| Category | Capability | Status | Notes |
+|----------|------------|--------|-------|
+| **Timeline** | Multi-clip concat | ✅ | P4-GOLDEN-3 |
+| **Timeline** | Cross-dissolve transition | ✅ | P4-TRANSITION-1, xfade filter |
+| **Temporal** | fade_in / fade_out | ✅ | P4-TEMPORAL-1, video + audio |
+| **Audio** | BGM track | ✅ | P4-GOLDEN-4 |
+| **Audio** | Volume control | ✅ | P4-GOLDEN-4 |
+| **Text** | Subtitle burn-in | ✅ | P4-GOLDEN-5, subtitles_en.srt |
+| **Composite** | Watermark overlay | ✅ | P4-GOLDEN-5, logo top-right |
+| **Spatial** | Crop | ✅ | P4-SPATIAL-1, ffmpeg crop filter |
+| **Spatial** | Placement / PIP | ✅ | P4-SPATIAL-1, scale + overlay |
+| **Spatial** | Safe area guide | ✅ | P4-SPATIAL-1, canvas coordinates |
+| **Export** | metadata_only | ✅ | P4-EXPORT-1 |
+| **Export** | linked_assets | ✅ | P4-EXPORT-2, signed URLs |
+| **Import** | Preview | ✅ | P4-EXPORT-3a |
+| **Spatial** | Keying | ❌ | Runtime not implemented |
+| **Spatial** | Deform | ❌ | Runtime not implemented |
+| **Spatial** | Tracking | ❌ | Not implemented |
+| **Transition** | Wipe/Slide/Zoom | ❌ | Not implemented |
+| **Export** | OTIO converter | ❌ | Not implemented |
+| **Import** | Full import | ❌ | Not implemented |
 
 ## Coordinate System
 
@@ -148,46 +152,30 @@ Six timestamps for frame-level validation:
 
 ## Related Documents
 
-- `docs/media-rendering/golden-render-project.md` — Full documentation
-- `docs/media-rendering/effect-taxonomy.md` — Effect taxonomy v1
-- `docs/media-rendering/spatial-coordinate-system.md` — Spatial coordinate system v1
+- `platform/docs/media-rendering/golden-render-project.md` — Full documentation
+- `platform/docs/media-rendering/effect-taxonomy.md` — Effect taxonomy v1
+- `platform/docs/media-rendering/spatial-coordinate-system.md` — Spatial coordinate system v1
+- `platform/docs/media-rendering/project-export.md` — Project export/import v1
 
-## Capability Matrix
+## Asset Generation Strategy
 
-| Category | Capability | Status | Notes |
-|----------|------------|--------|-------|
-| **Timeline** | Multi-clip concat | ✅ | P4-GOLDEN-3 |
-| **Timeline** | Cross-dissolve transition | ✅ | P4-TRANSITION-1, xfade filter |
-| **Temporal** | fade_in / fade_out | ✅ | P4-TEMPORAL-1, video + audio |
-| **Audio** | BGM track | ✅ | P4-GOLDEN-4 |
-| **Audio** | Volume control | ✅ | P4-GOLDEN-4 |
-| **Text** | Subtitle burn-in | ✅ | P4-GOLDEN-5, subtitles_en.srt |
-| **Composite** | Watermark overlay | ✅ | P4-GOLDEN-5, logo top-right |
-| **Spatial** | Crop | ✅ | P4-SPATIAL-1, ffmpeg crop filter |
-| **Spatial** | Placement / PIP | ✅ | P4-SPATIAL-1, scale + overlay |
-| **Spatial** | Safe area guide | ✅ | P4-SPATIAL-1, canvas coordinates |
-| **Spatial** | Keying | ❌ | Runtime not implemented |
-| **Spatial** | Deform | ❌ | Runtime not implemented |
-| **Spatial** | Tracking | ❌ | Not implemented |
-| **Spatial** | Region blur | ❌ | Runtime not implemented |
-| **Transition** | Wipe/Slide/Zoom | ❌ | Not implemented |
-| **Export** | OTIO converter | ❌ | Not implemented |
-| **Export** | Project Export | ❌ | Not implemented |
+| File Type | Strategy | Reason |
+|-----------|----------|--------|
+| manifests/*.json | ✅ Committed | Small (< 20KB), defines project structure |
+| scripts/*.sh | ✅ Committed | Small (< 20KB), reproducible generation |
+| subtitles/* | ✅ Committed | Small (< 2KB), test data |
+| images/* | ✅ Committed | Small (< 15KB), test images |
+| videos/* | ❌ Git ignored | Large (20MB), generated by `generate-assets.sh` |
+| audio/* | ❌ Git ignored | Large (7MB), generated by `generate-assets.sh` |
+| outputs/* | ❌ Git ignored | Large (35MB), render output, reproducible |
+| reports/* | ❌ Git ignored | Generated by validation scripts |
 
-## Crop Validation
-
-```bash
-# Generate crop validation output
-cd platform
-./gradlew :render-module:test --tests '*GoldenRenderE2ETest.shouldRenderCropValidationOutput'
-
-# View output
-ls -la test-assets/golden-render-project-v1/outputs/crop_validation_1080p.mp4
-```
+Total committed test-assets: ~50KB. Total generated: ~62MB.
 
 ## Next Steps
 
 - P4-OTIO-1: OTIO roundtrip validation
-- P4-EXPORT-1: Metadata-only project export
+- P4-EXPORT-3b: Full project import (create project, re-bind assets)
+- P4-KEYING: Chroma key runtime
 - P4-KEYING: Chroma key runtime
 - P4-EXPORT-1: Metadata-only project export
