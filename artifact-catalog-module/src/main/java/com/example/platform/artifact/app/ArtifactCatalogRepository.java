@@ -43,10 +43,12 @@ public class ArtifactCatalogRepository {
         dsl.insertInto(table("ARTIFACT"))
                 .columns(field("ID"), field("RENDER_JOB_ID"), field("PROJECT_ID"),
                         field("STORAGE_URI"), field("FORMAT"), field("RESOLUTION"),
-                        field("DURATION"), field("STATUS"), field("TOMBSTONED_AT"), field("CREATED_AT"))
+                        field("DURATION"), field("SIZE_BYTES"), field("CHECKSUM"),
+                        field("STATUS"), field("TOMBSTONED_AT"), field("CREATED_AT"))
                 .values(artifact.id(), artifact.renderJobId(), artifact.projectId(),
                         artifact.storageUri(), artifact.format(), artifact.resolution(),
-                        artifact.duration(), status,
+                        artifact.duration(), artifact.sizeBytes(), artifact.checksum(),
+                        status,
                         artifact.tombstonedAt() != null
                                 ? OffsetDateTime.ofInstant(artifact.tombstonedAt(), ZoneOffset.UTC)
                                 : null,
@@ -113,6 +115,8 @@ public class ArtifactCatalogRepository {
         OffsetDateTime createdAt = record.get(field("CREATED_AT"), OffsetDateTime.class);
         OffsetDateTime tombstonedAt = record.get(field("TOMBSTONED_AT"), OffsetDateTime.class);
         Long duration = record.get(field("DURATION"), Long.class);
+        Long sizeBytes = record.get(field("SIZE_BYTES"), Long.class);
+        String checksum = record.get(field("CHECKSUM"), String.class);
         String statusRaw = record.get(field("STATUS"), String.class);
         ArtifactStatus status = statusRaw != null && !statusRaw.isBlank()
                 ? ArtifactStatus.valueOf(statusRaw)
@@ -125,6 +129,8 @@ public class ArtifactCatalogRepository {
                 record.get(field("FORMAT"), String.class),
                 record.get(field("RESOLUTION"), String.class),
                 duration,
+                sizeBytes,
+                checksum,
                 status,
                 tombstonedAt != null ? tombstonedAt.toInstant() : null,
                 createdAt != null ? createdAt.toInstant() : null

@@ -64,7 +64,13 @@ public class S3BlobStorageProvider implements BlobStorage {
                 .key(command.objectKey())
                 .contentType(command.contentType())
                 .build();
-        s3Client.putObject(request, RequestBody.fromBytes(command.content()));
+        RequestBody body;
+        if (command.isFileBased()) {
+            body = RequestBody.fromFile(command.contentPath().toFile());
+        } else {
+            body = RequestBody.fromBytes(command.content());
+        }
+        s3Client.putObject(request, body);
         return new StorageObjectRef(code(), bucket, command.objectKey());
     }
 

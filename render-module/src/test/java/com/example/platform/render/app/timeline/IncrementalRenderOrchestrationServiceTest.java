@@ -11,6 +11,7 @@ import static com.example.platform.render.app.timeline.RenderCacheTestSupport.te
 import com.example.platform.render.infrastructure.RenderCacheProperties;
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineStickerReader;
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -46,10 +47,7 @@ class IncrementalRenderOrchestrationServiceTest {
                 testCacheReuseValidator());
         TimelineSpecResolver resolver = new TimelineSpecResolver(adapter, new com.example.platform.render.domain.timeline.TimelineScriptParser());
         orchestration = new IncrementalRenderOrchestrationService(planService, resolver, baseJobTimelineLoader);
-        Path path = Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json");
-        if (!Files.exists(path)) {
-            path = Path.of("docs/media-rendering/examples/timeline-v1-full-sample.json");
-        }
+        Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         sampleJson = Files.readString(path);
     }
 

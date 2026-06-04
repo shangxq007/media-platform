@@ -2,8 +2,7 @@ package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.export.ProjectAssetDescriptor;
-import com.example.platform.shared.export.ProjectAssetExportPort;
+import com.example.platform.shared.security.SafeDownloadUrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,8 +23,9 @@ public class ProjectImportPreviewService {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectImportPreviewService.class);
     private static final String SUPPORTED_SCHEMA_VERSION = "project-export-v1";
+    // Only modes that Import can actually process
     private static final Set<String> SUPPORTED_EXPORT_MODES = Set.of(
-            "metadata_only", "linked_assets", "bundled_assets", "render_reproduction"
+            "metadata_only", "linked_assets"
     );
 
     // Known effect keys from Effect Taxonomy v1
@@ -131,6 +131,16 @@ public class ProjectImportPreviewService {
 
         for (ProjectExportAssetDto asset : assets) {
             if (asset.downloadUrl() != null && !asset.downloadUrl().isBlank()) {
+                // Validate URL safety
+                String urlError = SafeDownloadUrlValidator.validate(asset.downloadUrl());
+                if (urlError != null) {
+                    errors.add(new ImportPreviewIssueDto(
+                            "UNSAFE_DOWNLOAD_URL", "error",
+                            "Asset '" + asset.assetId() + "' has unsafe download URL",
+                            urlError));
+                    continue;
+                }
+
                 // Check if URL appears to be expired (basic heuristic)
                 if (isUrlLikelyExpired(asset.downloadUrl())) {
                     warnings.add(new ImportPreviewIssueDto(
@@ -140,6 +150,22 @@ public class ProjectImportPreviewService {
                     needsUpload++;
                 } else {
                     available++;
+                }
+
+                // Validate checksum format if provided
+                if (asset.checksum() != null && !com.example.platform.shared.io.ChecksumFormat.isValid(asset.checksum())) {
+                    errors.add(new ImportPreviewIssueDto(
+                            "INVALID_CHECKSUM_FORMAT", "error",
+                            "Asset '" + asset.assetId() + "' has invalid checksum format",
+                            "Expected sha256:<64 hex>, got: " + asset.checksum()));
+                }
+
+                // Warn if checksum is missing
+                if (asset.checksum() == null || asset.checksum().isBlank()) {
+                    warnings.add(new ImportPreviewIssueDto(
+                            "MISSING_CHECKSUM", "warning",
+                            "Asset '" + asset.assetId() + "' has no checksum",
+                            "Checksum will be computed during download but cannot be pre-validated."));
                 }
             } else {
                 needsUpload++;

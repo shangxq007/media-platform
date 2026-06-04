@@ -61,10 +61,7 @@ public class TimelineScriptParser {
             }
             return Optional.of(enrichFromRoot(root, spec));
         } catch (Exception e) {
-            try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                    "[TimelineScriptParser] parse failed: " + e.getClass().getName() + ": " + e.getMessage() + "\n",
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ignored) {}
+            log.warn("TimelineScriptParser: parse failed: {}", e.getMessage());
             return Optional.empty();
         }
     }

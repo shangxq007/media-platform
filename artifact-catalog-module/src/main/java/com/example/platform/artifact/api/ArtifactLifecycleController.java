@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,7 +34,10 @@ public class ArtifactLifecycleController {
     }
 
     @PostMapping("/gc/run")
-    public ArtifactGcService.GcResult runGc() {
-        return gcService.runGc();
+    public ArtifactGcService.GcResult runGc(
+            @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun,
+            @RequestParam(value = "retentionDays", defaultValue = "7") int retentionDays,
+            @RequestParam(value = "limit", defaultValue = "50") int limit) {
+        return gcService.runGc(retentionDays, dryRun, limit);
     }
 }

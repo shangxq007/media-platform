@@ -290,13 +290,11 @@ public class FFmpegCommandFactory {
             String watermarkPath,
             double fadeDuration,
             double transitionDuration) {
-        return buildMultiTrackCommand(videoClips, audioTracks, outputUri, profile, subtitlePath, watermarkPath, fadeDuration, transitionDuration, null);
+        return buildMultiTrackCommand(videoClips, audioTracks, outputUri, profile, subtitlePath, watermarkPath, fadeDuration, transitionDuration, null, null);
     }
 
     /**
-     * Build multi-track ffmpeg command with full spatial support.
-     *
-     * @param spatialPlan loaded spatial plan with crop/overlay operations (null to skip)
+     * Build multi-track ffmpeg command with spatial plan support (no assets base path).
      */
     public List<String> buildMultiTrackCommand(
             List<ResolvedClip> videoClips,
@@ -308,6 +306,26 @@ public class FFmpegCommandFactory {
             double fadeDuration,
             double transitionDuration,
             com.example.platform.render.domain.spatial.SpatialPlan spatialPlan) {
+        return buildMultiTrackCommand(videoClips, audioTracks, outputUri, profile, subtitlePath, watermarkPath, fadeDuration, transitionDuration, spatialPlan, null);
+    }
+
+    /**
+     * Build multi-track ffmpeg command with full spatial support.
+     *
+     * @param spatialPlan    loaded spatial plan with crop/overlay operations (null to skip)
+     * @param assetsBasePath base directory for resolving spatial asset paths (null to skip spatial overlay)
+     */
+    public List<String> buildMultiTrackCommand(
+            List<ResolvedClip> videoClips,
+            List<List<ResolvedClip>> audioTracks,
+            String outputUri,
+            RenderProfile profile,
+            String subtitlePath,
+            String watermarkPath,
+            double fadeDuration,
+            double transitionDuration,
+            com.example.platform.render.domain.spatial.SpatialPlan spatialPlan,
+            java.nio.file.Path assetsBasePath) {
 
         List<String> args = new ArrayList<>();
         List<String> filterParts = new ArrayList<>();
@@ -346,13 +364,8 @@ public class FFmpegCommandFactory {
             }
         }
 
-        // Diagnostic
-        try {
-            java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                    "[buildMultiTrackCommand] videoClips=" + videoClips.size() + " audioTracks=" + audioTracks.size()
-                    + " subtitlePath=" + subtitlePath + " watermarkPath=" + watermarkPath + "\n",
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-        } catch (Exception ignored) {}
+        log.debug("buildMultiTrackCommand: videoClips={} audioTracks={} subtitlePath={} watermarkPath={}",
+                videoClips.size(), audioTracks.size(), subtitlePath, watermarkPath);
 
         // Build filter graph
         if (videoClips.size() == 1 && audioTracks.isEmpty()) {
@@ -369,12 +382,8 @@ public class FFmpegCommandFactory {
             args.add(audioInputStart + ":a:0");
         } else {
             // Complex: concat video clips + amix audio + optional subtitle + watermark
-            try {
-                java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                        "[buildMultiTrackCommand] COMPLEX branch: vc=" + videoClips.size()
-                        + " at=" + audioTracks.size() + " sub=" + (subtitlePath!=null) + " wm=" + (watermarkPath!=null) + "\n",
-                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ignored) {}
+            log.debug("buildMultiTrackCommand: COMPLEX branch vc={} at={} sub={} wm={}",
+                    videoClips.size(), audioTracks.size(), subtitlePath != null, watermarkPath != null);
             StringBuilder filter = new StringBuilder();
 
             // Apply crop filters to individual clips before composition
@@ -489,7 +498,7 @@ public class FFmpegCommandFactory {
                     if (op.source() != null && op.source().assetId() != null
                             && op.source().assetId().contains("logo")) continue;
                     // Add the overlay image as input
-                    String assetPath = resolveSpatialAssetPath(op.source());
+                    String assetPath = resolveSpatialAssetPath(op.source(), assetsBasePath);
                     if (assetPath == null) continue;
                     args.add("-i");
                     args.add(assetPath);
@@ -702,19 +711,24 @@ public class FFmpegCommandFactory {
 
     /**
      * Resolve spatial asset file path from operation source.
-     * Looks for the asset in the standard assets directory structure.
+     * Looks for the asset in the given assets base directory.
+     *
+     * @param source         spatial source with assetId
+     * @param assetsBasePath base directory for assets (e.g. project/assets/)
+     * @return absolute path if found, null otherwise
      */
-    private static String resolveSpatialAssetPath(com.example.platform.render.domain.spatial.SpatialSource source) {
+    private static String resolveSpatialAssetPath(
+            com.example.platform.render.domain.spatial.SpatialSource source,
+            Path assetsBasePath) {
         if (source == null || source.assetId() == null) return null;
+        if (assetsBasePath == null || !java.nio.file.Files.isDirectory(assetsBasePath)) return null;
         String assetId = source.assetId();
-        // Try common image extensions
         String[] exts = {".png", ".jpg", ".jpeg"};
-        // Try common directories
         String[] dirs = {"image", "video", "audio"};
         for (String dir : dirs) {
             for (String ext : exts) {
-                Path p = Path.of("test-assets/golden-render-project-v1/assets/" + dir + "/" + assetId + ext);
-                if (p.toFile().exists()) return p.toAbsolutePath().toString();
+                Path p = assetsBasePath.resolve(dir + "/" + assetId + ext);
+                if (java.nio.file.Files.isRegularFile(p)) return p.toAbsolutePath().toString();
             }
         }
         return null;

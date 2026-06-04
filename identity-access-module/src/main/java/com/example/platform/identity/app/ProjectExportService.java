@@ -2,9 +2,10 @@ package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.asset.AssetDownloadUrlPort;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.export.ProjectAssetDescriptor;
-import com.example.platform.shared.export.ProjectAssetExportPort;
+import com.example.platform.shared.export.ProjectAssetListingPort;
+import com.example.platform.shared.export.ProjectAssetRef;
 import com.example.platform.shared.web.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +32,8 @@ public class ProjectExportService {
 
     private final TenantProjectService tenantProjectService;
     private AuditPort auditPort;
-    private ProjectAssetExportPort projectAssetExportPort;
+    private ProjectAssetListingPort projectAssetListingPort;
+    private AssetDownloadUrlPort assetDownloadUrlPort;
 
     public ProjectExportService(TenantProjectService tenantProjectService) {
         this.tenantProjectService = tenantProjectService;
@@ -43,8 +45,13 @@ public class ProjectExportService {
     }
 
     @Autowired(required = false)
-    public void setProjectAssetExportPort(ProjectAssetExportPort projectAssetExportPort) {
-        this.projectAssetExportPort = projectAssetExportPort;
+    public void setProjectAssetListingPort(ProjectAssetListingPort projectAssetListingPort) {
+        this.projectAssetListingPort = projectAssetListingPort;
+    }
+
+    @Autowired(required = false)
+    public void setAssetDownloadUrlPort(AssetDownloadUrlPort assetDownloadUrlPort) {
+        this.assetDownloadUrlPort = assetDownloadUrlPort;
     }
 
     public ProjectExportResponse createExport(String tenantId, String projectId,
@@ -100,27 +107,34 @@ public class ProjectExportService {
                                                            String exportId, Instant now,
                                                            String exportedBy,
                                                            int ttlSeconds) {
-        // Check if asset export port is available
-        if (projectAssetExportPort == null || !projectAssetExportPort.isAvailable()) {
-            log.error("linked_assets export requested but ProjectAssetExportPort is not available");
+        // Check if asset listing port is available
+        if (projectAssetListingPort == null || !projectAssetListingPort.isAvailable()) {
+            log.error("linked_assets export requested but ProjectAssetListingPort is not available");
             throw new UnsupportedOperationException(
-                    "linked_assets export requires a configured ProjectAssetExportPort. " +
+                    "linked_assets export requires a configured ProjectAssetListingPort and AssetDownloadUrlPort. " +
+                    "Please ensure storage signing is configured.");
+        }
+        if (assetDownloadUrlPort == null || !assetDownloadUrlPort.isAvailable()) {
+            log.error("linked_assets export requested but AssetDownloadUrlPort is not available");
+            throw new UnsupportedOperationException(
+                    "linked_assets export requires a configured AssetDownloadUrlPort. " +
                     "Please ensure storage signing is configured.");
         }
 
         Duration ttl = computeTtl(ttlSeconds);
+        Instant expiresAt = now.plus(ttl);
 
-        // Query project assets via port
-        List<ProjectAssetDescriptor> assets = projectAssetExportPort.listProjectAssets(projectId);
+        // Query project assets via port (tenant-scoped)
+        List<ProjectAssetRef> assets = projectAssetListingPort.listAssets(tenantId, projectId);
         log.info("linked_assets export: found {} assets for project {}", assets.size(), projectId);
 
         // Build asset DTOs with signed URLs (fail-closed)
         List<ProjectExportAssetDto> assetDtos = new ArrayList<>();
-        for (ProjectAssetDescriptor asset : assets) {
+        for (ProjectAssetRef asset : assets) {
             String signedUrl = null;
             if (asset.storageUri() != null && !asset.storageUri().isBlank()) {
-                Optional<String> urlOpt = projectAssetExportPort.generateSignedAssetUrl(
-                        projectId, asset.assetId(), asset.storageUri(), ttl);
+                Optional<String> urlOpt = assetDownloadUrlPort.generateSignedUrl(
+                        asset.assetId(), asset.storageUri(), ttl);
                 if (urlOpt.isPresent()) {
                     signedUrl = urlOpt.get();
                 } else {
@@ -133,9 +147,15 @@ public class ProjectExportService {
             }
 
             assetDtos.add(new ProjectExportAssetDto(
-                    asset.assetId(), asset.filename(), asset.type(), asset.mimeType(),
-                    asset.sizeBytes(), asset.sha256(), asset.duration(),
-                    asset.width(), asset.height(),
+                    asset.assetId(),
+                    asset.filename(),
+                    asset.assetType(),
+                    asset.mimeType(),
+                    asset.sizeBytes(),
+                    asset.checksum(),
+                    asset.durationMs() != null ? asset.durationMs().doubleValue() / 1000.0 : null,
+                    asset.width(),
+                    asset.height(),
                     null, // storageRef never exposed
                     signedUrl
             ));

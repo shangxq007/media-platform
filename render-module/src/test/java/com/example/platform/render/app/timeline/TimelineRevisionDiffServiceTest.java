@@ -3,6 +3,7 @@ package com.example.platform.render.app.timeline;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,7 @@ class TimelineRevisionDiffServiceTest {
 
     @Test
     void summarizesClipAndTrackChanges() throws Exception {
-        Path sample = Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json")
+        Path sample = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json")
                 .normalize()
                 .toAbsolutePath();
         String base = Files.readString(sample);

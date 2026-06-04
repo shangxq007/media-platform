@@ -7,6 +7,7 @@ import com.example.platform.render.infrastructure.ExportPolicyService;
 import com.example.platform.render.infrastructure.ExportPolicyService.ExportPreset;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.io.ChecksummingInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -174,10 +175,26 @@ public class ClientExportService {
             throw new IllegalStateException("Session " + sessionId + " is already in terminal state: " + session.status());
         }
 
+        // Stream through ChecksummingInputStream to compute sizeBytes + checksum
+        // without buffering the entire file in memory.
+        long computedSizeBytes;
+        String computedChecksum;
         Path output = resolveUploadPath(sessionId);
-        try (InputStream in = file.getInputStream()) {
-            Files.copy(in, output, StandardCopyOption.REPLACE_EXISTING);
+        try (InputStream rawIn = file.getInputStream();
+             ChecksummingInputStream cis = new ChecksummingInputStream(rawIn)) {
+            Files.copy(cis, output, StandardCopyOption.REPLACE_EXISTING);
+            computedSizeBytes = cis.sizeBytes();
+            computedChecksum = cis.checksum();
         }
+
+        // Fall back to MultipartFile.getSize() if ChecksummingInputStream returned 0
+        // (shouldn't happen but defensive)
+        if (computedSizeBytes == 0 && file.getSize() > 0) {
+            computedSizeBytes = file.getSize();
+        }
+
+        // Use caller-provided checksum only if it's valid sha256; otherwise use computed
+        String finalChecksum = checksum != null && checksum.startsWith("sha256:") ? checksum : computedChecksum;
 
         String storageUri = buildTenantPath(session).resolve(sessionId).resolve("output." + session.format()).toString();
         String artifactId = null;
@@ -187,7 +204,9 @@ public class ClientExportService {
             var registered = artifactPort.get().register(
                     sessionId, session.projectId(), storageUri,
                     session.format(), session.resolution(),
-                    durationSeconds != null ? durationSeconds : 0L);
+                    durationSeconds != null ? durationSeconds : 0L,
+                    computedSizeBytes,
+                    finalChecksum);
             artifactId = registered.artifactId();
             if (registered.downloadPath() != null) {
                 downloadPath = registered.downloadPath();
@@ -197,7 +216,7 @@ public class ClientExportService {
         repository.updateStatus(sessionId, ClientExportSession.STATUS_COMPLETED, 100,
                 storageUri, artifactId, downloadPath, null, null);
 
-        log.info("Client export session completed id={} size={}b", sessionId, file.getSize());
+        log.info("Client export session completed id={} size={}b checksum={}", sessionId, computedSizeBytes, finalChecksum);
         return findSessionOrThrow(sessionId);
     }
 

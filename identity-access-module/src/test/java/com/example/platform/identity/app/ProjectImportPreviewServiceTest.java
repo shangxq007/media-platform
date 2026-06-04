@@ -2,6 +2,8 @@ package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.shared.security.SafeDownloadUrlValidator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,8 +26,14 @@ class ProjectImportPreviewServiceTest {
 
     @BeforeEach
     void setUp() {
+        SafeDownloadUrlValidator.setSkipDnsResolution(true);
         previewService = new ProjectImportPreviewService();
         previewService.setAuditPort(auditPort);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SafeDownloadUrlValidator.setSkipDnsResolution(false);
     }
 
     @Test
@@ -60,7 +68,7 @@ class ProjectImportPreviewServiceTest {
     void previewShouldReportAssetsNeedUpload() {
         ProjectExportAssetDto asset1 = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
-                1024, null, 10.0, 1920, 1080, null, null); // No downloadUrl
+                1024L, null, 10.0, 1920, 1080, null, null); // No downloadUrl
         ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
                 "project-export-v1", "metadata_only", List.of(asset1), null);
 
@@ -83,7 +91,7 @@ class ProjectImportPreviewServiceTest {
     void previewLinkedAssetsShouldMarkAvailableLinkedWhenUrlPresent() {
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
-                1024, null, 10.0, 1920, 1080, null,
+                1024L, null, 10.0, 1920, 1080, null,
                 "https://signed.example.com/video.mp4?token=abc"); // Has signed URL
         ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
                 "project-export-v1", "linked_assets", List.of(asset), null);
@@ -175,7 +183,7 @@ class ProjectImportPreviewServiceTest {
     void previewShouldRecordAuditWithoutUrls() {
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
-                1024, null, 10.0, 1920, 1080, null,
+                1024L, null, 10.0, 1920, 1080, null,
                 "https://signed.example.com/video.mp4?token=secret123");
         ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
                 "project-export-v1", "linked_assets", List.of(asset), null);

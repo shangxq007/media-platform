@@ -11,6 +11,7 @@ import com.example.platform.render.domain.timeline.internal.IncrementalRenderPla
 import static com.example.platform.render.app.timeline.RenderCacheTestSupport.testCacheReuseValidator;
 
 import com.example.platform.render.infrastructure.RenderCacheProperties;
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,10 +37,7 @@ class SegmentFinalComposeIncrementalTest {
                 canonicalizer, new SegmentTimelinePlanner(), new RenderCacheUriResolver(new RenderCacheProperties()),
                 new SegmentPlanFilter(),
                 testCacheReuseValidator());
-        Path path = Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json");
-        if (!Files.exists(path)) {
-            path = Path.of("docs/media-rendering/examples/timeline-v1-full-sample.json");
-        }
+        Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         sampleJson = Files.readString(path);
     }
 

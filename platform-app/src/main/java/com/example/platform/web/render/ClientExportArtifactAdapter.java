@@ -27,4 +27,21 @@ public class ClientExportArtifactAdapter implements ClientExportArtifactPort {
         String downloadPath = "/api/v1/render/client-exports/" + sessionId + "/download";
         return new RegisteredArtifact(artifact.id(), storageUri, downloadPath);
     }
+
+    @Override
+    public RegisteredArtifact register(
+            String sessionId,
+            String projectId,
+            String storageUri,
+            String format,
+            String resolution,
+            long durationSeconds,
+            Long sizeBytes,
+            String checksum) {
+        Artifact artifact = artifactCatalogService.registerArtifact(
+                sessionId, projectId, storageUri, format, resolution, durationSeconds,
+                sizeBytes, checksum);
+        String downloadPath = "/api/v1/render/client-exports/" + sessionId + "/download";
+        return new RegisteredArtifact(artifact.id(), storageUri, downloadPath);
+    }
 }

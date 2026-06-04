@@ -4,6 +4,7 @@ import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.render.infrastructure.RenderProvider;
+import com.example.platform.shared.test.FixturePath;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,12 +14,19 @@ import java.util.List;
 
 /**
  * Standalone smoke test for Golden Render.
- * Run: cd platform && ./gradlew :render-module:execute -PmainClass=... (or use IDE)
+ * Requires GOLDEN_PROJECT_DIR env var or golden assets generated via generate-assets.sh.
  */
 public class GoldenRenderSmokeTest {
 
     public static void main(String[] args) throws Exception {
-        Path assetsBase = Path.of("test-assets/golden-render-project-v1/assets");
+        Path assetsBase;
+        try {
+            assetsBase = FixturePath.goldenProjectAssets();
+        } catch (IllegalStateException e) {
+            System.err.println("ERROR: " + e.getMessage());
+            System.exit(1);
+            return;
+        }
         Path tempDir = Files.createTempDirectory("golden-render");
 
         System.out.println("assetsBase=" + assetsBase.toAbsolutePath());

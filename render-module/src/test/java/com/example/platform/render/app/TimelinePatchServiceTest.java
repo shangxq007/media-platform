@@ -7,6 +7,7 @@ import com.example.platform.render.app.timeline.TimelineCanonicalizer;
 import com.example.platform.render.app.timeline.TimelineTestSupport;
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -45,10 +46,7 @@ class TimelinePatchServiceTest {
     }
 
     private String loadSample() throws Exception {
-        Path path = Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json");
-        if (!Files.exists(path)) {
-            path = Path.of("docs/media-rendering/examples/timeline-v1-full-sample.json");
-        }
+        Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         return Files.readString(path);
     }
 }

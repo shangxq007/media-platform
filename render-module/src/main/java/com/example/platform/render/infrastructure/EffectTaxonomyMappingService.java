@@ -1,6 +1,8 @@
 package com.example.platform.render.infrastructure;
 
 import com.example.platform.render.infrastructure.EffectDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class EffectTaxonomyMappingService {
+
+    private static final Logger log = LoggerFactory.getLogger(EffectTaxonomyMappingService.class);
     
     /**
      * Legacy to Taxonomy Category Mapping
@@ -96,44 +100,63 @@ public class EffectTaxonomyMappingService {
     );
     
     /**
-     * Get taxonomy category for an effect key
+     * Get taxonomy category for an effect key.
+     * Returns "unsupported" for unknown keys (no silent fallback to "filter").
      */
     public String getTaxonomyCategory(String effectKey) {
-        return EFFECT_KEY_TO_TAXONOMY.getOrDefault(effectKey, "filter"); // Default fallback
+        String result = EFFECT_KEY_TO_TAXONOMY.get(effectKey);
+        if (result == null) {
+            log.warn("Unknown effect key '{}', returning 'unsupported' category", effectKey);
+            return "unsupported";
+        }
+        return result;
     }
-    
+
+    /**
+     * Check if effect key is known in the taxonomy registry.
+     */
+    public boolean isKnownEffectKey(String effectKey) {
+        return EFFECT_KEY_TO_TAXONOMY.containsKey(effectKey);
+    }
+
     /**
      * Check if effect key is a non-effect operation
      */
     public boolean isNonEffectOperation(String effectKey) {
         return NON_EFFECT_OPERATIONS.contains(effectKey);
     }
-    
+
     /**
-     * Get display category for an effect (with fallback)
+     * Get display category for an effect.
+     * Returns "unsupported" for unknown keys.
      */
     public String getDisplayCategory(String effectKey, String legacyCategory) {
         String taxonomyCategory = getTaxonomyCategory(effectKey);
-        
+
         // If it's a non-effect operation, return the operation category
         if (isNonEffectOperation(effectKey)) {
             return taxonomyCategory;
         }
-        
-        // For effects, if the effect key is known (has specific taxonomy mapping), use taxonomy category
-        // If the effect key is unknown, use "filter" for legacy "video", otherwise use legacy category
+
+        // For known effects, use taxonomy category
+        // For unknown effects, return "unsupported" — no silent fallback
         if (EFFECT_KEY_TO_TAXONOMY.containsKey(effectKey)) {
             return taxonomyCategory;
-        } else {
-            return "video".equals(legacyCategory) ? "filter" : legacyCategory;
         }
+        return "unsupported";
     }
     
     /**
-     * Map legacy category to taxonomy category
+     * Map legacy category to taxonomy category.
+     * Returns "unsupported" for unknown legacy categories.
      */
     public String mapLegacyCategory(String legacyCategory) {
-        return LEGACY_TO_TAXONOMY_MAPPING.getOrDefault(legacyCategory, "filter");
+        String result = LEGACY_TO_TAXONOMY_MAPPING.get(legacyCategory);
+        if (result == null) {
+            log.warn("Unknown legacy category '{}', returning 'unsupported'", legacyCategory);
+            return "unsupported";
+        }
+        return result;
     }
     
     /**
@@ -164,7 +187,8 @@ public class EffectTaxonomyMappingService {
     public List<String> getAllTaxonomyCategories() {
         return List.of(
             "crop", "transform", "color", "filter", "composite", "keying", 
-            "deform", "text", "vfx", "temporal", "transition", "audio"
+            "deform", "text", "vfx", "temporal", "transition", "audio",
+            "unsupported"
         );
     }
     

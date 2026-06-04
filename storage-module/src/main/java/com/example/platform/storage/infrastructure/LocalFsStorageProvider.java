@@ -44,7 +44,11 @@ public class LocalFsStorageProvider implements BlobStorage {
         try {
             Path p = resolveSafePath(command.bucket(), command.objectKey());
             Files.createDirectories(p.getParent());
-            Files.write(p, command.content());
+            if (command.isFileBased()) {
+                Files.copy(command.contentPath(), p, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                Files.write(p, command.content());
+            }
             return new StorageObjectRef(code(), command.bucket(), command.objectKey());
         } catch (IOException e) {
             throw new IllegalStateException("failed to persist local object", e);

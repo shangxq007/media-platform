@@ -14,7 +14,8 @@ export type EffectCategoryV1 =
   | 'transition'
   | 'audio'
   | 'packaging'
-  | 'cloud_rendering';
+  | 'cloud_rendering'
+  | 'unsupported';
 
 export type LegacyEffectCategory = 'transition' | 'video' | 'audio' | 'text' | 'compositor';
 
@@ -82,7 +83,8 @@ export const EFFECT_CATEGORY_LABELS: Record<EffectCategoryV1, string> = {
   transition: '转场',
   audio: '音频',
   packaging: '封装',
-  cloud_rendering: '云渲染'
+  cloud_rendering: '云渲染',
+  unsupported: '未支持'
 };
 
 // Effect Category Order (display order)
@@ -98,7 +100,8 @@ export const EFFECT_CATEGORY_ORDER: EffectCategoryV1[] = [
   'vfx',
   'temporal',
   'transition',
-  'audio'
+  'audio',
+  'unsupported'
 ];
 
 // Effect Category Icons
@@ -116,7 +119,8 @@ export const EFFECT_CATEGORY_ICONS: Record<EffectCategoryV1, string> = {
   transition: 'arrows-right-left',
   audio: 'volume',
   packaging: 'package',
-  cloud_rendering: 'cloud'
+  cloud_rendering: 'cloud',
+  unsupported: 'question-mark-circle'
 };
 
 // Non-Effect Operation Labels
@@ -368,7 +372,8 @@ export const EFFECT_MIGRATION_MAPPING: Record<string, EffectTaxonomyEntry> = {
 // Utility Functions
 
 /**
- * Map effectKey to taxonomy category with fallback to legacy category
+ * Map effectKey to taxonomy category.
+ * Returns 'unsupported' for unknown keys — no silent fallback.
  */
 export function mapEffectKeyToCategory(effectKey: string, legacyCategory?: LegacyEffectCategory): EffectCategoryV1 {
   const mapping = EFFECT_MIGRATION_MAPPING[effectKey];
@@ -376,20 +381,19 @@ export function mapEffectKeyToCategory(effectKey: string, legacyCategory?: Legac
     return mapping.taxonomyCategory;
   }
   
-  // Fallback to legacy category mapping
+  // For known legacy categories without explicit mapping, use the legacy mapping
+  // but only for categories that have a clear 1:1 relationship
   if (legacyCategory) {
     switch (legacyCategory) {
       case 'transition': return 'transition';
-      case 'video': return 'filter'; // Default fallback for video effects
       case 'audio': return 'audio';
       case 'text': return 'text';
-      case 'compositor': return 'composite';
-      default: return 'filter'; // Safe fallback
+      // 'video' and 'compositor' are too broad — no silent fallback
+      default: return 'unsupported';
     }
   }
   
-  // Default fallback
-  return 'filter';
+  return 'unsupported';
 }
 
 /**
@@ -401,7 +405,8 @@ export function isNonEffectOperation(effectKey: string): boolean {
 }
 
 /**
- * Get display category for an effect
+ * Get display category for an effect.
+ * Returns 'unsupported' for unknown keys — no silent fallback.
  */
 export function getEffectDisplayCategory(effectKey: string, legacyCategory?: LegacyEffectCategory): string {
   const mapping = EFFECT_MIGRATION_MAPPING[effectKey];
@@ -409,19 +414,18 @@ export function getEffectDisplayCategory(effectKey: string, legacyCategory?: Leg
     return mapping.displayCategory;
   }
   
-  // Fallback to legacy category
+  // For known legacy categories without explicit mapping, use simple mapping
   if (legacyCategory) {
     switch (legacyCategory) {
       case 'transition': return 'transition';
-      case 'video': return 'video';
       case 'audio': return 'audio';
       case 'text': return 'text';
-      case 'compositor': return 'composite';
-      default: return 'other';
+      // 'video' and 'compositor' are too broad — no silent fallback
+      default: return 'unsupported';
     }
   }
   
-  return 'other';
+  return 'unsupported';
 }
 
 /**
@@ -453,7 +457,7 @@ export function getNonEffectOperationCategories(): NonEffectOperationCategory[] 
 export function validateSpatialCoordinate(coord: SpatialCoordinate, width?: number, height?: number): string[] {
   const errors: string[] = [];
   
-  if (coord.space === 'absolute_px' && (width !== undefined && height !== undefined)) {
+  if (coord.unit === 'absolute_px' && (width !== undefined && height !== undefined)) {
     if (coord.x < 0 || coord.y < 0) {
       errors.push('Coordinates cannot be negative');
     }
@@ -462,7 +466,7 @@ export function validateSpatialCoordinate(coord: SpatialCoordinate, width?: numb
     }
   }
   
-  if (coord.space === 'normalized_ppm' && (width !== undefined && height !== undefined)) {
+  if (coord.unit === 'normalized_ppm' && (width !== undefined && height !== undefined)) {
     if (coord.x < 0 || coord.y < 0 || coord.x > 1 || coord.y > 1) {
       errors.push('Normalized coordinates must be between 0 and 1');
     }

@@ -1,7 +1,11 @@
-plugins { id("java-library") }
+plugins {
+    id("java-library")
+    id("java-test-fixtures")
+}
 
 dependencies {
     api(project(":shared-kernel"))
+    testImplementation(testFixtures(project(":shared-kernel")))
     api(project(":ai-module"))
     api(project(":storage-module"))
     api(project(":extension-module"))

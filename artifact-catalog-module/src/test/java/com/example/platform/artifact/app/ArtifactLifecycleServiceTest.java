@@ -54,6 +54,8 @@ class ArtifactLifecycleServiceTest {
                     + "format varchar(32),"
                     + "resolution varchar(32),"
                     + "duration bigint,"
+                    + "size_bytes bigint,"
+                    + "checksum varchar(128),"
                     + "status varchar(32) not null default 'ACTIVE',"
                     + "tombstoned_at timestamp,"
                     + "created_at timestamp not null"

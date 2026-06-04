@@ -11,6 +11,7 @@ import com.example.platform.render.domain.timeline.internal.IncrementalRenderPla
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.infrastructure.RenderCacheProperties;
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -61,10 +62,7 @@ class IncrementalRenderHashInvalidationTest {
                 new SegmentTimelinePlanner(), new RenderCacheUriResolver(cacheProps),
                 new SegmentPlanFilter(), validator);
 
-        Path path = Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json");
-        if (!Files.exists(path)) {
-            path = Path.of("docs/media-rendering/examples/timeline-v1-full-sample.json");
-        }
+        Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         sampleJson = Files.readString(path);
     }
 

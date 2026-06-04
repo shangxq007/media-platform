@@ -3,6 +3,15 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import MonitoringFeedbackPage from './MonitoringFeedbackPage.vue'
 
+vi.mock('@/composables/useFeatureFlag', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    useFeatureFlag: () => ({ value: false }),
+    evaluateFeatureFlag: vi.fn().mockResolvedValue(false),
+  }
+})
+
 vi.mock('@/composables/useGraphQLQuery', () => ({
   useGraphQLQuery: () => ({
     data: ref(null),

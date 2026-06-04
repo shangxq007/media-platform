@@ -6,6 +6,7 @@ import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ class TimelineSpecResolverTest {
 
     @Test
     void resolvesInternalTimelineV1Sample() throws Exception {
-        Path sample = Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json")
+        Path sample = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json")
                 .normalize().toAbsolutePath();
         String json = Files.readString(sample);
         var spec = resolver.resolve(json);

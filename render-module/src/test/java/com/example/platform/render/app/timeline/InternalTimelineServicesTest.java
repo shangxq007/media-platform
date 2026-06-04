@@ -6,6 +6,7 @@ import com.example.platform.render.domain.timeline.internal.SemanticChangeType;
 import com.example.platform.render.domain.timeline.internal.DirtyScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -65,10 +66,7 @@ class InternalTimelineServicesTest {
     }
 
     private String loadSample() throws Exception {
-        Path path = Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json");
-        if (!Files.exists(path)) {
-            path = Path.of("docs/media-rendering/examples/timeline-v1-full-sample.json");
-        }
+        Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         return Files.readString(path);
     }
 }

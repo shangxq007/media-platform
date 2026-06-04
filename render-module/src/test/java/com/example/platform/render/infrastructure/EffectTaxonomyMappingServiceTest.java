@@ -53,9 +53,17 @@ class EffectTaxonomyMappingServiceTest {
     }
     
     @Test
-    void getTaxonomyCategory_ShouldFallbackToFilterForUnknownEffects() {
-        assertEquals("filter", taxonomyService.getTaxonomyCategory("unknown.effect"));
-        assertEquals("filter", taxonomyService.getTaxonomyCategory("video.unknown_effect"));
+    void getTaxonomyCategory_ShouldReturnUnsupportedForUnknownEffects() {
+        assertEquals("unsupported", taxonomyService.getTaxonomyCategory("unknown.effect"));
+        assertEquals("unsupported", taxonomyService.getTaxonomyCategory("video.unknown_effect"));
+    }
+    
+    @Test
+    void isKnownEffectKey_ShouldIdentifyKnownKeys() {
+        assertTrue(taxonomyService.isKnownEffectKey("video.fade_in"));
+        assertTrue(taxonomyService.isKnownEffectKey("video.blur"));
+        assertFalse(taxonomyService.isKnownEffectKey("unknown.effect"));
+        assertFalse(taxonomyService.isKnownEffectKey("video.unknown_effect"));
     }
     
     @Test
@@ -90,9 +98,9 @@ class EffectTaxonomyMappingServiceTest {
         assertEquals("packaging", taxonomyService.getDisplayCategory("video.dash_drm", "video"));
         assertEquals("cloud_rendering", taxonomyService.getDisplayCategory("video.shotstack_template", "video"));
         
-        // Test fallback
-        assertEquals("filter", taxonomyService.getDisplayCategory("unknown.effect", "video"));
-        assertEquals("audio", taxonomyService.getDisplayCategory("unknown.effect", "audio"));
+        // Test fallback — unknown keys return "unsupported", no silent fallback
+        assertEquals("unsupported", taxonomyService.getDisplayCategory("unknown.effect", "video"));
+        assertEquals("unsupported", taxonomyService.getDisplayCategory("unknown.effect", "audio"));
     }
     
     @Test
@@ -104,7 +112,7 @@ class EffectTaxonomyMappingServiceTest {
         assertEquals("composite", taxonomyService.mapLegacyCategory("compositor"));
         
         // Test fallback
-        assertEquals("filter", taxonomyService.mapLegacyCategory("unknown"));
+        assertEquals("unsupported", taxonomyService.mapLegacyCategory("unknown"));
     }
     
     @Test
@@ -144,7 +152,7 @@ class EffectTaxonomyMappingServiceTest {
     void getAllTaxonomyCategories_ShouldReturnAllCategories() {
         List<String> categories = taxonomyService.getAllTaxonomyCategories();
         
-        assertEquals(12, categories.size());
+        assertEquals(13, categories.size());
         assertTrue(categories.contains("crop"));
         assertTrue(categories.contains("transform"));
         assertTrue(categories.contains("color"));

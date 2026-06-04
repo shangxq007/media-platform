@@ -63,15 +63,24 @@ public class ArtifactCatalogService {
 
     public Artifact registerArtifact(String renderJobId, String projectId,
             String storageUri, String format, String resolution, long duration) {
+        return registerArtifact(renderJobId, projectId, storageUri, format, resolution,
+                duration, null, null);
+    }
+
+    public Artifact registerArtifact(String renderJobId, String projectId,
+            String storageUri, String format, String resolution, long duration,
+            Long sizeBytes, String checksum) {
         if (persistent) {
             String id = Ids.newId("art");
             Artifact artifact = new Artifact(id, renderJobId, projectId, storageUri,
-                    format, resolution, duration, ArtifactStatus.ACTIVE, null, Instant.now());
+                    format, resolution, duration, sizeBytes, checksum,
+                    ArtifactStatus.ACTIVE, null, Instant.now());
             return artifactRepository.save(artifact);
         } else {
             String id = "art-" + artifactSeq.incrementAndGet();
             Artifact artifact = new Artifact(id, renderJobId, projectId, storageUri,
-                    format, resolution, duration, ArtifactStatus.ACTIVE, null, Instant.now());
+                    format, resolution, duration, sizeBytes, checksum,
+                    ArtifactStatus.ACTIVE, null, Instant.now());
             artifacts.put(id, artifact);
             return artifact;
         }
@@ -168,6 +177,7 @@ public class ArtifactCatalogService {
         Artifact updated = new Artifact(
                 existing.id(), existing.renderJobId(), existing.projectId(), existing.storageUri(),
                 existing.format(), existing.resolution(), existing.duration(),
+                existing.sizeBytes(), existing.checksum(),
                 ArtifactStatus.TOMBSTONED, Instant.now(), existing.createdAt());
         artifacts.put(artifactId, updated);
         return updated;
@@ -185,6 +195,7 @@ public class ArtifactCatalogService {
         Artifact updated = new Artifact(
                 existing.id(), existing.renderJobId(), existing.projectId(), existing.storageUri(),
                 existing.format(), existing.resolution(), existing.duration(),
+                existing.sizeBytes(), existing.checksum(),
                 newStatus,
                 newStatus == ArtifactStatus.TOMBSTONED ? Instant.now() : existing.tombstonedAt(),
                 existing.createdAt());

@@ -1,4 +1,7 @@
-plugins { id("java-library") }
+plugins {
+    id("java-library")
+    id("java-test-fixtures")
+}
 
 dependencies {
     api("org.springframework.boot:spring-boot-starter")

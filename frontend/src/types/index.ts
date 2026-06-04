@@ -119,7 +119,7 @@ export interface OFXEffect {
 export interface EffectPackEffect {
   effectKey: string
   displayName: string
-  category: 'transition' | 'video' | 'audio' | 'text'
+  category: 'transition' | 'video' | 'audio' | 'text' | 'compositor'
   description: string
   parameterSchema: Record<string, EffectParameterDef>
   defaultValues: Record<string, unknown>

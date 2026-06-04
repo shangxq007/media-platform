@@ -24,7 +24,7 @@ const packForm = reactive({
 const effectForm = reactive({
   effectKey: '',
   displayName: '',
-  category: 'transition' as 'transition' | 'video' | 'audio' | 'text',
+  category: 'transition' as 'transition' | 'video' | 'audio' | 'text' | 'compositor',
   description: '',
   providerMappings: ['javacv'],
   allowedTiers: ['FREE', 'PRO', 'TEAM', 'ENTERPRISE'] as string[],
@@ -39,7 +39,7 @@ const paramType = ref<EffectParameterDef['type']>('float')
 const allPacks = computed(() => effectPackStore.allPacks)
 
 const tierOptions = ['FREE', 'PRO', 'TEAM', 'ENTERPRISE']
-const categoryOptions = ['transition', 'video', 'audio', 'text'] as const
+const categoryOptions = ['transition', 'video', 'audio', 'text', 'compositor'] as const
 const providerOptions = ['javacv', 'ffmpeg', 'natron', 'ofx', 'gpu']
 const paramTypeOptions: EffectParameterDef['type'][] = ['int', 'float', 'string', 'boolean', 'color']
 

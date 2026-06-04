@@ -3,6 +3,7 @@ package com.example.platform.render.app;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.render.app.timeline.InternalTimelineValidationService;
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,7 @@ class TimelineValidationServiceTest {
 
     @Test
     void validatesV1Sample() throws Exception {
-        String json = Files.readString(Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json"));
+        String json = Files.readString(FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json"));
         assertTrue(service.validateJson(json).valid());
     }
 

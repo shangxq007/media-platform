@@ -70,32 +70,11 @@ public class FFmpegRenderProvider implements RenderProvider {
             JsonNode scriptRoot = parseRoot(aiScript);
             SegmentRenderSlice segmentSlice = SegmentRenderSlice.fromJson(scriptRoot);
 
-            // Diagnostic: try parsing the timeline
             var parseResult = timelineScriptParser.parse(aiScript);
-            try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                    "[FFmpegRenderProvider] parseResult=" + parseResult.isPresent() + "\n",
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ignored) {}
-            if (parseResult.isPresent()) {
-                int vc = timelineScriptParser.videoClipsInOrder(parseResult.get()).size();
-                try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                        "[FFmpegRenderProvider] videoClips from parse=" + vc + "\n",
-                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-                } catch (Exception ignored) {}
-            }
 
             List<FFmpegCommandFactory.ResolvedClip> resolvedClips = resolveClips(aiScript);
             if (resolvedClips.isEmpty()) {
                 String snippet = aiScript.length() > 300 ? aiScript.substring(0, 300) + "..." : aiScript;
-                try {
-                    java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                            "[FFmpegRenderProvider] No renderable clips! storageRoot=" + storageRoot
-                            + " script=" + snippet + "\n",
-                            java.nio.file.StandardOpenOption.CREATE,
-                            java.nio.file.StandardOpenOption.APPEND);
-                } catch (Exception ignored) {}
-                System.out.println("[FFmpegRenderProvider] No renderable clips! storageRoot=" + storageRoot + " script=" + snippet);
-                System.out.flush();
                 throw new PlatformException(
                         new ConfigurableErrorCode("RENDER-400-003", 500403,
                                 Map.of("en", "No renderable clips in timeline", "zh", "时间线中没有可渲染片段"),
@@ -109,33 +88,22 @@ public class FFmpegRenderProvider implements RenderProvider {
             List<List<FFmpegCommandFactory.ResolvedClip>> audioTracks =
                     timeline.map(this::resolveAudioTracks).orElse(List.of());
 
-            // Extract subtitle and watermark paths from the timeline JSON
+            // Extract subtitle, watermark, fade, transition, and spatial plan from timeline JSON
             String subtitlePath = extractSubtitlePath(scriptRoot);
             String watermarkPath = extractWatermarkPath(scriptRoot);
             double fadeDuration = extractFadeDuration(scriptRoot);
             double transitionDuration = extractTransitionDuration(scriptRoot);
-            try {
-                java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                        "[FFmpegRenderProvider] scriptRoot=" + (scriptRoot != null ? scriptRoot.toString().substring(0, Math.min(200, scriptRoot.toString().length())) : "NULL") + "\n"
-                        + "[FFmpegRenderProvider] sub=" + subtitlePath + " wm=" + watermarkPath
-                        + " fade=" + fadeDuration + " xfade=" + transitionDuration + "\n",
-                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ignored) {}
 
-            // Load spatial plan if available
+            // Load spatial plan from metadata path (if provided by timeline)
             com.example.platform.render.domain.spatial.SpatialPlan spatialPlan = null;
-            try {
-                // Resolve path relative to project root (works from both Gradle and IDE)
-                String projectRoot = System.getProperty("user.dir");
-                // When running from Gradle, user.dir is the project root (platform/)
-                // When running from IDE, it may be different, so also try relative paths
-                Path spatialPlanPath = Path.of(projectRoot, "test-assets/golden-render-project-v1/manifests/golden-spatial-plan.json");
-                if (!java.nio.file.Files.exists(spatialPlanPath)) {
-                    // Fallback: try from parent directory
-                    spatialPlanPath = Path.of(projectRoot).getParent().resolve("test-assets/golden-render-project-v1/manifests/golden-spatial-plan.json");
+            String spatialPlanPath = extractSpatialPlanPath(scriptRoot);
+            if (spatialPlanPath != null && !spatialPlanPath.isBlank()) {
+                Path spPath = Path.of(spatialPlanPath);
+                if (java.nio.file.Files.isRegularFile(spPath)) {
+                    spatialPlan = com.example.platform.render.domain.spatial.SpatialPlanLoader
+                            .loadFromFile(spPath).orElse(null);
                 }
-                spatialPlan = com.example.platform.render.domain.spatial.SpatialPlanLoader.loadFromFile(spatialPlanPath).orElse(null);
-            } catch (Exception ignored) {}
+            }
 
             List<String> args;
             if (!audioTracks.isEmpty()) {
@@ -156,15 +124,7 @@ public class FFmpegRenderProvider implements RenderProvider {
 
             if (!result.isSuccess()) {
                 String errSnippet = result.stderr() != null ? result.stderr().substring(0, Math.min(1000, result.stderr().length())) : "null";
-                try {
-                    java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                            "[FFmpegRenderProvider] ffmpeg FAILED: exit=" + result.exitCode()
-                            + " stderr=" + errSnippet + "\n",
-                            java.nio.file.StandardOpenOption.CREATE,
-                            java.nio.file.StandardOpenOption.APPEND);
-                } catch (Exception ignored) {}
-                System.err.println("[FFmpegRenderProvider] ffmpeg FAILED: exit=" + result.exitCode() + " stderr=" + errSnippet);
-                System.err.flush();
+                log.error("FFmpegRenderProvider: ffmpeg failed: exit={} stderr={}", result.exitCode(), errSnippet);
                 throw new PlatformException(
                         new ConfigurableErrorCode("RENDER-500-002", 500502,
                                 Map.of("en", "FFmpeg rendering failed", "zh", "FFmpeg渲染失败"),
@@ -212,52 +172,26 @@ public class FFmpegRenderProvider implements RenderProvider {
         List<FFmpegCommandFactory.ResolvedClip> resolved = new ArrayList<>();
         Optional<TimelineSpec> timeline = timelineScriptParser.parse(aiScript);
         if (timeline.isEmpty()) {
-            try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                    "[FFmpegRenderProvider] parse EMPTY for: " + aiScript.substring(0, Math.min(200, aiScript.length())) + "\n",
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ignored) {}
+            log.warn("FFmpegRenderProvider: timeline parse returned empty");
             return resolved;
         }
-        try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                "[FFmpegRenderProvider] parse OK, tracks=" + timeline.get().tracks().size() + "\n",
-                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-        } catch (Exception ignored) {}
         List<TimelineClip> videoClips = timelineScriptParser.videoClipsInOrder(timeline.get());
-        try {
-            java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                    "[FFmpegRenderProvider] videoClips=" + videoClips.size() + "\n",
-                    java.nio.file.StandardOpenOption.CREATE,
-                    java.nio.file.StandardOpenOption.APPEND);
-        } catch (Exception ignored) {}
-        System.err.println("[FFmpegRenderProvider] videoClips=" + videoClips.size());
+        log.info("FFmpegRenderProvider: found {} video clips", videoClips.size());
         for (TimelineClip clip : videoClips) {
             if (clip.assetRef() == null) {
-                try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                        "[FFmpegRenderProvider] clip " + clip.id() + " has null assetRef\n",
-                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-                } catch (Exception ignored) {}
+                log.warn("FFmpegRenderProvider: clip {} has null assetRef", clip.id());
                 continue;
             }
             String uri = clip.assetRef().storageUri();
             String localPath = resolveToLocalPath(uri);
             if (localPath == null) {
-                try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                        "[FFmpegRenderProvider] unreachable: " + uri + " storageRoot=" + storageRoot + "\n",
-                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-                } catch (Exception ignored) {}
+                log.warn("FFmpegRenderProvider: skipping unreachable media: {}", uri);
                 continue;
             }
-            try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                    "[FFmpegRenderProvider] resolved clip=" + clip.id() + " localPath=" + localPath + "\n",
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ignored) {}
             resolved.add(new FFmpegCommandFactory.ResolvedClip(
                     localPath, clip.assetInPoint(), clip.clipDuration()));
         }
-        try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/golden-render-diag.txt"),
-                "[FFmpegRenderProvider] resolved " + resolved.size() + " clips\n",
-                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-        } catch (Exception ignored) {}
+        log.info("FFmpegRenderProvider: resolved {} clips", resolved.size());
         return resolved;
     }
 
@@ -446,5 +380,22 @@ public class FFmpegRenderProvider implements RenderProvider {
             }
         }
         return 0;
+    }
+
+    /**
+     * Extract spatial plan file path from the timeline JSON root.
+     * Looks for "metadata" -> "spatialPlanPath".
+     */
+    private static String extractSpatialPlanPath(JsonNode root) {
+        if (root == null) return null;
+        JsonNode meta = root.get("metadata");
+        if (meta != null) {
+            JsonNode spPath = meta.get("spatialPlanPath");
+            if (spPath != null && !spPath.asText().isBlank()) {
+                String p = spPath.asText();
+                return p.startsWith("file://") ? p.substring("file://".length()) : p;
+            }
+        }
+        return null;
     }
 }

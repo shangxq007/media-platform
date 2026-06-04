@@ -36,16 +36,28 @@ public class ProjectExportController {
      * @param request   export request containing the export mode
      * @return export response containing all project metadata
      */
+    /**
+     * Create a project export.
+     *
+     * <p>Supports {@code mode=metadata_only} and {@code mode=linked_assets}.
+     * Other modes return {@code 501 Not Implemented}.
+     * Missing or blank mode returns {@code 400 Bad Request}.
+     */
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/exports")
     public ResponseEntity<?> createExport(
             @PathVariable String tenantId,
             @PathVariable String projectId,
-            @RequestBody(required = false) ProjectExportRequest request) {
+            @RequestBody ProjectExportRequest request) {
 
-        // Default to metadata_only if not specified
-        String mode = (request != null && request.mode() != null && !request.mode().isBlank())
-                ? request.mode() : ProjectExportRequest.MODE_METADATA_ONLY;
-        Integer ttlSeconds = (request != null) ? request.signedUrlTtlSeconds() : null;
+        String mode = request.mode();
+
+        // Require explicit mode
+        if (mode == null || mode.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "missing_mode",
+                    "message", "Export mode is required. Supported: metadata_only, linked_assets"
+            ));
+        }
 
         // Reject unsupported modes with 501
         if (!ProjectExportRequest.MODE_METADATA_ONLY.equals(mode)
@@ -58,6 +70,8 @@ public class ProjectExportController {
                             ProjectExportRequest.MODE_LINKED_ASSETS)
             ));
         }
+
+        Integer ttlSeconds = request.signedUrlTtlSeconds();
 
         // Validate TTL for linked_assets
         if (ProjectExportRequest.MODE_LINKED_ASSETS.equals(mode) && ttlSeconds != null

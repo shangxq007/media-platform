@@ -2,9 +2,11 @@ package com.example.platform.storage.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 import com.example.platform.storage.domain.PutObjectCommand;
 import com.example.platform.storage.domain.StorageObjectRef;
@@ -493,5 +495,101 @@ class LocalFsStorageProviderTest {
         }
         assertThrows(IllegalArgumentException.class,
                 () -> provider.delete("b", "evil-link"));
+    }
+
+    // ─── Path-based streaming put tests ───
+
+    @Test
+    void putFromPathStoresFileContent() throws Exception {
+        Path sourceFile = tempDir.resolve("source.bin");
+        byte[] data = "streaming content".getBytes();
+        Files.write(sourceFile, data);
+
+        PutObjectCommand command = PutObjectCommand.fromPath(
+                "my-bucket", "imports/file.bin", sourceFile, "application/octet-stream");
+
+        assertTrue(command.isFileBased());
+        assertNull(command.content());
+        assertEquals(sourceFile, command.contentPath());
+
+        StorageObjectRef ref = provider.put(command);
+
+        assertNotNull(ref);
+        assertEquals("my-bucket", ref.bucket());
+        assertEquals("imports/file.bin", ref.objectKey());
+
+        Path stored = tempDir.resolve("my-bucket").resolve("imports/file.bin");
+        assertTrue(Files.exists(stored));
+        assertArrayEquals(data, Files.readAllBytes(stored));
+    }
+
+    @Test
+    void putFromPathCreatesDirectories() throws Exception {
+        Path sourceFile = tempDir.resolve("source.txt");
+        Files.writeString(sourceFile, "deep path test");
+
+        PutObjectCommand command = PutObjectCommand.fromPath(
+                "bucket", "a/b/c/d/file.txt", sourceFile, "text/plain");
+
+        provider.put(command);
+
+        Path stored = tempDir.resolve("bucket").resolve("a/b/c/d/file.txt");
+        assertTrue(Files.exists(stored));
+        assertEquals("deep path test", Files.readString(stored));
+    }
+
+    @Test
+    void putFromPathOverwritesExisting() throws Exception {
+        Path source1 = tempDir.resolve("src1.txt");
+        Path source2 = tempDir.resolve("src2.txt");
+        Files.writeString(source1, "version1");
+        Files.writeString(source2, "version2");
+
+        provider.put(PutObjectCommand.fromPath("b", "f.txt", source1, "text/plain"));
+        provider.put(PutObjectCommand.fromPath("b", "f.txt", source2, "text/plain"));
+
+        Path stored = tempDir.resolve("b").resolve("f.txt");
+        assertEquals("version2", Files.readString(stored));
+    }
+
+    @Test
+    void putFromPathWithLargeFile() throws Exception {
+        Path sourceFile = tempDir.resolve("large.bin");
+        byte[] data = new byte[1024 * 1024]; // 1MB
+        for (int i = 0; i < data.length; i++) data[i] = (byte)(i % 256);
+        Files.write(sourceFile, data);
+
+        PutObjectCommand command = PutObjectCommand.fromPath(
+                "bucket", "large.bin", sourceFile, "application/octet-stream");
+
+        StorageObjectRef ref = provider.put(command);
+        assertNotNull(ref);
+
+        Path stored = tempDir.resolve("bucket").resolve("large.bin");
+        assertTrue(Files.exists(stored));
+        assertArrayEquals(data, Files.readAllBytes(stored));
+    }
+
+    @Test
+    void putFromPathTraversalIsSafe() throws Exception {
+        Path sourceFile = tempDir.resolve("safe-source.txt");
+        Files.writeString(sourceFile, "safe");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> provider.put(PutObjectCommand.fromPath("b", "../evil.txt", sourceFile, "text/plain")));
+    }
+
+    @Test
+    void byteArrayPutStillWorks() throws Exception {
+        PutObjectCommand command = new PutObjectCommand(
+                "b", "legacy.txt", "byte array".getBytes(), "text/plain");
+        assertFalse(command.isFileBased());
+
+        StorageObjectRef ref = provider.put(command);
+        assertNotNull(ref);
+
+        Path stored = tempDir.resolve("b").resolve("legacy.txt");
+        assertTrue(Files.exists(stored));
+        assertEquals("byte array", Files.readString(stored));
     }
 }

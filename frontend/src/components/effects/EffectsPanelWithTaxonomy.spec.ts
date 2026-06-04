@@ -39,19 +39,19 @@ describe('EffectsPanelWithTaxonomy - Taxonomy Mapping Tests', () => {
       }).not.toThrow();
     });
 
-    it('displays unknown effect with fallback category', () => {
-      expect(getEffectDisplayCategory('unknown.effect')).toBe('other');
+    it('displays unknown effect as unsupported', () => {
+      expect(getEffectDisplayCategory('unknown.effect')).toBe('unsupported');
     });
   });
 
   describe('Legacy Category Fallback', () => {
-    it('falls back to legacy category when taxonomy mapping is missing', () => {
+    it('returns unsupported for unmapped effect even with legacy video', () => {
       const legacyCategory = 'video';
-      expect(mapEffectKeyToCategory('legacy.effect', legacyCategory)).toBe('filter');
+      expect(mapEffectKeyToCategory('legacy.effect', legacyCategory)).toBe('unsupported');
     });
 
-    it('uses filter as default fallback when no legacy category provided', () => {
-      expect(mapEffectKeyToCategory('unknown.effect')).toBe('filter');
+    it('returns unsupported when no legacy category provided', () => {
+      expect(mapEffectKeyToCategory('unknown.effect')).toBe('unsupported');
     });
   });
 
@@ -108,12 +108,12 @@ describe('EffectsPanelWithTaxonomy - Taxonomy Mapping Tests', () => {
       expect(getEffectDisplayCategory('video.watermark')).toBe('composite');
     });
 
-    it('falls back to legacy category for unmapped effects', () => {
-      expect(getEffectDisplayCategory('unknown.effect', 'video')).toBe('video');
+    it('returns unsupported for unmapped effects even with legacy video', () => {
+      expect(getEffectDisplayCategory('unknown.effect', 'video')).toBe('unsupported');
     });
 
-    it('returns other for completely unknown effects', () => {
-      expect(getEffectDisplayCategory('completely.unknown.effect')).toBe('other');
+    it('returns unsupported for completely unknown effects', () => {
+      expect(getEffectDisplayCategory('completely.unknown.effect')).toBe('unsupported');
     });
   });
 });

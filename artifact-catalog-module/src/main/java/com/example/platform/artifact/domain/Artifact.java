@@ -26,6 +26,8 @@ public record Artifact(
         String format,
         String resolution,
         Long duration,
+        Long sizeBytes,
+        String checksum,
         ArtifactStatus status,
         Instant tombstonedAt,
         Instant createdAt) {
@@ -38,5 +40,15 @@ public record Artifact(
 
     public boolean isUsable() {
         return status == ArtifactStatus.ACTIVE;
+    }
+
+    public Artifact withSizeBytes(Long sizeBytes) {
+        return new Artifact(id, renderJobId, projectId, storageUri, format, resolution,
+                duration, sizeBytes, checksum, status, tombstonedAt, createdAt);
+    }
+
+    public Artifact withChecksum(String checksum) {
+        return new Artifact(id, renderJobId, projectId, storageUri, format, resolution,
+                duration, sizeBytes, checksum, status, tombstonedAt, createdAt);
     }
 }

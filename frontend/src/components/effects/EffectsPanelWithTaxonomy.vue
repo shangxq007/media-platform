@@ -151,29 +151,32 @@
           
           <div class="effect-parameters">
             <h4>Parameters</h4>
-            <div v-for="param in selectedEffectForConfig.paramSchemas" :key="param.name">
-              <label>{{ param.displayName }}</label>
+            <div v-for="(param, idx) in selectedEffectForConfig.paramSchemas" :key="idx">
+              <label>{{ param.description || 'Parameter ' + idx }}</label>
               <input 
-                v-if="param.type === 'number'"
+                v-if="param.type === 'int' || param.type === 'float'"
                 type="number" 
-                :value="effectParameters[param.name]"
-                @input="(e) => updateParameter(param.name, (e.target as HTMLInputElement).value)"
+                :value="effectParameters[param.description || ('param' + idx)]"
+                @input="(e) => updateParameter(param.description || ('param' + idx), (e.target as HTMLInputElement).value)"
               />
               <input 
                 v-if="param.type === 'string'"
                 type="text" 
-                :value="effectParameters[param.name]"
-                @input="(e) => updateParameter(param.name, (e.target as HTMLInputElement).value)"
+                :value="effectParameters[param.description || ('param' + idx)]"
+                @input="(e) => updateParameter(param.description || ('param' + idx), (e.target as HTMLInputElement).value)"
               />
-              <select 
-                v-if="param.type === 'select'"
-                :value="effectParameters[param.name]"
-                @input="(e) => updateParameter(param.name, (e.target as HTMLSelectElement).value)"
-              >
-                <option v-for="option in param.options" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
+              <input 
+                v-if="param.type === 'boolean'"
+                type="checkbox"
+                :checked="effectParameters[param.description || ('param' + idx)] === true"
+                @change="(e) => updateParameter(param.description || ('param' + idx), (e.target as HTMLInputElement).checked)"
+              />
+              <input 
+                v-if="param.type === 'color'"
+                type="color"
+                :value="effectParameters[param.description || ('param' + idx)] || '#ffffff'"
+                @input="(e) => updateParameter(param.description || ('param' + idx), (e.target as HTMLInputElement).value)"
+              />
             </div>
           </div>
         </div>

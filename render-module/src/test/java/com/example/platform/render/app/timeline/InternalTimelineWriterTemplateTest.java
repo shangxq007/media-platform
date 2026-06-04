@@ -3,6 +3,7 @@ package com.example.platform.render.app.timeline;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
+import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -14,10 +15,7 @@ class InternalTimelineWriterTemplateTest {
 
     @Test
     void roundTripPreservesExternalTemplatesAndNodes() throws Exception {
-        Path path = Path.of("../../docs/media-rendering/examples/timeline-v1-full-sample.json");
-        if (!Files.exists(path)) {
-            path = Path.of("docs/media-rendering/examples/timeline-v1-full-sample.json");
-        }
+        Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         String sample = Files.readString(path);
         var spec = adapter.toSpec(sample).orElseThrow();
         String v1 = writer.toJson(spec);

@@ -7,6 +7,7 @@ import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.domain.timeline.TimelineTrack;
 import com.example.platform.render.infrastructure.RenderProvider;
+import com.example.platform.shared.test.FixturePath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,36 +35,14 @@ class GoldenRenderE2ETest {
     @BeforeEach
     void setUp() throws Exception {
         ffmpegAvailable = isFfmpegAvailable();
-        assetsBasePath = findGoldenAssets();
-        assetsAvailable = Files.isDirectory(assetsBasePath)
-                && Files.exists(assetsBasePath.resolve("video/color_bars_1080p.mp4"));
-        // Write diagnostic to file since System.out/err are swallowed by Gradle
-        Files.writeString(Path.of("/tmp/golden-render-diag.txt"),
-                "user.dir=" + System.getProperty("user.dir") + "\n"
-                + "assetsBasePath=" + assetsBasePath.toAbsolutePath() + "\n"
-                + "assetsAvailable=" + assetsAvailable + "\n"
-                + "ffmpegAvailable=" + ffmpegAvailable + "\n");
-    }
-
-    private static Path findGoldenAssets() {
-        String env = System.getenv("GOLDEN_PROJECT_DIR");
-        if (env != null && !env.isBlank()) {
-            Path p = Path.of(env).resolve("assets");
-            if (Files.isDirectory(p)) return p;
+        try {
+            assetsBasePath = FixturePath.goldenProjectAssets();
+            assetsAvailable = Files.isDirectory(assetsBasePath)
+                    && Files.exists(assetsBasePath.resolve("video/color_bars_1080p.mp4"));
+        } catch (IllegalStateException e) {
+            assetsBasePath = Path.of("/nonexistent");
+            assetsAvailable = false;
         }
-        Path start = Path.of(System.getProperty("user.dir"));
-        Path current = start;
-        for (int i = 0; i < 6; i++) {
-            Path candidate = current.resolve("test-assets/golden-render-project-v1/assets");
-            if (Files.isDirectory(candidate)) return candidate;
-            Path parent = current.getParent();
-            if (parent == null) break;
-            current = parent;
-        }
-        if ("platform".equals(start.getFileName().toString())) {
-            return start.getParent().resolve("test-assets/golden-render-project-v1/assets");
-        }
-        return start.resolve("test-assets/golden-render-project-v1/assets");
     }
 
     static class RealFfmpegRunner implements ProcessToolRunner {
