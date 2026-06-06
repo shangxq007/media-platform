@@ -16,6 +16,7 @@ import DeliveryStatusPanel from './DeliveryStatusPanel.vue'
 import AiTimelineEditPanel from './AiTimelineEditPanel.vue'
 import IncrementalRenderPanel from './IncrementalRenderPanel.vue'
 import TimelineInternalPreviewPanel from './TimelineInternalPreviewPanel.vue'
+import ImportedMetadataPanel from './ImportedMetadataPanel.vue'
 import AiProposalsPanel from './AiProposalsPanel.vue'
 import type { AiProposalDto } from '@/api/ai-timeline'
 import { useExportUiStore } from '@/stores/exportUi'
@@ -1280,6 +1281,11 @@ function handleViewLogs(url: string) {
     <!-- Error -->
     <div v-if="projectStore.error" class="p-2 rounded bg-danger-muted border border-danger text-xs text-danger">
       {{ projectStore.error }}
+    </div>
+
+    <!-- Imported Metadata Preview -->
+    <div v-if="projectStore.currentProject">
+      <ImportedMetadataPanel />
     </div>
   </div>
 </template>

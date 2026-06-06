@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import MonitoringFeedbackPage from './MonitoringFeedbackPage.vue'
 
 vi.mock('@/composables/useFeatureFlag', async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
     useFeatureFlag: () => ({ value: false }),

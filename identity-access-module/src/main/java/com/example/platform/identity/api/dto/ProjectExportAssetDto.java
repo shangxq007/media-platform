@@ -1,7 +1,9 @@
 package com.example.platform.identity.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ProjectExportAssetDto(
         @JsonProperty("assetId") String assetId,
         @JsonProperty("filename") String filename,

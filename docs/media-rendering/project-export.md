@@ -432,6 +432,404 @@ golden-render-project-v1-export/
 - **Audit**: records `PROJECT_IMPORT_PREVIEW` with exportId, mode, assetCount, ttlSeconds (no URLs)
 - **Tests**: 8+ tests covering schema validation, asset analysis, effect compatibility, spatial validation, security
 
+## Zip Packaging (v1)
+
+`ProjectExportZipPackagingService` packages a `ProjectExportResponse` into a zip archive following the `project-export-v1` directory structure.
+
+### Features
+- Packages metadata (JSON manifests) only — no real media files
+- Generates SHA-256 checksums for all entries
+- Includes auto-generated README.md with export metadata
+- Supports both `metadata_only` and `linked_assets` modes
+- Strips `storageRef` and `signedUrls` map from assets
+- Does NOT write signed URLs into audit summary
+- Zip slip prevention via entry name allowlist
+
+### Zip Archive API
+
+**Endpoint:** `POST /api/v1/identity/tenants/{tenantId}/projects/{projectId}/exports/archive`
+
+**Request body is required.** Mode must be explicitly specified. Null/blank mode returns 400.
+
+**Request (metadata_only):**
+```json
+{
+  "mode": "metadata_only"
+}
+```
+
+**Request (linked_assets):**
+```json
+{
+  "mode": "linked_assets",
+  "signedUrlTtlSeconds": 3600
+}
+```
+
+**Response:**
+- `Content-Type: application/zip`
+- `Content-Disposition: attachment; filename="project-export-{projectId}-{exportId}.zip"`
+- Body: zip bytes
+
+**Supported modes:**
+- `metadata_only` (default)
+- `linked_assets` (requires signing port)
+
+**Unsupported modes:** `bundled_assets`, `render_reproduction` → 501
+
+**Filename sanitization:**
+- Only alphanumeric, `.`, `_`, `-` allowed
+- `..` removed (path traversal prevention)
+- Leading/trailing `.` and `_` removed
+- Null/blank names → `unknown`
+
+**Security:**
+- `storageRef` always null in zip
+- `signedUrls` map stripped from assets
+- No signed URLs in audit summary
+- No storageUri/bucket/key/internal paths
+- Zip slip prevention via entry name allowlist
+
+### Zip Contents
+```
+project-export-v1/
+├── manifest.json
+├── project.json
+├── assets.json
+├── README.md
+├── checksums/
+│   └── sha256sums.txt
+├── timeline/
+│   └── timeline.json
+├── render/
+│   ├── render-plan.json
+│   ├── spatial-plan.json
+│   └── export-profiles.json
+├── effects/
+│   ├── effect-taxonomy.json
+│   └── applied-effects.json
+├── outputs/
+│   └── outputs-manifest.json
+└── audit/
+    └── audit-summary.json
+```
+
+### Limitations
+- Only packages metadata (JSON manifests) — no real media files
+- Does NOT download or include signed URLs as content
+- Does NOT support `bundled_assets` mode (future)
+- Does NOT write zip to storage — returns bytes directly
+
+## Import Preview from Zip Archive
+
+`ProjectExportZipReader` reads and validates a `project-export-v1.zip` archive, then delegates to the existing `ProjectImportPreviewService` for compatibility analysis.
+
+### Endpoint
+
+**POST** `/api/v1/identity/tenants/{tenantId}/project-imports/preview/archive`
+
+**Request:** `multipart/form-data` with `file` field containing the zip
+
+**Response:** `ProjectImportPreviewResponse` (same as JSON import preview)
+
+### Security
+
+- **Zip bomb protection:** 50 MB compressed, 200 MB uncompressed, 100 entries max
+- **Zip slip prevention:** entry names validated against allowlist
+- **Path traversal:** rejects `..`, absolute paths, backslash
+- **Checksum validation:** against `sha256sums.txt`
+- **No signed URLs downloaded** — only JSON parsed in memory
+- **No project created** — preview only
+- **No database writes**
+
+### Entry Allowlist
+
+Only these entries are accepted:
+```
+manifest.json, project.json, assets.json,
+timeline/timeline.json, render/render-plan.json,
+render/spatial-plan.json, render/export-profiles.json,
+effects/effect-taxonomy.json, effects/applied-effects.json,
+outputs/outputs-manifest.json, audit/audit-summary.json,
+checksums/sha256sums.txt, README.md
+```
+
+### Checksum Validation
+
+- `sha256sums.txt` lists SHA-256 for each entry
+- Each entry's content is verified against its listed checksum
+- `sha256sums.txt` must not reference itself
+- Missing checksum for optional entry → warning
+- Checksum mismatch → error
+
+### Limitations
+
+- Preview only — does NOT create projects or import assets
+- Does NOT download signed URLs
+- Does NOT support `bundled_assets` mode
+- In-memory only — no temp files on disk
+
+
+## Import Execute Shell from Zip Archive
+
+### Endpoint
+
+**POST** `/api/v1/identity/tenants/{tenantId}/project-imports/archive`
+
+Creates a project shell from a `project-export-v1.zip` archive with metadata persistence.
+
+### Request
+
+`multipart/form-data`
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `file` | ✅ | project-export-v1.zip file |
+| `importName` | ❌ | Override project name |
+| `mode` | ❌ | Import mode (default: `shell_only`) |
+
+### Response
+
+```json
+{
+  "importId": "imp-123",
+  "status": "SUCCEEDED",
+  "targetProjectId": "prj-456",
+  "mode": "shell_only",
+  "assets": {
+    "total": 17,
+    "imported": 0,
+    "needsUpload": 17,
+    "rebound": 0,
+    "skipped": 0
+  },
+  "assetMappings": [
+    {
+      "sourceAssetId": "art-1",
+      "targetAssetId": null,
+      "status": "needs_upload"
+    }
+  ],
+  "metadata": {
+    "timelinePersisted": true,
+    "renderPlanPersisted": true,
+    "spatialPlanPersisted": true,
+    "effectMetadataPersisted": false
+  },
+  "warnings": []
+}
+```
+
+### Metadata Persistence
+
+Shell import now persists scrubbed metadata from the zip archive to the `project_import_metadata` table.
+
+**Persisted metadata:**
+
+| Field | Zip Entry | Description |
+|-------|-----------|-------------|
+| `timeline_json` | `timeline/timeline.json` | Internal timeline structure |
+| `timeline_otio_json` | `timeline/timeline.otio` | OTIO format (if present) |
+| `render_plan_json` | `render/render-plan.json` | Render plan |
+| `spatial_plan_json` | `render/spatial-plan.json` | Spatial plan |
+| `export_profiles_json` | `render/export-profiles.json` | Export profiles (if present) |
+| `effect_taxonomy_json` | `effects/effect-taxonomy.json` | Effect taxonomy (if present) |
+| `applied_effects_json` | `effects/applied-effects.json` | Applied effects (if present) |
+| `asset_mapping_json` | (generated) | Asset ID to status mapping |
+
+**Security scrubbing:**
+
+All JSON metadata is scrubbed before storage to remove sensitive fields:
+
+- ❌ `downloadUrl`
+- ❌ `storageUri` / `storage_uri`
+- ❌ `storageRef` / `storage_ref`
+- ❌ `bucket`
+- ❌ `key`
+- ❌ `signedUrl` / `signed_url`
+- ❌ `url`
+
+**Note on `key` field scrubbing:** The current implementation removes ALL fields named `key` as a security-first approach. If future business requirements require preserving specific `key` fields, the scrubber should be enhanced with context-aware logic (e.g., only removing `key` inside storage-related objects).
+
+**Behavior:**
+
+- ✅ Media assets are **NOT** imported
+- ✅ All assets marked as `needs_upload`
+- ✅ Signed URLs are **NOT** downloaded
+- ✅ Source tenantId is **ignored** (uses path tenantId)
+- ✅ Original zip bytes are **NOT** stored
+- ✅ Audit contains only summary flags (no JSON content)
+- ✅ Transaction rollback on metadata persistence failure
+
+**Limitations:**
+
+- Metadata is persisted but **NOT** yet wired to editor/render runtime
+- Timeline/render/spatial metadata requires future integration to be functional
+- `timeline_otio_json`, `export_profiles_json`, `effect_taxonomy_json`, `applied_effects_json` are reserved for future zip parsing enhancements
+
+
+### Read/Preview Endpoints
+
+After shell import, persisted metadata can be read through tenant-scoped endpoints:
+
+**Summary endpoint:**
+
+```
+GET /api/v1/identity/tenants/{tenantId}/projects/{projectId}/import-metadata
+```
+
+Returns summary only (boolean flags, no JSON content):
+
+```json
+{
+  "importId": "imp-123",
+  "sourceProjectId": "src-prj-456",
+  "sourceExportId": "exp-789",
+  "schemaVersion": "project-export-v1",
+  "timelinePresent": true,
+  "timelineOtioPresent": false,
+  "renderPlanPresent": true,
+  "spatialPlanPresent": true,
+  "exportProfilesPresent": false,
+  "effectTaxonomyPresent": true,
+  "appliedEffectsPresent": true,
+  "assetMappingPresent": true,
+  "assetsNeedUpload": true,
+  "createdAt": "2026-06-06T00:00:00Z"
+}
+```
+
+**Import-specific endpoint:**
+
+```
+GET /api/v1/identity/tenants/{tenantId}/project-imports/{importId}/metadata
+```
+
+Returns the same summary for a specific import ID.
+
+**Security:**
+
+- Tenant-scoped: returns 404 if tenantId doesn't match
+- Summary only: no JSON content exposed
+- No sensitive fields: no storageUri, downloadUrl, signedUrl, bucket, key
+- Read-only: does not modify runtime state
+
+### Security
+
+- Zip validation via `ProjectExportZipReader`
+- Tenant boundary enforced via `TenantContext`
+- Source project metadata used for naming only, not for permissions
+- No signed URLs downloaded or persisted
+- No storageUri written to response or audit
+- Complete URL scrubbing before database storage
+
+### Audit
+
+Audit event: `PROJECT_IMPORT_SHELL`
+
+**Payload includes:**
+- `importId`, `mode`, `tenantId`, `sourceProjectId`, `schemaVersion`
+- `assetCount`, `needsUploadCount`, `warningsCount`, `status`
+- `metadataPersisted`, `timelinePresent`, `renderPlanPresent`, `spatialPlanPresent`, `effectMetadataPresent`
+
+**Payload excludes:**
+- ❌ JSON content
+- ❌ Signed URLs
+- ❌ storageUri/storageRef
+- ❌ Zip bytes
+
+### Rollback Behavior
+
+The entire import operation is wrapped in a single transaction:
+
+1. Project creation
+2. Metadata persistence
+3. Audit recording (best-effort)
+
+If any step fails after project creation, the transaction is rolled back and no project shell is left behind.
+
+## Security Policy Details
+
+### MetadataScrubber Policy
+
+The `MetadataScrubber` applies security-first scrubbing to all imported JSON metadata.
+
+**Removed fields (case-insensitive):**
+- `downloadUrl`
+- `storageUri` / `storage_uri`
+- `storageRef` / `storage_ref`
+- `bucket`
+- `key`
+- `signedUrl` / `signed_url`
+- `url`
+
+**Behavior:**
+- Recursive processing of nested objects and arrays
+- Field removal is case-insensitive
+- All fields named `key` are removed (security-first policy)
+
+**`key` field policy:**
+- Current implementation deletes ALL fields named `key` as a security-first measure
+- This may remove legitimate business fields (e.g., effect parameters, keyboard shortcuts)
+- Risk assessment: Current project does not depend on `key` field for imported metadata restoration
+- Future refinement: If business requires preserving specific `key` fields, implement context-aware scrubbing (e.g., only remove `key` inside storage-related objects)
+
+**Defense-in-depth:**
+- Scrub-on-write: Metadata scrubbed before database persistence
+- Scrub-on-read: Metadata scrubbed again on read via `parseAndScrub()`
+- Frontend sanitization: `sanitizeForDisplay()` adds additional defense layer
+
+### linked_assets Signed URL Sharing Semantics
+
+**Behavior:**
+- `linked_assets` export/zip can include per-asset `downloadUrl`
+- `downloadUrl` is a short-lived signed URL
+- Default TTL: 3600 seconds (1 hour)
+- Max TTL: 86400 seconds (24 hours)
+
+**Security properties:**
+- Signed URLs are NOT included in audit payloads
+- `storageUri`/`storageRef` are never exposed in responses
+- URLs expire automatically based on TTL
+
+**Sharing implications:**
+- Users can download and share `linked_assets` zip files
+- Sharing a zip is equivalent to sharing short-lived download permissions
+- Recipients can download assets until URLs expire
+
+**Recommendations:**
+- `linked_assets` zip is NOT suitable for long-term archival
+- For long-term archival, use future `bundled_assets` mode
+- Production environments should enable object storage access logging (if provider supports)
+- Consider shorter max TTL for sensitive content
+- Consider per-tenant TTL configuration for compliance requirements
+
+### Metadata Read Audit Policy
+
+**Current implementation:**
+- Read endpoints do NOT generate audit trails
+- Justification: Endpoints are read-only, do not modify runtime state, follow existing project read API patterns
+
+**Endpoints affected:**
+- `GET /tenants/{tenantId}/projects/{projectId}/import-metadata`
+- `GET /tenants/{tenantId}/project-imports/{importId}/metadata`
+- `GET /tenants/{tenantId}/projects/{projectId}/import-metadata/detail`
+- `GET /tenants/{tenantId}/project-imports/{importId}/metadata/detail`
+
+**Rationale:**
+- Existing project read APIs do not audit reads
+- Endpoints do not return secrets or sensitive data
+- Audit payloads would only contain: `tenantId`, `projectId`, `importId`, `action`
+- Compliance may require audit; if so, implement optional audit with config flag
+
+**Future enhancement (if compliance requires):**
+- Add optional audit for metadata reads
+- Config flag: `app.audit.importMetadataRead.enabled` (default: false)
+- Payload: Only `tenantId`, `projectId`, `importId`, `action`
+- No JSON content, no storageUri, no downloadUrl
+- Audit failure is best-effort, does not block response
+
+
 ## Future Work
 
 ### P4-EXPORT-3b: Full Project Import

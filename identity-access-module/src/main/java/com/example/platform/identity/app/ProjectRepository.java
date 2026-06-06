@@ -47,6 +47,12 @@ public class ProjectRepository {
                 .fetch(this::mapRecord);
     }
 
+    public void deleteById(String id) {
+        dsl.deleteFrom(table("project"))
+                .where(field("id").eq(id))
+                .execute();
+    }
+
     private Project mapRecord(Record record) {
         return new Project(
                 JooqRecords.string(record, "id"),
