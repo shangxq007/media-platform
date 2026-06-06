@@ -26,8 +26,8 @@ create table project_import_metadata (
     created_at timestamp not null default now(),
 
     constraint fk_import_metadata_project
-        foreign key (project_id, tenant_id)
-        references project(id, tenant_id)
+        foreign key (project_id)
+        references project(id)
         on delete cascade
 );
 
