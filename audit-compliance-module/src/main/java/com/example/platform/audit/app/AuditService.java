@@ -8,19 +8,26 @@ import com.example.platform.shared.Jsons;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
 import java.util.List;
-import org.jooq.DSLContext;
-import org.springframework.stereotype.Service;
-
 import java.util.Map;
+import java.util.Optional;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jooq.DSLContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
 public class AuditService {
-    private final DSLContext dsl;
-    private final AuditAlertService alertService;
+    private static final Logger log = LoggerFactory.getLogger(AuditService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    public AuditService(DSLContext dsl, AuditAlertService alertService) {
+    private final DSLContext dsl;
+    private final Optional<AuditAlertService> alertService;
+
+    public AuditService(DSLContext dsl, @Autowired(required = false) AuditAlertService alertService) {
         this.dsl = dsl;
-        this.alertService = alertService;
+        this.alertService = Optional.ofNullable(alertService);
     }
 
     public Map<String, Object> overview() {
@@ -38,7 +45,7 @@ public class AuditService {
                 "module", "audit-compliance-module",
                 "status", "active",
                 "description", "审计与合规模块，负责关键操作审计、配置变更审计与查询。",
-                "totalRecords", total
+                "totalRecords", total == null ? 0 : total
         );
     }
 
@@ -76,11 +83,16 @@ public class AuditService {
                 )
                 .execute();
 
-        // Evaluate alert rules (non-blocking, failures are logged and swallowed)
-        String result = extractResultFromPayload(payload);
-        alertService.evaluate(categoryName, action, actorType, actorId,
-                resourceType, resourceId, extractTenantFromPayload(payload),
-                result, "", "");
+        if (alertService.isPresent()) {
+            try {
+                String result = extractResultFromPayload(payload);
+                alertService.get().evaluate(categoryName, action, actorType, actorId,
+                        resourceType, resourceId, extractTenantFromPayload(payload),
+                        result, "", "");
+            } catch (Exception e) {
+                log.warn("Alert evaluation failed for audit {}: {}", id, e.getMessage());
+            }
+        }
 
         return id;
     }
@@ -134,8 +146,6 @@ public class AuditService {
                 .fetchMaps();
     }
 
-    // ==================== Payload field extraction helpers ====================
-
     @SuppressWarnings("unchecked")
     private static String extractResultFromPayload(Object payload) {
         if (payload instanceof Map<?, ?> map) {
@@ -144,8 +154,7 @@ public class AuditService {
         }
         if (payload instanceof String str && !str.isBlank()) {
             try {
-                Map<?, ?> map = new com.fasterxml.jackson.databind.ObjectMapper()
-                        .readValue(str, Map.class);
+                Map<?, ?> map = OBJECT_MAPPER.readValue(str, Map.class);
                 Object result = map.get("result");
                 return result != null ? result.toString() : null;
             } catch (Exception e) {
@@ -163,8 +172,7 @@ public class AuditService {
         }
         if (payload instanceof String str && !str.isBlank()) {
             try {
-                Map<?, ?> map = new com.fasterxml.jackson.databind.ObjectMapper()
-                        .readValue(str, Map.class);
+                Map<?, ?> map = OBJECT_MAPPER.readValue(str, Map.class);
                 Object tenant = map.get("targetTenantId");
                 return tenant != null ? tenant.toString() : null;
             } catch (Exception e) {
