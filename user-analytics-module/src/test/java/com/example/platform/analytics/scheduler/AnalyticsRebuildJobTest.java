@@ -38,10 +38,11 @@ class AnalyticsRebuildJobTest {
 
     @Test
     void rebuildAllSegmentsReturnsAtLeastFive() {
-        // Insert sample behavior events to generate segments
-        for (int i = 0; i < 10; i++) {
-            eventRepository.save(new UserBehaviorEvent("evt-" + i, "tenant-1", "user-" + i,
-                    "page_view", "view", "dashboard", null, Map.of(), Instant.now()));
+        // Insert sample profiles so resolveTargetTenants() finds tenants
+        for (int i = 0; i < 3; i++) {
+            profileRepository.save(new UserProfile("prof-" + i, "tenant-" + i, "user-" + i,
+                    null, java.util.Set.of(), Map.of(), Map.of(), 0, 0,
+                    Instant.now(), Instant.now(), Instant.now()));
         }
         int count = job.rebuildAllSegments();
         assertTrue(count >= 5, "Should compute at least 5 default segments, got: " + count);
