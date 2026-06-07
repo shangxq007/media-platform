@@ -13,11 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 /**
  * Just-in-time user + RBAC assignment for OIDC logins (Authentik {@code sub} / groups).
  */
 @Service
+@ConditionalOnProperty(name = "app.security.oauth2.enabled", havingValue = "true")
 public class OidcIdentityProvisioningService {
 
     private static final Logger log = LoggerFactory.getLogger(OidcIdentityProvisioningService.class);

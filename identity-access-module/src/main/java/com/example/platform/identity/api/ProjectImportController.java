@@ -1,38 +1,20 @@
 package com.example.platform.identity.api;
 
 import com.example.platform.identity.api.dto.*;
-import com.example.platform.identity.app.ProjectImportPreviewService;
 import com.example.platform.identity.app.ProjectImportService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/**
- * REST API for project import operations.
- */
 @RestController
 @RequestMapping("/api/v1/identity")
 public class ProjectImportController {
 
-    private final ProjectImportPreviewService previewService;
     private final ProjectImportService importService;
 
-    public ProjectImportController(ProjectImportPreviewService previewService,
-                                    ProjectImportService importService) {
-        this.previewService = previewService;
+    public ProjectImportController(ProjectImportService importService) {
         this.importService = importService;
-    }
-
-    @PostMapping("/tenants/{tenantId}/project-imports/preview")
-    public ResponseEntity<ProjectImportPreviewResponse> previewImport(
-            @PathVariable String tenantId,
-            @RequestBody ProjectImportPreviewRequest request) {
-        ProjectImportPreviewResponse response = previewService.previewImport(tenantId, request);
-        if (!response.compatible()) {
-            return ResponseEntity.badRequest().body(response);
-        }
-        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/tenants/{tenantId}/project-imports")
@@ -49,8 +31,13 @@ public class ProjectImportController {
             ));
         } catch (UnsupportedOperationException e) {
             return ResponseEntity.status(501).body(Map.of(
-                    "error", "not_implemented",
+                    "error", "unsupported_mode",
                     "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "error", "import_failed",
+                    "message", "An unexpected error occurred during import."
             ));
         }
     }
