@@ -27,13 +27,13 @@ class AuditCategoryConstraintSyncTest {
     private static final String CONSTRAINT_NAME = "chk_audit_records_category";
 
     private static final Path MIGRATION_PATH = Path.of(
-            "src/main/resources/db/migration/V3__enforce_audit_record_category_constraints.sql");
+            "../docs/archive/prelaunch-migrations/V3__enforce_audit_record_category_constraints.sql");
 
     /**
      * Alternative path when running from the workspace root (Gradle multi-project).
      */
     private static final Path MIGRATION_PATH_ALT = Path.of(
-            "platform-app/src/main/resources/db/migration/V3__enforce_audit_record_category_constraints.sql");
+            "../platform-app/src/main/resources/db/migration/V3__enforce_audit_record_category_constraints.sql");
 
     @Test
     void migrationFileExists() {
