@@ -67,3 +67,18 @@ dependencies {
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     args("--spring.profiles.active=dev")
 }
+
+tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags("render-integration")
+    }
+}
+
+tasks.register<Test>("renderIntegrationTest") {
+    description = "Runs render pipeline integration tests"
+    group = "verification"
+    useJUnitPlatform {
+        includeTags("render-integration")
+    }
+    shouldRunAfter(tasks.test)
+}

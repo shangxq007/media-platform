@@ -13,6 +13,7 @@ import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * E2E: multi-track timeline triggers pipeline DAG path and persists execution plan.
  */
+@Tag("render-integration")
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
