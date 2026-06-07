@@ -48,6 +48,14 @@ class RenderFlowIntegrationTest {
         mockNotificationProvider.clear();
     }
 
+    private String createTestProject(String name) {
+        TenantResponse tenant = tenantProjectController.createTenant(
+                new CreateTenantRequest(name + " Tenant"));
+        ProjectResponse project = tenantProjectController.createProject(tenant.id(),
+                new CreateProjectRequest(name, "Test project for " + name));
+        return project.id();
+    }
+
     @Test
     void contextLoads() {
         assertThat(context).isNotNull();
@@ -113,20 +121,22 @@ class RenderFlowIntegrationTest {
 
     @Test
     void createRenderJob_shouldBelongToProject() {
+        String projectId = createTestProject("RenderJob");
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
-                "prj_test_001", "snap_default", "default_1080p");
+                projectId, "snap_default", "default_1080p");
         var renderJob = renderController.create(renderRequest);
 
         assertThat(renderJob.id()).isNotBlank();
-        assertThat(renderJob.projectId()).isEqualTo("prj_test_001");
+        assertThat(renderJob.projectId()).isEqualTo(projectId);
         assertThat(renderJob.status()).isEqualTo("QUEUED");
         assertThat(renderJob.profile()).isEqualTo("default_1080p");
     }
 
     @Test
     void getRenderJob_shouldReturnCorrectJob() {
+        String projectId = createTestProject("GetJob");
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
-                "prj_test_002", "snap_get", "social_720p");
+                projectId, "snap_get", "social_720p");
         var created = renderController.create(renderRequest);
         var fetched = renderController.getJob(created.id());
 
@@ -137,10 +147,11 @@ class RenderFlowIntegrationTest {
 
     @Test
     void listRenderJobs_shouldReturnAllJobs() {
+        String projectId = createTestProject("ListJobs");
         var req1 = new com.example.platform.render.app.dto.CreateRenderJobRequest(
-                "prj_test_003", "snap_list_1", "default_1080p");
+                projectId, "snap_list_1", "default_1080p");
         var req2 = new com.example.platform.render.app.dto.CreateRenderJobRequest(
-                "prj_test_003", "snap_list_2", "social_720p");
+                projectId, "snap_list_2", "social_720p");
         renderController.create(req1);
         renderController.create(req2);
 
@@ -150,12 +161,12 @@ class RenderFlowIntegrationTest {
 
     @Test
     void executeLocal_shouldReturnCompleted() {
+        String projectId = createTestProject("ExecuteLocal");
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
-                "prj_test_004", "snap_exec", "default_1080p");
+                projectId, "snap_exec", "default_1080p");
         var renderJob = renderController.create(renderRequest);
 
-        // When orchestratorPort is not available, executeLocal returns a simple response
-        var result = renderController.executeLocal("prj_test_004", "prj_test_004", renderJob.id());
+        var result = renderController.executeLocal(projectId, projectId, renderJob.id());
         assertThat(result).containsKey("jobId");
         assertThat(result.get("status")).isIn("COMPLETED", "QUEUED");
     }
@@ -177,7 +188,7 @@ class RenderFlowIntegrationTest {
                 new CreateApiKeyRequest("e2e-service"));
         assertThat(apiKey.apiKey()).isNotBlank();
 
-        // Step 4: Create render job (using legacy endpoint that doesn't require DB project lookup)
+        // Step 4: Create render job
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
                 project.id(), "snap_e2e", "default_1080p");
         var renderJob = renderController.create(renderRequest);
@@ -187,11 +198,11 @@ class RenderFlowIntegrationTest {
         var fetched = renderController.getJob(renderJob.id());
         assertThat(fetched.id()).isEqualTo(renderJob.id());
 
-        // Step 6: Execute local workflow (pass project ID as tenant since that's how create() stores it)
+        // Step 6: Execute local workflow
         var execResult = renderController.executeLocal(project.id(), project.id(), renderJob.id());
         assertThat(execResult).containsKey("jobId");
 
-        // Step 7: Query execution status (use getJob since getExecution requires tenant/project match)
+        // Step 7: Query execution status
         var execution = renderController.getJob(renderJob.id());
         assertThat(execution.id()).isEqualTo(renderJob.id());
     }

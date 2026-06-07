@@ -484,10 +484,13 @@ create table effect_pack_effect (
     provider_mappings text,
     allowed_tiers text,
     sort_order int not null default 0,
+    taxonomy_category varchar(50),
+    is_effect boolean default true,
     constraint fk_effect_pack_effect_pack foreign key (pack_row_id) references effect_pack(id)
 );
 
 create unique index uq_effect_pack_effect_key on effect_pack_effect(pack_row_id, effect_key);
+create index idx_effect_pack_effect_taxonomy_category on effect_pack_effect(taxonomy_category);
 
 create table client_export_session (
     id varchar(64) primary key,
@@ -1524,6 +1527,8 @@ create table frontend_route_definition (
     menu_group varchar(128),
     icon varchar(64),
     sort_order int not null default 0,
+    taxonomy_category varchar(50),
+    is_effect boolean default true,
     parent_route_key varchar(128),
     required_permissions text,
     required_roles text,
