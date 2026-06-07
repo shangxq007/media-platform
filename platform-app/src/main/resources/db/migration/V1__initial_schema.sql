@@ -1527,8 +1527,6 @@ create table frontend_route_definition (
     menu_group varchar(128),
     icon varchar(64),
     sort_order int not null default 0,
-    taxonomy_category varchar(50),
-    is_effect boolean default true,
     parent_route_key varchar(128),
     required_permissions text,
     required_roles text,

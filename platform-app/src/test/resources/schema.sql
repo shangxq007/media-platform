@@ -1838,8 +1838,12 @@ create table if not exists effect_pack_effect (
     default_values      clob,
     provider_mappings   clob,
     allowed_tiers       clob,
-    sort_order          int          not null default 0
+    sort_order          int          not null default 0,
+    taxonomy_category   varchar(50),
+    is_effect           boolean      default true
 );
 
 create unique index if not exists uq_effect_pack_effect_key
     on effect_pack_effect (pack_row_id, effect_key);
+create index if not exists idx_effect_pack_effect_taxonomy_category
+    on effect_pack_effect (taxonomy_category);
