@@ -1072,6 +1072,20 @@ flowchart TD
 - production 前需要在完整 render runtime 中验证
 - 建议创建专用 CI job: `renderIntegrationTest`
 
+### 13.5 Render Provider Capability Matrix
+
+详见：[Render Provider Capability Matrix](../media-rendering/render-provider-capability-matrix.md)
+
+**当前状态**:
+- **FFmpegRenderProvider**: ✅ 唯一 production-ready provider
+- **其他 provider**: ⚠️ POC 或 🔬 Spike 阶段（不作为 P4 RC blocker）
+
+**FFmpeg 支持能力**:
+- ✅ Multi-clip concat、audio track/mix、subtitle burn-in、watermark
+- ✅ Fade、cross dissolve、crop、scale、placement、spatial plan
+- ⚠️ Chroma key、region blur、transitions（POC）
+- ❌ Node effects、3D scene、template render（需要其他 provider）
+
 ---
 
 ## 14. 运维部署架构
