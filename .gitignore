@@ -3,6 +3,9 @@
 **/build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/**/build/
+# Never commit compiled output
+secrets-config-module/bin/
+secrets-config-module/build/
 
 # Local Gradle properties (secrets / machine-specific)
 gradle.properties.local
