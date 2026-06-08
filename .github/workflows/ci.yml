@@ -32,9 +32,6 @@ jobs:
   # ── Backend tests ──────────────────────────────────────────────────────
   backend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: platform
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -93,9 +90,6 @@ jobs:
       contents: write
       packages: write
       pull-requests: write
-    defaults:
-      run:
-        working-directory: platform
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -231,9 +225,6 @@ jobs:
       contents: write
       packages: write
       pull-requests: write
-    defaults:
-      run:
-        working-directory: platform
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -346,9 +337,6 @@ jobs:
       contents: write
       packages: write
       pull-requests: write
-    defaults:
-      run:
-        working-directory: platform
     steps:
       - name: Checkout
         uses: actions/checkout@v4
