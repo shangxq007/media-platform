@@ -49,6 +49,7 @@ Thumbs.db
 *-credentials.json
 *-service-account.json
 secrets/
+!secrets-config-module/src/
 .ssh/
 *.crt
 *.csr
