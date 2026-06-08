@@ -48,8 +48,9 @@ Thumbs.db
 *.pfx
 *-credentials.json
 *-service-account.json
-secrets/
+# secrets-config-module is a Java module, not actual secrets - must come BEFORE secrets/
 !secrets-config-module/src/
+secrets/
 .ssh/
 *.crt
 *.csr

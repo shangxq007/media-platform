@@ -1,7 +1,5 @@
 package com.example.platform.secrets.api;
 
-import java.util.Objects;
-
 /**
  * Reference to a secret value.
  *
@@ -42,6 +40,12 @@ public record SecretRef(String backend, String path, String field) {
             throw new IllegalArgumentException("Secret reference cannot be null or blank");
         }
 
+        // Format: ${env:VAR:default}
+        if (ref.startsWith("${env:") && ref.endsWith("}")) {
+            String content = ref.substring(6, ref.length() - 1);
+            return new SecretRef(BACKEND_ENV, content, null);
+        }
+
         // Format: vault:path#field
         if (ref.startsWith("vault:")) {
             String rest = ref.substring(6);
@@ -50,12 +54,6 @@ public record SecretRef(String backend, String path, String field) {
                 return new SecretRef(BACKEND_VAULT, rest.substring(0, hashIndex), rest.substring(hashIndex + 1));
             }
             return new SecretRef(BACKEND_VAULT, rest, null);
-        }
-
-        // Format: ${env:VAR:default}
-        if (ref.startsWith("${env:") && ref.endsWith("}")) {
-            String content = ref.substring(6, ref.length() - 1);
-            return new SecretRef(BACKEND_ENV, content, null);
         }
 
         // Format: name:key (simple)
