@@ -1,15 +1,9 @@
 import { defineConfig } from 'vitest/config'
-import vue from '@vitejs/plugin-vue'
+import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
-  plugins: [vue({
-    template: {
-      compilerOptions: {
-        isCustomElement: (tag) => tag === 'buttons'
-      }
-    }
-  })],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
@@ -19,19 +13,18 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     root: fileURLToPath(new URL('.', import.meta.url)),
-    setupFiles: ['./src/test-setup.ts'],
-    include: ['src/**/*.spec.ts'],
+    setupFiles: [],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html', 'lcov'],
       reportsDirectory: './coverage',
-      include: ['src/**/*.{ts,vue}'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
-        'src/**/*.spec.ts',
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
         'src/**/*.d.ts',
-        'src/test-setup.ts',
         'src/**/index.ts',
-        'src/**/*.stories.ts',
       ],
       thresholds: {
         statements: 0,
