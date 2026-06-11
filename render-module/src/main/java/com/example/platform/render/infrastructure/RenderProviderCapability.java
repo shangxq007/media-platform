@@ -3,24 +3,6 @@ package com.example.platform.render.infrastructure;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Declared capabilities of a render provider.
- *
- * <p>Used by {@link RenderProviderRouter} and {@link RenderProviderRegistry}
- * for capability-based routing and health checking.</p>
- *
- * @param providerKey           unique identifier for this provider (e.g., "javacv", "ofx")
- * @param supportedFormats      output container formats (e.g., "mp4", "ogg", "webm")
- * @param supportedCodecs       video/audio codecs (e.g., "h264", "h265", "aac")
- * @param supportedEffects      effect keys this provider can handle
- * @param supportedTransitions  transition types supported
- * @param supportedSubtitleModes subtitle burn-in modes
- * @param maxResolution         maximum output resolution (e.g., "3840x2160")
- * @param requiresExternalBinary whether this provider needs an external binary
- * @param requiresGpu          whether GPU acceleration is required
- * @param experimental         whether this provider is experimental
- * @param availableInProfiles   profile names that can use this provider
- */
 public record RenderProviderCapability(
         String providerKey,
         Set<String> supportedFormats,
@@ -32,7 +14,13 @@ public record RenderProviderCapability(
         boolean requiresExternalBinary,
         boolean requiresGpu,
         boolean experimental,
-        Set<String> availableInProfiles
+        Set<String> availableInProfiles,
+        ProviderStatus status,
+        String priority,
+        ProviderType providerType,
+        String purpose,
+        List<String> limitations,
+        boolean autoDispatch
 ) {
     public boolean supportsFormat(String format) {
         return supportedFormats.contains(format);
@@ -52,5 +40,58 @@ public record RenderProviderCapability(
 
     public boolean availableForProfile(String profile) {
         return availableInProfiles.contains(profile);
+    }
+
+    public boolean isAutoDispatch() {
+        return autoDispatch;
+    }
+
+    public boolean isProduction() {
+        return status == ProviderStatus.PRODUCTION;
+    }
+
+    public boolean isPoc() {
+        return status == ProviderStatus.POC;
+    }
+
+    public boolean isDeprecated() {
+        return status == ProviderStatus.DEPRECATED;
+    }
+
+    public boolean isHold() {
+        return status == ProviderStatus.HOLD;
+    }
+
+    public boolean isSpike() {
+        return status == ProviderStatus.SPIKE;
+    }
+
+    public boolean isOptional() {
+        return status == ProviderStatus.OPTIONAL;
+    }
+
+    public boolean participatesInAutoRouting() {
+        return autoDispatch && (status == ProviderStatus.PRODUCTION || status == ProviderStatus.POC);
+    }
+
+    public static RenderProviderCapability legacy(
+            String providerKey,
+            Set<String> supportedFormats,
+            Set<String> supportedCodecs,
+            Set<String> supportedEffects,
+            Set<String> supportedTransitions,
+            Set<String> supportedSubtitleModes,
+            String maxResolution,
+            boolean requiresExternalBinary,
+            boolean requiresGpu,
+            boolean experimental,
+            Set<String> availableInProfiles) {
+        return new RenderProviderCapability(
+                providerKey, supportedFormats, supportedCodecs,
+                supportedEffects, supportedTransitions, supportedSubtitleModes,
+                maxResolution, requiresExternalBinary, requiresGpu, experimental,
+                availableInProfiles,
+                ProviderStatus.POC, "P2", ProviderType.RENDER,
+                "Legacy provider", List.of(), true);
     }
 }

@@ -6,6 +6,11 @@
 - **主架构文档**: [p4-import-export-architecture.md](./p4-import-export-architecture.md)
   - 系统总体架构、主链路、核心流程图、时序图、API总览、核心服务、数据模型、安全设计、异常处理、前端实现、渲染provider总览、CI/CD概览、运维部署概览、维护建议
 
+- **平台架构评估**: [platform-architecture-assessment.md](./platform-architecture-assessment.md)
+  - 模块化单体架构深度评估（2026-06-09）
+  - 依赖图分析、事务边界、可选依赖、错误模型、事件版本、Render Provider SPI、测试策略、可观测性
+  - 风险登记册 + 分阶段优化路线图
+
 ### Render Provider 能力矩阵
 - **文档**: [render-provider-capability-matrix.md](../media-rendering/render-provider-capability-matrix.md)
   - 当前实际provider: FFmpeg

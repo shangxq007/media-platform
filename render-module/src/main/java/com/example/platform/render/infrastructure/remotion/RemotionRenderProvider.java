@@ -6,6 +6,8 @@ import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.infrastructure.ExternalRenderScriptParser;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.shared.Ids;
 import java.nio.file.Files;
@@ -18,7 +20,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 
 /**
- * L3 Remotion worker skeleton ({@code npx remotion render}), optional alongside Shotstack.
+ * Remotion subtitle and template render provider.
+ *
+ * <p>Status: POC / P1. Specialized subtitle and template render provider.
+ * For subtitle fonts, subtitle effects, word-by-word highlighting, TikTok/short video style subtitles,
+ * React template-based video, brand packaging, title cards.
+ * Frontend can preview via Remotion Player, backend outputs via Remotion Renderer.
+ * Does NOT handle video trim, transcode, audio extraction, format repair.
+ * Fonts must use unified font asset management, no system font dependency.
+ * Subtitle line breaks and timeline must be provided by upstream RenderJob, Remotion only renders.
+ * Output passed to FFmpeg for final normalization.</p>
  */
 public class RemotionRenderProvider implements RenderProvider {
 
@@ -118,5 +129,45 @@ public class RemotionRenderProvider implements RenderProvider {
     @Override
     public EnvironmentValidationResult validateEnvironment() {
         return EnvironmentValidationResult.ok();
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.POC;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P1";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.RENDER;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "Subtitle and template render provider: subtitle fonts, effects, word highlighting, React templates, brand packaging";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "Does NOT handle video trim, transcode, audio extraction, format repair",
+                "Fonts must use unified font asset management, no system font dependency",
+                "Subtitle line breaks and timeline must be provided by upstream RenderJob",
+                "Output should be passed to FFmpeg for final normalization"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("caption_effects", "caption_burn_in", "template_render", "subtitle_fonts", "word_highlighting");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return true;
     }
 }

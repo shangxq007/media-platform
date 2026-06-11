@@ -56,94 +56,38 @@ public class RenderProviderAutoConfiguration {
         return args -> {
             javacvProvider.ifPresent(p -> registry.register("javacv", p, p.getCapability()));
             ofxProvider.ifPresent(p -> registry.register("ofx", p, p.getCapability()));
-            mockProvider.ifPresent(p -> {
-                registry.register("mock", p, new RenderProviderCapability(
-                        "mock",
-                        Set.of("mp4"),
-                        Set.of("h264", "aac"),
-                        Set.of("video.fade_in", "video.fade_out", "text.subtitle_burn_in", "audio.volume"),
-                        Set.of("dissolve"),
-                        Set.of("burn_in"),
-                        "1920x1080",
-                        false,
-                        false,
-                        true,
-                        Set.of("test_mock")));
-            });
+            mockProvider.ifPresent(p -> registry.register("mock", p, RenderProviderCapability.legacy(
+                    "mock",
+                    Set.of("mp4"),
+                    Set.of("h264", "aac"),
+                    Set.of("video.fade_in", "video.fade_out", "text.subtitle_burn_in", "audio.volume"),
+                    Set.of("dissolve"),
+                    Set.of("burn_in"),
+                    "1920x1080",
+                    false,
+                    false,
+                    true,
+                    Set.of("test_mock")
+            )));
 
             mltProvider.ifPresent(mlt -> {
-                registry.register("mlt", mlt, new RenderProviderCapability(
-                        "mlt",
-                        Set.of("mp4", "webm"),
-                        Set.of("h264", "aac"),
-                        Set.of("timeline", "multi-track", "transitions", "compositing"),
-                        Set.of("dissolve", "wipe", "slide"),
-                        Set.of("burn_in"),
-                        "1920x1080",
-                        true,
-                        false,
-                        false,
-                        Set.of("social_1080p", "social_720p", "default_1080p", "default_720p")
-                ));
-                log.info("MLT render provider registered");
+                registry.register("mlt", mlt, mlt.getCapability());
+                log.info("MLT render provider registered (POC/P1/Timeline-NLE)");
             });
 
             ffmpegProvider.ifPresent(ffmpeg -> {
-                registry.register("ffmpeg", ffmpeg, new RenderProviderCapability(
-                        "ffmpeg",
-                        Set.of("mp4", "webm", "mkv", "mov"),
-                        Set.of("h264", "h265", "vp9", "av1", "aac", "mp3"),
-                        Set.of("video.fade_in", "video.fade_out", "video.watermark",
-                                "text.subtitle_burn_in", "audio.volume", "video.thumbnail",
-                                "video.probe", "video.dash", "video.hls"),
-                        Set.of("dissolve", "fade_in", "fade_out"),
-                        Set.of("burn_in"),
-                        "3840x2160",
-                        true,
-                        false,
-                        false,
-                        Set.of("social_1080p", "social_720p", "default_1080p", "default_720p",
-                                "broadcast_4k", "proxy_480p")
-                ));
-                log.info("FFmpeg render provider registered");
+                registry.register("ffmpeg", ffmpeg, ffmpeg.getCapability());
+                log.info("FFmpeg render provider registered (PRODUCTION/P0/Core Media)");
             });
 
             gstreamerProvider.ifPresent(gstreamer -> {
-                registry.register("gstreamer", gstreamer, new RenderProviderCapability(
-                        "gstreamer",
-                        Set.of("mp4", "webm"),
-                        Set.of("h264", "aac"),
-                        Set.of("pipeline", "real-time", "streaming", "multi-track",
-                                "compositing", "subtitle-overlay", "filter-graph"),
-                        Set.of("dissolve"),
-                        Set.of("overlay"),
-                        "1920x1080",
-                        true,
-                        false,
-                        false,
-                        Set.of("default_1080p", "default_720p", "social_1080p", "social_720p",
-                                "gstreamer_1080p", "gstreamer_720p")
-                ));
-                log.info("GStreamer render provider registered");
+                registry.register("gstreamer", gstreamer, gstreamer.getCapability());
+                log.info("GStreamer render provider registered (HOLD/P2/Realtime Pipeline)");
             });
 
             gpacRenderProvider.ifPresent(gpac -> {
-                registry.register("gpac", gpac, new RenderProviderCapability(
-                        "gpac",
-                        Set.of("mp4", "mpd", "m3u8"),
-                        Set.of("h264", "aac"),
-                        Set.of("mp4", "dash", "hls", "cmaf", "faststart",
-                                "multi-track", "subtitle-track"),
-                        Set.of(),
-                        Set.of("burn_in"),
-                        "1920x1080",
-                        true,
-                        false,
-                        false,
-                        Set.of("default_1080p", "default_720p", "social_1080p", "social_720p",
-                                "gpac_dash", "gpac_hls", "gpac_cmaf")
-                ));
-                log.info("GPAC render provider registered");
+                registry.register("gpac", gpac, gpac.getCapability());
+                log.info("GPAC packaging provider registered (POC/P1/DASH-HLS Packaging)");
             });
 
             gpacPackagingProvider.ifPresent(gpac ->
@@ -152,93 +96,42 @@ public class RenderProviderAutoConfiguration {
                     log.info("Bento4 packaging provider registered (dash/hls/dash_drm)"));
 
             natronProvider.ifPresent(natron -> {
-                var effectKeys = natronProperties
-                        .map(NatronRenderProviderProperties::getSupportedEffectKeys)
-                        .orElse(List.of("video.natron_vignette"));
-                registry.register("natron", natron, new RenderProviderCapability(
-                        "natron",
-                        Set.of("mp4"),
-                        Set.of("h264", "aac"),
-                        new java.util.LinkedHashSet<>(effectKeys),
-                        Set.of(),
-                        Set.of(),
-                        "1920x1080",
-                        true,
-                        false,
-                        true,
-                        Set.of("natron_poc_1080p", "natron_poc_720p")));
-                log.info("Natron render provider registered (effects: {})", effectKeys);
+                registry.register("natron", natron, natron.getCapability());
+                log.info("Natron render provider registered (HOLD/P3/Node VFX)");
             });
 
-            shotstackProvider.ifPresent(shotstack -> registry.register("shotstack", shotstack,
-                    new RenderProviderCapability(
-                            "shotstack",
-                            Set.of("mp4"),
-                            Set.of("h264", "aac"),
-                            Set.of("video.shotstack_template"),
-                            Set.of(),
-                            Set.of(),
-                            "1920x1080",
-                            true,
-                            false,
-                            true,
-                            Set.of("shotstack_social_1080p", "shotstack_social_720p"))));
-            shotstackProvider.ifPresent(s ->
-                    log.info("Shotstack cloud render provider registered"));
+            shotstackProvider.ifPresent(shotstack -> {
+                registry.register("shotstack", shotstack, shotstack.getCapability());
+                log.info("Shotstack cloud render provider registered (OPTIONAL/P2/External Cloud)");
+            });
 
-            libassProvider.ifPresent(libass -> registry.register("libass", libass, libass.getCapability()));
-            libassProvider.ifPresent(l -> log.info("Libass L6 subtitle provider registered"));
+            libassProvider.ifPresent(libass -> {
+                registry.register("libass", libass, libass.getCapability());
+                log.info("Libass overlay provider registered (POC/P1/ASS-SSA Subtitle)");
+            });
 
-            remotionProvider.ifPresent(remotion -> registry.register("remotion", remotion,
-                    new RenderProviderCapability(
-                            "remotion",
-                            Set.of("mp4"),
-                            Set.of("h264", "aac"),
-                            Set.of("video.remotion_template"),
-                            Set.of(),
-                            Set.of(),
-                            "1920x1080",
-                            true,
-                            false,
-                            true,
-                            Set.of("remotion_1080p", "remotion_social"))));
-            remotionProvider.ifPresent(r -> log.info("Remotion L3 worker registered"));
+            remotionProvider.ifPresent(remotion -> {
+                registry.register("remotion", remotion, remotion.getCapability());
+                log.info("Remotion render provider registered (POC/P1/Subtitle & Template)");
+            });
 
-            blenderProvider.ifPresent(blender -> registry.register("blender", blender,
-                    new RenderProviderCapability(
-                            "blender",
-                            Set.of("mp4"),
-                            Set.of("h264"),
-                            Set.of("video.blender_scene"),
-                            Set.of(),
-                            Set.of(),
-                            "3840x2160",
-                            true,
-                            false,
-                            true,
-                            Set.of("blender_1080p", "blender_4k"))));
-            blenderProvider.ifPresent(b -> log.info("Blender L4 worker registered"));
+            blenderProvider.ifPresent(blender -> {
+                registry.register("blender", blender, blender.getCapability());
+                log.info("Blender render provider registered (POC/P1/3D Render)");
+            });
 
-            vapourSynthProvider.ifPresent(vs -> registry.register("vapoursynth", vs,
-                    new RenderProviderCapability(
-                            "vapoursynth",
-                            Set.of("mp4"),
-                            Set.of("h264"),
-                            Set.of("video.vapoursynth_preprocess", "video.denoise", "video.deinterlace"),
-                            Set.of(),
-                            Set.of(),
-                            "1920x1080",
-                            true,
-                            false,
-                            true,
-                            Set.of("default_1080p", "social_1080p"))));
-            vapourSynthProvider.ifPresent(v -> log.info("VapourSynth external render worker registered"));
+            vapourSynthProvider.ifPresent(vs -> {
+                registry.register("vapoursynth", vs, vs.getCapability());
+                log.info("VapourSynth preprocess provider registered (HOLD/P2/Video Preprocess)");
+            });
 
             shakaPackagingProvider.ifPresent(shaka ->
                     log.info("Shaka Packager registered (L7 dash)"));
 
-            skiaProvider.ifPresent(skia -> registry.register("skia", skia, skia.getCapability()));
-            skiaProvider.ifPresent(s -> log.info("Skia L6 sticker overlay provider registered"));
+            skiaProvider.ifPresent(skia -> {
+                registry.register("skia", skia, skia.getCapability());
+                log.info("Skia sticker overlay provider registered");
+            });
 
             for (RenderProviderCapability cap : registry.getAllCapabilities()) {
                 RenderProvider provider = registry.getProvider(cap.providerKey()).orElse(null);
@@ -250,7 +143,9 @@ public class RenderProviderAutoConfiguration {
                             ? RenderProviderHealthCheck.ok(cap.providerKey(), latency)
                             : RenderProviderHealthCheck.failed(cap.providerKey(), envResult.message());
                     registry.updateHealthCheck(cap.providerKey(), health);
-                    log.info("Provider '{}' health: {} ({}ms)", cap.providerKey(), envResult.valid(), latency);
+                    log.info("Provider '{}' health: {} ({}ms) status={} priority={} type={}",
+                            cap.providerKey(), envResult.valid(), latency,
+                            cap.status(), cap.priority(), cap.providerType());
                 }
             }
 

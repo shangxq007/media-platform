@@ -18,6 +18,15 @@ Modular media platform skeleton for AI video production, rendering orchestration
 - ProblemDetail for HTTP errors
 - JSON structured logging
 - Flyway as database schema source of truth
+- **Frontend**: React 19 SPA, Vite, TypeScript
+  - React-first (no Vue, no Vue/React bridge)
+  - Remotion for video composition/preview
+  - Zustand for editor state, TanStack Query for server state
+  - Zod for schema validation (shared with backend and Remotion)
+  - Tailwind CSS + Radix UI / shadcn/ui
+  - dnd-kit for timeline drag-and-drop
+  - TanStack Virtual for virtual scrolling
+  - Font asset management via FontManifest (no system font dependency)
 
 ## Development Priorities
 1. P0: observability-module, outbox-event-module, audit-compliance-module

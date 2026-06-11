@@ -6,6 +6,8 @@ import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderPreset;
 import java.nio.file.Files;
@@ -20,6 +22,12 @@ import org.springframework.beans.factory.annotation.Value;
 /**
  * Natron worker POC: applies {@link NatronRenderProviderProperties#getPocEffectKey()} via
  * {@code poc-render.sh} (FFmpeg vignette fallback until .ntp templates are wired).
+ *
+ * <p>Status: HOLD / P3. Node-based VFX compositing provider.
+ * Overlaps with Blender, Remotion, and OFX capabilities.
+ * Pause development unless explicit node-based VFX workflow is needed:
+ * chroma key, node-based compositing, Natron project reuse, cinematic VFX pipeline.
+ * Does not participate in auto-routing.</p>
  */
 public class NatronRenderProvider implements RenderProvider {
 
@@ -164,5 +172,46 @@ public class NatronRenderProvider implements RenderProvider {
         return EnvironmentValidationResult.failed(
                 "Natron renderer not executable: " + properties.getRendererBinary()
                         + " (enable render.providers.natron.fallback-to-ffmpeg for POC)");
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.HOLD;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P3";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.RENDER;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "Node-based VFX compositing provider (currently FFmpeg vignette fallback, not real Natron)";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "HOLD status - pause development unless explicit node-based VFX workflow needed",
+                "Overlaps with Blender, Remotion, and OFX capabilities",
+                "Currently FFmpeg vignette fallback, not real Natron integration",
+                "Does not participate in auto-routing",
+                "Only resume for: chroma key, node-based compositing, Natron project reuse, cinematic VFX"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("node_effects", "vfx_composite");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return false;
     }
 }

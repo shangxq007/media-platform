@@ -30,7 +30,7 @@ class RenderProviderRegistrationTest {
 
         registry.register("javacv", javacv, javacv.getCapability());
         registry.register("ofx", ofx, ofx.getCapability());
-        registry.register("mock", mock, new RenderProviderCapability(
+        registry.register("mock", mock, RenderProviderCapability.legacy(
                 "mock",
                 Set.of("mp4"),
                 Set.of("h264", "aac"),

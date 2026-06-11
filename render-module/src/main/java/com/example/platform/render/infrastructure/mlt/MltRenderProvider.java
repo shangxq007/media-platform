@@ -8,6 +8,8 @@ import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderPreset;
 import org.slf4j.Logger;
@@ -24,12 +26,15 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * MLT/melt-based render provider for multi-track timeline rendering.
+ * MLT/melt-based timeline/NLE render provider for multi-track editing.
  *
- * <p>This provider renders timelines using MLT's melt command. It converts
- * the internal timeline representation to MLT project XML and executes melt.</p>
- *
- * <p>Activated when {@code render.providers.mlt.enabled=true}.</p>
+ * <p>Status: POC / P1. Timeline/NLE provider for multi-track timeline rendering.
+ * For multi-track timeline, NLE-style editing, video clip stitching, transitions,
+ * filters, audio track mixing. Shotcut/Kdenlive-style workflow.
+ * Activated when {@code render.providers.mlt.enabled=true}.
+ * Does NOT handle complex React subtitle templates or 3D rendering.
+ * Output should be passed to FFmpeg for final normalization.
+ * If there is a common multi-track editing requirement, prioritize MLT over GStreamer.</p>
  */
 @Component
 @ConditionalOnProperty(prefix = "render.providers.mlt", name = "enabled", havingValue = "true")
@@ -201,5 +206,45 @@ public class MltRenderProvider implements RenderProvider {
             log.warn("MltRenderProvider: melt not available: {}", e.getMessage());
             return EnvironmentValidationResult.failed("melt not available: " + e.getMessage());
         }
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.POC;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P1";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.TIMELINE;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "Timeline/NLE provider for multi-track editing, video stitching, transitions, audio mixing";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "Does NOT handle complex React subtitle templates",
+                "Does NOT handle 3D rendering",
+                "Output should be passed to FFmpeg for final normalization",
+                "If multi-track editing is needed, prioritize MLT over GStreamer"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("timeline_render", "multi_track", "transitions", "audio_mixing", "nle_editing");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return true;
     }
 }

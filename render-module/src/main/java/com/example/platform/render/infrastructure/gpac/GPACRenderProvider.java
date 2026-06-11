@@ -9,7 +9,10 @@ import com.example.platform.shared.web.PlatformException;
 import com.example.platform.render.domain.timeline.TimelineClip;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
+import com.example.platform.render.infrastructure.RenderProviderCapability;
 import com.example.platform.render.infrastructure.RenderPreset;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +26,16 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
+/**
+ * GPAC/MP4Box packaging provider for DASH/HLS/CMAF streaming delivery.
+ *
+ * <p>Status: POC / P1. Specialized packaging provider - NOT a general render provider.
+ * Only handles packaging/streaming delivery capabilities.
+ * Does not enter main render scheduling unless HLS/DASH packaging is required.
+ * If short-term no HLS/DASH demand, can remain POC without entering main rendering pipeline.</p>
+ */
 @Component
 @ConditionalOnProperty(prefix = "render.providers.gpac", name = "enabled", havingValue = "true")
 public class GPACRenderProvider implements RenderProvider {
@@ -276,6 +288,45 @@ public class GPACRenderProvider implements RenderProvider {
     }
 
     @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.POC;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P1";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.PACKAGING;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "DASH/HLS/CMAF packaging provider for streaming delivery";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "Not a general render provider - only for packaging/streaming delivery",
+                "Does not enter main render scheduling unless HLS/DASH packaging is required",
+                "If short-term no HLS/DASH demand, can remain POC without entering main rendering pipeline"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("package_hls", "package_dash", "package_cmaf", "mp4_faststart");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return true;
+    }
+
+    @Override
     public EnvironmentValidationResult validateEnvironment() {
         try {
             ToolExecutionRequest request = ToolExecutionRequest.withTimeout(
@@ -290,5 +341,32 @@ public class GPACRenderProvider implements RenderProvider {
             log.warn("GPACRenderProvider: MP4Box not available: {}", e.getMessage());
             return EnvironmentValidationResult.failed("MP4Box not available: " + e.getMessage());
         }
+    }
+
+    public RenderProviderCapability getCapability() {
+        return new RenderProviderCapability(
+                "gpac",
+                Set.of("mp4", "mpd", "m3u8"),
+                Set.of("h264", "aac"),
+                Set.of("mp4", "dash", "hls", "cmaf", "faststart",
+                        "multi-track", "subtitle-track"),
+                Set.of(),
+                Set.of("burn_in"),
+                "1920x1080",
+                true,
+                false,
+                false,
+                Set.of("default_1080p", "default_720p", "social_1080p", "social_720p",
+                        "gpac_dash", "gpac_hls", "gpac_cmaf"),
+                ProviderStatus.POC,
+                "P1",
+                ProviderType.PACKAGING,
+                "DASH/HLS/CMAF packaging provider for streaming delivery",
+                List.of(
+                        "Not a general render provider - only for packaging/streaming delivery",
+                        "Does not enter main render scheduling unless HLS/DASH packaging is required"
+                ),
+                true
+        );
     }
 }

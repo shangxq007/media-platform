@@ -6,23 +6,41 @@ import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.render.domain.timeline.TimelineClip;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderPreset;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
 /**
- * GStreamer-based render provider for pipeline-based video processing.
+ * GStreamer-based render provider for real-time multimedia pipelines.
+ *
+ * <p>Uses GStreamer for:</p>
+ * <ul>
+ *   <li>Real-time video processing</li>
+ *   <li>Streaming pipelines</li>
+ *   <li>Device capture</li>
+ *   <li>Multi-track compositing</li>
+ * </ul>
+ *
+ * <p>Supports presets: default_1080p, default_720p, social_1080p, social_720p</p>
+ *
+ * <p>Status: HOLD / P2. Only for real-time streaming, low-latency pipeline, device capture.
+ * Does not participate in auto-routing. Should NOT be promoted alongside MLT as main timeline provider.</p>
  */
 @Component
 @ConditionalOnProperty(prefix = "render.providers.gstreamer", name = "enabled", havingValue = "true")
@@ -141,5 +159,45 @@ public class GStreamerRenderProvider implements RenderProvider {
         } catch (Exception e) {
             return EnvironmentValidationResult.failed("gst-launch-1.0 not available: " + e.getMessage());
         }
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.HOLD;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P2";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.RENDER;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "Real-time pipeline provider for live streaming, WebRTC, device capture, and low-latency processing";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "HOLD status - only participate in auto-routing if real-time streaming is required",
+                "NOT promoted alongside MLT as main timeline provider",
+                "Only for real-time streaming, low-latency pipeline, device capture scenarios",
+                "Does not participate in default production scheduling"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("realtime_pipeline", "streaming", "webrtc", "device_capture", "low_latency");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return false;
     }
 }

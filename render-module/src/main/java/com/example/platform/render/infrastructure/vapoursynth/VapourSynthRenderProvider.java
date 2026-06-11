@@ -5,6 +5,8 @@ import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.infrastructure.ExternalRenderScriptParser;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.shared.Ids;
 import java.nio.file.Files;
@@ -17,6 +19,10 @@ import org.springframework.beans.factory.annotation.Value;
 
 /**
  * VapourSynth external render worker: runs {@code vspipe} when available, otherwise FFmpeg preprocess fallback.
+ *
+ * <p>Status: HOLD / P2. Not a general-purpose render provider.
+ * Only for video preprocessing (denoise, deinterlace, frame rate conversion, enhancement).
+ * Does not participate in auto-routing.</p>
  */
 public class VapourSynthRenderProvider implements RenderProvider {
 
@@ -30,11 +36,51 @@ public class VapourSynthRenderProvider implements RenderProvider {
     private String storageRoot;
 
     public VapourSynthRenderProvider(ProcessToolRunner processToolRunner,
-                                     VapourSynthRenderProviderProperties properties,
-                                     TimelineScriptParser timelineScriptParser) {
+                                      VapourSynthRenderProviderProperties properties,
+                                      TimelineScriptParser timelineScriptParser) {
         this.processToolRunner = processToolRunner;
         this.properties = properties;
         this.timelineScriptParser = timelineScriptParser;
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.HOLD;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P2";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.PREPROCESS;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "Video preprocessing provider: denoise, deinterlace, frame rate conversion, video enhancement";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "HOLD status - only participate in auto-routing if explicitly enabled",
+                "Not a general-purpose render provider",
+                "Only for video preprocessing tasks",
+                "Does not participate in default production scheduling"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("preprocess", "denoise", "deinterlace", "frame_rate_conversion", "video_enhancement");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return false;
     }
 
     @Override

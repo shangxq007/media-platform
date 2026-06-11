@@ -50,7 +50,13 @@ import java.util.Set;
  *   ]
  * }
  * </pre>
+ *
+ * @deprecated Since 2026-06-11. The current implementation is a Java2D simulation,
+ *             not a real OFX plugin. The name is misleading for system scheduling and maintenance.
+ *             Use {@code BasicEffectsProvider} as replacement, or implement a real OFX plugin
+ *             host as {@code RealOFXPluginProvider}. Does not participate in auto-routing.
  */
+@Deprecated
 @Component
 public class OFXRenderProvider implements RenderProvider {
     private static final Logger log = LoggerFactory.getLogger(OFXRenderProvider.class);
@@ -95,8 +101,63 @@ public class OFXRenderProvider implements RenderProvider {
                 false,
                 false,
                 Set.of("ofx_1080p", "ofx_720p", "pro_1080p", "team_4k",
-                        "enterprise_4k_ofx", "experimental_all_providers")
+                        "enterprise_4k_ofx", "experimental_all_providers"),
+                ProviderStatus.DEPRECATED,
+                "P3",
+                ProviderType.RENDER,
+                "Java2D-simulated effects (NOT real OFX plugin). Misleading name - use BasicEffectsProvider instead.",
+                List.of(
+                        "Current implementation is Java2D simulation, not real OFX plugin",
+                        "Name is misleading for system scheduling and maintenance",
+                        "Does not participate in auto-routing",
+                        "Use BasicEffectsProvider as replacement or implement RealOFXPluginProvider for real OFX"
+                ),
+                false
         );
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.DEPRECATED;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P3";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.RENDER;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "Java2D-simulated effects (NOT real OFX plugin). Misleading name - use BasicEffectsProvider instead.";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "Current implementation is Java2D simulation, not real OFX plugin",
+                "Name is misleading for system scheduling and maintenance",
+                "Does not participate in auto-routing",
+                "Use BasicEffectsProvider as replacement or implement RealOFXPluginProvider for real OFX"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("video.fade_in", "video.fade_out", "video.cross_dissolve",
+                "video.blur", "video.sharpen", "video.vignette", "video.chromatic",
+                "video.brightness", "video.contrast", "video.grayscale", "video.sepia",
+                "video.watermark", "video.overlay", "video.pip", "video.particle_overlay",
+                "text.subtitle_burn_in", "text.overlay", "audio.volume");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return false;
     }
 
     @Override

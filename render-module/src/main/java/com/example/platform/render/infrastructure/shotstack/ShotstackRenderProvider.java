@@ -4,6 +4,8 @@ import com.example.platform.render.domain.timeline.TimelineClipEffect;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.infrastructure.MediaProbeService;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderPreset;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.shared.Ids;
@@ -19,6 +21,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 
+/**
+ * Shotstack cloud render provider.
+ *
+ * <p>Status: OPTIONAL / P2. External cloud render fallback.
+ * For fast validation of cloud render solutions and overseas cloud service integration.
+ * Not a primary production dependency.
+ * Requires clear cost, rate limiting, callback, retry, material safety, and font consistency risk assessment.
+ * Only advance when explicit business need for external cloud render exists.</p>
+ */
 public class ShotstackRenderProvider implements RenderProvider {
 
     private static final Logger log = LoggerFactory.getLogger(ShotstackRenderProvider.class);
@@ -144,5 +155,45 @@ public class ShotstackRenderProvider implements RenderProvider {
                     "Shotstack enabled but render.providers.shotstack.api-key is empty");
         }
         return EnvironmentValidationResult.ok();
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.OPTIONAL;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P2";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.CLOUD_RENDER;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "External cloud render fallback for fast validation of cloud render solutions";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "OPTIONAL status - not a primary production dependency",
+                "Requires clear cost, rate limiting, callback, retry, material safety, and font consistency risk assessment",
+                "Does not participate in auto-routing",
+                "Only advance when explicit business need for external cloud render exists"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("cloud_render", "external_render");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return false;
     }
 }

@@ -2,6 +2,8 @@ package com.example.platform.render.infrastructure.libass;
 
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderCapability;
 import com.example.platform.shared.Ids;
@@ -21,6 +23,11 @@ import org.springframework.stereotype.Component;
 
 /**
  * L6 libass subtitle burn-in provider (ASS + FFmpeg {@code ass=} filter).
+ *
+ * <p>Status: POC / P1. Specialized ASS/SSA subtitle overlay provider.
+ * For standard ASS/SSA subtitle rendering and burn-in.
+ * Does NOT compete with Remotion for complex subtitle templates.
+ * Output should be passed to FFmpeg for final normalization.</p>
  */
 @Component
 @ConditionalOnProperty(prefix = "render.providers.libass", name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -121,12 +128,62 @@ public class LibassOverlayRenderProvider implements RenderProvider {
                 true,
                 false,
                 false,
-                Set.of("libass_1080p", "default_1080p"));
+                Set.of("libass_1080p", "default_1080p"),
+                ProviderStatus.POC,
+                "P1",
+                ProviderType.OVERLAY,
+                "ASS/SSA subtitle overlay provider for standard subtitle rendering and burn-in",
+                List.of(
+                        "Does NOT handle complex subtitle templates or React-based animations",
+                        "For complex dynamic subtitles, use RemotionRenderProvider instead",
+                        "Output should be passed to FFmpeg for final normalization"
+                ),
+                true
+        );
     }
 
     @Override
     public List<String> getSupportedProfiles() {
         return List.of("libass_1080p", "default_1080p");
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.POC;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P1";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.OVERLAY;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "ASS/SSA subtitle overlay provider for standard subtitle rendering and burn-in";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "Does NOT handle complex subtitle templates or React-based animations",
+                "For complex dynamic subtitles, use RemotionRenderProvider instead",
+                "Output should be passed to FFmpeg for final normalization"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("subtitle_overlay", "ass_subtitle", "ssa_subtitle", "caption_burn_in");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return true;
     }
 
     @Override

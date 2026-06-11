@@ -100,14 +100,11 @@
 **设计原则**:
 - **运行时**: 单一 Spring Boot 进程（`platform-app`），非微服务拆分
 - **边界**: Spring Modulith + Gradle 多模块；跨模块通过 **Port 接口**、**领域事件**、**Outbox** 通信
-- **前端**: Vue 3 SPA，构建产物可嵌入 `platform-app` 静态资源或独立 Vite 开发服
+- **前端**: React 19 SPA，构建产物可嵌入 `platform-app` 静态资源或独立 Vite 开发服
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Media Platform 架构                                │
-└─────────────────────────────────────────────────────────────────────────────┘
 
-Browser (Vue 3 + Pinia)
+Browser (React 19 + Zustand)
          │
          │ REST / GraphQL
          ▼
@@ -819,13 +816,17 @@ project-export-v1/
 
 | 技术 | 版本 | 选型理由 |
 |------|------|----------|
-| **Vue** | 3.5.13 | Composition API、响应式系统、TypeScript 支持 |
-| **TypeScript** | 5.7.2 | 类型安全、IDE 支持、编译时检查 |
-| **Vite** | 6.0.7 | 快速 HMR、ESBuild 构建、Vue 插件 |
-| **Pinia** | 2.3.0 | 状态管理、TypeScript 友好、DevTools |
-| **Vue Router** | 4.5.0 | 路由管理、导航守卫、懒加载 |
-| **Vitest** | 3.0.0 | Vue 测试框架、Jest 兼容、快速执行 |
-| **vue-tsc** | 2.2.0 | 模板类型检查、IDE 集成 |
+| **React** | 19.x | Hooks、并发特性、TypeScript 支持 |
+| **Vite** | 6.0.7 | 快速 HMR、ESBuild 构建、React 插件 |
+| **TanStack Router** | latest | 类型安全路由、导航守卫、懒加载 |
+| **Vitest** | 3.0.0 | React 测试框架、Jest 兼容、快速执行 |
+| **Zustand** | latest | 轻量级状态管理、TypeScript 友好 |
+| **TanStack Query** | latest | 服务器状态管理、缓存、乐观更新 |
+| **Zod** | latest | Schema 验证、TypeScript 类型推断 |
+| **Remotion** | latest | 视频合成、React 视频渲染 |
+| **dnd-kit** | latest | 拖拽交互、无障碍支持 |
+| **Tailwind CSS** | 3.x | 原子化 CSS、设计系统 |
+| **Radix UI** | latest | 无障碍组件原语 |
 | **Tailwind CSS** | 3.4.17 | 原子化 CSS、响应式设计、暗色模式 |
 | **jsdom** | 29.1.1 | 浏览器环境模拟，用于 Vitest 测试 |
 

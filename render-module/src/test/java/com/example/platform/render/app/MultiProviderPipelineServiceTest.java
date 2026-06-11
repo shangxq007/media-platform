@@ -60,20 +60,20 @@ class MultiProviderPipelineServiceTest {
     void setUp() {
         registry = new RenderProviderRegistry();
 
-        RenderProviderCapability javacvCap = new RenderProviderCapability("javacv",
+        RenderProviderCapability javacvCap = RenderProviderCapability.legacy("javacv",
                 Set.of("mp4"), Set.of("h264", "aac"),
                 Set.of("video.fade_in", "video.blur"), Set.of("dissolve"), Set.of("burn_in"),
                 "1920x1080", false, false, false, Set.of("default_1080p", "default_720p"));
         RenderProvider javacv = new TestProvider("javacv", javacvCap);
 
-        RenderProviderCapability ofxCap = new RenderProviderCapability("ofx",
+        RenderProviderCapability ofxCap = RenderProviderCapability.legacy("ofx",
                 Set.of("mp4", "webm"), Set.of("h264", "vp9"),
                 Set.of("video.vignette", "video.chromatic", "video.blur"),
                 Set.of("dissolve", "wipe", "slide"), Set.of("burn_in", "overlay"),
                 "3840x2160", false, false, false, Set.of("ofx_1080p", "ofx_720p"));
         RenderProvider ofx = new TestProvider("ofx", ofxCap);
 
-        RenderProviderCapability gpuCap = new RenderProviderCapability("gpu-h264",
+        RenderProviderCapability gpuCap = RenderProviderCapability.legacy("gpu-h264",
                 Set.of("mp4"), Set.of("h264", "aac"),
                 Set.of("video.fade_in"), Set.of("dissolve"), Set.of("burn_in"),
                 "1920x1080", false, true, false, Set.of("gpu_h264"));

@@ -40,7 +40,13 @@ import java.util.Set;
  * </ul>
  *
  * <p>Supports presets: DEFAULT, H265, VP9, PREVIEW_720P, HQ_1080P</p>
+ *
+ * @deprecated Since 2026-06-11. JavaCV is more suitable as a JVM-internal media utility layer
+ *             rather than a top-level render provider. Its capabilities overlap with FFmpegProvider.
+ *             Will be retained as a utility adapter only if JVM-internal OpenCV/JavaCV frame
+ *             processing is explicitly needed. Otherwise, will be removed from the provider registry.
  */
+@Deprecated
 @Component
 public class JavaCVRenderProvider implements RenderProvider {
     private static final Logger log = LoggerFactory.getLogger(JavaCVRenderProvider.class);
@@ -86,8 +92,59 @@ public class JavaCVRenderProvider implements RenderProvider {
                 Set.of("default_1080p", "default_720p", "social_1080p", "social_720p",
                         "mobile_480p", "4k_2160p", "free_720p_watermarked",
                         "pro_1080p", "team_4k",
-                        "preview_720p", "hq_1080p", "h265", "vp9")
+                        "preview_720p", "hq_1080p", "h265", "vp9"),
+                ProviderStatus.DEPRECATED,
+                "P3",
+                ProviderType.UTILITY,
+                "JVM-internal media utility layer for OpenCV/JavaCV frame processing",
+                List.of(
+                        "Not recommended as a top-level RenderProvider",
+                        "Capabilities overlap with FFmpegProvider",
+                        "Only retain if JVM-internal OpenCV/JavaCV frame processing is explicitly needed",
+                        "Does not participate in auto-routing"
+                ),
+                false
         );
+    }
+
+    @Override
+    public ProviderStatus getStatus() {
+        return ProviderStatus.DEPRECATED;
+    }
+
+    @Override
+    public String getPriority() {
+        return "P3";
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.UTILITY;
+    }
+
+    @Override
+    public String getPurpose() {
+        return "JVM-internal media utility layer for OpenCV/JavaCV frame processing";
+    }
+
+    @Override
+    public List<String> getLimitations() {
+        return List.of(
+                "Not recommended as a top-level RenderProvider",
+                "Capabilities overlap with FFmpegProvider",
+                "Only retain if JVM-internal OpenCV/JavaCV frame processing is explicitly needed",
+                "Does not participate in auto-routing"
+        );
+    }
+
+    @Override
+    public List<String> getCapabilities() {
+        return List.of("trim", "transcode", "extract_audio", "thumbnail", "caption_burn_in");
+    }
+
+    @Override
+    public boolean isAutoDispatch() {
+        return false;
     }
 
     @Override

@@ -1,83 +1,117 @@
 # Frontend Architecture
 
 > **Module:** `frontend/`
-> **Last Updated:** 2026-05-18
+> **Last Updated:** 2026-06-11
+> **Status:** React-first migration
 
 ## Technology Stack
 
 | Component | Role |
 |-----------|------|
-| Vue 3 | UI framework |
+| React 19 | UI framework |
+| TypeScript | Type safety |
 | Vite | Build tool |
 | Vitest | Test framework |
-| Vue Router | Client-side routing |
-| Pinia | State management |
-| Apollo Client | GraphQL client |
+| TanStack Router | Client-side routing |
+| Zustand | State management |
+| TanStack Query | Server state management |
+| Zod | Schema validation |
+| Tailwind CSS | Styling |
+| Radix UI / shadcn/ui | Component primitives |
+| dnd-kit | Drag and drop |
+| react-hook-form + zod | Form handling |
+| TanStack Virtual | Virtual scrolling |
+| Remotion | Video composition & preview |
 
-## Frontend Structure
+## Why React-first
+
+### 1. Remotion is React-native
+
+RemotionRenderProvider, Remotion Player, Remotion Composition, subtitle templates, font effects, and consistent front/back-end preview are all built on React. Using React as the frontend framework means:
+
+- Remotion Player runs directly in the browser as a React component
+- Remotion Composition is authored in React
+- Subtitle templates are React components
+- Font effects are React components
+- Preview and render share the same React component tree
+
+### 2. No Vue/React bridge needed
+
+The previous Vue 3 frontend was a separate application. This is a new project. There is no existing Vue code to maintain compatibility with. Introducing a Vue/React bridge would add unnecessary complexity, increase bundle size, and create a maintenance burden.
+
+### 3. Ecosystem alignment
+
+The render pipeline (Remotion, subtitle templates, font management) is React-based. Using React throughout the stack ensures:
+
+- Shared types between frontend and Remotion compositions
+- Shared validation schemas (Zod) across frontend, backend, and Remotion
+- Consistent component model for preview and render
+- Single mental model for developers
+
+### 4. No Vue App Shell
+
+The previous Vue App Shell (App.vue, router, stores) is not carried forward. The new frontend is a clean React project with no Vue dependencies.
+
+## Architecture Principles
+
+1. **React-first**: All UI is React. No Vue, no Vue/React bridge.
+2. **Remotion-native**: Video preview and composition use Remotion directly.
+3. **Schema-first**: RenderJob Schema is the contract between frontend, backend, and Remotion.
+4. **State isolation**: Editor State does not leak into Remotion Composition. Editor State is converted to standard RenderJob/PreviewProps before passing to Remotion.
+5. **Provider-agnostic UI**: Providers (FFmpeg, MLT, GPAC, Libass, Blender, BMF) are not directly exposed in the UI. They appear only as capabilities or export options determined by the backend RenderOrchestrator.
+6. **Font asset management**: Fonts are managed through FontManifest/FontAsset. No system font dependency.
+7. **Consistent rendering**: Front-end preview and back-end render use the same Composition + same inputProps + same font assets.
+
+## Directory Structure
 
 ```
-frontend/src/
-├── App.vue                    # Root component
-├── main.ts                    # Entry point
-├── router/                    # Vue Router configuration
-├── pages/                     # Page components
-│   ├── EditorPage.vue         # Main video editor
-│   ├── admin/                 # Admin console pages (30+)
-│   │   ├── AdminConsole.vue
-│   │   ├── AdminDashboard.vue
-│   │   ├── FeatureFlagManagementPage.vue
-│   │   ├── FeatureFlagEditor.vue
-│   │   ├── FeatureFlagRuleEditor.vue
-│   │   ├── FeatureFlagEvaluationPreview.vue
-│   │   ├── PolicyManagementPage.vue
-│   │   ├── PolicySimulationPanel.vue
-│   │   ├── RouteManagementPage.vue
-│   │   ├── EntitlementManagementPage.vue
-│   │   ├── ExtensionManagement.vue
-│   │   ├── MonitoringFeedbackPage.vue
-│   │   └── ... (20+ more)
-│   ├── user/                  # User portal pages (10+)
-│   │   ├── UserDashboardPage.vue
-│   │   ├── MyCapabilitiesPage.vue
-│   │   ├── MyUsagePage.vue
-│   │   ├── MyBillingPage.vue
-│   │   ├── MyCreditsPage.vue
-│   │   ├── MyFeedbackPage.vue
-│   │   ├── BetaFeaturesPanel.vue
-│   │   └── ... (5 more)
-│   ├── analytics/             # Analytics pages
-│   │   ├── AnalyticsAssistantPage.vue
-│   │   └── MyReportsPage.vue
-│   ├── entitlement/           # Entitlement pages
-│   │   ├── BillingHistoryPage.vue
-│   │   ├── CurrentPlanPanel.vue
-│   │   └── ... (5 more)
-│   └── workspace/             # Workspace pages
-│       ├── WorkspaceMembersPage.vue
-│       └── ... (5 more)
-├── components/                # Reusable components
-│   ├── timeline/              # Timeline components
-│   ├── export/                # Export panel
-│   ├── effects/               # Effects panel
-│   ├── subtitle/              # Subtitle components
-│   ├── feedback/              # Feedback & monitoring
-│   └── ... (20+ more)
-├── composables/               # Vue composables
-│   ├── usePlayback.ts
-│   ├── useSaveProject.ts
-│   ├── useExportValidation.ts
-│   ├── useRenderJob.ts
-│   ├── useArtifact.ts
-│   └── useI18nError.ts
-├── stores/                    # Pinia stores
-├── api/                       # API client layer
-├── graphql/                   # GraphQL queries
-├── utils/                     # Utilities
-│   ├── sentry.ts              # Sentry integration
-│   ├── openreplay.ts          # OpenReplay integration
-│   └── subtitleParser.ts      # Subtitle parsing
-└── types/                     # TypeScript types
+frontend/
+  src/
+    app/
+      routes/              # TanStack Router routes
+      providers/           # Context providers (QueryClient, Theme, etc.)
+      layout/              # App layout components
+
+    editor/
+      components/          # Shared editor UI components
+      timeline/            # Timeline component (dnd-kit based)
+      canvas/              # Canvas / preview area
+      captions/            # Caption editor
+      templates/           # Template selector
+      inspector/           # Properties inspector panel
+      playback/            # Playback controls
+      state/               # Zustand stores
+      commands/            # Editor command pattern
+      shortcuts/           # Keyboard shortcuts
+
+    remotion/
+      compositions/        # Remotion Composition definitions
+      captions/            # Caption template components
+      effects/             # Visual effects components
+      fonts/               # Font loader components
+      templates/           # Reusable template components
+      player/              # Remotion Player wrapper
+
+    render-job/
+      schema/              # Zod schemas for RenderJob
+      builders/            # RenderJob builder functions
+      serializers/         # Serialization utilities
+      validators/          # Validation helpers
+
+    assets/
+      upload/              # Asset upload flow
+      library/             # Asset library browser
+      metadata/            # Asset metadata editor
+
+    api/
+      render/              # Render API client
+      materials/           # Materials API client
+      projects/            # Projects API client
+
+    shared/
+      types/               # Shared TypeScript types
+      utils/               # Utility functions
+      constants/           # Constants
 ```
 
 ## Application Flow
@@ -85,50 +119,56 @@ frontend/src/
 ```mermaid
 graph TB
     subgraph Browser["Browser"]
-        ROUTER["Vue Router"]
+        ROUTER["TanStack Router"]
         PAGES["Page Components"]
-        COMP["UI Components"]
-        STORES["Pinia Stores"]
-        COMPOS["Composables"]
+        EDITOR["Editor Module"]
+        REMOTION["Remotion Module"]
+        STORES["Zustand Stores"]
     end
 
-    subgraph API["API Layer"]
+    subgraph API["API Layer (TanStack Query)"]
         REST["REST Client"]
-        GQL["Apollo/GraphQL"]
     end
 
     subgraph Backend["Backend"]
-        REST_API["REST Controllers"]
-        GQL_API["GraphQL Controller"]
+        ORCHESTRATOR["RenderOrchestrator"]
+        PLANNER["RenderPlanner"]
+        PROVIDERS["Providers"]
     end
 
     ROUTER --> PAGES
-    PAGES --> COMP
-    PAGES --> COMPOS
-    COMPOS --> STORES
+    PAGES --> EDITOR
+    EDITOR --> REMOTION
+    EDITOR --> STORES
     STORES --> REST
-    STORES --> GQL
-    REST --> REST_API
-    GQL --> GQL_API
+    REST --> ORCHESTRATOR
+    ORCHESTRATOR --> PLANNER
+    PLANNER --> PROVIDERS
 ```
 
 ## Key Pages & Routes
+
+### Editor
+
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/editor/$projectId` | `EditorPage` | Main video editor with timeline, canvas, inspector |
+| `/editor/$projectId/export` | `ExportPage` | Export settings and render job submission |
+
+### Project Management
+
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/projects` | `ProjectListPage` | Project list |
+| `/projects/$projectId` | `ProjectDetailPage` | Project details |
+| `/projects/$projectId/assets` | `AssetLibraryPage` | Asset library |
 
 ### User Portal
 
 | Route | Component | Purpose |
 |-------|-----------|---------|
 | `/` | `UserDashboardPage` | Dashboard with overview |
-| `/me/projects` | `MyProjectsPage` | Project list |
-| `/me/capabilities` | `MyCapabilitiesPage` | Feature capabilities |
-| `/me/usage` | `MyUsagePage` | Usage statistics |
-| `/me/billing` | `MyBillingPage` | Billing overview |
-| `/me/credits` | `MyCreditsPage` | Credit wallet |
-| `/me/feedback` | `MyFeedbackPage` | Submit feedback |
-| `/me/settings` | `MySettingsPage` | User settings |
-| `/me/beta` | `BetaFeaturesPanel` | Beta feature access |
-| `/me/analytics` | `AnalyticsAssistantPage` | NLQ analytics |
-| `/me/reports` | `MyReportsPage` | Saved reports |
+| `/me/settings` | `UserSettingsPage` | User settings |
 
 ### Admin Console
 
@@ -137,31 +177,59 @@ graph TB
 | `/admin` | `AdminDashboard` | Admin overview |
 | `/admin/feature-flags` | `FeatureFlagManagementPage` | Manage feature flags |
 | `/admin/policies` | `PolicyManagementPage` | Policy management |
-| `/admin/entitlements` | `EntitlementManagementPage` | Entitlement management |
-| `/admin/extensions` | `ExtensionManagement` | Extension management |
-| `/admin/routes` | `RouteManagementPage` | Navigation route config |
-| `/admin/monitoring` | `MonitoringFeedbackPage` | Monitoring status |
-| `/admin/analytics/datasets` | `DatasetCatalogPage` | NLQ dataset catalog |
-
-### Editor
-
-| Route | Component | Purpose |
-|-------|-----------|---------|
-| `/editor` | `EditorPage` | Main video editor |
 
 ## State Management
 
-Pinia stores manage:
-- **Project state** — Current project, timeline, clips
-- **User state** — Authentication, preferences
-- **UI state** — Panel visibility, selected clips
-- **Render state** — Job status, artifacts
+### Editor State (Zustand)
+
+- **Timeline state** — Tracks, clips, effects, transitions
+- **Caption state** — Caption text, timing, style, template
+- **Template state** — Selected template, parameters
+- **Selection state** — Selected element, multi-select
+- **Playback state** — Play/pause/seek, current time
+- **UI state** — Panel visibility, zoom, scroll position
+
+### Server State (TanStack Query)
+
+- **Render jobs** — Job status, progress, results
+- **Projects** — Project CRUD
+- **Materials** — Asset upload, browse, manage
+- **Font manifest** — Font asset management
+
+## Data Flow
+
+```
+User Action
+    │
+    ▼
+Editor State (Zustand)
+    │
+    ▼
+Editor State → RenderJob (Builder)
+    │
+    ├──────────────────────────┐
+    ▼                          ▼
+Remotion Player         Backend API
+(Preview)               (Render)
+    │                          │
+    ▼                          ▼
+PreviewProps            RenderResult
+(from RenderJob)        (from API)
+```
 
 ## Monitoring Integration
 
 | Service | Integration | Status |
 |---------|-------------|--------|
-| Sentry | `frontend/src/utils/sentry.ts` | ✅ Implemented |
-| OpenReplay | `frontend/src/utils/openreplay.ts` | ✅ Implemented |
+| Sentry | `@sentry/react` | ✅ Planned |
+| OpenReplay | `@openreplay/tracker` | ✅ Planned |
 
-Both are configured via environment variables and disabled by default.
+## Related Documents
+
+- [React Architecture](../frontend/react-architecture.md)
+- [Editor State Management](../frontend/editor-state.md)
+- [Remotion Integration](../frontend/remotion-integration.md)
+- [RenderJob Contract](../frontend/renderjob-contract.md)
+- [Timeline Model](../frontend/timeline-model.md)
+- [Caption Template System](../frontend/caption-template-system.md)
+- [Font Asset Management](../frontend/font-asset-management.md)

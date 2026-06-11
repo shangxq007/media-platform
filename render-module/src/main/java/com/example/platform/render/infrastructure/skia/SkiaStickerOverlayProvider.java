@@ -96,7 +96,7 @@ public class SkiaStickerOverlayProvider implements RenderProvider {
     }
 
     public RenderProviderCapability getCapability() {
-        return new RenderProviderCapability(
+        return RenderProviderCapability.legacy(
                 "skia",
                 Set.of("mp4"),
                 Set.of("h264", "aac"),
