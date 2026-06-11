@@ -14,9 +14,9 @@ Remotion is a React-based video composition framework. Every Remotion Compositio
 - **Shared component model**: Caption templates, font effects, and visual effects are React components used in both preview and render
 - **Shared types**: TypeScript types are shared between frontend, Remotion compositions, and backend
 
-### 2. No Vue Compatibility
+### 2. No Vue
 
-This is a new project. There is no existing Vue code to maintain. The previous Vue 3 frontend (App.vue, router, stores, 30+ admin pages) is not carried forward. No Vue/React bridge is needed.
+This is a React-first project. No Vue code exists. No Vue/React bridge is needed.
 
 ### 3. Ecosystem
 

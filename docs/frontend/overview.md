@@ -2,7 +2,7 @@
 
 > **Module:** `frontend/`
 > **Last Updated:** 2026-06-11
-> **Status:** React-first migration
+> **Status:** React-first
 
 ## Technology Stack
 
@@ -23,7 +23,7 @@
 | TanStack Virtual | Virtual scrolling |
 | Remotion | Video composition & preview |
 
-## Why React-first
+## Why React
 
 ### 1. Remotion is React-native
 
@@ -37,20 +37,22 @@ RemotionRenderProvider, Remotion Player, Remotion Composition, subtitle template
 
 ### 2. No Vue/React bridge needed
 
-The previous Vue 3 frontend was a separate application. This is a new project. There is no existing Vue code to maintain compatibility with. Introducing a Vue/React bridge would add unnecessary complexity, increase bundle size, and create a maintenance burden.
-
-### 3. Ecosystem alignment
-
-The render pipeline (Remotion, subtitle templates, font management) is React-based. Using React throughout the stack ensures:
+This is a new project. There is no existing Vue code to maintain compatibility with. Using React throughout the stack ensures:
 
 - Shared types between frontend and Remotion compositions
 - Shared validation schemas (Zod) across frontend, backend, and Remotion
 - Consistent component model for preview and render
 - Single mental model for developers
 
-### 4. No Vue App Shell
+### 3. Ecosystem
 
-The previous Vue App Shell (App.vue, router, stores) is not carried forward. The new frontend is a clean React project with no Vue dependencies.
+The React ecosystem provides excellent tools for video editing UIs:
+- **dnd-kit**: Drag and drop for timeline
+- **TanStack Virtual**: Virtual scrolling for long timelines
+- **Zustand**: Simple, scalable state management
+- **TanStack Query**: Server state management with caching
+- **Zod**: Schema validation shared with backend
+- **Radix UI / shadcn/ui**: Accessible component primitives
 
 ## Architecture Principles
 
@@ -67,88 +69,113 @@ The previous Vue App Shell (App.vue, router, stores) is not carried forward. The
 ```
 frontend/
   src/
+    main.tsx                    # React entry point
     app/
-      routes/              # TanStack Router routes
-      providers/           # Context providers (QueryClient, Theme, etc.)
-      layout/              # App layout components
+      RootLayout.tsx            # Root layout
+      routeTree.tsx             # Route definitions
+      providers/                # Context providers (QueryClient, Theme)
+      layout/                   # App layout components
 
     editor/
-      components/          # Shared editor UI components
-      timeline/            # Timeline component (dnd-kit based)
-      canvas/              # Canvas / preview area
-      captions/            # Caption editor
-      templates/           # Template selector
-      inspector/           # Properties inspector panel
-      playback/            # Playback controls
-      state/               # Zustand stores
-      commands/            # Editor command pattern
-      shortcuts/           # Keyboard shortcuts
+      EditorPage.tsx            # Main editor page
+      components/               # Shared editor UI components
+      timeline/                 # Timeline component (dnd-kit based)
+      captions/                 # Caption editor
+      templates/                # Template selector
+      inspector/                # Properties inspector panel
+      playback/                 # Playback controls
+      state/                    # Zustand stores
 
     remotion/
-      compositions/        # Remotion Composition definitions
-      captions/            # Caption template components
-      effects/             # Visual effects components
-      fonts/               # Font loader components
-      templates/           # Reusable template components
-      player/              # Remotion Player wrapper
+      player/                   # Remotion Player wrapper
+      compositions/             # Remotion Composition definitions
+      captions/                 # Caption template components
+      fonts/                    # Font loader components
+      templates/                # Reusable template components
 
     render-job/
-      schema/              # Zod schemas for RenderJob
-      builders/            # RenderJob builder functions
-      serializers/         # Serialization utilities
-      validators/          # Validation helpers
-
-    assets/
-      upload/              # Asset upload flow
-      library/             # Asset library browser
-      metadata/            # Asset metadata editor
+      schema/                   # Zod schemas for RenderJob
+      builders/                 # RenderJob builder functions
+      validators/               # Validation helpers
 
     api/
-      render/              # Render API client
-      materials/           # Materials API client
-      projects/            # Projects API client
+      render/                   # Render API client
 
     shared/
-      types/               # Shared TypeScript types
-      utils/               # Utility functions
-      constants/           # Constants
+      types/                    # Shared TypeScript types
+      utils/                    # Utility functions
+
+    styles/
+      index.css                 # Tailwind CSS + custom styles
+```
+
+## Application Flow
+
+```
+User Action
+    │
+    ▼
+Editor State (Zustand)
+    │
+    ▼
+Editor State → RenderJob (Builder)
+    │
+    ├──────────────────────────┐
+    ▼                          ▼
+Remotion Player         Backend API
+(Preview)               (Render)
+    │                          │
+    ▼                          ▼
+PreviewProps            RenderResult
+(from RenderJob)        (from API)
+```
+
+## State Management
+
+### Editor State (Zustand)
+
+- **Timeline state** — Tracks, clips, effects, transitions
+- **Caption state** — Caption text, timing, style, template
+- **Template state** — Selected template, parameters
+- **Selection state** — Selected element, multi-select
+- **Playback state** — Play/pause/seek, current time
+- **UI state** — Panel visibility, zoom, scroll position
+
+### Server State (TanStack Query)
+
+- **Render jobs** — Job status, progress, results
+- **Projects** — Project CRUD
+- **Materials** — Asset upload, browse, manage
+- **Font manifest** — Font asset management
+
+## Data Flow
+
+```
+User Action
+    │
+    ▼
+Editor State (Zustand)
+    │
+    ▼
+Editor State → RenderJob (Builder)
+    │
+    ├──────────────────────────┐
+    ▼                          ▼
+Remotion Player         Backend API
+(Preview)               (Render)
+    │                          │
+    ▼                          ▼
+PreviewProps            RenderResult
+(from RenderJob)        (from API)
 ```
 
 ## Key Design Decisions
 
-### Editor State vs RenderJob
-
-Editor State (Zustand store) contains:
-- Timeline tracks, clips, effects
-- Caption text, timing, style
-- Selected template, font, effects
-- UI state (selection, zoom, scroll position)
-
-RenderJob (standard schema) contains:
-- Normalized timeline data
-- Caption data with timing
-- Font asset references
-- Template version, effect version
-- Output specification
-
-**Editor State is converted to RenderJob before passing to Remotion or submitting to the backend.**
-
-### PreviewProps vs RenderJob
-
-PreviewProps is the input to Remotion Composition:
-- Derived from RenderJob
-- Includes resolved font assets
-- Includes resolved template data
-- Includes caption timing data
-
-**PreviewProps is a subset of RenderJob, optimized for Remotion rendering.**
-
-### Provider-agnostic UI
-
-The frontend does not know or care which provider handles a render job. The backend RenderOrchestrator determines the provider. The frontend only:
-- Submits a standardized RenderJob
-- Receives a RenderPlan with selected providers
-- Displays the result
+1. **No Vue**: This is a React-first project. No Vue code exists.
+2. **No provider selection in UI**: Backend RenderPlanner decides providers.
+3. **Font consistency**: Same FontManifest/subsetUrl for preview and render.
+4. **Async rendering**: Long-running jobs use async polling/webhook.
+5. **Artifact tracing**: All results tracked via RenderArtifact/RenderExecutionTrace.
 
 ## Related Documents
 
