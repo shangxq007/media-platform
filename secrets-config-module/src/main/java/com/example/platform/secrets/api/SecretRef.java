@@ -35,6 +35,14 @@ public record SecretRef(String backend, String path, String field) {
      * @return the parsed SecretRef
      * @throws IllegalArgumentException if the format is invalid
      */
+    public static SecretRef vault(String path) {
+        return new SecretRef(BACKEND_VAULT, path, null);
+    }
+
+    public static SecretRef vaultField(String path, String field) {
+        return new SecretRef(BACKEND_VAULT, path, field);
+    }
+
     public static SecretRef parse(String ref) {
         if (ref == null || ref.isBlank()) {
             throw new IllegalArgumentException("Secret reference cannot be null or blank");
