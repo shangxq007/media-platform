@@ -3,6 +3,7 @@ import RootLayout from './RootLayout.js'
 import { EditorPage } from '../editor/EditorPage.js'
 import { RenderJobsPage } from '../render-job/RenderJobsPage.js'
 import { CapabilitiesPage } from '../shared/CapabilitiesPage.js'
+import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -26,8 +27,15 @@ const capabilitiesRoute = createRoute({
   component: CapabilitiesPage,
 })
 
+const smokeEditorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/smoke-editor',
+  component: SmokeEditorPage,
+})
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   renderJobsRoute,
   capabilitiesRoute,
+  smokeEditorRoute,
 ])

@@ -260,14 +260,15 @@ Reference: [platform-fact-gathering-report.md](./platform-fact-gathering-report.
 
 Only after Phases 1-4 are substantially complete.
 
-| Task | Prerequisite |
-|------|-------------|
-| Define stable API contracts | Backend Phases 1-3 complete |
-| Add React Query hooks for timeline/render/subtitle | Stable API contracts |
-| TimelineEditor v1 | Timeline API stable, characterization tests pass |
-| SubtitleEditor v1 | Subtitle burn-in pipeline stable |
-| EffectPanel v1 | Effect taxonomy + provider SPI stable |
-| FontPicker v1 | Font pipeline implemented (not noop) |
+| Task | Status | Notes |
+|------|--------|-------|
+| React smoke editor | ✅ Done | `/smoke-editor` route, full render flow via API |
+| Define stable API contracts | ✅ Done | `SmokeEditorAPI` wraps existing `RenderAPI` |
+| Add React Query hooks for timeline/render/subtitle | Pending | After smoke editor validates flow |
+| TimelineEditor v1 | Pending | Timeline API stable, characterization tests pass |
+| SubtitleEditor v1 | Pending | Subtitle burn-in pipeline stable |
+| EffectPanel v1 | Pending | Effect taxonomy + provider SPI stable |
+| FontPicker v1 | Pending | Font pipeline implemented (not noop) |
 
 ---
 
