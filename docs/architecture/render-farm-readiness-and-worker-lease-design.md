@@ -554,20 +554,17 @@ public interface RenderArtifactCompletionPort {
 
 ## 15. Implementation Roadmap
 
-### Phase 1: Foundation (DB Lease + Worker Registry)
+### Phase 1: Foundation (DB Lease + Worker Registry) ✅ COMPLETED
 
-| Deliverable | Effort | Dependencies |
-|-------------|--------|-------------|
-| `RenderWorker` domain model + repository | Small | None |
-| `RenderJobLease` domain model + repository | Small | None |
-| `WorkerRegistryPort` implementation (DB-backed) | Medium | RenderWorker repo |
-| `RenderJobLeasePort` implementation (DB lease queue) | Medium | RenderJobLease repo |
-| Worker auto-registration on startup | Small | WorkerRegistryPort |
-| Platform-side heartbeat receiver (DB update) | Small | WorkerRegistryPort |
-| Lease claim/release prototype | Medium | RenderJobLeasePort |
-| Stale lease expiration (integrate with existing compensator) | Small | RenderJobLeasePort |
-| Flyway migration for 3 new tables | Small | Schema approved |
-| Unit + integration tests | Medium | All above |
+| Deliverable | Status | Notes |
+|-------------|--------|-------|
+| `render_worker` + `render_job_lease` tables (Flyway V7) | ✅ Done | |
+| `RenderWorkerRepository` | ✅ Done | register, heartbeat, status transitions, stale detection |
+| `RenderJobLeaseRepository` | ✅ Done | create, find, renew, release, fail, expire |
+| `RenderWorkerRegistryService` | ✅ Done | register, heartbeat, drain, offline, prune |
+| `RenderJobLeaseService` | ✅ Done | claim, renew, release, fail, expire |
+| `StaleRenderJobLeaseCompensationService` | ✅ Done | @Scheduled stale lease expiration |
+| Tests (40+) | ✅ Done | Repository + service tests for all operations |
 
 ### Phase 2: Capability Scheduling + Artifact Contract
 

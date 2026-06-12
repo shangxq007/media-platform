@@ -301,6 +301,20 @@ public class RenderJobRepository {
         return record != null && "CANCELLED".equals(record.get(field("status"), String.class));
     }
 
+    /**
+     * Find the ID of the next QUEUED job (FIFO by creation time).
+     * Returns empty if no queued jobs exist.
+     */
+    public Optional<String> findNextQueuedJobId() {
+        Record record = dsl.select(field("id", String.class))
+                .from(table("render_job"))
+                .where(field("status").eq("QUEUED"))
+                .orderBy(field("created_at").asc())
+                .limit(1)
+                .fetchOne();
+        return Optional.ofNullable(record).map(r -> r.get(field("id"), String.class));
+    }
+
     private RenderJobResponse mapToResponse(Record record) {
         return new RenderJobResponse(
                 record.get(field("id", String.class)),

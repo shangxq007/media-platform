@@ -364,8 +364,19 @@ The Backend-first stabilization phase is considered **complete** when:
 
 **Design document:** [render-farm-readiness-and-worker-lease-design.md](./render-farm-readiness-and-worker-lease-design.md)
 
-**Current maturity:** Level 2 — Remote worker dispatch (in-memory, no lease)
-**Target maturity:** Level 4 — Capability-based scheduling with persistent lease
+**Current maturity:** Level 3 — Persistent worker registry + DB job lease ✅
+**Target maturity:** Level 4 — Capability-based scheduling
+
+**Level 3 MVP completed (2026-06-12):**
+- `render_worker` + `render_job_lease` tables (Flyway V7)
+- `RenderWorkerRepository` + `RenderJobLeaseRepository`
+- `RenderWorkerRegistryService` (register, heartbeat, drain, offline, prune)
+- `RenderJobLeaseService` (claim, renew, complete, fail, expire) with provider eligibility filtering
+- `StaleRenderJobLeaseCompensationService` (scheduled stale lease expiration)
+- `RenderFarmWorkerController` — internal HTTP endpoints for worker lifecycle
+- Provider eligibility: STUB/SKELETON/DEPRECATED/MOCK never dispatched, POC needs explicit allow
+- 50+ tests covering all operations and eligibility rules
+- **Render Farm MVP stopping point reached** — next steps only on real scaling demand
 
 **Key design decisions:**
 - DB lease queue (Phase 1) → Temporal bridge (Phase 3) → broker only if scale requires
@@ -376,4 +387,31 @@ The Backend-first stabilization phase is considered **complete** when:
 - 10-minute default lease duration, 3 max attempts, dead-letter after exhaustion
 
 **Implementation deferred** until ADR acceptance and Phase 1-3 backend stabilization complete.
+
+---
+
+## 12. Subtitle & Font Pipeline Readiness
+
+**Assessment document:** [../media-rendering/subtitle-font-pipeline-readiness.md](../media-rendering/subtitle-font-pipeline-readiness.md)
+
+**Subtitle Rendering Strategy ADR:** [../media-rendering/subtitle-rendering-strategy-adr.md](../media-rendering/subtitle-rendering-strategy-adr.md)
+
+**Subtitle pipeline:** Productized — ASS injection P0 fixed, subtitle path injection P0 fixed, FFmpeg filter path P1 fixed. End-to-end characterization tests added. SubtitleBurnInNode now delegates to SubtitleBurnInService. FFmpeg/libass is the production baseline.
+
+**Font pipeline:** MVP complete — FontIdPolicy, BasicFontValidator, BasicFontStackResolver, BasicMissingGlyphDetector implemented. NoopFontSecurityScanner replaced by BasicFontSecurityScanner as default.
+
+**Remotion boundary:** STUB status, not dispatch eligible. Deferred for advanced visual subtitles (templates, karaoke, word highlight). Not a dependency for baseline subtitle rendering.
+
+**Subtitle burn-in productization:** Complete — SRT/WebVTT parse, ASS sanitized output, libass burn-in, provider selection, artifact output, error handling all verified. See [subtitle-burn-in-productization.md](../media-rendering/subtitle-burn-in-productization.md).
+
+**Recommended next route:** Soft Subtitle Mux ADR or Timeline/Effect API Productization.
+
+**Timeline/Effect API productization:** Complete — 49 domain models, 11 services, 4 controllers. TimelineSpec validation, effect extraction, render pipeline integration all verified. See [timeline-effect-api-productization.md](../media-rendering/timeline-effect-api-productization.md).
+
+**Explicit non-goals:**
+- No soft subtitle mux (needs packaging provider)
+- No karaoke/animated captions (needs Remotion — deferred)
+- No real STT for auto captions (needs Whisper/Deepgram)
+- No RTL/shaping (needs HarfBuzz)
+- No font subsetting in production (pyftsubset disabled)
 | Font roadmap decision deferred indefinitely | Low | Low | Font subsystem is not blocking any current feature |

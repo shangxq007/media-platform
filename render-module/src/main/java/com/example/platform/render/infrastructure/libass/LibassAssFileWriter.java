@@ -37,7 +37,7 @@ public class LibassAssFileWriter {
                 }
                 String start = formatAssTime(overlay.startTime());
                 String end = formatAssTime(overlay.startTime() + overlay.duration());
-                String text = overlay.text().replace("\n", "\\N");
+                String text = AssTextSanitizer.sanitize(overlay.text());
                 ass.append("Dialogue: 0,").append(start).append(",").append(end)
                         .append(",Default,,0,0,0,,").append(text).append("\n");
             }

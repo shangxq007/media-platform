@@ -1,5 +1,6 @@
 package com.example.platform.render.infrastructure;
 
+import com.example.platform.render.infrastructure.font.FontIdPolicy;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
@@ -39,6 +40,7 @@ public class FontRegistryService {
      * Register a font file and return font metadata.
      */
     public Map<String, Object> registerFont(String fontId, String family, String format, long fileSize) {
+        FontIdPolicy.requireValidFontId(fontId);
         Path fontPath = Path.of(fontsDir, fontId + "." + format);
         if (!Files.exists(fontPath)) {
             throw new PlatformException(
@@ -70,6 +72,7 @@ public class FontRegistryService {
      * Generate a font subset containing only the glyphs needed for the given text.
      */
     public String generateFontSubset(String sourceFontId, String text, String format) {
+        FontIdPolicy.requireValidFontId(sourceFontId);
         Path sourcePath = Path.of(fontsDir, sourceFontId + "." + format);
         if (!Files.exists(sourcePath)) {
             throw new PlatformException(
@@ -211,6 +214,7 @@ public class FontRegistryService {
      * Resolve font with fallback chain.
      */
     public String resolveFontWithFallback(String fontId, List<String> fallbackFontIds, String text) {
+        FontIdPolicy.requireValidFontId(fontId);
         Path primaryPath = Path.of(fontsDir, fontId + ".ttf");
         if (!Files.exists(primaryPath)) {
             primaryPath = Path.of(fontsDir, fontId + ".otf");

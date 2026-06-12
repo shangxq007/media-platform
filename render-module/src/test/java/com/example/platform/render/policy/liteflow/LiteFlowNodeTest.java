@@ -1,8 +1,10 @@
 package com.example.platform.render.policy.liteflow;
 
+import com.example.platform.render.infrastructure.SubtitleBurnInService;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class AIScriptGenNodeTest {
 
@@ -33,7 +35,8 @@ class AIScriptGenNodeTest {
 
     @Test
     void subtitleBurnInNodeCanBeInstantiated() {
-        SubtitleBurnInNode node = new SubtitleBurnInNode();
+        SubtitleBurnInService mockService = mock(SubtitleBurnInService.class);
+        SubtitleBurnInNode node = new SubtitleBurnInNode(mockService);
         assertNotNull(node);
     }
 }

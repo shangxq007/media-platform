@@ -169,3 +169,21 @@ The provider SPI is designed to support future render farm capabilities:
 | RenderProviderRouter | `render-module/.../infrastructure/RenderProviderRouter.java` |
 | ProviderAccessPolicy | `entitlement-module/.../ProviderAccessPolicy.java` |
 | RenderProviderCapability | `render-module/.../infrastructure/RenderProviderCapability.java` |
+
+---
+
+## 10. Subtitle Rendering Strategy
+
+**ADR:** [subtitle-rendering-strategy-adr.md](./subtitle-rendering-strategy-adr.md)
+
+| Tier | Provider | Capabilities | Status |
+|------|----------|-------------|--------|
+| **Baseline** | FFmpeg/libass | SRT/WebVTT parse, ASS write, burn-in, font validation/fallback | IMPLEMENTED |
+| **Advanced** | Remotion | Template animation, word highlight, karaoke, social captions | STUB/PLANNED |
+| **Infrastructure** | Packaging provider | Soft subtitle mux, HLS/DASH subtitles | PLANNED |
+
+**Key rules:**
+- FFmpeg/libass is the production subtitle baseline — not Remotion
+- Remotion is for future advanced visual subtitles only
+- Remotion is STUB status and NOT dispatch eligible
+- No subtitle capability depends on Remotion being available

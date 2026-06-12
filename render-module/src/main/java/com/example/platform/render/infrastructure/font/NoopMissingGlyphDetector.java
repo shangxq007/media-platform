@@ -3,12 +3,17 @@ package com.example.platform.render.infrastructure.font;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@Component
+/**
+ * Noop missing glyph detector — always reports zero missing glyphs.
+ * NOT production-safe. Use {@link BasicMissingGlyphDetector} instead.
+ *
+ * @deprecated Use {@link BasicMissingGlyphDetector} for production.
+ */
+@Deprecated
 public class NoopMissingGlyphDetector implements MissingGlyphDetector {
     private static final Logger log = LoggerFactory.getLogger(NoopMissingGlyphDetector.class);
 

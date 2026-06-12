@@ -23,4 +23,13 @@ public record FontValidationResult(
     public boolean isValid() {
         return "PASSED".equals(validationStatus) && missingRequiredTables.isEmpty();
     }
+
+    public static FontValidationResult failed(String validator, String error) {
+        return new FontValidationResult(
+                validator, "FAILED",
+                List.of(), List.of(error),
+                null, null, null, null,
+                false, false, false, false, false, false, false, false
+        );
+    }
 }

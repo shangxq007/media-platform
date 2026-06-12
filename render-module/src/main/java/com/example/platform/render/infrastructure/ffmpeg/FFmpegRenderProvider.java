@@ -3,6 +3,7 @@ package com.example.platform.render.infrastructure.ffmpeg;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
+import com.example.platform.render.infrastructure.subtitle.SubtitlePathSanitizer;
 import com.example.platform.render.infrastructure.media.MediaAssetResolver;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.timeline.TimelineClip;
@@ -281,28 +282,50 @@ public class FFmpegRenderProvider implements RenderProvider {
     /**
      * Extract subtitle file path from the timeline JSON root.
      * Looks for "metadata" -> "subtitlePath" or "subtitle" -> "path".
+     * The path is validated via {@link SubtitlePathSanitizer} to prevent path injection.
      */
     private static String extractSubtitlePath(JsonNode root) {
         if (root == null) return null;
+        String rawPath = null;
+
         // Check metadata.subtitlePath
         JsonNode meta = root.get("metadata");
         if (meta != null) {
             JsonNode subPath = meta.get("subtitlePath");
             if (subPath != null && !subPath.asText().isBlank()) {
-                String p = subPath.asText();
-                return p.startsWith("file://") ? p.substring("file://".length()) : p;
+                rawPath = subPath.asText();
             }
         }
         // Check subtitle.path
-        JsonNode sub = root.get("subtitle");
-        if (sub != null) {
-            JsonNode subPath = sub.get("path");
-            if (subPath != null && !subPath.asText().isBlank()) {
-                String p = subPath.asText();
-                return p.startsWith("file://") ? p.substring("file://".length()) : p;
+        if (rawPath == null) {
+            JsonNode sub = root.get("subtitle");
+            if (sub != null) {
+                JsonNode subPath = sub.get("path");
+                if (subPath != null && !subPath.asText().isBlank()) {
+                    rawPath = subPath.asText();
+                }
             }
         }
-        return null;
+
+        if (rawPath == null) return null;
+
+        // Strip file:// prefix if present
+        String path = rawPath.startsWith("file://") ? rawPath.substring("file://".length()) : rawPath;
+
+        // Validate path to prevent injection
+        String sanitized = SubtitlePathSanitizer.sanitize(path, null);
+        if (sanitized == null) {
+            log.warn("Rejected unsafe subtitle path: {}", path);
+            return null;
+        }
+
+        // Verify the file actually exists
+        if (!java.nio.file.Files.isRegularFile(java.nio.file.Path.of(sanitized))) {
+            log.warn("Subtitle file does not exist: {}", sanitized);
+            return null;
+        }
+
+        return sanitized;
     }
 
     /**

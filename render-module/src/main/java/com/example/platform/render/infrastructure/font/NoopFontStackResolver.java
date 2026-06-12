@@ -3,12 +3,17 @@ package com.example.platform.render.infrastructure.font;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@Component
+/**
+ * Noop font stack resolver — returns empty stack with sans-serif fallback.
+ * NOT production-safe. Use {@link BasicFontStackResolver} instead.
+ *
+ * @deprecated Use {@link BasicFontStackResolver} for production.
+ */
+@Deprecated
 public class NoopFontStackResolver implements FontStackResolver {
     private static final Logger log = LoggerFactory.getLogger(NoopFontStackResolver.class);
 
