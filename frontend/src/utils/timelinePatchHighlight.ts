@@ -1,6 +1,12 @@
 import { TimelineRevisionAPI, type TimelineEntityChange, type TimelinePatchPath } from '@/api/timelineRevision'
 import type { Clip, Track, TrackClip } from '@/types'
-import type { useTimelineStore } from '@/stores/timeline'
+
+interface TimelineStoreLike {
+  state: { tracks: Track[] }
+  clips: Clip[]
+  setPatchHighlightClipIds(ids: string[]): void
+  clearPatchHighlightClipIds(): void
+}
 
 interface InternalTimelineIndex {
   clipIdsByTrackIndex: Map<number, string[]>
@@ -198,7 +204,7 @@ export async function loadConflictClipHighlights(
   projectId: string,
   baselineRevisionId: string,
   headRevisionId: string,
-  timelineStore: ReturnType<typeof useTimelineStore>,
+  timelineStore: TimelineStoreLike,
   serverInternalTimelineJson?: string | null
 ): Promise<void> {
   try {
@@ -219,7 +225,7 @@ export async function loadConflictClipHighlights(
 export function applyPatchPathHighlights(
   patchPaths: TimelinePatchPath[],
   entityChanges: TimelineEntityChange[],
-  timelineStore: ReturnType<typeof useTimelineStore>,
+  timelineStore: TimelineStoreLike,
   internalTimelineJson?: string | null
 ): void {
   const ids = resolveHighlightsFromCompare(

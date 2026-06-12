@@ -1,316 +1,171 @@
 # Render Provider Capability Matrix
 
-**Date:** 2026-06-08
-**RC Tag:** rc/p4-import-export-2026-06-06.3
-**Status:** FFmpeg is the only production-ready provider
+**Last updated:** 2026-06-12
+**Source of truth:** Code — `render-module/.../infrastructure/`
 
 ---
 
-## 1. Current Provider Status
+## 1. Status Definitions
 
-### 1.1 Production-Ready Providers
+| Status | Meaning | Dispatch Eligible? | Can Configure for Dispatch? |
+|--------|---------|--------------------|-----------------------------|
+| **PRODUCTION** | Fully implemented, safe for production | ✅ Yes | N/A |
+| **POC** | Implemented as proof-of-concept | ❌ Not by default | ✅ With explicit allow |
+| **OPTIONAL** | Implemented but not default | ❌ Not by default | ✅ With explicit enable |
+| **STUB** | Interface exists, no real implementation | ❌ Never | ❌ Never |
+| **SKELETON** | API client exists, not wired/tested | ❌ Never | ❌ Never |
+| **HOLD** | Implementation paused/deferred | ❌ Not by default | ⚠️ Experiment/manual only |
+| **SPIKE** | Experimental | ❌ Not by default | ⚠️ Manual only |
+| **DEPRECATED** | Superseded by another provider | ❌ Never | ❌ Never |
+| **MOCK** | Simulated for testing | ❌ Never in production | ❌ Test/dev only |
 
-| Provider | Status | Runtime Available | CI Tested | Production Ready |
-|----------|--------|------------------|-----------|------------------|
-| **FFmpegRenderProvider** | ✅ Production | ✅ Yes | ✅ Yes | ✅ Yes |
-
-### 1.2 Development/Staging Providers
-
-| Provider | Status | Runtime Available | CI Tested | Production Ready |
-|----------|--------|------------------|-----------|------------------|
-| **GPACRenderProvider** | ⚠️ POC | ⚠️ Partial | ❌ No | ❌ No |
-| **JavaCVRenderProvider** | ⚠️ POC | ⚠️ Partial | ❌ No | ❌ No |
-| **MltRenderProvider** | ⚠️ POC | ⚠️ Partial | ❌ No | ❌ No |
-| **GStreamerRenderProvider** | ⚠️ POC | ⚠️ Partial | ❌ No | ❌ No |
-
-### 1.3 Spike/Future Providers
-
-| Provider | Status | Runtime Available | CI Tested | Production Ready |
-|----------|--------|------------------|-----------|------------------|
-| **NatronRenderProvider** | 🔬 Spike | ❌ No | ❌ No | ❌ No |
-| **VapourSynthRenderProvider** | 🔬 Spike | ❌ No | ❌ No | ❌ No |
-| **OFXRenderProvider** | 🔬 Spike | ❌ No | ❌ No | ❌ No |
-| **ShotstackRenderProvider** | 🔬 Spike | ❌ No | ❌ No | ❌ No |
-| **Blender Provider** | 📋 Planned | ❌ No | ❌ No | ❌ No |
-| **Remotion Provider** | 📋 Planned | ❌ No | ❌ No | ❌ No |
-| **Cloud Render Provider** | 📋 Planned | ❌ No | ❌ No | ❌ No |
+**Key rules:**
+- `PRODUCTION` is the only status that allows automatic production dispatch
+- `POC` requires explicit configuration (`render.providers.allow-poc=true`) or experiment mode
+- `STUB`/`SKELETON`/`DEPRECATED`/`MOCK` can never be dispatched regardless of configuration
+- `HOLD`/`SPIKE` require experiment or manual mode
 
 ---
 
-## 2. Capability Matrix
+## 2. Provider Inventory
 
-| Capability | FFmpeg | GPAC | JavaCV | MLT | GStreamer | Natron | VapourSynth | OFX | Shotstack | Blender | Remotion | Cloud |
-|------------|--------|------|--------|-----|-----------|--------|-------------|-----|----------|---------|----------|-------|
-| **Multi-clip concat** | ✅ | ❌ | ⚠️ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Audio track** | ✅ | ❌ | ⚠️ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Audio mix** | ✅ | ❌ | ⚠️ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Subtitle burn-in** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Watermark overlay** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Fade** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Cross dissolve** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Crop** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Scale** | ✅ | ❌ | ⚠️ | ❌ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Placement** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **normalized_ppm spatial plan** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Chroma key** | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Region blur** | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Wipe/slide/zoom transitions** | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Node effects** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **3D scene** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Template-driven render** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **GPU acceleration** | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Deterministic golden test** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **CI runtime support** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Production readiness** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
-**Legend:**
-- ✅ = Fully supported
-- ⚠️ = Partial/POC support
-- ❌ = Not supported
-- 🔬 = Spike/Experimental
-- 📋 = Planned
+| Provider | Status | Runtime | @Component | @ConditionalOnProperty | Default Enabled | Dispatch Eligible | Notes |
+|----------|--------|---------|-----------|----------------------|-----------------|-------------------|-------|
+| **FFmpegRenderProvider** | PRODUCTION | `ffmpeg` binary | ✅ | `render.providers.ffmpeg.enabled=true` | Yes | ✅ | Primary provider. Multi-track, subtitle burn-in, watermark, spatial plan |
+| **RemoteRenderProvider** | PRODUCTION | Remote worker HTTP | ✅ `@Component("remote-ffmpeg")` | — | Yes | ✅ | Dispatches to remote worker via HTTP |
+| **MockRenderProvider** | MOCK | None (simulated) | ✅ | — | Yes | ❌ | Test/dev only. Always registered as fallback |
+| **MltRenderProvider** | POC | `melt` binary | ✅ | `render.providers.mlt.enabled=true` | No | ⚠️ Needs explicit allow | Multi-track NLE. MLT XML → `melt` |
+| **GPACRenderProvider** | POC | `MP4Box` binary | ✅ | `render.providers.gpac.enabled=true` | No | ⚠️ Needs explicit allow | DASH/HLS/CMAF packaging |
+| **GPACPackagingProvider** | POC | `MP4Box` binary | ✅ | `render.providers.gpac.enabled=true` | No | ⚠️ Needs explicit allow | Packaging-only sub-provider |
+| **LibassOverlayRenderProvider** | POC | FFmpeg `ass=` filter | ✅ | `render.providers.libass.enabled=true` (matchIfMissing) | Yes | ⚠️ Needs explicit allow | ASS/SSA subtitle burn-in |
+| **SkiaStickerOverlayProvider** | POC | Java2D raster + FFmpeg | ✅ | `render.providers.skia.enabled=true` | No | ⚠️ Needs explicit allow | Sticker overlay only, not general render |
+| **Bento4PackagingProvider** | POC | `mp4fragment`/`mp4dash` | ✅ | `render.providers.bento4.enabled=true` | No | ⚠️ Needs explicit allow | Packaging-only |
+| **ShakaPackagingProvider** | POC | `shaka-packager` | ✅ | `render.providers.shaka.enabled=true` | No | ⚠️ Needs explicit allow | DASH/HLS packaging. Has stub fallback |
+| **GStreamerRenderProvider** | HOLD | `gst-launch-1.0` binary | ✅ | `render.providers.gstreamer.enabled=true` | No | ❌ | Real GStreamer pipeline. HOLD — only real-time/streaming |
+| **BlenderRenderProvider** | STUB | `blender` binary | ❌ (Configuration @Bean) | `render.providers.blender.enabled=true` | No | ❌ | No @Component. Writes stub bytes on failure |
+| **RemotionRenderProvider** | STUB | `remotion` CLI (Node.js) | ❌ (Configuration @Bean) | `render.providers.remotion.enabled=true` | No | ❌ | No @Component. Writes stub bytes on failure |
+| **ShotstackRenderProvider** | SKELETON | Shotstack REST API | ❌ (Configuration @Bean) | `render.providers.shotstack.enabled=true` | No | ❌ | Real API client exists but not wired as @Component |
+| **NatronRenderProvider** | SKELETON | `NatronRenderer` binary | ❌ (Configuration @Bean) | `render.providers.natron.enabled=true` | No | ❌ | Currently FFmpeg vignette fallback, not real Natron |
+| **VapourSynthRenderProvider** | SKELETON | `vspipe` binary | ❌ (Configuration @Bean) | `render.providers.vapoursynth.enabled=true` | No | ❌ | FFmpeg fallback when vspipe missing |
+| **JavaCVRenderProvider** | DEPRECATED | JavaCV/FFmpeg JNI | ✅ `@Deprecated` | — | Yes | ❌ | Superseded by FFmpegRenderProvider |
+| **OFXRenderProvider** | DEPRECATED | Java2D simulation | ✅ `@Deprecated` | — | Yes | ❌ | Java2D simulation, NOT real OFX plugin |
 
 ---
 
-## 3. FFmpeg Provider Details
+## 3. Render Capabilities
 
-### 3.1 Supported Capabilities
-
-| Capability | Implementation | Status |
-|------------|----------------|--------|
-| **Multi-clip concat** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Audio track** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Audio mix** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Subtitle burn-in** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Watermark overlay** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Fade** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Cross dissolve** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Crop** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Scale** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **Placement** | FFmpegCommandFactory.buildMultiTrackCommand | ✅ Production |
-| **normalized_ppm spatial plan** | SpatialCoordinateConverter | ✅ Production |
-| **Deterministic golden test** | GoldenRenderPlanAdapter | ✅ Production |
-| **CI runtime support** | RenderPipelineDagIT | ✅ Production |
-
-### 3.2 Partial/POC Capabilities
-
-| Capability | Implementation | Status | Notes |
-|------------|----------------|--------|-------|
-| **Chroma key** | FFmpeg filter complex | ⚠️ POC | Basic chroma key only |
-| **Region blur** | FFmpeg filter complex | ⚠️ POC | Basic blur only |
-| **Wipe/slide/zoom transitions** | FFmpeg filter complex | ⚠️ POC | Limited transitions |
-| **GPU acceleration** | FFmpeg NVENC/VAAPI | ⚠️ POC | Hardware-dependent |
-
-### 3.3 Unsupported Capabilities
-
-| Capability | Reason | Future Provider |
-|------------|--------|-----------------|
-| **Node effects** | Not supported by FFmpeg | Natron, OFX |
-| **3D scene** | Not supported by FFmpeg | Blender |
-| **Template-driven render** | Not supported by FFmpeg | Remotion |
-| **Cloud render** | Not supported by FFmpeg | Cloud Render Provider |
+| Provider | videoTranscode | timelineComposition | multiTrack | subtitleBurnIn | textOverlay | imageOverlay | transition | effectFilter | packaging | remoteExecution | gpuAcceleration | partialRender |
+|----------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| FFmpeg | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ |
+| Remote | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | — | ✅ |
+| MLT | ✅ | ✅ | ✅ | — | — | — | ✅ | — | — | — | — | — |
+| GPAC | — | — | — | — | — | — | — | — | ✅ | — | — | — |
+| libass overlay | — | — | — | ✅ | — | — | — | — | — | — | — | — |
+| Skia sticker | — | — | — | — | — | ✅ | — | — | — | — | — | — |
+| Bento4 | — | — | — | — | — | — | — | — | ✅ | — | — | — |
+| Shaka | — | — | — | — | — | — | — | — | ✅ | — | — | — |
+| GStreamer | ✅ | — | — | — | — | — | — | — | — | — | — | — |
+| Mock | ✅ | — | — | — | — | — | — | — | — | — | — | — |
 
 ---
 
-## 4. Runtime Requirements
+## 4. Font Capabilities
 
-### 4.1 FFmpeg Runtime
+| Provider | fontFile | fallback | opentypeFeatures | variableAxes | cjk | emoji | rtl | shaping | colorFonts |
+|----------|:--------:|:--------:|:----------------:|:------------:|:---:|:-----:|:---:|:-------:|:----------:|
+| FFmpeg | ✅ | ✅ | — | — | ✅ | — | — | — | — |
+| libass overlay | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | — |
+| Skia sticker | ✅ | ✅ | — | — | ✅ | ✅ | — | — | ✅ |
 
-| Dependency | Required | Check Method | Error Message |
-|------------|----------|--------------|---------------|
-| **ffmpeg binary** | ✅ Yes | `Files.isExecutable(Path.of("/usr/bin/ffmpeg"))` | "FFmpeg binary not found at {path}" |
-| **ffprobe binary** | ✅ Yes | `Files.isExecutable(Path.of("/usr/bin/ffprobe"))` | "ffprobe binary not found at {path}" |
-| **Executable permissions** | ✅ Yes | `Files.isExecutable(path)` | "FFmpeg binary not executable: {path}" |
-| **Version detection** | ⚠️ Optional | `ffmpeg -version` | Warning only, not blocking |
-| **Temp directory writable** | ✅ Yes | `Files.isWritable(tempDir)` | "Temp directory not writable: {path}" |
-
-### 4.2 Runtime Probe Implementation
-
-```java
-public class FFmpegRuntimeProbe {
-    private static final List<String> FFMPEG_PATHS = List.of(
-        "/usr/bin/ffmpeg",
-        "/bin/ffmpeg",
-        "/usr/local/bin/ffmpeg"
-    );
-
-    private static final List<String> FFPROBE_PATHS = List.of(
-        "/usr/bin/ffprobe",
-        "/bin/ffprobe",
-        "/usr/local/bin/ffprobe"
-    );
-
-    public static RuntimeCheckResult checkFFmpeg() {
-        return checkBinary("ffmpeg", FFMPEG_PATHS);
-    }
-
-    public static RuntimeCheckResult checkFFprobe() {
-        return checkBinary("ffprobe", FFPROBE_PATHS);
-    }
-
-    private static RuntimeCheckResult checkBinary(String name, List<String> paths) {
-        for (String path : paths) {
-            Path binary = Path.of(path);
-            if (Files.isExecutable(binary)) {
-                return RuntimeCheckResult.found(name, path);
-            }
-        }
-        return RuntimeCheckResult.notFound(name, paths);
-    }
-
-    public record RuntimeCheckResult(String name, String path, boolean found, List<String> searchedPaths) {
-        static RuntimeCheckResult found(String name, String path) {
-            return new RuntimeCheckResult(name, path, true, List.of(path));
-        }
-        static RuntimeCheckResult notFound(String name, List<String> searchedPaths) {
-            return new RuntimeCheckResult(name, null, false, searchedPaths);
-        }
-    }
-}
-```
+**Note:** Font subsystem (OTS, fontTools, HarfBuzz, FreeType, Pango) is currently skeleton/noop. The capabilities above reflect what the provider can do when font subsystem is implemented.
 
 ---
 
-## 5. Render Integration Profile
+## 5. Subtitle Capabilities
 
-### 5.1 Default CI (platform-app:test)
-
-**Includes:**
-- Unit tests (no runtime required)
-- Integration tests (H2 database, mocked services)
-- P4 Import/Export tests (identity-access-module)
-
-**Excludes:**
-- Render integration tests (require FFmpeg)
-- RenderPipelineDagIT (requires full render runtime)
-- RenderNativeToolsIT (requires FFmpeg)
-- RenderNatronEffectsIT (requires Natron)
-
-### 5.2 Render Integration Test Profile
-
-**Task:** `./gradlew :platform-app:renderIntegrationTest`
-
-**Requires:**
-- FFmpeg binary at `/usr/bin/ffmpeg` or `/bin/ffmpeg`
-- ffprobe binary at `/usr/bin/ffprobe` or `/bin/ffprobe`
-- Write access to temp directory
-- Test assets (generated on-the-fly)
-
-**Includes:**
-- RenderPipelineDagIT
-- RenderNativeToolsIT
-- RenderNatronEffectsIT (if Natron available)
-
-**CI Strategy:**
-- Optional in default CI
-- Required in render integration profile
-- Can fail without blocking default CI
-- Must pass before production deployment
-
-### 5.3 GitHub Actions Configuration
-
-```yaml
-jobs:
-  backend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run default tests
-        run: ./gradlew :platform-app:test
-
-  render-integration:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[render-test]')
-    steps:
-      - name: Run render integration tests
-        run: ./gradlew :platform-app:renderIntegrationTest || true
-```
+| Provider | srt | webvtt | ass | burnIn | softSubtitle | styling | positioning | outlineShadow | karaoke | multiLanguage |
+|----------|:---:|:------:|:---:|:------:|:------------:|:-------:|:-----------:|:-------------:|:-------:|:-------------:|
+| FFmpeg | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — | — |
+| libass overlay | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Remote | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — | — |
 
 ---
 
-## 6. Failure Modes
+## 6. Dispatch Rules
 
-### 6.1 Missing Binary
+### Automatic Production Dispatch (default)
+- Only `PRODUCTION` status providers are eligible
+- Must match required capabilities
+- Must not be in blocked providers list
+- Must not have `notFor` capability conflicts
 
-| Scenario | Error Code | Message | Recovery |
-|----------|------------|---------|----------|
-| **ffmpeg not found** | RENDER-500-001 | "FFmpeg binary not found. Searched: {paths}" | Install FFmpeg |
-| **ffprobe not found** | RENDER-500-001 | "ffprobe binary not found. Searched: {paths}" | Install FFmpeg |
-| **Not executable** | RENDER-500-001 | "FFmpeg binary not executable: {path}" | chmod +x |
+### Explicit Dispatch (configuration required)
+- `POC` providers require:
+  - Provider-specific `@ConditionalOnProperty` enabled, AND
+  - Job in `experiment`/`manual` mode, OR provider in `preferredProviders`
+- `OPTIONAL` providers require explicit enable
 
-### 6.2 Unsupported Operation
+### Never Dispatchable
+- `STUB` — no real implementation
+- `SKELETON` — not wired/production-tested
+- `DEPRECATED` — superseded
+- `MOCK` — test/dev only
 
-| Scenario | Error Code | Message | Recovery |
-|----------|------------|---------|----------|
-| **Node effects** | RENDER-400-001 | "Node effects not supported by {provider}" | Use Natron/OFX provider |
-| **3D scene** | RENDER-400-001 | "3D scenes not supported by {provider}" | Use Blender provider |
-| **Template render** | RENDER-400-001 | "Template-driven render not supported by {provider}" | Use Remotion provider |
+### Mode-Based Override
+- `experiment` mode: allows POC + HOLD
+- `manual` mode: allows POC + HOLD + SPIKE
+- Default mode: only PRODUCTION
 
-### 6.3 Render Failure
-
-| Scenario | Error Code | Message | Recovery |
-|----------|------------|---------|----------|
-| **FFmpeg non-zero exit** | RENDER-500-002 | "FFmpeg rendering failed (exit={code}): {stderr}" | Check input/output |
-| **Output file missing** | RENDER-500-003 | "Render output not found: {path}" | Check FFmpeg command |
-| **Timeout** | RENDER-500-004 | "Render timed out after {timeout}ms" | Increase timeout or optimize |
-| **Invalid input** | RENDER-400-002 | "Invalid render input: {reason}" | Fix input format |
-
----
-
-## 7. Future Provider Roadmap
-
-### 7.1 Spike Phase (Not P4 RC Blocker)
-
-| Provider | Priority | Effort | Dependencies | Capabilities |
-|----------|----------|--------|--------------|--------------|
-| **Natron** | P2 | High | Natron binary, OFX plugins | Node effects, compositing |
-| **VapourSynth** | P3 | Medium | VapourSynth binary, Python | Script-based rendering |
-| **OFX** | P3 | High | OFX host, plugins | Node effects, transitions |
-| **Shotstack** | P3 | Low | API key, internet | Cloud rendering |
-
-### 7.2 Planned (Post-RC)
-
-| Provider | Priority | Effort | Dependencies | Capabilities |
-|----------|----------|--------|--------------|--------------|
-| **Blender** | P3 | Very High | Blender binary, Python | 3D scenes, animation |
-| **Remotion** | P3 | Medium | Node.js, Chrome | Template-driven rendering |
-| **Cloud Render** | P3 | High | Cloud account, API | Scalable rendering |
-
-### 7.3 Provider SPI Requirements
-
-All future providers must implement:
-
-```java
-public interface RenderProvider {
-    RenderResult render(String jobId, String aiScript, String profile);
-    List<String> getSupportedProfiles();
-    default boolean supports(String capability) { ... }
-    default EnvironmentValidationResult validateEnvironment() { ... }
-}
-```
-
-And provide:
-- Capability matrix update
-- Runtime probe implementation
-- Error handling with clear messages
-- Unit tests (mocked runtime)
-- Integration tests (real runtime, optional in CI)
+### Entitlement Layer
+Tenant entitlement (`ProviderAccessPolicy`) further restricts which providers a tenant can use:
+- FREE tier: limited providers
+- PRO tier: more providers
+- TEAM/ENTERPRISE: all implemented providers + GPU + remote worker
 
 ---
 
-## 8. Related Documents
+## 7. Render Farm Readiness
 
-| 文档 | 说明 |
-|------|------|
-| [P4 Architecture](architecture/p4-import-export-architecture.md) | P4 Import/Export Pipeline 架构 |
-| [Render Provider Roadmap](03-provider-roadmap.md) | Provider 路线图 |
-| [Render Pipeline](01-render-pipeline.md) | 渲染流水线说明 |
-| [Provider Registration](02-provider-registration.md) | Provider 注册机制 |
-| [VFX Compositing Ecosystem](06-vfx-compositing-ecosystem-selection.md) | VFX 合成生态系统 |
-| [Natron Worker POC](07-natron-worker-poc.md) | Natron Worker POC |
-| [Pipeline Tools](08-pipeline-tools-shotstack-natron-popcornfx-bento4.md) | 流水线工具 |
+The provider SPI is designed to support future render farm capabilities:
+
+| Concept | Current State | Future Extension |
+|---------|---------------|-----------------|
+| **Worker capabilities** | `ProviderMetadata.declaredCapabilities` | Worker-level capability registration |
+| **Runtime requirements** | `ProviderMetadata.runtime` | Worker runtime availability probing |
+| **Dispatch eligibility** | `ProviderEligibility.isEligible()` | Worker lease-based scheduling |
+| **Health checks** | `RenderProviderHealthCheck` | Worker heartbeat + health aggregation |
+| **Remote execution** | `RemoteRenderProvider` (HTTP dispatch) | Worker pool with load balancing |
+
+**Not implemented in this task:**
+- Worker lease protocol
+- Worker heartbeat/registry
+- Distributed scheduler
+- GPU worker management
+- Worker capability negotiation
 
 ---
 
-**Document prepared by:** Kilo (AI-assisted)  
-**Date:** 2026-06-08  
-**Status:** FFmpeg is the only production-ready provider
+## 8. Non-goals
+
+- ❌ Implement BMF runtime
+- ❌ Implement real Natron/OpenFX runtime
+- ❌ Implement Blender/Remotion runtime
+- ❌ GPU/CUDA worker
+- ❌ Distributed scheduler
+- ❌ Microservice extraction
+- ❌ New database schema
+- ❌ jOOQ codegen
+
+---
+
+## 9. Code References
+
+| Concept | File |
+|---------|------|
+| ProviderStatus enum | `render-module/.../infrastructure/ProviderStatus.java` |
+| ProviderMetadata record | `render-module/.../infrastructure/ProviderMetadata.java` |
+| ProviderEligibility | `render-module/.../infrastructure/ProviderEligibility.java` |
+| RenderProvider interface | `render-module/.../infrastructure/RenderProvider.java` |
+| RenderProviderRouter | `render-module/.../infrastructure/RenderProviderRouter.java` |
+| ProviderAccessPolicy | `entitlement-module/.../ProviderAccessPolicy.java` |
+| RenderProviderCapability | `render-module/.../infrastructure/RenderProviderCapability.java` |

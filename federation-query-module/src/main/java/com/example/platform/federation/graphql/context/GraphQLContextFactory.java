@@ -7,6 +7,8 @@ import org.springframework.graphql.server.WebGraphQlInterceptor;
 import org.springframework.graphql.server.WebGraphQlRequest;
 import org.springframework.graphql.server.WebGraphQlResponse;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -15,6 +17,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Builds the GraphQL request context from server-side state.
+ *
+ * <p>User identity is resolved from {@link SecurityContextHolder} (set by auth filters
+ * from JWT/OAuth2 claims). The {@code X-User-Id} header is NOT trusted — it was a legacy
+ * pattern that allowed client-side user spoofing.
+ */
 @Component
 public class GraphQLContextFactory implements WebGraphQlInterceptor {
     private static final Logger log = LoggerFactory.getLogger(GraphQLContextFactory.class);
@@ -30,10 +39,12 @@ public class GraphQLContextFactory implements WebGraphQlInterceptor {
 
         // Tenant ID is resolved exclusively from the server-side TenantContext
         // (set by authentication filters from JWT/OAuth2 claims).
-        // The X-Tenant-Id header is NOT trusted to prevent tenant spoofing.
         String tenantId = TenantContext.get();
         String workspaceId = firstHeader(headers, "X-Workspace-Id");
-        String userId = firstHeader(headers, "X-User-Id");
+
+        // User identity is resolved from the authenticated principal, NOT from headers.
+        String userId = resolveUserId();
+
         String requestSource = firstHeader(headers, "X-Request-Source") != null
                 ? firstHeader(headers, "X-Request-Source")
                 : "GRAPHQL";
@@ -50,14 +61,15 @@ public class GraphQLContextFactory implements WebGraphQlInterceptor {
                 : firstHeader(headers, "X-Real-Ip");
         String userAgent = firstHeader(headers, "User-Agent");
 
-        String rolesHeader = firstHeader(headers, "X-User-Roles");
-        List<String> roles = rolesHeader != null
-                ? List.of(rolesHeader.split(","))
-                : List.of();
-        String permsHeader = firstHeader(headers, "X-User-Permissions");
-        List<String> permissions = permsHeader != null
-                ? List.of(permsHeader.split(","))
-                : List.of();
+        // Roles and permissions come from the authenticated principal, not from headers.
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        List<String> roles = List.of();
+        List<String> permissions = List.of();
+        if (auth != null && auth.getAuthorities() != null) {
+            roles = auth.getAuthorities().stream()
+                    .map(Object::toString)
+                    .toList();
+        }
 
         GraphQLRequestContext context = new GraphQLRequestContext(
                 tenantId, workspaceId, userId, roles, permissions,
@@ -72,5 +84,22 @@ public class GraphQLContextFactory implements WebGraphQlInterceptor {
         });
 
         return chain.next(request);
+    }
+
+    /**
+     * Resolves the authenticated user ID from SecurityContextHolder.
+     * Returns null if no authentication is present (anonymous).
+     */
+    private String resolveUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        String name = auth.getName();
+        // Spring Security returns "anonymousUser" for anonymous auth
+        if ("anonymousUser".equals(name)) {
+            return null;
+        }
+        return name;
     }
 }

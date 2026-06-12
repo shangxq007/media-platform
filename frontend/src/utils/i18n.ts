@@ -1,8 +1,6 @@
-import { ref } from 'vue'
-
 type Locale = 'en' | 'zh'
 
-const currentLocale = ref<Locale>('en')
+let currentLocale: Locale = 'en'
 
 const messages: Record<Locale, Record<string, string>> = {
   en: {
@@ -143,11 +141,11 @@ const messages: Record<Locale, Record<string, string>> = {
 
 export function useI18nError() {
   const t = (errorCode: string, fallback?: string): string => {
-    return messages[currentLocale.value]?.[errorCode] || fallback || errorCode
+    return messages[currentLocale]?.[errorCode] || fallback || errorCode
   }
 
   const setLocale = (locale: Locale) => {
-    currentLocale.value = locale
+    currentLocale = locale
   }
 
   return { t, setLocale, currentLocale }

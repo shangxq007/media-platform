@@ -9,6 +9,8 @@ import com.example.platform.extension.domain.ToolEnvironmentReport;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ToolRegistryTest {
 
@@ -35,6 +37,38 @@ class ToolRegistryTest {
     void shouldRejectPathTraversal() {
         assertThrows(IllegalArgumentException.class,
                 () -> registry.registerExecutable("evil", "/usr/bin/../../../bin/sh"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/usr/bin/../../../bin/sh",
+            "/opt/..%2F..%2Fbin/sh",
+            "/opt/%2e%2e/bin/sh",
+            "/usr/bin/evil\\..\\sh",
+    })
+    void shouldRejectEncodedTraversal(String path) {
+        assertThrows(IllegalArgumentException.class,
+                () -> registry.registerExecutable("evil", path));
+    }
+
+    @Test
+    void shouldRejectNullByteInPath() {
+        assertThrows(IllegalArgumentException.class,
+                () -> registry.registerExecutable("evil", "/usr/bin/ffmpeg\0"));
+    }
+
+    @Test
+    void shouldRejectBackslashInPath() {
+        assertThrows(IllegalArgumentException.class,
+                () -> registry.registerExecutable("evil", "/usr/bin/..\\..\\sh"));
+    }
+
+    @Test
+    void shouldAcceptValidAbsolutePaths() {
+        registry.registerExecutable("ffmpeg", "/usr/bin/ffmpeg");
+        registry.registerExecutable("melt", "/usr/local/bin/melt");
+        assertTrue(registry.isAllowedExecutable("/usr/bin/ffmpeg"));
+        assertTrue(registry.isAllowedExecutable("/usr/local/bin/melt"));
     }
 
     @Test
@@ -80,7 +114,6 @@ class ToolRegistryTest {
         assertNotNull(report);
         assertNotNull(report.tools());
         assertEquals(1, report.tools().size());
-        // /usr/bin/ffmpeg may or may not exist in test environment
         ToolEnvironmentReport.ToolAvailability availability = report.tools().get(0);
         assertEquals("ffmpeg", availability.toolKey());
     }

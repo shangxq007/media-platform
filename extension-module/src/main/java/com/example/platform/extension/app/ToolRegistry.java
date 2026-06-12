@@ -138,9 +138,28 @@ public class ToolRegistry {
             throw new IllegalArgumentException(
                     "Executable path must be absolute (got: " + path + ")");
         }
-        if (path.contains("..")) {
+        // Reject null bytes
+        if (path.contains("\0")) {
+            throw new IllegalArgumentException("Executable path contains null byte");
+        }
+        // Reject backslashes
+        if (path.contains("\\")) {
+            throw new IllegalArgumentException("Executable path contains backslash");
+        }
+        // Reject percent-encoded traversal
+        String lower = path.toLowerCase();
+        if (lower.contains("%2e%2e") || lower.contains("%2f") || lower.contains("%5c")
+                || lower.contains("%252e") || lower.contains("%252f") || lower.contains("%255c")) {
             throw new IllegalArgumentException(
                     "Path traversal detected in executable path: " + path);
+        }
+        // Segment-level validation
+        String[] segments = path.split("/", -1);
+        for (String segment : segments) {
+            if (segment.equals("..")) {
+                throw new IllegalArgumentException(
+                        "Path traversal detected in executable path: " + path);
+            }
         }
     }
 }

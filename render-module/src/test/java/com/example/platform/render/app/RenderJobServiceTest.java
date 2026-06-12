@@ -10,6 +10,7 @@ import static org.mockito.Mockito.mock;
 
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
+import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.render.policy.RenderPolicyDecision;
 import com.example.platform.shared.notification.NotificationEventPublisher;
@@ -77,7 +78,8 @@ class RenderJobServiceTest {
         };
         NotificationEventPublisher publisher = mock(NotificationEventPublisher.class);
         RenderJobStatusHistoryRepository historyRepository = new RenderJobStatusHistoryRepository(dsl);
-        service = new RenderJobService(dsl, policyEngine, publisher, historyRepository);
+        RenderJobRepository renderJobRepository = new RenderJobRepository(dsl);
+        service = new RenderJobService(renderJobRepository, policyEngine, publisher, historyRepository);
         TenantContext.clear();
     }
 

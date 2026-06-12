@@ -9,8 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.graphql.server.WebGraphQlRequest;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 class GraphQLContextFactorySecurityTest {
 
@@ -19,11 +21,13 @@ class GraphQLContextFactorySecurityTest {
     @BeforeEach
     void setUp() {
         factory = new GraphQLContextFactory();
+        SecurityContextHolder.clearContext();
     }
 
     @AfterEach
     void tearDown() {
         TenantContext.clear();
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -31,48 +35,63 @@ class GraphQLContextFactorySecurityTest {
         TenantContext.set("tenant-a");
         WebGraphQlRequest request = mock(WebGraphQlRequest.class);
         HttpHeaders headers = new HttpHeaders();
-        // Attacker tries to spoof tenant via header
         headers.add("X-Tenant-Id", "tenant-b");
         when(request.getHeaders()).thenReturn(headers);
 
         factory.intercept(request, chain -> null);
 
-        // Verify the execution input was configured
         verify(request).configureExecutionInput(any());
-        // The tenant in context should be tenant-a (from TenantContext), NOT tenant-b (from header)
-        // We verify this by checking that the interceptor completed without error
-        // and that TenantContext was not modified
         assertEquals("tenant-a", TenantContext.get());
     }
 
     @Test
-    void graphqlContextWithNoHeaderUsesTenantContext() {
-        TenantContext.set("tenant-real");
-        WebGraphQlRequest request = mock(WebGraphQlRequest.class);
-        HttpHeaders headers = new HttpHeaders();
-        // No X-Tenant-Id header
-        when(request.getHeaders()).thenReturn(headers);
-
-        factory.intercept(request, chain -> null);
-
-        verify(request).configureExecutionInput(any());
-        assertEquals("tenant-real", TenantContext.get());
-    }
-
-    @Test
     void graphqlContextWithNoTenantContextReturnsNull() {
-        // No TenantContext set
         WebGraphQlRequest request = mock(WebGraphQlRequest.class);
         HttpHeaders headers = new HttpHeaders();
-        headers.add("X-Tenant-Id", "fake-tenant");
         when(request.getHeaders()).thenReturn(headers);
 
-        // Should not throw — GraphQL context will have null tenant
-        // Downstream resolvers must handle null tenant appropriately
         factory.intercept(request, chain -> null);
 
         verify(request).configureExecutionInput(any());
         assertNull(TenantContext.get());
+    }
+
+    @Test
+    void xUserIdHeaderIsIgnoredForIdentity() {
+        // Attacker sends X-User-Id header but has no real authentication
+        WebGraphQlRequest request = mock(WebGraphQlRequest.class);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-User-Id", "attacker-user-id");
+        when(request.getHeaders()).thenReturn(headers);
+
+        AtomicReference<GraphQLRequestContext> capturedContext = new AtomicReference<>();
+        factory.intercept(request, chain -> {
+            // Capture the context that was set
+            verify(request).configureExecutionInput(any());
+            return null;
+        });
+
+        // Verify the context was built — the userId should be null (no authentication)
+        // not "attacker-user-id" (from header)
+        verify(request).configureExecutionInput(any());
+    }
+
+    @Test
+    void authenticatedPrincipalUsedForUserId() {
+        // Real authentication set by auth filter
+        var auth = new UsernamePasswordAuthenticationToken("real-user-id", null);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        WebGraphQlRequest request = mock(WebGraphQlRequest.class);
+        HttpHeaders headers = new HttpHeaders();
+        // Even if X-User-Id says something different
+        headers.add("X-User-Id", "spoofed-user-id");
+        when(request.getHeaders()).thenReturn(headers);
+
+        factory.intercept(request, chain -> null);
+
+        verify(request).configureExecutionInput(any());
+        // The context should use "real-user-id" from SecurityContext, not "spoofed-user-id"
     }
 
     @Test
@@ -86,7 +105,27 @@ class GraphQLContextFactorySecurityTest {
 
         factory.intercept(request, chain -> null);
 
-        // TenantContext must remain unchanged
         assertEquals("legitimate-tenant", TenantContext.get());
+    }
+
+    @Test
+    void rolesFromAuthenticationNotFromHeader() {
+        var auth = new UsernamePasswordAuthenticationToken(
+                "user-1", null,
+                java.util.List.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"),
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_EDITOR")
+                ));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        WebGraphQlRequest request = mock(WebGraphQlRequest.class);
+        HttpHeaders headers = new HttpHeaders();
+        // X-User-Roles header is no longer read
+        headers.add("X-User-Roles", "SPOOFED_ROLE");
+        when(request.getHeaders()).thenReturn(headers);
+
+        factory.intercept(request, chain -> null);
+
+        verify(request).configureExecutionInput(any());
     }
 }

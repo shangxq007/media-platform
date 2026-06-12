@@ -1,5 +1,3 @@
-import { ref, readonly } from 'vue'
-
 export interface OpenReplayConfig {
   projectKey: string
   ingestPoint: string
@@ -29,7 +27,7 @@ export interface FeedbackData {
   customData?: Record<string, unknown>
 }
 
-const config = ref<OpenReplayConfig>({
+const config: OpenReplayConfig = {
   projectKey: '',
   ingestPoint: 'https://openrelay.yourdomain.com',
   resourceBaseHref: '/',
@@ -39,10 +37,10 @@ const config = ref<OpenReplayConfig>({
   verbose: false,
   enabled: false,
   sessionToken: ''
-})
+}
 
-const initialized = ref(false)
-const sessionId = ref<string | null>(null)
+let initialized = false
+let sessionId: string | null = null
 
 interface OpenReplaySdk {
   start?: (options?: Record<string, unknown>) => Promise<unknown>
@@ -61,9 +59,9 @@ interface OpenReplaySdk {
 let openReplaySdk: OpenReplaySdk | null = null
 
 export function initOpenReplay(sdk: OpenReplaySdk, userConfig: Partial<OpenReplayConfig> = {}) {
-  Object.assign(config.value, userConfig)
+  Object.assign(config, userConfig)
 
-  if (!config.value.projectKey || !config.value.enabled) {
+  if (!config.projectKey || !config.enabled) {
     console.info('[OpenReplay] Disabled - no project key configured')
     return
   }
@@ -71,13 +69,13 @@ export function initOpenReplay(sdk: OpenReplaySdk, userConfig: Partial<OpenRepla
   try {
     if (sdk && sdk.start) {
       sdk.start?.({
-        projectKey: config.value.projectKey,
-        ingestPoint: config.value.ingestPoint,
-        resourceBaseHref: config.value.resourceBaseHref,
-        captureNetwork: config.value.captureNetwork,
-        captureConsole: config.value.captureConsole,
-        capturePerformance: config.value.capturePerformance,
-        verbose: config.value.verbose,
+        projectKey: config.projectKey,
+        ingestPoint: config.ingestPoint,
+        resourceBaseHref: config.resourceBaseHref,
+        captureNetwork: config.captureNetwork,
+        captureConsole: config.captureConsole,
+        capturePerformance: config.capturePerformance,
+        verbose: config.verbose,
         privacy: {
           captureText: true,
           captureInput: true,
@@ -98,9 +96,9 @@ export function initOpenReplay(sdk: OpenReplaySdk, userConfig: Partial<OpenRepla
         }
       })
       openReplaySdk = sdk
-      initialized.value = true
+      initialized = true
       if (sdk.getSessionID) {
-        sessionId.value = sdk.getSessionID?.() ?? null
+        sessionId = sdk.getSessionID?.() ?? null
       }
       console.info('[OpenReplay] Initialized')
     }
@@ -110,7 +108,7 @@ export function initOpenReplay(sdk: OpenReplaySdk, userConfig: Partial<OpenRepla
 }
 
 export function setOpenReplayUser(user: OpenReplayUser) {
-  if (!initialized.value || !openReplaySdk) return
+  if (!initialized || !openReplaySdk) return
   try {
     openReplaySdk.setUserID?.(user.id || '')
     openReplaySdk.setMetadata?.('tenantId', user.tenantId || '')
@@ -122,7 +120,7 @@ export function setOpenReplayUser(user: OpenReplayUser) {
 }
 
 export function submitOpenReplayFeedback(feedback: FeedbackData): Promise<boolean> {
-  if (!initialized.value || !openReplaySdk) {
+  if (!initialized || !openReplaySdk) {
     console.info('[OpenReplay] Feedback (not sent):', feedback.title)
     return Promise.resolve(false)
   }
@@ -140,7 +138,7 @@ export function submitOpenReplayFeedback(feedback: FeedbackData): Promise<boolea
               ...feedback.customData,
               renderJobId: feedback.renderJobId,
               promptExecutionId: feedback.promptExecutionId,
-              sessionId: sessionId.value
+              sessionId: sessionId
             }
           })
           resolve(true)
@@ -162,7 +160,7 @@ export function submitOpenReplayFeedback(feedback: FeedbackData): Promise<boolea
 }
 
 export function recordOpenReplayEvent(eventName: string, data?: Record<string, unknown>) {
-  if (!initialized.value || !openReplaySdk) return
+  if (!initialized || !openReplaySdk) return
   try {
     if (openReplaySdk?.track) {
       openReplaySdk.track?.(eventName, data)
@@ -175,12 +173,12 @@ export function recordOpenReplayEvent(eventName: string, data?: Record<string, u
 }
 
 export function getOpenReplaySessionId(): string | null {
-  return sessionId.value
+  return sessionId
 }
 
 export function getOpenReplaySessionUrl(): string | null {
-  if (!sessionId.value || !config.value.ingestPoint) return null
-  return `${config.value.ingestPoint}/sessions/${sessionId.value}`
+  if (!sessionId || !config.ingestPoint) return null
+  return `${config.ingestPoint}/sessions/${sessionId}`
 }
 
 function redactText(text: string): string {
@@ -210,10 +208,10 @@ function sanitizeNetworkData(request: Record<string, unknown>): Record<string, u
   return request
 }
 
-export function isOpenReplayInitialized() {
-  return readonly(initialized)
+export function isOpenReplayInitialized(): boolean {
+  return initialized
 }
 
-export function getOpenReplayConfig() {
-  return readonly(config)
+export function getOpenReplayConfig(): Readonly<OpenReplayConfig> {
+  return config
 }

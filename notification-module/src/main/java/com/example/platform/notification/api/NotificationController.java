@@ -7,11 +7,12 @@ import com.example.platform.notification.infrastructure.MockNotificationProvider
 import com.example.platform.notification.infrastructure.NovuNotificationProvider;
 import com.example.platform.shared.notification.NotificationEventPublisher;
 import com.example.platform.notification.domain.NotificationInboundEvent;
+import com.example.platform.shared.web.TenantGuard;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -59,9 +60,11 @@ public class NotificationController {
                description = "Retrieve all notifications for a specific tenant")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Successfully retrieved notifications"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized")
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Cross-tenant access denied")
     })
     public List<?> getNotifications(@PathVariable String tenantId) {
+        TenantGuard.assertSameTenant(tenantId);
         return queryService.listDeliveries();
     }
 
@@ -70,9 +73,11 @@ public class NotificationController {
                description = "Retrieve a specific notification for a tenant")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Successfully retrieved notification"),
+        @ApiResponse(responseCode = "403", description = "Cross-tenant access denied"),
         @ApiResponse(responseCode = "404", description = "Notification not found")
     })
     public List<?> getNotification(@PathVariable String tenantId, @PathVariable String notificationId) {
+        TenantGuard.assertSameTenant(tenantId);
         return queryService.listDeliveries();
     }
 
@@ -81,9 +86,11 @@ public class NotificationController {
                description = "Retrieve delivery attempts for a specific notification")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Successfully retrieved deliveries"),
+        @ApiResponse(responseCode = "403", description = "Cross-tenant access denied"),
         @ApiResponse(responseCode = "404", description = "Notification not found")
     })
     public List<?> getDeliveries(@PathVariable String tenantId, @PathVariable String notificationId) {
+        TenantGuard.assertSameTenant(tenantId);
         return queryService.listDeliveries();
     }
 
@@ -92,9 +99,11 @@ public class NotificationController {
                description = "Retry delivery of a failed notification")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Retry queued successfully"),
+        @ApiResponse(responseCode = "403", description = "Cross-tenant access denied"),
         @ApiResponse(responseCode = "404", description = "Notification not found")
     })
     public Map<String, Object> retry(@PathVariable String tenantId, @PathVariable String notificationId) {
+        TenantGuard.assertSameTenant(tenantId);
         return Map.of("notificationId", notificationId, "status", "RETRY_QUEUED");
     }
 
@@ -163,7 +172,8 @@ public class NotificationController {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved channel bindings"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public List<?> getUserChannelBindings(@RequestHeader("X-User-Id") String userId) {
+    public List<?> getUserChannelBindings(HttpServletRequest request) {
+        String userId = resolveAuthenticatedUserId(request);
         return channelBindingService.listUserBindings(userId);
     }
 
@@ -175,9 +185,10 @@ public class NotificationController {
         @ApiResponse(responseCode = "400", description = "Invalid request body"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public Map<String, Object> createChannelBinding(@RequestHeader("X-User-Id") String userId,
-            @Valid @RequestBody CreateChannelBindingRequest request) {
-        var binding = channelBindingService.createBinding(userId, request.channelType(), request.destination());
+    public Map<String, Object> createChannelBinding(HttpServletRequest request,
+            @Valid @RequestBody CreateChannelBindingRequest req) {
+        String userId = resolveAuthenticatedUserId(request);
+        var binding = channelBindingService.createBinding(userId, req.channelType(), req.destination());
         return Map.of("bindingId", binding.bindingId(), "channelType", binding.channelType(),
                 "verificationStatus", binding.verificationStatus());
     }
@@ -190,10 +201,11 @@ public class NotificationController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "404", description = "Binding not found")
     })
-    public Map<String, Object> updateChannelBinding(@RequestHeader("X-User-Id") String userId,
+    public Map<String, Object> updateChannelBinding(HttpServletRequest request,
             @PathVariable String bindingId,
-            @RequestBody UpdateChannelBindingRequest request) {
-        var binding = channelBindingService.updateBinding(bindingId, userId, request.destination());
+            @RequestBody UpdateChannelBindingRequest req) {
+        String userId = resolveAuthenticatedUserId(request);
+        var binding = channelBindingService.updateBinding(bindingId, userId, req.destination());
         return Map.of("bindingId", binding.bindingId(), "channelType", binding.channelType(),
                 "verificationStatus", binding.verificationStatus());
     }
@@ -206,8 +218,9 @@ public class NotificationController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "404", description = "Binding not found")
     })
-    public Map<String, Object> verifyChannelBinding(@RequestHeader("X-User-Id") String userId,
+    public Map<String, Object> verifyChannelBinding(HttpServletRequest request,
             @PathVariable String bindingId) {
+        String userId = resolveAuthenticatedUserId(request);
         var binding = channelBindingService.verifyBinding(bindingId, userId);
         return Map.of("bindingId", binding.bindingId(), "verified", binding.verified(),
                 "verificationStatus", binding.verificationStatus());
@@ -221,8 +234,9 @@ public class NotificationController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "404", description = "Binding not found")
     })
-    public Map<String, Object> testChannelBinding(@RequestHeader("X-User-Id") String userId,
+    public Map<String, Object> testChannelBinding(HttpServletRequest request,
             @PathVariable String bindingId) {
+        String userId = resolveAuthenticatedUserId(request);
         channelBindingService.testBinding(bindingId, userId);
         return Map.of("bindingId", bindingId, "status", "TEST_SENT");
     }
@@ -235,9 +249,10 @@ public class NotificationController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "404", description = "Binding not found")
     })
-    public Map<String, Object> disableChannelBinding(@RequestHeader("X-User-Id") String userId,
+    public Map<String, Object> disableChannelBinding(HttpServletRequest request,
             @PathVariable String bindingId,
             @RequestParam(required = false, defaultValue = "User disabled") String reason) {
+        String userId = resolveAuthenticatedUserId(request);
         var binding = channelBindingService.disableBinding(bindingId, userId, reason);
         return Map.of("bindingId", binding.bindingId(), "enabled", binding.enabled(),
                 "disabledReason", binding.disabledReason() != null ? binding.disabledReason() : "");
@@ -251,8 +266,9 @@ public class NotificationController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "404", description = "Binding not found")
     })
-    public Map<String, String> deleteChannelBinding(@RequestHeader("X-User-Id") String userId,
+    public Map<String, String> deleteChannelBinding(HttpServletRequest request,
             @PathVariable String bindingId) {
+        String userId = resolveAuthenticatedUserId(request);
         channelBindingService.deleteBinding(bindingId, userId);
         return Map.of("status", "DELETED");
     }
@@ -268,7 +284,8 @@ public class NotificationController {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved subscriptions"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public List<?> getUserSubscriptions(@RequestHeader("X-User-Id") String userId) {
+    public List<?> getUserSubscriptions(HttpServletRequest request) {
+        String userId = resolveAuthenticatedUserId(request);
         return subscriptionService.listSubscribableEvents(userId);
     }
 
@@ -280,10 +297,11 @@ public class NotificationController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "404", description = "Event not found")
     })
-    public Map<String, Object> updateSubscription(@RequestHeader("X-User-Id") String userId,
+    public Map<String, Object> updateSubscription(HttpServletRequest request,
             @PathVariable String eventKey,
-            @RequestBody UpdateSubscriptionRequest request) {
-        var sub = subscriptionService.upsertSubscription(userId, eventKey, request.enabled(), request.channels());
+            @RequestBody UpdateSubscriptionRequest req) {
+        String userId = resolveAuthenticatedUserId(request);
+        var sub = subscriptionService.upsertSubscription(userId, eventKey, req.enabled(), req.channels());
         return Map.of("eventKey", sub.eventKey(), "enabled", sub.enabled(),
                 "channels", sub.channels());
     }
@@ -296,9 +314,10 @@ public class NotificationController {
         @ApiResponse(responseCode = "400", description = "Invalid request body"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public List<?> batchUpdateSubscriptions(@RequestHeader("X-User-Id") String userId,
-            @Valid @RequestBody BatchUpdateSubscriptionRequest request) {
-        return subscriptionService.batchUpdate(userId, request.updates());
+    public List<?> batchUpdateSubscriptions(HttpServletRequest request,
+            @Valid @RequestBody BatchUpdateSubscriptionRequest req) {
+        String userId = resolveAuthenticatedUserId(request);
+        return subscriptionService.batchUpdate(userId, req.updates());
     }
 
     // -------------------------------------------------------------------------
@@ -312,7 +331,8 @@ public class NotificationController {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved preferences"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public Map<String, Object> getUserPreferences(@RequestHeader("X-User-Id") String userId) {
+    public Map<String, Object> getUserPreferences(HttpServletRequest request) {
+        String userId = resolveAuthenticatedUserId(request);
         var pref = preferenceService.getPreferences(userId);
         return Map.of("globalEnabled", pref.globalEnabled(),
                 "channelEnabled", pref.channelEnabled(),
@@ -332,17 +352,18 @@ public class NotificationController {
         @ApiResponse(responseCode = "400", description = "Invalid request body"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public Map<String, Object> updatePreferences(@RequestHeader("X-User-Id") String userId,
-            @RequestBody UpdatePreferenceRequest request) {
+    public Map<String, Object> updatePreferences(HttpServletRequest request,
+            @RequestBody UpdatePreferenceRequest req) {
+        String userId = resolveAuthenticatedUserId(request);
         var pref = preferenceService.updatePreferences(userId,
-                request.globalEnabled() != null ? request.globalEnabled() : true,
-                request.channelEnabled(),
-                request.eventEnabled(),
-                request.quietHoursStart(),
-                request.quietHoursEnd(),
-                request.quietHoursTimezone(),
-                request.digestMode(),
-                request.criticalOverride() != null ? request.criticalOverride() : true);
+                req.globalEnabled() != null ? req.globalEnabled() : true,
+                req.channelEnabled(),
+                req.eventEnabled(),
+                req.quietHoursStart(),
+                req.quietHoursEnd(),
+                req.quietHoursTimezone(),
+                req.digestMode(),
+                req.criticalOverride() != null ? req.criticalOverride() : true);
         return Map.of("globalEnabled", pref.globalEnabled(),
                 "digestMode", pref.digestMode(),
                 "criticalOverride", pref.criticalOverride());
@@ -359,8 +380,9 @@ public class NotificationController {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved inbox"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public List<?> getUserInbox(@RequestHeader("X-User-Id") String userId,
+    public List<?> getUserInbox(HttpServletRequest request,
             @RequestParam(defaultValue = "50") int limit) {
+        String userId = resolveAuthenticatedUserId(request);
         return inboxService.listUserInbox(userId, limit);
     }
 
@@ -372,8 +394,9 @@ public class NotificationController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "404", description = "Inbox item not found")
     })
-    public Map<String, Object> markInboxRead(@RequestHeader("X-User-Id") String userId,
+    public Map<String, Object> markInboxRead(HttpServletRequest request,
             @PathVariable String id) {
+        String userId = resolveAuthenticatedUserId(request);
         var item = inboxService.markAsRead(id, userId);
         Map<String, Object> notFound = new java.util.HashMap<>();
         notFound.put("error", "NOT_FOUND");
@@ -513,5 +536,18 @@ public class NotificationController {
                 "novu", Map.of("enabled", novuProvider.isEnabled()),
                 "local", Map.of("enabled", true)
         );
+    }
+
+    /**
+     * Resolves the authenticated user ID from the JWT subject set by {@code JwtAuthFilter}.
+     * Never trusts client-supplied headers for user identity.
+     */
+    private String resolveAuthenticatedUserId(HttpServletRequest request) {
+        Object subject = request.getAttribute("jwt.subject");
+        if (subject == null || ((String) subject).isBlank()) {
+            throw new com.example.platform.shared.web.PlatformException(
+                    com.example.platform.shared.web.CommonErrorCode.AUTHENTICATION_REQUIRED);
+        }
+        return (String) subject;
     }
 }

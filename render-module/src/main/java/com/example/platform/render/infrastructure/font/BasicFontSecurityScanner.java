@@ -51,7 +51,7 @@ public class BasicFontSecurityScanner implements FontSecurityScanner {
 
         String fileName = fontFile.getFileName().toString().toLowerCase();
 
-        if (fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
+        if (isPathTraversal(fileName)) {
             return FontSecurityResult.rejected(scannerName(), List.of("Path traversal detected"));
         }
 
@@ -157,5 +157,23 @@ public class BasicFontSecurityScanner implements FontSecurityScanner {
             hex.append(String.format("%02x", b));
         }
         return hex.toString();
+    }
+
+    /**
+     * Validates a filename for path traversal attacks.
+     * Rejects: "..", "/", "\", null bytes, percent-encoded traversal, absolute paths.
+     */
+    static boolean isPathTraversal(String fileName) {
+        if (fileName == null) return true;
+        // Reject path separators
+        if (fileName.contains("/") || fileName.contains("\\")) return true;
+        // Reject null bytes
+        if (fileName.contains("\0")) return true;
+        // Reject ".." segments (including encoded forms)
+        String lower = fileName.toLowerCase();
+        if (lower.contains("..")) return true;
+        if (lower.contains("%2e%2e") || lower.contains("%2f") || lower.contains("%5c")) return true;
+        if (lower.contains("%252e") || lower.contains("%252f") || lower.contains("%255c")) return true;
+        return false;
     }
 }

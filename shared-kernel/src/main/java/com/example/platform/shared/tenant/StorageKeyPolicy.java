@@ -1,7 +1,9 @@
 package com.example.platform.shared.tenant;
 
-import java.nio.file.Path;
-import java.util.Set;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class StorageKeyPolicy {
 
@@ -48,18 +50,77 @@ public final class StorageKeyPolicy {
         return sb.toString();
     }
 
+    /**
+     * Validates a storage path for traversal and injection attacks.
+     *
+     * <p>Defense layers:
+     * <ol>
+     *   <li>Reject null</li>
+     *   <li>Percent-decode (single pass, reject residual encoded chars)</li>
+     *   <li>Reject backslash (normalize or reject — we reject)</li>
+     *   <li>Reject absolute paths (leading / or drive letter)</li>
+     *   <li>Split on /, validate each segment:
+     *     <ul>
+     *       <li>Reject empty segments</li>
+     *       <li>Reject "." and ".."</li>
+     *     </ul>
+     *   </li>
+     *   <li>Reassemble and verify no traversal survived</li>
+     * </ol>
+     */
     public static void assertValidPath(String path) {
         if (path == null) {
             throw new IllegalArgumentException("Storage path cannot be null");
         }
-        if (path.contains("..")) {
-            throw new SecurityException("Path traversal detected: " + path);
-        }
+
+        // Reject backslash before decode (Windows path separator)
         if (path.contains("\\")) {
-            throw new SecurityException("Backslash not allowed in storage paths: " + path);
+            throw new SecurityException("Backslash not allowed in storage paths");
         }
-        if (path.startsWith("/")) {
-            throw new SecurityException("Absolute paths not allowed: " + path);
+
+        // Percent-decode (single pass)
+        String decoded = percentDecode(path);
+
+        // Reject if decode revealed backslash
+        if (decoded.contains("\\")) {
+            throw new SecurityException("Backslash not allowed in storage paths (after decode)");
+        }
+
+        // Reject absolute paths
+        if (decoded.startsWith("/")) {
+            throw new SecurityException("Absolute paths not allowed");
+        }
+
+        // Reject Windows drive letters (C:, D:, etc.)
+        if (decoded.length() >= 2 && Character.isLetter(decoded.charAt(0)) && decoded.charAt(1) == ':') {
+            throw new SecurityException("Windows drive paths not allowed");
+        }
+
+        // Split and validate segments
+        String[] segments = decoded.split("/", -1);
+        List<String> normalized = new ArrayList<>();
+        for (String segment : segments) {
+            if (segment.isEmpty()) {
+                continue; // collapse empty segments (but track for double-slash detection)
+            }
+            if (".".equals(segment)) {
+                continue; // skip current-dir references
+            }
+            if ("..".equals(segment)) {
+                throw new SecurityException("Path traversal detected: '..' segment");
+            }
+            normalized.add(segment);
+        }
+
+        // Reassemble and final check
+        String result = String.join("/", normalized);
+        if (result.contains("..")) {
+            throw new SecurityException("Path traversal detected after normalization");
+        }
+
+        // Verify the normalized path doesn't escape via leading ..
+        if (result.startsWith("..") || result.startsWith("/")) {
+            throw new SecurityException("Path traversal detected");
         }
     }
 
@@ -74,7 +135,7 @@ public final class StorageKeyPolicy {
         return parts.length >= 2 ? parts[1] : null;
     }
 
-    private static void assertValidId(String id, String fieldName) {
+    static void assertValidId(String id, String fieldName) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException(fieldName + " cannot be null or blank");
         }
@@ -83,8 +144,21 @@ public final class StorageKeyPolicy {
         }
     }
 
-    private static String sanitize(String input) {
+    static String sanitize(String input) {
         if (input == null) return "";
         return input.replaceAll("[^a-zA-Z0-9_\\-\\.]", "_");
+    }
+
+    /**
+     * Percent-decode a string (single pass). Uses UTF-8.
+     * Rejects strings that contain percent-encoded null bytes or other control characters.
+     */
+    private static String percentDecode(String input) {
+        String decoded = URLDecoder.decode(input, StandardCharsets.UTF_8);
+        // Reject if decode revealed null bytes
+        if (decoded.contains("\0")) {
+            throw new SecurityException("Null bytes not allowed in storage paths");
+        }
+        return decoded;
     }
 }

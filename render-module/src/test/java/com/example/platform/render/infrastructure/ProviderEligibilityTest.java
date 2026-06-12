@@ -212,4 +212,59 @@ class ProviderEligibilityTest {
         assertTrue(ProviderEligibility.scoreProvider(preferred, job)
                 < ProviderEligibility.scoreProvider(other, job));
     }
+
+    @Test
+    void stubProviderNeverEligible() {
+        ProviderMetadata stub = new ProviderMetadata("blender", ProviderStatus.STUB, "P1",
+                ProviderType.RENDER, List.of("3d_render"), List.of("3d_render"), List.of(),
+                List.of(), false, "blender", "Blender stub", List.of());
+        assertFalse(ProviderEligibility.isEligible(stub, productionJob(List.of("3d_render"))));
+        assertFalse(ProviderEligibility.isEligible(stub, experimentJob(List.of("3d_render"))));
+        assertFalse(ProviderEligibility.isEligible(stub, manualJob(List.of("3d_render"))));
+    }
+
+    @Test
+    void skeletonProviderNeverEligible() {
+        ProviderMetadata skeleton = new ProviderMetadata("natron", ProviderStatus.SKELETON, "P3",
+                ProviderType.RENDER, List.of("vfx"), List.of("vfx"), List.of(),
+                List.of(), false, "NatronRenderer", "Natron skeleton", List.of());
+        assertFalse(ProviderEligibility.isEligible(skeleton, productionJob(List.of("vfx"))));
+        assertFalse(ProviderEligibility.isEligible(skeleton, experimentJob(List.of("vfx"))));
+        assertFalse(ProviderEligibility.isEligible(skeleton, manualJob(List.of("vfx"))));
+    }
+
+    @Test
+    void mockProviderNeverEligibleInProduction() {
+        ProviderMetadata mock = new ProviderMetadata("mock", ProviderStatus.MOCK, "P0",
+                ProviderType.RENDER, List.of("trim"), List.of("trim"), List.of(),
+                List.of(), true, "none", "Mock provider", List.of());
+        assertFalse(ProviderEligibility.isEligible(mock, productionJob(List.of("trim"))));
+        assertFalse(ProviderEligibility.isEligible(mock, experimentJob(List.of("trim"))));
+        assertFalse(ProviderEligibility.isEligible(mock, manualJob(List.of("trim"))));
+    }
+
+    @Test
+    void pocProviderNeedsExplicitAllow() {
+        ProviderMetadata poc = pocProvider("mlt", "P1", List.of("trim"));
+        // Production job without explicit preference — POC not eligible
+        assertFalse(ProviderEligibility.isEligible(poc, productionJob(List.of("trim"))));
+        // Experiment mode — POC eligible
+        assertTrue(ProviderEligibility.isEligible(poc, experimentJob(List.of("trim"))));
+        // Manual mode — POC eligible
+        assertTrue(ProviderEligibility.isEligible(poc, manualJob(List.of("trim"))));
+        // Production job with explicit preference — POC eligible
+        RenderJob jobWithPreferred = new RenderJob("job-1", "video_export", "production", "1920x1080",
+                List.of(), "{}", "{}", "{}", "mp4", List.of("trim"),
+                new RenderConstraints(3840, 2160, 60, 3600, null, null),
+                true, List.of("mlt"), List.of());
+        assertTrue(ProviderEligibility.isEligible(poc, jobWithPreferred));
+    }
+
+    @Test
+    void productionProviderAlwaysEligibleWhenCapabilityMatches() {
+        ProviderMetadata prod = productionProvider("ffmpeg", "P0", List.of("trim", "transcode"));
+        assertTrue(ProviderEligibility.isEligible(prod, productionJob(List.of("trim"))));
+        assertTrue(ProviderEligibility.isEligible(prod, experimentJob(List.of("trim"))));
+        assertTrue(ProviderEligibility.isEligible(prod, manualJob(List.of("trim"))));
+    }
 }

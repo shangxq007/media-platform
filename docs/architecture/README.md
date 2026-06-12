@@ -3,6 +3,23 @@
 ## 文档导航
 
 ### 架构说明
+- **Render Farm Readiness 设计**: [render-farm-readiness-and-worker-lease-design.md](./render-farm-readiness-and-worker-lease-design.md)
+  - Worker Registry / Job Lease / Capability-based Scheduling / Artifact Contract 设计（2026-06-12）
+  - 当前成熟度 Level 2 → 目标 Level 4 路线图
+  - DB lease queue → Temporal bridge → broker 渐进方案
+  - 包含数据库模型提案、API 端口提案、安全/可观测性模型
+
+- **Backend-first 稳定化计划**: [backend-first-stabilization-plan.md](./backend-first-stabilization-plan.md)
+  - 基于事实扫描和 P0 修复结果制定的阶段性工程计划（2026-06-11）
+  - 明确近期采用后端优先策略，前端仅保留 smoke UI
+  - 分阶段路线图：安全加固 → 持久化边界 → 渲染编排 → ADR → 前端重新入场
+  - 包含完整 Kilo 任务清单和验收标准
+
+- **平台事实扫描报告**: [platform-fact-gathering-report.md](./platform-fact-gathering-report.md)
+  - 全面技术栈、模块结构、Render Provider 状态、安全风险、测试/CI 状态扫描（2026-06-11）
+  - 为下一步架构决策、重构优先级、前端 React 状态校准提供事实依据
+  - 包含推荐任务列表和人工决策输入清单
+
 - **主架构文档**: [p4-import-export-architecture.md](./p4-import-export-architecture.md)
   - 系统总体架构、主链路、核心流程图、时序图、API总览、核心服务、数据模型、安全设计、异常处理、前端实现、渲染provider总览、CI/CD概览、运维部署概览、维护建议
 

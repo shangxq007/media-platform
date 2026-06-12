@@ -1,5 +1,3 @@
-import { ref, readonly } from 'vue'
-
 export interface SentryConfig {
   dsn: string
   environment: string
@@ -25,7 +23,7 @@ export interface SentryContext {
   [key: string]: unknown
 }
 
-const config = ref<SentryConfig>({
+const config: SentryConfig = {
   dsn: '',
   environment: 'development',
   release: '0.1.0',
@@ -33,9 +31,9 @@ const config = ref<SentryConfig>({
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
   enabled: false
-})
+}
 
-const initialized = ref(false)
+let initialized = false
 
 interface SentrySdk {
   init?: (options: Record<string, unknown>) => void
@@ -52,10 +50,10 @@ interface SentrySdk {
 let sentrySdk: SentrySdk | null = null
 
 export function initSentry(sdk: SentrySdk, userConfig: Partial<SentryConfig> = {}) {
-  Object.assign(config.value, userConfig)
+  Object.assign(config, userConfig)
   sentrySdk = sdk
 
-  if (!config.value.dsn || !config.value.enabled) {
+  if (!config.dsn || !config.enabled) {
     console.info('[Sentry] Disabled - no DSN configured')
     return
   }
@@ -63,12 +61,12 @@ export function initSentry(sdk: SentrySdk, userConfig: Partial<SentryConfig> = {
   try {
     if (sdk && sdk.init) {
       sdk.init({
-        dsn: config.value.dsn,
-        environment: config.value.environment,
-        release: config.value.release,
-        tracesSampleRate: config.value.tracesSampleRate,
-        replaysSessionSampleRate: config.value.replaysSessionSampleRate,
-        replaysOnErrorSampleRate: config.value.replaysOnErrorSampleRate,
+        dsn: config.dsn,
+        environment: config.environment,
+        release: config.release,
+        tracesSampleRate: config.tracesSampleRate,
+        replaysSessionSampleRate: config.replaysSessionSampleRate,
+        replaysOnErrorSampleRate: config.replaysOnErrorSampleRate,
         integrations: sdk.getReplayIntegrations ? sdk.getReplayIntegrations() : [],
         beforeSend(event: Record<string, unknown>) {
           return sanitizeEvent(event)
@@ -77,7 +75,7 @@ export function initSentry(sdk: SentrySdk, userConfig: Partial<SentryConfig> = {
           return sanitizeBreadcrumb(breadcrumb)
         }
       })
-      initialized.value = true
+      initialized = true
       console.info('[Sentry] Initialized')
     }
   } catch (e) {
@@ -86,7 +84,7 @@ export function initSentry(sdk: SentrySdk, userConfig: Partial<SentryConfig> = {
 }
 
 export function setSentryUser(user: SentryUser) {
-  if (!initialized.value || !sentrySdk) return
+  if (!initialized || !sentrySdk) return
   try {
     sentrySdk.setUser?.(user as Record<string, unknown>)
   } catch (e) {
@@ -95,7 +93,7 @@ export function setSentryUser(user: SentryUser) {
 }
 
 export function setSentryContext(context: SentryContext) {
-  if (!initialized.value || !sentrySdk) return
+  if (!initialized || !sentrySdk) return
   try {
     sentrySdk.setContext?.('mediaPlatform', context)
   } catch (e) {
@@ -104,7 +102,7 @@ export function setSentryContext(context: SentryContext) {
 }
 
 export function setSentryTag(key: string, value: string) {
-  if (!initialized.value || !sentrySdk) return
+  if (!initialized || !sentrySdk) return
   try {
     sentrySdk.setTag?.(key, value)
   } catch (e) {
@@ -113,7 +111,7 @@ export function setSentryTag(key: string, value: string) {
 }
 
 export function captureSentryException(error: Error, context?: SentryContext) {
-  if (!initialized.value || !sentrySdk) {
+  if (!initialized || !sentrySdk) {
     console.error('[Sentry] Exception (not sent):', error.message)
     return
   }
@@ -127,7 +125,7 @@ export function captureSentryException(error: Error, context?: SentryContext) {
 }
 
 export function captureSentryMessage(message: string, level: 'info' | 'warning' | 'error' = 'info') {
-  if (!initialized.value || !sentrySdk) return
+  if (!initialized || !sentrySdk) return
   try {
     sentrySdk.captureMessage?.(message, level)
   } catch (e) {
@@ -136,7 +134,7 @@ export function captureSentryMessage(message: string, level: 'info' | 'warning' 
 }
 
 export function getSentryReplayId(): string | null {
-  if (!initialized.value || !sentrySdk) return null
+  if (!initialized || !sentrySdk) return null
   try {
     if (sentrySdk.getReplayId) return sentrySdk.getReplayId()
     return null
@@ -197,7 +195,6 @@ function redactHeaders(headers: Record<string, string>) {
 
 function redactSensitiveData(data: unknown): unknown {
   if (typeof data === 'string') {
-    // Redact potential secrets in strings
     return data
       .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED_API_KEY]')
       .replace(/password["\s:=]+[^\s"]+/gi, 'password=[REDACTED]')
@@ -224,10 +221,10 @@ function redactSensitiveData(data: unknown): unknown {
   return data
 }
 
-export function isSentryInitialized() {
-  return readonly(initialized)
+export function isSentryInitialized(): boolean {
+  return initialized
 }
 
-export function getSentryConfig() {
-  return readonly(config)
+export function getSentryConfig(): Readonly<SentryConfig> {
+  return config
 }
