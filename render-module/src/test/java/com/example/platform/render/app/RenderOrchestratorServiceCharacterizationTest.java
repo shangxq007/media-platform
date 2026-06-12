@@ -165,7 +165,7 @@ class RenderOrchestratorServiceCharacterizationTest {
                 mock(TimelineExtensionsReader.class), null /* entitlementPort */,
                 null /* hashInvalidationNotifier */, null /* aiRenderScriptNormalizer */);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
-                renderJobRepository, mock(BaseJobTimelineLoader.class), null /* cacheTenantGuard */);
+                renderJobRepository, mock(BaseJobTimelineLoader.class));
 
         service = new RenderOrchestratorService(
                 submissionService, executionService, artifactQueryService,

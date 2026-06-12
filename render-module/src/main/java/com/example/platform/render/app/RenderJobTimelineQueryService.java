@@ -1,6 +1,5 @@
 package com.example.platform.render.app;
 
-import com.example.platform.render.app.cache.RenderCacheTenantGuard;
 import com.example.platform.render.app.timeline.BaseJobTimelineLoader;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.shared.web.TenantContext;
@@ -17,23 +16,20 @@ import org.springframework.stereotype.Service;
  * </ol>
  *
  * <p>This service does NOT use inline jOOQ — all render_job access goes through
- * {@link RenderJobRepository}.
+ * {@link RenderJobRepository}. Tenant/cache guard is handled inside
+ * {@link BaseJobTimelineLoader}.
  */
 @Service
 public class RenderJobTimelineQueryService {
 
     private final RenderJobRepository renderJobRepository;
     private final BaseJobTimelineLoader baseJobTimelineLoader;
-    private final RenderCacheTenantGuard cacheTenantGuard;
 
     public RenderJobTimelineQueryService(
             RenderJobRepository renderJobRepository,
-            BaseJobTimelineLoader baseJobTimelineLoader,
-            @org.springframework.beans.factory.annotation.Autowired(required = false)
-            RenderCacheTenantGuard cacheTenantGuard) {
+            BaseJobTimelineLoader baseJobTimelineLoader) {
         this.renderJobRepository = renderJobRepository;
         this.baseJobTimelineLoader = baseJobTimelineLoader;
-        this.cacheTenantGuard = cacheTenantGuard;
     }
 
     /**
@@ -46,9 +42,6 @@ public class RenderJobTimelineQueryService {
      */
     public String loadJobTimelineJson(String tenantId, String jobId) {
         assertTenantAccess(tenantId);
-        if (cacheTenantGuard != null) {
-            cacheTenantGuard.requireJobTenant(tenantId, jobId);
-        }
         return baseJobTimelineLoader.loadInternalTimelineJson(jobId, tenantId)
                 .orElseGet(() -> renderJobRepository.findAiScriptById(jobId).orElse(""));
     }

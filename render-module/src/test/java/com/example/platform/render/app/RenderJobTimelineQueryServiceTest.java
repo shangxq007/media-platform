@@ -23,7 +23,7 @@ class RenderJobTimelineQueryServiceTest {
         renderJobRepository = mock(RenderJobRepository.class);
         baseJobTimelineLoader = mock(BaseJobTimelineLoader.class);
         service = new RenderJobTimelineQueryService(
-                renderJobRepository, baseJobTimelineLoader, null);
+                renderJobRepository, baseJobTimelineLoader);
         TenantContext.clear();
     }
 

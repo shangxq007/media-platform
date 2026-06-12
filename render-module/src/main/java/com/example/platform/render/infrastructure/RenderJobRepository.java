@@ -245,6 +245,27 @@ public class RenderJobRepository {
     }
 
     /**
+     * Timeline data for a render job (tenant_id, ai_script, timeline_snapshot_id).
+     * Used by BaseJobTimelineLoader to avoid inline jOOQ.
+     */
+    public record TimelineData(String tenantId, String aiScript, String timelineSnapshotId) {}
+
+    public Optional<TimelineData> findTimelineDataById(String jobId) {
+        Record record = dsl.select(
+                        field("tenant_id", String.class),
+                        field("ai_script", String.class),
+                        field("timeline_snapshot_id", String.class))
+                .from(table("render_job"))
+                .where(field("id").eq(jobId))
+                .fetchOne();
+        if (record == null) return Optional.empty();
+        return Optional.of(new TimelineData(
+                record.get(field("tenant_id", String.class)),
+                record.get(field("ai_script", String.class)),
+                record.get(field("timeline_snapshot_id", String.class))));
+    }
+
+    /**
      * Get the tenant_id for a render job, throwing if not found.
      * Used by services that need tenant validation for an existing job.
      */

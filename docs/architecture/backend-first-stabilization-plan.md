@@ -241,8 +241,10 @@ Reference: [platform-fact-gathering-report.md](./platform-fact-gathering-report.
 | Extract `RenderJobExecutionService` | Medium | ✅ Done — execute/finish delegated, 0 inline jOOQ |
 | Extract `RenderJobTimelineQueryService` | Small | ✅ Done — timeline loading delegated |
 | Collapse orchestrator to pure facade | Small | ✅ Done — 78 lines, 5 deps, 0 DSLContext, 0 inline jOOQ |
+| Remove DSLContext from BaseJobTimelineLoader | Small | ✅ Done — uses RenderJobRepository, no inline jOOQ |
+| Remove cacheTenantGuard from RenderJobTimelineQueryService | Small | ✅ Done — guard handled by BaseJobTimelineLoader |
 
-**Phase 3 Complete.** RenderOrchestratorService is now a pure facade with zero domain logic.
+**Phase 3 Complete.** RenderOrchestratorService is now a pure facade with zero domain logic, zero DSLContext, zero inline jOOQ.
 
 ### Phase 4: Architecture Decisions
 
@@ -414,4 +416,41 @@ The Backend-first stabilization phase is considered **complete** when:
 - No real STT for auto captions (needs Whisper/Deepgram)
 - No RTL/shaping (needs HarfBuzz)
 - No font subsetting in production (pyftsubset disabled)
-| Font roadmap decision deferred indefinitely | Low | Low | Font subsystem is not blocking any current feature |
+
+---
+
+## 13. Effect Entitlement & Policy Hardening
+
+**Status:** Complete (2026-06-12)
+
+**Assessment document:** [../media-rendering/timeline-effect-api-productization.md](../media-rendering/timeline-effect-api-productization.md)
+
+### What Was Done
+
+| Task | Status |
+|------|--------|
+| Effect taxonomy enums (Category, TargetType, Status, Stage, BackendKind) | ✅ Done |
+| Enhanced effect descriptor with taxonomy fields | ✅ Done |
+| Effect parameter schema validation | ✅ Done |
+| EffectPolicyService for entitlement/policy enforcement | ✅ Done |
+| Tier hierarchy (FREE < PRO < TEAM < ENTERPRISE) | ✅ Done |
+| Provider capability matching | ✅ Done |
+| Tests: 9 policy tests covering validation, entitlement, provider matching | ✅ Done |
+
+### Key Design Decisions
+
+- **Tier hierarchy:** Effects marked as "FREE" are available to all tiers. Effects marked "PRO" require PRO or higher.
+- **Provider capability matching:** Effects must be in the provider's `supportedEffects` set.
+- **Parameter validation:** Required parameters must be present; numeric parameters must be within min/max bounds.
+- **Entitlement enforcement:** Premium effects require matching `entitlementKey` + tenant tier.
+
+### Remaining Work
+
+| Item | Status |
+|------|--------|
+| Full JSON Schema for effect parameters | Not needed yet — current type/min/max validation sufficient |
+| Frontend schema consumption | Deferred — frontend is thin shell |
+| Keyframe animation | PLANNED — not implemented |
+| Advanced transitions | PARTIAL — only crossfade via FFmpeg xfade |
+| Remotion templates | STUB/PLANNED — deferred |
+| Effect marketplace/packs | PLANNED — registry exists, catalog seeding works |
