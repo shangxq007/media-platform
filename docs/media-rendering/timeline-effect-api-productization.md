@@ -106,12 +106,15 @@ The timeline/effect backend has substantial domain models (49 domain files) but 
 
 | Scenario | Status | Tests | Notes |
 |----------|--------|-------|-------|
-| Simple timeline render | ✅ | `TimelineSpecTest` | One video track, trim, render profile |
+| Simple timeline render | ✅ | `TimelineEffectApiProductizationTest` | One video track, trim, render profile |
 | Timeline with subtitle burn-in | ✅ | `SubtitleBurnInProductizationTest` | SRT/WebVTT → sanitized ASS → FFmpeg |
-| Timeline with image overlay | ✅ | `AdvancedEffectsPipelineTest` | Image overlay via FFmpeg |
-| Invalid timeline rejected | ✅ | `TimelineSpecTest` | No tracks, invalid timing, no output spec |
+| Timeline with image overlay | ✅ | `TimelineEffectApiProductizationTest` | Image overlay via FFmpeg |
+| Invalid timeline rejected | ✅ | `TimelineEffectApiProductizationTest` | No tracks, invalid timing, no output spec |
 | Effect parameter validation | ⚠️ | Partial | No schema validation for effect params |
 | Provider capability mismatch | ✅ | `ProviderEligibilityTest` | STUB/SKELETON/DEPRECATED blocked |
+| Effect registry | ✅ | `TimelineEffectApiProductizationTest` | Standard effects registered |
+| Multi-track composition | ✅ | `TimelineEffectApiProductizationTest` | Video + audio tracks |
+| Duration computation | ✅ | `TimelineEffectApiProductizationTest` | Multiple clips |
 
 ---
 

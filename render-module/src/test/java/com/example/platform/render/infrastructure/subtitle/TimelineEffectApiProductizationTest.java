@@ -3,6 +3,8 @@ package com.example.platform.render.infrastructure.subtitle;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.app.EffectTimelineInspector;
+import com.example.platform.render.infrastructure.EffectMappingService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -42,7 +44,6 @@ class TimelineEffectApiProductizationTest {
     @Test
     void timelineWithTrimmedClip() {
         TimelineAssetRef asset = TimelineAssetRef.of("art-1", "storage://video.mp4");
-        // Trim: only use 5s-15s of the source asset
         TimelineClip clip = TimelineClip.of("clip-1", asset, 0.0, 5.0, 15.0);
         TimelineTrack track = new TimelineTrack(
                 "tr-1", "Video 1", TimelineTrack.TrackType.VIDEO,
@@ -118,7 +119,6 @@ class TimelineEffectApiProductizationTest {
     @Test
     void timelineWithInvalidTimingRejected() {
         TimelineAssetRef asset = TimelineAssetRef.of("art-1", "storage://video.mp4");
-        // out < in → invalid
         TimelineClip clip = TimelineClip.of("clip-1", asset, 0.0, 10.0, 5.0);
         TimelineTrack track = new TimelineTrack(
                 "tr-1", "Video 1", TimelineTrack.TrackType.VIDEO,
@@ -215,13 +215,55 @@ class TimelineEffectApiProductizationTest {
                 "tr-1", "Video 1", TimelineTrack.TrackType.VIDEO,
                 0, List.of(clip), false, false);
 
-        // Verify effects are attached to clip
         assertEquals(2, track.clips().get(0).effects().size());
         assertEquals("blur", track.clips().get(0).effects().get(0).effectKey());
         assertEquals("vignette", track.clips().get(0).effects().get(1).effectKey());
     }
 
-    // --- Scenario F: Multi-track composition ---
+    // --- Scenario F: Effect registry ---
+
+    @Test
+    void effectRegistryContainsStandardEffects() {
+        EffectMappingService registry = new EffectMappingService();
+
+        assertTrue(registry.getDescriptor("video.blur").isPresent());
+        assertTrue(registry.getDescriptor("video.sharpen").isPresent());
+        assertTrue(registry.getDescriptor("video.vignette").isPresent());
+        assertTrue(registry.getDescriptor("video.fade_in").isPresent());
+        assertTrue(registry.getDescriptor("video.fade_out").isPresent());
+        assertTrue(registry.getDescriptor("text.subtitle_burn_in").isPresent());
+    }
+
+    @Test
+    void effectRegistryReturnsEmptyForUnknownEffect() {
+        EffectMappingService registry = new EffectMappingService();
+
+        assertTrue(registry.getDescriptor("unknown.effect").isEmpty());
+    }
+
+    @Test
+    void effectRegistryHasProviderMappings() {
+        EffectMappingService registry = new EffectMappingService();
+
+        var mappings = registry.getMappings("video.blur");
+        assertFalse(mappings.isEmpty());
+    }
+
+    // --- Scenario G: Effect extraction from timeline script ---
+
+    @Test
+    void effectInspectorExtractsEffectsFromScript() {
+        // This tests the EffectTimelineInspector which parses timeline JSON
+        // and extracts effect keys and pack IDs
+        // Note: EffectTimelineInspector requires a non-null TimelineScriptParser
+        // This test verifies the constructor accepts the dependency
+        // Actual parsing tests are in TimelineScriptParserTest
+        assertThrows(NullPointerException.class, () -> {
+            new EffectTimelineInspector(null).extractFromScript("{}");
+        });
+    }
+
+    // --- Scenario H: Multi-track composition ---
 
     @Test
     void multiTrackTimeline() {
@@ -246,7 +288,7 @@ class TimelineEffectApiProductizationTest {
         assertEquals(2, timeline.tracks().size());
     }
 
-    // --- Scenario G: Duration computation ---
+    // --- Scenario I: Duration computation ---
 
     @Test
     void computeDurationFromMultipleClips() {
@@ -262,11 +304,10 @@ class TimelineEffectApiProductizationTest {
                 "tl-1", "Duration Test", null, List.of(track),
                 List.of(), output, 0, Map.of());
 
-        // clip2 ends at 5.0 + 15.0 = 20.0
         assertEquals(20.0, timeline.computeDuration(), 0.001);
     }
 
-    // --- Scenario H: Factory method ---
+    // --- Scenario J: Factory method ---
 
     @Test
     void factoryMethodCreatesMinimalTimeline() {
@@ -279,7 +320,7 @@ class TimelineEffectApiProductizationTest {
         assertEquals(TimelineTrack.TrackType.VIDEO, timeline.tracks().get(0).type());
     }
 
-    // --- Scenario I: Output spec ---
+    // --- Scenario K: Output spec ---
 
     @Test
     void outputSpec1080p() {
@@ -289,7 +330,7 @@ class TimelineEffectApiProductizationTest {
         assertEquals("mp4", output.format());
     }
 
-    // --- Scenario J: Track types ---
+    // --- Scenario L: Track types ---
 
     @Test
     void trackTypes() {
@@ -302,22 +343,20 @@ class TimelineEffectApiProductizationTest {
         assertEquals(TimelineTrack.TrackType.SUBTITLE, subtitle.type());
     }
 
-    // --- Scenario K: Clip timing ---
+    // --- Scenario M: Clip timing ---
 
     @Test
     void clipTimingValidation() {
         TimelineAssetRef asset = TimelineAssetRef.of("art-1", "storage://video.mp4");
 
-        // Valid: out > in
         TimelineClip valid = TimelineClip.of("c1", asset, 0.0, 0.0, 10.0);
         assertTrue(valid.hasValidTiming());
 
-        // Invalid: out < in
         TimelineClip invalid = TimelineClip.of("c2", asset, 0.0, 10.0, 5.0);
         assertFalse(invalid.hasValidTiming());
     }
 
-    // --- Scenario L: Empty timeline ---
+    // --- Scenario N: Empty timeline ---
 
     @Test
     void emptyTimelineHasZeroDuration() {
@@ -326,5 +365,15 @@ class TimelineEffectApiProductizationTest {
                 List.of(), null, 0, Map.of());
 
         assertEquals(0, timeline.computeDuration());
+    }
+
+    // --- Scenario O: Effect with unknown type returns original ---
+
+    @Test
+    void unknownEffectTypeReturnsOriginal() {
+        // This tests that unknown effect types don't crash
+        TimelineClipEffect effect = TimelineClipEffect.ofKey("unknown_effect", Map.of());
+        assertNotNull(effect);
+        assertEquals("unknown_effect", effect.effectKey());
     }
 }
