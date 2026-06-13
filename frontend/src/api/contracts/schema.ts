@@ -132,14 +132,14 @@ export const EffectPackEffectSchema = z.object({
   displayName: z.string(),
   category: z.enum(['transition', 'video', 'audio', 'text', 'compositor']),
   description: z.string(),
-  parameterSchema: z.record(EffectParameterDefSchema),
-  defaultValues: z.record(z.unknown()),
+  parameterSchema: z.record(z.string(), EffectParameterDefSchema),
+  defaultValues: z.record(z.string(), z.unknown()),
   providerMappings: z.array(z.string()),
   allowedTiers: z.array(z.string()),
   thumbnailUrl: z.string().optional(),
   taxonomyCategory: z.string().optional(),
   isEffect: z.boolean().optional(),
-  defaultParams: z.record(z.any()).optional(),
+  defaultParams: z.record(z.string(), z.any()).optional(),
   paramSchemas: z.array(EffectParameterDefSchema).optional(),
 }).strict()
 
@@ -172,7 +172,7 @@ export const ClipEffectSchema = z.object({
   packId: z.string().optional(),
   packVersion: z.string().optional(),
   providerPreference: z.array(z.string()),
-  parameters: z.record(z.unknown()),
+  parameters: z.record(z.string(), z.unknown()),
   duration: z.number().optional(),
   startTime: z.number().optional(),
 }).strict()
@@ -216,7 +216,7 @@ export type SchemaKey = keyof typeof schemaRegistry
 export function safeParseResponse<T extends SchemaKey>(
   schemaKey: T,
   data: unknown
-): { success: true; data: z.infer<(typeof schemaRegistry)[T]> } | { success: false; error: z.ZodError } {
+): { success: true; data: unknown } | { success: false; error: z.ZodError } {
   const schema = schemaRegistry[schemaKey]
   const result = schema.safeParse(data)
   if (result.success) {

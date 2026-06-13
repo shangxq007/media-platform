@@ -2,6 +2,7 @@ plugins { id("org.springframework.boot") }
 
 dependencies {
     implementation(project(":shared-kernel"))
+    testImplementation(testFixtures(project(":shared-kernel")))
     implementation(project(":render-module"))
     implementation(project(":notification-module"))
     implementation(project(":ai-module"))
@@ -42,7 +43,6 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     // Flyway 10+ community DB support (required when using PostgreSQL at runtime, e.g. Docker / prod).
     implementation("org.flywaydb:flyway-database-postgresql")
-    runtimeOnly("com.h2database:h2")
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
     implementation("org.springframework.boot:spring-boot-starter-security")

@@ -4,7 +4,7 @@ import com.example.platform.render.infrastructure.productization.adaptive.Adapti
 import com.example.platform.render.infrastructure.productization.marketplace.Marketplace;
 import com.example.platform.render.infrastructure.productization.marketplace.MarketplaceService;
 import com.example.platform.render.infrastructure.productization.workspace.Workspace;
-import com.example.platform.render.infrastructure.productization.workspace.WorkspaceService;
+import com.example.platform.render.infrastructure.productization.workspace.ProductWorkspaceService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,12 +16,12 @@ import java.util.List;
 @RequestMapping("/api/v1/product")
 public class ProductizationApi {
 
-    private final WorkspaceService workspaceService;
+    private final ProductWorkspaceService workspaceService;
     private final MarketplaceService marketplaceService;
     private final AdaptiveEngine adaptiveEngine;
 
     public ProductizationApi(
-            WorkspaceService workspaceService,
+            ProductWorkspaceService workspaceService,
             MarketplaceService marketplaceService,
             AdaptiveEngine adaptiveEngine) {
         this.workspaceService = workspaceService;

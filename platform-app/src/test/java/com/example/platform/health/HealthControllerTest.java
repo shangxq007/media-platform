@@ -3,26 +3,29 @@ package com.example.platform.health;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import com.example.platform.shared.test.PostgresTestContainer;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
-class HealthControllerTest {
+class HealthControllerTest extends PostgresTestContainer {
 
     private HealthController controller;
 
     @BeforeEach
     void setUp() {
         var ds = new DriverManagerDataSource();
-        ds.setDriverClassName("org.h2.Driver");
-        ds.setUrl("jdbc:h2:mem:health_test_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
+        ds.setDriverClassName("org.postgresql.Driver");
+        ds.setUrl(POSTGRES.getJdbcUrl());
+        ds.setUsername(POSTGRES.getUsername());
+        ds.setPassword(POSTGRES.getPassword());
         var jdbc = new JdbcTemplate(ds);
 
-        jdbc.execute("create table if not exists outbox_events (id varchar(64), status varchar(32))");
-        jdbc.execute("insert into outbox_events values ('e1', 'PENDING')");
-        jdbc.execute("insert into outbox_events values ('e2', 'PROCESSED')");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS outbox_events (id VARCHAR(64), status VARCHAR(32))");
+        jdbc.execute("INSERT INTO outbox_events VALUES ('e1', 'PENDING')");
+        jdbc.execute("INSERT INTO outbox_events VALUES ('e2', 'PROCESSED')");
 
         controller = new HealthController(jdbc, ds);
     }

@@ -11,40 +11,47 @@ import static org.mockito.Mockito.when;
 import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
 import com.example.platform.secrets.api.port.SecretsConfigPort;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import com.example.platform.shared.test.PostgresTestContainer;
 import java.time.OffsetDateTime;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
-class TenantLitellmKeyVaultMigrationServiceTest {
-
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
+class TenantLitellmKeyVaultMigrationServiceTest extends PostgresTestContainer {
 
     private TenantLitellmKeyVaultMigrationService migrationService;
     private TenantLitellmKeyCredentialService credentialService;
+    private DSLContext dsl;
+    private JdbcTemplate jdbc;
 
     @BeforeEach
-    void setUp() throws Exception {
-        String db = "litellmmig" + COUNTER.incrementAndGet();
-        Connection conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + db + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        DSLContext dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table tenant_litellm_virtual_key ("
-                    + "tenant_id varchar(64) primary key,"
-                    + "virtual_key varchar(512),"
-                    + "vault_ref varchar(512),"
-                    + "key_alias varchar(128),"
-                    + "enabled boolean not null,"
-                    + "created_at timestamp not null,"
-                    + "updated_at timestamp not null)");
-        }
+    void setUp() {
+        var ds = new DriverManagerDataSource();
+        ds.setDriverClassName("org.postgresql.Driver");
+        ds.setUrl(POSTGRES.getJdbcUrl());
+        ds.setUsername(POSTGRES.getUsername());
+        ds.setPassword(POSTGRES.getPassword());
+        jdbc = new JdbcTemplate(ds);
+        
+        jdbc.execute("CREATE TABLE IF NOT EXISTS tenant_litellm_virtual_key ("
+                + "tenant_id VARCHAR(64) PRIMARY KEY,"
+                + "virtual_key VARCHAR(512),"
+                + "vault_ref VARCHAR(512),"
+                + "key_alias VARCHAR(128),"
+                + "enabled BOOLEAN NOT NULL,"
+                + "created_at TIMESTAMP NOT NULL,"
+                + "updated_at TIMESTAMP NOT NULL)");
+        
+        // Clean up any existing data
+        jdbc.execute("DELETE FROM tenant_litellm_virtual_key");
+
+        dsl = DSL.using(ds, org.jooq.SQLDialect.POSTGRES);
+        
         OffsetDateTime now = OffsetDateTime.now();
         dsl.insertInto(DSL.table("tenant_litellm_virtual_key"))
                 .columns(

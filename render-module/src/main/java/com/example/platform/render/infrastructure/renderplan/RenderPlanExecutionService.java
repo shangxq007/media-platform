@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
  * <p>Flow: Timeline → RenderPlan DAG → Execution Engine → Artifact
  */
 @Service
-public class RenderPlanService {
+public class RenderPlanExecutionService {
 
-    private static final Logger log = LoggerFactory.getLogger(RenderPlanService.class);
+    private static final Logger log = LoggerFactory.getLogger(RenderPlanExecutionService.class);
 
     private final RenderPlanBuilder planBuilder;
     private final DagExecutionEngine executionEngine;
 
-    public RenderPlanService(RenderPlanBuilder planBuilder, DagExecutionEngine executionEngine) {
+    public RenderPlanExecutionService(RenderPlanBuilder planBuilder, DagExecutionEngine executionEngine) {
         this.planBuilder = planBuilder;
         this.executionEngine = executionEngine;
     }

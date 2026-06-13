@@ -14,6 +14,5 @@ dependencies {
     implementation("com.hierynomus:smbj:0.13.0")
     compileOnly("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

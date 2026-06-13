@@ -14,9 +14,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Service for managing collaborative workspaces.
  */
 @Service
-public class WorkspaceService {
+public class ProductWorkspaceService {
 
-    private static final Logger log = LoggerFactory.getLogger(WorkspaceService.class);
+    private static final Logger log = LoggerFactory.getLogger(ProductWorkspaceService.class);
 
     private final Map<String, Workspace> workspaces = new ConcurrentHashMap<>();
 

@@ -29,12 +29,17 @@ subprojects {
             mavenBom("org.springframework.boot:spring-boot-dependencies:4.0.4")
             // Spring AI 尚无面向 Boot 4 的 GA BOM；2.0.0-Mx 与 Boot 4 对齐（见官方 Getting Started / Release Notes）。
             mavenBom("org.springframework.ai:spring-ai-bom:2.0.0-M3")
+            mavenBom("org.testcontainers:testcontainers-bom:1.20.4")
         }
     }
 
     dependencies {
         // Annotation-only; aligns all Gradle modules with Spring Modulith metadata in package-info.
         add("compileOnly", "org.springframework.modulith:spring-modulith-api:2.0.4")
+        
+        // Test dependencies for all modules
+        add("testImplementation", "org.testcontainers:postgresql")
+        add("testImplementation", "org.testcontainers:junit-jupiter")
     }
 
     tasks.withType<Test> { useJUnitPlatform() }

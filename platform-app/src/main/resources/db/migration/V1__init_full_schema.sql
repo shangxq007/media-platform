@@ -2029,8 +2029,8 @@ create table render_billing_record (
     id varchar(128) primary key,
     job_id varchar(64) not null,
     tenant_id varchar(64) not null,
-    estimated_cost double not null default 0,
-    actual_cost double not null default 0,
+    estimated_cost double precision not null default 0,
+    actual_cost double precision not null default 0,
     usage_seconds bigint not null default 0,
     provider_id varchar(64),
     output_size_bytes bigint not null default 0,
@@ -2149,9 +2149,9 @@ create table system_canonical_edge (
     constraint fk_edge_target foreign key (target_event_id) references system_canonical_event(event_id)
 );
 
-create index ix_edge_graph_id on system_canonical_edge(graph_id);
-create index ix_edge_source on system_canonical_edge(source_event_id);
-create index ix_edge_target on system_canonical_edge(target_event_id);
+create index ix_canonical_edge_graph_id on system_canonical_edge(graph_id);
+create index ix_canonical_edge_source on system_canonical_edge(source_event_id);
+create index ix_canonical_edge_target on system_canonical_edge(target_event_id);
 
 -- ============================================================
 -- USAGE RECORD TABLE (MINIMAL BILLING)
@@ -2162,7 +2162,7 @@ create table render_usage_record (
     job_id varchar(64) not null,
     tenant_id varchar(64) not null,
     duration_seconds bigint not null,
-    cost double not null,
+    cost double precision not null,
     created_at timestamp not null
 );
 

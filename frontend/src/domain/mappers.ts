@@ -122,7 +122,7 @@ export function toArtifactDomain(artifact: Artifact): ArtifactDomain {
 // ---------------------------------------------------------------------------
 
 function toEffectParameterDefDomain(
-  def: EffectPackEffect['parameterSchema'][string]
+  def: { type: string; defaultValue: unknown; min?: number; max?: number; description: string }
 ): EffectPackEffectDomain['parameterSchema'][string] {
   return {
     type: def.type as EffectPackEffectDomain['parameterSchema'][string]['type'],

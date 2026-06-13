@@ -11,41 +11,40 @@ import static org.mockito.Mockito.when;
 import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
 import com.example.platform.secrets.api.port.SecretsConfigPort;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
-import java.util.Map;
+import com.example.platform.shared.test.PostgresTestContainer;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
-class TenantLitellmKeyServiceTest {
-
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
+class TenantLitellmKeyServiceTest extends PostgresTestContainer {
 
     private TenantLitellmKeyService service;
     private TenantLitellmKeyCredentialService credentialService;
+    private DSLContext dsl;
 
     @BeforeEach
-    void setUp() throws Exception {
-        String db = "litellmkey" + COUNTER.incrementAndGet();
-        Connection conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + db + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        DSLContext dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table tenant_litellm_virtual_key ("
-                    + "tenant_id varchar(64) primary key,"
-                    + "virtual_key varchar(512),"
-                    + "vault_ref varchar(512),"
-                    + "key_alias varchar(128),"
-                    + "enabled boolean not null,"
-                    + "created_at timestamp not null,"
-                    + "updated_at timestamp not null)");
-        }
+    void setUp() {
+        var ds = new org.springframework.jdbc.datasource.DriverManagerDataSource();
+        ds.setDriverClassName("org.postgresql.Driver");
+        ds.setUrl(POSTGRES.getJdbcUrl());
+        ds.setUsername(POSTGRES.getUsername());
+        ds.setPassword(POSTGRES.getPassword());
+        var jdbc = new JdbcTemplate(ds);
+        
+        jdbc.execute("CREATE TABLE IF NOT EXISTS tenant_litellm_virtual_key ("
+                + "tenant_id VARCHAR(64) PRIMARY KEY,"
+                + "virtual_key VARCHAR(512),"
+                + "vault_ref VARCHAR(512),"
+                + "key_alias VARCHAR(128),"
+                + "enabled BOOLEAN NOT NULL,"
+                + "created_at TIMESTAMP NOT NULL,"
+                + "updated_at TIMESTAMP NOT NULL)");
+
+        dsl = DSL.using(ds, org.jooq.SQLDialect.POSTGRES);
 
         SecretResolver secretResolver = mock(SecretResolver.class);
         SecretRefRegistryPort registry = mock(SecretRefRegistryPort.class);
@@ -87,20 +86,6 @@ class TenantLitellmKeyServiceTest {
         TenantLitellmKeyCredentialService vaultCredentials =
                 new TenantLitellmKeyCredentialService(secretResolver, registry, secretsConfig);
 
-        String db = "litellmkeyvault" + COUNTER.incrementAndGet();
-        Connection conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + db + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        DSLContext dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table tenant_litellm_virtual_key ("
-                    + "tenant_id varchar(64) primary key,"
-                    + "virtual_key varchar(512),"
-                    + "vault_ref varchar(512),"
-                    + "key_alias varchar(128),"
-                    + "enabled boolean not null,"
-                    + "created_at timestamp not null,"
-                    + "updated_at timestamp not null)");
-        }
         TenantLitellmKeyRepository repository = new TenantLitellmKeyRepository(dsl);
         repository.upsert("tenant-v", null, "vault:secret/data/ai-litellm/tenants/t1/litellm", "alias", true);
 
