@@ -14,5 +14,6 @@ dependencies {
     implementation("com.hierynomus:smbj:0.13.0")
     compileOnly("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation(testFixtures(project(":shared-kernel")))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

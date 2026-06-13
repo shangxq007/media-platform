@@ -20,11 +20,14 @@ import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.storage.domain.BlobStorage;
 import java.time.Instant;
 import java.util.Map;
+import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.conf.RenderNameCase;
 import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,15 +35,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
-    private ArtifactCatalogRepository repository;
+    private static DataSource dataSource;
+    private static DSLContext dsl;
+    private static ArtifactCatalogRepository repository;
+    private static ArtifactLifecycleService lifecycle;
+    
     private ArtifactGcService gcService;
     private BlobStorage blobStorage;
     private AuditPort auditPort;
 
-    @BeforeEach
-    void setUp() {
-        var ds = createDataSource();
-        var jdbc = new JdbcTemplate(ds);
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
 
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact ("
                 + "id varchar(64) primary key,"
@@ -54,17 +61,27 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
                 + "status varchar(32) not null default 'ACTIVE',"
                 + "tombstoned_at timestamp"
                 + ")");
-        jdbc.execute("TRUNCATE TABLE artifact CASCADE");
 
         var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
-        DSLContext dsl = DSL.using(ds, SQLDialect.POSTGRES, settings);
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
         repository = new ArtifactCatalogRepository(dsl);
         ErrorCodeRegistry registry = new ErrorCodeRegistry();
         registry.loadErrorCodes();
         ArtifactCatalogService catalog = new ArtifactCatalogService(repository, null, registry);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
-        ArtifactLifecycleService lifecycle =
-                new ArtifactLifecycleService(repository, catalog, dsl, registry, events, java.util.List.of());
+        lifecycle = new ArtifactLifecycleService(repository, catalog, dsl, registry, events, java.util.List.of());
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
+
+    @BeforeEach
+    void setUp() {
+        // Clean up before each test
+        dsl.execute("TRUNCATE TABLE artifact CASCADE");
+
         blobStorage = mock(BlobStorage.class);
         auditPort = mock(AuditPort.class);
         ArtifactGcProperties props = new ArtifactGcProperties();

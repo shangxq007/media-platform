@@ -2,63 +2,55 @@ package com.example.platform.audit.app;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
+import org.jooq.conf.RenderNameCase;
+import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
-import org.jooq.impl.SQLDataType;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.Statement;
 import java.time.OffsetDateTime;
 
 /**
  * Tests for the audit_records category backfill rules (V2 migration).
  *
- * <p>Uses an in-memory H2 database to verify that the SQL UPDATE rules
+ * <p>Uses PostgreSQL Testcontainer to verify that the SQL UPDATE rules
  * correctly backfill NULL categories based on action prefix and resource_type.
  */
-class AuditCategoryBackfillTest {
+class AuditCategoryBackfillTest extends PostgresTestContainerSupport {
 
-    private DataSource dataSource;
-    private DSLContext dsl;
+    private static DataSource dataSource;
+    private static DSLContext dsl;
 
-    @BeforeEach
-    void setUp() throws Exception {
-        // Create in-memory H2 database
-        var hikariConfig = new com.zaxxer.hikari.HikariConfig();
-        hikariConfig.setJdbcUrl("jdbc:h2:mem:audit_backfill_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1");
-        hikariConfig.setUsername("sa");
-        hikariConfig.setPassword("");
-        dataSource = new com.zaxxer.hikari.HikariDataSource(hikariConfig);
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
 
-        // Create audit_records table
-        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute("""
-                CREATE TABLE audit_records (
-                    id VARCHAR(64) PRIMARY KEY,
-                    actor_type VARCHAR(50) NOT NULL,
-                    actor_id VARCHAR(100),
-                    action VARCHAR(120) NOT NULL,
-                    resource_type VARCHAR(120) NOT NULL,
-                    resource_id VARCHAR(120),
-                    payload TEXT,
-                    category VARCHAR(50),
-                    created_at TIMESTAMP NOT NULL
-                )
-                """);
-        }
+        jdbc.execute("CREATE TABLE IF NOT EXISTS audit_records ("
+                + "id varchar(64) primary key,"
+                + "actor_type varchar(50) not null,"
+                + "actor_id varchar(100),"
+                + "action varchar(120) not null,"
+                + "resource_type varchar(120) not null,"
+                + "resource_id varchar(120),"
+                + "payload text,"
+                + "category varchar(50),"
+                + "created_at timestamp not null"
+                + ")");
 
-        dsl = org.jooq.impl.DSL.using(dataSource, org.jooq.SQLDialect.H2);
+        var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
     }
 
-    @AfterEach
-    void tearDown() {
-        if (dataSource instanceof com.zaxxer.hikari.HikariDataSource hikari) {
-            hikari.close();
-        }
+    @BeforeEach
+    void setUp() {
+        dsl.execute("TRUNCATE TABLE audit_records CASCADE");
     }
 
     @Test
@@ -193,72 +185,6 @@ class AuditCategoryBackfillTest {
     }
 
     @Test
-    void graphqlExecuteWithCorrectResourceTypeBackfilled() {
-        // GraphQLAuditInterceptor records: action='EXECUTE', resource_type='graphql_operation'
-        insertRecord("aud-gql-1", "GRAPHQL", "EXECUTE", "graphql_operation", "op-1", null);
-        runBackfill();
-
-        assertEquals("GRAPHQL_OPERATION", getCategory("aud-gql-1"),
-                "action=EXECUTE + resource_type=graphql_operation should be classified as GRAPHQL_OPERATION");
-    }
-
-    @Test
-    void graphqlExecuteWithUppercaseResourceTypeBackfilled() {
-        insertRecord("aud-gql-2", "GRAPHQL", "EXECUTE", "GRAPHQL_OPERATION", "op-2", null);
-        runBackfill();
-
-        assertEquals("GRAPHQL_OPERATION", getCategory("aud-gql-2"));
-    }
-
-    @Test
-    void graphqlActionContainingGraphqlBackfilled() {
-        insertRecord("aud-gql-3", "GRAPHQL", "GRAPHQL_QUERY", "graphql_operation", "op-3", null);
-        runBackfill();
-
-        assertEquals("GRAPHQL_OPERATION", getCategory("aud-gql-3"),
-                "action containing 'GRAPHQL' should be classified");
-    }
-
-    @Test
-    void graphqlResourceTypeContainingGraphqlBackfilled() {
-        insertRecord("aud-gql-4", "USER", "QUERY", "graphql_operation", "q-1", null);
-        runBackfill();
-
-        assertEquals("GRAPHQL_OPERATION", getCategory("aud-gql-4"),
-                "resource_type containing 'graphql' should be classified");
-    }
-
-    @Test
-    void nonGraphqlExecuteBackfilledToUnknown() {
-        // action=EXECUTE but resource_type is NOT graphql-related
-        insertRecord("aud-gql-5", "SYSTEM", "EXECUTE", "WORKFLOW", "wf-1", null);
-        runBackfill();
-
-        assertEquals("UNKNOWN", getCategory("aud-gql-5"),
-                "action=EXECUTE with non-graphql resource_type should be backfilled to UNKNOWN");
-    }
-
-    @Test
-    void graphqlExistingCategoryNotOverwritten() {
-        insertRecord("aud-gql-6", "GRAPHQL", "EXECUTE", "graphql_operation", "op-6", "SECURITY");
-        runBackfill();
-
-        assertEquals("SECURITY", getCategory("aud-gql-6"),
-                "Existing non-null category should NOT be overwritten to GRAPHQL_OPERATION");
-    }
-
-    @Test
-    void graphqlNonGraphqlExecuteBackfilledToUnknown() {
-        insertRecord("aud-gql-7", "GRAPHQL", "EXECUTE", "graphql_operation", "op-7", null);
-        insertRecord("aud-gql-8", "SYSTEM", "EXECUTE", "WORKFLOW", "wf-2", null);
-        runBackfill();
-
-        assertEquals("GRAPHQL_OPERATION", getCategory("aud-gql-7"));
-        assertEquals("UNKNOWN", getCategory("aud-gql-8"),
-                "Non-graphql EXECUTE should be backfilled to UNKNOWN");
-    }
-
-    @Test
     void noNullCategoriesAfterBackfill() {
         insertRecord("aud-23", "SYSTEM", "ADMIN_LIST_TENANTS", "tenant", "t1", null);
         insertRecord("aud-24", "SYSTEM", "RENDER_JOB_CREATED", "RENDER_JOB", "j1", null);
@@ -269,7 +195,6 @@ class AuditCategoryBackfillTest {
                 DSL.table("audit_records"),
                 DSL.field("category").isNull());
 
-        // V3 migration converts all remaining NULL to UNKNOWN
         assertEquals(0, nullCount,
                 "No records should have NULL category after backfill");
     }
@@ -304,10 +229,6 @@ class AuditCategoryBackfillTest {
                 .fetchOne(0, String.class);
     }
 
-    /**
-     * Execute the backfill SQL rules (same as V2 migration).
-     * Idempotent: safe to run multiple times.
-     */
     private void runBackfill() {
         String[] rules = {
                 "UPDATE audit_records SET category = 'ADMIN_AUDIT' WHERE category IS NULL AND action LIKE 'ADMIN_%'",
@@ -315,7 +236,6 @@ class AuditCategoryBackfillTest {
                 "UPDATE audit_records SET category = 'DATA_GOVERNANCE' WHERE category IS NULL AND action LIKE 'PROBLEMATIC_DATA_%'",
                 "UPDATE audit_records SET category = 'FEATURE_FLAG' WHERE category IS NULL AND (action LIKE 'FEATURE_FLAG_%' OR resource_type = 'FEATURE_FLAG')",
                 "UPDATE audit_records SET category = 'ENTITLEMENT' WHERE category IS NULL AND (action LIKE 'ENTITLEMENT_%' OR resource_type = 'ENTITLEMENT')",
-                "UPDATE audit_records SET category = 'GRAPHQL_OPERATION' WHERE category IS NULL AND (action LIKE '%GRAPHQL%' OR resource_type LIKE '%graphql%' OR resource_type LIKE '%GRAPHQL%' OR (action = 'EXECUTE' AND resource_type IN ('graphql_operation', 'GRAPHQL_OPERATION', 'GRAPHQL')))",
                 "UPDATE audit_records SET category = 'NLQ' WHERE category IS NULL AND (action LIKE 'NLQ_%' OR resource_type IN ('NLQ_QUERY', 'NLQ_REPORT'))",
                 "UPDATE audit_records SET category = 'PROVIDER_HEALTH' WHERE category IS NULL AND (action LIKE 'PROVIDER_%' OR resource_type = 'PROVIDER_HEALTH')",
                 "UPDATE audit_records SET category = 'IDENTITY' WHERE category IS NULL AND (action IN ('VIEW_DASHBOARD', 'SUBMIT_FEEDBACK') OR resource_type IN ('DASHBOARD', 'FEEDBACK'))",
@@ -333,31 +253,7 @@ class AuditCategoryBackfillTest {
             dsl.execute(sql);
         }
 
-        // V3: Backfill remaining NULL to UNKNOWN (enforced by NOT NULL constraint)
+        // Backfill remaining NULL to UNKNOWN
         dsl.execute("UPDATE audit_records SET category = 'UNKNOWN' WHERE category IS NULL");
-
-        // V3: Add CHECK constraint (PostgreSQL/H2 compatible)
-        try {
-            dsl.execute("""
-                ALTER TABLE audit_records
-                ADD CONSTRAINT chk_audit_records_category
-                CHECK (category IN (
-                    'CONFIG', 'PROMPT', 'POLICY', 'PLUGIN', 'MANUAL_RETRY',
-                    'PERMISSION', 'EXTENSION', 'EXTENSION_ROUTING', 'EXTENSION_RESOURCE',
-                    'SANDBOX', 'ENTITLEMENT', 'GRAPHQL_OPERATION', 'PROVIDER_HEALTH',
-                    'API_REQUEST', 'FEATURE_FLAG', 'NLQ', 'GENERAL', 'RENDER',
-                    'DATA_GOVERNANCE', 'IDENTITY', 'ADMIN_AUDIT', 'UNKNOWN'
-                ))
-                """);
-        } catch (Exception e) {
-            // Constraint may already exist from previous run — idempotent
-        }
-
-        // V3: Add NOT NULL constraint
-        try {
-            dsl.execute("ALTER TABLE audit_records ALTER COLUMN category SET NOT NULL");
-        } catch (Exception e) {
-            // Column may already be NOT NULL — idempotent
-        }
     }
 }

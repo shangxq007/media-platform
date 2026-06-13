@@ -30,13 +30,19 @@ class ProjectImportPreviewServiceTest {
         previewService = new ProjectImportPreviewService();
         previewService.setAuditPort(auditPort);
 
-        // Use a fake DNS resolver that always resolves to a safe IP
+        // Use a fake DNS resolver that always resolves to a safe public IP
+        // This prevents tests from depending on real DNS resolution
         SafeDownloadUrlValidator.setDnsResolver(host -> {
             if (host == null || host.isBlank()) {
-                throw new Exception("No host");
+                throw new java.net.UnknownHostException("No host");
             }
             // Return a safe public IP for all hosts in tests
-            return new InetAddress[]{InetAddress.getByName("93.184.216.34")};
+            // Use a well-known public IP that passes all validation checks
+            try {
+                return new InetAddress[]{java.net.InetAddress.getByName("93.184.216.34")};
+            } catch (Exception e) {
+                throw new java.net.UnknownHostException("Failed to resolve: " + host);
+            }
         });
     }
 
@@ -99,10 +105,12 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewLinkedAssetsShouldMarkAvailableLinkedWhenUrlPresent() {
+        // Use a URL with a hostname that resolves to a safe public IP
+        // Avoids DNS resolution issues in CI
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
                 1024L, null, 10.0, 1920, 1080, null,
-                "https://signed.example.com/video.mp4?token=abc"); // Has signed URL
+                "https://example.com/video.mp4?token=abc"); // Has signed URL
         ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
                 "project-export-v1", "linked_assets", List.of(asset), null);
 
@@ -116,7 +124,7 @@ class ProjectImportPreviewServiceTest {
         ProjectImportPreviewResponse response = previewService.previewImport("tenant-1", request);
 
         // Verify compatible and has assets
-        assertTrue(response.compatible());
+        assertTrue(response.compatible(), "Expected compatible but got errors: " + response.errors());
         assertEquals(1, response.assets().total());
 
         // Verify at least some assets are available (relaxed assertion)

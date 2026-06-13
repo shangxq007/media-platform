@@ -1,47 +1,55 @@
 package com.example.platform.identity.infrastructure;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.identity.domain.WorkspaceMember;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
 import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-class WorkspaceMemberRepositoryTest {
+class WorkspaceMemberRepositoryTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private WorkspaceMemberRepository repository;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
+
+        jdbc.execute("CREATE TABLE IF NOT EXISTS workspace_member ("
+                + "id varchar(64) primary key,"
+                + "workspace_id varchar(64) not null,"
+                + "user_id varchar(64) not null,"
+                + "role varchar(64) not null,"
+                + "status varchar(32) not null default 'ACTIVE',"
+                + "joined_at timestamp not null,"
+                + "updated_at timestamp not null"
+                + ")");
+
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "wsmrepo" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table workspace_member ("
-                    + "id varchar(64) primary key,"
-                    + "workspace_id varchar(64) not null,"
-                    + "user_id varchar(64) not null,"
-                    + "role varchar(64) not null,"
-                    + "status varchar(32) not null default 'ACTIVE',"
-                    + "joined_at timestamp not null,"
-                    + "updated_at timestamp not null"
-                    + ")");
-        }
-
+    void setUp() {
+        dsl.execute("TRUNCATE TABLE workspace_member CASCADE");
         repository = new WorkspaceMemberRepository(dsl);
     }
 

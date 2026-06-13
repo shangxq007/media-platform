@@ -4,46 +4,49 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
+import org.jooq.conf.RenderNameCase;
+import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-class AuditServiceTest {
+class AuditServiceTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private AuditService service;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
+
+        jdbc.execute("CREATE TABLE IF NOT EXISTS audit_records ("
+                + "id varchar(64) primary key,"
+                + "actor_type varchar(50) not null,"
+                + "actor_id varchar(100),"
+                + "action varchar(120) not null,"
+                + "resource_type varchar(120) not null,"
+                + "resource_id varchar(120),"
+                + "payload text,"
+                + "category varchar(50),"
+                + "created_at timestamp not null"
+                + ")");
+
+        var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "audittest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table audit_records ("
-                    + "id varchar(64) primary key,"
-                    + "actor_type varchar(50) not null,"
-                    + "actor_id varchar(100),"
-                    + "action varchar(120) not null,"
-                    + "resource_type varchar(120) not null,"
-                    + "resource_id varchar(120),"
-                    + "payload text,"
-                    + "category varchar(50),"
-                    + "created_at timestamp not null"
-                    + ")");
-        }
-
+    void setUp() {
+        dsl.execute("TRUNCATE TABLE audit_records CASCADE");
         service = new AuditService(dsl, new AuditAlertService(AuditAlertProperties.defaults(), new NoopSecurityAlertAdapter()));
     }
 

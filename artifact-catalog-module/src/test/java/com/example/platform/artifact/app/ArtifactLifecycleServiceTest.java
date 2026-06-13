@@ -15,6 +15,8 @@ import org.jooq.SQLDialect;
 import org.jooq.conf.RenderNameCase;
 import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,13 +26,17 @@ import java.util.List;
 
 class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
 
-    private ArtifactCatalogService catalogService;
-    private ArtifactLifecycleService lifecycleService;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
+    private static ArtifactCatalogRepository repository;
+    private static ArtifactRelationRepository relationRepository;
+    private static ArtifactCatalogService catalogService;
+    private static ArtifactLifecycleService lifecycleService;
 
-    @BeforeEach
-    void setUp() {
-        var ds = createDataSource();
-        var jdbc = new JdbcTemplate(ds);
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
 
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
                 + "id varchar(64) primary key,"
@@ -51,18 +57,28 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
                 + "status varchar(32) not null default 'ACTIVE',"
                 + "tombstoned_at timestamp"
                 + ")");
-        jdbc.execute("TRUNCATE TABLE artifact_relation CASCADE");
-        jdbc.execute("TRUNCATE TABLE artifact CASCADE");
 
         var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
-        DSLContext dsl = DSL.using(ds, SQLDialect.POSTGRES, settings);
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
+        repository = new ArtifactCatalogRepository(dsl);
+        relationRepository = new ArtifactRelationRepository(dsl);
         ErrorCodeRegistry registry = new ErrorCodeRegistry();
         registry.loadErrorCodes();
-        ArtifactCatalogRepository repository = new ArtifactCatalogRepository(dsl);
-        ArtifactRelationRepository relationRepository = new ArtifactRelationRepository(dsl);
         catalogService = new ArtifactCatalogService(repository, relationRepository, registry);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         lifecycleService = new ArtifactLifecycleService(repository, catalogService, dsl, registry, events, List.of());
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
+
+    @BeforeEach
+    void setUp() {
+        // Clean up before each test
+        dsl.execute("TRUNCATE TABLE artifact_relation CASCADE");
+        dsl.execute("TRUNCATE TABLE artifact CASCADE");
     }
 
     @Test

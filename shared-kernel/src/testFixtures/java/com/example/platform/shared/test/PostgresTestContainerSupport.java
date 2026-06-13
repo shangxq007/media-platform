@@ -1,6 +1,8 @@
 package com.example.platform.shared.test;
 
-import org.postgresql.ds.PGSimpleDataSource;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import javax.sql.DataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -54,11 +56,27 @@ public abstract class PostgresTestContainerSupport {
      * Create a DataSource using the PostgreSQL URL.
      * For tests that manually construct their own DataSource.
      */
-    protected static PGSimpleDataSource createDataSource() {
-        PGSimpleDataSource ds = new PGSimpleDataSource();
-        ds.setUrl(jdbcUrl());
-        ds.setUser(username());
-        ds.setPassword(password());
-        return ds;
+    protected static DataSource createDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(jdbcUrl());
+        config.setUsername(username());
+        config.setPassword(password());
+        config.setDriverClassName(driverClassName());
+        return new HikariDataSource(config);
+    }
+
+    /**
+     * Close a DataSource if it implements AutoCloseable.
+     * Should be called in @AfterAll to release connection pool resources.
+     */
+    protected static void closeDataSource(DataSource dataSource) {
+        if (dataSource instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                // Log but don't fail test cleanup
+                System.err.println("Warning: Failed to close test DataSource: " + e.getMessage());
+            }
+        }
     }
 }

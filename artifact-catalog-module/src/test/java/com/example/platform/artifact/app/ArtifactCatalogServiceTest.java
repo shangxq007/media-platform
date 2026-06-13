@@ -10,6 +10,8 @@ import org.jooq.SQLDialect;
 import org.jooq.conf.RenderNameCase;
 import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,14 +24,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
+    private static ArtifactCatalogRepository repository;
+    private static ArtifactRelationRepository relationRepository;
     private ArtifactCatalogService service;
-    private ArtifactCatalogRepository repository;
-    private DSLContext dsl;
 
-    @BeforeEach
-    void setUp() {
-        var ds = createDataSource();
-        var jdbc = new JdbcTemplate(ds);
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
 
         // Create tables if they don't exist
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
@@ -52,16 +56,25 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
                 + "tombstoned_at timestamp"
                 + ")");
 
-        // Clean up before each test
-        jdbc.execute("TRUNCATE TABLE artifact_relation CASCADE");
-        jdbc.execute("TRUNCATE TABLE artifact CASCADE");
-
         var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
-        dsl = DSL.using(ds, SQLDialect.POSTGRES, settings);
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
         repository = new ArtifactCatalogRepository(dsl);
+        relationRepository = new ArtifactRelationRepository(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
+
+    @BeforeEach
+    void setUp() {
+        // Clean up before each test
+        dsl.execute("TRUNCATE TABLE artifact_relation CASCADE");
+        dsl.execute("TRUNCATE TABLE artifact CASCADE");
+
         ErrorCodeRegistry registry = new ErrorCodeRegistry();
         registry.loadErrorCodes();
-        ArtifactRelationRepository relationRepository = new ArtifactRelationRepository(dsl);
         service = new ArtifactCatalogService(repository, relationRepository, registry);
     }
 

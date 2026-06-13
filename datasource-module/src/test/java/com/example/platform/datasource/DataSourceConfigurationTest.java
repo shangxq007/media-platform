@@ -1,5 +1,7 @@
 package com.example.platform.datasource;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
@@ -8,14 +10,21 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DataSourceConfigurationTest {
+class DataSourceConfigurationTest extends PostgresTestContainerSupport {
+
+    private static String postgresUrl;
+
+    @BeforeAll
+    static void setUp() {
+        postgresUrl = jdbcUrl();
+    }
 
     private AppDataSourceProperties buildProperties(String name, String url, String dialect, boolean primary) {
         NamedDataSourceProperties props = new NamedDataSourceProperties();
         props.setKind("jdbc");
         props.setUrl(url);
-        props.setUsername("sa");
-        props.setPassword("");
+        props.setUsername(username());
+        props.setPassword(password());
         props.setDialect(dialect);
         props.setPrimary(primary);
 
@@ -29,8 +38,7 @@ class DataSourceConfigurationTest {
 
     @Test
     void namedDataSourceRegistryContainsConfiguredSource() {
-        AppDataSourceProperties properties = buildProperties("primary",
-                "jdbc:h2:mem:test1;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "h2", true);
+        AppDataSourceProperties properties = buildProperties("primary", postgresUrl, "postgres", true);
 
         DataSourceConfiguration config = new DataSourceConfiguration();
         NamedDataSourceRegistry registry = config.namedDataSourceRegistry(properties);
@@ -41,8 +49,7 @@ class DataSourceConfigurationTest {
 
     @Test
     void namedDataSourceRegistryReturnsEmptyForUnknownSource() {
-        AppDataSourceProperties properties = buildProperties("primary",
-                "jdbc:h2:mem:test2;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "h2", true);
+        AppDataSourceProperties properties = buildProperties("primary", postgresUrl, "postgres", true);
 
         DataSourceConfiguration config = new DataSourceConfiguration();
         NamedDataSourceRegistry registry = config.namedDataSourceRegistry(properties);
@@ -58,10 +65,10 @@ class DataSourceConfigurationTest {
 
         NamedDataSourceProperties jdbc = new NamedDataSourceProperties();
         jdbc.setKind("jdbc");
-        jdbc.setUrl("jdbc:h2:mem:test3;MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
-        jdbc.setUsername("sa");
-        jdbc.setPassword("");
-        jdbc.setDialect("h2");
+        jdbc.setUrl(postgresUrl);
+        jdbc.setUsername(username());
+        jdbc.setPassword(password());
+        jdbc.setDialect("postgres");
         jdbc.setPrimary(true);
 
         AppDataSourceProperties properties = new AppDataSourceProperties();
@@ -78,8 +85,7 @@ class DataSourceConfigurationTest {
 
     @Test
     void dslContextRegistryCreatesContextsForAllDataSources() {
-        AppDataSourceProperties properties = buildProperties("primary",
-                "jdbc:h2:mem:test4;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "h2", true);
+        AppDataSourceProperties properties = buildProperties("primary", postgresUrl, "postgres", true);
 
         DataSourceConfiguration config = new DataSourceConfiguration();
         NamedDataSourceRegistry registry = config.namedDataSourceRegistry(properties);
@@ -91,8 +97,7 @@ class DataSourceConfigurationTest {
 
     @Test
     void dslContextRegistryReturnsEmptyForUnknownContext() {
-        AppDataSourceProperties properties = buildProperties("primary",
-                "jdbc:h2:mem:test5;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "h2", true);
+        AppDataSourceProperties properties = buildProperties("primary", postgresUrl, "postgres", true);
 
         DataSourceConfiguration config = new DataSourceConfiguration();
         NamedDataSourceRegistry registry = config.namedDataSourceRegistry(properties);
@@ -103,8 +108,7 @@ class DataSourceConfigurationTest {
 
     @Test
     void primaryDataSourceBeanIsNotNull() {
-        AppDataSourceProperties properties = buildProperties("primary",
-                "jdbc:h2:mem:test6;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "h2", true);
+        AppDataSourceProperties properties = buildProperties("primary", postgresUrl, "postgres", true);
 
         DataSourceConfiguration config = new DataSourceConfiguration();
         NamedDataSourceRegistry registry = config.namedDataSourceRegistry(properties);

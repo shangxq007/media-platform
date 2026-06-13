@@ -20,4 +20,5 @@ dependencies {
     testFixturesImplementation("org.testcontainers:junit-jupiter")
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-test")
     testFixturesImplementation("org.postgresql:postgresql")
+    testFixturesImplementation("com.zaxxer:HikariCP")
 }

@@ -4,11 +4,11 @@ import com.example.platform.billing.domain.SubscriptionContract;
 import com.example.platform.billing.domain.SubscriptionContractRole;
 import com.example.platform.billing.domain.SubscriptionPlan;
 import com.example.platform.billing.infrastructure.SubscriptionJdbcRepository;
-import com.example.platform.shared.Jsons;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import java.util.List;
 import java.util.Map;
@@ -16,18 +16,18 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class SubscriptionBillingServiceTest {
+class SubscriptionBillingServiceTest extends PostgresTestContainerSupport {
 
+    private static javax.sql.DataSource dataSource;
     private SubscriptionBillingService service;
 
-    @BeforeEach
-    void setUp() {
-        var ds = new DriverManagerDataSource();
-        ds.setDriverClassName("org.h2.Driver");
-        ds.setUrl("jdbc:h2:mem:sub_test_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
-        var jdbc = new JdbcTemplate(ds);
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
+
         jdbc.execute("""
-            create table if not exists subscription_plan (
+            CREATE TABLE IF NOT EXISTS subscription_plan (
                 id varchar(64) primary key,
                 plan_key varchar(128) not null unique,
                 name varchar(255) not null,
@@ -42,7 +42,7 @@ class SubscriptionBillingServiceTest {
             )
         """);
         jdbc.execute("""
-            create table if not exists subscription_contract (
+            CREATE TABLE IF NOT EXISTS subscription_contract (
                 id varchar(64) primary key,
                 tenant_id varchar(64),
                 subject_type varchar(32) not null,
@@ -58,6 +58,14 @@ class SubscriptionBillingServiceTest {
                 included_quota_used text
             )
         """);
+    }
+
+    @BeforeEach
+    void setUp() {
+        var jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("TRUNCATE TABLE subscription_contract CASCADE");
+        jdbc.execute("TRUNCATE TABLE subscription_plan CASCADE");
+
         var repo = new SubscriptionJdbcRepository(jdbc);
         service = new SubscriptionBillingService(Optional.of(repo));
     }

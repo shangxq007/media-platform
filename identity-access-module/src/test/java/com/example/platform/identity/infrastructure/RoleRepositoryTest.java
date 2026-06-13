@@ -1,76 +1,88 @@
 package com.example.platform.identity.infrastructure;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.identity.domain.*;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
 import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-class RoleRepositoryTest {
+class RoleRepositoryTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private RoleRepository repository;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
+
+        jdbc.execute("CREATE TABLE IF NOT EXISTS role ("
+                + "id varchar(64) primary key,"
+                + "role_key varchar(128) not null unique,"
+                + "name varchar(255) not null,"
+                + "description text,"
+                + "scope varchar(32) not null,"
+                + "created_at timestamp not null"
+                + ")");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS permission ("
+                + "id varchar(64) primary key,"
+                + "permission_key varchar(128) not null unique,"
+                + "name varchar(255) not null,"
+                + "description text,"
+                + "resource_type varchar(128),"
+                + "created_at timestamp not null"
+                + ")");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS role_permission ("
+                + "id varchar(64) primary key,"
+                + "role_id varchar(64) not null,"
+                + "permission_id varchar(64) not null,"
+                + "created_at timestamp not null"
+                + ")");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS user_role_assignment ("
+                + "id varchar(64) primary key,"
+                + "tenant_id varchar(64),"
+                + "workspace_id varchar(64),"
+                + "user_id varchar(64) not null,"
+                + "role_id varchar(64) not null,"
+                + "assigned_by varchar(64),"
+                + "created_at timestamp not null"
+                + ")");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS group_role_assignment ("
+                + "id varchar(64) primary key,"
+                + "workspace_id varchar(64) not null,"
+                + "group_id varchar(64) not null,"
+                + "role_id varchar(64) not null,"
+                + "assigned_at timestamp not null"
+                + ")");
+
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "rolerepo" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table role ("
-                    + "id varchar(64) primary key,"
-                    + "role_key varchar(128) not null unique,"
-                    + "name varchar(255) not null,"
-                    + "description text,"
-                    + "scope varchar(32) not null,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table permission ("
-                    + "id varchar(64) primary key,"
-                    + "permission_key varchar(128) not null unique,"
-                    + "name varchar(255) not null,"
-                    + "description text,"
-                    + "resource_type varchar(128),"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table role_permission ("
-                    + "id varchar(64) primary key,"
-                    + "role_id varchar(64) not null,"
-                    + "permission_id varchar(64) not null,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table user_role_assignment ("
-                    + "id varchar(64) primary key,"
-                    + "tenant_id varchar(64),"
-                    + "workspace_id varchar(64),"
-                    + "user_id varchar(64) not null,"
-                    + "role_id varchar(64) not null,"
-                    + "assigned_by varchar(64),"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table group_role_assignment ("
-                    + "id varchar(64) primary key,"
-                    + "workspace_id varchar(64) not null,"
-                    + "group_id varchar(64) not null,"
-                    + "role_id varchar(64) not null,"
-                    + "assigned_at timestamp not null"
-                    + ")");
-        }
-
+    void setUp() {
+        dsl.execute("TRUNCATE TABLE group_role_assignment CASCADE");
+        dsl.execute("TRUNCATE TABLE user_role_assignment CASCADE");
+        dsl.execute("TRUNCATE TABLE role_permission CASCADE");
+        dsl.execute("TRUNCATE TABLE permission CASCADE");
+        dsl.execute("TRUNCATE TABLE role CASCADE");
         repository = new RoleRepository(dsl);
     }
 
@@ -154,18 +166,14 @@ class RoleRepositoryTest {
     void deleteUserRoleAssignment_byWorkspaceScope_onlyDeletesInTargetWorkspace() {
         Instant now = Instant.now();
         repository.save(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
-        // User usr_1 has ADMIN in ws_1 and ws_2
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_1", null, now));
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_2", null, "ws_2", "usr_1", "rol_1", null, now));
 
-        // Revoke ADMIN only in ws_1
         repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
 
-        // ws_1 assignment should be deleted
         List<UserRoleAssignment> ws1Assignments = repository.findUserRoleAssignmentsByWorkspaceId("ws_1");
         assertTrue(ws1Assignments.isEmpty(), "ws_1 ADMIN should be deleted");
 
-        // ws_2 assignment should still exist
         List<UserRoleAssignment> ws2Assignments = repository.findUserRoleAssignmentsByWorkspaceId("ws_2");
         assertEquals(1, ws2Assignments.size(), "ws_2 ADMIN should still exist");
         assertEquals("usr_1", ws2Assignments.get(0).userId());
@@ -175,18 +183,14 @@ class RoleRepositoryTest {
     void deleteUserRoleAssignment_byWorkspaceScope_doesNotAffectOtherUsers() {
         Instant now = Instant.now();
         repository.save(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
-        // Both usr_1 and usr_2 have ADMIN in ws_1
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_1", null, now));
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_2", null, "ws_1", "usr_2", "rol_1", null, now));
 
-        // Revoke usr_1's ADMIN in ws_1
         repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
 
-        // usr_1 should have no assignments
         List<UserRoleAssignment> usr1Assignments = repository.findUserRoleAssignmentsByUserId("usr_1");
         assertTrue(usr1Assignments.isEmpty(), "usr_1 should have no assignments");
 
-        // usr_2 should still have ADMIN in ws_1
         List<UserRoleAssignment> usr2Assignments = repository.findUserRoleAssignmentsByUserId("usr_2");
         assertEquals(1, usr2Assignments.size(), "usr_2 should still have ADMIN");
     }
@@ -197,7 +201,6 @@ class RoleRepositoryTest {
         repository.save(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_1", null, now));
 
-        // Delete twice — second call should be idempotent (no error)
         repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
         assertDoesNotThrow(() -> repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1"));
 
@@ -210,14 +213,11 @@ class RoleRepositoryTest {
         Instant now = Instant.now();
         repository.save(new Role("rol_admin", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
         repository.save(new Role("rol_editor", "EDITOR", "Editor", null, Role.RoleScope.WORKSPACE, now));
-        // User has both ADMIN and EDITOR in ws_1
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_admin", null, now));
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_2", null, "ws_1", "usr_1", "rol_editor", null, now));
 
-        // Revoke only ADMIN
         repository.deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
 
-        // EDITOR should still exist
         List<UserRoleAssignment> remaining = repository.findUserRoleAssignmentsByUserId("usr_1");
         assertEquals(1, remaining.size(), "EDITOR role should remain");
         assertEquals("rol_editor", remaining.get(0).roleId());
@@ -225,13 +225,11 @@ class RoleRepositoryTest {
 
     @Test
     void deleteUserRoleAssignment_deprecatedGlobalMethod_stillWorks() {
-        // The deprecated global method should still work for DevWorkspaceBootstrapService
         Instant now = Instant.now();
         repository.save(new Role("rol_1", "ADMIN", "Admin", null, Role.RoleScope.WORKSPACE, now));
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_1", null, "ws_1", "usr_1", "rol_1", null, now));
         repository.saveUserRoleAssignment(new UserRoleAssignment("ura_2", null, "ws_2", "usr_1", "rol_1", null, now));
 
-        // Global delete removes ALL workspaces
         repository.deleteUserRoleAssignment("usr_1", "ADMIN");
 
         List<UserRoleAssignment> assignments = repository.findUserRoleAssignmentsByUserId("usr_1");

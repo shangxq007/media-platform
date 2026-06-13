@@ -1,51 +1,62 @@
 package com.example.platform.identity.app;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
 import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-class IdentityAccessServiceTest {
+class IdentityAccessServiceTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
+    private static DataSource dataSource;
+    private static DSLContext dsl;
 
     private IdentityProperties properties;
     private IdentityAccessService service;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
+
+        jdbc.execute("CREATE TABLE IF NOT EXISTS api_key ("
+                + "id varchar(64) primary key,"
+                + "tenant_id varchar(64),"
+                + "fingerprint varchar(32) not null,"
+                + "hashed_key varchar(128) not null unique,"
+                + "principal varchar(255) not null,"
+                + "created_at timestamp not null,"
+                + "last_used_at timestamp,"
+                + "revoked_at timestamp"
+                + ")");
+
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "idacctest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        DSLContext dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table api_key ("
-                    + "id varchar(64) primary key,"
-                    + "tenant_id varchar(64),"
-                    + "fingerprint varchar(32) not null,"
-                    + "hashed_key varchar(128) not null unique,"
-                    + "principal varchar(255) not null,"
-                    + "created_at timestamp not null,"
-                    + "last_used_at timestamp,"
-                    + "revoked_at timestamp"
-                    + ")");
-        }
+    void setUp() {
+        dsl.execute("TRUNCATE TABLE api_key CASCADE");
 
         ApiKeyRepository apiKeyRepository = new ApiKeyRepository(dsl);
 

@@ -2,28 +2,29 @@ package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.*;
 import com.example.platform.billing.infrastructure.CreditWalletJdbcRepository;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class CreditWalletServiceTest {
+class CreditWalletServiceTest extends PostgresTestContainerSupport {
 
+    private static javax.sql.DataSource dataSource;
     private CreditWalletService service;
 
-    @BeforeEach
-    void setUp() {
-        var ds = new DriverManagerDataSource();
-        ds.setDriverClassName("org.h2.Driver");
-        ds.setUrl("jdbc:h2:mem:wallet_test_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
-        var jdbc = new JdbcTemplate(ds);
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
+
         jdbc.execute("""
-            create table if not exists credit_wallet (
+            CREATE TABLE IF NOT EXISTS credit_wallet (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 workspace_id varchar(64),
@@ -36,7 +37,7 @@ class CreditWalletServiceTest {
             )
         """);
         jdbc.execute("""
-            create table if not exists credit_transaction (
+            CREATE TABLE IF NOT EXISTS credit_transaction (
                 id varchar(64) primary key,
                 wallet_id varchar(64) not null,
                 transaction_type varchar(32) not null,
@@ -48,6 +49,14 @@ class CreditWalletServiceTest {
                 created_at timestamp not null
             )
         """);
+    }
+
+    @BeforeEach
+    void setUp() {
+        var jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("TRUNCATE TABLE credit_transaction CASCADE");
+        jdbc.execute("TRUNCATE TABLE credit_wallet CASCADE");
+
         var repo = new CreditWalletJdbcRepository(jdbc);
         service = new CreditWalletService(Optional.of(repo));
     }

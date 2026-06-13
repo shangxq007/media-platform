@@ -2,28 +2,29 @@ package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.BillingLedgerEntry;
 import com.example.platform.billing.infrastructure.BillingLedgerJdbcRepository;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class BillingLedgerServiceTest {
+class BillingLedgerServiceTest extends PostgresTestContainerSupport {
 
+    private static javax.sql.DataSource dataSource;
     private BillingLedgerService service;
 
-    @BeforeEach
-    void setUp() {
-        var ds = new DriverManagerDataSource();
-        ds.setDriverClassName("org.h2.Driver");
-        ds.setUrl("jdbc:h2:mem:ledger_test_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
-        var jdbc = new JdbcTemplate(ds);
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
+
         jdbc.execute("""
-            create table if not exists billing_ledger_entry (
+            CREATE TABLE IF NOT EXISTS billing_ledger_entry (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 workspace_id varchar(64),
@@ -37,6 +38,13 @@ class BillingLedgerServiceTest {
                 created_at timestamp not null
             )
         """);
+    }
+
+    @BeforeEach
+    void setUp() {
+        var jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("TRUNCATE TABLE billing_ledger_entry CASCADE");
+
         var repo = new BillingLedgerJdbcRepository(jdbc);
         service = new BillingLedgerService(Optional.of(repo));
     }

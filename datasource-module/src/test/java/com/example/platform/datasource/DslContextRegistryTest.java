@@ -1,7 +1,11 @@
 package com.example.platform.datasource;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
+import org.jooq.conf.RenderNameCase;
+import org.jooq.conf.Settings;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
@@ -10,14 +14,20 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DslContextRegistryTest {
+class DslContextRegistryTest extends PostgresTestContainerSupport {
+
+    private static DataSource dataSource;
+
+    @BeforeAll
+    static void setUp() {
+        dataSource = createDataSource();
+    }
 
     private DslContextRegistry createRegistryWithSources(String... names) {
         Map<String, DSLContext> contexts = new LinkedHashMap<>();
+        var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
         for (String name : names) {
-            DataSource ds = new org.springframework.jdbc.datasource.DriverManagerDataSource(
-                    "jdbc:h2:mem:" + name + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "");
-            contexts.put(name, org.jooq.impl.DSL.using(ds, SQLDialect.H2));
+            contexts.put(name, org.jooq.impl.DSL.using(dataSource, SQLDialect.POSTGRES, settings));
         }
         return new DslContextRegistry(contexts);
     }
@@ -52,11 +62,11 @@ class DslContextRegistryTest {
     }
 
     @Test
-    void dslContextHasH2Dialect() {
+    void dslContextHasPostgresDialect() {
         DslContextRegistry registry = createRegistryWithSources("primary");
 
         DSLContext ctx = registry.get("primary").orElseThrow();
-        assertThat(ctx.configuration().dialect()).isEqualTo(SQLDialect.H2);
+        assertThat(ctx.configuration().dialect()).isEqualTo(SQLDialect.POSTGRES);
     }
 
     @Test
