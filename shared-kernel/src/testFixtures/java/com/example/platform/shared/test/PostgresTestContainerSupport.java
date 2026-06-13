@@ -5,55 +5,62 @@ import com.zaxxer.hikari.HikariDataSource;
 import javax.sql.DataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Base class for integration tests using PostgreSQL.
+ * Base class for integration tests using PostgreSQL Testcontainers.
  *
- * <p>Uses existing PostgreSQL container for CI stability.
- * The container is started separately and remains running.
+ * <p>Provides an isolated, disposable PostgreSQL instance for each test class.
+ * No hardcoded database host is allowed in CI tests.
  */
+@Testcontainers
 public abstract class PostgresTestContainerSupport {
 
-    // Use existing PostgreSQL container (test-postgres on port 5433)
-    protected static final String POSTGRES_URL = "jdbc:postgresql://localhost:5433/media_platform_test";
-    protected static final String POSTGRES_USERNAME = "test";
-    protected static final String POSTGRES_PASSWORD = "test";
+    @Container
+    protected static final PostgreSQLContainer<?> POSTGRES =
+            new PostgreSQLContainer<>("postgres:15-alpine")
+                    .withDatabaseName("media_platform_test")
+                    .withUsername("test")
+                    .withPassword("test")
+                    .withStartupTimeoutSeconds(120);
 
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> POSTGRES_URL);
-        registry.add("spring.datasource.username", () -> POSTGRES_USERNAME);
-        registry.add("spring.datasource.password", () -> POSTGRES_PASSWORD);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
 
         // Enable Flyway for all tests
         registry.add("spring.flyway.enabled", () -> "true");
-        registry.add("spring.flyway.url", () -> POSTGRES_URL);
-        registry.add("spring.flyway.user", () -> POSTGRES_USERNAME);
-        registry.add("spring.flyway.password", () -> POSTGRES_PASSWORD);
+        registry.add("spring.flyway.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
 
         // Disable H2-specific configurations
         registry.add("spring.sql.init.mode", () -> "never");
     }
 
     protected static String jdbcUrl() {
-        return POSTGRES_URL;
+        return POSTGRES.getJdbcUrl();
     }
 
     protected static String username() {
-        return POSTGRES_USERNAME;
+        return POSTGRES.getUsername();
     }
 
     protected static String password() {
-        return POSTGRES_PASSWORD;
+        return POSTGRES.getPassword();
     }
 
     protected static String driverClassName() {
-        return "org.postgresql.Driver";
+        return POSTGRES.getDriverClassName();
     }
 
     /**
-     * Create a DataSource using the PostgreSQL URL.
+     * Create a DataSource using the Testcontainers PostgreSQL URL.
      * For tests that manually construct their own DataSource.
      */
     protected static DataSource createDataSource() {
@@ -62,6 +69,7 @@ public abstract class PostgresTestContainerSupport {
         config.setUsername(username());
         config.setPassword(password());
         config.setDriverClassName(driverClassName());
+        config.setMaximumPoolSize(3);
         return new HikariDataSource(config);
     }
 
