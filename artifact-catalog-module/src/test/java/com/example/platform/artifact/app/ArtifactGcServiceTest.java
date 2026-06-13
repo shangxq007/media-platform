@@ -29,7 +29,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 class ArtifactGcServiceTest extends PostgresTestContainer {
 
@@ -40,13 +39,9 @@ class ArtifactGcServiceTest extends PostgresTestContainer {
 
     @BeforeEach
     void setUp() {
-        var ds = new DriverManagerDataSource();
-        ds.setDriverClassName("org.postgresql.Driver");
-        ds.setUrl(POSTGRES_URL);
-        ds.setUsername(POSTGRES_USERNAME);
-        ds.setPassword(POSTGRES_PASSWORD);
-
+        var ds = createDataSource();
         var jdbc = new JdbcTemplate(ds);
+
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact ("
                 + "id varchar(64) primary key,"
                 + "render_job_id varchar(64) not null,"

@@ -13,8 +13,6 @@ import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.test.annotation.DirtiesContext;
 
 import java.util.List;
 import java.util.Map;
@@ -22,7 +20,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class ArtifactCatalogServiceTest extends PostgresTestContainer {
 
     private ArtifactCatalogService service;
@@ -31,13 +28,10 @@ class ArtifactCatalogServiceTest extends PostgresTestContainer {
 
     @BeforeEach
     void setUp() {
-        var ds = new DriverManagerDataSource();
-        ds.setDriverClassName("org.postgresql.Driver");
-        ds.setUrl(POSTGRES_URL);
-        ds.setUsername(POSTGRES_USERNAME);
-        ds.setPassword(POSTGRES_PASSWORD);
-
+        var ds = createDataSource();
         var jdbc = new JdbcTemplate(ds);
+
+        // Create tables if they don't exist
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
                 + "id varchar(64) primary key,"
                 + "source_artifact_id varchar(64) not null,"
@@ -57,6 +51,8 @@ class ArtifactCatalogServiceTest extends PostgresTestContainer {
                 + "status varchar(32) not null default 'ACTIVE',"
                 + "tombstoned_at timestamp"
                 + ")");
+
+        // Clean up before each test
         jdbc.execute("TRUNCATE TABLE artifact_relation CASCADE");
         jdbc.execute("TRUNCATE TABLE artifact CASCADE");
 
