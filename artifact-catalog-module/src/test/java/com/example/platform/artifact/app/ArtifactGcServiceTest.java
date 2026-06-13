@@ -15,7 +15,7 @@ import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.test.PostgresTestContainer;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.storage.domain.BlobStorage;
 import java.time.Instant;
@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-class ArtifactGcServiceTest extends PostgresTestContainer {
+class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
     private ArtifactCatalogRepository repository;
     private ArtifactGcService gcService;

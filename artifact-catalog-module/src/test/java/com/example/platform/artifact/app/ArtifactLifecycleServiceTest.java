@@ -7,7 +7,7 @@ import static org.mockito.Mockito.mock;
 
 import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactStatus;
-import com.example.platform.shared.test.PostgresTestContainer;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import org.jooq.DSLContext;
@@ -22,7 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 
-class ArtifactLifecycleServiceTest extends PostgresTestContainer {
+class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
 
     private ArtifactCatalogService catalogService;
     private ArtifactLifecycleService lifecycleService;

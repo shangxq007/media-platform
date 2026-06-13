@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
 import com.example.platform.secrets.api.port.SecretsConfigPort;
-import com.example.platform.shared.test.PostgresTestContainer;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.OffsetDateTime;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -22,7 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
-class TenantLitellmKeyVaultMigrationServiceTest extends PostgresTestContainer {
+class TenantLitellmKeyVaultMigrationServiceTest extends PostgresTestContainerSupport {
 
     private TenantLitellmKeyVaultMigrationService migrationService;
     private TenantLitellmKeyCredentialService credentialService;
@@ -33,9 +33,9 @@ class TenantLitellmKeyVaultMigrationServiceTest extends PostgresTestContainer {
     void setUp() {
         var ds = new DriverManagerDataSource();
         ds.setDriverClassName("org.postgresql.Driver");
-        ds.setUrl(POSTGRES_URL);
-        ds.setUsername(POSTGRES_USERNAME);
-        ds.setPassword(POSTGRES_PASSWORD);
+        ds.setUrl(jdbcUrl());
+        ds.setUsername(username());
+        ds.setPassword(password());
         jdbc = new JdbcTemplate(ds);
         
         jdbc.execute("CREATE TABLE IF NOT EXISTS tenant_litellm_virtual_key ("

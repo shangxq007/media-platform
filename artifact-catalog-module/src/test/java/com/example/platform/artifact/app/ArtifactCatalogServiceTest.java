@@ -2,7 +2,7 @@ package com.example.platform.artifact.app;
 
 import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactRelation;
-import com.example.platform.shared.test.PostgresTestContainer;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import org.jooq.DSLContext;
@@ -20,7 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ArtifactCatalogServiceTest extends PostgresTestContainer {
+class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     private ArtifactCatalogService service;
     private ArtifactCatalogRepository repository;

@@ -1,6 +1,6 @@
 package com.example.platform;
 
-import com.example.platform.shared.test.PostgresTestContainer;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.ResultSet;
@@ -11,12 +11,12 @@ import org.junit.jupiter.api.Test;
 /**
  * Applies consolidated V1 schema on PostgreSQL Testcontainers.
  */
-class FlywaySchemaIntegrationTest extends PostgresTestContainer {
+class FlywaySchemaIntegrationTest extends PostgresTestContainerSupport {
 
     @BeforeAll
     static void migrateDatabase() {
         Flyway flyway = Flyway.configure()
-                .dataSource(POSTGRES_URL, POSTGRES_USERNAME, POSTGRES_PASSWORD)
+                .dataSource(jdbcUrl(), username(), password())
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .cleanDisabled(false)
@@ -29,9 +29,9 @@ class FlywaySchemaIntegrationTest extends PostgresTestContainer {
     void flywayCreatesCoreTables() throws Exception {
         var ds = new org.springframework.jdbc.datasource.DriverManagerDataSource();
         ds.setDriverClassName("org.postgresql.Driver");
-        ds.setUrl(POSTGRES_URL);
-        ds.setUsername(POSTGRES_USERNAME);
-        ds.setPassword(POSTGRES_PASSWORD);
+        ds.setUrl(jdbcUrl());
+        ds.setUsername(username());
+        ds.setPassword(password());
 
         try (var conn = ds.getConnection()) {
             // Verify core render tables exist

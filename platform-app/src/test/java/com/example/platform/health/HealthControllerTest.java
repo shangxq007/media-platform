@@ -3,14 +3,14 @@ package com.example.platform.health;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import com.example.platform.shared.test.PostgresTestContainer;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
-class HealthControllerTest extends PostgresTestContainer {
+class HealthControllerTest extends PostgresTestContainerSupport {
 
     private HealthController controller;
 
@@ -18,9 +18,9 @@ class HealthControllerTest extends PostgresTestContainer {
     void setUp() {
         var ds = new DriverManagerDataSource();
         ds.setDriverClassName("org.postgresql.Driver");
-        ds.setUrl(POSTGRES_URL);
-        ds.setUsername(POSTGRES_USERNAME);
-        ds.setPassword(POSTGRES_PASSWORD);
+        ds.setUrl(jdbcUrl());
+        ds.setUsername(username());
+        ds.setPassword(password());
         var jdbc = new JdbcTemplate(ds);
 
         // Create table if it doesn't exist
