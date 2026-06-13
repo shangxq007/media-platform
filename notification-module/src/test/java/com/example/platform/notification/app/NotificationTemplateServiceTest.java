@@ -1,5 +1,7 @@
 package com.example.platform.notification.app;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,23 +19,36 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class NotificationTemplateServiceTest {
+class NotificationTemplateServiceTest extends PostgresTestContainerSupport {
 
     private static final AtomicInteger COUNTER = new AtomicInteger(0);
 
-    private DSLContext dsl;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private NotificationTemplateService service;
     private Connection conn;
 
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        // Create tables
+        var jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
+        // Tables will be created inline
+    }
+
     @BeforeEach
     void setUp() throws Exception {
+        // Clean tables
+        dsl.execute("TRUNCATE TABLE notification_event, notification_template, notification_delivery, notification_record, notification_subscription, notification_channel_binding RESTART IDENTITY CASCADE");
         String dbName = "templatetest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
+        // Using shared PostgreSQL connection
+        // Using shared dsl
 
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("create table notification_template ("

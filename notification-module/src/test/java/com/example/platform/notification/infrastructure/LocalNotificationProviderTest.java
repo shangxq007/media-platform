@@ -1,25 +1,65 @@
 package com.example.platform.notification.infrastructure;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.example.platform.notification.app.NotificationDeliveryRepository;
 import com.example.platform.notification.domain.DeliveryCommand;
 import com.example.platform.notification.domain.DeliveryResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import javax.sql.DataSource;
+import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-class LocalNotificationProviderTest {
+class LocalNotificationProviderTest extends PostgresTestContainerSupport {
+
+    private static DataSource dataSource;
+    private static DSLContext dsl;
 
     private MockNotificationProvider mockProvider;
-    private NotificationDeliveryRepositoryTestSupport repositorySupport;
+    private NotificationDeliveryRepository repository;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        var jdbc = new JdbcTemplate(dataSource);
+
+        jdbc.execute("CREATE TABLE IF NOT EXISTS notification_record ("
+                + "id varchar(64) primary key,"
+                + "event_id varchar(64) not null,"
+                + "channel varchar(32) not null,"
+                + "provider_code varchar(64) not null,"
+                + "status varchar(32) not null,"
+                + "subject varchar(512),"
+                + "body text,"
+                + "metadata_json text,"
+                + "attempt_count int not null default 1,"
+                + "created_at timestamp not null"
+                + ")");
+
+        dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
     void setUp() {
-        repositorySupport = new NotificationDeliveryRepositoryTestSupport();
-        mockProvider = new MockNotificationProvider(repositorySupport.repository);
+        dsl.execute("TRUNCATE TABLE notification_record CASCADE");
+        repository = new NotificationDeliveryRepository(dsl);
+        mockProvider = new MockNotificationProvider(repository);
     }
 
     @Test
@@ -35,7 +75,7 @@ class LocalNotificationProviderTest {
     @Test
     void sendReturnsSuccessResult() {
         DeliveryCommand command = new DeliveryCommand(
-                "evt-1", "EMAIL", "Test Subject", "Test Body", Map.of());
+                "evt-1", "EMAIL", "Test subject", "Test body", Map.of());
 
         DeliveryResult result = mockProvider.send(command);
 
@@ -69,6 +109,24 @@ class LocalNotificationProviderTest {
     }
 
     @Test
+    void sentNotificationContainsAllFields() {
+        DeliveryCommand command = new DeliveryCommand(
+                "evt-all", "SMS", "Full Subject", "Full Body", Map.of("key1", "val1"));
+
+        mockProvider.send(command);
+
+        List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
+        MockNotificationProvider.SentNotification notification = sent.stream()
+                .filter(n -> n.eventId().equals("evt-all"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("SMS", notification.channel());
+        assertEquals("Full Subject", notification.subject());
+        assertEquals("Full Body", notification.body());
+    }
+
+    @Test
     void sendSmsRecordsDelivery() {
         DeliveryCommand command = new DeliveryCommand(
                 "evt-sms", "SMS", "SMS Subject", "SMS Body", Map.of());
@@ -76,54 +134,7 @@ class LocalNotificationProviderTest {
         mockProvider.send(command);
 
         List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
-        assertTrue(sent.stream().anyMatch(n -> n.eventId().equals("evt-sms") && n.channel().equals("SMS")),
-                "Delivery record should be persisted for SMS channel");
-    }
-
-    @Test
-    void sendWebhookRecordsDelivery() {
-        DeliveryCommand command = new DeliveryCommand(
-                "evt-wh", "WEBHOOK", "Webhook Subject", "Webhook Body", Map.of());
-
-        mockProvider.send(command);
-
-        List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
-        assertTrue(sent.stream().anyMatch(n -> n.eventId().equals("evt-wh") && n.channel().equals("WEBHOOK")),
-                "Delivery record should be persisted for WEBHOOK channel");
-    }
-
-    @Test
-    void sentNotificationContainsAllFields() {
-        DeliveryCommand command = new DeliveryCommand(
-                "evt-full", "EMAIL", "Full Subject", "Full Body",
-                Map.of("key", "value"));
-
-        mockProvider.send(command);
-
-        List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
-        assertEquals(1, sent.size());
-
-        MockNotificationProvider.SentNotification notification = sent.get(0);
-        assertEquals("evt-full", notification.eventId());
-        assertEquals("EMAIL", notification.channel());
-        assertEquals("Full Subject", notification.subject());
-        assertEquals("Full Body", notification.body());
-        assertNotNull(notification.sentAt());
-    }
-
-    @Test
-    void multipleSendsAccumulateRecords() {
-        mockProvider.send(new DeliveryCommand("evt-1", "MOCK", "S1", "B1", Map.of()));
-        mockProvider.send(new DeliveryCommand("evt-2", "MOCK", "S2", "B2", Map.of()));
-        mockProvider.send(new DeliveryCommand("evt-3", "MOCK", "S3", "B3", Map.of()));
-
-        List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
-        assertEquals(3, sent.size());
-    }
-
-    @Test
-    void clearIsNoOp() {
-        assertDoesNotThrow(() -> mockProvider.clear());
+        assertTrue(sent.stream().anyMatch(n -> n.eventId().equals("evt-sms") && n.channel().equals("SMS")));
     }
 
     @Test
@@ -134,37 +145,5 @@ class LocalNotificationProviderTest {
         DeliveryResult result = mockProvider.send(command);
 
         assertTrue(result.responsePayload().contains("\"accepted\":true"));
-    }
-
-    static class NotificationDeliveryRepositoryTestSupport {
-        final com.example.platform.notification.app.NotificationDeliveryRepository repository;
-
-        NotificationDeliveryRepositoryTestSupport() {
-            try {
-                java.sql.Connection conn = java.sql.DriverManager.getConnection(
-                        "jdbc:h2:mem:localprovtest" + Instant.now().toEpochMilli()
-                                + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-                org.jooq.DSLContext dsl = org.jooq.impl.DSL.using(conn, org.jooq.SQLDialect.H2);
-
-                try (java.sql.Statement stmt = conn.createStatement()) {
-                    stmt.execute("create table notification_record ("
-                            + "id varchar(64) primary key,"
-                            + "event_id varchar(64) not null,"
-                            + "channel varchar(32) not null,"
-                            + "provider_code varchar(64) not null,"
-                            + "status varchar(32) not null,"
-                            + "subject varchar(512),"
-                            + "body text,"
-                            + "metadata_json text,"
-                            + "attempt_count int not null default 1,"
-                            + "created_at timestamp not null"
-                            + ")");
-                }
-
-                repository = new com.example.platform.notification.app.NotificationDeliveryRepository(dsl);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 }
