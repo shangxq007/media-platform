@@ -2,8 +2,6 @@ package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.security.SafeDownloadUrlValidator;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,14 +24,8 @@ class ProjectImportPreviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        SafeDownloadUrlValidator.setSkipDnsResolution(true);
         previewService = new ProjectImportPreviewService();
         previewService.setAuditPort(auditPort);
-    }
-
-    @AfterEach
-    void tearDown() {
-        SafeDownloadUrlValidator.setSkipDnsResolution(false);
     }
 
     @Test

@@ -1,6 +1,6 @@
 # React Smoke Editor
 
-**Status:** Implemented
+**Status:** Implemented (with Asset Picker + Preview)
 **Date:** 2026-06-12
 **Route:** `/smoke-editor`
 
@@ -13,12 +13,13 @@ Minimal React editor shell for full-stack smoke verification. Validates that the
 ## Supported Flow
 
 1. **Open** `/smoke-editor`
-2. **Configure** timeline input (project ID, asset URI, clip start/end)
-3. **Optional** add subtitle text
-4. **Optional** add effect (blur or vignette)
-5. **Submit** render job
-6. **Poll** job status automatically
-7. **View** artifact URI on completion
+2. **Browse** demo assets in Asset Browser (left panel)
+3. **Select** a video/image/audio asset — auto-fills asset URI
+4. **Preview** the selected asset (video player, image, audio controls)
+5. **Configure** clip start/end, optional subtitle text, optional effect
+6. **Submit** render job
+7. **Poll** job status automatically
+8. **Preview** rendered artifacts (video/image/audio player, or URI fallback)
 
 ## Backend APIs Used
 
@@ -42,20 +43,24 @@ Minimal React editor shell for full-stack smoke verification. Validates that the
 | `frontend/src/pages/SmokeEditorPage.tsx` | Main page with state management |
 | `frontend/src/components/smoke-editor/SmokeEditorForm.tsx` | Input form |
 | `frontend/src/components/smoke-editor/RenderJobStatusPanel.tsx` | Job status display |
-| `frontend/src/components/smoke-editor/ArtifactPanel.tsx` | Artifact output display |
+| `frontend/src/components/assets/AssetPicker.tsx` | Asset browser with demo assets |
+| `frontend/src/components/assets/AssetPreview.tsx` | Video/image/audio preview |
+| `frontend/src/components/artifacts/ArtifactPreview.tsx` | Rendered artifact preview |
 | `frontend/src/api/smoke-editor.ts` | API client wrapper |
 
 ## Known Limitations
 
-- No timeline canvas or visual editing
-- No real asset upload — uses URI reference
-- No effect parameter validation UI beyond basic sliders
-- No auth integration (uses dev token if available)
-- Polling stops after 5 minutes
-- No retry on poll failure
+- **Demo assets only** — AssetPicker shows hardcoded demo assets. In production, a backend API for listing project assets is needed.
+- **No real asset upload** — uses URI reference only
+- **No timeline canvas** or visual editing
+- **No effect parameter validation** beyond basic sliders
+- **No auth integration** — uses dev token if available
+- **Polling stops after 5 minutes**
+- **No retry on poll failure**
+- **No thumbnail generation** for artifacts
 
 ## Next Steps
 
-- FRONTEND-ASSET-PICKER-AND-PREVIEW
+- ✅ FRONTEND-RENDER-JOB-DASHBOARD — `/render-jobs` with job list, detail, artifacts
+- FRONTEND-EFFECT-PARAMETER-FORM
 - FRONTEND-SUBTITLE-EDITOR
-- FRONTEND-EFFECT-PARAMETER-UI

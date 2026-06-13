@@ -1,0 +1,96 @@
+# SAFE_PRODUCTION Deployment Configuration
+# This profile ensures only stable, validated components are active
+# Activate with: SPRING_PROFILES_ACTIVE=prod,safe-mode
+
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+# Feature Flags - SAFE_MODE defaults
+app:
+  features:
+    safe-mode: true
+    remotion: false
+    multi-provider: false
+    advanced-effects: false
+    intelligence: false
+    timeline-advanced: false
+
+# Provider Policy - Strict gating
+render:
+  providers:
+    # Stable providers only
+    ffmpeg:
+      enabled: true
+    libass:
+      enabled: true
+    # Experimental providers DISABLED
+    remotion:
+      enabled: false
+    natron:
+      enabled: false
+    blender:
+      enabled: false
+    vapoursynth:
+      enabled: false
+    shotstack:
+      enabled: false
+    # Other providers disabled for safe mode
+    javacv:
+      enabled: false
+    ofx:
+      enabled: false
+    gstreamer:
+      enabled: false
+    gpac:
+      enabled: false
+    mlt:
+      enabled: false
+    bento4:
+      enabled: false
+    shaka:
+      enabled: false
+    skia:
+      enabled: false
+  subtitle:
+    libass:
+      enabled: true
+  pipeline:
+    dag:
+      enabled: true
+      parallel-external: false  # Conservative: no parallel execution in safe mode
+
+# Platform configuration for safe mode
+platform:
+  environment: prod
+  runtime:
+    production-checks-enabled: true
+    modulith-violation-budget: 0
+
+# Security - strict
+app:
+  security:
+    enabled: true
+    dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
+
+# Logging - verbose for safe mode debugging
+logging:
+  level:
+    root: INFO
+    com.example.platform: INFO
+    com.example.platform.render: DEBUG
+    com.example.platform.policy: DEBUG
+
+# Health checks
+management:
+  endpoint:
+    health:
+      show-details: always
+      group:
+        readiness:
+          include: readinessState,platformReadiness,renderPipeline
+        liveness:
+          include: livenessState

@@ -302,6 +302,16 @@ public class RenderJobRepository {
     }
 
     /**
+     * Update the trace_id for a render job (provider runtime observability).
+     */
+    public void updateTraceId(String jobId, String traceId) {
+        dsl.update(table("render_job"))
+                .set(field("trace_id"), traceId)
+                .where(field("id").eq(jobId))
+                .execute();
+    }
+
+    /**
      * Update the error_message for a render job.
      */
     public void updateErrorMessage(String jobId, String errorMessage) {

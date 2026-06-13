@@ -4,11 +4,12 @@ import type { SmokeTimelineInput } from '../../api/smoke-editor'
 interface Props {
   onSubmit: (input: SmokeTimelineInput) => void
   submitting: boolean
+  assetUri: string
+  onAssetUriChange: (uri: string) => void
 }
 
-export function SmokeEditorForm({ onSubmit, submitting }: Props) {
-  const [projectId, setProjectId] = useState('proj-1')
-  const [assetUri, setAssetUri] = useState('storage://videos/source.mp4')
+export function SmokeEditorForm({ onSubmit, submitting, assetUri, onAssetUriChange }: Props) {
+  const [projectId] = useState('proj-1')
   const [clipStart, setClipStart] = useState(0)
   const [clipEnd, setClipEnd] = useState(10)
   const [subtitleText, setSubtitleText] = useState('')
@@ -41,26 +42,18 @@ export function SmokeEditorForm({ onSubmit, submitting }: Props) {
       <h2 className="text-lg font-semibold">Timeline Input</h2>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Project ID</label>
-        <input
-          type="text"
-          value={projectId}
-          onChange={e => setProjectId(e.target.value)}
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm"
-          required
-        />
-      </div>
-
-      <div>
         <label className="block text-sm text-gray-400 mb-1">Asset URI</label>
         <input
           type="text"
           value={assetUri}
-          onChange={e => setAssetUri(e.target.value)}
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm"
+          onChange={e => onAssetUriChange(e.target.value)}
+          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm font-mono"
           placeholder="storage://videos/source.mp4"
           required
         />
+        <p className="text-xs text-gray-600 mt-1">
+          Select from Asset Browser or enter manually
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -155,7 +148,7 @@ export function SmokeEditorForm({ onSubmit, submitting }: Props) {
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || !assetUri.trim()}
         className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
       >
         {submitting ? 'Submitting...' : 'Submit Render Job'}

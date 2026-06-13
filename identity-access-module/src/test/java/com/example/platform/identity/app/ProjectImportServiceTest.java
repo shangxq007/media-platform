@@ -7,7 +7,6 @@ import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.imports.DownloadedAsset;
 import com.example.platform.shared.imports.ImportAssetDownloader;
-import com.example.platform.shared.security.SafeDownloadUrlValidator;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -55,7 +53,6 @@ class ProjectImportServiceTest {
 
     @BeforeEach
     void setUp() {
-        SafeDownloadUrlValidator.setSkipDnsResolution(true);
         importService = new ProjectImportService(tenantProjectService, artifactCatalogService);
         importService.setAuditPort(auditPort);
         importService.setAssetDownloader(assetDownloader);
@@ -64,7 +61,6 @@ class ProjectImportServiceTest {
 
     @AfterEach
     void tearDown() {
-        SafeDownloadUrlValidator.setSkipDnsResolution(false);
         TenantContext.clear();
     }
 

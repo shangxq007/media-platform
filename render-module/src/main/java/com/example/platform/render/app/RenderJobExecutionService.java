@@ -19,6 +19,7 @@ import com.example.platform.render.infrastructure.RenderArtifactStorageService;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
+import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
 import com.example.platform.shared.events.RenderJobCompletedEvent;
@@ -54,6 +55,7 @@ public class RenderJobExecutionService {
     private final RenderQuotaService quotaService;
     private final AiGatewayPort aiGatewayPort;
     private final RenderProviderRouter renderProviderRouter;
+    private final ProviderRuntimeEngine providerRuntimeEngine;
     private final NotificationEventPublisher notificationEventPublisher;
     private final ApplicationEventPublisher eventPublisher;
     private final RenderJobStateMachine stateMachine;
@@ -80,6 +82,7 @@ public class RenderJobExecutionService {
             RenderQuotaService quotaService,
             AiGatewayPort aiGatewayPort,
             RenderProviderRouter renderProviderRouter,
+            ProviderRuntimeEngine providerRuntimeEngine,
             NotificationEventPublisher notificationEventPublisher,
             ApplicationEventPublisher eventPublisher,
             RenderJobStatusHistoryRepository historyRepository,
@@ -110,6 +113,7 @@ public class RenderJobExecutionService {
         this.quotaService = quotaService;
         this.aiGatewayPort = aiGatewayPort;
         this.renderProviderRouter = renderProviderRouter;
+        this.providerRuntimeEngine = providerRuntimeEngine;
         this.notificationEventPublisher = notificationEventPublisher;
         this.eventPublisher = eventPublisher;
         this.historyRepository = historyRepository;
@@ -307,12 +311,36 @@ public class RenderJobExecutionService {
         }
 
         EffectTimelineInspector.EffectUsage usage = effectTimelineInspector.extractFromScript(aiScript);
-        RenderProvider provider = usage.effectKeys().isEmpty()
-                ? renderProviderRouter.route(profile)
-                : renderProviderRouter.route(profile, usage.effectKeys());
-        if (provider == null) {
-            throw new IllegalStateException("No render provider for profile: " + profile);
+
+        // Use ProviderRuntimeEngine for provider selection (replaces legacy routing)
+        java.util.Set<String> requiredCapabilities = new java.util.HashSet<>(usage.effectKeys());
+        ProviderRuntimeEngine.ProviderResolutionRequest resolutionRequest =
+                new ProviderRuntimeEngine.ProviderResolutionRequest(
+                        jobId,
+                        null, // traceId will be generated
+                        requiredCapabilities,
+                        profile,
+                        Map.of("aiScript", aiScript, "tenantId", tenantId)
+                );
+
+        ProviderRuntimeEngine.ProviderResolutionResult resolutionResult =
+                providerRuntimeEngine.resolveProvider(resolutionRequest);
+
+        if (!resolutionResult.isSuccess()) {
+            throw new IllegalStateException("No render provider available for profile: " + profile
+                    + " (candidates: " + resolutionResult.candidateNames() + ")");
         }
+
+        RenderProvider provider = resolutionResult.selectedProvider();
+        String providerName = resolutionResult.selectedProviderName();
+
+        log.info("[{}] Provider selected: {} (candidates: {}, time: {}ms)",
+                resolutionResult.traceId(), providerName,
+                resolutionResult.candidateNames(), resolutionResult.resolutionTimeMs());
+
+        // Store trace ID in job for observability
+        renderJobRepository.updateTraceId(jobId, resolutionResult.traceId());
+
         return provider.render(jobId, aiScript, profile);
     }
 

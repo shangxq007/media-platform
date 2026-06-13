@@ -1,9 +1,10 @@
 import { createRoute, createRootRoute } from '@tanstack/react-router'
 import RootLayout from './RootLayout.js'
 import { EditorPage } from '../editor/EditorPage.js'
-import { RenderJobsPage } from '../render-job/RenderJobsPage.js'
+import { RenderJobDashboard } from '../pages/RenderJobDashboard.js'
 import { CapabilitiesPage } from '../shared/CapabilitiesPage.js'
 import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
+import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -18,7 +19,7 @@ const indexRoute = createRoute({
 const renderJobsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/render-jobs',
-  component: RenderJobsPage,
+  component: RenderJobDashboard,
 })
 
 const capabilitiesRoute = createRoute({
@@ -33,9 +34,16 @@ const smokeEditorRoute = createRoute({
   component: SmokeEditorPage,
 })
 
+const observabilityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/observability',
+  component: ObservabilityDashboard,
+})
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   renderJobsRoute,
   capabilitiesRoute,
   smokeEditorRoute,
+  observabilityRoute,
 ])
