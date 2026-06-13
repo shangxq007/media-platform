@@ -1,74 +1,44 @@
 package com.example.platform.outbox.app;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.outbox.testsupport.OutboxEventTestSchemaFixture;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class OutboxEventServiceTest {
+class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private OutboxEventService service;
-    private Connection conn;
 
-    @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "outboxtest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table outbox_events ("
-                    + "id varchar(64) primary key,"
-                    + "aggregate_type varchar(100) not null,"
-                    + "aggregate_id varchar(100) not null,"
-                    + "event_type varchar(150) not null,"
-                    + "event_version int not null,"
-                    + "payload text not null,"
-                    + "status varchar(50) not null,"
-                    + "retry_count int not null default 0,"
-                    + "max_retries int not null default 3,"
-                    + "next_attempt_at timestamp,"
-                    + "idempotency_key varchar(255),"
-                    + "last_error_code varchar(100),"
-                    + "last_error_message text,"
-                    + "locked_at timestamp,"
-                    + "locked_by varchar(255),"
-                    + "created_at timestamp not null,"
-                    + "published_at timestamp"
-                    + ")");
-        }
-
-        service = new OutboxEventService(dsl, 3);
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        OutboxEventTestSchemaFixture.createSchema(dsl);
     }
 
-    private static OffsetDateTime parseNextAttempt(Map<String, Object> row) {
-        Object val = row.get("next_attempt_at");
-        if (val == null) {
-            return null;
-        }
-        if (val instanceof OffsetDateTime) {
-            return (OffsetDateTime) val;
-        }
-        // H2 returns Timestamp without timezone; parse as LocalDateTime and convert
-        LocalDateTime ldt = LocalDateTime.parse(val.toString().replace(' ', 'T'));
-        return ldt.atOffset(ZoneOffset.UTC);
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
+
+    @BeforeEach
+    void setUp() {
+        OutboxEventTestSchemaFixture.truncate(dsl);
+        service = new OutboxEventService(dsl, 3);
     }
 
     @Test
@@ -240,10 +210,6 @@ class OutboxEventServiceTest {
         assertTrue(recent.size() >= 2);
     }
 
-    // -------------------------------------------------------------------------
-    // New reliability tests
-    // -------------------------------------------------------------------------
-
     @Test
     void markProcessedSetsStatusToProcessed() {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
@@ -308,31 +274,26 @@ class OutboxEventServiceTest {
                 .from(DSL.table("outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
-        OffsetDateTime next1 = parseNextAttempt(rows1.get(0));
+        OffsetDateTime next1 = (OffsetDateTime) rows1.get(0).get("next_attempt_at");
         assertNotNull(next1);
 
-        // Wait a tiny bit and mark failed again
         try { Thread.sleep(10); } catch (InterruptedException ignored) {}
         service.markFailedWithDetails(id, "ERR", "e2");
         List<Map<String, Object>> rows2 = dsl.select()
                 .from(DSL.table("outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
-        OffsetDateTime next2 = parseNextAttempt(rows2.get(0));
+        OffsetDateTime next2 = (OffsetDateTime) rows2.get(0).get("next_attempt_at");
         assertNotNull(next2);
 
-        // Second retry should have a later next_attempt_at than first (exponential)
         assertTrue(next2.isAfter(next1), "Second backoff should be longer than first");
     }
 
     @Test
     void idempotencyKeyProcessedDoesNotDuplicate() {
-        // First append
         String id1 = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "v1"), "idem-proc-1");
-        // Mark as processed
         service.markProcessed(id1);
-        // Second append with same key — should return same id
         String id2 = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "v2"), "idem-proc-1");
 
@@ -345,7 +306,6 @@ class OutboxEventServiceTest {
     void idempotencyKeyPendingResetsPayload() {
         String id1 = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "v1"), "idem-pend-1");
-        // Second append with same key — should update payload and return same id
         String id2 = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "v2"), "idem-pend-1");
 
@@ -395,7 +355,6 @@ class OutboxEventServiceTest {
     void resetDueFailedEventsResetsExpiredEvents() {
         String id = service.appendEvent("order", "ord-1", "order.created", 1,
                 Map.of("key", "value"));
-        // Manually set status to FAILED with a past next_attempt_at
         dsl.update(DSL.table("outbox_events"))
                 .set(DSL.field("status"), "FAILED")
                 .set(DSL.field("next_attempt_at"), OffsetDateTime.now().minusSeconds(60))

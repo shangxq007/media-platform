@@ -2,43 +2,39 @@ package com.example.platform.render.app;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class QuotaUsageRepositoryTest {
+class QuotaUsageRepositoryTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private QuotaUsageRepository repository;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "quotatest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table quota_usage ("
-                    + "id varchar(64) primary key,"
-                    + "tenant_id varchar(64) not null,"
-                    + "feature_code varchar(80) not null,"
-                    + "usage_value int not null default 0,"
-                    + "created_at timestamp not null,"
-                    + "updated_at timestamp not null"
-                    + ")");
-        }
-
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
         repository = new QuotaUsageRepository(dsl);
     }
 

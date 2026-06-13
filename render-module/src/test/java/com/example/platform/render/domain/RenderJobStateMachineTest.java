@@ -21,9 +21,9 @@ class RenderJobStateMachineTest {
     // --- Valid transitions ---
 
     @Test
-    void queuedToAiProcessingIsValid() {
-        assertTrue(stateMachine.canTransition(RenderJobStatus.QUEUED, RenderJobStatus.AI_PROCESSING));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.QUEUED, RenderJobStatus.AI_PROCESSING));
+    void queuedToSelectingProviderIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.QUEUED, RenderJobStatus.SELECTING_PROVIDER));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.QUEUED, RenderJobStatus.SELECTING_PROVIDER));
     }
 
     @Test
@@ -39,39 +39,51 @@ class RenderJobStateMachineTest {
     }
 
     @Test
-    void aiProcessingToRenderingIsValid() {
-        assertTrue(stateMachine.canTransition(RenderJobStatus.AI_PROCESSING, RenderJobStatus.RENDERING));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.AI_PROCESSING, RenderJobStatus.RENDERING));
+    void selectingProviderToProviderSelectedIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.PROVIDER_SELECTED));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.PROVIDER_SELECTED));
     }
 
     @Test
-    void aiProcessingToFailedIsValid() {
-        assertTrue(stateMachine.canTransition(RenderJobStatus.AI_PROCESSING, RenderJobStatus.FAILED));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.AI_PROCESSING, RenderJobStatus.FAILED));
+    void selectingProviderToFailedIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.FAILED));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.FAILED));
     }
 
     @Test
-    void aiProcessingToCancelledIsValid() {
-        assertTrue(stateMachine.canTransition(RenderJobStatus.AI_PROCESSING, RenderJobStatus.CANCELLED));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.AI_PROCESSING, RenderJobStatus.CANCELLED));
+    void selectingProviderToCancelledIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.CANCELLED));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.CANCELLED));
     }
 
     @Test
-    void renderingToCompletedIsValid() {
-        assertTrue(stateMachine.canTransition(RenderJobStatus.RENDERING, RenderJobStatus.COMPLETED));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.RENDERING, RenderJobStatus.COMPLETED));
+    void providerSelectedToExecutingIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.PROVIDER_SELECTED, RenderJobStatus.EXECUTING));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.PROVIDER_SELECTED, RenderJobStatus.EXECUTING));
     }
 
     @Test
-    void renderingToFailedIsValid() {
-        assertTrue(stateMachine.canTransition(RenderJobStatus.RENDERING, RenderJobStatus.FAILED));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.RENDERING, RenderJobStatus.FAILED));
+    void executingToCompletingIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.COMPLETING));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.EXECUTING, RenderJobStatus.COMPLETING));
     }
 
     @Test
-    void renderingToCancelledIsValid() {
-        assertTrue(stateMachine.canTransition(RenderJobStatus.RENDERING, RenderJobStatus.CANCELLED));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.RENDERING, RenderJobStatus.CANCELLED));
+    void executingToFailedIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.FAILED));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.EXECUTING, RenderJobStatus.FAILED));
+    }
+
+    @Test
+    void executingToCancelledIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.CANCELLED));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.EXECUTING, RenderJobStatus.CANCELLED));
+    }
+
+    @Test
+    void completingToCompletedIsValid() {
+        assertTrue(stateMachine.canTransition(RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED));
     }
 
     @Test
@@ -86,40 +98,40 @@ class RenderJobStateMachineTest {
     void completedCannotTransitionToAnything() {
         assertFalse(stateMachine.canTransition(RenderJobStatus.COMPLETED, RenderJobStatus.FAILED));
         assertFalse(stateMachine.canTransition(RenderJobStatus.COMPLETED, RenderJobStatus.QUEUED));
-        assertFalse(stateMachine.canTransition(RenderJobStatus.COMPLETED, RenderJobStatus.RENDERING));
+        assertFalse(stateMachine.canTransition(RenderJobStatus.COMPLETED, RenderJobStatus.EXECUTING));
         assertThrows(PlatformException.class,
                 () -> stateMachine.validateTransition(RenderJobStatus.COMPLETED, RenderJobStatus.FAILED));
     }
 
     @Test
     void cancelledCannotTransitionToAnything() {
-        assertFalse(stateMachine.canTransition(RenderJobStatus.CANCELLED, RenderJobStatus.RENDERING));
+        assertFalse(stateMachine.canTransition(RenderJobStatus.CANCELLED, RenderJobStatus.EXECUTING));
         assertFalse(stateMachine.canTransition(RenderJobStatus.CANCELLED, RenderJobStatus.QUEUED));
         assertFalse(stateMachine.canTransition(RenderJobStatus.CANCELLED, RenderJobStatus.FAILED));
         assertThrows(PlatformException.class,
-                () -> stateMachine.validateTransition(RenderJobStatus.CANCELLED, RenderJobStatus.RENDERING));
+                () -> stateMachine.validateTransition(RenderJobStatus.CANCELLED, RenderJobStatus.EXECUTING));
     }
 
     @Test
     void rejectedCannotTransitionToAnything() {
         assertFalse(stateMachine.canTransition(RenderJobStatus.REJECTED, RenderJobStatus.QUEUED));
-        assertFalse(stateMachine.canTransition(RenderJobStatus.REJECTED, RenderJobStatus.RENDERING));
+        assertFalse(stateMachine.canTransition(RenderJobStatus.REJECTED, RenderJobStatus.EXECUTING));
         assertThrows(PlatformException.class,
                 () -> stateMachine.validateTransition(RenderJobStatus.REJECTED, RenderJobStatus.QUEUED));
     }
 
     @Test
-    void completedCannotRevertToRendering() {
-        assertFalse(stateMachine.canTransition(RenderJobStatus.COMPLETED, RenderJobStatus.RENDERING));
+    void completedCannotRevertToExecuting() {
+        assertFalse(stateMachine.canTransition(RenderJobStatus.COMPLETED, RenderJobStatus.EXECUTING));
         assertThrows(PlatformException.class,
-                () -> stateMachine.validateTransition(RenderJobStatus.COMPLETED, RenderJobStatus.RENDERING));
+                () -> stateMachine.validateTransition(RenderJobStatus.COMPLETED, RenderJobStatus.EXECUTING));
     }
 
     @Test
-    void queuedCannotSkipToRendering() {
-        assertFalse(stateMachine.canTransition(RenderJobStatus.QUEUED, RenderJobStatus.RENDERING));
+    void queuedCannotSkipToExecuting() {
+        assertFalse(stateMachine.canTransition(RenderJobStatus.QUEUED, RenderJobStatus.EXECUTING));
         assertThrows(PlatformException.class,
-                () -> stateMachine.validateTransition(RenderJobStatus.QUEUED, RenderJobStatus.RENDERING));
+                () -> stateMachine.validateTransition(RenderJobStatus.QUEUED, RenderJobStatus.EXECUTING));
     }
 
     @Test
@@ -130,10 +142,10 @@ class RenderJobStateMachineTest {
     }
 
     @Test
-    void renderingCannotGoBackToAiProcessing() {
-        assertFalse(stateMachine.canTransition(RenderJobStatus.RENDERING, RenderJobStatus.AI_PROCESSING));
+    void executingCannotGoBackToSelectingProvider() {
+        assertFalse(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.SELECTING_PROVIDER));
         assertThrows(PlatformException.class,
-                () -> stateMachine.validateTransition(RenderJobStatus.RENDERING, RenderJobStatus.AI_PROCESSING));
+                () -> stateMachine.validateTransition(RenderJobStatus.EXECUTING, RenderJobStatus.SELECTING_PROVIDER));
     }
 
     @Test
@@ -150,14 +162,16 @@ class RenderJobStateMachineTest {
                 () -> stateMachine.validateTransition(RenderJobStatus.FAILED, RenderJobStatus.CANCELLED));
     }
 
-    // --- Retry path: FAILED -> QUEUED -> AI_PROCESSING -> RENDERING -> COMPLETED ---
+    // --- Full path ---
 
     @Test
     void fullRetryPathIsValid() {
         assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.QUEUED, RenderJobStatus.AI_PROCESSING));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.AI_PROCESSING, RenderJobStatus.RENDERING));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.RENDERING, RenderJobStatus.COMPLETED));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.QUEUED, RenderJobStatus.SELECTING_PROVIDER));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.PROVIDER_SELECTED));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.PROVIDER_SELECTED, RenderJobStatus.EXECUTING));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.EXECUTING, RenderJobStatus.COMPLETING));
+        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED));
     }
 
     // --- Same state ---

@@ -9,17 +9,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.platform.render.domain.clientexport.ClientExportSession;
 import com.example.platform.render.infrastructure.ExportPolicyService;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import javax.sql.DataSource;
+import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.mock.web.MockMultipartFile;
 
-class ClientExportServiceTest {
+class ClientExportServiceTest extends PostgresTestContainerSupport {
 
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private ClientExportSessionRepository repository;
     private ClientExportService service;
     private ExportPolicyService exportPolicy;
@@ -27,43 +35,22 @@ class ClientExportServiceTest {
     @TempDir
     java.nio.file.Path tempDir;
 
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
+
     @BeforeEach
     void setUp() {
-        var ds = new DriverManagerDataSource();
-        ds.setDriverClassName("org.h2.Driver");
-        ds.setUrl("jdbc:h2:mem:cex_test_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
-        var jdbc = new JdbcTemplate(ds);
-
-        jdbc.execute("""
-            create table if not exists client_export_session (
-                id varchar(64) primary key,
-                tenant_id varchar(64) not null,
-                workspace_id varchar(64),
-                project_id varchar(64) not null,
-                user_id varchar(128),
-                timeline_snapshot_id varchar(64),
-                export_type varchar(32) not null default 'CLIENT_BROWSER',
-                preset varchar(64),
-                status varchar(32) not null default 'CREATED',
-                progress int not null default 0,
-                resolution varchar(32) default '1280x720',
-                fps int default 30,
-                format varchar(16) default 'webm',
-                watermark_enabled boolean default true,
-                video_bitrate int,
-                audio_bitrate int,
-                max_duration_sec int,
-                output_uri varchar(512),
-                artifact_id varchar(64),
-                download_path varchar(512),
-                error_code varchar(64),
-                error_message varchar(1024),
-                created_at timestamp not null default current_timestamp,
-                updated_at timestamp not null default current_timestamp,
-                expires_at timestamp
-            )
-        """);
-
+        RenderTestSchemaFixture.truncate(dsl);
+        var jdbc = new JdbcTemplate(dataSource);
         repository = new ClientExportSessionRepository(jdbc);
         exportPolicy = new ExportPolicyService();
         service = new ClientExportService(tempDir.toString(), repository, exportPolicy, null);

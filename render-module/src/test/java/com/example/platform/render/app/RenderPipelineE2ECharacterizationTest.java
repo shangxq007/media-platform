@@ -21,25 +21,26 @@ import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
+import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.entitlement.EntitlementPort;
 import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.storage.api.StorageCatalogPort;
 import com.example.platform.storage.domain.BlobStorage;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * End-to-end characterization tests for the complete render pipeline flow.
@@ -47,15 +48,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Covers: timeline creation → asset/clip addition → subtitle/effect addition
  * → render job submission → job status verification → artifact output verification.
  *
- * <p>Uses H2 + real jOOQ for persistence and mocks for external collaborators.
+ * <p>Uses PostgreSQL Testcontainers + real jOOQ for persistence and mocks for external collaborators.
  * Does NOT depend on real FFmpeg/Natron/MLT/Remotion.
  */
-class RenderPipelineE2ECharacterizationTest {
+class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
-    private Connection conn;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private RenderOrchestratorService service;
     private RenderJobRepository renderJobRepository;
 
@@ -72,56 +71,23 @@ class RenderPipelineE2ECharacterizationTest {
     private RenderProfileResolver renderProfileResolver;
     private StorageCatalogPort storageCatalogPort;
     private EditorTimelineConverter editorTimelineConverter;
+    private ProviderRuntimeEngine providerRuntimeEngine;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "e2etest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table project ("
-                    + "id varchar(64) primary key,"
-                    + "tenant_id varchar(64) not null,"
-                    + "name varchar(255) not null,"
-                    + "description text,"
-                    + "status varchar(32) not null,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table render_job ("
-                    + "id varchar(64) primary key,"
-                    + "project_id varchar(64) not null,"
-                    + "tenant_id varchar(64),"
-                    + "timeline_snapshot_id varchar(64) not null,"
-                    + "profile varchar(100) not null,"
-                    + "status varchar(20) not null,"
-                    + "created_at timestamp not null,"
-                    + "ai_script text,"
-                    + "artifact_uri text,"
-                    + "error_message text,"
-                    + "pipeline_plan_json text,"
-                    + "pipeline_execution_json text,"
-                    + "base_job_id varchar(64)"
-                    + ")");
-            stmt.execute("create table render_job_status_history ("
-                    + "id varchar(64) primary key,"
-                    + "job_id varchar(64) not null,"
-                    + "from_status varchar(30),"
-                    + "to_status varchar(30) not null,"
-                    + "reason varchar(255),"
-                    + "error_code varchar(100),"
-                    + "occurred_at timestamp not null"
-                    + ")");
-            stmt.execute("create table timeline_snapshot ("
-                    + "id varchar(64) primary key,"
-                    + "project_id varchar(64) not null,"
-                    + "tenant_id varchar(64),"
-                    + "payload_json text not null,"
-                    + "schema_version varchar(32),"
-                    + "created_at timestamp not null default CURRENT_TIMESTAMP"
-                    + ")");
-        }
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
 
         quotaService = mock(RenderQuotaService.class);
         renderProviderRouter = mock(RenderProviderRouter.class);
@@ -135,13 +101,16 @@ class RenderPipelineE2ECharacterizationTest {
         renderProfileResolver = mock(RenderProfileResolver.class);
         storageCatalogPort = mock(StorageCatalogPort.class);
         editorTimelineConverter = mock(EditorTimelineConverter.class);
+        providerRuntimeEngine = mock(ProviderRuntimeEngine.class);
 
         // Default stubs — set up in each test method as needed
         // No default mocks here to avoid conflicts with test-specific overrides
 
         renderJobRepository = new RenderJobRepository(dsl);
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
-                dsl, renderJobRepository, quotaService, historyRepository,
+                dsl, renderJobRepository, quotaService,
+                null /* billingEnforcementService */, null /* billingDecisionEngine */,
+                historyRepository,
                 notificationEventPublisher, eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
@@ -149,10 +118,13 @@ class RenderPipelineE2ECharacterizationTest {
                 renderJobRepository, storageCatalogPort);
         RenderJobExecutionService executionService = new RenderJobExecutionService(
                 renderJobRepository, quotaService, null, renderProviderRouter,
+                providerRuntimeEngine,
                 notificationEventPublisher, eventPublisher, historyRepository,
                 timelineScriptParser, mock(TimelineSpecResolver.class),
                 mock(IncrementalRenderOrchestrationService.class),
-                artifactStorageService, timelineSnapshotService,
+                artifactStorageService, null /* artifactGraphRepository */,
+                null /* billingEnforcementService */,
+                timelineSnapshotService,
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
                 null, null, null, null,
                 mock(TimelineExtensionsReader.class), null, null, null);
@@ -186,6 +158,13 @@ class RenderPipelineE2ECharacterizationTest {
         when(provider.render(anyString(), anyString(), anyString()))
                 .thenReturn(new RenderProvider.RenderResult("art-1", storageUri, 10L, "mp4", "1920x1080"));
         return provider;
+    }
+
+    private void stubProviderResolution(RenderProvider provider) {
+        var result = new ProviderRuntimeEngine.ProviderResolutionResult(
+                "trace-test", "mock-provider", provider,
+                List.of("mock-provider"), null, null, null, 0);
+        when(providerRuntimeEngine.resolveProvider(any())).thenReturn(result);
     }
 
     private void setupDefaultMocks() {
@@ -237,6 +216,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         // 2. Submit render job
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
@@ -300,6 +280,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-2", "proj-2", "snap-2", "default_1080p");
@@ -360,6 +341,7 @@ class RenderPipelineE2ECharacterizationTest {
         // Mock both single-arg and two-arg route methods
         doReturn(provider).when(renderProviderRouter).route(anyString());
         doReturn(provider).when(renderProviderRouter).route(anyString(), anyList());
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-3", "proj-3", "snap-3", "default_1080p");
@@ -416,6 +398,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-4", "proj-4", "snap-4", "default_1080p");
@@ -447,6 +430,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         doReturn(provider).when(renderProviderRouter).route(anyString());
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-5", "proj-5", "snap-5", "default_1080p");
@@ -482,6 +466,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-5b", "proj-5b", "snap-5b", "default_1080p");
@@ -506,6 +491,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         // No provider available for this profile
         when(renderProviderRouter.route("unsupported_profile")).thenReturn(null);
+        stubProviderResolution(null);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-6", "proj-6", "snap-6", "unsupported_profile");
@@ -572,6 +558,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-9", "proj-9", "snap-9", "default_1080p");
@@ -584,10 +571,10 @@ class RenderPipelineE2ECharacterizationTest {
                 .fetch();
 
         assertFalse(history.isEmpty());
-        // Should have QUEUED -> AI_PROCESSING -> RENDERING -> COMPLETED transitions
+        // Should have QUEUED -> SELECTING_PROVIDER -> EXECUTING -> COMPLETED transitions
         assertTrue(history.stream().anyMatch(r ->
                 "QUEUED".equals(r.get(field("from_status"), String.class))
-                        && "AI_PROCESSING".equals(r.get(field("to_status"), String.class))));
+                        && "SELECTING_PROVIDER".equals(r.get(field("to_status"), String.class))));
     }
 
     // =========================================================
@@ -605,6 +592,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-10", "proj-10", "snap-10", "default_1080p");
@@ -646,6 +634,7 @@ class RenderPipelineE2ECharacterizationTest {
         when(provider.render(anyString(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("FFmpeg crashed"));
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-11", "proj-11", "snap-11", "default_1080p");
@@ -677,6 +666,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-12", "proj-12", "snap-12", "default_1080p");
@@ -732,6 +722,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-13", "proj-13", "snap-13", "default_1080p");
@@ -756,6 +747,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-14", "proj-14", "snap-14", "default_1080p");
@@ -777,6 +769,7 @@ class RenderPipelineE2ECharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
         when(renderProviderRouter.route(anyString())).thenReturn(provider);
+        stubProviderResolution(provider);
 
         String inlineTimeline = buildTimelineJson("VIDEO", "storage://videos/source.mp4", 0.0, 10.0);
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withPrompt(

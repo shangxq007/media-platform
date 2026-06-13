@@ -8,43 +8,38 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.render.app.dto.StatusHistoryResponse;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class RenderJobStatusHistoryRepositoryTest {
+class RenderJobStatusHistoryRepositoryTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private RenderJobStatusHistoryRepository repository;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "historytest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table render_job_status_history ("
-                    + "id varchar(64) primary key,"
-                    + "job_id varchar(64) not null,"
-                    + "from_status varchar(30),"
-                    + "to_status varchar(30) not null,"
-                    + "reason varchar(255),"
-                    + "error_code varchar(100),"
-                    + "occurred_at timestamp not null"
-                    + ")");
-        }
-
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
         repository = new RenderJobStatusHistoryRepository(dsl);
     }
 

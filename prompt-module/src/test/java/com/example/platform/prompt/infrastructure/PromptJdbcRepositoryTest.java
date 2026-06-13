@@ -1,29 +1,44 @@
 package com.example.platform.prompt.infrastructure;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.prompt.testsupport.PromptTestSchemaFixture;
 import com.example.platform.prompt.domain.PromptTemplate;
 import com.example.platform.prompt.domain.PromptTemplateStatus;
 import com.example.platform.prompt.domain.PromptTemplateVersion;
+import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class PromptJdbcRepositoryTest {
+class PromptJdbcRepositoryTest extends PostgresTestContainerSupport {
 
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private PromptJdbcRepository repository;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        PromptTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
     void setUp() {
-        var dataSource = new EmbeddedDatabaseBuilder()
-                .setType(EmbeddedDatabaseType.H2)
-                .addScript("classpath:schema-prompt-h2.sql")
-                .build();
+        PromptTestSchemaFixture.truncate(dsl);
         repository = new PromptJdbcRepository(new JdbcTemplate(dataSource));
     }
 

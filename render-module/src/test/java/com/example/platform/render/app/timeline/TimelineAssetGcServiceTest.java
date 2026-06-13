@@ -3,38 +3,40 @@ package com.example.platform.render.app.timeline;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.infrastructure.TimelineAssetGcProperties;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import java.util.List;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import javax.sql.DataSource;
 import org.jooq.DSLContext;
-import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class TimelineAssetGcServiceTest {
+class TimelineAssetGcServiceTest extends PostgresTestContainerSupport {
 
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private TimelineAssetGcService gcService;
     private TimelineSnapshotService snapshotService;
-    private DSLContext dsl;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String jdbcUrl = "jdbc:h2:mem:timelineGc;MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
-        try (Connection conn = DriverManager.getConnection(jdbcUrl, "sa", "");
-             Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE timeline_snapshot ("
-                    + "id varchar(64) primary key,"
-                    + "project_id varchar(64) not null,"
-                    + "tenant_id varchar(64),"
-                    + "payload_json clob not null,"
-                    + "schema_version varchar(32),"
-                    + "created_at timestamp not null"
-                    + ")");
-        }
-        dsl = DSL.using(DriverManager.getConnection(jdbcUrl, "sa", ""), SQLDialect.H2);
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         ErrorCodeRegistry registry = new ErrorCodeRegistry();
         registry.loadErrorCodes();

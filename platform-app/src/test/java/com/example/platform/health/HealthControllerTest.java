@@ -23,8 +23,23 @@ class HealthControllerTest extends PostgresTestContainerSupport {
         ds.setPassword(password());
         var jdbc = new JdbcTemplate(ds);
 
-        // Create table if it doesn't exist
-        jdbc.execute("CREATE TABLE IF NOT EXISTS outbox_events (id VARCHAR(64), status VARCHAR(32))");
+        // Create table with full schema matching production
+        jdbc.execute("""
+            CREATE TABLE IF NOT EXISTS outbox_events (
+                id varchar(64) primary key,
+                aggregate_type varchar(100) not null,
+                aggregate_id varchar(100) not null,
+                event_type varchar(150) not null,
+                event_version int not null,
+                payload text not null,
+                status varchar(50) not null,
+                created_at timestamp not null,
+                published_at timestamp,
+                retry_count int not null default 0,
+                next_attempt_at timestamp,
+                idempotency_key varchar(255)
+            )
+        """);
         jdbc.execute("DELETE FROM outbox_events");
         jdbc.execute("INSERT INTO outbox_events (id, aggregate_type, aggregate_id, event_type, event_version, payload, status, created_at, retry_count) VALUES ('e1', 'test', 'test', 'test', 1, '{}', 'PENDING', NOW(), 0)");
         jdbc.execute("INSERT INTO outbox_events (id, aggregate_type, aggregate_id, event_type, event_version, payload, status, created_at, retry_count) VALUES ('e2', 'test', 'test', 'test', 1, '{}', 'PROCESSED', NOW(), 0)");

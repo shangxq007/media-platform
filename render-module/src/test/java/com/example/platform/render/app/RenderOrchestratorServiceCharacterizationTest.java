@@ -6,16 +6,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.ai.api.AiGatewayPort;
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
-import com.example.platform.render.api.port.EffectEntitlementPort;
 import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.EffectTimelineInspector;
-import com.example.platform.render.app.timeline.AiRenderScriptNormalizer;
 import com.example.platform.render.app.timeline.BaseJobTimelineLoader;
 import com.example.platform.render.app.timeline.IncrementalRenderOrchestrationService;
 import com.example.platform.render.app.timeline.TimelineSpecResolver;
-import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.infrastructure.RenderArtifactStorageService;
@@ -23,41 +19,36 @@ import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
-import com.example.platform.shared.entitlement.EntitlementPort;
+import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.storage.api.StorageCatalogPort;
-import com.example.platform.storage.domain.BlobStorage;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Characterization tests for RenderOrchestratorService.
  *
  * <p>These tests lock the current behavior of submit, execute, artifact query,
- * tenant isolation, and timeline/script handling. They use H2 + real jOOQ for
- * render_job persistence and mocks for external collaborators.
- *
- * <p>These tests are a safety net for future staged extraction — not a refactoring tool.
+ * tenant isolation, and timeline/script handling. They use PostgreSQL Testcontainers
+ * + real jOOQ for render_job persistence and mocks for external collaborators.
  */
-class RenderOrchestratorServiceCharacterizationTest {
+class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
-    private Connection conn;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private RenderOrchestratorService service;
 
     // Mocks
@@ -73,56 +64,23 @@ class RenderOrchestratorServiceCharacterizationTest {
     private RenderProfileResolver renderProfileResolver;
     private StorageCatalogPort storageCatalogPort;
     private EditorTimelineConverter editorTimelineConverter;
+    private ProviderRuntimeEngine providerRuntimeEngine;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "orchtest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table project ("
-                    + "id varchar(64) primary key,"
-                    + "tenant_id varchar(64) not null,"
-                    + "name varchar(255) not null,"
-                    + "description text,"
-                    + "status varchar(32) not null,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table render_job ("
-                    + "id varchar(64) primary key,"
-                    + "project_id varchar(64) not null,"
-                    + "tenant_id varchar(64),"
-                    + "timeline_snapshot_id varchar(64) not null,"
-                    + "profile varchar(100) not null,"
-                    + "status varchar(20) not null,"
-                    + "created_at timestamp not null,"
-                    + "ai_script text,"
-                    + "artifact_uri text,"
-                    + "error_message text,"
-                    + "pipeline_plan_json text,"
-                    + "pipeline_execution_json text,"
-                    + "base_job_id varchar(64)"
-                    + ")");
-            stmt.execute("create table render_job_status_history ("
-                    + "id varchar(64) primary key,"
-                    + "job_id varchar(64) not null,"
-                    + "from_status varchar(30),"
-                    + "to_status varchar(30) not null,"
-                    + "reason varchar(255),"
-                    + "error_code varchar(100),"
-                    + "occurred_at timestamp not null"
-                    + ")");
-            stmt.execute("create table timeline_snapshot ("
-                    + "id varchar(64) primary key,"
-                    + "project_id varchar(64) not null,"
-                    + "tenant_id varchar(64),"
-                    + "payload_json text not null,"
-                    + "schema_version varchar(32),"
-                    + "created_at timestamp not null default CURRENT_TIMESTAMP"
-                    + ")");
-        }
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
 
         quotaService = mock(RenderQuotaService.class);
         renderProviderRouter = mock(RenderProviderRouter.class);
@@ -137,7 +95,6 @@ class RenderOrchestratorServiceCharacterizationTest {
         storageCatalogPort = mock(StorageCatalogPort.class);
         editorTimelineConverter = mock(EditorTimelineConverter.class);
 
-        // Default: quota allows, effect inspector returns empty, profile resolver returns input
         when(quotaService.checkQuota(anyString(), anyString(), anyInt())).thenReturn(true);
         when(effectTimelineInspector.extractFromScript(anyString()))
                 .thenReturn(new EffectTimelineInspector.EffectUsage(List.of(), List.of()));
@@ -145,31 +102,34 @@ class RenderOrchestratorServiceCharacterizationTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         when(timelineScriptParser.isTimelineJson(anyString())).thenReturn(true);
 
+        providerRuntimeEngine = mock(ProviderRuntimeEngine.class);
         RenderJobRepository renderJobRepository = new RenderJobRepository(dsl);
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
-                dsl, renderJobRepository, quotaService, historyRepository,
+                dsl, renderJobRepository, quotaService,
+                null, null,
+                historyRepository,
                 notificationEventPublisher, eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
-                null /* aiTimelineEditService */, null /* cacheTenantGuard */);
+                null, null);
         RenderArtifactQueryService artifactQueryService = new RenderArtifactQueryService(
                 renderJobRepository, storageCatalogPort);
         RenderJobExecutionService executionService = new RenderJobExecutionService(
-                renderJobRepository, quotaService, null /* aiGatewayPort */, renderProviderRouter,
+                renderJobRepository, quotaService, null, renderProviderRouter,
+                providerRuntimeEngine,
                 notificationEventPublisher, eventPublisher, historyRepository,
                 timelineScriptParser, mock(TimelineSpecResolver.class),
                 mock(IncrementalRenderOrchestrationService.class),
-                artifactStorageService, timelineSnapshotService,
+                artifactStorageService, null, null,
+                timelineSnapshotService,
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
-                null /* effectEntitlementPort */, null /* renderWorkerQueueService */,
-                null /* renderWorkerQueueProperties */, null /* pipelineDagExecutorService */,
-                mock(TimelineExtensionsReader.class), null /* entitlementPort */,
-                null /* hashInvalidationNotifier */, null /* aiRenderScriptNormalizer */);
+                null, null, null, null,
+                mock(TimelineExtensionsReader.class), null, null, null);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
 
         service = new RenderOrchestratorService(
                 submissionService, executionService, artifactQueryService,
-                timelineQueryService, null /* submitContinuation */);
+                timelineQueryService, null);
 
         TenantContext.clear();
     }
@@ -178,8 +138,6 @@ class RenderOrchestratorServiceCharacterizationTest {
     void tearDown() {
         TenantContext.clear();
     }
-
-    // --- Helpers ---
 
     private void insertProject(String projectId, String tenantId) {
         dsl.insertInto(table("project"))
@@ -205,7 +163,12 @@ class RenderOrchestratorServiceCharacterizationTest {
         return provider;
     }
 
-    // --- 4.1 submitRenderJob creates job and routes provider ---
+    private void stubProviderResolution(RenderProvider provider) {
+        var result = new ProviderRuntimeEngine.ProviderResolutionResult(
+                "trace-test", "mock-provider", provider,
+                List.of("mock-provider"), null, null, null, 0);
+        when(providerRuntimeEngine.resolveProvider(any())).thenReturn(result);
+    }
 
     @Test
     void submitRenderJobCreatesJobAndRoutesProvider() {
@@ -214,6 +177,7 @@ class RenderOrchestratorServiceCharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/rj-1/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
         when(timelineSnapshotService.findPayload(anyString())).thenReturn(Optional.of("{\"tracks\":[]}"));
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
@@ -224,7 +188,6 @@ class RenderOrchestratorServiceCharacterizationTest {
         assertNotNull(jobId);
         assertTrue(jobId.startsWith("rj_"));
 
-        // Verify job was persisted
         var jobRow = dsl.select(field("status"), field("tenant_id"), field("project_id"))
                 .from(table("render_job"))
                 .where(field("id").eq(jobId))
@@ -234,14 +197,9 @@ class RenderOrchestratorServiceCharacterizationTest {
         assertEquals("tenant-1", jobRow.get(field("tenant_id"), String.class));
         assertEquals("proj-1", jobRow.get(field("project_id"), String.class));
 
-        // Verify provider was invoked
         verify(provider).render(eq(jobId), anyString(), anyString());
-
-        // Verify notification was published (at least once — RenderJobCreatedEvent + status changes)
         verify(notificationEventPublisher, atLeastOnce()).publish(any());
     }
-
-    // --- 4.2 submitRenderJob rejects when quota denied ---
 
     @Test
     void submitRenderJobRejectsWhenQuotaDenied() {
@@ -256,7 +214,6 @@ class RenderOrchestratorServiceCharacterizationTest {
                 () -> service.submitRenderJob(request));
         assertTrue(ex.getMessage().contains("Quota exceeded"));
 
-        // Verify rejected job was persisted
         var rejectedJob = dsl.select(field("status"), field("error_message"))
                 .from(table("render_job"))
                 .where(field("tenant_id").eq("tenant-2"))
@@ -265,11 +222,8 @@ class RenderOrchestratorServiceCharacterizationTest {
         assertEquals("REJECTED", rejectedJob.get(field("status"), String.class));
         assertEquals("Quota exceeded", rejectedJob.get(field("error_message"), String.class));
 
-        // Verify provider was NOT invoked
         verifyNoInteractions(renderProviderRouter);
     }
-
-    // --- 4.3 executeExistingRenderJob succeeds ---
 
     @Test
     void executeExistingRenderJobSucceeds() {
@@ -279,6 +233,7 @@ class RenderOrchestratorServiceCharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/rj-3/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
         when(timelineSnapshotService.findPayload("snap-3"))
                 .thenReturn(Optional.of("{\"tracks\":[]}"));
 
@@ -286,7 +241,6 @@ class RenderOrchestratorServiceCharacterizationTest {
 
         assertEquals("rj-3", result);
 
-        // Verify job completed
         var jobRow = dsl.select(field("status"), field("artifact_uri"))
                 .from(table("render_job"))
                 .where(field("id").eq("rj-3"))
@@ -294,11 +248,8 @@ class RenderOrchestratorServiceCharacterizationTest {
         assertEquals("COMPLETED", jobRow.get(field("status"), String.class));
         assertNotNull(jobRow.get(field("artifact_uri"), String.class));
 
-        // Verify quota consumed
         verify(quotaService).consumeQuota("tenant-3", "render", 1);
     }
-
-    // --- 4.4 executeExistingRenderJob handles provider failure ---
 
     @Test
     void executeExistingRenderJobHandlesProviderFailure() {
@@ -310,13 +261,13 @@ class RenderOrchestratorServiceCharacterizationTest {
         when(provider.render(anyString(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("FFmpeg crashed"));
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
         when(timelineSnapshotService.findPayload("snap-4"))
                 .thenReturn(Optional.of("{\"tracks\":[]}"));
 
         assertThrows(IllegalStateException.class,
                 () -> service.executeExistingRenderJob("tenant-4", "rj-4"));
 
-        // Verify job marked failed
         var jobRow = dsl.select(field("status"), field("error_message"))
                 .from(table("render_job"))
                 .where(field("id").eq("rj-4"))
@@ -324,8 +275,6 @@ class RenderOrchestratorServiceCharacterizationTest {
         assertEquals("FAILED", jobRow.get(field("status"), String.class));
         assertTrue(jobRow.get(field("error_message"), String.class).contains("FFmpeg crashed"));
     }
-
-    // --- 4.5 tenant isolation ---
 
     @Test
     void submitRenderJobRejectsCrossTenantAccess() {
@@ -359,8 +308,6 @@ class RenderOrchestratorServiceCharacterizationTest {
                 () -> service.getArtifactsByJob("rj-z"));
     }
 
-    // --- 4.6 timeline snapshot/script behavior ---
-
     @Test
     void submitRenderJobUsesSnapshotPayload() {
         TenantContext.set("tenant-5");
@@ -368,6 +315,7 @@ class RenderOrchestratorServiceCharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/rj-5/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
         when(timelineSnapshotService.findPayload("snap-5"))
                 .thenReturn(Optional.of("{\"tracks\":[{\"type\":\"VIDEO\"}]}"));
 
@@ -376,7 +324,6 @@ class RenderOrchestratorServiceCharacterizationTest {
 
         String jobId = service.submitRenderJob(request);
 
-        // Verify snapshot was used (provider received timeline JSON)
         verify(provider).render(eq(jobId), contains("tracks"), eq("default_1080p"));
     }
 
@@ -387,6 +334,7 @@ class RenderOrchestratorServiceCharacterizationTest {
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/rj-6/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
+        stubProviderResolution(provider);
 
         String inlineTimeline = "{\"tracks\":[{\"type\":\"VIDEO\",\"clips\":[]}]}";
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withPrompt(
@@ -394,15 +342,12 @@ class RenderOrchestratorServiceCharacterizationTest {
 
         String jobId = service.submitRenderJob(request);
 
-        // Verify inline timeline was persisted as ai_script
         var jobRow = dsl.select(field("ai_script"))
                 .from(table("render_job"))
                 .where(field("id").eq(jobId))
                 .fetchOne();
         assertEquals(inlineTimeline, jobRow.get(field("ai_script"), String.class));
     }
-
-    // --- 4.7 artifact query behavior ---
 
     @Test
     void getArtifactsByJobReturnsArtifacts() {
@@ -427,8 +372,6 @@ class RenderOrchestratorServiceCharacterizationTest {
                 () -> service.getArtifactsByJob("nonexistent"));
     }
 
-    // --- 4.8 already completed job returns immediately ---
-
     @Test
     void executeExistingRenderJobReturnsImmediatelyForCompletedJob() {
         TenantContext.set("tenant-8");
@@ -438,7 +381,6 @@ class RenderOrchestratorServiceCharacterizationTest {
         String result = service.executeExistingRenderJob("tenant-8", "rj-8");
 
         assertEquals("rj-8", result);
-        // Provider should NOT be called for already-completed jobs
         verifyNoInteractions(renderProviderRouter);
     }
 }

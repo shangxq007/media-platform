@@ -4,13 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
 import com.example.platform.render.domain.RenderJobStatus;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.OffsetDateTime;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -18,47 +18,34 @@ import org.springframework.context.ApplicationEventPublisher;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
-class StaleRenderJobCompensationServiceTest {
+class StaleRenderJobCompensationServiceTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private StaleRenderJobCompensationService service;
 
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
+
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "stalesvc" + COUNTER.incrementAndGet();
-        Connection conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table render_job ("
-                    + "id varchar(64) primary key,"
-                    + "project_id varchar(64) not null,"
-                    + "tenant_id varchar(64),"
-                    + "timeline_snapshot_id varchar(64) not null,"
-                    + "profile varchar(100) not null,"
-                    + "status varchar(30) not null,"
-                    + "error_message text,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table render_job_status_history ("
-                    + "id varchar(64) primary key,"
-                    + "job_id varchar(64) not null,"
-                    + "from_status varchar(30),"
-                    + "to_status varchar(30) not null,"
-                    + "reason varchar(255),"
-                    + "error_code varchar(100),"
-                    + "occurred_at timestamp not null"
-                    + ")");
-        }
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
         service = new StaleRenderJobCompensationService(
                 dsl, new RenderJobStatusHistoryRepository(dsl), mock(ApplicationEventPublisher.class));
     }
 
     @Test
     void startupLocalModeCompensatesRecentInFlightJobs() {
-        insertJob("job1", RenderJobStatus.RENDERING, OffsetDateTime.now());
+        insertJob("job1", RenderJobStatus.EXECUTING, OffsetDateTime.now());
         var result = service.compensate(
                 StaleRenderJobCompensationService.CompensationRequest.startup(false, "local"));
         assertEquals(1, result.compensated());

@@ -6,59 +6,39 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.render.app.dto.RenderJobResponse;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class RenderJobRepositoryTest {
+class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private RenderJobRepository repository;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "repotest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table project ("
-                    + "id varchar(64) primary key,"
-                    + "tenant_id varchar(64) not null,"
-                    + "name varchar(255) not null,"
-                    + "description text,"
-                    + "status varchar(32) not null,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table render_job ("
-                    + "id varchar(64) primary key,"
-                    + "project_id varchar(64) not null,"
-                    + "tenant_id varchar(64),"
-                    + "timeline_snapshot_id varchar(64) not null,"
-                    + "profile varchar(100) not null,"
-                    + "status varchar(20) not null,"
-                    + "created_at timestamp not null,"
-                    + "ai_script text,"
-                    + "artifact_uri text,"
-                    + "error_message text,"
-                    + "pipeline_plan_json text,"
-                    + "pipeline_execution_json text,"
-                    + "base_job_id varchar(64)"
-                    + ")");
-        }
-
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
         repository = new RenderJobRepository(dsl);
     }
 
@@ -141,9 +121,7 @@ class RenderJobRepositoryTest {
     @Test
     void updateStatusAndClearError() {
         repository.create("rj-10", "proj-10", "tenant-10", "snap-10", "standard", "FAILED", OffsetDateTime.now());
-        // Set error first
         repository.updateStatusWithError("rj-10", "FAILED", "Something went wrong");
-        // Retry — clear error
         repository.updateStatusAndClearError("rj-10", "QUEUED");
 
         Optional<RenderJobResponse> found = repository.findById("rj-10");

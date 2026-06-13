@@ -4,6 +4,7 @@ import com.example.platform.shared.Ids;
 import com.example.platform.shared.media.MediaProbePort;
 import com.example.platform.shared.media.MediaProbePort.MediaProbeResult;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +51,7 @@ public class MediaAssetProbeService {
                 result.rotation(), result.colorSpace(), result.bitrate(), result.isVfr(), result.streamCount(),
                 result.clientExportCompatible(), result.normalizeRequired(),
                 String.join("|", result.warnings()), result.error(),
-                Instant.now());
+                OffsetDateTime.now());
 
         log.info("Probe result: asset={} valid={} {}x{} codec={} clientExport={} normalize={}",
                 assetId, result.valid(), result.width(), result.height(),

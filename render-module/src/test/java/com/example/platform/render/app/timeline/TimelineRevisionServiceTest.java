@@ -15,45 +15,41 @@ import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class TimelineRevisionServiceTest {
+class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private TimelineRevisionService revisionService;
     private TimelineSnapshotService snapshotService;
-    private DSLContext dsl;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         TenantContext.set("ten-1");
-        String db = "trev" + COUNTER.incrementAndGet();
-        Connection conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + db + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table timeline_snapshot ("
-                    + "id varchar(64) primary key, project_id varchar(64), tenant_id varchar(64),"
-                    + "payload_json clob not null, schema_version varchar(32),"
-                    + "content_hash varchar(64), revision_number int, created_at timestamp)");
-            stmt.execute("create table timeline_revision ("
-                    + "id varchar(64) primary key, project_id varchar(64) not null, tenant_id varchar(64),"
-                    + "parent_revision_id varchar(64), revision_number int not null, snapshot_id varchar(64) not null,"
-                    + "internal_revision int not null, content_hash varchar(64) not null, schema_version varchar(32),"
-                    + "source varchar(32) not null, author_user_id varchar(64), edit_session_id varchar(64),"
-                    + "message varchar(512), change_summary_json clob, patch_ops_json clob,"
-                    + "labels_json varchar(512), created_at timestamp not null)");
-        }
+        RenderTestSchemaFixture.truncate(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         TimelineCanonicalizer canonicalizer = new TimelineCanonicalizer();
         TimelineSpecResolver resolver =

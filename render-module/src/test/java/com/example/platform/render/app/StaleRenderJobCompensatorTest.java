@@ -9,59 +9,40 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.example.platform.render.domain.RenderJobStatus;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
-class StaleRenderJobCompensatorTest {
+class StaleRenderJobCompensatorTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static javax.sql.DataSource dataSource;
+    private static DSLContext dsl;
     private RenderJobStatusHistoryRepository historyRepository;
     private ApplicationEventPublisher eventPublisher;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "staletest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table render_job ("
-                    + "id varchar(64) primary key,"
-                    + "project_id varchar(64) not null,"
-                    + "tenant_id varchar(64),"
-                    + "timeline_snapshot_id varchar(64) not null,"
-                    + "profile varchar(100) not null,"
-                    + "status varchar(30) not null,"
-                    + "ai_script text,"
-                    + "artifact_uri text,"
-                    + "error_message text,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table render_job_status_history ("
-                    + "id varchar(64) primary key,"
-                    + "job_id varchar(64) not null,"
-                    + "from_status varchar(30),"
-                    + "to_status varchar(30) not null,"
-                    + "reason varchar(255),"
-                    + "error_code varchar(100),"
-                    + "occurred_at timestamp not null"
-                    + ")");
-        }
-
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
         historyRepository = new RenderJobStatusHistoryRepository(dsl);
         eventPublisher = mock(ApplicationEventPublisher.class);
     }
@@ -83,50 +64,50 @@ class StaleRenderJobCompensatorTest {
     }
 
     @Test
-    void compensatesStaleAiProcessingJob() {
+    void compensatesStaleSelectingProviderJob() {
         OffsetDateTime old = OffsetDateTime.now().minus(Duration.ofHours(1));
-        insertJob("stale_ai", "proj_1", RenderJobStatus.AI_PROCESSING, old);
+        insertJob("stale_sp", "proj_1", RenderJobStatus.SELECTING_PROVIDER, old);
 
         StaleRenderJobCompensator compensator = createCompensator(true, Duration.ofMinutes(30));
         compensator.compensateStaleJobs();
 
         var rows = dsl.select().from(table("render_job"))
-                .where(field("id").eq("stale_ai")).fetchMaps();
+                .where(field("id").eq("stale_sp")).fetchMaps();
         assertEquals(1, rows.size());
         assertEquals("FAILED", rows.get(0).get("status"));
 
-        var history = historyRepository.findByJobId("stale_ai");
+        var history = historyRepository.findByJobId("stale_sp");
         assertEquals(1, history.size());
-        assertEquals("AI_PROCESSING", history.get(0).fromStatus());
+        assertEquals("SELECTING_PROVIDER", history.get(0).fromStatus());
         assertEquals("FAILED", history.get(0).toStatus());
         assertEquals("stale_timeout", history.get(0).reason());
         assertEquals("STALE_TIMEOUT", history.get(0).errorCode());
     }
 
     @Test
-    void compensatesStaleRenderingJob() {
+    void compensatesStaleExecutingJob() {
         OffsetDateTime old = OffsetDateTime.now().minus(Duration.ofHours(2));
-        insertJob("stale_render", "proj_1", RenderJobStatus.RENDERING, old);
+        insertJob("stale_exec", "proj_1", RenderJobStatus.EXECUTING, old);
 
         StaleRenderJobCompensator compensator = createCompensator(true, Duration.ofMinutes(30));
         compensator.compensateStaleJobs();
 
         var rows = dsl.select().from(table("render_job"))
-                .where(field("id").eq("stale_render")).fetchMaps();
+                .where(field("id").eq("stale_exec")).fetchMaps();
         assertEquals("FAILED", rows.get(0).get("status"));
     }
 
     @Test
     void doesNotCompensateRecentJobs() {
         OffsetDateTime recent = OffsetDateTime.now().minus(Duration.ofMinutes(5));
-        insertJob("recent_job", "proj_1", RenderJobStatus.AI_PROCESSING, recent);
+        insertJob("recent_job", "proj_1", RenderJobStatus.SELECTING_PROVIDER, recent);
 
         StaleRenderJobCompensator compensator = createCompensator(true, Duration.ofMinutes(30));
         compensator.compensateStaleJobs();
 
         var rows = dsl.select().from(table("render_job"))
                 .where(field("id").eq("recent_job")).fetchMaps();
-        assertEquals("AI_PROCESSING", rows.get(0).get("status"));
+        assertEquals("SELECTING_PROVIDER", rows.get(0).get("status"));
     }
 
     @Test
@@ -158,23 +139,23 @@ class StaleRenderJobCompensatorTest {
     @Test
     void disabledCompensatorDoesNothing() {
         OffsetDateTime old = OffsetDateTime.now().minus(Duration.ofHours(1));
-        insertJob("stale_disabled", "proj_1", RenderJobStatus.AI_PROCESSING, old);
+        insertJob("stale_disabled", "proj_1", RenderJobStatus.SELECTING_PROVIDER, old);
 
         StaleRenderJobCompensator compensator = createCompensator(false, Duration.ofMinutes(30));
         compensator.compensateStaleJobs();
 
         var rows = dsl.select().from(table("render_job"))
                 .where(field("id").eq("stale_disabled")).fetchMaps();
-        assertEquals("AI_PROCESSING", rows.get(0).get("status"));
+        assertEquals("SELECTING_PROVIDER", rows.get(0).get("status"));
         verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
     void compensatesMultipleStaleJobs() {
         OffsetDateTime old = OffsetDateTime.now().minus(Duration.ofHours(1));
-        insertJob("stale_1", "proj_1", RenderJobStatus.AI_PROCESSING, old);
-        insertJob("stale_2", "proj_1", RenderJobStatus.RENDERING, old);
-        insertJob("fresh_1", "proj_1", RenderJobStatus.AI_PROCESSING, OffsetDateTime.now());
+        insertJob("stale_1", "proj_1", RenderJobStatus.SELECTING_PROVIDER, old);
+        insertJob("stale_2", "proj_1", RenderJobStatus.EXECUTING, old);
+        insertJob("fresh_1", "proj_1", RenderJobStatus.SELECTING_PROVIDER, OffsetDateTime.now());
 
         StaleRenderJobCompensator compensator = createCompensator(true, Duration.ofMinutes(30));
         compensator.compensateStaleJobs();
@@ -188,6 +169,6 @@ class StaleRenderJobCompensatorTest {
 
         assertEquals("FAILED", stale1.get(0).get("status"));
         assertEquals("FAILED", stale2.get(0).get("status"));
-        assertEquals("AI_PROCESSING", fresh.get(0).get("status"));
+        assertEquals("SELECTING_PROVIDER", fresh.get(0).get("status"));
     }
 }

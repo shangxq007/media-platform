@@ -2,62 +2,41 @@ package com.example.platform.render.infrastructure.farm;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class RenderWorkerRepositoryTest {
+class RenderWorkerRepositoryTest extends PostgresTestContainerSupport {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    private DSLContext dsl;
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private RenderWorkerRepository repository;
-    private Connection conn;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
-    void setUp() throws Exception {
-        String dbName = "workertest" + COUNTER.incrementAndGet();
-        conn = DriverManager.getConnection(
-                "jdbc:h2:mem:" + dbName + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE", "sa", "");
-        dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table render_worker ("
-                    + "id varchar(64) primary key,"
-                    + "worker_id varchar(128) not null unique,"
-                    + "worker_type varchar(32) not null default 'RENDER',"
-                    + "status varchar(32) not null default 'STARTING',"
-                    + "version varchar(64),"
-                    + "image_tag varchar(128),"
-                    + "hostname varchar(256),"
-                    + "zone varchar(64),"
-                    + "provider_ids text,"
-                    + "capabilities_json text,"
-                    + "max_concurrent_jobs int not null default 1,"
-                    + "active_job_count int not null default 0,"
-                    + "cpu_cores int,"
-                    + "memory_mb int,"
-                    + "gpu_count int not null default 0,"
-                    + "gpu_type varchar(64),"
-                    + "disk_free_mb bigint,"
-                    + "last_heartbeat_at timestamp not null,"
-                    + "registered_at timestamp not null,"
-                    + "expires_at timestamp,"
-                    + "metadata_json text,"
-                    + "created_at timestamp not null default current_timestamp,"
-                    + "updated_at timestamp not null default current_timestamp"
-                    + ")");
-        }
-
+    void setUp() {
+        RenderTestSchemaFixture.truncate(dsl);
         repository = new RenderWorkerRepository(dsl);
     }
 

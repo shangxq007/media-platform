@@ -5,56 +5,42 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.media.MediaProbePort;
 import com.example.platform.shared.media.MediaProbePort.MediaProbeResult;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.List;
+import javax.sql.DataSource;
+import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
-class MediaAssetProbeServiceTest {
+class MediaAssetProbeServiceTest extends PostgresTestContainerSupport {
 
+    private static DataSource dataSource;
+    private static DSLContext dsl;
     private MediaAssetProbeService service;
+
+    @BeforeAll
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
+    }
 
     @BeforeEach
     void setUp() {
-        var ds = new DriverManagerDataSource();
-        ds.setDriverClassName("org.h2.Driver");
-        ds.setUrl("jdbc:h2:mem:probe_test_" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
-        var jdbc = new JdbcTemplate(ds);
-
-        jdbc.execute("""
-            create table if not exists media_asset_metadata (
-                id varchar(64) primary key,
-                tenant_id varchar(64) not null,
-                project_id varchar(64) not null,
-                asset_id varchar(64) not null,
-                asset_uri varchar(1024) not null,
-                valid boolean not null default false,
-                container varchar(32),
-                file_size_bytes bigint default 0,
-                duration_ms double default 0,
-                width int default 0,
-                height int default 0,
-                fps double default 0,
-                video_codec varchar(64),
-                audio_codec varchar(64),
-                audio_sample_rate int default 0,
-                audio_channels int default 0,
-                has_audio boolean default false,
-                rotation int default 0,
-                color_space varchar(32),
-                bitrate bigint default 0,
-                is_vfr boolean default false,
-                stream_count int default 0,
-                client_export_compatible boolean default false,
-                normalize_required boolean default true,
-                warnings varchar(4096),
-                error_message varchar(1024),
-                probed_at timestamp not null default current_timestamp
-            )
-        """);
+        RenderTestSchemaFixture.truncate(dsl);
+        var jdbc = new JdbcTemplate(dataSource);
 
         MediaProbePort stubProbePort = new MediaProbePort() {
             @Override
