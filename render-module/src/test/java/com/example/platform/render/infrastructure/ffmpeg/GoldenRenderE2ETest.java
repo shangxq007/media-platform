@@ -10,6 +10,7 @@ import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.shared.test.FixturePath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,6 +24,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("native-media")
 class GoldenRenderE2ETest {
 
     @TempDir

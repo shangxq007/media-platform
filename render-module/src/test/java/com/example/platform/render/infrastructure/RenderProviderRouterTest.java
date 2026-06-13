@@ -1,11 +1,13 @@
 package com.example.platform.render.infrastructure;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("native-media")
 class RenderProviderRouterTest {
 
     private JavaCVRenderProvider createJavaCVProvider() {

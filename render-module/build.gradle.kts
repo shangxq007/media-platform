@@ -24,3 +24,20 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+tasks.test {
+    useJUnitPlatform {
+        excludeTags("native-media")
+    }
+}
+
+tasks.register<Test>("nativeMediaTest") {
+    description = "Runs native FFmpeg/media integration tests (requires FFmpeg and codec libraries)"
+    group = "verification"
+    useJUnitPlatform {
+        includeTags("native-media")
+    }
+    shouldRunAfter(tasks.test)
+    maxParallelForks = 1
+    forkEvery = 1
+}

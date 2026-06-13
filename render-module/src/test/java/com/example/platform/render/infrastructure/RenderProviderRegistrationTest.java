@@ -4,6 +4,7 @@ import com.example.platform.render.infrastructure.ffmpeg.FFmpegRenderProvider;
 import com.example.platform.render.infrastructure.gpac.GPACRenderProvider;
 import com.example.platform.render.infrastructure.gstreamer.GStreamerRenderProvider;
 import com.example.platform.render.infrastructure.mlt.MltRenderProvider;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 
@@ -12,6 +13,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("native-media")
 class RenderProviderRegistrationTest {
 
     private JavaCVRenderProvider createJavaCVProvider() {

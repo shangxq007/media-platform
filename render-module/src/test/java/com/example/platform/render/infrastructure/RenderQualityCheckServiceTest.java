@@ -1,6 +1,7 @@
 package com.example.platform.render.infrastructure;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -10,6 +11,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("native-media")
 class RenderQualityCheckServiceTest {
 
     private RenderQualityCheckService qualityCheckService;
