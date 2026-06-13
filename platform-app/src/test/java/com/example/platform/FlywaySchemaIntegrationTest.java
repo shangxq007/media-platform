@@ -16,15 +16,24 @@ class FlywaySchemaIntegrationTest extends PostgresTestContainer {
     @BeforeAll
     static void migrateDatabase() {
         Flyway flyway = Flyway.configure()
-                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .dataSource(POSTGRES_URL, POSTGRES_USERNAME, POSTGRES_PASSWORD)
                 .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .cleanDisabled(false)
                 .load();
+        flyway.clean();
         flyway.migrate();
     }
 
     @Test
     void flywayCreatesCoreTables() throws Exception {
-        try (var conn = POSTGRES.createConnection("")) {
+        var ds = new org.springframework.jdbc.datasource.DriverManagerDataSource();
+        ds.setDriverClassName("org.postgresql.Driver");
+        ds.setUrl(POSTGRES_URL);
+        ds.setUsername(POSTGRES_USERNAME);
+        ds.setPassword(POSTGRES_PASSWORD);
+
+        try (var conn = ds.getConnection()) {
             // Verify core render tables exist
             ResultSet renderJob = conn.getMetaData().getColumns(null, null, "render_job", "id");
             assertTrue(renderJob.next(), "render_job table must exist");

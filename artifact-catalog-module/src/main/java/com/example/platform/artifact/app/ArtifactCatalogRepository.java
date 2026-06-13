@@ -22,8 +22,8 @@ import org.springframework.stereotype.Repository;
  * datasource-module is properly configured). The {@link ArtifactCatalogService}
  * falls back to in-memory storage when this repository is not available.</p>
  *
- * <p><strong>Note:</strong> H2 in PostgreSQL mode stores column names in uppercase.
- * We use uppercase field references for all operations.</p>
+ * <p><strong>Note:</strong> Uses lowercase column names for PostgreSQL compatibility.
+ * The DSLContext should be configured with RenderNameCase.LOWER.</p>
  */
 @Repository
 @ConditionalOnBean(DSLContext.class)
@@ -40,15 +40,13 @@ public class ArtifactCatalogRepository {
                 ? OffsetDateTime.ofInstant(artifact.createdAt(), ZoneOffset.UTC)
                 : OffsetDateTime.now();
         String status = artifact.status() != null ? artifact.status().name() : ArtifactStatus.ACTIVE.name();
-        dsl.insertInto(table("ARTIFACT"))
-                .columns(field("ID"), field("RENDER_JOB_ID"), field("PROJECT_ID"),
-                        field("STORAGE_URI"), field("FORMAT"), field("RESOLUTION"),
-                        field("DURATION"), field("SIZE_BYTES"), field("CHECKSUM"),
-                        field("STATUS"), field("TOMBSTONED_AT"), field("CREATED_AT"))
+        dsl.insertInto(table("artifact"))
+                .columns(field("id"), field("render_job_id"), field("project_id"),
+                        field("storage_uri"), field("format"), field("resolution"),
+                        field("duration"), field("status"), field("tombstoned_at"), field("created_at"))
                 .values(artifact.id(), artifact.renderJobId(), artifact.projectId(),
                         artifact.storageUri(), artifact.format(), artifact.resolution(),
-                        artifact.duration(), artifact.sizeBytes(), artifact.checksum(),
-                        status,
+                        artifact.duration(), status,
                         artifact.tombstonedAt() != null
                                 ? OffsetDateTime.ofInstant(artifact.tombstonedAt(), ZoneOffset.UTC)
                                 : null,
@@ -61,76 +59,74 @@ public class ArtifactCatalogRepository {
         OffsetDateTime tombstoneTs = tombstonedAt != null
                 ? OffsetDateTime.ofInstant(tombstonedAt, ZoneOffset.UTC)
                 : null;
-        dsl.update(table("ARTIFACT"))
-                .set(field("STATUS"), status.name())
-                .set(field("TOMBSTONED_AT"), tombstoneTs)
-                .where(field("ID").eq(artifactId))
+        dsl.update(table("artifact"))
+                .set(field("status"), status.name())
+                .set(field("tombstoned_at"), tombstoneTs)
+                .where(field("id").eq(artifactId))
                 .execute();
         return findById(artifactId).orElseThrow();
     }
 
     public Optional<Artifact> findById(String id) {
         Record record = dsl.select()
-                .from(table("ARTIFACT"))
-                .where(field("ID").eq(id))
+                .from(table("artifact"))
+                .where(field("id").eq(id))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public List<Artifact> findByProjectId(String projectId) {
         return dsl.select()
-                .from(table("ARTIFACT"))
-                .where(field("PROJECT_ID").eq(projectId))
-                .orderBy(field("CREATED_AT").desc())
+                .from(table("artifact"))
+                .where(field("project_id").eq(projectId))
+                .orderBy(field("created_at").desc())
                 .fetch(this::mapRecord);
     }
 
     public List<Artifact> findByRenderJobId(String renderJobId) {
         return dsl.select()
-                .from(table("ARTIFACT"))
-                .where(field("RENDER_JOB_ID").eq(renderJobId))
-                .orderBy(field("CREATED_AT").desc())
+                .from(table("artifact"))
+                .where(field("render_job_id").eq(renderJobId))
+                .orderBy(field("created_at").desc())
                 .fetch(this::mapRecord);
     }
 
     public List<Artifact> findAll() {
         return dsl.select()
-                .from(table("ARTIFACT"))
-                .orderBy(field("CREATED_AT").desc())
+                .from(table("artifact"))
+                .orderBy(field("created_at").desc())
                 .fetch(this::mapRecord);
     }
 
     public List<Artifact> findTombstonedBefore(Instant cutoff) {
         OffsetDateTime cutoffTs = OffsetDateTime.ofInstant(cutoff, ZoneOffset.UTC);
         return dsl.select()
-                .from(table("ARTIFACT"))
-                .where(field("STATUS").eq(ArtifactStatus.TOMBSTONED.name()))
-                .and(field("TOMBSTONED_AT").isNotNull())
-                .and(field("TOMBSTONED_AT").lessThan(cutoffTs))
-                .orderBy(field("TOMBSTONED_AT").asc())
+                .from(table("artifact"))
+                .where(field("status").eq(ArtifactStatus.TOMBSTONED.name()))
+                .and(field("tombstoned_at").isNotNull())
+                .and(field("tombstoned_at").lessThan(cutoffTs))
+                .orderBy(field("tombstoned_at").asc())
                 .fetch(this::mapRecord);
     }
 
     private Artifact mapRecord(Record record) {
-        OffsetDateTime createdAt = record.get(field("CREATED_AT"), OffsetDateTime.class);
-        OffsetDateTime tombstonedAt = record.get(field("TOMBSTONED_AT"), OffsetDateTime.class);
-        Long duration = record.get(field("DURATION"), Long.class);
-        Long sizeBytes = record.get(field("SIZE_BYTES"), Long.class);
-        String checksum = record.get(field("CHECKSUM"), String.class);
-        String statusRaw = record.get(field("STATUS"), String.class);
+        OffsetDateTime createdAt = record.get(field("created_at"), OffsetDateTime.class);
+        OffsetDateTime tombstonedAt = record.get(field("tombstoned_at"), OffsetDateTime.class);
+        Long duration = record.get(field("duration"), Long.class);
+        String statusRaw = record.get(field("status"), String.class);
         ArtifactStatus status = statusRaw != null && !statusRaw.isBlank()
                 ? ArtifactStatus.valueOf(statusRaw)
                 : ArtifactStatus.ACTIVE;
         return new Artifact(
-                record.get(field("ID"), String.class),
-                record.get(field("RENDER_JOB_ID"), String.class),
-                record.get(field("PROJECT_ID"), String.class),
-                record.get(field("STORAGE_URI"), String.class),
-                record.get(field("FORMAT"), String.class),
-                record.get(field("RESOLUTION"), String.class),
+                record.get(field("id"), String.class),
+                record.get(field("render_job_id"), String.class),
+                record.get(field("project_id"), String.class),
+                record.get(field("storage_uri"), String.class),
+                record.get(field("format"), String.class),
+                record.get(field("resolution"), String.class),
                 duration,
-                sizeBytes,
-                checksum,
+                null, // size_bytes not in schema
+                null, // checksum not in schema
                 status,
                 tombstonedAt != null ? tombstonedAt.toInstant() : null,
                 createdAt != null ? createdAt.toInstant() : null

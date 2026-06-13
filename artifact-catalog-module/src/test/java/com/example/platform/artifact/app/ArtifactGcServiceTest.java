@@ -15,20 +15,23 @@ import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
 import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.shared.test.PostgresTestContainer;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.storage.domain.BlobStorage;
-import java.sql.Connection;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.Map;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
+import org.jooq.conf.RenderNameCase;
+import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
-class ArtifactGcServiceTest {
+class ArtifactGcServiceTest extends PostgresTestContainer {
 
     private ArtifactCatalogRepository repository;
     private ArtifactGcService gcService;
@@ -36,31 +39,30 @@ class ArtifactGcServiceTest {
     private AuditPort auditPort;
 
     @BeforeEach
-    void setUp() throws Exception {
-        org.h2.jdbcx.JdbcDataSource ds = new org.h2.jdbcx.JdbcDataSource();
-        ds.setURL("jdbc:h2:mem:artifactGc;MODE=PostgreSQL;DB_CLOSE_DELAY=-1");
-        ds.setUser("sa");
-        ds.setPassword("");
-        try (Connection conn = ds.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute("DROP TABLE IF EXISTS artifact_relation");
-            stmt.execute("DROP TABLE IF EXISTS render_job");
-            stmt.execute("DROP TABLE IF EXISTS artifact");
-            stmt.execute("CREATE TABLE artifact ("
-                    + "id varchar(64) primary key,"
-                    + "render_job_id varchar(64) not null,"
-                    + "project_id varchar(64) not null,"
-                    + "storage_uri text not null,"
-                    + "format varchar(32),"
-                    + "resolution varchar(32),"
-                    + "duration bigint,"
-                    + "size_bytes bigint,"
-                    + "checksum varchar(128),"
-                    + "status varchar(32) not null default 'ACTIVE',"
-                    + "tombstoned_at timestamp,"
-                    + "created_at timestamp not null"
-                    + ")");
-        }
-        DSLContext dsl = DSL.using(ds, SQLDialect.H2);
+    void setUp() {
+        var ds = new DriverManagerDataSource();
+        ds.setDriverClassName("org.postgresql.Driver");
+        ds.setUrl(POSTGRES_URL);
+        ds.setUsername(POSTGRES_USERNAME);
+        ds.setPassword(POSTGRES_PASSWORD);
+
+        var jdbc = new JdbcTemplate(ds);
+        jdbc.execute("CREATE TABLE IF NOT EXISTS artifact ("
+                + "id varchar(64) primary key,"
+                + "render_job_id varchar(64) not null,"
+                + "project_id varchar(64) not null,"
+                + "storage_uri text not null,"
+                + "format varchar(32),"
+                + "resolution varchar(32),"
+                + "duration bigint,"
+                + "created_at timestamp not null,"
+                + "status varchar(32) not null default 'ACTIVE',"
+                + "tombstoned_at timestamp"
+                + ")");
+        jdbc.execute("TRUNCATE TABLE artifact CASCADE");
+
+        var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
+        DSLContext dsl = DSL.using(ds, SQLDialect.POSTGRES, settings);
         repository = new ArtifactCatalogRepository(dsl);
         ErrorCodeRegistry registry = new ErrorCodeRegistry();
         registry.loadErrorCodes();

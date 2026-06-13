@@ -227,7 +227,7 @@ export function applyClipMove(
   }
 
   // Update tracks
-  let tracks = { ...timeline.tracks }
+  const tracks = { ...timeline.tracks }
 
   // Remove from old track
   if (clip.trackId !== newTrackId) {

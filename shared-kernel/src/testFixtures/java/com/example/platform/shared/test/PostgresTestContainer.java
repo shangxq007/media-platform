@@ -2,32 +2,24 @@ package com.example.platform.shared.test;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Base class for integration tests using PostgreSQL Testcontainers.
+ * Base class for integration tests using PostgreSQL.
  * 
- * <p>All integration tests MUST extend this base class to ensure
- * consistent database behavior between test and production.
+ * <p>Uses existing PostgreSQL container for CI stability.
  */
-@Testcontainers
 public abstract class PostgresTestContainer {
 
-    @Container
-    protected static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:15-alpine")
-                    .withDatabaseName("test-db")
-                    .withUsername("test")
-                    .withPassword("test")
-                    .withStartupTimeoutSeconds(60);
+    // Use dedicated test PostgreSQL container
+    protected static final String POSTGRES_URL = "jdbc:postgresql://localhost:5433/test";
+    protected static final String POSTGRES_USERNAME = "test";
+    protected static final String POSTGRES_PASSWORD = "test";
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.url", () -> POSTGRES_URL);
+        registry.add("spring.datasource.username", () -> POSTGRES_USERNAME);
+        registry.add("spring.datasource.password", () -> POSTGRES_PASSWORD);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         
         // Enable Flyway for all tests

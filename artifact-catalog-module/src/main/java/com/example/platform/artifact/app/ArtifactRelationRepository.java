@@ -25,9 +25,9 @@ public class ArtifactRelationRepository {
     }
 
     public ArtifactRelation save(ArtifactRelation relation) {
-        dsl.insertInto(table("ARTIFACT_RELATION"))
-                .columns(field("ID"), field("SOURCE_ARTIFACT_ID"), field("TARGET_ARTIFACT_ID"),
-                        field("RELATION_TYPE"), field("CREATED_AT"))
+        dsl.insertInto(table("artifact_relation"))
+                .columns(field("id"), field("source_artifact_id"), field("target_artifact_id"),
+                        field("relation_type"), field("created_at"))
                 .values(relation.id(), relation.sourceId(), relation.targetId(),
                         relation.relationType(), OffsetDateTime.now(ZoneOffset.UTC))
                 .execute();
@@ -36,9 +36,9 @@ public class ArtifactRelationRepository {
 
     public List<ArtifactRelation> findByArtifactId(String artifactId) {
         return dsl.select()
-                .from(table("ARTIFACT_RELATION"))
-                .where(field("SOURCE_ARTIFACT_ID").eq(artifactId)
-                        .or(field("TARGET_ARTIFACT_ID").eq(artifactId)))
+                .from(table("artifact_relation"))
+                .where(field("source_artifact_id").eq(artifactId)
+                        .or(field("target_artifact_id").eq(artifactId)))
                 .fetch(this::mapRecord);
     }
 
@@ -67,9 +67,9 @@ public class ArtifactRelationRepository {
 
     private ArtifactRelation mapRecord(Record record) {
         return new ArtifactRelation(
-                record.get(field("ID"), String.class),
-                record.get(field("SOURCE_ARTIFACT_ID"), String.class),
-                record.get(field("TARGET_ARTIFACT_ID"), String.class),
-                record.get(field("RELATION_TYPE"), String.class));
+                record.get(field("id"), String.class),
+                record.get(field("source_artifact_id"), String.class),
+                record.get(field("target_artifact_id"), String.class),
+                record.get(field("relation_type"), String.class));
     }
 }

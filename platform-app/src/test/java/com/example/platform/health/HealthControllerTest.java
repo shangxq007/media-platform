@@ -18,14 +18,16 @@ class HealthControllerTest extends PostgresTestContainer {
     void setUp() {
         var ds = new DriverManagerDataSource();
         ds.setDriverClassName("org.postgresql.Driver");
-        ds.setUrl(POSTGRES.getJdbcUrl());
-        ds.setUsername(POSTGRES.getUsername());
-        ds.setPassword(POSTGRES.getPassword());
+        ds.setUrl(POSTGRES_URL);
+        ds.setUsername(POSTGRES_USERNAME);
+        ds.setPassword(POSTGRES_PASSWORD);
         var jdbc = new JdbcTemplate(ds);
 
+        // Create table if it doesn't exist
         jdbc.execute("CREATE TABLE IF NOT EXISTS outbox_events (id VARCHAR(64), status VARCHAR(32))");
-        jdbc.execute("INSERT INTO outbox_events VALUES ('e1', 'PENDING')");
-        jdbc.execute("INSERT INTO outbox_events VALUES ('e2', 'PROCESSED')");
+        jdbc.execute("DELETE FROM outbox_events");
+        jdbc.execute("INSERT INTO outbox_events (id, aggregate_type, aggregate_id, event_type, event_version, payload, status, created_at, retry_count) VALUES ('e1', 'test', 'test', 'test', 1, '{}', 'PENDING', NOW(), 0)");
+        jdbc.execute("INSERT INTO outbox_events (id, aggregate_type, aggregate_id, event_type, event_version, payload, status, created_at, retry_count) VALUES ('e2', 'test', 'test', 'test', 1, '{}', 'PROCESSED', NOW(), 0)");
 
         controller = new HealthController(jdbc, ds);
     }

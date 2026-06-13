@@ -30,9 +30,9 @@ class TenantLitellmKeyServiceTest extends PostgresTestContainer {
     void setUp() {
         var ds = new org.springframework.jdbc.datasource.DriverManagerDataSource();
         ds.setDriverClassName("org.postgresql.Driver");
-        ds.setUrl(POSTGRES.getJdbcUrl());
-        ds.setUsername(POSTGRES.getUsername());
-        ds.setPassword(POSTGRES.getPassword());
+        ds.setUrl(POSTGRES_URL);
+        ds.setUsername(POSTGRES_USERNAME);
+        ds.setPassword(POSTGRES_PASSWORD);
         var jdbc = new JdbcTemplate(ds);
         
         jdbc.execute("CREATE TABLE IF NOT EXISTS tenant_litellm_virtual_key ("

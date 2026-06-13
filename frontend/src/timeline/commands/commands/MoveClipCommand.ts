@@ -64,7 +64,7 @@ export class MoveClipCommand implements TimelineCommand {
     }
 
     // Update tracks
-    let tracks = { ...timeline.tracks }
+    const tracks = { ...timeline.tracks }
 
     // Remove from old track if changing tracks
     if (clip.trackId !== toTrackId) {
@@ -114,7 +114,7 @@ export class MoveClipCommand implements TimelineCommand {
     }
 
     // Update tracks
-    let tracks = { ...timeline.tracks }
+    const tracks = { ...timeline.tracks }
 
     if (clip.trackId !== fromTrackId) {
       const currentTrack = tracks[clip.trackId]
