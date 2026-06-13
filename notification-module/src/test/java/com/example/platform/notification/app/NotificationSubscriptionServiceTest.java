@@ -1,6 +1,7 @@
 package com.example.platform.notification.app;
 
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.notification.testsupport.NotificationTestSchemaFixture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -11,10 +12,6 @@ import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,7 +29,6 @@ class NotificationSubscriptionServiceTest extends PostgresTestContainerSupport {
 
     private static javax.sql.DataSource dataSource;
     private static DSLContext dsl;
-    private Connection conn;
     private NotificationSubscriptionService subscriptionService;
     private NotificationEventCatalogService catalogService;
     private AuditPort audit;
@@ -57,59 +53,17 @@ class NotificationSubscriptionServiceTest extends PostgresTestContainerSupport {
     static void setUpDatabase() {
         dataSource = createDataSource();
         dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
-        // Create tables
-        var jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
-        // Tables will be created inline
+        NotificationTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
     }
 
     @BeforeEach
-    void setUp() throws Exception {
-        // Clean tables
-        dsl.execute("TRUNCATE TABLE notification_event, notification_template, notification_delivery, notification_record, notification_subscription, notification_channel_binding RESTART IDENTITY CASCADE");
-        String dbName = "subtest" + COUNTER.incrementAndGet();
-        // Using shared PostgreSQL connection
-        // Using shared dsl
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table notification_event_definition ("
-                    + "id varchar(64) primary key,"
-                    + "event_key varchar(100) not null unique,"
-                    + "name varchar(200) not null,"
-                    + "description varchar(500),"
-                    + "category varchar(50) not null,"
-                    + "severity varchar(20) not null,"
-                    + "visibility varchar(30) not null,"
-                    + "user_configurable boolean not null default false,"
-                    + "critical boolean not null default false,"
-                    + "default_enabled boolean not null default true,"
-                    + "supported_channels text,"
-                    + "required_permissions text,"
-                    + "required_entitlements text,"
-                    + "feature_flag_key varchar(100),"
-                    + "novu_workflow_id varchar(100),"
-                    + "local_template_key varchar(100),"
-                    + "archived boolean not null default false,"
-                    + "created_at timestamp not null,"
-                    + "updated_at timestamp not null"
-                    + ")");
-
-            stmt.execute("create table notification_subscription ("
-                    + "id varchar(64) primary key,"
-                    + "tenant_id varchar(64),"
-                    + "workspace_id varchar(64),"
-                    + "user_id varchar(64) not null,"
-                    + "event_key varchar(100) not null,"
-                    + "enabled boolean not null default true,"
-                    + "channels text,"
-                    + "frequency varchar(30) not null default 'IMMEDIATE',"
-                    + "filters text,"
-                    + "quiet_hours_start varchar(10),"
-                    + "quiet_hours_end varchar(10),"
-                    + "quiet_hours_timezone varchar(50),"
-                    + "created_at timestamp not null,"
-                    + "updated_at timestamp not null"
-                    + ")");
-        }
+    void setUp() {
+        NotificationTestSchemaFixture.truncate(dsl);
 
         catalogService = new NotificationEventCatalogService(dsl);
         catalogService.init();

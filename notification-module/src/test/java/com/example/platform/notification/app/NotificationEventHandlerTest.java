@@ -1,6 +1,7 @@
 package com.example.platform.notification.app;
 
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.notification.testsupport.NotificationTestSchemaFixture;
 
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
@@ -17,9 +18,6 @@ import com.example.platform.notification.domain.NotificationProvider;
 import com.example.platform.notification.domain.NotificationTemplateCode;
 import com.example.platform.notification.domain.NotificationTemplatePayload;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,7 +34,6 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
 
     private static javax.sql.DataSource dataSource;
     private static DSLContext dsl;
-    private Connection conn;
     private NotificationEventHandler handler;
     private NotificationRenderingService renderingService;
 
@@ -44,47 +41,17 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
     static void setUpDatabase() {
         dataSource = createDataSource();
         dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
-        // Create tables
-        var jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
-        // Tables will be created inline
+        NotificationTestSchemaFixture.createSchema(dsl);
+    }
+
+    @AfterAll
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
     }
 
     @BeforeEach
-    void setUp() throws Exception {
-        // Clean tables
-        dsl.execute("TRUNCATE TABLE notification_event, notification_template, notification_delivery, notification_record, notification_subscription, notification_channel_binding RESTART IDENTITY CASCADE");
-        String dbName = "eventhandlertest" + COUNTER.incrementAndGet();
-        // Using shared PostgreSQL connection
-        // Using shared dsl
-
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("create table notification_event ("
-                    + "id varchar(64) primary key,"
-                    + "event_type varchar(100) not null,"
-                    + "subject_id varchar(100) not null,"
-                    + "payload text,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table notification_delivery ("
-                    + "id varchar(64) primary key,"
-                    + "event_id varchar(64) not null,"
-                    + "channel varchar(20) not null,"
-                    + "provider_code varchar(50) not null,"
-                    + "status varchar(20) not null,"
-                    + "request_payload text,"
-                    + "response_payload text,"
-                    + "attempt_count int not null,"
-                    + "created_at timestamp not null"
-                    + ")");
-            stmt.execute("create table notification_template ("
-                    + "template_code varchar(64) not null,"
-                    + "channel varchar(20) not null,"
-                    + "locale varchar(10) not null,"
-                    + "version int not null,"
-                    + "subject_template varchar(500),"
-                    + "body_template text"
-                    + ")");
-        }
+    void setUp() {
+        NotificationTestSchemaFixture.truncate(dsl);
 
         renderingService = mock(NotificationRenderingService.class);
         when(renderingService.render(
