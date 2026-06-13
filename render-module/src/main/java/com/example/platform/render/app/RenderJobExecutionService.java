@@ -256,7 +256,7 @@ public class RenderJobExecutionService {
         }
 
         // Ensure we're in EXECUTING state
-        RenderJobStatus currentStatus = RenderJobStatus.fromLegacyStatus(status);
+        RenderJobStatus currentStatus = RenderJobStatus.valueOf(status);
         if (currentStatus != RenderJobStatus.EXECUTING && !currentStatus.isTerminal()) {
             stateMachine.transition(jobId, currentStatus, RenderJobStatus.EXECUTING,
                     "Resuming render execution", "RenderJobExecutionService");

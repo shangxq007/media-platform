@@ -44,8 +44,8 @@ public class StaleRenderJobCompensationService {
 
     public CompensationResult compensate(CompensationRequest request) {
         List<String> activeStatuses = new ArrayList<>(List.of(
-                RenderJobStatus.AI_PROCESSING.name(),
-                RenderJobStatus.RENDERING.name()));
+                RenderJobStatus.SELECTING_PROVIDER.name(),
+                RenderJobStatus.EXECUTING.name()));
         if (request.includeQueued()) {
             activeStatuses.add(RenderJobStatus.QUEUED.name());
         }

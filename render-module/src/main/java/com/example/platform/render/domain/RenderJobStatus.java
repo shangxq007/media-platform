@@ -82,12 +82,6 @@ public enum RenderJobStatus {
      */
     REJECTED(true, false);
 
-    // Legacy compatibility aliases
-    @Deprecated
-    public static final RenderJobStatus AI_PROCESSING = SELECTING_PROVIDER;
-    @Deprecated
-    public static final RenderJobStatus RENDERING = EXECUTING;
-
     private final boolean terminal;
     private final boolean canRetry;
 
@@ -123,38 +117,5 @@ public enum RenderJobStatus {
     public boolean isProviderState() {
         return this == SELECTING_PROVIDER || this == PROVIDER_SELECTED
                 || this == FALLBACKING || this == RETRYING;
-    }
-
-    /**
-     * Legacy compatibility: map to old status names.
-     */
-    public String toLegacyStatus() {
-        return switch (this) {
-            case QUEUED -> "QUEUED";
-            case SELECTING_PROVIDER, PROVIDER_SELECTED -> "AI_PROCESSING";
-            case EXECUTING, FALLBACKING, RETRYING -> "RENDERING";
-            case COMPLETING -> "RENDERING";
-            case COMPLETED -> "COMPLETED";
-            case FAILED -> "FAILED";
-            case CANCELLED -> "CANCELLED";
-            case REJECTED -> "REJECTED";
-        };
-    }
-
-    /**
-     * Parse from legacy status name.
-     */
-    public static RenderJobStatus fromLegacyStatus(String legacy) {
-        if (legacy == null) return QUEUED;
-        return switch (legacy.toUpperCase()) {
-            case "QUEUED" -> QUEUED;
-            case "AI_PROCESSING" -> SELECTING_PROVIDER;
-            case "RENDERING" -> EXECUTING;
-            case "COMPLETED" -> COMPLETED;
-            case "FAILED" -> FAILED;
-            case "CANCELLED" -> CANCELLED;
-            case "REJECTED" -> REJECTED;
-            default -> QUEUED;
-        };
     }
 }

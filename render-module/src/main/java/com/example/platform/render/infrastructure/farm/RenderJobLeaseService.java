@@ -132,7 +132,7 @@ public class RenderJobLeaseService {
         leaseRepository.create(lease);
 
         // Update job status to RENDERING
-        jobRepository.updateStatus(jobId, RenderJobStatus.RENDERING.name());
+        jobRepository.updateStatus(jobId, RenderJobStatus.EXECUTING.name());
 
         // Increment worker active jobs
         workerRegistry.incrementActiveJobs(workerId);

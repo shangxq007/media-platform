@@ -19,12 +19,14 @@ create table render_job (
     tenant_id varchar(64),
     pipeline_plan_json text,
     pipeline_execution_json text,
-    base_job_id varchar(64)
+    base_job_id varchar(64),
+    trace_id varchar(128)
 );
 
 create index ix_render_job_project_id on render_job(project_id);
 create index ix_render_job_status on render_job(status);
 create index ix_render_job_base_job_id on render_job(base_job_id);
+create index ix_render_job_trace_id on render_job(trace_id);
 
 create table outbox_events (
     id varchar(64) primary key,
@@ -1894,3 +1896,259 @@ create table tenant_litellm_virtual_key (
 
 create index ix_tenant_litellm_key_enabled on tenant_litellm_virtual_key(enabled);
 create index ix_tenant_litellm_vault_ref on tenant_litellm_virtual_key(vault_ref);
+
+-- ============================================================
+-- RENDER FARM: Worker Registry + Job Lease
+-- ============================================================
+
+create table render_worker (
+    id varchar(64) primary key,
+    worker_id varchar(128) not null unique,
+    worker_type varchar(32) not null default 'RENDER',
+    status varchar(32) not null default 'STARTING',
+    version varchar(64),
+    image_tag varchar(128),
+    hostname varchar(256),
+    zone varchar(64),
+    provider_ids text,
+    capabilities_json text,
+    max_concurrent_jobs int not null default 1,
+    active_job_count int not null default 0,
+    cpu_cores int,
+    memory_mb int,
+    gpu_count int not null default 0,
+    gpu_type varchar(64),
+    disk_free_mb bigint,
+    last_heartbeat_at timestamp not null,
+    registered_at timestamp not null,
+    expires_at timestamp,
+    metadata_json text,
+    created_at timestamp not null default current_timestamp,
+    updated_at timestamp not null default current_timestamp
+);
+
+create index ix_render_worker_status on render_worker(status);
+create index ix_render_worker_heartbeat on render_worker(last_heartbeat_at);
+create index ix_render_worker_type on render_worker(worker_type);
+
+create table render_job_lease (
+    id varchar(64) primary key,
+    lease_id varchar(128) not null unique,
+    job_id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    worker_id varchar(128) not null,
+    provider_id varchar(64),
+    status varchar(32) not null default 'CLAIMED',
+    lease_version bigint not null default 1,
+    claimed_at timestamp not null,
+    lease_until timestamp not null,
+    renewed_at timestamp,
+    released_at timestamp,
+    attempt int not null default 1,
+    max_attempts int not null default 3,
+    heartbeat_token_hash varchar(128),
+    failure_reason text,
+    failure_error_code varchar(64),
+    created_by_scheduler varchar(64),
+    created_at timestamp not null default current_timestamp,
+    updated_at timestamp not null default current_timestamp
+);
+
+create index ix_lease_job_id on render_job_lease(job_id);
+create index ix_lease_worker_id on render_job_lease(worker_id);
+create index ix_lease_status on render_job_lease(status);
+create index ix_lease_until on render_job_lease(lease_until);
+
+-- ============================================================
+-- ASSET TABLE
+-- ============================================================
+
+create table asset (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(128) not null,
+    storage_key text not null,
+    media_type varchar(32) not null,
+    filename varchar(256),
+    size_bytes bigint,
+    checksum varchar(128),
+    duration_ms bigint,
+    width int,
+    height int,
+    created_at timestamp not null
+);
+
+create index ix_asset_tenant_project on asset(tenant_id, project_id);
+create index ix_asset_tenant_created on asset(tenant_id, created_at desc);
+
+-- ============================================================
+-- RENDER JOB ENHANCEMENTS
+-- ============================================================
+
+-- Add trace_id to render_job (included in table definition above)
+-- This is already part of the consolidated render_job table
+
+-- ============================================================
+-- ARTIFACT DAG TABLES
+-- ============================================================
+
+create table artifact_node (
+    id varchar(128) primary key,
+    job_id varchar(64) not null,
+    type varchar(32) not null,
+    uri text not null,
+    parent_artifact_ids text,
+    version int not null default 1,
+    hash varchar(128),
+    metadata text,
+    created_at timestamp not null,
+    constraint fk_artifact_node_job foreign key (job_id) references render_job(id)
+);
+
+create index ix_artifact_node_job_id on artifact_node(job_id);
+create index ix_artifact_node_hash on artifact_node(hash);
+create index ix_artifact_node_type on artifact_node(type);
+
+create table artifact_graph (
+    graph_id varchar(128) primary key,
+    job_id varchar(64) not null,
+    root_artifact_id varchar(128),
+    version int not null default 1,
+    created_at timestamp not null,
+    constraint fk_artifact_graph_job foreign key (job_id) references render_job(id),
+    constraint fk_artifact_graph_root foreign key (root_artifact_id) references artifact_node(id)
+);
+
+create index ix_artifact_graph_job_id on artifact_graph(job_id);
+
+-- ============================================================
+-- BILLING RECORD TABLE
+-- ============================================================
+
+create table render_billing_record (
+    id varchar(128) primary key,
+    job_id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    estimated_cost double not null default 0,
+    actual_cost double not null default 0,
+    usage_seconds bigint not null default 0,
+    provider_id varchar(64),
+    output_size_bytes bigint not null default 0,
+    status varchar(32) not null default 'ESTIMATED',
+    created_at timestamp not null,
+    completed_at timestamp,
+    constraint fk_billing_job foreign key (job_id) references render_job(id)
+);
+
+create unique index ix_billing_job_id on render_billing_record(job_id);
+create index ix_billing_tenant_id on render_billing_record(tenant_id);
+create index ix_billing_status on render_billing_record(status);
+
+-- ============================================================
+-- UNIFIED EXECUTION GRAPH TABLES
+-- ============================================================
+
+create table unified_request_graph (
+    graph_id varchar(128) primary key,
+    request_id varchar(128) not null,
+    tenant_id varchar(64) not null,
+    workspace_id varchar(64),
+    job_id varchar(64),
+    root_node_id varchar(128),
+    status varchar(32) not null default 'ACTIVE',
+    created_at timestamp not null,
+    completed_at timestamp,
+    constraint fk_ueeg_job foreign key (job_id) references render_job(id)
+);
+
+create unique index ix_ueeg_request_id on unified_request_graph(request_id);
+create index ix_ueeg_job_id on unified_request_graph(job_id);
+create index ix_ueeg_tenant_id on unified_request_graph(tenant_id);
+create index ix_ueeg_status on unified_request_graph(status);
+
+create table unified_graph_node (
+    node_id varchar(128) primary key,
+    graph_id varchar(128) not null,
+    type varchar(64) not null,
+    subsystem varchar(64) not null,
+    action varchar(64) not null,
+    status varchar(32) not null,
+    data text,
+    timestamp timestamp not null,
+    constraint fk_node_graph foreign key (graph_id) references unified_request_graph(graph_id)
+);
+
+create index ix_node_graph_id on unified_graph_node(graph_id);
+create index ix_node_type on unified_graph_node(type);
+create index ix_node_subsystem on unified_graph_node(subsystem);
+
+create table unified_graph_edge (
+    edge_id varchar(128) primary key,
+    graph_id varchar(128) not null,
+    source_node_id varchar(128) not null,
+    target_node_id varchar(128) not null,
+    edge_type varchar(32) not null,
+    timestamp timestamp not null,
+    constraint fk_edge_graph foreign key (graph_id) references unified_request_graph(graph_id),
+    constraint fk_edge_source foreign key (source_node_id) references unified_graph_node(node_id),
+    constraint fk_edge_target foreign key (target_node_id) references unified_graph_node(node_id)
+);
+
+create index ix_edge_graph_id on unified_graph_edge(graph_id);
+create index ix_edge_source on unified_graph_edge(source_node_id);
+create index ix_edge_target on unified_graph_edge(target_node_id);
+
+-- ============================================================
+-- SYSTEM CANONICAL TABLES
+-- ============================================================
+
+create table system_canonical_graph (
+    graph_id varchar(128) primary key,
+    job_id varchar(64) not null,
+    tenant_id varchar(64),
+    workspace_id varchar(64),
+    status varchar(32) not null default 'ACTIVE',
+    created_at timestamp not null,
+    completed_at timestamp,
+    constraint fk_canonical_job foreign key (job_id) references render_job(id)
+);
+
+create unique index ix_canonical_job_id on system_canonical_graph(job_id);
+create index ix_canonical_tenant_id on system_canonical_graph(tenant_id);
+create index ix_canonical_status on system_canonical_graph(status);
+
+create table system_canonical_event (
+    event_id varchar(128) primary key,
+    graph_id varchar(128) not null,
+    event_type varchar(64) not null,
+    timestamp timestamp not null,
+    tenant_id varchar(64),
+    workspace_id varchar(64),
+    job_id varchar(64),
+    source_system varchar(64) not null,
+    sequence_number int not null,
+    payload text,
+    constraint fk_event_graph foreign key (graph_id) references system_canonical_graph(graph_id)
+);
+
+create index ix_event_graph_id on system_canonical_event(graph_id);
+create index ix_event_job_id on system_canonical_event(job_id);
+create index ix_event_type on system_canonical_event(event_type);
+create index ix_event_source on system_canonical_event(source_system);
+create index ix_event_sequence on system_canonical_event(graph_id, sequence_number);
+
+create table system_canonical_edge (
+    edge_id varchar(128) primary key,
+    graph_id varchar(128) not null,
+    source_event_id varchar(128) not null,
+    target_event_id varchar(128) not null,
+    edge_type varchar(32) not null,
+    timestamp timestamp not null,
+    constraint fk_edge_graph foreign key (graph_id) references system_canonical_graph(graph_id),
+    constraint fk_edge_source foreign key (source_event_id) references system_canonical_event(event_id),
+    constraint fk_edge_target foreign key (target_event_id) references system_canonical_event(event_id)
+);
+
+create index ix_edge_graph_id on system_canonical_edge(graph_id);
+create index ix_edge_source on system_canonical_edge(source_event_id);
+create index ix_edge_target on system_canonical_edge(target_event_id);
