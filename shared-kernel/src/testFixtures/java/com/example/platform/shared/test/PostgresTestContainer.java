@@ -8,7 +8,7 @@ import org.springframework.test.context.DynamicPropertySource;
  * Base class for integration tests using PostgreSQL.
  * 
  * <p>Uses existing PostgreSQL container for CI stability.
- * Falls back to Testcontainers when Docker is available.
+ * The container is started separately and remains running.
  */
 public abstract class PostgresTestContainer {
 
