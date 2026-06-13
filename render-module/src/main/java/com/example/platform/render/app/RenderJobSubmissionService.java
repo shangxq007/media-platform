@@ -7,6 +7,10 @@ import com.example.platform.render.app.timeline.SegmentPlanFilter;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
+import com.example.platform.render.infrastructure.billing.BillingEnforcementService;
+import com.example.platform.render.infrastructure.billing.decision.BillingDecision;
+import com.example.platform.render.infrastructure.billing.decision.BillingDecisionEngine;
+import com.example.platform.render.infrastructure.billing.decision.BillingDecisionRequest;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.Ids;
@@ -44,6 +48,8 @@ public class RenderJobSubmissionService {
     private final DSLContext dsl;
     private final RenderJobRepository renderJobRepository;
     private final RenderQuotaService quotaService;
+    private final BillingEnforcementService billingEnforcementService;
+    private final BillingDecisionEngine billingDecisionEngine;
     private final RenderJobStatusHistoryRepository historyRepository;
     private final NotificationEventPublisher notificationEventPublisher;
     private final ApplicationEventPublisher eventPublisher;
@@ -56,6 +62,10 @@ public class RenderJobSubmissionService {
     public RenderJobSubmissionService(DSLContext dsl,
             RenderJobRepository renderJobRepository,
             RenderQuotaService quotaService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            BillingEnforcementService billingEnforcementService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            BillingDecisionEngine billingDecisionEngine,
             RenderJobStatusHistoryRepository historyRepository,
             NotificationEventPublisher notificationEventPublisher,
             ApplicationEventPublisher eventPublisher,
@@ -69,6 +79,8 @@ public class RenderJobSubmissionService {
         this.dsl = dsl;
         this.renderJobRepository = renderJobRepository;
         this.quotaService = quotaService;
+        this.billingEnforcementService = billingEnforcementService;
+        this.billingDecisionEngine = billingDecisionEngine;
         this.historyRepository = historyRepository;
         this.notificationEventPublisher = notificationEventPublisher;
         this.eventPublisher = eventPublisher;
@@ -103,6 +115,41 @@ public class RenderJobSubmissionService {
                     request.tenantId(), request.projectId(), request.baseJobId());
         }
 
+        // Use BillingDecisionEngine if available (preferred path)
+        if (billingDecisionEngine != null) {
+            BillingDecisionRequest decisionRequest = BillingDecisionRequest.forRenderJobCreate(
+                    request.tenantId(),
+                    null, // userId not available in submit request
+                    request.projectId(),
+                    "ffmpeg", // default provider
+                    request.profileOrDefault(),
+                    60, // default estimate
+                    false
+            );
+
+            BillingDecision decision = billingDecisionEngine.decide(decisionRequest);
+
+            if (!decision.isAllowed()) {
+                return handleBillingDecisionRejected(request, decision);
+            }
+
+            log.info("Billing decision ALLOWED for job submission: {}", decision.getSummary());
+        } 
+        // Fallback to legacy BillingEnforcementService
+        else if (billingEnforcementService != null) {
+            BillingEnforcementService.ValidationResult subResult = 
+                    billingEnforcementService.validateSubscription(request.tenantId());
+            if (!subResult.success()) {
+                return handleBillingRejected(request, subResult.code(), subResult.reason());
+            }
+
+            BillingEnforcementService.ValidationResult quotaResult = 
+                    billingEnforcementService.validateQuota(request.tenantId(), 60);
+            if (!quotaResult.success()) {
+                return handleBillingRejected(request, quotaResult.code(), quotaResult.reason());
+            }
+        }
+
         if (!quotaService.checkQuota(request.tenantId(), "render", 1)) {
             return handleQuotaRejected(request);
         }
@@ -120,6 +167,37 @@ public class RenderJobSubmissionService {
         eventPublisher.publishEvent(new RenderJobFailedEvent(
                 rejectedJobId, request.projectId(), "Quota exceeded", Instant.now()));
         throw new IllegalStateException("Quota exceeded for tenant: " + request.tenantId());
+    }
+
+    private String handleBillingDecisionRejected(SubmitRenderJobRequest request, BillingDecision decision) {
+        String rejectedJobId = Ids.newId("rj");
+        String profile = request.profileOrDefault();
+        String reason = decision.reasonMessage();
+        String code = decision.reasonCode().name();
+
+        renderJobRepository.createRejected(rejectedJobId, request.projectId(), request.tenantId(),
+                "snap_" + rejectedJobId, profile, reason, OffsetDateTime.now());
+        historyRepository.record(rejectedJobId, null, RenderJobStatus.REJECTED.name(),
+                reason, code);
+        eventPublisher.publishEvent(new RenderJobFailedEvent(
+                rejectedJobId, request.projectId(), reason, Instant.now()));
+
+        log.warn("Billing decision rejected for tenant {}: {} - {}", 
+                request.tenantId(), code, reason);
+        throw new IllegalStateException("Billing rejected: " + reason);
+    }
+
+    private String handleBillingRejected(SubmitRenderJobRequest request, String code, String reason) {
+        String rejectedJobId = Ids.newId("rj");
+        String profile = request.profileOrDefault();
+        renderJobRepository.createRejected(rejectedJobId, request.projectId(), request.tenantId(),
+                "snap_" + rejectedJobId, profile, reason, OffsetDateTime.now());
+        historyRepository.record(rejectedJobId, null, RenderJobStatus.REJECTED.name(),
+                reason, code);
+        eventPublisher.publishEvent(new RenderJobFailedEvent(
+                rejectedJobId, request.projectId(), reason, Instant.now()));
+        log.warn("Billing rejected for tenant {}: {} - {}", request.tenantId(), code, reason);
+        throw new IllegalStateException("Billing rejected: " + reason);
     }
 
     private String createQueuedJob(SubmitRenderJobRequest request) {

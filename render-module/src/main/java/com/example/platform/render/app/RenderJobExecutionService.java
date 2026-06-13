@@ -12,6 +12,9 @@ import com.example.platform.render.app.timeline.IncrementalRenderOrchestrationSe
 import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
+import com.example.platform.render.domain.artifact.ArtifactGraph;
+import com.example.platform.render.domain.artifact.ArtifactNode;
+import com.example.platform.render.domain.artifact.ArtifactNodeType;
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
@@ -19,6 +22,8 @@ import com.example.platform.render.infrastructure.RenderArtifactStorageService;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
+import com.example.platform.render.infrastructure.artifact.ArtifactGraphRepository;
+import com.example.platform.render.infrastructure.billing.BillingEnforcementService;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
@@ -37,6 +42,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -64,6 +70,8 @@ public class RenderJobExecutionService {
     private final TimelineSpecResolver timelineSpecResolver;
     private final IncrementalRenderOrchestrationService incrementalRenderOrchestrationService;
     private final RenderArtifactStorageService artifactStorageService;
+    private final ArtifactGraphRepository artifactGraphRepository;
+    private final BillingEnforcementService billingEnforcementService;
     private final TimelineSnapshotService timelineSnapshotService;
     private final EditorTimelineConverter editorTimelineConverter;
     private final EffectTimelineInspector effectTimelineInspector;
@@ -90,6 +98,10 @@ public class RenderJobExecutionService {
             TimelineSpecResolver timelineSpecResolver,
             IncrementalRenderOrchestrationService incrementalRenderOrchestrationService,
             RenderArtifactStorageService artifactStorageService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            ArtifactGraphRepository artifactGraphRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            BillingEnforcementService billingEnforcementService,
             TimelineSnapshotService timelineSnapshotService,
             EditorTimelineConverter editorTimelineConverter,
             EffectTimelineInspector effectTimelineInspector,
@@ -121,6 +133,8 @@ public class RenderJobExecutionService {
         this.timelineSpecResolver = timelineSpecResolver;
         this.incrementalRenderOrchestrationService = incrementalRenderOrchestrationService;
         this.artifactStorageService = artifactStorageService;
+        this.artifactGraphRepository = artifactGraphRepository;
+        this.billingEnforcementService = billingEnforcementService;
         this.timelineSnapshotService = timelineSnapshotService;
         this.editorTimelineConverter = editorTimelineConverter;
         this.effectTimelineInspector = effectTimelineInspector;
@@ -161,7 +175,13 @@ public class RenderJobExecutionService {
             return jobId;
         }
 
-        updateStatus(jobId, projectId, RenderJobStatus.valueOf(status), RenderJobStatus.AI_PROCESSING, null);
+        // Use new state machine for transitions
+        RenderJobStatus currentStatus = RenderJobStatus.valueOf(status);
+
+        // Transition to SELECTING_PROVIDER
+        stateMachine.transition(jobId, currentStatus, RenderJobStatus.SELECTING_PROVIDER,
+                "Starting provider selection", "RenderJobExecutionService");
+        updateStatus(jobId, projectId, currentStatus, RenderJobStatus.SELECTING_PROVIDER, null);
 
         String aiScript = resolveRenderScript(jobId, snapshotId, null, projectId);
 
@@ -178,7 +198,15 @@ public class RenderJobExecutionService {
 
         renderJobRepository.updateAiScript(jobId, aiScript);
 
-        updateStatus(jobId, projectId, RenderJobStatus.AI_PROCESSING, RenderJobStatus.RENDERING, null);
+        // Transition to PROVIDER_SELECTED (provider will be selected in executeRenderWithOptionalDag)
+        stateMachine.transition(jobId, RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.PROVIDER_SELECTED,
+                "Script resolved, ready for provider selection", "RenderJobExecutionService");
+        updateStatus(jobId, projectId, RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.PROVIDER_SELECTED, null);
+
+        // Transition to EXECUTING
+        stateMachine.transition(jobId, RenderJobStatus.PROVIDER_SELECTED, RenderJobStatus.EXECUTING,
+                "Starting render execution", "RenderJobExecutionService");
+        updateStatus(jobId, projectId, RenderJobStatus.PROVIDER_SELECTED, RenderJobStatus.EXECUTING, null);
 
         if (renderWorkerQueueService != null && profile.startsWith("natron_")) {
             renderWorkerQueueService.enqueueNatron(jobId, tenantId, profile);
@@ -227,8 +255,28 @@ public class RenderJobExecutionService {
             effectEntitlementPort.validateEffectAccess(tenantId, null, usage.effectKeys(), usage.packIds());
         }
 
-        if (!RenderJobStatus.RENDERING.name().equals(status)) {
-            updateStatus(jobId, projectId, RenderJobStatus.valueOf(status), RenderJobStatus.RENDERING, null);
+        // Ensure we're in EXECUTING state
+        RenderJobStatus currentStatus = RenderJobStatus.fromLegacyStatus(status);
+        if (currentStatus != RenderJobStatus.EXECUTING && !currentStatus.isTerminal()) {
+            stateMachine.transition(jobId, currentStatus, RenderJobStatus.EXECUTING,
+                    "Resuming render execution", "RenderJobExecutionService");
+            updateStatus(jobId, projectId, currentStatus, RenderJobStatus.EXECUTING, null);
+        }
+
+        // Billing enforcement: reserve quota before execution
+        long startTime = System.currentTimeMillis();
+        if (billingEnforcementService != null && billingEnforcementService.isEnforcementEnabled()) {
+            BillingEnforcementService.ReservationResult reservation = 
+                    billingEnforcementService.reserveQuota(tenantId, jobId, 0.10); // Default estimate
+            if (!reservation.success()) {
+                log.warn("Billing reservation failed for job {}: {}", jobId, reservation.error());
+                stateMachine.transition(jobId, RenderJobStatus.EXECUTING, RenderJobStatus.FAILED,
+                        "Billing reservation failed: " + reservation.error(), "RenderJobExecutionService");
+                failJob(jobId, projectId, RenderJobStatus.EXECUTING, "BILLING_FAILED", 
+                        "Billing reservation failed: " + reservation.error());
+                throw new IllegalStateException("Billing reservation failed: " + reservation.error());
+            }
+            log.info("Reserved quota for job {}: {}", jobId, reservation.reservationId());
         }
 
         RenderProvider.RenderResult renderResult;
@@ -238,9 +286,29 @@ public class RenderJobExecutionService {
             renderResult = executeRenderWithOptionalDag(jobId, projectId, aiScript, profile, tenantId, baseJobId);
         } catch (Exception e) {
             log.error("Render failed for job {}", jobId, e);
-            failJob(jobId, projectId, RenderJobStatus.RENDERING, "RENDER_FAILED", "Render failed: " + e.getMessage());
+            stateMachine.transition(jobId, RenderJobStatus.EXECUTING, RenderJobStatus.FAILED,
+                    "Render failed: " + e.getMessage(), "RenderJobExecutionService");
+            failJob(jobId, projectId, RenderJobStatus.EXECUTING, "RENDER_FAILED", "Render failed: " + e.getMessage());
             throw new IllegalStateException("Render failed", e);
         }
+
+        // Billing enforcement: finalize cost after execution
+        if (billingEnforcementService != null && billingEnforcementService.isEnforcementEnabled()) {
+            long actualDurationSeconds = (System.currentTimeMillis() - startTime) / 1000;
+            try {
+                billingEnforcementService.finalizeCost(
+                        tenantId, jobId, "ffmpeg", actualDurationSeconds, 0);
+                log.info("Finalized billing for job {} ({} seconds)", jobId, actualDurationSeconds);
+            } catch (Exception e) {
+                log.warn("Failed to finalize billing for job {}: {}", jobId, e.getMessage());
+                // Don't fail the job for billing finalization errors
+            }
+        }
+
+        // Transition to COMPLETING
+        stateMachine.transition(jobId, RenderJobStatus.EXECUTING, RenderJobStatus.COMPLETING,
+                "Render completed, finalizing artifacts", "RenderJobExecutionService");
+        updateStatus(jobId, projectId, RenderJobStatus.EXECUTING, RenderJobStatus.COMPLETING, null);
 
         String artifactId = renderResult.artifactId();
         String storageUri = renderResult.storageUri();
@@ -251,20 +319,60 @@ public class RenderJobExecutionService {
             artifactStorageService.uploadJobOutput(jobId, projectId, artifactId, relativePath, contentType);
         } catch (Exception e) {
             log.error("Storage failed for job {}", jobId, e);
-            failJob(jobId, projectId, RenderJobStatus.RENDERING, "STORAGE_FAILED", "Storage failed: " + e.getMessage());
+            stateMachine.transition(jobId, RenderJobStatus.COMPLETING, RenderJobStatus.FAILED,
+                    "Storage failed: " + e.getMessage(), "RenderJobExecutionService");
+            failJob(jobId, projectId, RenderJobStatus.COMPLETING, "STORAGE_FAILED", "Storage failed: " + e.getMessage());
             throw new IllegalStateException("Storage failed", e);
         }
 
+        // Create ArtifactGraph with the rendered output
+        String contentHash = computeContentHash(storageUri);
+        ArtifactNode rootNode = ArtifactNode.create(
+                artifactId,
+                jobId,
+                ArtifactNodeType.fromExtension(renderResult.format()),
+                storageUri,
+                List.of(), // No parents for root artifact
+                contentHash
+        );
+
+        ArtifactGraph artifactGraph = ArtifactGraph.create(jobId, rootNode);
+
+        // Add additional artifacts if available (e.g., thumbnail, timeline JSON)
+        if (renderResult.duration() > 0) {
+            // Create timeline JSON artifact
+            String timelineArtifactId = Ids.newId("art-timeline");
+            ArtifactNode timelineNode = ArtifactNode.create(
+                    timelineArtifactId,
+                    jobId,
+                    ArtifactNodeType.TIMELINE_JSON,
+                    "timeline://" + jobId + "/timeline.json",
+                    List.of(artifactId), // Parent is the video artifact
+                    computeContentHash("timeline://" + jobId)
+            );
+            artifactGraph = artifactGraph.addNode(timelineNode);
+        }
+
+        // Save artifact graph
+        if (artifactGraphRepository != null) {
+            artifactGraphRepository.saveGraph(artifactGraph);
+            log.info("Saved artifact graph for job {} with {} nodes", jobId, artifactGraph.size());
+        }
+
+        // Update job with artifact URI (backward compatibility)
         renderJobRepository.updateArtifactUri(jobId, storageUri);
 
-        updateStatus(jobId, projectId, RenderJobStatus.RENDERING, RenderJobStatus.COMPLETED, null);
+        // Transition to COMPLETED
+        stateMachine.transition(jobId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED,
+                "Job successfully completed", "RenderJobExecutionService");
+        updateStatus(jobId, projectId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED, null);
         quotaService.consumeQuota(tenantId, "render", 1);
 
         notificationEventPublisher.publish(
                 new ArtifactCreatedEvent(artifactId, jobId, projectId, storageUri, Instant.now()));
         eventPublisher.publishEvent(new RenderJobCompletedEvent(jobId, projectId, artifactId, storageUri, Instant.now()));
 
-        log.info("Render job {} completed successfully with artifact {}", jobId, artifactId);
+        log.info("Render job {} completed successfully with artifact graph {}", jobId, artifactGraph.graphId());
         return jobId;
     }
 
@@ -465,5 +573,15 @@ public class RenderJobExecutionService {
             case "hls" -> "application/vnd.apple.mpegurl";
             default -> "video/mp4";
         };
+    }
+
+    /**
+     * Compute a content hash for deduplication.
+     * In production, this would hash the actual file content.
+     */
+    private String computeContentHash(String uri) {
+        if (uri == null) return "";
+        // Simple hash based on URI (in production, hash actual content)
+        return "hash-" + Integer.toHexString(uri.hashCode());
     }
 }

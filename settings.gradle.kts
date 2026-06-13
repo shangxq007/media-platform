@@ -37,5 +37,6 @@ include(
     "user-analytics-module",
     "compatibility-migration-module",
     "remote-render-worker",
-    "social-publish-module"
+    "social-publish-module",
+    "product-layer-module"
 )
