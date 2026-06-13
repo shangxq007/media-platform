@@ -54,6 +54,12 @@ public record SecretRef(String backend, String path, String field) {
             return new SecretRef(BACKEND_ENV, content, null);
         }
 
+        // Format: ${VAR:default} or ${VAR} (shorthand for env var)
+        if (ref.startsWith("${") && ref.endsWith("}")) {
+            String content = ref.substring(2, ref.length() - 1);
+            return new SecretRef(BACKEND_ENV, content, null);
+        }
+
         // Format: vault:path#field
         if (ref.startsWith("vault:")) {
             String rest = ref.substring(6);
