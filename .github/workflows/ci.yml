@@ -213,8 +213,8 @@ jobs:
           labels: |
             deployment
             staging
-          team-reviewers: |
-            devops
+          reviewers: |
+            shangxq007
           commit-message: "chore(gitops): deploy staging ${{ steps.tag.outputs.IMAGE_TAG }}"
 
   # ── Production promotion (workflow_dispatch only) ───────────────────────
@@ -325,8 +325,8 @@ jobs:
           labels: |
             deployment
             production
-          team-reviewers: |
-            devops
+          reviewers: |
+            shangxq007
           commit-message: "chore(gitops): promote production ${{ steps.validate.outputs.IMAGE_TAG }}"
 
   # ── Staging manual dispatch ─────────────────────────────────────────────
