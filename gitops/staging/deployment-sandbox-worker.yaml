@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: sandbox-worker
-          image: ghcr.io/example/platform-sandbox-worker:v1.0.0
+          image: ghcr.io/shangxq007/platform-sandbox-worker:git-f7f010d43c7b
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8091
