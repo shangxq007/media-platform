@@ -3,7 +3,7 @@ package com.example.platform.analytics.infrastructure;
 import com.example.platform.analytics.domain.UserHabits;
 import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -18,7 +18,7 @@ import java.util.Optional;
 
 @Repository
 @Primary
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class JdbcUserHabitsRepository implements UserHabitsRepository {
 
     private final JdbcTemplate jdbc;

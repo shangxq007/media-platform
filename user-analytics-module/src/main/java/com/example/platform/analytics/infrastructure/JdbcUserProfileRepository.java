@@ -3,7 +3,7 @@ package com.example.platform.analytics.infrastructure;
 import com.example.platform.analytics.domain.UserProfile;
 import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @Repository
 @Primary
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class JdbcUserProfileRepository implements UserProfileRepository {
 
     private static final TypeReference<Map<String, Integer>> INT_MAP = new TypeReference<>() {};

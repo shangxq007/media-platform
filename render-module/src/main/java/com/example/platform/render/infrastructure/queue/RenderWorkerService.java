@@ -10,6 +10,7 @@ import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -18,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Render Worker Service - processes jobs from the queue.
- * 
+ *
  * <p>Responsibilities:
  * <ul>
  *   <li>Poll queue for jobs</li>
@@ -28,7 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>Persist artifact</li>
  *   <li>Release lease</li>
  * </ul>
- * 
+ *
  * <p>Constraints:
  * <ul>
  *   <li>Single provider only (FFmpeg)</li>
@@ -37,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * </ul>
  */
 @Service
+@ConditionalOnProperty(prefix = "app.render.worker-queue", name = "enabled", havingValue = "true")
 public class RenderWorkerService {
 
     private static final Logger log = LoggerFactory.getLogger(RenderWorkerService.class);

@@ -1,7 +1,7 @@
 package com.example.platform.entitlement.infrastructure;
 
 import com.example.platform.shared.Ids;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @Repository
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class QuotaUsageJdbcRepository {
 
     private final JdbcTemplate jdbc;

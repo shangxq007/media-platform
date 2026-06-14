@@ -5,6 +5,9 @@ import com.example.platform.render.infrastructure.productization.marketplace.Mar
 import com.example.platform.render.infrastructure.productization.marketplace.MarketplaceService;
 import com.example.platform.render.infrastructure.productization.workspace.Workspace;
 import com.example.platform.render.infrastructure.productization.workspace.ProductWorkspaceService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,15 +21,15 @@ public class ProductizationApi {
 
     private final ProductWorkspaceService workspaceService;
     private final MarketplaceService marketplaceService;
-    private final AdaptiveEngine adaptiveEngine;
+    private final ObjectProvider<AdaptiveEngine> adaptiveEngineProvider;
 
     public ProductizationApi(
             ProductWorkspaceService workspaceService,
             MarketplaceService marketplaceService,
-            AdaptiveEngine adaptiveEngine) {
+            ObjectProvider<AdaptiveEngine> adaptiveEngineProvider) {
         this.workspaceService = workspaceService;
         this.marketplaceService = marketplaceService;
-        this.adaptiveEngine = adaptiveEngine;
+        this.adaptiveEngineProvider = adaptiveEngineProvider;
     }
 
     // ─── Workspace Endpoints ───────────────────────────────────────────────────
@@ -116,9 +119,13 @@ public class ProductizationApi {
     // ─── AI Optimization Endpoints ─────────────────────────────────────────────
 
     @PostMapping("/optimization/analyze")
-    public AdaptiveEngine.OptimizationReport analyzeOptimizations(
+    public ResponseEntity<AdaptiveEngine.OptimizationReport> analyzeOptimizations(
             @RequestBody List<AdaptiveEngine.ExecutionTrace> traces) {
-        return adaptiveEngine.analyzeExecutionPatterns(traces);
+        AdaptiveEngine engine = adaptiveEngineProvider.getIfAvailable();
+        if (engine == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        return ResponseEntity.ok(engine.analyzeExecutionPatterns(traces));
     }
 
     // ─── Request/Response Types ────────────────────────────────────────────────

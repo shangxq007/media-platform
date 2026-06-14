@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * System Anchor Function - defines core objectives and constraints
  * that the self-modifying system must always respect.
- * 
+ *
  * <p>This function is IMMUTABLE and cannot be modified by SEL.
  * It provides the stability boundary for system evolution.
  */

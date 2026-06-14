@@ -1,14 +1,14 @@
 package com.example.platform.entitlement.infrastructure;
 
 import com.example.platform.entitlement.app.EntitlementService;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.jooq.DSLContext;
 
 @Component
-@ConditionalOnBean(DSLContext.class)
+
 public class EntitlementPersistenceBootstrap {
 
     private final EntitlementGrantRepository grantRepository;

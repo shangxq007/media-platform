@@ -1,6 +1,5 @@
 package com.example.platform.entitlement.infrastructure;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -11,7 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Repository
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class TenantTierJdbcRepository {
 
     private final JdbcTemplate jdbc;

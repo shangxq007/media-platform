@@ -13,11 +13,11 @@ import java.util.Optional;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Repository;
 
 @Repository
-@ConditionalOnBean(DSLContext.class)
+
 public class CheckoutSessionRepository {
 
     private final DSLContext dsl;

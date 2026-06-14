@@ -1,0 +1,67 @@
+# Local development profile using real PostgreSQL.
+# Preferred for manual review and release validation.
+# Requires a running PostgreSQL instance (local Docker or Neon staging).
+#
+# Usage:
+#   SPRING_PROFILES_ACTIVE=dev-postgres ./gradlew :platform-app:bootRun
+#
+# Or with explicit connection:
+#   SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/media_platform \
+#   SPRING_DATASOURCE_USERNAME=media_platform \
+#   SPRING_DATASOURCE_PASSWORD=media_platform \
+#   SPRING_PROFILES_ACTIVE=dev-postgres ./gradlew :platform-app:bootRun
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/media_platform}
+    username: ${SPRING_DATASOURCE_USERNAME:media_platform}
+    password: ${SPRING_DATASOURCE_PASSWORD:media_platform}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true
+    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL}}
+    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME}}
+    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
+    baseline-on-migrate: true
+
+  main:
+    allow-circular-references: true
+
+app:
+  security:
+    enabled: false
+    dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
+  identity:
+    api-key-auth-enabled: false
+  secrets:
+    vault:
+      enabled: false
+  render:
+    worker-queue:
+      enabled: false
+      consume-enabled: false
+  sandbox:
+    enabled: false
+
+render:
+  providers:
+    natron:
+      enabled: true
+      fallback-to-ffmpeg: true
+    vapoursynth:
+      enabled: false
+
+platform:
+  preview:
+    enabled: true
+  adaptive-engine:
+    enabled: false
+  worker:
+    enabled: false
+  scheduler:
+    enabled: false
+
+spring.ai.openai.api-key: ${OPENAI_API_KEY:dev-local-stub-key}

@@ -6,14 +6,14 @@ import com.example.platform.federation.nlq.app.ReportExecutionService;
 import com.example.platform.federation.nlq.domain.QueryHistoryRecord;
 import com.example.platform.federation.nlq.domain.ReportDefinition;
 import com.example.platform.federation.nlq.domain.ReportExecution;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class NlqPersistenceBootstrap {
 
     private final NlqJdbcRepository repository;

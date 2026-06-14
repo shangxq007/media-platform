@@ -8,14 +8,14 @@ import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Repository;
 
 import java.util.Map;
 import java.util.Set;
 
 @Repository
-@ConditionalOnBean(DSLContext.class)
+
 public class CustomPolicyRepository {
 
     private final DSLContext dsl;

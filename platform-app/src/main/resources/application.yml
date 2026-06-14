@@ -19,14 +19,15 @@ spring:
       pool:
         size: 4
   datasource:
-    url: jdbc:h2:mem:platform;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/media_platform}
+    username: ${SPRING_DATASOURCE_USERNAME:media_platform}
+    password: ${SPRING_DATASOURCE_PASSWORD:media_platform}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.postgresql.Driver}
   flyway:
-    enabled: false
+    enabled: true
+    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL}}
+    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME}}
+    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
   springdoc:
     swagger-ui:
       path: /swagger-ui.html

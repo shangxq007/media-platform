@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Map;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Repository;
 
 @Repository
-@ConditionalOnBean(DSLContext.class)
+
 public class ArtifactRelationRepository {
 
     private final DSLContext dsl;

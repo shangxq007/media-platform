@@ -11,14 +11,14 @@ import org.jooq.Record;
 import org.jooq.exception.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Component;
 
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
 @Component
-@ConditionalOnBean(DSLContext.class)
+
 public class DeliveryStorageUriReferenceContributor implements StorageUriReferenceContributor {
 
     private static final Logger log = LoggerFactory.getLogger(DeliveryStorageUriReferenceContributor.class);

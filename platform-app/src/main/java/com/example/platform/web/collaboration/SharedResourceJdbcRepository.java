@@ -1,6 +1,5 @@
 package com.example.platform.web.collaboration;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -12,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class SharedResourceJdbcRepository {
 
     private final JdbcTemplate jdbc;

@@ -4,7 +4,8 @@ import com.example.platform.shared.asset.AssetDownloadUrlPort;
 import com.example.platform.storage.domain.BlobStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -18,8 +19,9 @@ import java.util.Optional;
  * <p>Wraps {@link BlobStorage#presignStorageUri(String)} with TTL control.
  * Max TTL is enforced at 24 hours (86400 seconds) per security policy.
  */
+@ConditionalOnProperty(prefix = "storage.s3", name = "enabled", havingValue = "true", matchIfMissing = false)
 @Component
-@ConditionalOnBean(BlobStorage.class)
+
 public class S3AssetDownloadUrlPort implements AssetDownloadUrlPort {
 
     private static final Logger log = LoggerFactory.getLogger(S3AssetDownloadUrlPort.class);

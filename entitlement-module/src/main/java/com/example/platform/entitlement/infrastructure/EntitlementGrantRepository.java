@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Repository;
 
 /**
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Repository;
  * Falls back to in-memory storage when not available.</p>
  */
 @Repository
-@ConditionalOnBean(DSLContext.class)
+
 public class EntitlementGrantRepository {
 
     private final DSLContext dsl;

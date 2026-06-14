@@ -8,7 +8,7 @@ import org.jooq.DSLContext;
 import org.jooq.exception.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Service;
 
 import static org.jooq.impl.DSL.field;
@@ -18,7 +18,7 @@ import static org.jooq.impl.DSL.table;
  * Indexes URI prefixes from {@code delivery_destination.config_json} (base URL, bucket, prefix) for orphan scans.
  */
 @Service
-@ConditionalOnBean(DSLContext.class)
+
 public class DeliveryDestinationUriIndexService {
 
     private static final Logger log = LoggerFactory.getLogger(DeliveryDestinationUriIndexService.class);

@@ -2,7 +2,7 @@ package com.example.platform.billing.infrastructure;
 
 import com.example.platform.billing.domain.CreditTransaction;
 import com.example.platform.billing.domain.CreditWallet;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class CreditWalletJdbcRepository {
 
     private final JdbcTemplate jdbc;

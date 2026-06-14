@@ -5,7 +5,7 @@ import com.example.platform.billing.domain.SubscriptionContractRole;
 import com.example.platform.billing.domain.SubscriptionPlan;
 import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Repository
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class SubscriptionJdbcRepository {
 
     private static final TypeReference<Map<String, Long>> QUOTA_MAP = new TypeReference<>() {};

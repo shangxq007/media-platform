@@ -1,7 +1,7 @@
 package com.example.platform.prompt.infrastructure;
 
 import com.example.platform.prompt.domain.*;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -19,7 +19,7 @@ import java.util.Optional;
  * JDBC persistence for prompt templates, versions, and execution runs (Flyway V3).
  */
 @Repository
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class PromptJdbcRepository {
 
     private final JdbcTemplate jdbc;

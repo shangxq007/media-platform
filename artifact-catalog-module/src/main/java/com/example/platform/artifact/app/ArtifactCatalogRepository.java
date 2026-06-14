@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Repository;
 
 /**
@@ -26,7 +26,7 @@ import org.springframework.stereotype.Repository;
  * The DSLContext should be configured with RenderNameCase.LOWER.</p>
  */
 @Repository
-@ConditionalOnBean(DSLContext.class)
+
 public class ArtifactCatalogRepository {
 
     private final DSLContext dsl;

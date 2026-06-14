@@ -27,9 +27,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 @Component
+@Primary
 @ConditionalOnProperty(prefix = "render.providers.ffmpeg", name = "enabled", havingValue = "true")
 public class FFmpegRenderProvider implements RenderProvider {
 

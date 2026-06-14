@@ -1,7 +1,7 @@
 package com.example.platform.billing.infrastructure;
 
 import com.example.platform.billing.domain.BillingLedgerEntry;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -12,7 +12,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Repository
-@ConditionalOnBean(JdbcTemplate.class)
+
 public class BillingLedgerJdbcRepository {
 
     private final JdbcTemplate jdbc;

@@ -1,13 +1,13 @@
 package com.example.platform.entitlement.infrastructure;
 
 import com.example.platform.entitlement.app.QuotaUsageService;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnBean(QuotaUsageJdbcRepository.class)
+
 public class QuotaUsagePersistenceBootstrap {
 
     private final QuotaUsageJdbcRepository repository;

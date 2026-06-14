@@ -2,7 +2,7 @@ package com.example.platform.policy.featureflag;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * Loads all feature flag definitions from JDBC into {@link FeatureFlagService} cache on startup.
  */
 @Component
-@ConditionalOnBean(FeatureFlagJdbcStore.class)
+
 public class FeatureFlagStartupHydrator {
 
     private static final Logger log = LoggerFactory.getLogger(FeatureFlagStartupHydrator.class);

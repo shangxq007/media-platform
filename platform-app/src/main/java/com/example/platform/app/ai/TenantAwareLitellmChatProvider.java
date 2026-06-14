@@ -11,7 +11,7 @@ import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * LiteLLM / OpenAI-compatible chat with per-tenant virtual key from {@link TenantLitellmKeyService}.
  */
 @Component("openAiChatProvider")
-@ConditionalOnBean(ChatClient.Builder.class)
+
 @ConditionalOnProperty(prefix = "app.ai.providers.openai", name = "enabled", havingValue = "true")
 @ConditionalOnProperty(
         prefix = "app.ai.providers.openai",

@@ -2144,9 +2144,9 @@ create table system_canonical_edge (
     target_event_id varchar(128) not null,
     edge_type varchar(32) not null,
     timestamp timestamp not null,
-    constraint fk_edge_graph foreign key (graph_id) references system_canonical_graph(graph_id),
-    constraint fk_edge_source foreign key (source_event_id) references system_canonical_event(event_id),
-    constraint fk_edge_target foreign key (target_event_id) references system_canonical_event(event_id)
+    constraint fk_canonical_edge_graph foreign key (graph_id) references system_canonical_graph(graph_id),
+    constraint fk_canonical_edge_source foreign key (source_event_id) references system_canonical_event(event_id),
+    constraint fk_canonical_edge_target foreign key (target_event_id) references system_canonical_event(event_id)
 );
 
 create index ix_canonical_edge_graph_id on system_canonical_edge(graph_id);

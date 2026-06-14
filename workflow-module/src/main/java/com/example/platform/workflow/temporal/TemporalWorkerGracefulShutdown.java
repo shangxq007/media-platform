@@ -4,18 +4,20 @@ import io.temporal.worker.WorkerFactory;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
  * Stops Temporal poll loops and waits for in-flight activities before JVM exit.
  */
+@ConditionalOnProperty(prefix = "app.temporal", name = "enabled", havingValue = "true", matchIfMissing = false)
 @Component
-@ConditionalOnBean(WorkerFactory.class)
+
 public class TemporalWorkerGracefulShutdown {
 
     private static final Logger log = LoggerFactory.getLogger(TemporalWorkerGracefulShutdown.class);

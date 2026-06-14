@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  * (OpenAI, NVIDIA NIM, LiteLLM proxy, etc.) via {@code spring.ai.openai.base-url}.
  */
 @Component("openAiChatProvider")
-@ConditionalOnBean(ChatClient.Builder.class)
+
 @ConditionalOnProperty(prefix = "app.ai.providers.openai", name = "enabled", havingValue = "true")
 @ConditionalOnProperty(
         prefix = "app.ai.providers.openai",

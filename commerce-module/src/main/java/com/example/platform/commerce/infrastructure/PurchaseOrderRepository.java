@@ -11,7 +11,7 @@ import java.util.Optional;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Repository;
 
 /**
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Repository;
  * Falls back to in-memory storage when not available.</p>
  */
 @Repository
-@ConditionalOnBean(DSLContext.class)
+
 public class PurchaseOrderRepository {
 
     private final DSLContext dsl;

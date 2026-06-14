@@ -9,13 +9,15 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.vault.core.VaultTemplate;
 import org.springframework.vault.support.Versioned;
 
+@ConditionalOnProperty(prefix = "app.secrets.vault", name = "enabled", havingValue = "true", matchIfMissing = false)
 @Component
-@ConditionalOnBean(VaultTemplate.class)
+
 public class VaultKv2SecretProvider implements SecretProvider {
 
     private static final Logger log = LoggerFactory.getLogger(VaultKv2SecretProvider.class);

@@ -1,5 +1,6 @@
 package com.example.platform.render.infrastructure.queue;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Component;
  * Worker Scheduler - periodically polls the queue for jobs.
  */
 @Component
+@ConditionalOnProperty(prefix = "app.render.worker-queue", name = "enabled", havingValue = "true")
 public class WorkerScheduler {
 
     private final RenderWorkerService workerService;

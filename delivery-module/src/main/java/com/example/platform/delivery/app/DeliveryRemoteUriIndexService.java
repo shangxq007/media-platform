@@ -8,7 +8,7 @@ import org.jooq.Record;
 import org.jooq.exception.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Service;
 
 import static org.jooq.impl.DSL.field;
@@ -18,7 +18,7 @@ import static org.jooq.impl.DSL.table;
  * Reverse lookup: remote (or source) storage URI → delivery jobs that reference it.
  */
 @Service
-@ConditionalOnBean(DSLContext.class)
+
 public class DeliveryRemoteUriIndexService {
 
     private static final Logger log = LoggerFactory.getLogger(DeliveryRemoteUriIndexService.class);

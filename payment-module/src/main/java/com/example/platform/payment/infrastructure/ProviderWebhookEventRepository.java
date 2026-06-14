@@ -7,7 +7,7 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.stereotype.Repository;
 
 /**
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository;
  * <p>Only created when a {@link DSLContext} bean is available.</p>
  */
 @Repository
-@ConditionalOnBean(DSLContext.class)
+
 public class ProviderWebhookEventRepository {
 
     private final DSLContext dsl;

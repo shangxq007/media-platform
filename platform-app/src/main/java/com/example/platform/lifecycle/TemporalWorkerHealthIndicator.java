@@ -5,12 +5,12 @@ import com.example.platform.workflow.temporal.RenderTaskQueue;
 import io.temporal.worker.WorkerFactory;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnBean(WorkerFactory.class)
+
 @ConditionalOnProperty(prefix = "app.temporal", name = "enabled", havingValue = "true")
 public class TemporalWorkerHealthIndicator implements HealthIndicator {
 

@@ -6,7 +6,7 @@ import org.flywaydb.core.api.FlywayException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * Readiness: database reachable and Flyway applied when enabled.
  */
 @Component("platformReadiness")
-@ConditionalOnBean(DataSource.class)
+
 public class PlatformReadinessHealthIndicator implements HealthIndicator {
 
     private final DataSource dataSource;
