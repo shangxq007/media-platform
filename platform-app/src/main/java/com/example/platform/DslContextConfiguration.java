@@ -56,7 +56,7 @@ public class DslContextConfiguration implements BeanFactoryPostProcessor {
     @ConditionalOnMissingBean
     public DSLContext dslContext(DataSource dataSource) {
         Settings settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
-        return DSL.using(dataSource, SQLDialect.H2, settings);
+        return DSL.using(dataSource, SQLDialect.POSTGRES, settings);
     }
 
     @Bean

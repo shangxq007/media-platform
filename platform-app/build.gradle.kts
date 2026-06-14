@@ -65,7 +65,7 @@ dependencies {
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
-    args("--spring.profiles.active=dev")
+    args("--spring.profiles.active=local-preview")
 }
 
 tasks.named<Test>("test") {

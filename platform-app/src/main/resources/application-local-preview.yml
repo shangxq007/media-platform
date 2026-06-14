@@ -1,0 +1,80 @@
+# local-preview uses PostgreSQL with preview-safe feature flags.
+# Requires a local PostgreSQL instance (see docker-compose.dev.yml).
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d db
+#   SPRING_PROFILES_ACTIVE=local-preview,preview ./gradlew :platform-app:bootRun
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/platform}
+    username: ${SPRING_DATASOURCE_USERNAME:platform}
+    password: ${SPRING_DATASOURCE_PASSWORD:platform}
+    driver-class-name: org.postgresql.Driver
+
+  graphql:
+    enabled: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL}}
+    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME}}
+    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
+
+app:
+  security:
+    enabled: false
+    dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
+  identity:
+    api-key-auth-enabled: false
+  secrets:
+    vault:
+      enabled: false
+  render:
+    worker-queue:
+      enabled: false
+      consume-enabled: false
+  sandbox:
+    enabled: false
+
+platform:
+  preview:
+    enabled: true
+  adaptive-engine:
+    enabled: false
+  ai:
+    enabled: false
+  workflow:
+    enabled: false
+  scheduler:
+    enabled: false
+  worker:
+    enabled: false
+  worker-queue:
+    enabled: false
+  payment:
+    enabled: false
+  commerce:
+    enabled: false
+  social-publish:
+    enabled: false
+  sandbox:
+    enabled: false
+  cloud-resource:
+    enabled: false
+  provider:
+    fallback-enabled: false
+    auto-discovery-enabled: false
+  render:
+    adaptive-routing-enabled: false
+    provider-fallback-enabled: false
+    mode: local
+  billing:
+    enforcement-enabled: false
+  entitlement:
+    enforcement-enabled: false
+
+spring.main.allow-circular-references: true

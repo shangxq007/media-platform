@@ -1,0 +1,26 @@
+# Local PostgreSQL for development.
+# Usage: docker compose -f docker-compose.local-postgres.yml up -d
+#
+# Then start the app:
+#   SPRING_PROFILES_ACTIVE=local-preview,preview ./gradlew :platform-app:bootRun
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: media-platform-postgres
+    environment:
+      POSTGRES_DB: platform
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - media-platform-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform -d platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  media-platform-postgres-data:

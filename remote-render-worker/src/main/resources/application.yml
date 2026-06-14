@@ -5,14 +5,20 @@ spring:
   application:
     name: remote-render-worker
   datasource:
-    url: jdbc:h2:file:/tmp/platform-remote-worker/db
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/platform}
+    username: ${SPRING_DATASOURCE_USERNAME:platform}
+    password: ${SPRING_DATASOURCE_PASSWORD:platform}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL}}
+    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME}}
+    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
 
 app:
   storage:
-    local-root: /tmp/platform-remote-worker
+    local-root: ${APP_STORAGE_LOCAL_ROOT:/tmp/platform-remote-worker}
 
 render:
   providers:
