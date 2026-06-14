@@ -30,7 +30,7 @@ spec:
           # NOTE: Replace with your registry and explicit image tag (Git SHA or semver).
           # Example: registry.example.com/platform-render-worker:2025.05.25-abc1234
           # Never use :latest in production.
-          image: ghcr.io/example/platform-render-worker:v1.0.0
+          image: ghcr.io/shangxq007/platform-render-worker:git-7ad68450be95
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
