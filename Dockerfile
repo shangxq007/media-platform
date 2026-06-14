@@ -15,8 +15,9 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 FROM gradle:9.1-jdk25-noble AS backend-build
 WORKDIR /workspace
-COPY --from=frontend-build /app/frontend/dist /workspace/platform-app/src/main/resources/static
 COPY . .
+COPY --from=frontend-build /app/platform-app/src/main/resources/static \
+  /workspace/platform-app/src/main/resources/static
 RUN chmod +x gradlew \
     && ./gradlew :platform-app:bootJar --no-daemon -x test \
     && JAR=$(ls platform-app/build/libs/*.jar | grep -v plain | head -n1) \
