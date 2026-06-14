@@ -135,7 +135,8 @@ jobs:
       - name: Build and push render-worker image
         uses: docker/build-push-action@v6
         with:
-          context: remote-render-worker
+          context: .
+          file: remote-render-worker/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/platform-render-worker:${{ steps.tag.outputs.IMAGE_TAG }}
@@ -145,7 +146,8 @@ jobs:
       - name: Build and push sandbox-worker image
         uses: docker/build-push-action@v6
         with:
-          context: sandbox-worker
+          context: .
+          file: sandbox-worker/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/platform-sandbox-worker:${{ steps.tag.outputs.IMAGE_TAG }}

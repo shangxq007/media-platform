@@ -1,10 +1,15 @@
-# syntax=docker/dockerfile.1
+# syntax=docker/dockerfile:1
 
 # -----------------------------------------------------------------------------
 # Sandbox Worker — Python execution service
 # -----------------------------------------------------------------------------
 
-FROM eclipse-temurin:25-jre-jammy AS base
+FROM gradle:9.1-jdk25-noble AS build
+WORKDIR /workspace
+COPY . .
+RUN gradle :sandbox-worker:bootJar --no-daemon
+
+FROM eclipse-temurin:25-jre-jammy
 
 # Create non-root user
 RUN groupadd --gid 10003 sandbox && useradd --uid 10003 --gid 10003 sandbox
@@ -17,8 +22,8 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy JAR
-COPY build/libs/*.jar app.jar
+# Copy JAR from build stage
+COPY --from=build /workspace/sandbox-worker/build/libs/*.jar app.jar
 
 # Create /tmp directory for sandbox execution
 RUN mkdir -p /tmp/sandbox && chown -R sandbox:sandbox /tmp/sandbox
