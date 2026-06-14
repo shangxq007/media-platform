@@ -1,22 +1,69 @@
-# Git / IDE
+# ── Git / IDE ────────────────────────────────────────────────────────────
 .git
+.github
 .gitignore
 .idea
 *.iml
+*.ipr
+*.iws
 .vscode
+.project
+.classpath
+.settings
 
-# Build outputs & caches
+# ── Build outputs & caches ───────────────────────────────────────────────
 **/.gradle
 **/build
-out
-bin
+**/out
+**/bin
+*.class
+*.jar
+*.war
+*.nar
+hs_err_pid*
+replay_pid*
 
-# Docs & misc (not needed to compile)
+# ── OS / editor temp ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+*~
+
+# ── Frontend (not needed for backend Docker builds) ──────────────────────
+frontend/node_modules
+frontend/dist
+frontend/.next
+frontend/.turbo
+frontend/.cache
+frontend/coverage
+
+# ── Docs & misc ──────────────────────────────────────────────────────────
 *.md
 docs
 terminals
+test-assets
 
-# Local env
+# ── Local env / secrets ──────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*-credentials.json
+*-service-account.json
+.secrets/
+.ssh/
+*.crt
+*.csr
+
+# ── Docker compose (not needed inside image build) ───────────────────────
+docker-compose*.yml
+
+# ── Logs & data ──────────────────────────────────────────────────────────
+*.log
+logs/
+tmp/
+.data/
