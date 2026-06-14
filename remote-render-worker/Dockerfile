@@ -1,12 +1,6 @@
 FROM gradle:9.1-jdk25-noble AS build
 WORKDIR /workspace
 COPY . .
-RUN echo "=== Docker context diagnostics ===" && \
-    du -sh . && \
-    ls -la settings.gradle.kts build.gradle.kts && \
-    ls -d shared-kernel remote-render-worker render-module storage-module ai-module 2>&1 && \
-    head -30 settings.gradle.kts && \
-    echo "=== End diagnostics ==="
 RUN gradle :remote-render-worker:bootJar --no-daemon
 
 FROM eclipse-temurin:25-jre-jammy
