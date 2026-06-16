@@ -2,6 +2,12 @@ spring:
   task:
     scheduling:
       enabled: false
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:dev-stub-key}
+      chat:
+        options:
+          model: gpt-4o-mini
 
 platform:
   preview:

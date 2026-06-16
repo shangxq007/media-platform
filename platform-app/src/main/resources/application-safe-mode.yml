@@ -16,8 +16,11 @@ app:
     advanced-effects: false
     intelligence: false
     timeline-advanced: false
-
-# Provider Policy - Strict gating
+  security:
+    enabled: true
+    dev-auth-endpoint: false
+    oidc-dev-bootstrap:
+      enabled: false
 render:
   providers:
     # Stable providers only
@@ -68,14 +71,6 @@ platform:
     production-checks-enabled: true
     modulith-violation-budget: 0
 
-# Security - strict
-app:
-  security:
-    enabled: true
-    dev-auth-endpoint: false
-    oidc-dev-bootstrap:
-      enabled: false
-
 # Logging - verbose for safe mode debugging
 logging:
   level:
@@ -91,6 +86,6 @@ management:
       show-details: always
       group:
         readiness:
-          include: readinessState,platformReadiness,renderPipeline
+          include: readinessState,platformReadiness
         liveness:
           include: livenessState
