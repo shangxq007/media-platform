@@ -25,41 +25,9 @@ import org.springframework.context.annotation.Configuration;
 import javax.sql.DataSource;
 
 @Configuration
-public class DslContextConfiguration implements BeanFactoryPostProcessor {
+public class DslContextConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(DslContextConfiguration.class);
-    private static boolean flywayMigrated = false;
-
-    @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-        if (flywayMigrated) return;
-
-        // Skip Flyway in preview mode - let Spring Boot auto-configuration handle it
-        String activeProfiles = System.getProperty("spring.profiles.active", "");
-        if (activeProfiles.contains("preview")) {
-            log.info("Skipping early Flyway migration in preview mode");
-            flywayMigrated = true;
-            return;
-        }
-
-        // Skip Flyway if spring.flyway.enabled=false (used in test profile)
-        try {
-            DataSource ds = beanFactory.getBean(DataSource.class);
-            Flyway flyway = Flyway.configure()
-                    .dataSource(ds)
-                    .locations("classpath:db/migration")
-                    .baselineOnMigrate(true)
-                    .baselineVersion("999")
-                    .validateOnMigrate(false)
-                    .load();
-            flyway.migrate();
-            flywayMigrated = true;
-        } catch (Exception e) {
-            // Log but don't fail - allows tests to run with schema.sql
-            System.err.println("Flyway migration skipped/failed: " + e.getMessage());
-            flywayMigrated = true;
-        }
-    }
 
     @Bean
     @ConditionalOnMissingBean
