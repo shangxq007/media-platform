@@ -9,6 +9,15 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
 
+/**
+ * Manual Flyway configuration for PostgreSQL preview startup.
+ *
+ * This is required because Spring Boot 4.0.4's FlywayAutoConfiguration
+ * does not properly initialize in the current setup. This bean ensures
+ * migrations run after DataSource is created but before application starts.
+ *
+ * TODO: Remove this when Spring Boot Flyway auto-configuration works correctly.
+ */
 @Configuration
 @ConditionalOnProperty(name = "spring.flyway.enabled", havingValue = "true", matchIfMissing = false)
 public class FlywayConfiguration {

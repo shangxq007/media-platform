@@ -10,6 +10,7 @@ spring:
     exclude:
       - io.temporal.spring.boot.autoconfigure.RootNamespaceAutoConfiguration
       - io.temporal.spring.boot.autoconfigure.NonRootNamespaceAutoConfiguration
+      # GraphQL disabled in preview until schema has base Query/Mutation definitions
       - org.springframework.boot.graphql.autoconfigure.GraphQlAutoConfiguration
   graphql:
     enabled: false
