@@ -25,7 +25,6 @@ import org.springframework.context.annotation.Configuration;
 import javax.sql.DataSource;
 
 @Configuration
-@ConditionalOnProperty(name = "app.flyway.early-migration", havingValue = "true", matchIfMissing = false)
 public class DslContextConfiguration implements BeanFactoryPostProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(DslContextConfiguration.class);
@@ -34,6 +33,14 @@ public class DslContextConfiguration implements BeanFactoryPostProcessor {
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
         if (flywayMigrated) return;
+
+        // Skip Flyway in preview mode - let Spring Boot auto-configuration handle it
+        String activeProfiles = System.getProperty("spring.profiles.active", "");
+        if (activeProfiles.contains("preview")) {
+            log.info("Skipping early Flyway migration in preview mode");
+            flywayMigrated = true;
+            return;
+        }
 
         // Skip Flyway if spring.flyway.enabled=false (used in test profile)
         try {
