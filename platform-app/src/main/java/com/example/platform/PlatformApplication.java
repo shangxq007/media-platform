@@ -41,6 +41,15 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @Import({DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class})
 public class PlatformApplication {
+    static {
+        // Explicitly load PostgreSQL driver to ensure it's available
+        try {
+            Class.forName("org.postgresql.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Failed to load PostgreSQL driver", e);
+        }
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(PlatformApplication.class, args);
     }
