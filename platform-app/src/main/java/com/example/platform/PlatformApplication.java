@@ -39,7 +39,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.quota"
 })
 @EnableScheduling
-@Import({DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class})
+@Import({DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class, FlywayConfiguration.class})
 public class PlatformApplication {
     static {
         // Explicitly load PostgreSQL driver to ensure it's available
