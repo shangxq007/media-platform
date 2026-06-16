@@ -1,10 +1,7 @@
-# Shared preview configuration for local-preview and dev-postgres profiles.
-# This file disables unfinished infrastructure modules and enables
-# only the core platform features needed for UI/API preview.
-#
-# Usage:
-#   SPRING_PROFILES_ACTIVE=local-preview ./gradlew :platform-app:bootRun
-#   SPRING_PROFILES_ACTIVE=dev-postgres,preview ./gradlew :platform-app:bootRun
+spring:
+  task:
+    scheduling:
+      enabled: false
 
 platform:
   preview:
@@ -27,6 +24,9 @@ platform:
 
   worker-queue:
     enabled: false
+
+delivery:
+  worker-enabled: false
 
   payment:
     enabled: false
