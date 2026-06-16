@@ -39,7 +39,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.quota"
 })
 @EnableScheduling
-@Import({DslContextConfiguration.class, DataSourceConfiguration.class})
+@Import({DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class})
 public class PlatformApplication {
     public static void main(String[] args) {
         SpringApplication.run(PlatformApplication.class, args);

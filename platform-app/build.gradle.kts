@@ -64,10 +64,6 @@ dependencies {
     testImplementation("org.testcontainers:postgresql:1.20.6")
 }
 
-tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
-    args("--spring.profiles.active=local-preview")
-}
-
 tasks.named<Test>("test") {
     useJUnitPlatform {
         excludeTags("render-integration")

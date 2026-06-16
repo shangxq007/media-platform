@@ -18,12 +18,14 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
 
 @Configuration
+@ConditionalOnProperty(name = "app.flyway.early-migration", havingValue = "true", matchIfMissing = false)
 public class DslContextConfiguration implements BeanFactoryPostProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(DslContextConfiguration.class);

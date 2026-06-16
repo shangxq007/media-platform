@@ -7,9 +7,9 @@
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/platform}
-    username: ${SPRING_DATASOURCE_USERNAME:platform}
-    password: ${SPRING_DATASOURCE_PASSWORD:platform}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/media_platform}
+    username: ${SPRING_DATASOURCE_USERNAME:media_platform}
+    password: ${SPRING_DATASOURCE_PASSWORD:media_platform}
     driver-class-name: org.postgresql.Driver
 
   graphql:

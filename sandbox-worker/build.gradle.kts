@@ -28,7 +28,3 @@ dependencies {
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }
-
-tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
-    systemProperty("spring.profiles.active", project.findProperty("activeProfile") ?: "dev")
-}

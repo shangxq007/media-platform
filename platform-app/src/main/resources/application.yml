@@ -6,12 +6,11 @@ spring:
     name: media-platform
   lifecycle:
     timeout-per-shutdown-phase: 30s
-  profiles:
-    active: dev
   autoconfigure:
     exclude:
       - io.temporal.spring.boot.autoconfigure.RootNamespaceAutoConfiguration
       - io.temporal.spring.boot.autoconfigure.NonRootNamespaceAutoConfiguration
+      - org.springframework.boot.graphql.autoconfigure.GraphQlAutoConfiguration
   graphql:
     enabled: false
   task:
@@ -22,12 +21,10 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/media_platform}
     username: ${SPRING_DATASOURCE_USERNAME:media_platform}
     password: ${SPRING_DATASOURCE_PASSWORD:media_platform}
-    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.postgresql.Driver}
+    driver-class-name: org.postgresql.Driver
+    type: com.zaxxer.hikari.HikariDataSource
   flyway:
-    enabled: true
-    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL}}
-    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME}}
-    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
+    enabled: false
   springdoc:
     swagger-ui:
       path: /swagger-ui.html
