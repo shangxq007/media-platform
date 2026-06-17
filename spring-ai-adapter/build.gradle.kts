@@ -1,3 +1,7 @@
+// Spring AI Adapter - Optional module for OpenAI-compatible chat providers
+// This module is NOT included in platform-app by default.
+// To enable, add: implementation(project(":spring-ai-adapter")) to platform-app/build.gradle.kts
+// and configure: platform.ai.spring-ai.enabled=true
 plugins { id("java-library") }
 
 dependencies {

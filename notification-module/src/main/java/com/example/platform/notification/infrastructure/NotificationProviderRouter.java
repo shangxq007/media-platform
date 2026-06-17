@@ -36,15 +36,20 @@ public class NotificationProviderRouter {
     }
 
     public DeliveryResult route(DeliveryCommand command, String channel) {
-        if (novuProvider.isEnabled()) {
+        // Check if Novu provider is available and enabled
+        if (novuProvider != null && novuProvider.isEnabled()) {
             log.debug("NotificationProviderRouter: routing to novu for channel={}", channel);
             return novuProvider.send(command);
         }
+        
+        // Find provider by channel
         NotificationProvider provider = findByChannel(channel);
         if (provider != null) {
             log.debug("NotificationProviderRouter: routing to provider={} for channel={}", provider.providerCode(), channel);
             return provider.send(command);
         }
+        
+        // Fallback to local provider
         log.debug("NotificationProviderRouter: falling back to local provider for channel={}", channel);
         return localProvider.send(command);
     }

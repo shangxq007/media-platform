@@ -533,8 +533,9 @@ public class NotificationController {
                description = "Retrieve status of notification providers (admin only)")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved provider status")
     public Map<String, Object> adminProviderStatus() {
+        boolean novuEnabled = novuProvider != null && novuProvider.isEnabled();
         return Map.of(
-                "novu", Map.of("enabled", novuProvider.isEnabled()),
+                "novu", Map.of("enabled", novuEnabled),
                 "local", Map.of("enabled", true)
         );
     }
