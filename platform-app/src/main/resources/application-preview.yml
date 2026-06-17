@@ -65,6 +65,9 @@ delivery:
     enforcement-enabled: false
 
 app:
+  # Disable outbox event dispatcher in preview mode to avoid schema mismatch errors
+  outbox:
+    dispatcher-enabled: false
   security:
     enabled: false
     dev-auth-endpoint: false
