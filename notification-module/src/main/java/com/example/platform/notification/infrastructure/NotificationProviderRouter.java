@@ -5,6 +5,7 @@ import com.example.platform.notification.domain.DeliveryResult;
 import com.example.platform.notification.domain.NotificationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -22,7 +23,7 @@ public class NotificationProviderRouter {
     private final MockNotificationProvider localProvider;
 
     public NotificationProviderRouter(List<NotificationProvider> providers,
-            NovuNotificationProvider novuProvider,
+            @Autowired(required = false) NovuNotificationProvider novuProvider,
             MockNotificationProvider localProvider) {
         this.providerByCode = providers.stream()
                 .collect(Collectors.toMap(NotificationProvider::providerCode, Function.identity()));

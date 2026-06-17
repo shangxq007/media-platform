@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -39,7 +40,7 @@ public class NotificationController {
             NotificationSubscriptionService subscriptionService,
             NotificationPreferenceService preferenceService,
             NotificationInboxService inboxService,
-            NovuNotificationProvider novuProvider) {
+            @Autowired(required = false) NovuNotificationProvider novuProvider) {
         this.publisher = publisher;
         this.queryService = queryService;
         this.mockProvider = mockProvider;

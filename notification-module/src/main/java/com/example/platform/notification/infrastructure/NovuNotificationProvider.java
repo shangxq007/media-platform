@@ -8,6 +8,7 @@ import com.example.platform.shared.web.PlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import org.springframework.web.client.RestClientException;
 import java.util.Map;
 
 @Component
+@ConditionalOnProperty(prefix = "app.notification.novu", name = "enabled", havingValue = "true", matchIfMissing = false)
 public class NovuNotificationProvider implements NotificationProvider {
     private static final Logger log = LoggerFactory.getLogger(NovuNotificationProvider.class);
 
