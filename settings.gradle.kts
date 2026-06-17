@@ -10,6 +10,7 @@ include(
     "render-module",
     "notification-module",
     "ai-module",
+    "spring-ai-adapter",
     "config-module",
     "workflow-module",
     "storage-module",

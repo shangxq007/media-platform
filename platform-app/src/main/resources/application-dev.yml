@@ -32,9 +32,6 @@ render:
 spring:
   main:
     allow-circular-references: true
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:dev-local-stub-key}
   flyway:
     enabled: true
     baseline-on-migrate: true

@@ -54,7 +54,8 @@ dependencies {
     implementation("org.springframework.modulith:spring-modulith-starter-core:2.0.4")
     runtimeOnly("org.springframework.modulith:spring-modulith-starter-insight:2.0.4")
     implementation("io.temporal:temporal-spring-boot-starter:1.33.0")
-    implementation("org.springframework.ai:spring-ai-starter-model-openai")
+    // Spring AI removed from active runtime path - AI features disabled by default
+    // implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("com.yomahub:liteflow-spring-boot-starter:2.15.3.2")
     implementation("org.pf4j:pf4j:3.15.0")
 

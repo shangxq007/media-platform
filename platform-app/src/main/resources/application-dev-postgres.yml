@@ -64,5 +64,5 @@ platform:
     enabled: false
   scheduler:
     enabled: false
-
-spring.ai.openai.api-key: ${OPENAI_API_KEY:dev-local-stub-key}
+  ai:
+    enabled: false
