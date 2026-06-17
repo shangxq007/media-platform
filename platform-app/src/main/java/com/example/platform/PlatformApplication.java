@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @ComponentScan(basePackages = {
     "com.example.platform.app",
+    "com.example.platform.security",
     "com.example.platform.production",
     "com.example.platform.render",
     "com.example.platform.shared",
