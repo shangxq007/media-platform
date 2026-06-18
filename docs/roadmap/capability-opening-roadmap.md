@@ -453,6 +453,35 @@ graph TD
 
 **Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/validation/`
 
+### Built-in SystemAction Metadata Catalog
+
+**Status:** ✅ Implemented (Metadata catalog exists in shared-kernel)
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `MetadataSystemAction` | Record | ✅ Implemented |
+| `BuiltInSystemActions` | Class | ✅ Implemented |
+| `SystemActionCategory` | Enum | ✅ Implemented |
+
+**Built-in actions (12 total):**
+
+| Category | Actions |
+|----------|--------|
+| RENDER | `render.create_job`, `render.generate_hls_preview` |
+| MEDIA | `media.generate_proxy`, `media.generate_thumbnail`, `media.transcribe`, `media.extract_audio` |
+| ARTIFACT | `artifact.export`, `artifact.tag` |
+| REVIEW | `review.create_link`, `review.request_approval` |
+| NOTIFICATION | `notification.send` |
+| WEBHOOK | `webhook.send` |
+
+**Important notes:**
+- All actions are metadata-only (no execution logic)
+- Actions can be registered into SystemActionRegistry
+- NOTIFICATION/WEBHOOK flow node types map to SystemAction metadata
+- HOOK node type is contract-level and not exposed to ordinary users
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/action/`
+
 ### Event-Backed Automation
 
 **Status:** Planned
