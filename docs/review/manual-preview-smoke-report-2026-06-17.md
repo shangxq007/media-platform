@@ -1,3 +1,11 @@
+---
+status: report
+last_verified: 2026-06-17
+scope: preview
+truth_level: historical
+owner: platform
+---
+
 # Manual Preview Smoke Report - 2026-06-17
 
 ## Environment

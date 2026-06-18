@@ -1,4 +1,14 @@
+---
+status: report
+last_verified: 2026-06-16
+scope: all
+truth_level: historical
+owner: platform
+---
+
 # Media Platform 项目问题详细报告
+
+> **Historical report; see [architecture/current](../architecture/current/) for latest state.**
 
 **生成时间**: 2026-06-16  
 **扫描范围**: 整个 media-platform 项目  

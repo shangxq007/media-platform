@@ -1,3 +1,11 @@
+---
+status: report
+last_verified: 2026-06-18
+scope: preview
+truth_level: historical
+owner: platform
+---
+
 # Release Candidate Readiness Checklist - 2026-06-18
 
 ## Scope

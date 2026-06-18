@@ -1,5 +1,14 @@
+---
+status: report
+last_verified: 2026-05-18
+scope: all
+truth_level: historical
+owner: platform
+---
+
 # Production Blockers
 
+> **Historical report; see [architecture/current](../architecture/current/) for latest state.**
 > **Last Updated:** 2026-05-18
 
 ## Critical (Must Fix Before Production)

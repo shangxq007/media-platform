@@ -62,13 +62,33 @@ See [release-candidate-readiness-2026-06-17.md](review/release-candidate-readine
 
 ### Architecture
 - [System Blueprint](architecture/blueprint/system-blueprint.md)
+- [Module Blueprints](architecture/blueprint/)
+  - [Render Pipeline](architecture/blueprint/module-blueprint-render.md)
+  - [Artifact & Storage](architecture/blueprint/module-blueprint-artifact-storage.md)
+  - [Automation & Plugin](architecture/blueprint/module-blueprint-automation-plugin.md) *(blueprint only)*
+  - [AI Provider](architecture/blueprint/module-blueprint-ai-provider.md) *(blueprint only)*
+  - [Security & Identity](architecture/blueprint/module-blueprint-security-identity.md)
+  - [Observability](architecture/blueprint/module-blueprint-observability.md)
 - [Current Known Gaps](architecture/current/current-known-gaps.md)
 
 ### Review
 - [Release Candidate Readiness](review/release-candidate-readiness-2026-06-17.md)
 - [Manual Preview Smoke Report](review/manual-preview-smoke-report-2026-06-17.md)
+- [Comprehensive Issue Report](review/comprehensive-issue-report-2026-06-16.md)
 
 ### Roadmap
 - [Technical Debt Roadmap](roadmap/technical-debt-roadmap.md)
 - [Automation/Plugin Platform Roadmap](roadmap/automation-plugin-platform-roadmap.md)
 - [AI Provider Ecosystem Roadmap](roadmap/ai-provider-ecosystem-roadmap.md)
+- [Render Pipeline Roadmap](roadmap/render-pipeline-roadmap.md)
+
+---
+
+## Important Notes
+
+> **Blueprint documents describe target architecture. Current state documents describe implemented reality.**
+
+- H2 is unsupported (PostgreSQL only)
+- Spring AI is isolated and not active in runtime
+- Automation/Plugin platform is blueprint only
+- See [Current Known Gaps](architecture/current/current-known-gaps.md) for implementation gaps
