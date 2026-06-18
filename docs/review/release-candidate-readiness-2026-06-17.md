@@ -161,8 +161,12 @@ app:
 | Security Bean Wiring | Fixed | ✅ |
 | Missing ApiKeyAuthFilter | No | ✅ |
 | OAuth2 Required | No | ✅ |
+| ProductionSafetyValidator | Fixed (2026-06-19) | ✅ |
 
-**Known Issue**: `NoUniqueBeanDefinitionException` in `ProductionSafetyValidator` (pre-existing, not security-related)
+**ProductionSafetyValidator Fix (2026-06-19)**:
+- Root Cause: Spring `ObjectProvider<T>` type inference conflict
+- Fix: Added `@Qualifier` annotations to specify exact bean names
+- Validation: `prod,safe-mode` starts cleanly, expected safety validation failures (OIDC, Stripe) are deterministic
 
 ---
 
@@ -170,7 +174,7 @@ app:
 
 | Issue | Severity | Impact |
 |-------|----------|--------|
-| ProductionSafetyValidator NoUniqueBeanDefinitionException | Medium | prod,safe-mode fails after startup |
+| ~~ProductionSafetyValidator NoUniqueBeanDefinitionException~~ | ~~Medium~~ | ✅ Fixed (2026-06-19) |
 | PrometheusMeterRegistry tag mismatch | Low | Warning only |
 | Some API endpoints return 404 | Low | Parameter name reflection issue |
 | Actuator info endpoint empty | Low | Not configured |
@@ -182,7 +186,7 @@ app:
 **None for manual preview** - All critical checks passed.
 
 **For Production**:
-- `ProductionSafetyValidator` needs fix (separate task)
+- ~~`ProductionSafetyValidator` needs fix~~ ✅ Fixed (2026-06-19)
 - OAuth2 configuration required
 - JWT secret must be set
 - Payment provider configuration required
@@ -192,7 +196,7 @@ app:
 ## 11. Next Recommended Actions
 
 1. ✅ **Manual Preview Ready** - Use for review/testing
-2. 🔧 **Fix ProductionSafetyValidator** - Separate task for prod,safe-mode full startup
+2. ✅ **ProductionSafetyValidator Fixed** - prod,safe-mode starts cleanly
 3. 📋 **Document production requirements** - OAuth2, JWT, payment config
 4. 🚀 **Continue governance work** - Module boundaries, error model cleanup
 

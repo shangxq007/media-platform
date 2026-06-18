@@ -245,6 +245,23 @@ No qualifying bean of type 'NovuNotificationProvider' available
 
 **Fix**: Providers are optional in preview. The router will fall back to local providers.
 
+### ProductionSafetyValidator NoUniqueBeanDefinitionException
+
+**Symptom**: 
+```
+NoUniqueBeanDefinitionException: No qualifying bean of type 'java.lang.Object' available
+```
+
+**Cause**: Spring `ObjectProvider<T>` type inference conflict when multiple beans implement same interface.
+
+**Fix (2026-06-19)**: Added `@Qualifier` annotations to specify exact bean names in `ProductionSafetyValidator.java`.
+
+**Validation**:
+```bash
+# Should start cleanly (expected safety validation failures for OIDC/Stripe are deterministic)
+SPRING_PROFILES_ACTIVE=prod,safe-mode java -jar platform-app/build/libs/platform-app.jar
+```
+
 ### Outbox schema mismatch
 
 **Symptom**: 

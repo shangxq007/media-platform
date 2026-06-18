@@ -1,11 +1,16 @@
 package com.example.platform.production;
 
 import com.example.platform.app.AppCorsProperties;
+import com.example.platform.billing.infrastructure.SubscriptionJdbcRepository;
+import com.example.platform.commerce.infrastructure.CheckoutSessionRepository;
+import com.example.platform.commerce.infrastructure.CommerceCartRepository;
+import com.example.platform.policy.featureflag.FeatureFlagJdbcStore;
 import com.example.platform.security.JwtProperties;
 import com.example.platform.shared.runtime.PlatformRuntimeProperties;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.event.EventListener;
@@ -20,20 +25,20 @@ public class ProductionSafetyValidator {
     private final PlatformRuntimeProperties runtimeProperties;
     private final JwtProperties jwtProperties;
     private final AppCorsProperties corsProperties;
-    private final org.springframework.beans.factory.ObjectProvider<?> checkoutSessions;
-    private final org.springframework.beans.factory.ObjectProvider<?> commerceCarts;
-    private final org.springframework.beans.factory.ObjectProvider<?> subscriptionStore;
-    private final org.springframework.beans.factory.ObjectProvider<?> featureFlagStore;
+    private final org.springframework.beans.factory.ObjectProvider<CheckoutSessionRepository> checkoutSessions;
+    private final org.springframework.beans.factory.ObjectProvider<CommerceCartRepository> commerceCarts;
+    private final org.springframework.beans.factory.ObjectProvider<SubscriptionJdbcRepository> subscriptionStore;
+    private final org.springframework.beans.factory.ObjectProvider<FeatureFlagJdbcStore> featureFlagStore;
 
     public ProductionSafetyValidator(
             Environment environment,
             PlatformRuntimeProperties runtimeProperties,
             JwtProperties jwtProperties,
             AppCorsProperties corsProperties,
-            org.springframework.beans.factory.ObjectProvider<?> checkoutSessions,
-            org.springframework.beans.factory.ObjectProvider<?> commerceCarts,
-            org.springframework.beans.factory.ObjectProvider<?> subscriptionStore,
-            org.springframework.beans.factory.ObjectProvider<?> featureFlagStore) {
+            @Qualifier("checkoutSessionRepository") org.springframework.beans.factory.ObjectProvider<CheckoutSessionRepository> checkoutSessions,
+            @Qualifier("commerceCartRepository") org.springframework.beans.factory.ObjectProvider<CommerceCartRepository> commerceCarts,
+            @Qualifier("subscriptionJdbcRepository") org.springframework.beans.factory.ObjectProvider<SubscriptionJdbcRepository> subscriptionStore,
+            @Qualifier("featureFlagJdbcStore") org.springframework.beans.factory.ObjectProvider<FeatureFlagJdbcStore> featureFlagStore) {
         this.environment = environment;
         this.runtimeProperties = runtimeProperties;
         this.jwtProperties = jwtProperties;

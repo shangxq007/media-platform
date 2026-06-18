@@ -185,12 +185,18 @@ owner: platform
 
 | Blocker | Severity | Fix Required |
 |---------|----------|--------------|
-| `ProductionSafetyValidator` `NoUniqueBeanDefinitionException` | Critical | Fix bean wiring |
+| ~~`ProductionSafetyValidator` `NoUniqueBeanDefinitionException`~~ | ~~Critical~~ | ✅ Fixed (2026-06-19) |
 | OAuth2 configuration required | Critical | Configure Authentik OIDC |
 | JWT secret must be set | Critical | Set `APP_JWT_SECRET` env var |
 | Payment provider configuration | Critical | Configure Stripe/Hyperswitch |
 | jOOQ codegen not configured | High | Add codegen plugin |
 | `RenderJobRepository` extraction | High | Extract from 52 inline refs |
+
+**ProductionSafetyValidator Fix (2026-06-19)**:
+- Root Cause: Spring `ObjectProvider<T>` type inference conflict when multiple beans implement same interface
+- Fix: Added `@Qualifier` annotations to specify exact bean names
+- Files changed: `ProductionSafetyValidator.java`
+- Validation: `prod,safe-mode` starts cleanly, `dev-postgres,preview` unchanged
 
 ---
 
