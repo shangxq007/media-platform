@@ -538,6 +538,39 @@ STABLE means the metadata key/contract is stable. It does NOT mean runtime execu
 
 **Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/flow/`
 
+### Execution Trace Model
+
+**Status:** ✅ Implemented (Execution trace model exists in shared-kernel)
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `AutomationExecutionTrace` | Record | ✅ Implemented |
+| `AutomationNodeExecutionTrace` | Record | ✅ Implemented |
+| `AutomationNodeExecutionAttempt` | Record | ✅ Implemented |
+| `AutomationExecutionTraceStatus` | Enum | ✅ Implemented |
+| `AutomationNodeExecutionTraceStatus` | Enum | ✅ Implemented |
+| `AutomationDryRunTraceMapper` | Class | ✅ Implemented |
+
+**Trace capabilities:**
+- Represent dry-run results as explain-plan traces
+- Preserve node order
+- Preserve validation issues
+- Support retry metadata (attempts)
+- Include correlation/causation/idempotency ids
+- Calculate execution duration
+
+**Explain Plan concept:**
+- Dry-run result / execution trace can be used by future UI to show what a flow would do before execution
+- This does not execute real actions
+- Supports progressive capability opening model
+
+**Important notes:**
+- Persistence still not implemented
+- Real runtime still not implemented
+- Temporal/LiteFlow integration not implemented
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/trace/`
+
 ### Event-Backed Automation
 
 **Status:** Planned

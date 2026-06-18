@@ -230,6 +230,9 @@ owner: platform
 | Validating executor | ✅ Implemented | Validates requests, supports dry-run, returns NOT_IMPLEMENTED for real execution |
 | AutomationFlow dry-run executor | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/flow/` |
 | Dry-run capabilities | ✅ Implemented | Validates flows, produces traces, dry-runs ACTION nodes, marks non-runtime nodes |
+| Execution trace model | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/trace/` |
+| Dry-run trace mapper | ✅ Implemented | Converts dry-run results to explain-plan traces |
+| Explain-plan concept | ✅ Implemented | Dry-run traces show what flow would do before execution |
 | Event bus | ❌ Not implemented | Contracts only |
 | Hook runtime | ❌ Not implemented | Contracts only |
 | Connector marketplace | ❌ Not implemented | No marketplace infrastructure |
