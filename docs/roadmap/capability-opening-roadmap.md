@@ -76,7 +76,7 @@ Contract skeleton exists in `shared-kernel/src/main/java/com/example/platform/sh
 
 ## Phase 1 - Internal SystemAction Registry
 
-**Status:** Planned
+**Status:** ⚠️ Skeleton Only (Registry exists, runtime execution not implemented)
 
 ### Scope
 - Formalize existing services as SystemActions
@@ -85,7 +85,7 @@ Contract skeleton exists in `shared-kernel/src/main/java/com/example/platform/sh
 - Add idempotency key support
 
 ### Deliverables
-- [ ] SystemAction registry implementation
+- [x] SystemAction registry implementation
 - [ ] Audit logging for action execution
 - [ ] Idempotency key support
 - [ ] Action execution metrics
@@ -98,6 +98,18 @@ Contract skeleton exists in `shared-kernel/src/main/java/com/example/platform/sh
 ### Validation
 - All existing services registered as SystemActions
 - Audit logs captured for all action executions
+
+### Implementation
+
+Registry skeleton exists in `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/`:
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `SystemActionRegistry` interface | ✅ Defined | Registration, lookup, list, contains |
+| `InMemorySystemActionRegistry` | ✅ Implemented | In-memory implementation |
+| Runtime execution | ❌ Not implemented | Registry only |
+| Audit logging | ❌ Not implemented | Not yet |
+| Idempotency key support | ❌ Not implemented | Not yet |
 - Idempotency keys working correctly
 - Metrics available in observability
 
@@ -135,7 +147,7 @@ Contract skeleton exists in `shared-kernel/src/main/java/com/example/platform/sh
 
 ## Phase 3 - ExtensionPoint / Provider SPI
 
-**Status:** Planned
+**Status:** ⚠️ Skeleton Only (Registry exists, runtime execution not implemented)
 
 ### Scope
 - Implement ExtensionPoint registry
@@ -145,8 +157,8 @@ Contract skeleton exists in `shared-kernel/src/main/java/com/example/platform/sh
 - Add provider health checks
 
 ### Deliverables
-- [ ] ExtensionPoint registry
-- [ ] ExtensionProvider interface
+- [x] ExtensionPoint registry
+- [x] ExtensionProvider interface
 - [ ] Built-in provider implementations
 - [ ] HTTP connector provider support
 - [ ] Provider health checks
@@ -162,6 +174,20 @@ Contract skeleton exists in `shared-kernel/src/main/java/com/example/platform/sh
 - Providers implement ExtensionPoints correctly
 - HTTP connectors work correctly
 - Health checks report accurate status
+
+### Implementation
+
+Registry skeleton exists in `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/`:
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `ExtensionPointRegistry` interface | ✅ Defined | Registration, lookup, list, contains |
+| `InMemoryExtensionPointRegistry` | ✅ Implemented | In-memory implementation |
+| `ExtensionProviderRegistry` interface | ✅ Defined | Registration, lookup, list, findSupporting |
+| `InMemoryExtensionProviderRegistry` | ✅ Implemented | In-memory implementation |
+| Runtime execution | ❌ Not implemented | Registry only |
+| Provider invocation | ❌ Not implemented | Registry only |
+| Health checks | ❌ Not implemented | Not yet |
 
 ---
 

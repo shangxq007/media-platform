@@ -117,9 +117,11 @@ owner: platform
 |-----------|--------|-------|
 | Capability opening model | Blueprint only | Not implemented |
 | Contract skeleton | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/` |
-| Formal SystemAction registry | ⚠️ Contract only | Contract exists, runtime not implemented |
+| Registry skeleton | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/` |
+| Formal SystemAction registry | ⚠️ Skeleton only | Registry exists, runtime execution not implemented |
 | Automation flow engine | ❌ Not implemented | No workflow execution engine |
-| ExtensionPoint SPI | ⚠️ Contract only | Contract exists, runtime not implemented |
+| ExtensionPoint SPI | ⚠️ Skeleton only | Registry exists, runtime execution not implemented |
+| ExtensionProvider registry | ⚠️ Skeleton only | Registry exists, provider invocation not implemented |
 | Connector marketplace | ❌ Not implemented | No marketplace infrastructure |
 | Plugin marketplace | ❌ Not implemented | No marketplace infrastructure |
 | Sandbox runtime | ❌ Not implemented | Stub only |

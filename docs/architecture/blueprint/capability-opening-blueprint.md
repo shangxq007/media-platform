@@ -564,10 +564,34 @@ The following contracts are defined in `shared-kernel/src/main/java/com/example/
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Runtime execution engine | ❌ Not implemented | Contracts only |
-| Provider registry | ❌ Not implemented | Contracts only |
+| Provider registry | ⚠️ Skeleton only | Registry exists, runtime execution not implemented |
 | Automation flow engine | ❌ Not implemented | Contracts only |
 | Marketplace infrastructure | ❌ Not implemented | Contracts only |
 | Sandbox runtime | ❌ Not implemented | Contracts only |
+
+### Registry Skeleton Status
+
+The following registries are defined in `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/`:
+
+| Registry | Interface | Implementation | Status |
+|----------|-----------|----------------|--------|
+| `SystemActionRegistry` | ✅ Defined | `InMemorySystemActionRegistry` | ✅ Implemented |
+| `ExtensionPointRegistry` | ✅ Defined | `InMemoryExtensionPointRegistry` | ✅ Implemented |
+| `ExtensionProviderRegistry` | ✅ Defined | `InMemoryExtensionProviderRegistry` | ✅ Implemented |
+| `CapabilityRegistryException` | ✅ Defined | — | ✅ Implemented |
+
+### Registry Capabilities
+
+| Capability | Status | Notes |
+|------------|--------|-------|
+| Registration | ✅ Implemented | Actions, extension points, providers |
+| Lookup by key | ✅ Implemented | Find by action key, extension point key/version, provider id |
+| List all | ✅ Implemented | Immutable list views |
+| Duplicate detection | ✅ Implemented | Rejects duplicate keys |
+| Validation | ✅ Implemented | Rejects blank keys |
+| Provider lookup by extension point | ✅ Implemented | `findSupporting()` |
+| Runtime execution | ❌ Not implemented | Registry only, no execution |
+| Provider invocation | ❌ Not implemented | Registry only, no invocation |
 
 ### Contract Design Principles
 
