@@ -1,4 +1,14 @@
+---
+status: current
+last_verified: 2026-06-18
+scope: all
+truth_level: implemented
+owner: platform
+---
+
 # 数据库结构维护约定
+
+> **注意**: 本项目仅支持 PostgreSQL。H2 不再支持。
 
 ## 唯一真相：Flyway
 
@@ -7,7 +17,7 @@
 当前仅有单一初始迁移 `V1__initial_schema.sql`（67KB），包含全部表结构定义。
 
 - 新增表、改列、索引、约束：**只通过新的版本化迁移**（如 `V2__xxx.sql`）完成，并与代码同一 MR/发版。
-- 本地默认 **H2**、生产可用 **PostgreSQL**；大文本字段使用 **`text`**。若方言差异，在迁移中写兼容两种库的 SQL。
+- **PostgreSQL-only**: 所有迁移使用 PostgreSQL 语法，不支持 H2
 
 ## 迁移历史
 

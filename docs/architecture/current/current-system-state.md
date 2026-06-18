@@ -58,10 +58,11 @@ owner: platform
 | Attribute | Value |
 |-----------|-------|
 | Engine | PostgreSQL 15 (Docker: `postgres:15-alpine`) |
-| Flyway Migrations | 17 versions (V1–V17) |
+| Flyway Migrations | 1 version (V1 - consolidated baseline) |
 | Tables | 50+ |
 | Schema Location | `classpath:db/migration` |
-| Test Schema | H2 in-memory (PostgreSQL compatibility mode) |
+| Test Schema | PostgreSQL via Testcontainers |
+| H2 Support | ❌ Not supported |
 | jOOQ Codegen | Not configured — all manual DSL |
 
 ### Key Tables

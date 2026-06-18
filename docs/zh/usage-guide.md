@@ -17,7 +17,7 @@ cd media-platform
 ./gradlew :platform-app:bootRun
 # API: http://localhost:8080
 # Swagger UI: http://localhost:8080/swagger-ui.html
-# H2 Console: http://localhost:8080/h2-console
+# 注意: H2 Console 不再支持，仅使用 PostgreSQL
 ```
 
 ### 启动前端

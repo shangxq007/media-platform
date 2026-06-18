@@ -292,7 +292,7 @@ media-platform/
 
 ### 测试
 - 单元测试：集成用 `@SpringBootTest`，纯单元用 JUnit
-- H2 内存数据库用于仓库测试
+- PostgreSQL 用于集成测试（Testcontainers）
 - 测试覆盖：40+ 测试文件中约 200+ 个测试
 
 ### 错误处理

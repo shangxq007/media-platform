@@ -14,7 +14,7 @@ owner: platform
 
 | Profile | Purpose | Database | Security | Key Features |
 |---------|---------|----------|----------|--------------|
-| `dev` | Local development | H2 in-memory | Permit-all | All features on, H2 console |
+| `dev` | Local development | PostgreSQL (Docker) | Permit-all | All features on |
 | `dev-postgres` | Local with PostgreSQL | PostgreSQL (Docker) | Permit-all | Flyway migrations, real DB |
 | `preview` | Manual QA / smoke testing | PostgreSQL | Permit-all | Most modules disabled, minimal footprint |
 | `safe-mode` | Conservative production | PostgreSQL | JWT only | Only FFmpeg + Libass, all experimental off |

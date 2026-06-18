@@ -1,13 +1,23 @@
+---
+status: current
+last_verified: 2026-06-18
+scope: all
+truth_level: implemented
+owner: platform
+---
+
 # Persistence & Restart Semantics
 
 > **Generated**: 2026-05-08T08:47Z
+> **Updated**: 2026-06-18
 > **Scope**: Documents which business state survives an application restart and which is ephemeral.
+> **Note**: PostgreSQL only. H2 is no longer supported.
 
 ---
 
 ## States That Survive Restart (Persistent)
 
-After Phase T2, the following data is stored in the database (PostgreSQL in production, H2 in test) and **will survive** an application restart:
+After Phase T2, the following data is stored in the database (PostgreSQL) and **will survive** an application restart:
 
 | Data | Table | Repository | Module |
 |------|-------|------------|--------|

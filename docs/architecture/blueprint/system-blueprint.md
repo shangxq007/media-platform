@@ -18,7 +18,7 @@ Media Platform is a **modular monolith** designed for media production workflows
 | Runtime | JVM (Java 25 toolchain) |
 | Framework | Spring Boot 4.0.4 + Spring Modulith 2.0.4 |
 | Module Count | 32 Gradle modules (30 business + platform-app + shared-kernel) |
-| Database | PostgreSQL 16 (production), H2 (dev/test) |
+| Database | PostgreSQL 16 (production) |
 | Workflow Engine | Temporal 1.33.0 (durable) + LiteFlow 2.15.3.2 (local rules) |
 | Frontend | React 19 + TypeScript 5.7 + Vite 6 + TanStack Router/Query |
 | Plugin System | PF4J 3.15.0 |

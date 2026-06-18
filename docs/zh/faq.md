@@ -212,5 +212,5 @@ registry.rollbackExtension("my-provider", "1.0.0", "admin");
 
 **Q: 测试失败**
 1. 运行 `./gradlew clean test`
-2. 检查 H2 内存数据库配置
+2. 检查 PostgreSQL 连接配置
 3. 查看测试报告 `build/reports/tests/test/index.html`
