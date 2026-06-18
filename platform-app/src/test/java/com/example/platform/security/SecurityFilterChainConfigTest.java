@@ -4,6 +4,7 @@ import com.example.platform.identity.app.ApiKeyAuthFilter;
 import com.example.platform.identity.app.IdentityAccessService;
 import com.example.platform.identity.app.IdentityProperties;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -25,7 +26,9 @@ class SecurityFilterChainConfigTest {
         corsConfig.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource cors = new UrlBasedCorsConfigurationSource();
         cors.registerCorsConfiguration("/**", corsConfig);
-        SecurityFilterChainConfig config = new SecurityFilterChainConfig(jwtFilter, apiKeyFilter, cors);
+        ObjectProvider<ApiKeyAuthFilter> apiKeyProvider = mock(ObjectProvider.class);
+        when(apiKeyProvider.getIfAvailable()).thenReturn(apiKeyFilter);
+        SecurityFilterChainConfig config = new SecurityFilterChainConfig(jwtFilter, apiKeyProvider, cors);
         var registration = config.mcpApiKeyAuthFilterRegistration();
 
         assertNotNull(registration);
