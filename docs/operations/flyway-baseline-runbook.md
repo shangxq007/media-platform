@@ -32,6 +32,51 @@ Archived migrations (V2–V5) have been moved to `docs/archive/prelaunch-migrati
 - Consistent schema across dev, test, and staging environments
 - Simplified CI/CD pipeline (one migration to validate)
 
+## Baseline Consolidation (2026-06-18)
+
+### Consolidation Summary
+
+All pre-launch migrations have been consolidated into the single V1 baseline:
+
+**Before Consolidation:**
+- `V1__init_full_schema.sql` (2189 lines) - Core schema
+- `V2__add_outbox_lease_columns.sql` - Outbox lease columns
+- `V6__create_project_import_metadata.sql` - Project import metadata (identity-access-module)
+- `V11__create_product_layer_tables.sql` - Product layer tables (product-layer-module)
+
+**After Consolidation:**
+- `V1__init_full_schema.sql` (2336 lines) - Complete schema with all tables, indexes, and constraints
+
+### What Changed
+
+1. **Outbox Lease Columns**: Added `locked_at`, `locked_by`, `max_retries` columns to `outbox_events` table
+2. **Project Import Metadata**: Added `project_import_metadata` table for imported project shells
+3. **Product Layer Tables**: Added `timeline_template`, `render_preset`, `asset_library`, `render_history`, `ai_suggestion` tables
+4. **PostgreSQL Syntax Fix**: Fixed `double` type to `double precision` for PostgreSQL compatibility
+
+### Why This Is Allowed
+
+This consolidation is allowed because:
+
+1. **Pre-production project**: No non-resettable production database has applied old migration history
+2. **Greenfield deployment**: All environments can be reset to clean state
+3. **Single source of truth**: V1 now represents the complete, tested PostgreSQL schema
+
+### Validation Results
+
+| Environment | Status | Flyway | Tables Created |
+|-------------|--------|--------|----------------|
+| dev-postgres,preview | ✅ Started | V1 applied | All tables created |
+| prod,safe-mode | ✅ Started | Schema up to date | All tables present |
+
+### Important Notes
+
+- **Do NOT apply this consolidation to production databases with existing history**
+- **Non-production databases should be reset** to get clean schema
+- **Future migrations** should be additive (V2, V3, etc.) and never modify V1
+
+---
+
 ## Schema Management Policy
 
 See [Schema Management Policy](../engineering/schema-management-policy.md) for the full policy document.

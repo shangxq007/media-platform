@@ -48,9 +48,16 @@ b3676c8 chore(ai): remove spring ai from active runtime path
 | Check | Status | Notes |
 |-------|--------|-------|
 | PostgreSQL 15 | ✅ | Docker: postgres:15-alpine |
-| Flyway migration | ✅ | All migrations applied |
+| Flyway migration | ✅ | Single V1 baseline applied |
 | Tables created | ✅ | 50+ tables |
 | outbox_events schema | ✅ | Includes locked_at, locked_by, max_retries |
+| Baseline consolidation | ✅ | V1, V2, V6, V11 merged into V1 |
+
+**Baseline Consolidation (2026-06-18)**:
+- Consolidated V1 (2189 lines) + V2 + V6 + V11 into single V1 (2336 lines)
+- Added outbox lease columns, project import metadata, product layer tables
+- Fixed PostgreSQL syntax (`double` → `double precision`)
+- Allowed only because project is pre-production/greenfield
 
 **Schema Validation**:
 ```sql

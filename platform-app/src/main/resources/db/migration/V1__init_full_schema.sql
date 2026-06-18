@@ -40,13 +40,17 @@ create table outbox_events (
     published_at timestamp,
     retry_count int not null default 0,
     next_attempt_at timestamp,
-    idempotency_key varchar(255)
+    idempotency_key varchar(255),
+    locked_at TIMESTAMPTZ,
+    locked_by VARCHAR(100),
+    max_retries INTEGER NOT NULL DEFAULT 3
 );
 
 create index ix_outbox_events_status_created_at on outbox_events(status, created_at);
 create index ix_outbox_events_aggregate on outbox_events(aggregate_type, aggregate_id);
 create index ix_outbox_events_idempotency_key on outbox_events(idempotency_key);
 create index ix_outbox_events_next_attempt_at on outbox_events(next_attempt_at);
+create index ix_outbox_events_locked_at ON outbox_events (locked_at) WHERE locked_at IS NOT NULL;
 
 create table audit_records (
     id varchar(64) primary key,
@@ -2187,3 +2191,145 @@ create table render_job_queue (
 create index ix_queue_status on render_job_queue(status);
 create index ix_queue_priority on render_job_queue(priority desc, created_at asc);
 create index ix_queue_job_id on render_job_queue(job_id);
+
+-- ============================================================
+-- PROJECT IMPORT METADATA (from V6)
+-- ============================================================
+
+create table project_import_metadata (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(64) not null,
+    import_id varchar(64) not null unique,
+    source_project_id varchar(64),
+    source_export_id varchar(64),
+    schema_version varchar(32),
+    timeline_json text,
+    timeline_otio_json text,
+    render_plan_json text,
+    spatial_plan_json text,
+    export_profiles_json text,
+    effect_taxonomy_json text,
+    applied_effects_json text,
+    asset_mapping_json text,
+    created_at timestamp not null default now(),
+
+    constraint fk_import_metadata_project
+        foreign key (project_id)
+        references project(id)
+        on delete cascade
+);
+
+create index idx_project_import_metadata_project_id
+    on project_import_metadata(project_id);
+
+create index idx_project_import_metadata_tenant_project
+    on project_import_metadata(tenant_id, project_id);
+
+create index idx_project_import_metadata_import_id
+    on project_import_metadata(import_id);
+
+create index idx_project_import_metadata_created_at
+    on project_import_metadata(created_at);
+
+-- ============================================================
+-- PRODUCT LAYER TABLES (from V11)
+-- ============================================================
+
+-- Timeline template table
+CREATE TABLE timeline_template (
+    id VARCHAR(64) PRIMARY KEY,
+    workspace_id VARCHAR(64),
+    name VARCHAR(256) NOT NULL,
+    description TEXT,
+    category VARCHAR(64),
+    creator_id VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
+    timeline_json TEXT,
+    effect_keys TEXT,
+    metadata TEXT,
+    version INT NOT NULL DEFAULT 1,
+    parent_template_id VARCHAR(64),
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    CONSTRAINT fk_template_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id)
+);
+
+CREATE INDEX ix_template_workspace ON timeline_template(workspace_id);
+CREATE INDEX ix_template_category ON timeline_template(category);
+CREATE INDEX ix_template_status ON timeline_template(status);
+
+-- Render preset table
+CREATE TABLE render_preset (
+    id VARCHAR(64) PRIMARY KEY,
+    workspace_id VARCHAR(64),
+    name VARCHAR(256) NOT NULL,
+    description TEXT,
+    creator_id VARCHAR(64) NOT NULL,
+    format VARCHAR(32),
+    resolution VARCHAR(32),
+    profile VARCHAR(64),
+    settings TEXT,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    CONSTRAINT fk_preset_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id)
+);
+
+CREATE INDEX ix_preset_workspace ON render_preset(workspace_id);
+
+-- Asset library table
+CREATE TABLE asset_library (
+    id VARCHAR(64) PRIMARY KEY,
+    workspace_id VARCHAR(64) NOT NULL,
+    name VARCHAR(256) NOT NULL,
+    description TEXT,
+    type VARCHAR(32) NOT NULL DEFAULT 'GENERAL',
+    asset_count INT DEFAULT 0,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    CONSTRAINT fk_library_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id)
+);
+
+CREATE INDEX ix_library_workspace ON asset_library(workspace_id);
+
+-- Render history table
+CREATE TABLE render_history (
+    id VARCHAR(64) PRIMARY KEY,
+    workspace_id VARCHAR(64) NOT NULL,
+    project_id VARCHAR(64) NOT NULL,
+    render_job_id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(64) NOT NULL,
+    preset_id VARCHAR(64),
+    status VARCHAR(32) NOT NULL DEFAULT 'STARTED',
+    output_uri TEXT,
+    duration_ms BIGINT DEFAULT 0,
+    created_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
+    CONSTRAINT fk_history_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id),
+    CONSTRAINT fk_history_project FOREIGN KEY (project_id) REFERENCES project(id)
+);
+
+CREATE INDEX ix_history_workspace ON render_history(workspace_id);
+CREATE INDEX ix_history_project ON render_history(project_id);
+CREATE INDEX ix_history_user ON render_history(user_id);
+
+-- AI suggestion table
+CREATE TABLE ai_suggestion (
+    id VARCHAR(64) PRIMARY KEY,
+    project_id VARCHAR(64) NOT NULL,
+    workspace_id VARCHAR(64) NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    title VARCHAR(256) NOT NULL,
+    description TEXT,
+    confidence DOUBLE PRECISION,
+    affected_clip_ids TEXT,
+    suggested_changes TEXT,
+    trace_id VARCHAR(128),
+    created_at TIMESTAMP NOT NULL,
+    CONSTRAINT fk_suggestion_project FOREIGN KEY (project_id) REFERENCES project(id),
+    CONSTRAINT fk_suggestion_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id)
+);
+
+CREATE INDEX ix_suggestion_project ON ai_suggestion(project_id);
+CREATE INDEX ix_suggestion_workspace ON ai_suggestion(workspace_id);
