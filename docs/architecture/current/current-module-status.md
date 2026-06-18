@@ -126,6 +126,8 @@ owner: platform
 | ExtensionProvider registry | ⚠️ Skeleton only | Registry exists, provider invocation not implemented |
 | EventType registry | ⚠️ Skeleton only | Registry exists, event bus not implemented |
 | HookPoint registry | ⚠️ Skeleton only | Registry exists, hook runtime not implemented |
+| Flow validation skeleton | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/validation/` |
+| Flow validation rules | ✅ Implemented | Validates registry references, cycles, disconnected nodes |
 | Event bus | ❌ Not implemented | Contracts only |
 | Hook runtime | ❌ Not implemented | Contracts only |
 | Connector marketplace | ❌ Not implemented | No marketplace infrastructure |

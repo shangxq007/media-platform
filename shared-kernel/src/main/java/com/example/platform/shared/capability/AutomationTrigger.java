@@ -10,6 +10,8 @@ import java.util.Map;
  */
 public record AutomationTrigger(
     TriggerType type,
+    String eventType,
+    String eventVersion,
     Map<String, Object> config
 ) {
     public enum TriggerType {

@@ -128,10 +128,10 @@ class CapabilityContractsTest {
             "flow-123",
             "tenant-456",
             "Test Flow",
-            new AutomationTrigger(AutomationTrigger.TriggerType.EVENT, Map.of("event", "asset.uploaded")),
+            new AutomationTrigger(AutomationTrigger.TriggerType.EVENT, "asset.uploaded", "1.0.0", Map.of("event", "asset.uploaded")),
             List.of(
-                new AutomationFlow.FlowNode("node-1", "media.generate_proxy", Map.of(), AutomationFlow.FlowNodeErrorPolicy.FAIL),
-                new AutomationFlow.FlowNode("node-2", "notification.send", Map.of(), AutomationFlow.FlowNodeErrorPolicy.SKIP)
+                new AutomationFlow.FlowNode("node-1", AutomationFlow.NodeType.ACTION, "media.generate_proxy", "1.0.0", Map.of(), Set.of(), AutomationFlow.FlowNodeErrorPolicy.FAIL),
+                new AutomationFlow.FlowNode("node-2", AutomationFlow.NodeType.ACTION, "notification.send", "1.0.0", Map.of(), Set.of(), AutomationFlow.FlowNodeErrorPolicy.SKIP)
             ),
             List.of(
                 new AutomationFlow.FlowEdge("node-1", "node-2", "success")

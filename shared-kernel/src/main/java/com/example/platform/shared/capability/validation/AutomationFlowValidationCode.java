@@ -1,0 +1,22 @@
+package com.example.platform.shared.capability.validation;
+
+/**
+ * Validation codes for automation flow validation issues.
+ */
+public enum AutomationFlowValidationCode {
+    FLOW_ID_MISSING,
+    TENANT_ID_MISSING,
+    TRIGGER_MISSING,
+    NODE_MISSING,
+    EDGE_INVALID,
+    NODE_REFERENCES_UNKNOWN_ACTION,
+    NODE_REFERENCES_UNKNOWN_EXTENSION_POINT,
+    TRIGGER_REFERENCES_UNKNOWN_EVENT_TYPE,
+    HOOK_REFERENCES_UNKNOWN_HOOK_POINT,
+    CYCLE_DETECTED,
+    DISCONNECTED_NODE,
+    UNSUPPORTED_NODE_TYPE,
+    UNSUPPORTED_RUNTIME_TYPE,
+    PERMISSION_SCOPE_MISSING,
+    IDEMPOTENCY_POLICY_MISSING
+}

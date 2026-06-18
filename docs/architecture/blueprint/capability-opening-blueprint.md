@@ -707,6 +707,32 @@ Hook points can be registered and discovered.
 
 **Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/`
 
+### Flow Validation Skeleton
+
+Automation flow definitions can be validated against registered capabilities.
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `AutomationFlowValidator` | Class | ✅ Implemented |
+| `AutomationFlowValidationResult` | Record | ✅ Implemented |
+| `AutomationFlowValidationIssue` | Record | ✅ Implemented |
+| `AutomationFlowValidationSeverity` | Enum | ✅ Implemented |
+| `AutomationFlowValidationCode` | Enum | ✅ Implemented |
+
+**Validation rules:**
+- Flow ID and tenant ID must exist
+- Trigger must exist
+- At least one node must exist
+- Edge endpoints must reference known nodes
+- Action nodes must reference registered SystemAction
+- Extension point nodes must reference registered ExtensionPoint
+- Hook nodes must reference registered HookPoint
+- Event triggers must reference registered EventType
+- Cycle detection for DAG validation
+- Disconnected node warning
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/validation/`
+
 ### What Is NOT Implemented
 
 | Component | Status | Notes |
