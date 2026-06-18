@@ -226,6 +226,8 @@ owner: platform
 | Flow validation rules | ✅ Implemented | Validates registry references, cycles, disconnected nodes |
 | Built-in SystemAction catalog | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/action/` |
 | Built-in action metadata | ✅ Implemented | 12 metadata-only actions (render, media, artifact, review, notification, webhook) |
+| Execution skeleton | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/execution/` |
+| Validating executor | ✅ Implemented | Validates requests, supports dry-run, returns NOT_IMPLEMENTED for real execution |
 | Event bus | ❌ Not implemented | Contracts only |
 | Hook runtime | ❌ Not implemented | Contracts only |
 | Connector marketplace | ❌ Not implemented | No marketplace infrastructure |

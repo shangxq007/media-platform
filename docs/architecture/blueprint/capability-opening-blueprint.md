@@ -762,6 +762,31 @@ Built-in system actions provide metadata for first-party platform actions.
 
 **Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/action/`
 
+### System Action Execution Skeleton
+
+Execution abstraction for system actions.
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `SystemActionExecutor` | Interface | ✅ Implemented |
+| `SystemActionExecutionContext` | Record | ✅ Implemented |
+| `SystemActionExecutionRequest` | Record | ✅ Implemented |
+| `SystemActionExecutionResult` | Record | ✅ Implemented |
+| `SystemActionExecutionStatus` | Enum | ✅ Implemented |
+| `ValidatingSystemActionExecutor` | Class | ✅ Implemented |
+
+**Execution capabilities:**
+- Validate action exists in registry
+- Validate request shape (basic)
+- Support dry-run mode
+- Return NOT_IMPLEMENTED for real execution
+- No side effects
+
+**Important stability note:**
+STABLE means the metadata key/contract is stable. It does NOT mean runtime execution is implemented.
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/execution/`
+
 ### What Is NOT Implemented
 
 | Component | Status | Notes |
