@@ -615,3 +615,64 @@ The following registries are defined in `shared-kernel/src/main/java/com/example
 - [Current Module Status](../current/current-module-status.md)
 - [Current Known Gaps](../current/current-known-gaps.md)
 - [Contract Source](../../../shared-kernel/src/main/java/com/example/platform/shared/capability/)
+
+---
+
+## 10. Events, Hooks, Actions, and ExtensionPoints
+
+> **Important distinction:** These are four different concepts with different purposes.
+
+| Concept | Purpose | Example | Status |
+|---------|---------|---------|--------|
+| DomainEvent | Immutable fact that already happened | `asset.uploaded`, `render.completed` | ✅ Contract defined |
+| HookPoint | Controlled lifecycle interception point | `render.before_create`, `asset.after_upload` | ✅ Contract defined |
+| SystemAction | Callable platform operation | `render.create_job`, `media.generate_thumbnail` | ✅ Contract defined |
+| ExtensionPoint | Provider-backed capability contract | `ai.transcribe`, `media.generate_thumbnail` | ✅ Contract defined |
+
+### Event Contracts
+
+Events are facts that already happened. They are immutable and should not block the original operation.
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `DomainEvent` | Record | ✅ Defined |
+| `EventEnvelope` | Record | ✅ Defined |
+| `EventSubscription` | Record | ✅ Defined |
+
+**Event rules:**
+- Events describe facts that already happened
+- Events must not block the original operation
+- Events are intended for automation triggers, webhook delivery, notification
+- Event bus/runtime is not implemented
+
+### Hook Contracts
+
+Hooks are lifecycle interception points. They can allow or deny operations.
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `HookPoint` | Record | ✅ Defined |
+| `HookHandler` | Interface | ✅ Defined |
+| `HookInvocation` | Record | ✅ Defined |
+| `HookResult` | Record | ✅ Defined |
+| `HookPhase` | Enum | ✅ Defined |
+| `HookDecision` | Enum | ✅ Defined |
+| `HookFailurePolicy` | Enum | ✅ Defined |
+| `HookHandlerCapabilities` | Record | ✅ Defined |
+
+**Hook rules:**
+- Hooks are lifecycle interception points
+- Before hooks may allow or deny
+- After hooks should not mutate core state in early phases
+- External hook handlers are not implemented
+- Hook runtime is not implemented
+
+### What Is NOT Implemented
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Event bus | ❌ Not implemented | Contracts only |
+| Event runtime | ❌ Not implemented | Contracts only |
+| Hook runtime | ❌ Not implemented | Contracts only |
+| External hook handlers | ❌ Not implemented | Contracts only |
+| Event-backed automation | ❌ Not implemented | Contracts only |

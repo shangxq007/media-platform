@@ -345,14 +345,75 @@ graph TD
 
 | Phase | Status | Estimated Timeline |
 |-------|--------|-------------------|
-| Phase 0 | Planned | Q3 2026 |
-| Phase 1 | Planned | Q3-Q4 2026 |
+| Phase 0 | ✅ Implemented | Q3 2026 |
+| Phase 1 | ⚠️ Skeleton Only | Q3-Q4 2026 |
 | Phase 2 | Planned | Q4 2026 |
-| Phase 3 | Planned | Q4 2026 - Q1 2027 |
+| Phase 3 | ⚠️ Skeleton Only | Q4 2026 - Q1 2027 |
 | Phase 4 | Planned | Q1 2027 |
 | Phase 5 | Deferred | TBD |
 | Phase 6 | Deferred | TBD |
 | Phase 7 | Deferred | TBD |
+
+---
+
+## Event and Hook Phases
+
+### Event Contracts
+
+**Status:** ✅ Implemented (Contract skeleton exists in shared-kernel)
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `DomainEvent` | Record | ✅ Defined |
+| `EventEnvelope` | Record | ✅ Defined |
+| `EventSubscription` | Record | ✅ Defined |
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/event/`
+
+### Hook Contracts
+
+**Status:** ✅ Implemented (Contract skeleton exists in shared-kernel)
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `HookPoint` | Record | ✅ Defined |
+| `HookHandler` | Interface | ✅ Defined |
+| `HookInvocation` | Record | ✅ Defined |
+| `HookResult` | Record | ✅ Defined |
+| `HookPhase` | Enum | ✅ Defined |
+| `HookDecision` | Enum | ✅ Defined |
+| `HookFailurePolicy` | Enum | ✅ Defined |
+| `HookHandlerCapabilities` | Record | ✅ Defined |
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/hook/`
+
+### Event-Backed Automation
+
+**Status:** Planned
+
+**Scope:**
+- Events trigger automation flows
+- Events delivered to webhooks
+- Events delivered to notifications
+- Events published via outbox
+
+### Internal Hooks
+
+**Status:** Planned
+
+**Scope:**
+- Internal hook points for render, asset, review
+- Before/after hooks for validation and audit
+- Failure hooks for error handling
+
+### External/Reviewed Hooks
+
+**Status:** Deferred
+
+**Scope:**
+- External hook handlers
+- Reviewed hook marketplace
+- Tenant-installed hooks
 
 ---
 
