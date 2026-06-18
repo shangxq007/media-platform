@@ -1,5 +1,7 @@
 # 文档索引
 
+> **Important:** 存档文档是历史记录，不是当前真相。请使用 [architecture/current](../architecture/current/) 获取当前状态。
+
 按阅读顺序与主题整理的入口；实现细节以 **Gradle 依赖与源码** 为准。
 
 | 文档 | 说明 |

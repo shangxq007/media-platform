@@ -240,4 +240,6 @@ owner: platform
 | Sandbox runtime | ❌ Not implemented | Stub only |
 | BYOK/custom AI provider | ❌ Roadmap | Not in platform-app runtime |
 | Plugin security sandbox | ❌ Not implemented | No Wasm/container isolation |
+| Temporal integration | ❌ Not implemented | Future consideration for long-running workflows |
+| LiteFlow integration | ❌ Not implemented | Future consideration for policy chains |
 | Automation workflows | ❌ Not implemented | Config-only workflows not implemented |

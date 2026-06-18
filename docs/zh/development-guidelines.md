@@ -173,7 +173,7 @@ registry.registerPromptExtension("prompt.custom_greeting", new PromptExtensionSP
 
 ### 测试分层
 - **单元测试:** 纯 JUnit，无 Spring 上下文
-- **集成测试:** `@SpringBootTest`，H2 内存数据库
+- **集成测试:** `@SpringBootTest`，PostgreSQL TestContainers（H2 不再支持）
 - **模块测试:** Spring Modulith `@ApplicationModuleTest`
 
 ### 测试覆盖要求

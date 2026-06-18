@@ -70,6 +70,8 @@ See [release-candidate-readiness-2026-06-17.md](review/release-candidate-readine
   - [Security & Identity](architecture/blueprint/module-blueprint-security-identity.md)
   - [Observability](architecture/blueprint/module-blueprint-observability.md)
   - [Capability Opening](architecture/blueprint/capability-opening-blueprint.md) *(blueprint only)*
+  - [Reference Architecture Map](architecture/blueprint/reference-architecture-map.md) *(blueprint only)*
+  - [Platform Composition Blueprint](architecture/blueprint/platform-composition-blueprint.md) *(blueprint only)*
 - [Current Known Gaps](architecture/current/current-known-gaps.md)
 
 ### Review
@@ -94,4 +96,5 @@ See [release-candidate-readiness-2026-06-17.md](review/release-candidate-readine
 - Spring AI is isolated and not active in runtime
 - Automation/Plugin platform is blueprint only
 - Capability opening documents describe a phased target model. They must not be interpreted as implemented runtime behavior.
+- Reference architecture documents are inspiration maps. They do not imply dependency adoption.
 - See [Current Known Gaps](architecture/current/current-known-gaps.md) for implementation gaps

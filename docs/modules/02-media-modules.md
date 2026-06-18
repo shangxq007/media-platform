@@ -35,16 +35,18 @@ Core render orchestration module. Manages render jobs, provider routing, and quo
 
 ## workflow-module
 
-**Status:** ✅ Implemented
+**Status:** ⚠️ Disabled (preview)
 
-Temporal + LiteFlow workflow orchestration.
+Temporal + LiteFlow workflow orchestration. Currently disabled in preview mode.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Temporal workflow definitions | ✅ | RenderWorkflowImpl |
-| Temporal activity implementations | ✅ | RenderActivitiesImpl |
-| LiteFlow rule chains | ✅ | Provider selection, routing |
+| Temporal workflow definitions | ⚠️ Skeleton | RenderWorkflowImpl (not in active runtime) |
+| Temporal activity implementations | ⚠️ Skeleton | RenderActivitiesImpl (not in active runtime) |
+| LiteFlow rule chains | ⚠️ Skeleton | Provider selection, routing (not in active runtime) |
 | Feature flag integration | ✅ | Via FeatureFlagEvaluator SPI |
+
+**Note:** Temporal and LiteFlow integration is planned for future phases. Current implementation is skeleton only and disabled in preview mode.
 
 **Dependencies:** `shared-kernel`, `policy-governance-module` (feature-flags)
 
