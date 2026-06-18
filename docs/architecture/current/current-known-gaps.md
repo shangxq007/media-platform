@@ -200,3 +200,24 @@ owner: platform
 - [Backend-first Stabilization Plan](../backend-first-stabilization-plan.md)
 - [Release Candidate Readiness](../../review/release-candidate-readiness-2026-06-17.md)
 - [Production Readiness Checklist](../../production-readiness.md)
+- [Capability Opening Blueprint](../blueprint/capability-opening-blueprint.md)
+- [Capability Opening Roadmap](../../roadmap/capability-opening-roadmap.md)
+
+---
+
+## 10. Capability Opening Gaps
+
+> **Note:** The capability opening model is blueprint only. See [Capability Opening Blueprint](../blueprint/capability-opening-blueprint.md) for target architecture.
+
+| Gap | Status | Notes |
+|-----|--------|-------|
+| Capability opening model | Blueprint only | Not implemented |
+| Formal SystemAction registry | ❌ Not implemented | Actions exist as services, not formal registry |
+| Automation flow engine | ❌ Not implemented | No workflow execution engine |
+| ExtensionPoint SPI | ❌ Not implemented | No formal SPI contracts |
+| Connector marketplace | ❌ Not implemented | No marketplace infrastructure |
+| Plugin marketplace | ❌ Not implemented | No marketplace infrastructure |
+| Sandbox runtime | ❌ Not implemented | Stub only |
+| BYOK/custom AI provider | ❌ Roadmap | Not in platform-app runtime |
+| Plugin security sandbox | ❌ Not implemented | No Wasm/container isolation |
+| Automation workflows | ❌ Not implemented | Config-only workflows not implemented |

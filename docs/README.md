@@ -69,6 +69,7 @@ See [release-candidate-readiness-2026-06-17.md](review/release-candidate-readine
   - [AI Provider](architecture/blueprint/module-blueprint-ai-provider.md) *(blueprint only)*
   - [Security & Identity](architecture/blueprint/module-blueprint-security-identity.md)
   - [Observability](architecture/blueprint/module-blueprint-observability.md)
+  - [Capability Opening](architecture/blueprint/capability-opening-blueprint.md) *(blueprint only)*
 - [Current Known Gaps](architecture/current/current-known-gaps.md)
 
 ### Review
@@ -78,6 +79,7 @@ See [release-candidate-readiness-2026-06-17.md](review/release-candidate-readine
 
 ### Roadmap
 - [Technical Debt Roadmap](roadmap/technical-debt-roadmap.md)
+- [Capability Opening Roadmap](roadmap/capability-opening-roadmap.md)
 - [Automation/Plugin Platform Roadmap](roadmap/automation-plugin-platform-roadmap.md)
 - [AI Provider Ecosystem Roadmap](roadmap/ai-provider-ecosystem-roadmap.md)
 - [Render Pipeline Roadmap](roadmap/render-pipeline-roadmap.md)
@@ -91,4 +93,5 @@ See [release-candidate-readiness-2026-06-17.md](review/release-candidate-readine
 - H2 is unsupported (PostgreSQL only)
 - Spring AI is isolated and not active in runtime
 - Automation/Plugin platform is blueprint only
+- Capability opening documents describe a phased target model. They must not be interpreted as implemented runtime behavior.
 - See [Current Known Gaps](architecture/current/current-known-gaps.md) for implementation gaps

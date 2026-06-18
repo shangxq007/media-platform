@@ -133,3 +133,47 @@ This module is entirely blueprint/roadmap. No runtime implementation exists.
 | Marketplace | Not implemented | Critical |
 | Plugin sandboxing | Not implemented | Critical |
 | Plugin API | Not implemented | Critical |
+
+---
+
+## 16. Relationship to Capability Opening Blueprint
+
+See [Capability Opening Blueprint](capability-opening-blueprint.md) for the phased approach to system capability opening.
+
+### Role in Capability Opening Model
+
+| Concept | Role | Description |
+|---------|------|-------------|
+| SystemAction | Callable unit | The atomic work unit that automation flows execute |
+| ExtensionPoint | Stable contract | The SPI that defines how providers extend capabilities |
+| ExtensionProvider | Implementation | The provider that implements an ExtensionPoint |
+| AutomationFlow | Orchestration | Config-only workflow that chains SystemActions |
+| AutomationTrigger | Entry point | Event/schedule/manual trigger for flows |
+| ConnectorProvider | Marketplace item | Reviewed connector installable by tenants |
+| PluginManifest | Plugin declaration | Declares plugin capabilities and permissions |
+
+### Key Clarifications
+
+1. **Automation is orchestration layer** - Automation flows execute SystemActions, they don't implement them
+2. **SystemAction is the callable unit** - Actions are defined elsewhere, automation calls them
+3. **ExtensionPoint is the stable contract** - Providers implement ExtensionPoints
+4. **Marketplace is future, not current** - Connector marketplace (Level 3) and plugin marketplace (Level 4) are deferred
+5. **Early phases are internal and config-only** - Levels 0-2 don't require marketplace infrastructure
+
+### Capability Opening Levels
+
+| Level | Description | Automation Role |
+|-------|-------------|----------------|
+| Level 0 | Internal System Actions | Actions exist as services, automation can call them |
+| Level 1 | Internal Automation Flows | Automation engine executes config-only flows |
+| Level 2 | ExtensionPoint / Provider SPI | Automation can invoke providers via ExtensionPoints |
+| Level 3 | Connector Marketplace | Automation can use marketplace connectors |
+| Level 4 | Reviewed Plugin Marketplace | Automation can orchestrate plugin execution |
+| Level 5 | Sandbox / Container Runtime | Automation can execute sandboxed code |
+
+### Non-Goals
+
+- ❌ Automation should not implement arbitrary code execution in early phases
+- ❌ Automation should not bypass tenant permissions
+- ❌ Automation should not expose production secrets
+- ❌ Automation should not allow ungated marketplace installation

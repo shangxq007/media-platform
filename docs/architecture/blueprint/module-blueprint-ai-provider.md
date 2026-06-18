@@ -135,3 +135,43 @@ The AI Provider Ecosystem enables integration with various AI/LLM providers for 
 | Cost tracking | Not implemented | High |
 | Prompt marketplace | Not implemented | High |
 | BYOK support | Not implemented | Medium |
+
+---
+
+## 16. Relationship to Capability Opening Blueprint
+
+See [Capability Opening Blueprint](capability-opening-blueprint.md) for the phased approach to system capability opening.
+
+### AI Providers as ExtensionProviders
+
+AI providers are a class of ExtensionProvider in the capability opening model:
+
+| Capability Level | AI Provider Role | Description |
+|------------------|------------------|-------------|
+| Level 2 | ExtensionPoint / Provider SPI | AI capabilities (transcribe, translate, etc.) exposed as ExtensionPoints |
+| Level 3 | Connector Marketplace | BYOK/custom HTTP AI providers as marketplace connectors |
+| Level 4 | Plugin Marketplace | AI plugins with custom logic |
+| Level 5 | Sandbox Runtime | Sandboxed AI functions |
+
+### Key Clarifications
+
+1. **AI providers are ExtensionProviders** - They implement ExtensionPoints like `ai.transcribe`, `ai.translate`, etc.
+2. **BYOK/custom HTTP provider belongs to Level 2/3** - Built-in providers at Level 2, custom HTTP connectors at Level 3
+3. **Spring AI remains isolated optional adapter** - Not active in platform-app runtime, remains in `spring-ai-adapter` module
+4. **AI provider ecosystem must not require Spring AI in platform-app** - Platform can use AI providers via ExtensionPoint SPI without Spring AI dependency
+
+### BYOK Support Path
+
+| Phase | BYOK Capability | Status |
+|-------|-----------------|--------|
+| Level 2 | Built-in providers with API key config | Planned |
+| Level 3 | Custom HTTP AI endpoint connector | Planned |
+| Level 3 | OpenAI-compatible connector | Planned |
+| Level 4 | Marketplace AI plugins | Deferred |
+
+### Non-Goals
+
+- ❌ AI providers should not require Spring AI in platform-app runtime
+- ❌ AI providers should not expose production secrets
+- ❌ AI providers should not bypass tenant isolation
+- ❌ AI providers should not allow arbitrary code execution (Level 5 only)

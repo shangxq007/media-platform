@@ -104,3 +104,23 @@ owner: platform
 - [Module Architecture](../03-module-architecture.md)
 - [Platform Fact Gathering Report](../platform-fact-gathering-report.md)
 - [Backend-first Stabilization Plan](../backend-first-stabilization-plan.md)
+- [Capability Opening Blueprint](../blueprint/capability-opening-blueprint.md)
+- [Capability Opening Roadmap](../../roadmap/capability-opening-roadmap.md)
+
+---
+
+## Capability Opening Status
+
+> **Note:** The capability opening model is blueprint only. See [Capability Opening Blueprint](../blueprint/capability-opening-blueprint.md) for target architecture.
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Capability opening model | Blueprint only | Not implemented |
+| Formal SystemAction registry | ❌ Not implemented | Actions exist as services, not formal registry |
+| Automation flow engine | ❌ Not implemented | No workflow execution engine |
+| ExtensionPoint SPI | ❌ Not implemented | No formal SPI contracts |
+| Connector marketplace | ❌ Not implemented | No marketplace infrastructure |
+| Plugin marketplace | ❌ Not implemented | No marketplace infrastructure |
+| Sandbox runtime | ❌ Not implemented | Stub only |
+| BYOK/custom AI provider | ❌ Roadmap | Not in platform-app runtime |
+| Plugin security sandbox | ❌ Not implemented | No Wasm/container isolation |
