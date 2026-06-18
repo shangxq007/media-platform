@@ -41,11 +41,15 @@ public class SecurityConfiguration {
     }
 
     @Bean
+    ApiKeyAuthFilter apiKeyAuthFilter(IdentityAccessService identityAccessService) {
+        return new ApiKeyAuthFilter(identityAccessService, identityProperties);
+    }
+
+    @Bean
     @Order(1)
     FilterRegistrationBean<ApiKeyAuthFilter> apiKeyAuthFilterRegistration(
-            IdentityAccessService identityAccessService) {
-        ApiKeyAuthFilter filter = new ApiKeyAuthFilter(identityAccessService, identityProperties);
-        FilterRegistrationBean<ApiKeyAuthFilter> registration = new FilterRegistrationBean<>(filter);
+            ApiKeyAuthFilter apiKeyAuthFilter) {
+        FilterRegistrationBean<ApiKeyAuthFilter> registration = new FilterRegistrationBean<>(apiKeyAuthFilter);
         registration.addUrlPatterns("/api/v1/*");
         registration.setOrder(1);
         registration.setEnabled(identityProperties.isApiKeyAuthEnabled());

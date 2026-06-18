@@ -21,6 +21,12 @@ app:
     dev-auth-endpoint: false
     oidc-dev-bootstrap:
       enabled: false
+    oauth2:
+      enabled: false
+    jwt:
+      enabled: true
+    api-key:
+      enabled: false
 render:
   providers:
     # Stable providers only

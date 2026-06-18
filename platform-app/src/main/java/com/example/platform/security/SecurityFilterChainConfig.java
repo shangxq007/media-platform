@@ -1,6 +1,7 @@
 package com.example.platform.security;
 
 import com.example.platform.identity.app.ApiKeyAuthFilter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -24,19 +25,23 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityFilterChainConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    private final ApiKeyAuthFilter apiKeyAuthFilter;
+    private final ObjectProvider<ApiKeyAuthFilter> apiKeyAuthFilterProvider;
     private final CorsConfigurationSource corsConfigurationSource;
 
-    public SecurityFilterChainConfig(JwtAuthFilter jwtAuthFilter, ApiKeyAuthFilter apiKeyAuthFilter,
+    public SecurityFilterChainConfig(JwtAuthFilter jwtAuthFilter, ObjectProvider<ApiKeyAuthFilter> apiKeyAuthFilterProvider,
             CorsConfigurationSource corsConfigurationSource) {
         this.jwtAuthFilter = jwtAuthFilter;
-        this.apiKeyAuthFilter = apiKeyAuthFilter;
+        this.apiKeyAuthFilterProvider = apiKeyAuthFilterProvider;
         this.corsConfigurationSource = corsConfigurationSource;
     }
 
     @Bean
     @Order(1)
     FilterRegistrationBean<ApiKeyAuthFilter> mcpApiKeyAuthFilterRegistration() {
+        ApiKeyAuthFilter apiKeyAuthFilter = apiKeyAuthFilterProvider.getIfAvailable();
+        if (apiKeyAuthFilter == null) {
+            return null;
+        }
         FilterRegistrationBean<ApiKeyAuthFilter> registration = new FilterRegistrationBean<>(apiKeyAuthFilter);
         registration.addUrlPatterns("/api/v1/mcp/*");
         registration.setOrder(1);
