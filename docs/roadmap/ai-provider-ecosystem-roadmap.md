@@ -25,7 +25,7 @@ owner: platform
 | Module isolation | ✅ Complete | `spring-ai-adapter` not pulled into `platform-app` |
 | Spring AI dependency | ⚠️ Present in `spring-ai-adapter` | `org.springframework.ai:spring-ai-starter-model-openai` |
 | Runtime path | ✅ Excluded | No `spring.ai` properties in `platform-app` |
-| Test scope | ✅ Isolated | H2 only in test scope |
+| Test scope | ✅ Isolated | PostgreSQL only in test scope |
 
 **Evidence:**
 - `grep -R "spring.ai" platform-app/` → No results

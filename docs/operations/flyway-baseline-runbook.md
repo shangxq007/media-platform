@@ -378,11 +378,11 @@ Validate failed: Migrations have failed migration
 - Ensure migration numbers are sequential
 - If needed, enable out-of-order: `spring.flyway.out-of-order=true`
 
-### H2 Test Database Issues
+### Test Database Issues
 
 **Symptom**: Tests fail with schema errors when Flyway is enabled.
 
-**Cause**: H2 compatibility issues with PostgreSQL-specific SQL.
+**Cause**: PostgreSQL-specific SQL may have syntax issues.
 
 **Fix**: Disable Flyway in test profile and use `schema.sql`:
 ```yaml
@@ -396,7 +396,6 @@ spring:
 
 - [FlywayConfiguration.java](../../platform-app/src/main/java/com/example/platform/FlywayConfiguration.java)
 - [V1__init_full_schema.sql](../../platform-app/src/main/resources/db/migration/V1__init_full_schema.sql)
-- [V2__add_outbox_lease_columns.sql](../../platform-app/src/main/resources/db/migration/V2__add_outbox_lease_columns.sql)
 - [Schema Management Policy](../engineering/schema-management-policy.md)
 - [Dev-Postgres Configuration](../../platform-app/src/main/resources/application-dev-postgres.yml)
 - [Safe-Mode Configuration](../../platform-app/src/main/resources/application-safe-mode.yml)

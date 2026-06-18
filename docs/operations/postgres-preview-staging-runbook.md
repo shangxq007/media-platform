@@ -28,9 +28,9 @@ SPRING_PROFILES_ACTIVE=prod,safe-mode,preview
 
 The following are NOT supported in the active runtime path:
 
-- H2 database
-- H2 console
-- `jdbc:h2` connection strings
+- H2 database (deprecated)
+- H2 console (deprecated)
+- `jdbc:h2` connection strings (deprecated)
 - Spring AI in platform-app (moved to optional `spring-ai-adapter` module)
 - OpenAI API keys in preview/staging-safe-mode
 
