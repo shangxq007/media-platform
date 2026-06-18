@@ -132,6 +132,8 @@ owner: platform
 | Built-in action metadata | ✅ Implemented | 12 metadata-only actions (render, media, artifact, review, notification, webhook) |
 | Execution skeleton | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/execution/` |
 | Validating executor | ✅ Implemented | Validates requests, supports dry-run, returns NOT_IMPLEMENTED for real execution |
+| AutomationFlow dry-run executor | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/flow/` |
+| Dry-run capabilities | ✅ Implemented | Validates flows, produces traces, dry-runs ACTION nodes, marks non-runtime nodes |
 | Event bus | ❌ Not implemented | Contracts only |
 | Hook runtime | ❌ Not implemented | Contracts only |
 | Connector marketplace | ❌ Not implemented | No marketplace infrastructure |

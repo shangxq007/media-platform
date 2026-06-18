@@ -787,6 +787,37 @@ STABLE means the metadata key/contract is stable. It does NOT mean runtime execu
 
 **Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/execution/`
 
+### AutomationFlow Dry-Run Executor
+
+Dry-run executor for automation flows.
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `AutomationFlowDryRunExecutor` | Class | ✅ Implemented |
+| `AutomationFlowDryRunRequest` | Record | ✅ Implemented |
+| `AutomationFlowDryRunResult` | Record | ✅ Implemented |
+| `AutomationNodeDryRunResult` | Record | ✅ Implemented |
+| `AutomationFlowDryRunStatus` | Enum | ✅ Implemented |
+| `AutomationNodeDryRunStatus` | Enum | ✅ Implemented |
+
+**Dry-run capabilities:**
+- Validate flow first
+- Process ACTION nodes through ValidatingSystemActionExecutor with dryRun=true
+- Mark EXTENSION_POINT/HOOK nodes as NOT_IMPLEMENTED
+- Map NOTIFICATION/WEBHOOK nodes to SystemAction metadata if registered
+- Mark CONDITION/APPROVAL/DELAY nodes as SKIPPED
+- Produce deterministic node result order
+- No side effects
+
+**Important notes:**
+- Dry-run is validation/explain-plan only
+- Real runtime still not implemented
+- No events/hooks/providers are invoked
+- No webhooks/notifications/render jobs are created
+- Temporal/LiteFlow integration not implemented
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/flow/`
+
 ### What Is NOT Implemented
 
 | Component | Status | Notes |
