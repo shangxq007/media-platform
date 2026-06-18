@@ -114,7 +114,6 @@ SPRING_PROFILES_ACTIVE=prod
 
 **What's active:**
 - Full security (OAuth2 + JWT)
-- H2 console disabled
 - Production checks enabled
 - Modulith violation budget: 0
 - Outbox drain on shutdown (batch: 100)
