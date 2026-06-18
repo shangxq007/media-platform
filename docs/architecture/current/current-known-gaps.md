@@ -220,6 +220,8 @@ owner: platform
 | Automation flow engine | ❌ Not implemented | No workflow execution engine |
 | ExtensionPoint SPI | ⚠️ Skeleton only | Registry exists, runtime execution not implemented |
 | ExtensionProvider registry | ⚠️ Skeleton only | Registry exists, provider invocation not implemented |
+| EventType registry | ⚠️ Skeleton only | Registry exists, event bus not implemented |
+| HookPoint registry | ⚠️ Skeleton only | Registry exists, hook runtime not implemented |
 | Event bus | ❌ Not implemented | Contracts only |
 | Hook runtime | ❌ Not implemented | Contracts only |
 | Connector marketplace | ❌ Not implemented | No marketplace infrastructure |

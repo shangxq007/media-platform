@@ -387,6 +387,46 @@ graph TD
 
 **Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/hook/`
 
+### Event Type Registry
+
+**Status:** ✅ Implemented (Registry skeleton exists in shared-kernel)
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `EventTypeDescriptor` | Record | ✅ Defined |
+| `EventTypeRegistry` | Interface | ✅ Defined |
+| `InMemoryEventTypeRegistry` | Class | ✅ Implemented |
+
+**Capabilities:**
+- Register event type descriptors
+- Find by eventType and eventVersion
+- List all event types
+- Reject duplicate eventType/version
+- Reject blank eventType/version
+- Expose immutable list
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/`
+
+### Hook Point Registry
+
+**Status:** ✅ Implemented (Registry skeleton exists in shared-kernel)
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `HookPointRegistry` | Interface | ✅ Defined |
+| `InMemoryHookPointRegistry` | Class | ✅ Implemented |
+
+**Capabilities:**
+- Register hook points
+- Find by hook key and phase
+- List all hook points
+- Reject duplicate hook key/phase
+- Reject blank hook key
+- Expose immutable list
+- Preserve HookFailurePolicy
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/`
+
 ### Event-Backed Automation
 
 **Status:** Planned

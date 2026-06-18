@@ -667,12 +667,53 @@ Hooks are lifecycle interception points. They can allow or deny operations.
 - External hook handlers are not implemented
 - Hook runtime is not implemented
 
+### Event Type Registry
+
+Event types can be registered and discovered.
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `EventTypeDescriptor` | Record | ✅ Defined |
+| `EventTypeRegistry` | Interface | ✅ Defined |
+| `InMemoryEventTypeRegistry` | Class | ✅ Implemented |
+
+**Registry capabilities:**
+- Register event type descriptors
+- Find by eventType and eventVersion
+- List all event types
+- Reject duplicate eventType/version
+- Reject blank eventType/version
+- Expose immutable list
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/`
+
+### Hook Point Registry
+
+Hook points can be registered and discovered.
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `HookPointRegistry` | Interface | ✅ Defined |
+| `InMemoryHookPointRegistry` | Class | ✅ Implemented |
+
+**Registry capabilities:**
+- Register hook points
+- Find by hook key and phase
+- List all hook points
+- Reject duplicate hook key/phase
+- Reject blank hook key
+- Expose immutable list
+- Preserve HookFailurePolicy
+
+**Location:** `shared-kernel/src/main/java/com/example/platform/shared/capability/registry/`
+
 ### What Is NOT Implemented
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Event bus | ❌ Not implemented | Contracts only |
-| Event runtime | ❌ Not implemented | Contracts only |
-| Hook runtime | ❌ Not implemented | Contracts only |
-| External hook handlers | ❌ Not implemented | Contracts only |
-| Event-backed automation | ❌ Not implemented | Contracts only |
+| Event bus | ❌ Not implemented | Registry exists, event bus does not |
+| Event runtime | ❌ Not implemented | Registry exists, runtime does not |
+| Hook runtime | ❌ Not implemented | Registry exists, hook runtime does not |
+| External hook handlers | ❌ Not implemented | Registry exists, external handlers do not |
+| Event-backed automation | ❌ Not implemented | Registry exists, automation does not |
+| Event publishing | ❌ Not implemented | Registry exists, publishing does not |
