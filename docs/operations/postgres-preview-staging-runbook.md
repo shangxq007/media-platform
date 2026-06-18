@@ -1,3 +1,11 @@
+---
+status: runbook
+last_verified: 2026-06-18
+scope: preview
+truth_level: implemented
+owner: platform
+---
+
 # PostgreSQL Preview/Staging Startup Runbook
 
 ## Overview
@@ -47,6 +55,13 @@ Wait for PostgreSQL to be ready:
 
 ```bash
 docker exec media-platform-postgres pg_isready -U media_platform -d media_platform
+```
+
+Alternatively, use the docker-compose file:
+
+```bash
+cd platform
+docker compose -f docker-compose.local-postgres.yml up -d
 ```
 
 ### 2. Environment Variables
