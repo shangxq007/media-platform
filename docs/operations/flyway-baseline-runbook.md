@@ -196,8 +196,9 @@ Expected output:
  installed_rank | version |        description        | type | success 
 ----------------+---------+---------------------------+------+---------
               1 | 1       | init full schema          | SQL  | t
-              2 | 2       | add outbox lease columns  | SQL  | t
 ```
+
+**Note:** As of 2026-06-18, V2 (outbox lease columns) has been consolidated into V1. Only V1 should appear in new databases.
 
 ### Verify Table Count
 
@@ -257,9 +258,10 @@ Examples:
 ```
 platform-app/src/main/resources/db/migration/
 ├── V1__init_full_schema.sql
-├── V2__add_outbox_lease_columns.sql
 ├── V7__your_new_migration.sql  # Add here
 ```
+
+**Note:** V2 (outbox lease columns) has been consolidated into V1. Only V1 and future additive migrations should exist.
 
 ### Best Practices
 

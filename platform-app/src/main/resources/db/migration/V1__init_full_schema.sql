@@ -1,3 +1,7 @@
+-- Initial PostgreSQL schema baseline.
+-- This baseline is valid for pre-production/greenfield resettable environments.
+-- Do not rewrite migration history for non-resettable production databases.
+
 -- ============================================================
 -- 1. CORE INFRASTRUCTURE
 -- ============================================================

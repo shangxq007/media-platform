@@ -65,7 +65,10 @@ b3676c8 chore(ai): remove spring ai from active runtime path
 - Consolidated V1 (2189 lines) + V2 + V6 + V11 into single V1 (2336 lines)
 - Added outbox lease columns, project import metadata, product layer tables
 - Fixed PostgreSQL syntax (`double` → `double precision`)
+- Added header comment documenting pre-production/greenfield status
 - Allowed only because project is pre-production/greenfield
+
+**Note:** Migration history rewrite is safe only because the project is pre-production/greenfield. Any existing non-production DB must be reset before applying the new baseline.
 
 **Schema Validation**:
 ```sql
