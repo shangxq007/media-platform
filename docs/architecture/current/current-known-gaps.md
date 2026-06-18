@@ -212,9 +212,10 @@ owner: platform
 | Gap | Status | Notes |
 |-----|--------|-------|
 | Capability opening model | Blueprint only | Not implemented |
-| Formal SystemAction registry | ❌ Not implemented | Actions exist as services, not formal registry |
+| Contract skeleton | ✅ Implemented | `shared-kernel/src/main/java/com/example/platform/shared/capability/` |
+| Formal SystemAction registry | ⚠️ Contract only | Contract exists, runtime not implemented |
 | Automation flow engine | ❌ Not implemented | No workflow execution engine |
-| ExtensionPoint SPI | ❌ Not implemented | No formal SPI contracts |
+| ExtensionPoint SPI | ⚠️ Contract only | Contract exists, runtime not implemented |
 | Connector marketplace | ❌ Not implemented | No marketplace infrastructure |
 | Plugin marketplace | ❌ Not implemented | No marketplace infrastructure |
 | Sandbox runtime | ❌ Not implemented | Stub only |

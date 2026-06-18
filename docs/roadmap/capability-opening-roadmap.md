@@ -22,7 +22,7 @@ See [Capability Opening Blueprint](../architecture/blueprint/capability-opening-
 
 ## Phase 0 - Document Contracts
 
-**Status:** Planned
+**Status:** ✅ Implemented (Contract skeleton exists in shared-kernel)
 
 ### Scope
 - Define SystemAction interface contracts
@@ -32,9 +32,9 @@ See [Capability Opening Blueprint](../architecture/blueprint/capability-opening-
 - Define PluginManifest schema
 
 ### Deliverables
-- [ ] SystemAction interface specification
-- [ ] ExtensionPoint interface specification
-- [ ] AutomationFlow configuration schema
+- [x] SystemAction interface specification
+- [x] ExtensionPoint interface specification
+- [x] AutomationFlow configuration schema
 - [ ] ConnectorManifest schema
 - [ ] PluginManifest schema
 - [ ] Contract versioning policy
@@ -48,6 +48,29 @@ See [Capability Opening Blueprint](../architecture/blueprint/capability-opening-
 - All contracts reviewed and approved
 - Contracts documented in architecture docs
 - Versioning policy defined
+
+### Implementation
+
+Contract skeleton exists in `shared-kernel/src/main/java/com/example/platform/shared/capability/`:
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `SystemAction` | Interface | ✅ Defined |
+| `ExtensionPoint` | Interface | ✅ Defined |
+| `ExtensionProvider` | Interface | ✅ Defined |
+| `ProviderCapabilities` | Record | ✅ Defined |
+| `AutomationFlow` | Record | ✅ Defined |
+| `AutomationTrigger` | Record | ✅ Defined |
+| `AutomationExecution` | Record | ✅ Defined |
+| `CredentialRef` | Record | ✅ Defined |
+| `ArtifactRef` | Record | ✅ Defined |
+| `InvocationContext` | Record | ✅ Defined |
+| `InvocationResult` | Record | ✅ Defined |
+| `CapabilityStability` | Enum | ✅ Defined |
+| `InvocationStatus` | Enum | ✅ Defined |
+| `ProviderRuntimeType` | Enum | ✅ Defined |
+| `FlowStatus` | Enum | ✅ Defined |
+| `CapabilityErrorCode` | Enum | ✅ Defined |
 
 ---
 

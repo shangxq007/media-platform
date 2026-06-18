@@ -532,6 +532,56 @@ interface ArtifactRef {
 
 ---
 
+## 9. Contract Skeleton Status
+
+> **Contract skeleton exists in shared-kernel.** Runtime is not implemented.
+
+### Implemented Contracts
+
+The following contracts are defined in `shared-kernel/src/main/java/com/example/platform/shared/capability/`:
+
+| Contract | Type | Status |
+|----------|------|--------|
+| `SystemAction` | Interface | ✅ Defined |
+| `ExtensionPoint` | Interface | ✅ Defined |
+| `ExtensionProvider` | Interface | ✅ Defined |
+| `ProviderCapabilities` | Record | ✅ Defined |
+| `AutomationFlow` | Record | ✅ Defined |
+| `AutomationTrigger` | Record | ✅ Defined |
+| `AutomationExecution` | Record | ✅ Defined |
+| `CredentialRef` | Record | ✅ Defined |
+| `ArtifactRef` | Record | ✅ Defined |
+| `InvocationContext` | Record | ✅ Defined |
+| `InvocationResult` | Record | ✅ Defined |
+| `CapabilityStability` | Enum | ✅ Defined |
+| `InvocationStatus` | Enum | ✅ Defined |
+| `ProviderRuntimeType` | Enum | ✅ Defined |
+| `FlowStatus` | Enum | ✅ Defined |
+| `CapabilityErrorCode` | Enum | ✅ Defined |
+
+### What Is NOT Implemented
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Runtime execution engine | ❌ Not implemented | Contracts only |
+| Provider registry | ❌ Not implemented | Contracts only |
+| Automation flow engine | ❌ Not implemented | Contracts only |
+| Marketplace infrastructure | ❌ Not implemented | Contracts only |
+| Sandbox runtime | ❌ Not implemented | Contracts only |
+
+### Contract Design Principles
+
+1. **Stable vocabulary first** - Contracts define shared vocabulary
+2. **No runtime execution yet** - Contracts only, no implementation
+3. **Tenant-aware by design** - All contracts include tenant context
+4. **Secret references only** - CredentialRef never exposes raw secrets
+5. **Artifact references** - ArtifactRef uses logical URIs
+6. **Idempotency key included** - InvocationContext includes idempotency key
+7. **Timeout/deadline included** - InvocationContext includes deadline
+8. **Audit fields included** - InvocationContext includes audit context
+
+---
+
 ## References
 
 - [Automation Plugin Blueprint](module-blueprint-automation-plugin.md)
@@ -540,3 +590,4 @@ interface ArtifactRef {
 - [AI Provider Roadmap](../../roadmap/ai-provider-ecosystem-roadmap.md)
 - [Current Module Status](../current/current-module-status.md)
 - [Current Known Gaps](../current/current-known-gaps.md)
+- [Contract Source](../../../shared-kernel/src/main/java/com/example/platform/shared/capability/)
