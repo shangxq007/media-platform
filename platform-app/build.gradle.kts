@@ -52,7 +52,6 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
     implementation("org.springframework.modulith:spring-modulith-starter-core:2.0.4")
-    runtimeOnly("org.springframework.modulith:spring-modulith-starter-insight:2.0.4")
     implementation("io.temporal:temporal-spring-boot-starter:1.33.0")
     implementation("com.yomahub:liteflow-spring-boot-starter:2.15.3.2")
     implementation("org.pf4j:pf4j:3.15.0")

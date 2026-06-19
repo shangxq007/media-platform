@@ -6,6 +6,9 @@ spring:
     name: media-platform
   lifecycle:
     timeout-per-shutdown-phase: 30s
+  modulith:
+    observability:
+      enabled: false
   autoconfigure:
     exclude:
       - io.temporal.spring.boot.autoconfigure.RootNamespaceAutoConfiguration

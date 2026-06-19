@@ -175,7 +175,7 @@ app:
 | Issue | Severity | Impact |
 |-------|----------|--------|
 | ~~ProductionSafetyValidator NoUniqueBeanDefinitionException~~ | ~~Medium~~ | ✅ Fixed (2026-06-19) |
-| PrometheusMeterRegistry tag mismatch | Low | Warning only |
+| ~~PrometheusMeterRegistry tag mismatch~~ | ~~Low~~ | ✅ Fixed (2026-06-19) |
 | Some API endpoints return 404 | Low | Parameter name reflection issue |
 | Actuator info endpoint empty | Low | Not configured |
 
