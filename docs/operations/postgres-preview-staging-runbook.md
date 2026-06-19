@@ -262,6 +262,26 @@ NoUniqueBeanDefinitionException: No qualifying bean of type 'java.lang.Object' a
 SPRING_PROFILES_ACTIVE=prod,safe-mode java -jar platform-app/build/libs/platform-app.jar
 ```
 
+### API Parameter Binding Failures
+
+**Symptom**:
+```
+HTTP/1.1 404
+{"detail":"Name for argument of type [java.lang.String] not specified, and parameter name information not available via reflection. Ensure that the compiler uses the '-parameters' flag.","instance":"/api/v1/identity/tenants/test/projects","status":404,"title":"Resource Not Found"}
+```
+
+**Cause**: Java compiler not retaining parameter names, causing Spring MVC `@PathVariable` and `@RequestParam` binding failures.
+
+**Fix (2026-06-19)**: Added `-parameters` compiler arg to all Java compilations in root `build.gradle.kts`.
+
+**Validation**:
+```bash
+# Should return 200 with empty array
+curl -s http://localhost:8080/api/v1/identity/tenants/test/projects
+```
+
+**Note**: `/api/v1/projects` does not exist; correct endpoint is `/api/v1/identity/tenants/{tenantId}/projects`
+
 ### Outbox schema mismatch
 
 **Symptom**: 

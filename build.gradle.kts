@@ -24,6 +24,11 @@ subprojects {
         }
     }
 
+    // Retain parameter names for Spring MVC @PathVariable and @RequestParam binding
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.add("-parameters")
+    }
+
     extensions.configure<DependencyManagementExtension>("dependencyManagement") {
         imports {
             mavenBom("org.springframework.boot:spring-boot-dependencies:4.0.4")

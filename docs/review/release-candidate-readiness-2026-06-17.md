@@ -127,6 +127,7 @@ app:
 | /swagger-ui/index.html | 200 | Swagger UI |
 | /api/v1/render/jobs | 200 | Accessible |
 | /api/v1/artifact/catalog/overview | 200 | Accessible |
+| /api/v1/identity/tenants/test/projects | 200 | Parameter binding works |
 
 **Result**: ✅ All endpoints accessible, no 401 errors
 
@@ -176,7 +177,8 @@ app:
 |-------|----------|--------|
 | ~~ProductionSafetyValidator NoUniqueBeanDefinitionException~~ | ~~Medium~~ | ✅ Fixed (2026-06-19) |
 | ~~PrometheusMeterRegistry tag mismatch~~ | ~~Low~~ | ✅ Fixed (2026-06-19) |
-| Some API endpoints return 404 | Low | Parameter name reflection issue |
+| ~~API parameter binding failures~~ | ~~Critical~~ | ✅ Fixed (2026-06-19) |
+| ~~`/api/v1/projects` 404~~ | ~~Low~~ | ✅ Clarified (2026-06-19) |
 | Actuator info endpoint empty | Low | Not configured |
 
 ---
@@ -197,8 +199,9 @@ app:
 
 1. ✅ **Manual Preview Ready** - Use for review/testing
 2. ✅ **ProductionSafetyValidator Fixed** - prod,safe-mode starts cleanly
-3. 📋 **Document production requirements** - OAuth2, JWT, payment config
-4. 🚀 **Continue governance work** - Module boundaries, error model cleanup
+3. ✅ **API Parameter Binding Fixed** - All endpoints accessible
+4. 📋 **Document production requirements** - OAuth2, JWT, payment config
+5. 🚀 **Continue governance work** - Module boundaries, error model cleanup
 
 ---
 

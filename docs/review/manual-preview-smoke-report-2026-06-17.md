@@ -220,7 +220,7 @@ The application starts successfully with PostgreSQL preview mode, and all disabl
 
 ### What Doesn't Work
 
-- ⚠️ Some API endpoints return 404 (parameter name reflection issue)
+- ✅ API parameter binding fixed (2026-06-19)
 - ⚠️ Actuator info endpoint empty (not configured)
 - ⚠️ prod,safe-mode profile startup failure (pre-existing issue)
 
@@ -243,7 +243,7 @@ The application starts successfully with PostgreSQL preview mode, and all disabl
 | `/api/v1/render/jobs` | GET | 200 | Empty list `[]` |
 | `/api/v1/artifact/catalog/overview` | GET | 200 | Catalog status: active |
 | `/api/v1/render/jobs/submit` | POST | 400 | Validation error (expected) |
-| `/api/v1/identity/tenants/{id}/projects` | GET | 404 | Parameter name issue |
+| `/api/v1/identity/tenants/{id}/projects` | GET | 200 | Parameter binding works (fixed 2026-06-19) |
 
 ### Next Steps
 
@@ -251,7 +251,7 @@ The application starts successfully with PostgreSQL preview mode, and all disabl
 2. ✅ Security regression check completed (Phase B5)
 3. ✅ Manual flow test completed (Phase B5)
 4. ✅ Fix `prod,safe-mode` startup failure (Phase B6)
-5. Fix parameter name reflection issue for API endpoints
+5. ✅ Fix parameter name reflection issue for API endpoints (2026-06-19)
 
 ### Phase B6: prod,safe-mode Security Wiring Fix (2026-06-18)
 

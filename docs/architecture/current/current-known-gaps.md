@@ -186,6 +186,7 @@ owner: platform
 | Blocker | Severity | Fix Required |
 |---------|----------|--------------|
 | ~~`ProductionSafetyValidator` `NoUniqueBeanDefinitionException`~~ | ~~Critical~~ | ✅ Fixed (2026-06-19) |
+| ~~API parameter binding failures~~ | ~~Critical~~ | ✅ Fixed (2026-06-19) |
 | OAuth2 configuration required | Critical | Configure Authentik OIDC |
 | JWT secret must be set | Critical | Set `APP_JWT_SECRET` env var |
 | Payment provider configuration | Critical | Configure Stripe/Hyperswitch |
@@ -197,6 +198,13 @@ owner: platform
 - Fix: Added `@Qualifier` annotations to specify exact bean names
 - Files changed: `ProductionSafetyValidator.java`
 - Validation: `prod,safe-mode` starts cleanly, `dev-postgres,preview` unchanged
+
+**API Parameter Binding Fix (2026-06-19)**:
+- Root Cause: Java compiler not retaining parameter names, causing Spring MVC `@PathVariable` and `@RequestParam` binding failures
+- Fix: Added `-parameters` compiler arg to all Java compilations in root `build.gradle.kts`
+- Files changed: `build.gradle.kts`
+- Validation: `/api/v1/identity/tenants/{tenantId}/projects` now returns 200, no parameter binding errors in logs
+- Note: `/api/v1/projects` does not exist; correct endpoint is `/api/v1/identity/tenants/{tenantId}/projects`
 
 ---
 
