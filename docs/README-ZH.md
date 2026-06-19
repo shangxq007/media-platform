@@ -35,6 +35,7 @@
 17. **docs/documentation-gap-report.md** - 文档缺口报告 ⭐
 18. **docs/media-processing-module.md** - 媒体处理模块说明 ⭐
 19. **docs/human-review-needed.md** - 人工复核清单
+20. **docs/review/staging-readiness-final-audit-2026-06-19.md** - 暂存就绪最终审计 ⭐
 
 ## 新创建的核心文档（⭐标记）
 
