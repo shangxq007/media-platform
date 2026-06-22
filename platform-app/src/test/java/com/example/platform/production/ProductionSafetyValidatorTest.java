@@ -2,6 +2,7 @@ package com.example.platform.production;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -113,6 +114,45 @@ class ProductionSafetyValidatorTest {
         var validator = new ProductionSafetyValidator(
                 env, props, insecure, corsProps(), checkout, carts, subs, flags);
         assertThrows(IllegalStateException.class, () -> validator.validateProductionReadiness());
+    }
+
+    @Test
+    void failsWhenJwtSecretIsDevDefaultInJwtMode() {
+        // Simulates: security.enabled=true, oauth2.enabled=false (HMAC JWT mode), dev-default secret
+        MockEnvironment env = new MockEnvironment()
+                .withProperty("spring.profiles.active", "prod")
+                .withProperty("app.security.enabled", "true")
+                .withProperty("app.security.oauth2.enabled", "false")
+                .withProperty("spring.flyway.enabled", "true")
+                .withProperty("spring.datasource.url", "jdbc:postgresql://localhost:5432/mp")
+                .withProperty("platform.payment.stripe.enabled", "true")
+                .withProperty("platform.payment.stripe.webhook-secret", "whsec_test")
+                .withProperty("platform.payment.webhook.allow-unsigned", "false")
+                .withProperty("app.ai.default-provider", "openAiChatProvider");
+        PlatformRuntimeProperties props = new PlatformRuntimeProperties();
+        props.setProductionChecksEnabled(true);
+        // dev-default placeholder — usesInsecureDefault() returns true
+        JwtProperties devDefault = new JwtProperties(JwtProperties.INSECURE_DEV_DEFAULT, 3600000);
+
+        @SuppressWarnings("unchecked")
+        ObjectProvider<CheckoutSessionRepository> checkout = mock(ObjectProvider.class);
+        when(checkout.getIfAvailable()).thenReturn(mock(CheckoutSessionRepository.class));
+        @SuppressWarnings("unchecked")
+        ObjectProvider<CommerceCartRepository> carts = mock(ObjectProvider.class);
+        when(carts.getIfAvailable()).thenReturn(mock(CommerceCartRepository.class));
+        @SuppressWarnings("unchecked")
+        ObjectProvider<SubscriptionJdbcRepository> subs = mock(ObjectProvider.class);
+        when(subs.getIfAvailable()).thenReturn(mock(SubscriptionJdbcRepository.class));
+        @SuppressWarnings("unchecked")
+        ObjectProvider<FeatureFlagJdbcStore> flags = mock(ObjectProvider.class);
+        when(flags.getIfAvailable()).thenReturn(mock(FeatureFlagJdbcStore.class));
+
+        var validator = new ProductionSafetyValidator(
+                env, props, devDefault, corsProps(), checkout, carts, subs, flags);
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class, () -> validator.validateProductionReadiness());
+        assertTrue(ex.getMessage().contains("APP_JWT_SECRET"),
+                "Error must mention APP_JWT_SECRET");
     }
 
     private static JwtProperties jwtProps() {

@@ -35,6 +35,45 @@ class JwtAuthFilterTest {
         filterChain = mock(FilterChain.class);
     }
 
+    // --- Fail-fast construction tests ---
+
+    @Test
+    void constructorRejectsEmptySecret() {
+        JwtProperties emptySecret = new JwtProperties("", 3600000);
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> new JwtAuthFilter(emptySecret));
+        assertTrue(ex.getMessage().contains("APP_JWT_SECRET"),
+                "Error message must mention APP_JWT_SECRET");
+    }
+
+    @Test
+    void constructorRejectsBlankSecret() {
+        JwtProperties blankSecret = new JwtProperties("   ", 3600000);
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> new JwtAuthFilter(blankSecret));
+        assertTrue(ex.getMessage().contains("APP_JWT_SECRET"),
+                "Error message must mention APP_JWT_SECRET");
+    }
+
+    @Test
+    void constructorRejectsInsecureDevDefault() {
+        JwtProperties devDefault = new JwtProperties(JwtProperties.INSECURE_DEV_DEFAULT, 3600000);
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> new JwtAuthFilter(devDefault));
+        assertTrue(ex.getMessage().contains("APP_JWT_SECRET"),
+                "Error message must mention APP_JWT_SECRET");
+    }
+
+    @Test
+    void constructorAcceptsStrongSecret() {
+        JwtProperties strong = new JwtProperties(
+                "a-sufficiently-long-and-strong-secret-key-for-hmac256-signing!!", 3600000);
+        assertDoesNotThrow(() -> new JwtAuthFilter(strong));
+    }
+
     private String createToken(String subject, String tenantId, List<String> roles) {
         return Jwts.builder()
                 .subject(subject)

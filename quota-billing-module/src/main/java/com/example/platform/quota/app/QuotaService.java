@@ -105,4 +105,16 @@ public class QuotaService {
                 .filter(b -> b.tenantId().equals(tenantId))
                 .toList();
     }
+
+    public List<QuotaBucketSummary> getBucketSummariesForTenant(String tenantId) {
+        return buckets.values().stream()
+                .filter(b -> b.tenantId().equals(tenantId))
+                .map(b -> new QuotaBucketSummary(
+                        b.featureCode(),
+                        b.currentUsage(),
+                        b.limit(),
+                        b.usageRatio(),
+                        b.isExceeded()))
+                .toList();
+    }
 }

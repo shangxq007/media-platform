@@ -4,8 +4,8 @@ import com.example.platform.billing.app.CostEstimationService;
 import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.app.UsageMeteringService;
 import com.example.platform.billing.domain.SubscriptionContract;
+import com.example.platform.quota.app.QuotaBucketSummary;
 import com.example.platform.quota.app.QuotaService;
-import com.example.platform.quota.domain.QuotaBucket;
 import com.example.platform.render.app.RenderQuotaService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,8 +112,8 @@ public class BillingEnforcementService {
         }
 
         // Check usage quota via QuotaService
-        List<QuotaBucket> buckets = quotaService.getBucketsForTenant(tenantId);
-        for (QuotaBucket bucket : buckets) {
+        List<QuotaBucketSummary> buckets = quotaService.getBucketSummariesForTenant(tenantId);
+        for (QuotaBucketSummary bucket : buckets) {
             if (bucket.usageRatio() >= 1.0) {
                 log.warn("Quota bucket {} full for tenant {} (usage: {}/{})", 
                         bucket.featureCode(), tenantId, bucket.currentUsage(), bucket.limit());

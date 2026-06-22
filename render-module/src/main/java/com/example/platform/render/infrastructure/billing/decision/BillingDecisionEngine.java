@@ -3,8 +3,8 @@ package com.example.platform.render.infrastructure.billing.decision;
 import com.example.platform.billing.app.CostEstimationService;
 import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.domain.SubscriptionContract;
+import com.example.platform.quota.app.QuotaBucketSummary;
 import com.example.platform.quota.app.QuotaService;
-import com.example.platform.quota.domain.QuotaBucket;
 import com.example.platform.render.app.RenderQuotaService;
 import com.example.platform.render.infrastructure.billing.policy.CreditSystem;
 import com.example.platform.render.infrastructure.billing.policy.PolicyDecisionTraceNode;
@@ -209,8 +209,8 @@ public class BillingDecisionEngine {
         }
 
         // Check general quota buckets
-        List<QuotaBucket> buckets = quotaService.getBucketsForTenant(request.tenantId());
-        for (QuotaBucket bucket : buckets) {
+        List<QuotaBucketSummary> buckets = quotaService.getBucketSummariesForTenant(request.tenantId());
+        for (QuotaBucketSummary bucket : buckets) {
             if (bucket.usageRatio() >= 1.0) {
                 return BillingDecision.deny(
                         BillingDecision.ReasonCode.QUOTA_BUCKET_FULL,
@@ -431,8 +431,8 @@ public class BillingDecisionEngine {
     private BillingDecision.QuotaImpact calculateQuotaImpact(BillingDecisionRequest request, String traceId) {
         // Calculate quota impact
         long currentRenderUsage = 0;
-        List<QuotaBucket> buckets = quotaService.getBucketsForTenant(request.tenantId());
-        for (QuotaBucket bucket : buckets) {
+        List<QuotaBucketSummary> buckets = quotaService.getBucketSummariesForTenant(request.tenantId());
+        for (QuotaBucketSummary bucket : buckets) {
             if ("render".equals(bucket.featureCode())) {
                 currentRenderUsage = bucket.currentUsage();
                 return BillingDecision.QuotaImpact.of(

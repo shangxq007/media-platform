@@ -3,8 +3,8 @@
             "shared",
             "security",
             "app",
-            "commerce",
-            "billing",
-            "policy"
+            "commerce :: infrastructure",
+            "billing :: infrastructure",
+            "policy :: feature-flags"
         })
 package com.example.platform.production;

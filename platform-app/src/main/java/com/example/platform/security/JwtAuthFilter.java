@@ -33,6 +33,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtProperties jwtProperties;
 
     public JwtAuthFilter(JwtProperties jwtProperties) {
+        if (jwtProperties.usesInsecureDefault()) {
+            throw new IllegalStateException(
+                    "JWT authentication is enabled (app.security.enabled=true, app.security.oauth2.enabled=false) "
+                    + "but APP_JWT_SECRET is empty, blank, or set to the insecure dev placeholder. "
+                    + "Set APP_JWT_SECRET to a strong random secret of at least 256 bits before starting the application. "
+                    + "To disable JWT validation locally, set app.security.enabled=false (dev/preview profiles only).");
+        }
         this.jwtProperties = jwtProperties;
     }
 

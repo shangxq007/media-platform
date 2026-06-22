@@ -26,10 +26,16 @@ public class StripeHttpPaymentProvider implements PaymentProvider {
     private static final Logger log = LoggerFactory.getLogger(StripeHttpPaymentProvider.class);
 
     private final StripePaymentProperties properties;
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient;
 
     public StripeHttpPaymentProvider(StripePaymentProperties properties) {
+        this(properties, HttpClient.newHttpClient());
+    }
+
+    /** Package-private constructor for testing — allows injecting a mock/stub HttpClient. */
+    StripeHttpPaymentProvider(StripePaymentProperties properties, HttpClient httpClient) {
         this.properties = properties;
+        this.httpClient = httpClient;
     }
 
     @Override
@@ -84,7 +90,37 @@ public class StripeHttpPaymentProvider implements PaymentProvider {
 
     @Override
     public PaymentVerificationResult verifyPayment(VerifyPaymentCommand command) {
-        return new PaymentVerificationResult(true, "succeeded", "paid");
+        String ref = command.providerReference();
+        if (ref == null || ref.isBlank()) {
+            log.warn("Stripe verifyPayment called with blank providerReference");
+            return new PaymentVerificationResult(false, "missing_reference", "unknown");
+        }
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.stripe.com/v1/checkout/sessions/" + ref))
+                    .header("Authorization", "Bearer " + properties.getSecretKey())
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 400) {
+                log.warn("Stripe verifyPayment HTTP {} for ref={}", response.statusCode(), ref);
+                return new PaymentVerificationResult(false, "http_" + response.statusCode(), "unknown");
+            }
+            String body = response.body();
+            String paymentStatus = extractJsonField(body, "payment_status");
+            String sessionStatus = extractJsonField(body, "status");
+            boolean paid = "paid".equalsIgnoreCase(paymentStatus)
+                    && "complete".equalsIgnoreCase(sessionStatus);
+            String canonical = paid ? "paid" : "pending";
+            log.info("Stripe verifyPayment ref={} payment_status={} status={} verified={}",
+                    ref, paymentStatus, sessionStatus, paid);
+            return new PaymentVerificationResult(paid,
+                    paymentStatus != null ? paymentStatus : "unknown",
+                    canonical);
+        } catch (Exception e) {
+            log.warn("Stripe verifyPayment failed for ref={}: {}", ref, e.getMessage());
+            return new PaymentVerificationResult(false, "error", "unknown");
+        }
     }
 
     @Override
