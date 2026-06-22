@@ -25,12 +25,14 @@
 
 | 组件 | 版本 / 说明 |
 |------|-------------|
-| Vue | **3.5** |
+| React | **19** |
 | Vite | **6** |
 | TypeScript | **5.7** |
-| 状态 | Pinia |
-| 路由 | Vue Router + **可配置导航**（`NavigationDecisionService`） |
+| 状态 | Zustand |
+| 服务端状态 | TanStack Query |
+| 路由 | TanStack Router + **可配置导航**（`NavigationDecisionService`） |
 | HTTP | Axios → `/api/v1`（dev 代理到 `:8080`） |
+| 视频合成 | Remotion 4 |
 | 可选 | GraphQL（`federation-query-module`；默认 `spring.graphql.enabled=false`） |
 | 构建输出 | `platform-app/src/main/resources/static/` |
 

@@ -46,7 +46,7 @@ platform/
 
 ---
 
-## Gradle 子项目（31 个）
+## Gradle 子项目（35 个）
 
 见 `platform/settings.gradle.kts`。模块职责表见 [module-reference.md](../module-reference.md)。
 

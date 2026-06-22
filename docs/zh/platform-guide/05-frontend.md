@@ -6,7 +6,8 @@
 
 ## 技术栈
 
-Vue 3 + Pinia + Vue Router + Vite 6 + TypeScript 5.7 + Tailwind。  
+React 19 + Zustand + TanStack Router + TanStack Query + Vite 6 + TypeScript 5.7 + Tailwind。  
+视频合成使用 Remotion 4。  
 构建产物写入 `platform-app/src/main/resources/static/`。
 
 ---

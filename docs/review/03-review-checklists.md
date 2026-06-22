@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** One-time checklists from 2026-05-18. Superseded by governance policies.
+> **Superseded By:** `docs/governance/document-lifecycle-policy.md`, `docs/governance/document-validation-policy.md`
+> **Do not use as current reference.**
+
+---
+
 # Review Checklists
 
 > **Last Updated:** 2026-05-18

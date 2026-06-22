@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Point-in-time gap report from 2026-05-20. Superseded by project intelligence report.
+> **Superseded By:** `docs/review/project-intelligence-report.md`
+> **Do not use as current reference.**
+
+---
+
 # Prompt Module 缺口报告（对照 Prompt 45–46）
 
 > 评估日期：2026-05-20

@@ -36,7 +36,7 @@
 - GlobalSentryExceptionHandler - 全局异常处理 → Sentry
 - SentryMonitoringSpringBean - 条件性 Sentry 服务
 
-**依赖:** 所有 30 个模块
+**依赖:** 所有 35 个模块
 
 **测试:** 11 个测试类（含 ModularityTest、RenderFlowIntegrationTest）
 

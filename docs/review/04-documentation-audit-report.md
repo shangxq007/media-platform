@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Point-in-time audit from 2026-05-18. Superseded by documentation governance sprints 001-004.
+> **Superseded By:** `docs/review/documentation-consolidation-plan.md`, `docs/governance/document-lifecycle-policy.md`
+> **Do not use as current reference.**
+
+---
+
 # Documentation Audit Report
 
 > **Prompt:** 66 — Full Documentation Rebuild

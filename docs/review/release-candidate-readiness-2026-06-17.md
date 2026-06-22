@@ -1,3 +1,8 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Point-in-time readiness report from 2026-06-17. Superseded by project intelligence report.
+> **Superseded By:** `docs/review/project-intelligence-report.md`
+> **Do not use as current reference.**
+
 ---
 status: report
 last_verified: 2026-06-18

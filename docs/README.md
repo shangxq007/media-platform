@@ -99,6 +99,16 @@ These documents have been archived with status headers. They contain stale facts
 
 All documents in `archive/` (224+ files) are explicitly **not current truth**. See [archive/README.md](archive/README.md) for the archive index.
 
+Root-level and review documents with `Status: Archived` headers are also historical — do not use as current reference.
+
+### Governance Policies
+
+| Policy | Purpose |
+|--------|---------|
+| [Document Lifecycle Policy](governance/document-lifecycle-policy.md) | Document states, transitions, creation/update/archival rules |
+| [Document Validation Policy](governance/document-validation-policy.md) | How to validate docs against code, drift patterns to watch |
+| [Agent Knowledge Policy](governance/agent-knowledge-policy.md) | What agents should/should not read, safety constraints |
+
 ---
 
 ## Documentation Structure

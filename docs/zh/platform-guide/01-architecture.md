@@ -14,11 +14,11 @@
 
 - **运行时：** 单一 Spring Boot 进程（`platform-app`），非微服务拆分。
 - **边界：** Spring Modulith + Gradle 多模块；跨模块通过 **Port 接口**、**领域事件**、**Outbox** 通信。
-- **前端：** Vue 3 SPA，构建产物可嵌入 `platform-app` 静态资源或独立 Vite 开发服。
+- **前端：** React 19 SPA，构建产物可嵌入 `platform-app` 静态资源或独立 Vite 开发服。
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│  Browser (Vue 3 + Pinia)  ──REST/GraphQL──►  platform-app :8080   │
+│  Browser (React 19 + Zustand)  ──REST/GraphQL──►  platform-app :8080   │
 └────────────────────────────────────────────────────────────────────┘
          │                    │                    │
          ▼                    ▼                    ▼
