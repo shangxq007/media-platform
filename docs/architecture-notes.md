@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Superseded by `docs/architecture/` series and `docs/review/project-intelligence-report.md`.
+> **Superseded By:** `docs/architecture/01-system-architecture.md`, `docs/review/project-intelligence-report.md`
+> **Do not use as current reference.**
+
+---
+
 # Architecture Notes
 
 > **文档导航**：[docs/README.md](./README.md)（全文档索引）。**HTTP API 版本策略**：[api-versioning.md](./api-versioning.md)。**数据库结构以 Flyway 为准**：[database-schema.md](./database-schema.md)。

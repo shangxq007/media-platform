@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Superseded by `docs/architecture/` series and `docs/modules/` series.
+> **Superseded By:** `docs/architecture/02-backend-architecture.md`, `docs/modules/01-core-modules.md`
+> **Do not use as current reference.**
+
+---
+
 # 功能分层与开源组件说明
 
 > 全站文档索引见 [docs/README.md](./README.md)。对外 API 版本演进见 [api-versioning.md](./api-versioning.md)。

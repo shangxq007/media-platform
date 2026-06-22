@@ -1,3 +1,8 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Point-in-time report from 2026-05-18. Superseded by current action plan.
+> **Superseded By:** `docs/system-audit/CRITICAL_GAPS_ACTION_PLAN.md`
+> **Do not use as current reference.**
+
 ---
 status: report
 last_verified: 2026-05-18

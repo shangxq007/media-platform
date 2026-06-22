@@ -1,6 +1,6 @@
 ---
 status: blueprint
-last_verified: 2026-06-17
+last_verified: 2026-06-22
 scope: future
 truth_level: target
 owner: platform
@@ -9,6 +9,8 @@ owner: platform
 # Capability Opening Blueprint
 
 > **⚠️ BLUEPRINT ONLY** - This document describes the target architecture for progressive system capability opening. It is not implemented.
+
+> **Reality Check (2026-06-22):** Contract skeletons exist in shared-kernel (SystemAction, ExtensionPoint, ExtensionProvider interfaces). Extension-module has 55 files with sandbox execution and CLI tools. Sandbox-runtime-module has 15 files with Groovy/JS/Python execution. Marketplace and plugin security sandbox remain unimplemented. See [blueprint-reality-mapping-report.md](../../review/blueprint-reality-mapping-report.md).
 
 ---
 

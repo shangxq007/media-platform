@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Superseded by `docs/render/render-job-schema.md` and actual `RenderJobStateMachine.java` implementation.
+> **Superseded By:** `docs/render/render-job-schema.md`
+> **Do not use as current reference.**
+
+---
+
 # RenderJob State Machine
 
 ## Overview

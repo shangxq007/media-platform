@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Superseded by `docs/billing-access/` series.
+> **Superseded By:** `docs/billing-access/07-billing-models.md`
+> **Do not use as current reference.**
+
+---
+
 # External Commerce / Billing / Payment Integrations
 
 > Doc index: [docs/README.md](./README.md).

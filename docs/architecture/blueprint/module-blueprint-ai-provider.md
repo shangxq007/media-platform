@@ -1,6 +1,6 @@
 ---
 status: blueprint
-last_verified: 2026-06-18
+last_verified: 2026-06-22
 scope: future
 truth_level: target
 owner: platform
@@ -9,6 +9,8 @@ owner: platform
 # Module Blueprint: AI Provider Ecosystem
 
 > **⚠️ BLUEPRINT ONLY** - Spring AI is isolated and not active in runtime. This describes the target design for future AI integration.
+
+> **Reality Check (2026-06-22):** AI gateway (33 files) with capability-based routing and fallback chains is implemented. Spring AI adapter exists (2 files) but has compilation error (`TenantLitellmKeyService` not found). StubChatProvider is the active provider. Multi-provider routing via `ConfigurableModelRouter` with RoutePlan/RouteTarget is implemented. Cost tracking and BYOK are not implemented.
 
 ## 1. Purpose
 
@@ -130,11 +132,11 @@ The AI Provider Ecosystem enables integration with various AI/LLM providers for 
 
 | Blueprint Feature | Current Status | Gap |
 |-------------------|----------------|-----|
-| Active AI providers | Isolated stub | Critical |
-| Multi-provider routing | Not implemented | Critical |
+| Active AI providers | StubChatProvider active; gateway + routing implemented | Medium |
+| Multi-provider routing | ConfigurableModelRouter with RoutePlan/RouteTarget | Low |
 | Cost tracking | Not implemented | High |
 | Prompt marketplace | Not implemented | High |
-| BYOK support | Not implemented | Medium |
+| BYOK support | TenantLitellmKeyService exists but broken (compilation error) | High |
 
 ---
 

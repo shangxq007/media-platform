@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Temporal integration is complete. Workflow-module has 20 files with RenderWorkflow, RenderPipelineWorkflow, activities, and adapters.
+> **Superseded By:** `workflow-module` source code, `docs/architecture/07-architecture-decisions.md` (ADR-002)
+> **Do not use as current reference.**
+
+---
+
 # Temporal Integration Plan
 
 > **Generated**: 2026-05-08T11:00Z

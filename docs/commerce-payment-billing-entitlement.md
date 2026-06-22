@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Superseded by `docs/billing-access/` series (13 files covering entitlement, access, billing, reconciliation).
+> **Superseded By:** `docs/billing-access/access-control-overview.md`
+> **Do not use as current reference.**
+
+---
+
 # Commerce / Payment / Billing / Entitlement
 
 > Doc index: [docs/README.md](./README.md).

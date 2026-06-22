@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Superseded by `docs/render/overview.md` and `docs/render/` series (34 files).
+> **Superseded By:** `docs/render/overview.md`, `docs/architecture/blueprint/module-blueprint-render.md`
+> **Do not use as current reference.**
+
+---
+
 # Render Pipeline Implementation
 
 > **Last updated**: 2026-05-12

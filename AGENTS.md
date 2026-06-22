@@ -56,6 +56,8 @@ Modular media platform skeleton for AI video production, rendering orchestration
 - Do not add `spring-modulith-starter-insight`
 - Do not weaken `ProductionSafetyValidator`
 - Do not commit real secrets or credentials
+- Do not automatically merge pull requests
+- Do not deploy to production automatically
 - `ModularityTest` must remain enabled — see `docs/modulith-debt-register.md`
 
 ## Module Structure

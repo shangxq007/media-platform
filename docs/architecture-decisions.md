@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Duplicate of `docs/architecture/07-architecture-decisions.md` (6 ADRs vs 12 ADRs).
+> **Superseded By:** `docs/architecture/07-architecture-decisions.md`
+> **Do not use as current reference.**
+
+---
+
 # Architecture Decisions
 
 > **Generated**: 2026-05-08T08:30Z

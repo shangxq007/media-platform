@@ -1,12 +1,14 @@
 ---
 status: blueprint
-last_verified: 2026-06-18
+last_verified: 2026-06-22
 scope: all
 truth_level: target
 owner: platform
 ---
 
 # Module Blueprint: Observability
+
+> **Reality Check (2026-06-22):** Prometheus metrics + Actuator endpoints are implemented. Sentry error tracking is integrated. OTLP export is configured. Structured JSON logging with MDC propagation exists. ThirdPartyProviderHealthService has circuit breaker logic. No Grafana dashboards in repo. No distributed tracing (Zipkin/Jaeger). No log aggregation (ELK/Loki). Alerting is basic (audit burst detection only).
 
 ## 1. Purpose
 
@@ -103,25 +105,34 @@ The Observability module provides monitoring, tracing, logging, and alerting cap
 
 ## 14. Current Status
 
-**Status: Partially Implemented**
+**Status: Partially Implemented** (9 production files, 3 test files)
 
 ### Implemented
-- Prometheus metrics export
-- Basic health checks
-- Structured logging
+- Prometheus metrics export (`/actuator/prometheus`)
+- OTLP metrics and traces export
+- Basic health checks (readiness, liveness)
+- Structured JSON logging with MDC (traceId, requestId, tenantId)
 - Spring Boot Actuator
+- Sentry error tracking integration
+- ThirdPartyProviderHealthService with circuit breaker (closed/open/half-open)
+- SLA tracking and incident management for external providers
+- PlatformTraceCorrelationFilter for trace ID correlation
 
 ### Not Implemented
-- Distributed tracing (Zipkin/Jaeger)
+- Distributed tracing (Zipkin/Jaeger) — OTLP configured but no collector
 - Log aggregation (ELK/Loki)
-- Alerting rules
-- Custom dashboards
+- Alerting rules (only audit burst detection)
+- Custom dashboards (no Grafana dashboards in repo)
 
 ## 15. Gap to Blueprint
 
 | Blueprint Feature | Current Status | Gap |
 |-------------------|----------------|-----|
-| Distributed tracing | Not implemented | High |
+| Distributed tracing | OTLP configured, no collector | Medium |
+| Log aggregation | JSON structured logging, no aggregation | Medium |
+| Alerting rules | Audit burst detection only | Medium |
+| Custom dashboards | No Grafana dashboards in repo | Medium |
+| Provider health monitoring | ThirdPartyProviderHealthService with circuit breaker | Low |
 | Log aggregation | Local only | High |
 | Alerting | Not implemented | High |
 | Custom dashboards | Not implemented | Medium |
