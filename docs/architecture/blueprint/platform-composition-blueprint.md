@@ -1,12 +1,14 @@
 ---
 status: blueprint
-last_verified: 2026-06-18
+last_verified: 2026-06-22
 scope: future
 truth_level: target
 owner: platform
 ---
 
 # Platform Composition Blueprint
+
+> **Reality Check (2026-06-22):** Temporal integration is implemented in workflow-module (20 files). LiteFlow integration exists in render-module (7 files). Contract skeletons are implemented in shared-kernel. Extension-module has 55 files with sandbox execution and CLI tools. Marketplace and plugin security sandbox remain unimplemented.
 
 This document explains how core platform abstractions relate to each other and what users can compose.
 

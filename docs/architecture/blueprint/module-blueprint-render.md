@@ -1,12 +1,14 @@
 ---
 status: blueprint
-last_verified: 2026-06-18
+last_verified: 2026-06-22
 scope: all
 truth_level: target
 owner: platform
 ---
 
 # Module Blueprint: Render Pipeline
+
+> **Reality Check (2026-06-22):** Render module has 600 production files, 138 test files. 7+ active providers (FFmpeg, GStreamer, MLT, Remotion, GPAC, OFX, Natron). State machine with 10+ states. Incremental render with DAG-based pipeline execution. Cache with content-addressable hashing. Render farm with worker lease management. Significantly more advanced than this blueprint describes.
 
 ## 1. Purpose
 
@@ -114,27 +116,37 @@ The Render Pipeline module is responsible for orchestrating media rendering work
 
 ## 14. Current Status
 
-**Status: Partially Implemented**
+**Status: Significantly Implemented** (600 production files, 138 test files)
 
 ### Implemented
-- Basic job lifecycle management
-- FFmpeg/JavaCV provider integration
-- Simple queue management
-- Job status tracking
+- Job lifecycle management with 10+ state machine states
+- 7+ render providers: FFmpeg, GStreamer, MLT, Remotion, GPAC, OFX, Natron
+- Incremental render with DAG-based pipeline execution
+- Content-addressable render cache with S3-backed remote storage
+- Render farm with worker lease management and heartbeat
+- Subtitle pipeline (SRT, WebVTT, ASS, burn-in via libass)
+- Font management with security scanning
+- OTIO (OpenTimelineIO) timeline support
+- AAF format conversion
+- Billing integration via BillingDecisionEngine and BillingEnforcementService
+- Quota integration via QuotaBucketSummary (in-memory)
+
+### Partially Implemented
+- Multi-provider orchestration (basic selection policy, no cost optimization)
+- Advanced scheduling (DAG execution exists, no priority-based scheduling)
+- Auto-scaling (K8s HPA exists, no application-level auto-scaling)
 
 ### Not Implemented
-- Multi-provider orchestration
-- Advanced scheduling algorithms
-- Cost optimization
-- Real-time progress tracking
+- Real-time progress tracking (WebSocket/SSE)
+- Cost optimization (cost estimation exists in billing-module, not integrated into provider selection)
 
 ## 15. Gap to Blueprint
 
 | Blueprint Feature | Current Status | Gap |
 |-------------------|----------------|-----|
-| Multi-provider orchestration | Single provider | High |
-| Advanced scheduling | Simple FIFO | Medium |
-| Cost optimization | Not implemented | High |
-| Real-time progress | Polling only | Medium |
-| Provider health monitoring | Basic | Medium |
-| Auto-scaling workers | Not implemented | High |
+| Multi-provider orchestration | 7+ providers with selection policy | **Low** — basic orchestration exists |
+| Advanced scheduling | DAG-based pipeline execution | **Medium** — no priority-based scheduling |
+| Cost optimization | CostEstimationService exists, not integrated | **Medium** — needs provider selection integration |
+| Real-time progress | Polling only | **Medium** — no WebSocket/SSE |
+| Provider health monitoring | RenderProviderHealthCheck exists | **Low** — basic health checks exist |
+| Auto-scaling workers | K8s HPA 1-10 replicas | **Medium** — infrastructure-level only |

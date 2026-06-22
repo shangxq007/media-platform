@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Point-in-time analysis from 2026-05-28. Superseded by comprehensive audit.
+> **Superseded By:** `docs/system-audit/platform-architecture-audit-2026-06-13.md`
+> **Do not use as current reference.**
+
+---
+
 # 已有文档与代码实现对照报告
 
 > **生成方式**：对比代码反推结果与已有 docs 目录内容

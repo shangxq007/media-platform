@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Historical report from Roo agent phases 26-29. Superseded by later comprehensive reviews.
+> **Superseded By:** `docs/review/project-intelligence-report.md`
+> **Do not use as current reference.**
+
+---
+
 # Roo Code Final Report — Phase 29 Update
 
 > **Generated**: 2026-05-11T23:45Z

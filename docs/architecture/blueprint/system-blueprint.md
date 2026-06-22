@@ -1,12 +1,14 @@
 ---
 status: blueprint
-last_verified: 2026-06-18
+last_verified: 2026-06-22
 scope: all
 truth_level: target
 owner: platform
 ---
 
 # System Blueprint — Target Architecture
+
+> **Reality Check (2026-06-22):** Module count updated to 35. Frontend confirmed React 19. Flyway is 1 consolidated baseline (V1, 133 tables). Temporal and LiteFlow are implemented. See [Source of Truth Validation Report](../../review/source-of-truth-validation-report.md).
 
 ## 1. System Overview
 
@@ -17,7 +19,7 @@ Media Platform is a **modular monolith** designed for media production workflows
 | Architecture Style | Modular Monolith (Spring Modulith) |
 | Runtime | JVM (Java 25 toolchain) |
 | Framework | Spring Boot 4.0.4 + Spring Modulith 2.0.4 |
-| Module Count | 32 Gradle modules (30 business + platform-app + shared-kernel) |
+| Module Count | 35 Gradle modules (33 business + platform-app + shared-kernel) |
 | Database | PostgreSQL 16 (production) |
 | Workflow Engine | Temporal 1.33.0 (durable) + LiteFlow 2.15.3.2 (local rules) |
 | Frontend | React 19 + TypeScript 5.7 + Vite 6 + TanStack Router/Query |
@@ -97,7 +99,7 @@ graph TB
 | Rule | Description |
 |------|-------------|
 | `shared-kernel` → none | Root of dependency graph, no outgoing deps |
-| `platform-app` → all | Aggregator only, depends on all 30 modules |
+| `platform-app` → all | Aggregator only, depends on all 35 modules |
 | Cross-module → named interfaces | Must use `api` or `domain` packages |
 | Event-based for decoupled flows | render→audit, render→notification, commerce→payment |
 | Forbidden: any → `platform-app` | No module may depend on the aggregator |
@@ -198,7 +200,7 @@ graph TB
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| Schema Migration | Flyway (17 versions) | DDL management |
+| Schema Migration | Flyway (1 version — V1 consolidated baseline, 133 tables) | DDL management |
 | Type-Safe SQL | jOOQ 3.19.18 | Query DSL (no codegen yet) |
 | Object Storage | S3-compatible | Artifacts, media files |
 | Connection Pool | HikariCP | 20 max, 5 min idle |

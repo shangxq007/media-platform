@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Point-in-time snapshot from Prompt 63. Does not reflect current state.
+> **Superseded By:** `docs/review/project-intelligence-report.md`, `docs/overview/02-project-status.md`
+> **Do not use as current reference.**
+
+---
+
 # Final Project Status
 
 ## Prompt 63: Feature Flag Governance, ABAC Integration, and Frontend Portal Completion

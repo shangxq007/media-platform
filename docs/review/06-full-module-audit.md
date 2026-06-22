@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Contains critical drift: claims Vue 3 frontend (actual: React 19), 31 modules (actual: 35). Audit date 2026-05-23.
+> **Superseded By:** `docs/review/project-intelligence-report.md`, `docs/review/source-of-truth-validation-report.md`
+> **Do not use as current reference.**
+
+---
+
 # Media Platform 全模块逐文件级代码审查报告
 
 > **审查日期：** 2026-05-23（二轮验证修正版）  

@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Based on Vue3 codebase (project is now React 19). Assessment date 2026-05-20.
+> **Superseded By:** `docs/review/project-intelligence-report.md`
+> **Do not use as current reference.**
+
+---
+
 # Autonomous Plan 提示词功能完成度矩阵
 
 > 对照目录：`development/plan/autonomous-plan/prompts/`（71 个文件，编号 00–70）  

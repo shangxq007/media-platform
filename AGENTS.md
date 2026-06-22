@@ -48,7 +48,15 @@ Modular media platform skeleton for AI video production, rendering orchestration
 - Audit logs must be distinct from normal technical logs
 - Every implementation task must add or update tests
 - Run tests in order: narrowest → affected module → broader build
-- Maintain `docs/roo-execution-log.md` for execution tracking
+
+## Safety Constraints
+- Do not modify the Flyway V1 baseline (`V1__init_full_schema.sql`)
+- Do not introduce H2 database (PostgreSQL only)
+- Do not enable Spring AI active runtime (adapter exists but is not in active runtime)
+- Do not add `spring-modulith-starter-insight`
+- Do not weaken `ProductionSafetyValidator`
+- Do not commit real secrets or credentials
+- `ModularityTest` must remain enabled — see `docs/modulith-debt-register.md`
 
 ## Module Structure
 See `.kilo/agents/main.md` for detailed module boundaries and infrastructure guidelines.

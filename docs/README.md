@@ -47,9 +47,57 @@ These two documents are the **primary source of truth** for AI agents. They are 
 | Category | Location | Reason |
 |----------|----------|--------|
 | Archive | `archive/` (224+ files) | Explicitly "not current truth" |
-| Historical reviews | `review/01-06-*.md` | Point-in-time snapshots |
+| Archived root-level docs | `roo-execution-log.md`, `roo-final-report.md`, `roo-gap-report.md`, `kilo-execution-summary.md`, `human-review-needed.md`, `documentation-gap-analysis.md`, `documentation-gap-report.md`, `final-project-status.md` | Superseded — see archive headers |
+| Archived review reports | `review/autonomous-prompt-completion-matrix.md`, `review/05-architecture-evaluation.md`, `review/06-full-module-audit.md` | Contains critical drift (Vue 3, wrong module count) |
 | Historical prompts | `prompts/*.md` | Previous orchestrator sessions |
-| Stale overviews | `overview/` (pre-2026-06-22 versions) | Superseded by fixed versions |
+
+---
+
+## Document Categories
+
+### Canonical Documents (Trust These)
+
+| Document | Purpose |
+|----------|---------|
+| [AGENTS.md](../AGENTS.md) | Primary agent configuration |
+| [.kilo/agents/main.md](../.kilo/agents/main.md) | Module boundaries and development rules |
+| [Current System State](architecture/current/current-system-state.md) | What is implemented |
+| [Current Module Status](architecture/current/current-module-status.md) | Module status |
+| [Production Safety](production-safety.md) | Production startup checks |
+| [Modulith Debt Register](modulith-debt-register.md) | Module boundary violations |
+| [Known Limitations](review/known-limitations.md) | What is not production-ready |
+
+### Blueprint Documents (Target State)
+
+| Document | Purpose |
+|----------|---------|
+| [System Blueprint](architecture/blueprint/system-blueprint.md) | Target system architecture |
+| [Render Blueprint](architecture/blueprint/module-blueprint-render.md) | Render pipeline target |
+| [Security Blueprint](architecture/blueprint/module-blueprint-security-identity.md) | Security target |
+| [Platform Composition](architecture/blueprint/platform-composition-blueprint.md) | Composition model |
+| [Capability Opening](architecture/blueprint/capability-opening-blueprint.md) | Extension model |
+
+Blueprints describe **target architecture**, not current implementation. They include "Reality Check" sections validated against code.
+
+### Historical Documents (Do Not Trust for Current State)
+
+These documents have been archived with status headers. They contain stale facts and should not be used as reference:
+
+- `roo-execution-log.md` — Superseded by project-intelligence-report
+- `roo-final-report.md` — Superseded
+- `roo-gap-report.md` — Superseded by June 13 audit
+- `kilo-execution-summary.md` — Superseded
+- `human-review-needed.md` — Phase 20 only
+- `documentation-gap-analysis.md` — Superseded
+- `documentation-gap-report.md` — Superseded
+- `final-project-status.md` — Point-in-time snapshot
+- `review/autonomous-prompt-completion-matrix.md` — Vue3-based
+- `review/05-architecture-evaluation.md` — Vue 3 drift
+- `review/06-full-module-audit.md` — Vue 3 drift
+
+### Archived Documents
+
+All documents in `archive/` (224+ files) are explicitly **not current truth**. See [archive/README.md](archive/README.md) for the archive index.
 
 ---
 

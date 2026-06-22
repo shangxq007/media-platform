@@ -1,6 +1,22 @@
 # Known Limitations
 
-> **Last Updated:** 2026-05-20
+> **Last Updated:** 2026-06-22
+
+## Quota & Billing
+
+### Quota Persistence Not Implemented (Critical)
+
+The `QuotaService` in `quota-billing-module` stores all state in 4 `ConcurrentHashMap` fields (buckets, usage records, policies, idempotency index). There are **no Repository classes, no JDBC persistence, no Flyway tables** for quota data. All quota state is **lost on application restart**. This is the single largest gap blocking production deployment of the quota system.
+
+**Impact:** Quota limits, usage tracking, and threshold events are ephemeral. Cannot survive restarts, cannot be shared across instances.
+
+**Workaround:** Use entitlement-module quota profiles for static limit definitions. Quota enforcement at runtime is best-effort only.
+
+**Planned:** Database-backed persistence with Flyway migration.
+
+### In-Memory Scheduler
+
+The `ScheduleRegistryService` in `scheduler-module` stores job definitions and run history in memory. No cron engine (Quartz/Temporal) is integrated. Scheduling state is lost on restart.
 
 ## Notification Center
 

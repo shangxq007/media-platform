@@ -1,10 +1,11 @@
 # Module Boundaries — Architecture Guardrails
 
 > **Generated**: 2026-05-08T03:19Z
-> **Updated**: 2026-05-08T08:28Z (Phase T1: Architecture Convergence)
-> **Auditor**: Roo (Architect mode)
-> **Scope**: Full module boundary audit of `/media-platform/` — 25 modules, build files, package-info annotations, dependency graph.
-> **Related**: [`roo-gap-report.md`](./roo-gap-report.md) | [`architecture-notes.md`](./architecture-notes.md) | [`architecture-decisions.md`](./architecture-decisions.md) | [`.roo/rules/30-module-boundaries.md`](.roo/rules/30-module-boundaries.md)
+> **Updated**: 2026-06-22 (Sprint 002: aligned with ModularityTest, render deps, quota NamedInterface)
+> **Last Validated Against ModularityTest**: 2026-06-22
+> **Auditor**: Roo (Architect mode), updated by Sprint 002
+> **Scope**: Full module boundary audit of `/media-platform/` — 35 modules, build files, package-info annotations, dependency graph.
+> **Related**: [`modulith-debt-register.md`](./modulith-debt-register.md) | [`architecture-decisions.md`](./architecture-decisions.md)
 
 ---
 
@@ -15,7 +16,7 @@ All 24 non-app modules declare `@org.springframework.modulith.ApplicationModule`
 | Module | Annotation | Type | Display Name |
 |--------|-----------|------|--------------|
 | `shared-kernel` | `@ApplicationModule(type = OPEN)` | `OPEN` | Shared Kernel |
-| `render-module` | `@ApplicationModule(allowedDependencies = {"ai", "ai :: API", "ai :: domain", "shared", "storage", "storage :: API", "storage :: domain"})` | CLOSED | Render |
+| `render-module` | `@ApplicationModule(allowedDependencies = {"ai", "ai :: API", "ai :: domain", "ai :: video", "billing :: app", "billing :: domain", "entitlement", "entitlement :: domain", "quota :: app", "shared", "storage", "storage :: API", "storage :: domain", "workflow", "extension", "extension :: app", "extension :: domain"})` | CLOSED | Render |
 | `notification-module` | `@ApplicationModule` | CLOSED | Notification |
 | `ai-module` | `@ApplicationModule` | CLOSED | AI |
 | `config-module` | `@ApplicationModule` | CLOSED | Config |

@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Initial gap audit from 2026-05-08. Many gaps have since been addressed. Superseded by comprehensive audit.
+> **Superseded By:** `docs/system-audit/platform-architecture-audit-2026-06-13.md`
+> **Do not use as current reference.**
+
+---
+
 # Roo Gap Report — Phase 0 Repository Audit
 
 > **Generated**: 2026-05-08T03:09Z

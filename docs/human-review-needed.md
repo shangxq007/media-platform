@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Phase 20 items only, 6+ weeks stale. Superseded by current action plan.
+> **Superseded By:** `docs/system-audit/CRITICAL_GAPS_ACTION_PLAN.md`
+> **Do not use as current reference.**
+
+---
+
 # Human Review Needed
 
 > **Generated**: 2026-05-11T20:00Z

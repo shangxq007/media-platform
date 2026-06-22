@@ -1,10 +1,17 @@
 # Quota Policy
 
 > Doc index: [docs/README.md](./README.md).
+> **Last Validated:** 2026-06-22
+
+> **⚠️ Current State:** The quota system is **in-memory only**. `QuotaService` uses `ConcurrentHashMap` for all state (buckets, usage records, policies). No database persistence exists. All quota data is **lost on restart**.
+>
+> **Planned:** Database-backed persistence with Flyway migration. See [known-limitations.md](review/known-limitations.md).
 
 ## Overview
 
-The quota system enforces usage limits at runtime. Quotas are defined by `QuotaPolicy` and `QuotaProfile`, tracked in `QuotaBucket`, and evaluated by `QuotaDecisionService`. Quotas are checked as part of the access control flow — after entitlement passes but before the operation executes.
+The quota system enforces usage limits at runtime. Quotas are defined by `QuotaPolicy`, tracked in `QuotaBucket`, and evaluated by `QuotaService`. Quotas are checked as part of the access control flow — after entitlement passes but before the operation executes.
+
+> **Note:** `QuotaDecisionService` and `QuotaProfile` described below are from the **entitlement-module**, not the quota-billing-module. The quota-billing-module provides `QuotaService` with in-memory bucket tracking.
 
 ## Models
 
@@ -28,7 +35,7 @@ Methods:
 - `isWarning(currentUsage)`: Returns true if usage exceeds the warning threshold
 - `remaining(currentUsage)`: Returns `max(0, limitValue - currentUsage)`
 
-Source: `entitlement-module/.../domain/QuotaPolicy.java`
+Source: `entitlement-module/.../domain/QuotaPolicy.java` (entitlement module, not quota-billing-module)
 
 ### QuotaProfile
 

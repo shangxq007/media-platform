@@ -1,3 +1,10 @@
+> **Status:** Archived (2026-06-22)
+> **Reason:** Initial gap report from 2026-05-12. Superseded by comprehensive audit.
+> **Superseded By:** `docs/system-audit/platform-architecture-audit-2026-06-13.md`
+> **Do not use as current reference.**
+
+---
+
 # Documentation Gap Report
 
 > **Last updated**: 2026-05-12
