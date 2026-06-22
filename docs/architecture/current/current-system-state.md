@@ -1,6 +1,6 @@
 ---
 status: current
-last_verified: 2026-06-18
+last_verified: 2026-06-22
 scope: preview
 truth_level: implemented
 owner: platform
@@ -8,7 +8,7 @@ owner: platform
 
 # Current System State
 
-> **Last validated:** 2026-06-18 (Release Candidate Readiness Checklist)
+> **Last validated:** 2026-06-22 (Source of Truth Validation)
 
 ## 1. Validated Startup Profiles
 
@@ -57,9 +57,9 @@ owner: platform
 
 | Attribute | Value |
 |-----------|-------|
-| Engine | PostgreSQL 15 (Docker: `postgres:15-alpine`) |
-| Flyway Migrations | 1 version (V1 - consolidated baseline) |
-| Tables | 50+ |
+| Engine | PostgreSQL 16 (Docker: `postgres:16-alpine`) |
+| Flyway Migrations | 1 version (V1 - consolidated baseline, 2339 lines) |
+| Tables | 133 |
 | Schema Location | `classpath:db/migration` |
 | Test Schema | PostgreSQL via Testcontainers |
 | H2 Support | ❌ Not supported |

@@ -1,11 +1,11 @@
 # Project Overview
 
-> **Module:** All
-> **Last Updated:** 2026-05-18
+> **Last Updated:** 2026-06-22
+> **Last Validated Against Code:** 2026-06-22
 
 ## What is Media Platform?
 
-Media Platform is a comprehensive **AI-powered video production and rendering orchestration platform**. It provides end-to-end media processing capabilities including multi-provider render pipelines, prompt engineering management, cost control, entitlement management, anomaly detection, monitoring, and dynamic extension support.
+Media Platform is a modular monolith for AI-powered video production and rendering orchestration. It provides multi-provider render pipelines, billing and quota management, entitlement control, prompt engineering, content delivery, and a React 19 frontend video editor.
 
 ## Technology Stack
 
@@ -14,84 +14,56 @@ Media Platform is a comprehensive **AI-powered video production and rendering or
 | Language | Java | 25 |
 | Framework | Spring Boot | 4.0.4 |
 | Modularity | Spring Modulith | 2.0.4 |
-| AI | Spring AI | 2.0.0-M3 |
 | Workflow | Temporal | 1.33.0 |
 | Rules Engine | LiteFlow | 2.15.3.2 |
 | Database | PostgreSQL | 16 |
-| Migration | Flyway | BOM-managed |
+| Migration | Flyway | 1 consolidated baseline (V1) |
 | ORM | jOOQ | 3.19.18 |
 | API Docs | springdoc OpenAPI | 3.0.2 |
 | Plugin System | PF4J | 3.15.0 |
-| Frontend | Vue 3 + Vite | — |
-| Frontend Test | Vitest | — |
+| Frontend | React 19 + Vite 6 | TypeScript 5.7 |
+| Frontend State | Zustand + TanStack Query | — |
+| Video Composition | Remotion 4 | — |
 | Build | Gradle | 9.1 |
+
+## Module Count
+
+35 Gradle subprojects. Entry point: `platform-app`.
 
 ## Key Capabilities
 
-### ✅ Implemented
+See [Project Intelligence Report](../review/project-intelligence-report.md) for comprehensive capability analysis.
 
-- **Render Pipeline** — Multi-stage pipeline (Effects → Transcode → Packaging) with 6 provider implementations
-- **Prompt Engineering** — Template lifecycle management with safety governance
-- **Cost Control** — Metering, budgeting, reservations, and anomaly detection
-- **Entitlement** — 5-tier policy system (FREE/PRO/TEAM/ENTERPRISE/EXPERIMENTAL)
-- **Feature Flags** — OpenFeature-based feature flag system with targeting rules and percentage rollout
-- **GraphQL** — Read-only query aggregation layer with DataLoader batching
-- **NLQ** — Natural Language Query assistant for analytics data
-- **Dynamic Extensions** — Runtime plugin loading with sandbox execution and rollback
-- **Monitoring** — Sentry + OpenReplay integration with session replay
-- **Problematic Data** — Automated detection, isolation, auto-fix, and quarantine
-- **Frontend Video Editor** — Timeline-based video editor with export, effects, subtitles
-- **Audit Trail** — Comprehensive audit logging across all modules
+### Implemented
 
-### ⚠️ Partially Implemented
+- Render pipeline with 7+ providers (FFmpeg, GStreamer, MLT, Remotion, GPAC, OFX, Natron)
+- Billing: subscriptions, usage metering, credit wallets, reconciliation
+- Payment: real Stripe + Hyperswitch HTTP clients with webhook verification
+- Identity: JWT + OIDC + API Key, RBAC, multi-tenancy
+- Workflow: Temporal durable workflows + local fallback
+- Delivery: 6 protocol adapters
+- Feature flags: OpenFeature + JDBC persistence
+- Audit: jOOQ-backed audit trail with anomaly detection
+- Frontend: React 19 video editor with timeline, effects, subtitles
 
-- **AI Module** — Infrastructure ready (ChatProvider SPI, ModelRouter), but uses `StubChatProvider`
-- **Payment Module** — Domain models exist, but all providers are Noop stubs
+### Partially Implemented
 
-### 🔧 Stub / Mock
+- AI Module — gateway + model routing + stub provider
+- Quota — domain model exists, in-memory only (no persistence)
+- Observability — Prometheus metrics + basic health; no distributed tracing
 
-- `StubChatProvider` — Returns hardcoded responses
-- `NoopStripePaymentProvider` — No-op payment processing
-- `NoopHyperswitchPaymentProvider` — No-op payment processing
-- `NoopKillBillBillingEngine` — Returns projected state only
-- `LocalFeatureFlagProvider` — In-memory only, not persisted
+### Not Implemented
 
-### 📋 Future Work
+- Plugin marketplace
+- Cloud resource provisioning (in-memory only)
+- Scheduler cron engine (in-memory only)
 
-- Real GLM/Claude/GPT model integration
-- Real Stripe/Hyperswitch payment integration
-- Spring Security + JWT authentication
-- Multi-tenant data isolation enforcement
-- OpenTelemetry integration
-- Remote render worker GPU acceleration
-- OTIO (OpenTimelineIO) full integration
+## Canonical Documentation
 
-## Project Structure
-
-```
-media-platform-workspace/
-├── media-platform/              # Main application repository
-│   ├── platform-app/            # Spring Boot application entry point
-│   ├── shared-kernel/           # Shared types, events, error codes
-│   ├── render-module/           # Render orchestration & providers
-│   ├── workflow-module/         # Temporal + LiteFlow workflows
-│   ├── ai-module/               # AI model integration (stub)
-│   ├── prompt-module/           # Prompt template management
-│   ├── extension-module/        # Dynamic extensions (PF4J)
-│   ├── sandbox-runtime-module/  # Sandbox execution
-│   ├── billing-module/          # Cost metering & budget
-│   ├── entitlement-module/      # Tier-based access control
-│   ├── policy-governance-module/# Feature flags & policy evaluation
-│   ├── federation-query-module/ # GraphQL & NLQ
-│   ├── [20+ other modules]/     # See 02-modules/
-│   ├── frontend/                # Vue 3 video editor
-│   ├── docs/                    # Legacy docs (see archive/)
-│   └── scripts/                 # Validation scripts
-├── docs/                        # New documentation (this tree)
-├── prompts/                     # Execution prompts & MANIFEST
-└── scripts/                     # Workspace-level scripts
-```
-
-## Module Count: 30
-
-See `02-modules/` for detailed module breakdown and `01-architecture/03-module-architecture.md` for dependency graph.
+| Document | Purpose |
+|----------|---------|
+| [AGENTS.md](../../AGENTS.md) | Agent configuration — priorities, rules, module list |
+| [Current System State](../architecture/current/current-system-state.md) | What is actually implemented |
+| [Production Safety](../production-safety.md) | Production startup checks |
+| [Known Limitations](../review/known-limitations.md) | What is not production-ready |
+| [Project Intelligence Report](../review/project-intelligence-report.md) | Comprehensive code-based analysis |

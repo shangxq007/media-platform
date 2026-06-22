@@ -1,6 +1,6 @@
 # Media Platform
 
-AI 视频生产与渲染编排平台（Spring Modulith 模块化单体 + Vue 3 前端）。
+AI 视频生产与渲染编排平台（Spring Modulith 模块化单体 + React 19 前端）。
 
 ## 快速开始
 
@@ -13,9 +13,24 @@ cd frontend && npm install && npm run dev
 生产环境请使用 **`SPRING_PROFILES_ACTIVE=prod`**（勿带 `dev`），配置 PostgreSQL 与 OIDC。  
 启动门禁见 [docs/production-safety.md](docs/production-safety.md)。
 
+## 技术栈
+
+| 层 | 技术 | 版本 |
+|----|------|------|
+| 语言 | Java | 25 |
+| 框架 | Spring Boot | 4.0.4 |
+| 模块化 | Spring Modulith | 2.0.4 |
+| 工作流 | Temporal + LiteFlow | 1.33.0 / 2.15.3.2 |
+| 数据库 | PostgreSQL | 16 |
+| ORM | jOOQ | 3.19.18 |
+| 前端 | React 19 + Vite 6 + TypeScript 5.7 | — |
+| 前端状态 | Zustand + TanStack Query + TanStack Router | — |
+| 视频合成 | Remotion 4 | — |
+| 特性开关 | OpenFeature | — |
+
 ## 模块结构
 
-31 个 Gradle 子模块，入口为 `platform-app`。详见工作区 `docs/modules/`。
+35 个 Gradle 子模块，入口为 `platform-app`。详见 `docs/modules/`。
 
 ## 数据库（Flyway）
 
@@ -25,15 +40,21 @@ Schema 统一在：
 
 | 脚本 | 内容 |
 |------|------|
-| V1 | 核心基础设施、扩展定义、发件箱 |
-| V2 | 商业、身份、渲染、产物 |
-| V3 | Prompt、扩展平台、工作空间 RBAC |
-| V4 | 权益、导航、计费、通知、社交、Feature Flag |
-| V5–V19 | 索引、交付、Temporal、租户 AI 密钥等 |
-| V20–V22 | 时间线领域版控（`timeline_revision`、`labels_json`） |
+| V1 | 完整 baseline（133 张表，2339 行 DDL） |
 
-当前 **22** 个中央 Flyway 脚本；模块内 Bootstrap 仅作 JDBC→内存 **hydrate**，不替代 DDL。  
+当前 **1** 个中央 Flyway 脚本（V1 合并 baseline）。模块内 Bootstrap 仅作 JDBC→内存 **hydrate**，不替代 DDL。  
+新增迁移脚本见 [docs/operations/flyway-baseline-runbook.md](docs/operations/flyway-baseline-runbook.md)。  
 Modulith 违规预算见 [docs/modulith-debt-register.md](docs/modulith-debt-register.md)。
+
+## 核心能力
+
+- **渲染管线** — 7+ 提供商（FFmpeg, GStreamer, MLT, Remotion, GPAC, OFX, Natron），状态机，增量渲染，缓存
+- **计费与支付** — 订阅生命周期，用量计费，信用钱包，Stripe + Hyperswitch 真实集成
+- **权限与身份** — JWT + OIDC + API Key，RBAC，多租户隔离
+- **工作流编排** — Temporal 持久化工作流 + 本地回退
+- **内容交付** — 6 协议适配器（S3Mirror, SFTP, SMB, WebDAV, HTTPS PUT）
+- **特性开关** — OpenFeature + JDBC 持久化，百分比灰度
+- **审计合规** — jOOQ 审计记录，异常检测，安全告警
 
 ## 插件扩展
 
@@ -41,10 +62,10 @@ Modulith 违规预算见 [docs/modulith-debt-register.md](docs/modulith-debt-reg
 
 ## 文档
 
-- 中文平台指南（分卷）：`docs/zh/platform-guide/README.md`
-- 工作区文档中心：`docs/README.md`
-- 架构评估：`docs/review/05-architecture-evaluation.md`
-- Golden Render Project：`test-assets/golden-rend-project-v1/README.md`
+- 文档中心：[docs/README.md](docs/README.md)
+- 中文平台指南：`docs/zh/platform-guide/README.md`
+- 项目情报报告：`docs/review/project-intelligence-report.md`
+- 已知限制：`docs/review/known-limitations.md`
 - Project Export/Import：`docs/media-rendering/project-export.md`
 
 ## 测试
@@ -52,5 +73,6 @@ Modulith 违规预算见 [docs/modulith-debt-register.md](docs/modulith-debt-reg
 ```bash
 ./gradlew test
 ./gradlew :platform-app:test --tests "com.example.platform.FlywaySchemaIntegrationTest"  # 需 Docker
+./gradlew :platform-app:test --tests "com.example.platform.ModularityTest"               # 模块边界验证
 cd frontend && npx vitest run
 ```

@@ -1,6 +1,6 @@
 ---
 status: current
-last_verified: 2026-06-18
+last_verified: 2026-06-22
 scope: preview
 truth_level: implemented
 owner: platform
@@ -8,15 +8,15 @@ owner: platform
 
 # Current Module Status
 
-> **Last validated:** 2026-06-18
+> **Last validated:** 2026-06-22 (Source of Truth Validation)
 
 ## Module Status Overview
 
 | Module | Gradle Module | Modulith Type | Test Coverage | Status | Notes |
 |--------|---------------|---------------|---------------|--------|-------|
 | shared-kernel | `shared-kernel` | OPEN | — | ✅ Stable | Root dependency, no outgoing deps |
-| platform-app | `platform-app` | — | 42% | ✅ Stable | Composition root, depends on all 30 |
-| render-module | `render-module` | CLOSED | 26% | ✅ Stable | Largest module (453 main files), 9 active providers |
+| platform-app | `platform-app` | — | 42% | ✅ Stable | Composition root, depends on all 35 |
+| render-module | `render-module` | CLOSED | 26% | ✅ Stable | Largest module (600 main files), 7+ active providers (FFmpeg, GStreamer, MLT, Remotion, GPAC, OFX, Natron) |
 | workflow-module | `workflow-module` | CLOSED | — | ⚠️ Disabled (preview) | Temporal workflows, disabled in preview |
 | ai-module | `ai-module` | CLOSED | — | ⚠️ Isolated | Not in platform-app runtime path |
 | notification-module | `notification-module` | CLOSED | — | ✅ Stable | Multi-channel notifications |
@@ -80,8 +80,8 @@ owner: platform
 
 | Check | Status | Details |
 |-------|--------|---------|
-| `ModularityTest` | ✅ PASS | `ApplicationModules.verify()` passes |
-| Registered violations | 8 | All in `identity → artifact/storage` (ProjectImportService) |
+| `ModularityTest` | ✅ PASS | Re-enabled, zero-tolerance assertion |
+| Registered violations | 2 | `identity → artifact`, `identity → storage` (in `ALLOWED_VIOLATIONS`) |
 | Unregistered violations | 0 | None |
 | `package-info.java` | 29/30 | `social-publish-module` missing |
 
@@ -144,5 +144,5 @@ owner: platform
 | Sandbox runtime | ❌ Not implemented | Stub only |
 | BYOK/custom AI provider | ❌ Roadmap | Not in platform-app runtime |
 | Plugin security sandbox | ❌ Not implemented | No Wasm/container isolation |
-| Temporal integration | ❌ Not implemented | Future consideration for long-running workflows |
-| LiteFlow integration | ❌ Not implemented | Future consideration for policy chains |
+| Temporal integration | ✅ Implemented | workflow-module (20 files): RenderWorkflow, RenderPipelineWorkflow, activities, adapters |
+| LiteFlow integration | ✅ Implemented | render-module (7 files): LiteFlow nodes for subtitle burn-in, policy routing |

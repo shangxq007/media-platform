@@ -1,110 +1,104 @@
 # Project Status & Statistics
 
-> **Last Updated:** 2026-05-18
-> **Prompts Completed:** 1–66
+> **Last Updated:** 2026-06-22
+> **Last Validated Against Code:** 2026-06-22
 
 ## Module Status
 
-| # | Module | Status | Notes |
-|---|--------|--------|-------|
-| 1 | `shared-kernel` | ✅ | Shared types, events, error codes, TenantContext |
-| 2 | `platform-app` | ✅ | Spring Boot entry, OpenAPI config, security config |
-| 3 | `config-module` | ✅ | Versioned configuration CRUD |
-| 4 | `secrets-config-module` | ✅ | Secret reference management |
-| 5 | `datasource-module` | ✅ | Named DataSource & DSLContext registry |
-| 6 | `identity-access-module` | ✅ | API keys, users, tenants, projects |
-| 7 | `scheduler-module` | ✅ | Cron jobs, manual triggers, dead-letter |
-| 8 | `sandbox-runtime-module` | ✅ | Wasm/container placeholder |
-| 9 | `extension-module` | ✅ | PF4J plugins, tool registry, sandbox |
-| 10 | `federation-query-module` | ✅ | GraphQL aggregation, NLQ |
-| 11 | `outbox-event-module` | ✅ | Transactional outbox with retry |
-| 12 | `cloud-resource-module` | ✅ | Cloud resource provider catalog |
-| 13 | `render-module` | ✅ | 6 providers, pipeline, quota |
-| 14 | `workflow-module` | ✅ | Temporal + LiteFlow orchestration |
-| 15 | `ai-module` | ⚠️ | StubChatProvider — real integration pending |
-| 16 | `remote-render-worker` | ✅ | Worker registry, job distribution |
-| 17 | `artifact-catalog-module` | ✅ | Output metadata, storage URIs |
-| 18 | `storage-module` | ✅ | Multi-provider storage catalog |
-| 19 | `billing-module` | ✅ | Metering, budget, reservation, reconciliation |
-| 20 | `quota-billing-module` | ✅ | Quota buckets, threshold events |
-| 21 | `entitlement-module` | ✅ | 5-tier policy, grants, overrides |
-| 22 | `payment-module` | ⚠️ | All providers are Noop stubs |
-| 23 | `commerce-module` | ✅ | Checkout, revenue, purchase orders |
-| 24 | `audit-compliance-module` | ✅ | Audit trail, anomaly detection |
-| 25 | `policy-governance-module` | ✅ | Feature flags, policy evaluation, ABAC |
-| 26 | `compatibility-migration-module` | ✅ | 9 schema families |
-| 27 | `notification-module` | ✅ | Multi-channel, templates |
-| 28 | `observability-module` | ✅ | Health checks, circuit breaker, SLA |
-| 29 | `user-analytics-module` | ✅ | Behavior events, profiles, segments |
-| 30 | `prompt-module` | ✅ | Template CRUD, versioning, rendering, safety |
+| # | Module | Prod Files | Test Files | Status | Notes |
+|---|--------|-----------|------------|--------|-------|
+| 1 | `shared-kernel` | 127 | 20 | ✅ Stable | Root dependency, no outgoing deps |
+| 2 | `platform-app` | 101 | 47 | ✅ Stable | Composition root, security, production safety |
+| 3 | `render-module` | 600 | 138 | ✅ Stable | Largest module, 7+ providers, state machine, incremental render |
+| 4 | `workflow-module` | 22 | 6 | ✅ Stable | Temporal workflows + local fallback |
+| 5 | `ai-module` | 33 | 8 | ⚠️ Gateway | Gateway + model routing, stub provider |
+| 6 | `notification-module` | 44 | 14 | ✅ Stable | Multi-channel (Novu, email, SMS, webhook) |
+| 7 | `storage-module` | 19 | 6 | ✅ Stable | S3-compatible blob storage |
+| 8 | `delivery-module` | 36 | 4 | ✅ Stable | 6 protocol adapters |
+| 9 | `prompt-module` | 23 | 4 | ✅ Stable | Template CRUD, versioning, risk analysis |
+| 10 | `config-module` | 4 | 0 | ⚠️ Stub | Minimal key-value, no tests |
+| 11 | `cloud-resource-module` | 9 | 1 | ⚠️ Stub | In-memory catalog, stub provider |
+| 12 | `secrets-config-module` | 24 | 3 | ✅ Stable | Vault KV v2 + env fallback |
+| 13 | `extension-module` | 55 | 19 | ✅ Stable | Extension lifecycle, sandbox, CLI tools |
+| 14 | `datasource-module` | 9 | 2 | ⚠️ Partial | Multi-datasource config, noop federation |
+| 15 | `observability-module` | 9 | 3 | ⚠️ Partial | Circuit breaker/SLA, no tracing infra |
+| 16 | `outbox-event-module` | 6 | 3 | ✅ Stable | jOOQ outbox, idempotency, exponential backoff |
+| 17 | `audit-compliance-module` | 40 | 15 | ✅ Stable | Audit trail, anomaly detection |
+| 18 | `scheduler-module` | 7 | 1 | ⚠️ Stub | In-memory job registry, no cron |
+| 19 | `identity-access-module` | 99 | 34 | ✅ Stable | RBAC, API keys, project export/import |
+| 20 | `quota-billing-module` | 10 | 1 | ⚠️ Stub | In-memory only, no persistence |
+| 21 | `commerce-module` | 28 | 4 | ✅ Stable | Checkout flow, catalog, cart |
+| 22 | `payment-module` | 30 | 4 | ✅ Stable | Real Stripe + Hyperswitch HTTP clients |
+| 23 | `billing-module` | 86 | 15 | ✅ Stable | Subscriptions, usage, credit wallet, reconciliation |
+| 24 | `entitlement-module` | 61 | 17 | ✅ Stable | Grants, bundles, quotas, feature flags |
+| 25 | `policy-governance-module` | 39 | 20 | ✅ Stable | ABAC, OpenFeature, feature flags |
+| 26 | `artifact-catalog-module` | 19 | 4 | ✅ Stable | Artifact lifecycle, GC, integrity scan |
+| 27 | `sandbox-runtime-module` | 15 | 2 | ✅ Stable | Script engine exec, external worker |
+| 28 | `sandbox-worker` | — | — | ✅ Stable | Separate deployable |
+| 29 | `federation-query-module` | 101 | 43 | ⚠️ Mixed | Stub core, full GraphQL + NLQ |
+| 30 | `user-analytics-module` | — | — | ✅ Stable | User analytics |
+| 31 | `compatibility-migration-module` | — | — | ✅ Stable | Schema migration helpers |
+| 32 | `remote-render-worker` | 7 | — | ✅ Stable | Separate render worker |
+| 33 | `social-publish-module` | 29 | 1 | ⚠️ Partial | Service layer, stub adapters |
+| 34 | `product-layer-module` | — | — | ✅ Stable | Product layer abstraction |
+| 35 | `spring-ai-adapter` | 2 | 0 | ⚠️ Broken | Compilation error (TenantLitellmKeyService) |
 
 ## Statistics
 
-| Metric | Value |
-|--------|-------|
-| Total Gradle Modules | 30 |
-| Java Source Files | ~350+ |
-| Backend Test Files | 54+ |
-| Backend Tests | ~340+ |
-| Frontend Test Files | 78+ |
-| Frontend Tests | 639+ |
-| Error Codes | 60+ |
-| Flyway Migrations | 17 |
-| Database Tables | 28+ |
-| Frontend Components | 20+ |
-| Prompts Completed | 66 |
-| Documentation Files (new) | 40+ |
+| Metric | Value | Source |
+|--------|-------|--------|
+| Gradle Subprojects | 35 | `settings.gradle.kts` |
+| Java Source Files | ~1,800+ | `find` count |
+| Backend Test Files | ~500+ | `find` count |
+| Flyway Migrations | 1 (V1 consolidated) | `db/migration/` |
+| Database Tables | 133 | V1 `CREATE TABLE` count |
+| V1 SQL Lines | 2,339 | `wc -l` |
+| Frontend TSX Files | 34 | `find *.tsx` |
+| Frontend TS Files | 101 | `find *.ts` |
+| Application Profiles | 14 + base | `application*.yml` |
+| K8s Manifests | 35 | `find k8s` |
+| GitOps Files | 44 | `find gitops` |
+| CI Workflows | 1 | `.github/workflows/` |
+| Scripts | 12 | `find scripts` |
 
-## Quality Gate History
+## Modularity Status
 
-| Gate | Prompt 62 | Prompt 63 | Prompt 66 |
-|------|-----------|-----------|-----------|
-| `./gradlew clean test` | ✅ | ✅ | ✅ |
-| `./gradlew :platform-app:bootJar` | ✅ | ✅ | ✅ |
-| `docker compose config` | ✅ | ✅ | ✅ |
-| `vite build` | ✅ | ✅ | ✅ |
-| `vitest run` | ✅ (47 files, 391 tests) | ✅ (78 files, 639 tests) | ✅ |
-| `scripts/infra-validate.sh` | ✅ (11 checks) | ✅ | ✅ |
+| Check | Status | Details |
+|-------|--------|---------|
+| `ModularityTest` | ✅ PASS | Re-enabled, zero-tolerance assertion |
+| Allowed violations | 2 | `identity → artifact`, `identity → storage` |
+| Unregistered violations | 0 | None |
+| NamedInterfaces | 64 | Across all modules |
 
-## Feature Implementation Status
+## Security Status
 
-### ✅ Fully Implemented (40+ features)
-
-Render pipeline, 6 render providers, GPU presets, remote worker, OTIO timeline, subtitle system, effect packs, frontend video editor, prompt management, cost control, entitlement, anomaly detection, reconciliation, third-party monitoring, Sentry/OpenReplay integration, feedback UI, error codes with i18n, audit trail, schema migration, GraphQL aggregation, NLQ assistant, feature flags, ABAC policy evaluation, access decision service, configurable navigation, extension platform v2, sandbox runtime, billing models, quota management, commerce, notifications, observability, user analytics, compatibility migration.
-
-### ⚠️ Partially Implemented (2 features)
-
-- AI Module — infrastructure ready, stub implementation
-- Payment Module — domain models ready, stub providers
-
-### 🔧 Stub / Mock (7 items)
-
-- StubChatProvider, NoopStripePaymentProvider, NoopHyperswitchPaymentProvider, NoopKillBillBillingEngine, NoopMedusaCatalogAdapter, NoopFederatedQueryGateway, LocalFeatureFlagProvider (in-memory)
-
-### 📋 Future Work (9 items)
-
-- Real AI model integration, real payment integration, Spring Security + JWT, tenant isolation enforcement, OpenTelemetry, GPU acceleration, OTIO full integration, multi-region deployment, webhook notifications
+| Check | Status |
+|-------|--------|
+| ProductionSafetyValidator | ✅ Active — 14+ checks on startup |
+| JWT fail-fast | ✅ Rejects insecure defaults in constructor |
+| OIDC/JIT provisioning | ✅ Authentik integration with role mapping |
+| Tenant isolation | ✅ JWT-only tenant resolution, header guard |
 
 ## Production Readiness
 
-### Ready for Production
-- Render pipeline with 6 providers
-- Frontend video editor
-- Cost control and entitlement
-- Anomaly detection and reconciliation
-- Prompt engineering platform
-- Monitoring and feedback infrastructure
-- Error code system with i18n
+### Ready
+- Render pipeline with 7+ providers
+- Billing and subscription lifecycle
+- Payment (Stripe + Hyperswitch)
+- Identity (JWT + OIDC + RBAC)
+- Content delivery (6 adapters)
+- Audit and compliance
+- Feature flags (OpenFeature + JDBC)
 
-### Needs Human Review Before Production
-- AI model integration (stub)
-- Database persistence for prompt module (in-memory)
-- Authentication/authorization layer
-- Real payment gateway integration
-- Multi-tenant data isolation
+### Not Ready
+- Quota persistence (in-memory only)
+- Scheduler (in-memory only)
+- Cloud resource provisioning (stub)
+- Observability (no distributed tracing)
+- Spring AI adapter (compilation error)
 
-### Not Ready for Production
-- Real AI model calls (stub only)
-- Real payment processing (stub only)
-- Production security (no auth layer)
-- Multi-region deployment
+## References
+
+- [Project Intelligence Report](../review/project-intelligence-report.md)
+- [Source of Truth Validation Report](../review/source-of-truth-validation-report.md)
+- [Known Limitations](../review/known-limitations.md)

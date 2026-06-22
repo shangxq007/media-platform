@@ -143,8 +143,12 @@
 
 ## ADR-009: Vue 3 + Vite for Frontend
 
-**Status:** Accepted
+**Status:** Superseded (2026-06-22 — frontend migrated to React 19)
 **Date:** 2026-05-08
+
+> **Superseded by:** [04-frontend-architecture.md](04-frontend-architecture.md), [react-architecture.md](../frontend/react-architecture.md)
+> **Reason:** Frontend migrated from Vue 3/Pinia/Apollo to React 19/Zustand/TanStack Query/TanStack Router.
+> **See:** `frontend/package.json` for actual dependencies.
 
 **Context:** Need a modern frontend framework for the video editor.
 
