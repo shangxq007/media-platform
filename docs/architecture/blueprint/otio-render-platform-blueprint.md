@@ -1261,3 +1261,111 @@ All tasks must遵守以下约束：
 - Do not automatically merge
 - Do not deploy to production
 - 1 task = 1 branch = 1 worktree = 1 coding agent
+
+---
+
+## 15. Related Documents
+
+| Document | Relationship |
+|----------|-------------|
+| [Reference Architecture Map](reference-architecture-map.md) | External reference projects that inform this blueprint's design |
+| [Timeline Version Control](../../zh/timeline-version-control.md) | Timeline domain versioning: revision chain, conflict resolution, patch preview (English version planned) |
+| [Render Pipeline Roadmap](../../roadmap/render-pipeline-roadmap.md) | Phase-based render pipeline improvement plan |
+| [AI Provider Ecosystem Roadmap](../../roadmap/ai-provider-ecosystem-roadmap.md) | AI provider integration roadmap |
+| [Timeline Model](../../timeline-model.md) | Canonical Timeline IR data structures (TimelineSpec, TimelineTrack, TimelineClip) |
+| [Frontend Timeline Model](../../frontend/timeline-model.md) | Frontend TypeScript timeline interfaces |
+| [Future Roadmap: OTIO + LLM](../../future-roadmap-otio-llm.md) | AI-powered editing and intelligent rendering roadmap |
+| [Render Overview](../../render/overview.md) | Render provider system design overview |
+| [Render ADRs](../../render/adr/) | Accepted architecture decisions for render providers |
+
+---
+
+## 16. Strategic Priority Adjustment
+
+### Priority Order
+
+The platform's strategic priority is **Semantic Timeline Platform first, Artifact-aware Rendering second**:
+
+| Priority | Capability | Phase | Rationale |
+|----------|-----------|-------|-----------|
+| 1 | **Timeline IR** (OTIO → Canonical IR) | M1 | Foundation for all editing and rendering |
+| 2 | **Timeline Snapshot** (commit-based versioning) | M1 | Enables undo, history, collaboration |
+| 3 | **Timeline Patch** (RFC6902 JSON patches) | M1 | Enables LLM edit proposals, programmatic editing |
+| 4 | **Timeline Diff** (semantic diff between snapshots) | M1 | Enables change review, incremental rendering |
+| 5 | **Timeline Merge** (three-way merge for concurrent edits) | M2 | Enables multi-user collaboration |
+| 6 | **AI Proposal Review** (LLM → patch → human review → apply) | M2 | Core product differentiator |
+| 7 | **Artifact Dependency Graph** (provider-neutral DAG) | M2 | Enables cache-aware incremental rendering |
+| 8 | **Multi-provider Execution** (capability-based binding) | M3-M6 | Execution optimization, not product value |
+
+### Why Timeline Git Comes First
+
+**Timeline Git is the first-phase product value.** Users care about:
+- Editing their video (Timeline IR + editor)
+- Undoing mistakes (Timeline Snapshot)
+- Reviewing AI suggestions (AI Proposal Review)
+- Collaborating with others (Timeline Merge)
+
+**Artifact DAG is a second-phase execution optimization.** It matters for:
+- Cache-aware rendering (avoid re-rendering unchanged segments)
+- Multi-provider flexibility (swap engines without changing timeline)
+- Cost optimization (choose cheapest provider per node)
+
+The Artifact DAG is an internal optimization concern. The Timeline Git is the user-facing product concern.
+
+### Strategic Shift
+
+```
+Previous framing:  Multi-provider Render Platform
+                   (execution-first, provider-centric)
+
+New framing:       Semantic Timeline Platform
+                   → Timeline Git (editing-first, timeline-centric)
+                   → AI Proposal Review (intelligence layer)
+                   → Artifact-aware Rendering (execution optimization)
+                   → Multi-provider Execution (provider flexibility)
+```
+
+---
+
+## 17. Timeline Git Positioning
+
+### Three Sources of Truth
+
+| Source of Truth | Domain | Owner | Mutability |
+|----------------|--------|-------|-----------|
+| **Timeline IR** | Editorial intent | User / LLM | Mutable (via patches) |
+| **Artifact Dependency Graph** | Production dependencies | Platform (compiler) | Immutable per snapshot |
+| **Render Execution Graph** | Execution plan | Platform (binder) | Ephemeral (per render) |
+
+### Timeline Git Concepts
+
+| Concept | Description | Existing Implementation |
+|---------|-------------|----------------------|
+| **Timeline Snapshot** | Immutable capture of Timeline IR at a point in time | `TimelineRevisionService`, `timeline_revision` table |
+| **Timeline Patch** | RFC6902 JSON patch describing a change to the timeline | `TimelinePatchService`, `TimelinePatchOpsJson` |
+| **Timeline Diff** | Structural comparison between two timeline snapshots | `TimelineSemanticDiffService`, `TimelineRevisionDiffService` |
+| **Timeline Merge** | Three-way merge of concurrent timeline edits | `TimelineConflictDialog` (frontend), `TimelineEditorSyncService` |
+| **Timeline Conflict** | Detection and resolution of conflicting edits | `TimelineConflictDialog`, `timelineConflictMerge.ts` (frontend) |
+
+### AI Proposal = Timeline Patch Proposal
+
+The LLM does not generate execution commands. It generates **timeline patch proposals**:
+
+```
+User: "Make the intro shorter"
+  → LLM generates: Timeline Patch Proposal (RFC6902 JSON)
+    → Platform applies patch to Timeline IR
+      → Semantic diff shows what changed
+        → User reviews and approves
+          → Timeline Snapshot created
+            → Artifact Dependency Graph recompiled (incremental)
+              → Only changed segments re-rendered
+```
+
+### Key Invariants
+
+1. **Timeline IR is the editing source of truth** — not the Artifact DAG, not the Execution Graph
+2. **Artifact DAG is the execution source of truth** — derived from Timeline IR, never edited directly
+3. **Execution Graph is ephemeral** — created per render, discarded after completion
+4. **LLM generates patches, not commands** — the planner compiles patches into execution plans
+5. **Provider binding is the last step** — Timeline IR → Artifact DAG → Capability Graph → Execution Graph → Provider

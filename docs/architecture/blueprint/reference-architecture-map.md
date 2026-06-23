@@ -270,6 +270,95 @@ This prevents accidental dependency creep and ensures the platform remains self-
 
 ---
 
+## 11. Timeline Versioning References
+
+### OpenTimelineIO
+
+| Borrow | Description | Platform Layer |
+|--------|-------------|----------------|
+| Timeline interchange | Universal JSON format for timeline data | OTIO Exchange Layer (L1) |
+| Editorial semantics | Clips, tracks, transitions, markers as first-class concepts | Canonical Timeline IR (L2) |
+| Adapter architecture | Pluggable import/export for AAF, EDL, FCP XML, CMX 3600 | `timeline/standards/` adapters |
+| Custom metadata schema | Platform-specific annotations in OTIO metadata | `TimelinePlatformMetadata` |
+
+| Explicitly Not Borrowed | Reason |
+|------------------------|--------|
+| Render execution | OTIO is an interchange format, not an execution engine |
+| Workflow orchestration | OTIO does not define execution semantics |
+
+### vedit (Git-like Video Editing)
+
+| Borrow | Description | Platform Layer |
+|--------|-------------|----------------|
+| Timeline snapshots | Commit-based timeline state capture | `TimelineRevisionService`, `timeline_revision` table |
+| Timeline branch | Parallel editing paths for the same project | (Planned) Timeline branch model |
+| Timeline diff | Structural diff between timeline snapshots | `TimelineSemanticDiffService`, `TimelineRevisionDiffService` |
+| Timeline merge | Three-way merge for concurrent edits | `TimelineConflictDialog` (frontend) |
+| AI agent workflow | LLM proposes edits as patches, human reviews | `AiTimelineEditService`, `AiTimelineProposalService` |
+
+| Explicitly Not Borrowed | Reason |
+|------------------------|--------|
+| Provider architecture | vedit is about editing, not rendering |
+| Execution engine | vedit does not produce media output |
+
+### Vit (Git-backed Timeline Metadata)
+
+| Borrow | Description | Platform Layer |
+|--------|-------------|----------------|
+| Git-backed timeline metadata | Timeline state stored as versioned metadata | `TimelineRevisionRepository` |
+| Collaboration workflow | Multi-user editing with conflict detection | `TimelineEditorSyncService` |
+| Timeline serialization | Efficient binary/JSON timeline representation | `InternalTimelineJson`, `InternalTimelineWriter` |
+
+| Explicitly Not Borrowed | Reason |
+|------------------------|--------|
+| Render orchestration | Vit focuses on metadata, not media production |
+
+---
+
+## 12. Execution References
+
+### BMF (BabitMF — Media Framework)
+
+| Borrow | Description | Platform Layer |
+|--------|-------------|----------------|
+| Media graph runtime | DAG of processing nodes with typed connections | Artifact Dependency Graph → BMF graph compilation |
+| AI inference pipeline | GPU-accelerated inference nodes in media graph | BMF execution backend (planned) |
+| GPU execution | CUDA/OpenCL-accelerated media processing | BMF provider (M5 spike) |
+| Hybrid media processing | Mix CPU and GPU nodes in same graph | BMF graph JSON schema |
+
+| Explicitly Not Borrowed | Reason |
+|------------------------|--------|
+| Project model | BMF does not define project/timeline structure |
+| Timeline model | BMF operates on media graphs, not editorial timelines |
+
+### Temporal
+
+| Borrow | Description | Platform Layer |
+|--------|-------------|----------------|
+| Workflow orchestration | Durable workflow execution with activities | `workflow-module` (20 files) |
+| Retry and recovery | Automatic retry with exponential backoff | Temporal activity retry policy |
+| Long-running execution | Workflows that span hours/days | Render pipeline workflows |
+| Human-in-the-loop | Workflows that wait for external signals | Workflow signal handling |
+
+| Explicitly Not Borrowed | Reason |
+|------------------------|--------|
+| Timeline representation | Temporal does not model editorial timelines |
+| Artifact lineage | Temporal tracks workflow state, not artifact dependencies |
+
+---
+
+## 13. What We Intentionally Reject
+
+| Rejected Pattern | Why |
+|-----------------|-----|
+| **Timeline = Execution Graph** | The timeline describes editorial intent; the execution graph describes how to produce media. Conflating them couples editing decisions to rendering infrastructure. |
+| **Provider-specific Timeline** | The timeline must be engine-neutral. Switching from FFmpeg to BMF must not require timeline changes. |
+| **LLM-generated execution commands** | LLMs generate edit intent (timeline patches), not FFmpeg commands or BMF graphs. The planner compiles intent into execution. |
+| **Artifact DAG as editing source of truth** | The Artifact DAG describes what to produce, not what the user intended. The Timeline IR is the editing source of truth. |
+| **Provider-owned project models** | Each provider (FFmpeg, BMF, Remotion) has its own internal model. The platform's Timeline IR is the canonical model; provider models are implementation details. |
+
+---
+
 ## Key Principles
 
 1. **Inspiration, not dependency**: Reference projects inform design; they don't dictate implementation

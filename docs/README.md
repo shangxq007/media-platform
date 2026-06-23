@@ -71,13 +71,31 @@ These two documents are the **primary source of truth** for AI agents. They are 
 
 | Document | Purpose |
 |----------|---------|
+| [OTIO Render Platform Blueprint](architecture/blueprint/otio-render-platform-blueprint.md) | **Primary blueprint** — OTIO-first semantic rendering platform with Timeline Git |
 | [System Blueprint](architecture/blueprint/system-blueprint.md) | Target system architecture |
 | [Render Blueprint](architecture/blueprint/module-blueprint-render.md) | Render pipeline target |
 | [Security Blueprint](architecture/blueprint/module-blueprint-security-identity.md) | Security target |
 | [Platform Composition](architecture/blueprint/platform-composition-blueprint.md) | Composition model |
 | [Capability Opening](architecture/blueprint/capability-opening-blueprint.md) | Extension model |
+| [Reference Architecture Map](architecture/blueprint/reference-architecture-map.md) | External reference projects (OTIO, BMF, vedit, Vit, Temporal, etc.) |
 
 Blueprints describe **target architecture**, not current implementation. They include "Reality Check" sections validated against code.
+
+### Recommended Reading Order
+
+For new agents or developers joining the project:
+
+```
+1. AGENTS.md                                  — Project overview, rules, safety constraints
+2. OTIO Render Platform Blueprint             — Primary architectural vision
+3. Timeline Version Control (zh/)             — Timeline Git: revision, diff, merge, conflict
+4. Reference Architecture Map                 — What we learn from (OTIO, BMF, vedit, Vit, Temporal)
+5. Render Pipeline Roadmap                    — Phase-based improvement plan
+6. AI Provider Ecosystem Roadmap              — AI integration plan
+7. Architecture Decisions (ADR-001 through ADR-010) — Accepted decisions
+8. Current System State                       — What is actually implemented
+9. Known Limitations                          — What is not production-ready
+```
 
 ### Historical Documents (Do Not Trust for Current State)
 
