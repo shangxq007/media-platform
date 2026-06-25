@@ -13,7 +13,7 @@ public class OTIOTimelineCompiler {
     private static final Logger log = LoggerFactory.getLogger(OTIOTimelineCompiler.class);
 
     private static final String SCHEMA_VERSION = "1.0.0";
-    private static final String METADATA_NAMESPACE = "bluepulse";
+    private static final String METADATA_NAMESPACE = "platform";
 
     public OTIOTimelineSummary compile(String otioJson, Map<String, Object> metadata) {
         log.info("Compiling OTIO timeline");

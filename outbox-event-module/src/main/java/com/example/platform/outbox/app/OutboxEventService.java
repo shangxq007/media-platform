@@ -33,11 +33,14 @@ public class OutboxEventService {
 
     private final DSLContext dsl;
     private final int maxRetries;
+    private final PostgresNotificationService notifyService;
 
     public OutboxEventService(DSLContext dsl,
-            @Value("${app.outbox.max-retries:3}") int maxRetries) {
+            @Value("${app.outbox.max-retries:3}") int maxRetries,
+            PostgresNotificationService notifyService) {
         this.dsl = dsl;
         this.maxRetries = maxRetries;
+        this.notifyService = notifyService;
     }
 
     // -------------------------------------------------------------------------
@@ -307,6 +310,7 @@ public class OutboxEventService {
                     )
                     .execute();
         }
+        notifyService.notifyOutboxEvent();
         return id;
     }
 

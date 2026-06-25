@@ -1,17 +1,22 @@
 package com.example.platform.web.assets;
 
 import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
 import com.example.platform.render.infrastructure.asset.AssetService;
+import com.example.platform.render.app.asset.AssetRegistryService;
+import com.example.platform.render.app.asset.AssetJsonLdExporter;
+import com.example.platform.render.app.event.TimelineReviewEventPublisher;
+import com.example.platform.shared.events.AssetRegisteredEvent;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import java.util.Map;
+import java.util.List;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * REST API for project assets.
@@ -25,9 +30,14 @@ import java.util.Map;
 public class AssetController {
 
     private final AssetService assetService;
+    private final AssetRegistryService assetRegistryService;
+    private final TimelineReviewEventPublisher eventPublisher;
 
-    public AssetController(AssetService assetService) {
+    public AssetController(AssetService assetService, AssetRegistryService assetRegistryService,
+                            TimelineReviewEventPublisher eventPublisher) {
         this.assetService = assetService;
+        this.assetRegistryService = assetRegistryService;
+        this.eventPublisher = eventPublisher;
     }
 
     @GetMapping
@@ -58,6 +68,8 @@ public class AssetController {
                 request.width(),
                 request.height()
         );
+        eventPublisher.publish(new AssetRegisteredEvent(asset.id(), "v1", asset.mediaType(),
+                projectId, asset.tenantId(), asset.storageKey()));
         return ResponseEntity.status(HttpStatus.CREATED).body(asset);
     }
 
@@ -79,6 +91,36 @@ public class AssetController {
         return ResponseEntity.ok(Map.of("deleted", deleted, "assetId", assetId));
     }
 
+    @GetMapping("/{assetId}/versions")
+    @Operation(summary = "Get asset version history")
+    public ResponseEntity<AssetVersionResponse> getVersions(
+            @PathVariable String projectId,
+            @PathVariable String assetId) {
+        return assetRegistryService.resolve(assetId)
+                .map(r -> ResponseEntity.ok(toVersionResponse(r)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{assetId}/governance")
+    @Operation(summary = "Get asset governance metadata")
+    public ResponseEntity<AssetGovernanceResponse> getGovernance(
+            @PathVariable String projectId,
+            @PathVariable String assetId) {
+        return assetRegistryService.resolve(assetId)
+                .map(r -> ResponseEntity.ok(toGovernanceResponse(r)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{assetId}/jsonld")
+    @Operation(summary = "Export asset as JSON-LD")
+    public ResponseEntity<Map<String, Object>> exportJsonLd(
+            @PathVariable String projectId,
+            @PathVariable String assetId) {
+        return assetRegistryService.resolve(assetId)
+                .map(r -> ResponseEntity.ok(assetRegistryService.buildJsonLdProjection(assetId)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     /**
      * Request body for asset registration.
      */
@@ -92,4 +134,57 @@ public class AssetController {
             Integer width,
             Integer height
     ) {}
+
+    public record AssetVersionResponse(
+            String assetId,
+            String assetVersion,
+            String assetType,
+            String ownerId,
+            String projectId,
+            String entityRef,
+            String storageUri,
+            String checksum,
+            String createdAt,
+            String updatedAt,
+            boolean currentOnly) {}
+
+    public record AssetGovernanceResponse(
+            String assetId,
+            String assetVersion,
+            String classification,
+            String license,
+            String retentionPolicy,
+            String securityLevel,
+            boolean containsPii,
+            boolean aiGenerated) {}
+
+    private static AssetVersionResponse toVersionResponse(
+            com.example.platform.render.domain.asset.AssetRegistryRecord r) {
+        return new AssetVersionResponse(
+                r.assetId(),
+                r.assetVersion(),
+                r.assetType(),
+                r.ownerId(),
+                r.projectId(),
+                r.entityRef(),
+                r.storageUri(),
+                r.checksum(),
+                r.createdAt() != null ? r.createdAt().toString() : null,
+                r.updatedAt() != null ? r.updatedAt().toString() : null,
+                true);
+    }
+
+    private static AssetGovernanceResponse toGovernanceResponse(
+            com.example.platform.render.domain.asset.AssetRegistryRecord r) {
+        AssetGovernanceMetadata g = r.governance();
+        return new AssetGovernanceResponse(
+                r.assetId(),
+                r.assetVersion(),
+                g != null ? g.classification() : null,
+                g != null ? g.license() : null,
+                g != null ? g.retentionPolicy() : null,
+                g != null ? g.securityLevel() : null,
+                g != null && g.containsPii(),
+                g != null && g.aiGenerated());
+    }
 }

@@ -11,11 +11,22 @@ import com.example.platform.render.app.timeline.TimelineRevisionService.PatchPre
 import com.example.platform.render.app.timeline.TimelineRevisionService.PatchStepsResult;
 import com.example.platform.render.app.timeline.TimelineRevisionService.RestoreResult;
 import com.example.platform.render.app.timeline.TimelineRevisionService.RevisionSnapshotPayload;
+import com.example.platform.render.app.timeline.TimelineMergeService;
+import com.example.platform.render.app.event.TimelineReviewEventPublisher;
+import com.example.platform.shared.events.TimelineMergedEvent;
+import com.example.platform.shared.events.TimelineRestoredEvent;
+import com.example.platform.render.domain.timeline.internal.TimelineMergeRequest;
+import com.example.platform.render.domain.timeline.internal.TimelineMergeResult;
+import com.example.platform.render.domain.timeline.internal.TimelineMergeSummary;
+import com.example.platform.render.domain.timeline.internal.TimelineConflict;
+import com.example.platform.render.domain.timeline.internal.TimelineResolutionIntent;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,9 +46,15 @@ public class TimelineRevisionController {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final TimelineRevisionService revisionService;
+    private final TimelineMergeService mergeService;
+    private final TimelineReviewEventPublisher eventPublisher;
 
-    public TimelineRevisionController(TimelineRevisionService revisionService) {
+    public TimelineRevisionController(TimelineRevisionService revisionService,
+                                       TimelineMergeService mergeService,
+                                       TimelineReviewEventPublisher eventPublisher) {
         this.revisionService = revisionService;
+        this.mergeService = mergeService;
+        this.eventPublisher = eventPublisher;
     }
 
     @GetMapping
@@ -162,7 +179,56 @@ public class TimelineRevisionController {
             @RequestParam(required = false) String authorUserId) {
         String tenantId = TenantContext.get();
         RestoreResult result = revisionService.restore(projectId, tenantId, revisionId, authorUserId);
+        eventPublisher.publish(new TimelineRestoredEvent(projectId, revisionId, result.newRevision().id()));
         return ResponseEntity.status(HttpStatus.CREATED).body(toRestoreResponse(result));
+    }
+
+    @PostMapping("/merge")
+    @Operation(summary = "三路合并（有冲突时返回冲突列表，不创建 revision）")
+    public ResponseEntity<MergeApiResponse> merge(
+            @PathVariable String projectId,
+            @RequestBody MergeApiRequest body) {
+        String tenantId = body.tenantId() != null ? body.tenantId() : TenantContext.get();
+        TimelineMergeRequest request = new TimelineMergeRequest(
+                projectId, tenantId,
+                body.baseRevisionId(), body.sourceRevisionId(), body.targetRevisionId(),
+                body.authorUserId(), body.message());
+
+        TimelineMergeResult result;
+        if (body.resolutions() != null && !body.resolutions().isEmpty()) {
+            Map<String, TimelineResolutionIntent> intents = new HashMap<>();
+            for (var r : body.resolutions()) {
+                var intent = switch (r.resolutionMode()) {
+                    case "USE_SOURCE" ->
+                        TimelineResolutionIntent.useSource(
+                            new com.example.platform.render.domain.timeline.internal.EntityRef(
+                                com.example.platform.render.domain.timeline.internal.EntityKind.CLIP,
+                                r.entityId()), null);
+                    case "USE_TARGET" ->
+                        TimelineResolutionIntent.useTarget(
+                            new com.example.platform.render.domain.timeline.internal.EntityRef(
+                                com.example.platform.render.domain.timeline.internal.EntityKind.CLIP,
+                                r.entityId()), null);
+                    default -> null;
+                };
+                if (intent != null) {
+                    intents.put(r.entityRef(), intent);
+                }
+            }
+            result = mergeService.threeWayMergeWithResolutions(request, intents);
+        } else {
+            result = mergeService.threeWayMerge(request);
+        }
+
+        if (result.isMerged() && result.mergedRevisionId() != null) {
+            eventPublisher.publish(new TimelineMergedEvent(projectId,
+                    result.baseRevisionId(), result.sourceRevisionId(), result.targetRevisionId(),
+                    result.mergedRevisionId(),
+                    body.sourceRevisionId() + "," + body.targetRevisionId(),
+                    result.baseRevisionId()));
+        }
+
+        return ResponseEntity.ok(toMergeResponse(result));
     }
 
     private static RevisionListItem toListItem(RevisionInfo r) {
@@ -180,7 +246,10 @@ public class TimelineRevisionController {
                 r.editSessionId(),
                 TimelinePatchOpsJson.countOps(r.patchOpsJson()),
                 r.createdAt(),
-                summary);
+                summary,
+                r.isMerge(),
+                r.mergeParentRevisionIds(),
+                r.mergeBaseRevisionId());
     }
 
     private static RevisionDetailResponse toDetailResponse(RevisionDetail d) {
@@ -275,7 +344,10 @@ public class TimelineRevisionController {
             String editSessionId,
             int patchOpCount,
             String createdAt,
-            ChangeSummaryDto changeSummary) {}
+            ChangeSummaryDto changeSummary,
+            boolean isMerge,
+            String mergeParentRevisionIds,
+            String mergeBaseRevisionId) {}
 
     public record RevisionDetailResponse(
             RevisionListItem revision, ChangeSummaryDto changeSummary, int patchOpCount) {}
@@ -355,5 +427,75 @@ public class TimelineRevisionController {
                     s.parentInternalRevision(),
                     s.currentInternalRevision());
         }
+    }
+
+    public record MergeApiRequest(
+            String tenantId,
+            String baseRevisionId,
+            String sourceRevisionId,
+            String targetRevisionId,
+            String authorUserId,
+            String message,
+            List<ResolutionDto> resolutions) {}
+
+    public record ResolutionDto(
+            String conflictId,
+            String entityRef,
+            String entityId,
+            String conflictType,
+            String resolutionMode) {}
+
+    public record MergeApiResponse(
+            String status,
+            String baseRevisionId,
+            String sourceRevisionId,
+            String targetRevisionId,
+            String mergedRevisionId,
+            List<MergeConflictDto> conflicts,
+            MergeSummaryDto mergeSummary,
+            String message) {}
+
+    public record MergeConflictDto(
+            String conflictId,
+            String entityRef,
+            String conflictType,
+            String sourceChangeSummary,
+            String targetChangeSummary,
+            String message) {}
+
+    public record MergeSummaryDto(
+            int autoMergedCount,
+            int conflictCount,
+            int sourceChangesApplied,
+            int targetChangesApplied,
+            List<String> mergedEntityIds,
+            List<String> conflictedEntityIds) {}
+
+    private static MergeApiResponse toMergeResponse(TimelineMergeResult r) {
+        List<MergeConflictDto> conflictDtos = r.conflicts() != null
+                ? r.conflicts().stream()
+                    .map(c -> new MergeConflictDto(
+                            c.conflictId(),
+                            c.entityRef().key(),
+                            c.conflictType().name(),
+                            c.sourceChange() != null ? c.sourceChange().summary() : "",
+                            c.targetChange() != null ? c.targetChange().summary() : "",
+                            c.message()))
+                    .toList()
+                : List.of();
+
+        TimelineMergeSummary s = r.mergeSummary();
+        MergeSummaryDto summary = s != null
+                ? new MergeSummaryDto(
+                    s.autoMergedCount(), s.conflictCount(),
+                    s.sourceChangesApplied(), s.targetChangesApplied(),
+                    s.mergedEntityIds(), s.conflictedEntityIds())
+                : new MergeSummaryDto(0, 0, 0, 0, List.of(), List.of());
+
+        return new MergeApiResponse(
+                r.status().name(),
+                r.baseRevisionId(), r.sourceRevisionId(), r.targetRevisionId(),
+                r.mergedRevisionId(),
+                conflictDtos, summary, r.summary());
     }
 }

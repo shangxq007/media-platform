@@ -67,6 +67,9 @@ class TimelineEditorSyncServiceTest {
                         List.of(),
                         "{}",
                         null,
+                        false,
+                        null,
+                        null,
                         null));
 
         var result = syncService.push("prj_1", "ten_1", internal, true);
@@ -98,6 +101,9 @@ class TimelineEditorSyncServiceTest {
                         null,
                         List.of(),
                         "{}",
+                        null,
+                        false,
+                        null,
                         null,
                         null)));
         when(snapshotService.findById("snap_2"))

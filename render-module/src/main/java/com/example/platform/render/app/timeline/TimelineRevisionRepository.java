@@ -161,6 +161,9 @@ public class TimelineRevisionRepository {
                         field("change_summary_json"),
                         field("patch_ops_json"),
                         field("labels_json"),
+                        field("is_merge"),
+                        field("merge_parent_revision_ids"),
+                        field("merge_base_revision_id"),
                         field("created_at"))
                 .values(
                         row.id(),
@@ -179,6 +182,9 @@ public class TimelineRevisionRepository {
                         row.changeSummaryJson(),
                         row.patchOpsJson(),
                         row.labelsJson(),
+                        row.isMerge(),
+                        row.mergeParentRevisionIds(),
+                        row.mergeBaseRevisionId(),
                         row.createdAt())
                 .execute();
     }
@@ -201,6 +207,9 @@ public class TimelineRevisionRepository {
                 row.get(field("change_summary_json", String.class)),
                 row.get(field("patch_ops_json", String.class)),
                 row.get(field("labels_json", String.class)),
+                Boolean.TRUE.equals(row.get("is_merge", Boolean.class)),
+                row.get(field("merge_parent_revision_ids", String.class)),
+                row.get(field("merge_base_revision_id", String.class)),
                 toOffsetDateTime(row.get(field("created_at"))));
     }
 
@@ -234,6 +243,9 @@ public class TimelineRevisionRepository {
             String changeSummaryJson,
             String patchOpsJson,
             String labelsJson,
+            boolean isMerge,
+            String mergeParentRevisionIds,
+            String mergeBaseRevisionId,
             OffsetDateTime createdAt) {}
 
     public record AuthorFacetRow(String authorUserId, int revisionCount) {}

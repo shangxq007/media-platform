@@ -87,7 +87,7 @@ class CaptionedVideoExportSmokeTest {
         assetRepository.save(asset);
 
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "smoke-test",
                 "timelineId", "timeline-smoke",

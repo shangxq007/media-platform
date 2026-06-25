@@ -29,7 +29,8 @@ class OutboxEventDispatcherTest {
     void setUp() {
         service = mock(OutboxEventService.class);
         publisher = mock(ApplicationEventPublisher.class);
-        dispatcher = new OutboxEventDispatcher(service, publisher, 3, new SimpleMeterRegistry());
+        OutboxEventRouter router = new OutboxEventRouter();
+        dispatcher = new OutboxEventDispatcher(service, publisher, router, 3, new SimpleMeterRegistry());
     }
 
     @Test

@@ -12,6 +12,7 @@ dependencies {
     api(project(":entitlement-module"))
     api(project(":billing-module"))
     api(project(":quota-billing-module"))
+    api(project(":outbox-event-module"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")
     api("org.springframework.boot:spring-boot-starter-jdbc")

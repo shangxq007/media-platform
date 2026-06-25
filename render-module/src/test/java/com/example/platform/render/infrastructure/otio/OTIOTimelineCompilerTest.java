@@ -15,7 +15,7 @@ class OTIOTimelineCompilerTest {
     @Test
     void compilesMinimalOtio() {
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-001",
                 "timelineId", "timeline-001"
@@ -30,7 +30,7 @@ class OTIOTimelineCompilerTest {
     @Test
     void warnsOnMissingSchemaVersion() {
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "projectId", "project-001"
         ));
 
@@ -42,7 +42,7 @@ class OTIOTimelineCompilerTest {
     @Test
     void extractsCaptionRefs() {
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-001",
                 "captions", List.of(Map.of(
@@ -62,7 +62,7 @@ class OTIOTimelineCompilerTest {
     @Test
     void extractsFontRefs() {
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-001",
                 "fonts", List.of(Map.of(
@@ -83,7 +83,7 @@ class OTIOTimelineCompilerTest {
     @Test
     void generatesRenderJob() {
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-001",
                 "timelineId", "timeline-001",
@@ -113,7 +113,7 @@ class OTIOTimelineCompilerTest {
     @Test
     void doesNotGenerateProviderCommands() {
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-001"
         ));

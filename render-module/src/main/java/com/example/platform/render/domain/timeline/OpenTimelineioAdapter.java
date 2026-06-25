@@ -45,6 +45,10 @@ public final class OpenTimelineioAdapter {
             if (!extensions.externalRenderNodes().isEmpty()) {
                 metadata.set(NS + "externalRenderNodes", MAPPER.valueToTree(extensions.externalRenderNodes()));
             }
+            if (timeline.metadata() != null) {
+                copyIfPresent(timeline.metadata(), TimelinePlatformMetadata.PLATFORM_PROJECT_ID, metadata);
+                copyIfPresent(timeline.metadata(), TimelinePlatformMetadata.PLATFORM_ASSET_REGISTRY_URI, metadata);
+            }
 
             ArrayNode tracks = root.putArray("tracks");
             if (timeline.tracks() != null) {
@@ -77,6 +81,11 @@ public final class OpenTimelineioAdapter {
                     m.set("marked_range", formatRational(marker.timeSeconds(), 1.0));
                     if (marker.comment() != null) {
                         m.putObject("metadata").put("comment", marker.comment());
+                    }
+                    if (marker.comment() != null && marker.comment().startsWith("review:")) {
+                        ObjectNode markerMeta = m.has("metadata") ? (ObjectNode) m.get("metadata") : m.putObject("metadata");
+                        markerMeta.put(TimelinePlatformMetadata.PLATFORM_SEMANTIC_TYPE, "review_note");
+                        markerMeta.put(TimelinePlatformMetadata.PLATFORM_REVIEW_STATUS, marker.comment());
                     }
                 }
             }
@@ -129,6 +138,7 @@ public final class OpenTimelineioAdapter {
         sourceRange.set("start_time", formatRational(clip.assetInPoint(), 1.0));
         sourceRange.set("duration", formatRational(clip.clipDuration(), 1.0));
         clipNode.put("timeline_start", clip.timelineStart());
+        appendClipBluepulseMetadata(clipNode, clip);
         appendEffects(clipNode, clip);
     }
 
@@ -160,7 +170,14 @@ public final class OpenTimelineioAdapter {
             ObjectNode eff = effects.addObject();
             eff.put("OTIO_SCHEMA", "Effect.1");
             eff.put("name", effect.effectKey());
-            eff.putObject("metadata").put(NS + "effectKey", effect.effectKey());
+            ObjectNode effMeta = eff.putObject("metadata");
+            effMeta.put(NS + "effectKey", effect.effectKey());
+            if (effect.packId() != null) {
+                effMeta.put(TimelinePlatformMetadata.PLATFORM_CAPABILITY_CODE, effect.effectKey());
+            }
+            if (effect.providerPreference() != null && !effect.providerPreference().isEmpty()) {
+                effMeta.put(TimelinePlatformMetadata.PLATFORM_PROVIDER_HINT, effect.providerPreference().get(0));
+            }
             if (effect.parameters() != null) {
                 eff.set("parameters", MAPPER.valueToTree(effect.parameters()));
             }
@@ -181,6 +198,42 @@ public final class OpenTimelineioAdapter {
         node.put("value", value);
         node.put("rate", rate);
         return node;
+    }
+
+    private static void appendClipBluepulseMetadata(ObjectNode clipNode, TimelineClip clip) {
+        if (clip.assetRef() == null || clip.assetRef().metadata() == null || clip.assetRef().metadata().isEmpty()) {
+            return;
+        }
+        java.util.Map<String, String> refMeta = clip.assetRef().metadata();
+        ObjectNode bluepulse = null;
+        if (refMeta.containsKey(TimelinePlatformMetadata.PLATFORM_ASSET_ID)
+                || refMeta.containsKey(TimelinePlatformMetadata.PLATFORM_ASSET_VERSION)
+                || refMeta.containsKey(TimelinePlatformMetadata.PLATFORM_XMP_URI)
+                || refMeta.containsKey(TimelinePlatformMetadata.PLATFORM_ENTITY_REF)) {
+            if (!clipNode.has("metadata")) {
+                clipNode.putObject("metadata");
+            }
+            ObjectNode clipMeta = (ObjectNode) clipNode.get("metadata");
+            ObjectNode bp = clipMeta.putObject("platform");
+            if (refMeta.containsKey(TimelinePlatformMetadata.PLATFORM_ASSET_ID)) {
+                bp.put("asset_id", refMeta.get(TimelinePlatformMetadata.PLATFORM_ASSET_ID));
+            }
+            if (refMeta.containsKey(TimelinePlatformMetadata.PLATFORM_ASSET_VERSION)) {
+                bp.put("asset_version", refMeta.get(TimelinePlatformMetadata.PLATFORM_ASSET_VERSION));
+            }
+            if (refMeta.containsKey(TimelinePlatformMetadata.PLATFORM_XMP_URI)) {
+                bp.put("xmp_uri", refMeta.get(TimelinePlatformMetadata.PLATFORM_XMP_URI));
+            }
+            if (refMeta.containsKey(TimelinePlatformMetadata.PLATFORM_ENTITY_REF)) {
+                bp.put("entity_ref", refMeta.get(TimelinePlatformMetadata.PLATFORM_ENTITY_REF));
+            }
+        }
+    }
+
+    private static void copyIfPresent(java.util.Map<String, String> source, String key, ObjectNode target) {
+        if (source.containsKey(key) && source.get(key) != null) {
+            target.put(key, source.get(key));
+        }
     }
 
     public record OtioImportResult(

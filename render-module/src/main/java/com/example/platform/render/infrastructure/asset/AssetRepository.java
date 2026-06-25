@@ -52,7 +52,18 @@ public class AssetRepository {
                         field("duration_ms"),
                         field("width"),
                         field("height"),
-                        field("created_at")
+                        field("asset_version"),
+                        field("owner_id"),
+                        field("entity_ref"),
+                        field("classification"),
+                        field("license"),
+                        field("retention_policy"),
+                        field("security_level"),
+                        field("contains_pii"),
+                        field("ai_generated"),
+                        field("created_at"),
+                        field("updated_at"),
+                        field("publish_status")
                 )
                 .values(
                         id,
@@ -66,12 +77,24 @@ public class AssetRepository {
                         durationMs,
                         width,
                         height,
-                        now
+                        "v1",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false,
+                        false,
+                        now,
+                        now,
+                        "DRAFT"
                 )
                 .execute();
 
         return new Asset(id, tenantId, projectId, storageKey, mediaType, filename,
-                sizeBytes, checksum, durationMs, width, height, now);
+                sizeBytes, checksum, durationMs, width, height,
+                "v1", null, null, null, null, null, null, false, false, "DRAFT", now, now);
     }
 
     /**
@@ -100,14 +123,21 @@ public class AssetRepository {
      * Delete an asset by ID, scoped to tenant.
      */
     public boolean delete(String tenantId, String assetId) {
-        int rows = dsl.deleteFrom(table("asset"))
-                .where(field("id").eq(assetId))
-                .and(field("tenant_id").eq(tenantId))
+        return dsl.deleteFrom(table("asset"))
+                .where(field("id").eq(assetId).and(field("tenant_id").eq(tenantId)))
+                .execute() > 0;
+    }
+
+    public void updatePublishStatus(String tenantId, String assetId, String publishStatus) {
+        dsl.update(table("asset"))
+                .set(field("publish_status"), publishStatus)
+                .where(field("id").eq(assetId).and(field("tenant_id").eq(tenantId)))
                 .execute();
-        return rows > 0;
     }
 
     private Asset mapAsset(Record r) {
+        Boolean cp = r.get("contains_pii", Boolean.class);
+        Boolean ag = r.get("ai_generated", Boolean.class);
         return new Asset(
                 r.get(field("id"), String.class),
                 r.get(field("tenant_id"), String.class),
@@ -120,7 +150,18 @@ public class AssetRepository {
                 r.get(field("duration_ms"), Long.class),
                 r.get(field("width"), Integer.class),
                 r.get(field("height"), Integer.class),
-                r.get(field("created_at"), java.time.Instant.class)
+                r.get(field("asset_version"), String.class),
+                r.get(field("owner_id"), String.class),
+                r.get(field("entity_ref"), String.class),
+                r.get(field("classification"), String.class),
+                r.get(field("license"), String.class),
+                r.get(field("retention_policy"), String.class),
+                r.get(field("security_level"), String.class),
+                Boolean.TRUE.equals(cp),
+                Boolean.TRUE.equals(ag),
+                r.get(field("publish_status"), String.class),
+                r.get(field("created_at"), java.time.Instant.class),
+                r.get(field("updated_at"), java.time.Instant.class)
         );
     }
 }

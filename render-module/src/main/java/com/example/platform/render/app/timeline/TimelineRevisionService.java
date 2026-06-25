@@ -114,6 +114,9 @@ public class TimelineRevisionService {
                 changeSummaryJson,
                 patchOpsJson,
                 null,
+                false,
+                null,
+                null,
                 OffsetDateTime.now());
         revisionRepository.insert(row);
         log.info("Recorded timeline revision id={} project={} rev={}", revisionId, projectId, revisionNumber);
@@ -449,6 +452,9 @@ public class TimelineRevisionService {
                 TimelineRevisionLabelsJson.parse(row.labelsJson()),
                 row.changeSummaryJson(),
                 row.patchOpsJson(),
+                row.isMerge(),
+                row.mergeParentRevisionIds(),
+                row.mergeBaseRevisionId(),
                 row.createdAt() != null ? row.createdAt().toString() : null);
     }
 
@@ -469,6 +475,9 @@ public class TimelineRevisionService {
             List<String> labels,
             String changeSummaryJson,
             String patchOpsJson,
+            boolean isMerge,
+            String mergeParentRevisionIds,
+            String mergeBaseRevisionId,
             String createdAt) {}
 
     public record RevisionFacets(List<String> sources, List<AuthorFacet> authors) {}

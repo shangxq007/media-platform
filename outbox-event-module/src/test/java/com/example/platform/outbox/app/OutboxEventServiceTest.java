@@ -6,6 +6,9 @@ import com.example.platform.outbox.testsupport.OutboxEventTestSchemaFixture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -38,7 +41,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         OutboxEventTestSchemaFixture.truncate(dsl);
-        service = new OutboxEventService(dsl, 3);
+        service = new OutboxEventService(dsl, 3, new PostgresNotificationService(null));
     }
 
     @Test

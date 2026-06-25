@@ -11,6 +11,17 @@ import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
 import com.example.platform.shared.events.RenderDeliveryFailedEvent;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
+import com.example.platform.shared.events.TimelineMergedEvent;
+import com.example.platform.shared.events.TimelineRestoredEvent;
+import com.example.platform.shared.events.ReviewApprovedEvent;
+import com.example.platform.shared.events.ReviewRejectedEvent;
+import com.example.platform.shared.events.ReviewChangesRequestedEvent;
+import com.example.platform.shared.events.ReviewCommentAddedEvent;
+import com.example.platform.shared.events.ReviewThreadResolvedEvent;
+import com.example.platform.shared.events.AssetApprovedEvent;
+import com.example.platform.shared.events.AssetPublishedEvent;
+import com.example.platform.shared.events.AssetArchivedEvent;
+import com.example.platform.shared.events.AssetEnrichedEvent;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.Jsons;
 import java.time.OffsetDateTime;
@@ -151,5 +162,85 @@ public class NotificationEventHandler {
                     .values(Ids.newId("ndl"), eventId, provider.channel(), provider.providerCode(), result.status(), rendered.body(), result.responsePayload(), 1, OffsetDateTime.now())
                     .execute();
         }
+    }
+
+    @EventListener
+    public void onTimelineMerged(TimelineMergedEvent event) {
+        log.info("NotificationEventHandler: TimelineMerged for merge={}", event.mergeRevisionId());
+        handle(new NotificationInboundEvent("timeline.merged", event.mergeRevisionId(),
+                Map.of("projectId", event.projectId(), "mergeRevisionId", event.mergeRevisionId())));
+    }
+
+    @EventListener
+    public void onTimelineRestored(TimelineRestoredEvent event) {
+        log.info("NotificationEventHandler: TimelineRestored for new={}", event.newRevisionId());
+        handle(new NotificationInboundEvent("timeline.restored", event.newRevisionId(),
+                Map.of("projectId", event.projectId(), "restoredFrom", event.restoredFromRevisionId())));
+    }
+
+    @EventListener
+    public void onReviewApproved(ReviewApprovedEvent event) {
+        log.info("NotificationEventHandler: ReviewApproved for review={}", event.reviewId());
+        handle(new NotificationInboundEvent("review.approved", event.reviewId(),
+                Map.of("reviewId", event.reviewId(), "targetType", event.targetType(),
+                        "targetId", event.targetId())));
+    }
+
+    @EventListener
+    public void onReviewRejected(ReviewRejectedEvent event) {
+        log.info("NotificationEventHandler: ReviewRejected for review={}", event.reviewId());
+        handle(new NotificationInboundEvent("review.rejected", event.reviewId(),
+                Map.of("reviewId", event.reviewId(), "targetType", event.targetType(),
+                        "targetId", event.targetId())));
+    }
+
+    @EventListener
+    public void onReviewChangesRequested(ReviewChangesRequestedEvent event) {
+        log.info("NotificationEventHandler: ReviewChangesRequested for review={}", event.reviewId());
+        handle(new NotificationInboundEvent("review.changes_requested", event.reviewId(),
+                Map.of("reviewId", event.reviewId(), "reviewerUserId", event.reviewerUserId())));
+    }
+
+    @EventListener
+    public void onReviewCommentAdded(ReviewCommentAddedEvent event) {
+        log.info("NotificationEventHandler: ReviewCommentAdded for comment={}", event.commentId());
+        handle(new NotificationInboundEvent("review.comment.added", event.commentId(),
+                Map.of("reviewId", event.reviewId(), "authorUserId", event.authorUserId())));
+    }
+
+    @EventListener
+    public void onReviewThreadResolved(ReviewThreadResolvedEvent event) {
+        log.info("NotificationEventHandler: ReviewThreadResolved for thread={}", event.threadId());
+        handle(new NotificationInboundEvent("review.thread.resolved", event.threadId(),
+                Map.of("reviewId", event.reviewId(), "threadId", event.threadId())));
+    }
+
+    @EventListener
+    public void onAssetApproved(AssetApprovedEvent event) {
+        log.info("NotificationEventHandler: AssetApproved for asset={}", event.assetId());
+        handle(new NotificationInboundEvent("asset.approved", event.assetId(),
+                Map.of("assetId", event.assetId(), "projectId", event.projectId())));
+    }
+
+    @EventListener
+    public void onAssetPublished(AssetPublishedEvent event) {
+        log.info("NotificationEventHandler: AssetPublished for asset={}", event.assetId());
+        handle(new NotificationInboundEvent("asset.published", event.assetId(),
+                Map.of("assetId", event.assetId(), "projectId", event.projectId(),
+                        "assetType", event.assetType())));
+    }
+
+    @EventListener
+    public void onAssetArchived(AssetArchivedEvent event) {
+        log.info("NotificationEventHandler: AssetArchived for asset={}", event.assetId());
+        handle(new NotificationInboundEvent("asset.archived", event.assetId(),
+                Map.of("assetId", event.assetId(), "projectId", event.projectId())));
+    }
+
+    @EventListener
+    public void onAssetEnriched(AssetEnrichedEvent event) {
+        log.info("NotificationEventHandler: AssetEnriched for asset={}", event.assetId());
+        handle(new NotificationInboundEvent("asset.enriched", event.assetId(),
+                Map.of("assetId", event.assetId(), "status", event.enrichmentStatus())));
     }
 }

@@ -1,6 +1,6 @@
 # Platform Documentation
 
-> **Last Updated:** 2026-06-22
+> **Last Updated:** 2026-06-24
 
 ## Canonical Knowledge Layers
 
@@ -71,15 +71,28 @@ These two documents are the **primary source of truth** for AI agents. They are 
 
 | Document | Purpose |
 |----------|---------|
+| [Platform Coordination Blueprint](architecture/blueprint/platform-coordination-blueprint.md) | **Coordination architecture** — PostgreSQL-backed job/task/barrier/recovery |
+| [Domain Event & Outbox Blueprint](architecture/blueprint/domain-event-outbox-blueprint.md) | **Event architecture blueprint** — domain events, outbox, consumers, decoupling |
 | [OTIO Render Platform Blueprint](architecture/blueprint/otio-render-platform-blueprint.md) | **Primary blueprint** — OTIO-first semantic rendering platform with Timeline Git |
+| [Timeline Git Blueprint](architecture/blueprint/timeline-git-blueprint.md) | **Version control blueprint** — snapshot, patch, diff, merge, conflict, AI review |
+| [Asset Ecosystem Blueprint](architecture/blueprint/asset-ecosystem-blueprint.md) | **Fifth pillar blueprint** — marketplace, search, asset ingestion, sharing |
+| [OTIO + XMP + Asset Registry Placement Decision](review/otio-xmp-asset-registry-placement-decision.md) | Phase 1 placement: asset metadata, registry, XMP schema, governance, JSON-LD (2026-06-24) |
 | [System Blueprint](architecture/blueprint/system-blueprint.md) | Target system architecture |
 | [Render Blueprint](architecture/blueprint/module-blueprint-render.md) | Render pipeline target |
 | [Security Blueprint](architecture/blueprint/module-blueprint-security-identity.md) | Security target |
 | [Platform Composition](architecture/blueprint/platform-composition-blueprint.md) | Composition model |
 | [Capability Opening](architecture/blueprint/capability-opening-blueprint.md) | Extension model |
-| [Reference Architecture Map](architecture/blueprint/reference-architecture-map.md) | External reference projects (OTIO, BMF, vedit, Vit, Temporal, etc.) |
+| [Reference Architecture Map](architecture/blueprint/reference-architecture-map.md) | External reference projects (OTIO, Git, Perforce, Unity, Figma, etc.) |
 
 Blueprints describe **target architecture**, not current implementation. They include "Reality Check" sections validated against code.
+
+### Current State Documents
+
+| Document | Purpose |
+|----------|---------|
+| [Current Timeline Git Status](architecture/current/current-timeline-git-status.md) | Implemented Timeline Git capabilities (2026-06-24) |
+| [Current System State](architecture/current/current-system-state.md) | What is implemented |
+| [Current Module Status](architecture/current/current-module-status.md) | Module status |
 
 ### Recommended Reading Order
 
@@ -87,14 +100,15 @@ For new agents or developers joining the project:
 
 ```
 1. AGENTS.md                                  — Project overview, rules, safety constraints
-2. OTIO Render Platform Blueprint             — Primary architectural vision
-3. Timeline Version Control (zh/)             — Timeline Git: revision, diff, merge, conflict
-4. Reference Architecture Map                 — What we learn from (OTIO, BMF, vedit, Vit, Temporal)
-5. Render Pipeline Roadmap                    — Phase-based improvement plan
-6. AI Provider Ecosystem Roadmap              — AI integration plan
-7. Architecture Decisions (ADR-001 through ADR-010) — Accepted decisions
-8. Current System State                       — What is actually implemented
-9. Known Limitations                          — What is not production-ready
+2. Current System State                       — What is actually implemented
+3. OTIO Render Platform Blueprint             — Primary architectural vision
+4. Timeline Git Blueprint                     — Version control architecture
+5. Current Timeline Git Status                — What is implemented in Timeline Git
+6. Reference Architecture Map                 — What we learn from (OTIO, Git, Perforce, Unity, Figma)
+7. Asset Ecosystem Blueprint                  — Marketplace, search, asset ingestion vision
+8. Timeline Git Product Readiness             — Product maturity assessment
+9. Architecture Re-Prioritization             — Strategic decisions (2026-06-24)
+10. Known Limitations                         — What is not production-ready
 ```
 
 ### Historical Documents (Do Not Trust for Current State)

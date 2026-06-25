@@ -1,14 +1,24 @@
 ---
 status: blueprint
-last_verified: 2026-06-23
-scope: render-module
+last_verified: 2026-06-24
+scope: render-module + V1 baseline
 truth_level: target
 owner: platform
 ---
 
 # OTIO-first Semantic Video Rendering Platform Blueprint
 
-> **Reality Check (2026-06-23):** Render module has 600 production files, 138 test files. 7+ providers active. OTIO adapter exists (`OpenTimelineioAdapter.java`). Internal Timeline IR with 30+ domain classes. Segment-based incremental planner. Content-addressable render cache. Remotion caption provider with font pipeline. Provider registry with capability negotiation. Worker registry with heartbeat. No BMF integration. No ASR pipeline. No semantic analysis layer.
+> **Current Reality Check (2026-06-24):**
+>
+> **Timeline Git:** Revision chain fully implemented (`timeline_revision` table, 22 tests). Patch (RFC6902), structural diff, semantic diff (25 change types), restore endpoint, and AI proposal loop all have REST APIs. Merge engine complete with three-way algorithm + conflict detection (8 conflict types) + resolution intent support — **no REST endpoint yet**. Branch model not implemented. Rebase not implemented.
+>
+> **Asset Registry:** `asset` table extended with version, governance (7 fields), and identity columns. XMP sidecar domain records exist. JSON-LD exporter exists. Asset lineage fields on `artifact_node`. **No asset version/lineage REST API. No governance CRUD API.**
+>
+> **OTIO:** Import/export via REST API. EDL, AAF, FCP XML, SRT, WebVTT adapters. Bluepulse metadata injected on export (not reconstructed on re-import). Kdenlive/MLT round-trip not validated.
+>
+> **Product Readiness:** Engineering 8/10, Product 5/10, User Value 4/10. Core gap: Merge API + Asset APIs need REST endpoints. See `docs/review/timeline-git-product-readiness.md`.
+>
+> **Strategic Shift:** OpenLineage, OpenAssetIO, Knowledge Graph deferred to P3+. Priority is Timeline Git productization and Asset Ecosystem blueprint.
 
 ---
 
@@ -1269,6 +1279,7 @@ All tasks must遵守以下约束：
 | Document | Relationship |
 |----------|-------------|
 | [Reference Architecture Map](reference-architecture-map.md) | External reference projects that inform this blueprint's design |
+| [OTIO + XMP + Asset Registry Placement Decision](../../review/otio-xmp-asset-registry-placement-decision.md) | Placement decision for Phase 1 asset metadata & registry (2026-06-24) |
 | [Timeline Version Control](../../zh/timeline-version-control.md) | Timeline domain versioning: revision chain, conflict resolution, patch preview (English version planned) |
 | [Render Pipeline Roadmap](../../roadmap/render-pipeline-roadmap.md) | Phase-based render pipeline improvement plan |
 | [AI Provider Ecosystem Roadmap](../../roadmap/ai-provider-ecosystem-roadmap.md) | AI provider integration roadmap |
@@ -1369,3 +1380,260 @@ User: "Make the intro shorter"
 3. **Execution Graph is ephemeral** — created per render, discarded after completion
 4. **LLM generates patches, not commands** — the planner compiles patches into execution plans
 5. **Provider binding is the last step** — Timeline IR → Artifact DAG → Capability Graph → Execution Graph → Provider
+
+---
+
+## 18. Asset Metadata & Registry Phase 1
+
+### Placement Decision (2026-06-24)
+
+Asset identity, versioning, governance classification, and portable metadata are required near-term foundations for the platform. Phase 1 implements these within the existing `render-module` and pre-deployment V1 database baseline — no new modules are needed.
+
+### Key Decisions
+
+| Capability | Phase 1 Decision |
+|------------|------------------|
+| Asset identity | Extend existing `asset` table and `Asset` record in `render-module` |
+| Asset versioning | Add `version` field to `asset` table + new `asset_version` table |
+| Asset governance | Add `classification`, `license`, `rights_holder`, `retention_policy`, `security_level`, `pii`, `ai_generated`, `requires_review`, `approved_by` to `asset` table |
+| Asset lineage | New `asset_lineage` table with structured `source_asset_ids`, `derived_from_ids`, `processing_step`, `workflow_id`, `run_id`, `operator`, `tool`, `parameters_hash` |
+| XMP metadata | Sidecar/schema classes in `render-module/.../domain/xmp/` — no DB table for XMP payloads |
+| OTIO metadata | Add `asset_id`, `asset_version`, `xmp_uri`, `entity_ref` keys to `TimelinePlatformMetadata` / `OpenTimelineioAdapter` |
+| JSON-LD | Lightweight export via new `JsonLdExportService` in `render-module/.../infrastructure/jsonld/` |
+| OpenAssetIO | Future adapter — `entity_ref` column seeded now, no runtime SDK in Phase 1 |
+| OpenLineage | Future event export — `asset_lineage` table seeded now, no runtime SDK in Phase 1 |
+| Knowledge Graph | Future projection — JSON-LD export foundation laid, no Neo4j/RDF in Phase 1 |
+
+### Why No New Module
+
+All Phase 1 concerns fit within existing `render-module` boundaries:
+
+- `Asset` record + `AssetRepository` already live in `render-module`
+- `OpenTimelineioAdapter` + `TimelinePlatformMetadata` already live in `render-module`
+- `InternalTimelineWriter.buildAssetRegistry()` already generates inline asset registries
+- Governance fields are core asset attributes, not a separate policy concern — they belong on the `asset` table
+- The `policy-governance-module` handles feature flags and rule evaluation; asset governance is a different concern
+
+### V1 Baseline Extension Policy
+
+Because the project has not been deployed yet and the V1 baseline is stated as _"valid for pre-production/greenfield resettable environments"_, schema changes may be applied directly to `V1__init_full_schema.sql`:
+
+- Add 10 columns to existing `asset` table
+- Add new `asset_version` table
+- Add new `asset_lineage` table
+- No V2 migration file needed until after first real deployment with shared database
+
+### Phase 1 Scope Boundary
+
+**In scope:**
+- Asset identity fields (version, owner, entity_ref, updated_at)
+- Governance classification fields (classification, license, rights_holder, retention_policy, security_level)
+- AI/content governance flags (pii, ai_generated, requires_review, approved_by)
+- Structured asset lineage records
+- XMP schema as Java domain records (no file I/O)
+- OTIO metadata key extensions (bluepulse.* namespace)
+- JSON-LD serialization from asset + lineage data
+- Asset registry service (UUID assignment, version tracking, lineage recording)
+
+**Explicitly out of scope (Phase 2+):**
+- OpenLineage SDK runtime or event emission
+- OpenAssetIO SDK or entity reference resolution
+- Neo4j / RDF graph database deployment
+- Full XMP sidecar file embedding/writing engine
+- Standalone `asset-registry-module`
+- Policy-governance-module rewrite or expansion into asset governance
+- DAM/MAM search integration
+
+### Implementation Readiness
+
+**Prerequisites satisfied:**
+- [x] V1 baseline inspection complete (42 tables audited)
+- [x] Existing asset/artifact/storage/media models mapped
+- [x] Module boundary analysis complete
+- [x] Placement decision documented in this blueprint section
+- [x] Placement decision report filed at `docs/review/otio-xmp-asset-registry-placement-decision.md`
+
+**Files likely affected during implementation:**
+- `platform-app/src/main/resources/db/migration/V1__init_full_schema.sql` (schema extension)
+- `render-module/.../domain/asset/Asset.java` (record extension)
+- `render-module/.../domain/xmp/` (8 new XMP schema records)
+- `render-module/.../domain/timeline/TimelinePlatformMetadata.java` (new keys)
+- `render-module/.../domain/timeline/OpenTimelineioAdapter.java` (injection points)
+- `render-module/.../infrastructure/asset/AssetRepository.java` (new columns + queries)
+- `render-module/.../infrastructure/jsonld/` (3 new classes)
+- `render-module/.../app/assetregistry/` (1 new service)
+
+**Review gates before code changes:**
+- [ ] Placement decision report reviewed and approved
+- [ ] V1 baseline column names/types confirmed against jOOQ usage patterns
+- [ ] `ModularityTest` confirmed passing before changes
+- [ ] Flyway baseline resettability confirmed (local dev database can be dropped/recreated)
+
+---
+
+## 19. Strategic Re-Prioritization (2026-06-24)
+
+### Updated Priority Order
+
+Based on three sprints of Timeline Git implementation and the Product Readiness Assessment:
+
+| Priority | Capability | Status | Phase |
+|----------|-----------|--------|-------|
+| **P0** | Timeline Git Productization (Merge API, Asset API) | Engine done, APIs missing | Now |
+| **P1** | Asset Ingestion Blueprint (Upload, ASR, OCR, Vision, Embedding) | Blueprint only | Next |
+| **P2** | Asset Search | Not started | After P1 |
+| **P3** | Marketplace Foundation | Blueprint only | After P2 |
+| **P4** | Branch model | Engine supports merge; branch = named pointer | After P0 |
+| **P5** | Rebase engine | Not started | After P4 |
+| **Deferred** | OpenLineage, OpenAssetIO, Knowledge Graph, Cloudflare Worker | Future | P3+ |
+
+### Why This Order
+
+The Product Readiness Assessment found that **Merge Engine, Asset Versioning, and Asset Governance are already implemented at the engine level but have no REST APIs**. Users cannot use these capabilities. Productization (3-6 days of API work) unlocks more user value than building new engines.
+
+**OpenLineage, OpenAssetIO, and Knowledge Graph are infrastructure layers** that deliver zero user-facing value on their own. They are deferred until the core product (Timeline Git + Asset Ecosystem) is delivered.
+
+### Source of Truth Update
+
+The four pillars of platform truth remain:
+1. **Timeline IR** — Editing truth (what the user intends)
+2. **Timeline Git** — Version truth (snapshots, diffs, merges)
+3. **Asset Registry** — Identity truth (version, governance, lineage)
+4. **Artifact DAG** — Execution truth (what to produce)
+
+A fifth pillar is forming:
+5. **Asset Ecosystem** — Discovery truth (search, marketplace, sharing)
+
+---
+
+## 20. Related Documents
+
+| Document | Relationship |
+|----------|-------------|
+| [Timeline Git Blueprint](timeline-git-blueprint.md) | Timeline Git design and strategy |
+| [Timeline Git Product Readiness](../../review/timeline-git-product-readiness.md) | Product assessment (2026-06-24) |
+| [Current Timeline Git Status](../current/current-timeline-git-status.md) | Implemented capabilities |
+| [Asset Ecosystem Blueprint](asset-ecosystem-blueprint.md) | Strategic vision for asset marketplace |
+| [Architecture Re-Prioritization](../../review/architecture-reprioritization-sprint.md) | Sprint decision record (2026-06-24) |
+| [Reference Architecture Map](reference-architecture-map.md) | External reference projects |
+| [ASWF Ecosystem Analysis](../../review/aswf-ecosystem-analysis.md) | ASWF project integration roadmap |
+
+---
+
+## 21. ASWF Alignment
+
+### Why ASWF Matters
+
+The Academy Software Foundation (ASWF) hosts the open-source standards that power the professional VFX and animation industry. As the platform matures beyond basic video editing toward professional media production, ASWF standards become the natural integration targets.
+
+### Current Adoption
+
+| ASWF Project | Status | Integration |
+|-------------|--------|-------------|
+| **OpenTimelineIO** | ✅ Integrated | OTIO Adapter (`OpenTimelineioAdapter.java`), import/export REST API |
+
+### Future Integration Points by Platform Layer
+
+| Platform Layer | ASWF Standard | Phase | Rationale |
+|---------------|--------------|-------|-----------|
+| **Render Pipeline** | OpenColorIO | P2 | Cross-provider color consistency (FFmpeg, Remotion, BMF). ACES support for professional color workflows. |
+| **Asset Ingestion** | OpenImageIO | P2 | Format-agnostic probe (50+ image formats). Metadata extraction (EXIF, XMP, color space). Thumbnail generation. |
+| **Artifact DAG** | OpenEXR | P2 | Multi-layer intermediate render format (beauty, matte, depth, normal). HDR pipeline support. |
+| **Execution Graph** | OpenCue | P3 | Production-scale render farm scheduling (50+ machines). Frame-level dispatch for image sequences. |
+| **Style Marketplace** | MaterialX | P3 | Application-agnostic material/look description. Standard surface shader model as design reference. |
+| **Effect Marketplace** | OpenFX | P3 | Standard plugin interface for VFX effects. Cross-host compatibility (Nuke, Natron, Resolve). |
+| **Worker Environment** | Rez | P3 | Package resolution and dependency isolation for render workers. |
+| **Asset Registry** | OpenAssetIO | Deferred | Entity reference resolution standard. DAM/MAM interoperability. |
+
+### Phase Roadmap
+
+```
+2026 (P0-P2): OpenTimelineIO (current) + OpenColorIO + OpenImageIO + OpenEXR
+               Foundation: color management, image format support, metadata extraction
+
+2027 (P3):    OpenCue + OpenFX + MaterialX
+               Production: render farm scheduling, plugin ecosystem, material interchange
+
+2028+ (P4):   OpenAssetIO + Rez
+               Enterprise: DAM/MAM integration, bare-metal worker provisioning
+```
+
+### Design Principle
+
+**ASWF standards are integration targets, not core dependencies.** The platform's internal models (Timeline IR, Artifact DAG, Asset Registry) remain independent. ASWF standards provide the interchange layer — similar to how OTIO is the interchange format for timelines, not the internal editing model.
+
+---
+
+## 22. Platform Coordination Layer
+
+### Architecture
+
+The platform coordination layer sits between domain events and consumers, orchestrating multi-step workflows (fan-out/fan-in, barrier, retry, recovery) using PostgreSQL-native primitives:
+
+```
+Domain Events (outbox_events)
+    ↓
+Coordination Layer (platform_job + platform_task)
+    ↓
+Task Handlers (Probe, ASR, Search, Marketplace)
+    ↓
+Consumers (Audit, Notification)
+```
+
+See [Platform Coordination Blueprint](platform-coordination-blueprint.md) for full design.
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Generic job/task model** | One `platform_job` table, not one per domain. Domain logic lives in task handlers. |
+| **Bitmask + task table** | Bitmask for fast barrier check. Task table for granular retry/recovery. |
+| **LISTEN/NOTIFY for wake-up** | Wakes dispatchers in near-real-time but does NOT replace outbox for reliability. |
+| **No PGMQ** | Task table with bitmask solves coordination better than a message queue. |
+| **No Temporal yet** | `platform_job` + `platform_task` handles current coordination needs. Temporal is for complex DAG workflows with human-in-the-loop steps (2027+). |
+
+### Related Documents
+
+| Document | Relationship |
+|----------|-------------|
+| [Platform Coordination Blueprint](platform-coordination-blueprint.md) | Full coordination architecture |
+| [Domain Event & Outbox Blueprint](domain-event-outbox-blueprint.md) | Event layer — coordination sits above this |
+| [Platform Coordination Analysis](../../review/platform-coordination-analysis.md) | Detailed audit + gap analysis |
+
+---
+
+## 23. Coordination Layer Position
+
+### Where Coordination Sits
+
+```
+Timeline Git / Asset Registry (Business Layer)
+    ↓ domain events via outbox
+Platform Coordination (platform_job + platform_task)
+    ↓ task dispatch
+Execution Backend / Render Providers (Execution Layer)
+```
+
+### What Coordination Does
+
+| Capability | Mechanism | NOT Replaced By |
+|-----------|-----------|-----------------|
+| Fan-out (parallel tasks) | platform_task[] per job | Temporal |
+| Fan-in (barrier) | completedMask == requiredMask | OpenCue |
+| Task retry with backoff | attempt_count + lease sweep | Outbox |
+| Dead-letter recovery | Manual retry API on FAILED tasks | Kafka/RabbitMQ |
+| Wake-up signal | LISTEN/NOTIFY (optimization) | (complements scheduled polling) |
+
+### What Coordination Does NOT Do
+
+| Capability | Why Not | Future Possibility |
+|-----------|---------|-------------------|
+| Long-running workflows (hours/days) | Not needed now | Temporal (2027+) |
+| Human-in-the-loop with arbitrary waits | Not needed now | Temporal (2027+) |
+| Saga compensation (rollback multiple services) | Not needed now | Temporal (2027+) |
+| External message bus for 100+ consumers | Not needed now | Kafka adapter (2027+) |
+| Render farm scheduling (50+ machines) | Render scale not reached | OpenCue (2028+) |
+
+### Design Principle
+
+**Coordination is PostgreSQL-native on purpose.** All state (jobs, tasks, bitmask, lease) is in PostgreSQL ACID transactions. No external queue, no external workflow engine. This keeps operational complexity low until scale demands otherwise.

@@ -51,7 +51,7 @@ class CaptionedVideoExportE2ETest {
         buildReadyFontAsset(fontId);
 
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-e2e",
                 "timelineId", "timeline-e2e",
@@ -125,7 +125,7 @@ class CaptionedVideoExportE2ETest {
         assetRepository.save(asset);
 
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-e2e",
                 "timelineId", "timeline-e2e",
@@ -164,7 +164,7 @@ class CaptionedVideoExportE2ETest {
         assetRepository.save(asset);
 
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-e2e",
                 "timelineId", "timeline-e2e",
@@ -214,7 +214,7 @@ class CaptionedVideoExportE2ETest {
         buildReadyFontAsset(fontId);
 
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-e2e",
                 "timelineId", "timeline-e2e",
@@ -285,7 +285,7 @@ class CaptionedVideoExportE2ETest {
         assetRepository.save(asset);
 
         String otioJson = "{\"tracks\":[]}";
-        Map<String, Object> metadata = Map.of("bluepulse", Map.of(
+        Map<String, Object> metadata = Map.of("platform", Map.of(
                 "schemaVersion", "1.0.0",
                 "projectId", "project-e2e",
                 "timelineId", "timeline-e2e",

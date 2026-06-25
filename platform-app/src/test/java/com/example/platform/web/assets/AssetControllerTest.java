@@ -2,6 +2,8 @@ package com.example.platform.web.assets;
 
 import com.example.platform.render.domain.asset.Asset;
 import com.example.platform.render.infrastructure.asset.AssetService;
+import com.example.platform.render.app.asset.AssetRegistryService;
+import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -22,14 +24,14 @@ class AssetControllerTest {
     @BeforeEach
     void setUp() {
         assetService = mock(AssetService.class);
-        controller = new AssetController(assetService);
+        AssetRegistryService assetRegistryService = mock(AssetRegistryService.class);
+        TimelineReviewEventPublisher eventPublisher = mock(TimelineReviewEventPublisher.class);
+        controller = new AssetController(assetService, assetRegistryService, eventPublisher);
     }
 
     @Test
     void shouldListAssets() {
-        List<Asset> expected = List.of(
-                new Asset("a1", "t1", "p1", "key1", "VIDEO", "v.mp4", 100L, null, null, null, null, Instant.now())
-        );
+        List<Asset> expected = List.of(testAsset("a1"));
         when(assetService.listByProject("proj-1")).thenReturn(expected);
 
         ResponseEntity<List<Asset>> response = controller.listAssets("proj-1");
@@ -40,7 +42,7 @@ class AssetControllerTest {
 
     @Test
     void shouldGetAsset() {
-        Asset expected = new Asset("a1", "t1", "p1", "key1", "VIDEO", "v.mp4", 100L, null, null, null, null, Instant.now());
+        Asset expected = testAsset("a1");
         when(assetService.getById("proj-1", "a1")).thenReturn(expected);
 
         ResponseEntity<Asset> response = controller.getAsset("proj-1", "a1");
@@ -51,7 +53,7 @@ class AssetControllerTest {
 
     @Test
     void shouldRegisterAsset() {
-        Asset expected = new Asset("a1", "t1", "p1", "key1", "VIDEO", "v.mp4", 100L, null, null, null, null, Instant.now());
+        Asset expected = testAsset("a1");
         when(assetService.register(any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(expected);
 
         AssetController.RegisterAssetRequest request = new AssetController.RegisterAssetRequest(
@@ -80,5 +82,12 @@ class AssetControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue((Boolean) response.getBody().get("deleted"));
+    }
+
+    private static Asset testAsset(String id) {
+        return new Asset(id, "t1", "p1", "key1", "VIDEO", "v.mp4",
+                100L, null, null, null, null,
+                "v1", null, null, null, null, null, null, false, false, "DRAFT",
+                Instant.now(), Instant.now());
     }
 }

@@ -32,9 +32,8 @@ class AssetServiceTest {
 
     @Test
     void shouldRegisterAsset() {
-        Asset expected = new Asset("asset-1", "tenant-1", "proj-1",
-                "tenant/workspace/project/assets/asset-1/video.mp4",
-                "VIDEO", "video.mp4", 1024L, "abc123", 5000L, 1920, 1080, Instant.now());
+        Asset expected = testAsset("asset-1", "tenant-1", "proj-1",
+                "tenant/workspace/project/assets/asset-1/video.mp4", "VIDEO", "video.mp4", 1024L, "abc123", 5000L, 1920, 1080);
         when(assetRepository.register(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(expected);
 
@@ -52,7 +51,6 @@ class AssetServiceTest {
     @Test
     void shouldRejectRegistrationWithoutTenant() {
         TenantContext.clear();
-
         assertThrows(SecurityException.class, () ->
                 assetService.register("proj-1", "key", "VIDEO", "file.mp4", 100L, null, null, null, null));
     }
@@ -71,8 +69,8 @@ class AssetServiceTest {
 
     @Test
     void shouldGetById() {
-        Asset expected = new Asset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
-                100L, null, null, null, null, Instant.now());
+        Asset expected = testAsset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
+                100L, null, null, null, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(expected));
 
         Asset result = assetService.getById("proj-1", "asset-1");
@@ -81,8 +79,8 @@ class AssetServiceTest {
 
     @Test
     void shouldRejectGetByIdWithWrongProject() {
-        Asset asset = new Asset("asset-1", "tenant-1", "proj-other", "key", "VIDEO", "file.mp4",
-                100L, null, null, null, null, Instant.now());
+        Asset asset = testAsset("asset-1", "tenant-1", "proj-other", "key", "VIDEO", "file.mp4",
+                100L, null, null, null, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(asset));
 
         assertThrows(IllegalArgumentException.class, () -> assetService.getById("proj-1", "asset-1"));
@@ -91,8 +89,8 @@ class AssetServiceTest {
     @Test
     void shouldListByProject() {
         List<Asset> expected = List.of(
-                new Asset("a1", "tenant-1", "proj-1", "key1", "VIDEO", "v1.mp4", 100L, null, null, null, null, Instant.now()),
-                new Asset("a2", "tenant-1", "proj-1", "key2", "IMAGE", "img.png", 50L, null, null, 1920, 1080, Instant.now())
+                testAsset("a1", "tenant-1", "proj-1", "key1", "VIDEO", "v1.mp4", 100L, null, null, null, null),
+                testAsset("a2", "tenant-1", "proj-1", "key2", "IMAGE", "img.png", 50L, null, null, 1920, 1080)
         );
         when(assetRepository.listByProject("tenant-1", "proj-1")).thenReturn(expected);
 
@@ -102,8 +100,8 @@ class AssetServiceTest {
 
     @Test
     void shouldDelete() {
-        Asset asset = new Asset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
-                100L, null, null, null, null, Instant.now());
+        Asset asset = testAsset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
+                100L, null, null, null, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(asset));
         when(assetRepository.delete("tenant-1", "asset-1")).thenReturn(true);
 
@@ -113,11 +111,20 @@ class AssetServiceTest {
 
     @Test
     void shouldGeneratePreviewUrl() {
-        Asset asset = new Asset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
-                100L, null, null, null, null, Instant.now());
+        Asset asset = testAsset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
+                100L, null, null, null, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(asset));
 
         String url = assetService.getPreviewUrl("proj-1", "asset-1");
         assertEquals("/api/v1/projects/proj-1/assets/asset-1/raw", url);
+    }
+
+    private static Asset testAsset(String id, String tenantId, String projectId, String key,
+                                     String mediaType, String filename, Long sizeBytes,
+                                     String checksum, Long durationMs, Integer width, Integer height) {
+        return new Asset(id, tenantId, projectId, key, mediaType, filename,
+                sizeBytes, checksum, durationMs, width, height,
+                "v1", null, null, null, null, null, null, false, false, "DRAFT",
+                Instant.now(), Instant.now());
     }
 }

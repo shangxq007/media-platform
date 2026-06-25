@@ -56,6 +56,53 @@ create index ix_outbox_events_idempotency_key on outbox_events(idempotency_key);
 create index ix_outbox_events_next_attempt_at on outbox_events(next_attempt_at);
 create index ix_outbox_events_locked_at ON outbox_events (locked_at) WHERE locked_at IS NOT NULL;
 
+create table platform_job (
+    id varchar(64) primary key,
+    job_type varchar(64) not null,
+    aggregate_type varchar(32) not null,
+    aggregate_id varchar(64) not null,
+    tenant_id varchar(64),
+    project_id varchar(64),
+    status varchar(32) not null default 'PENDING',
+    required_mask int not null default 0,
+    completed_mask int not null default 0,
+    failed_mask int not null default 0,
+    total_task_count int not null default 0,
+    completed_task_count int not null default 0,
+    failed_task_count int not null default 0,
+    payload_json text,
+    metadata_json text,
+    created_at timestamp not null,
+    updated_at timestamp,
+    completed_at timestamp
+);
+
+create index ix_platform_job_aggregate on platform_job(aggregate_type, aggregate_id);
+create index ix_platform_job_status on platform_job(status);
+
+create table platform_task (
+    id varchar(64) primary key,
+    job_id varchar(64) not null references platform_job(id),
+    task_type varchar(64) not null,
+    capability varchar(64) not null,
+    provider varchar(64),
+    status varchar(32) not null default 'PENDING',
+    attempt_count int not null default 0,
+    max_attempts int not null default 3,
+    result_ref varchar(256),
+    result_json text,
+    error_message text,
+    bit_position int not null default 0,
+    started_at timestamp,
+    completed_at timestamp,
+    created_at timestamp not null,
+    updated_at timestamp,
+    constraint uq_platform_task_job_bit unique(job_id, bit_position)
+);
+
+create index ix_platform_task_job on platform_task(job_id);
+create index ix_platform_task_capability_status on platform_task(capability, status);
+
 create table audit_records (
     id varchar(64) primary key,
     actor_type varchar(50) not null,
@@ -454,7 +501,10 @@ create table timeline_revision (
     change_summary_json text,
     created_at timestamp not null,
     patch_ops_json text,
-    labels_json varchar(512)
+    labels_json varchar(512),
+    is_merge boolean not null default false,
+    merge_parent_revision_ids text,
+    merge_base_revision_id varchar(64)
 );
 
 create unique index ux_timeline_revision_project_num on timeline_revision(project_id, revision_number);
@@ -463,6 +513,63 @@ create index ix_timeline_revision_parent on timeline_revision(parent_revision_id
 create index ix_timeline_revision_snapshot on timeline_revision(snapshot_id);
 create index ix_timeline_revision_edit_session on timeline_revision(project_id, edit_session_id, created_at desc);
 create index ix_timeline_revision_project_source on timeline_revision(project_id, source);
+create index ix_timeline_revision_is_merge on timeline_revision(is_merge);
+
+create table timeline_review (
+    id varchar(64) primary key,
+    project_id varchar(64) not null,
+    tenant_id varchar(64),
+    revision_id varchar(64) not null,
+    target_type varchar(32) not null default 'TIMELINE',
+    author_user_id varchar(64),
+    title varchar(256) not null,
+    description text,
+    status varchar(32) not null default 'OPEN',
+    created_at timestamp not null,
+    updated_at timestamp
+);
+
+create index ix_timeline_review_project on timeline_review(project_id);
+create index ix_timeline_review_revision on timeline_review(revision_id);
+create index ix_timeline_review_status on timeline_review(status);
+
+create table review_thread (
+    id varchar(64) primary key,
+    review_id varchar(64) not null,
+    entity_ref varchar(256),
+    diff_id varchar(64),
+    status varchar(32) not null default 'OPEN',
+    created_at timestamp not null,
+    constraint fk_review_thread_review foreign key (review_id) references timeline_review(id)
+);
+
+create index ix_review_thread_review on review_thread(review_id);
+
+create table timeline_comment (
+    id varchar(64) primary key,
+    review_id varchar(64) not null,
+    thread_id varchar(64),
+    revision_id varchar(64),
+    entity_ref varchar(256),
+    author_user_id varchar(64),
+    content text not null,
+    created_at timestamp not null,
+    constraint fk_timeline_comment_review foreign key (review_id) references timeline_review(id)
+);
+
+create index ix_timeline_comment_review on timeline_comment(review_id);
+create index ix_timeline_comment_thread on timeline_comment(thread_id);
+
+create table review_decision (
+    id varchar(64) primary key,
+    review_id varchar(64) not null,
+    reviewer_user_id varchar(64) not null,
+    decision varchar(32) not null,
+    created_at timestamp not null,
+    constraint fk_review_decision_review foreign key (review_id) references timeline_review(id)
+);
+
+create index ix_review_decision_review on review_decision(review_id);
 
 create table effect_pack (
     id varchar(64) primary key,
@@ -1983,11 +2090,89 @@ create table asset (
     duration_ms bigint,
     width int,
     height int,
-    created_at timestamp not null
+    asset_version varchar(64),
+    owner_id varchar(128),
+    entity_ref text,
+    classification varchar(64),
+    license varchar(128),
+    retention_policy varchar(128),
+    security_level varchar(64),
+    contains_pii boolean not null default false,
+    ai_generated boolean not null default false,
+    created_at timestamp not null,
+    updated_at timestamp,
+    publish_status varchar(32) not null default 'DRAFT'
 );
 
 create index ix_asset_tenant_project on asset(tenant_id, project_id);
 create index ix_asset_tenant_created on asset(tenant_id, created_at desc);
+create index ix_asset_classification on asset(classification);
+create index ix_asset_ai_generated on asset(ai_generated);
+
+create table asset_semantic_metadata (
+    asset_id varchar(64) primary key,
+    asset_version varchar(64),
+    status varchar(32) not null default 'PENDING',
+    language varchar(16),
+    semantic_json text,
+    created_at timestamp not null,
+    updated_at timestamp,
+    constraint fk_asm_asset foreign key (asset_id) references asset(id)
+);
+
+create index ix_asm_status on asset_semantic_metadata(status);
+create index ix_asm_language on asset_semantic_metadata(language);
+
+create table search_projection (
+    asset_id varchar(64) primary key,
+    tenant_id varchar(64),
+    project_id varchar(64),
+    filename varchar(256),
+    asset_type varchar(32),
+    transcript_text text,
+    scene_labels text,
+    objects text,
+    brands text,
+    people text,
+    classification varchar(64),
+    license varchar(128),
+    publish_status varchar(32),
+    search_text text,
+    search_vector tsvector,
+    updated_at timestamp not null,
+    constraint fk_sp_asset foreign key (asset_id) references asset(id)
+);
+
+create index ix_sp_tenant on search_projection(tenant_id);
+create index ix_sp_project on search_projection(project_id);
+create index ix_sp_publish_status on search_projection(publish_status);
+create index ix_sp_fts on search_projection using gin(search_vector);
+
+create table marketplace_listing (
+    id varchar(64) primary key,
+    asset_id varchar(64) not null,
+    tenant_id varchar(64),
+    project_id varchar(64),
+    listing_type varchar(32) not null,
+    title varchar(256) not null,
+    summary text,
+    description text,
+    preview_url varchar(512),
+    cover_url varchar(512),
+    version varchar(32) not null default '1.0',
+    status varchar(32) not null default 'DRAFT',
+    search_text text,
+    search_vector tsvector,
+    review_id varchar(64),
+    created_at timestamp not null,
+    updated_at timestamp not null,
+    constraint uq_ml_asset unique(asset_id),
+    constraint fk_ml_asset foreign key (asset_id) references asset(id)
+);
+
+create index ix_ml_status on marketplace_listing(status);
+create index ix_ml_type on marketplace_listing(listing_type);
+create index ix_ml_fts on marketplace_listing using gin(search_vector);
 
 -- ============================================================
 -- RENDER JOB ENHANCEMENTS
@@ -2006,6 +2191,12 @@ create table artifact_node (
     type varchar(32) not null,
     uri text not null,
     parent_artifact_ids text,
+    workflow_id varchar(128),
+    run_id varchar(128),
+    operator_id varchar(128),
+    parameters_hash varchar(128),
+    source_asset_id varchar(128),
+    derived_from_asset_ids text,
     version int not null default 1,
     hash varchar(128),
     metadata text,
