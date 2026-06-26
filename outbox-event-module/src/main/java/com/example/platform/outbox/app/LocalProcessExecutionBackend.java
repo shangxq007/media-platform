@@ -24,7 +24,9 @@ public class LocalProcessExecutionBackend implements ExecutionBackend {
 
     @Override
     public boolean supports(TaskCapability capability) {
-        return capability == TaskCapability.PROBE;
+        return capability == TaskCapability.PROBE || capability == TaskCapability.ASR
+                || capability == TaskCapability.OCR || capability == TaskCapability.VISION
+                || capability == TaskCapability.EMBEDDING;
     }
 
     @Override

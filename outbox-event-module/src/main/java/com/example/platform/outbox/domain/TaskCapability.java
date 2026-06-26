@@ -11,5 +11,10 @@ public enum TaskCapability {
     EMBEDDING,
     REINDEX,
     PACKAGE,
-    VALIDATE
+    VALIDATE,
+    MEDIA_PIPELINE,
+    TRANSCODE,
+    FRAME_EXTRACTION,
+    FILTER,
+    THUMBNAIL
 }

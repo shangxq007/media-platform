@@ -2528,3 +2528,66 @@ CREATE TABLE ai_suggestion (
 
 CREATE INDEX ix_suggestion_project ON ai_suggestion(project_id);
 CREATE INDEX ix_suggestion_workspace ON ai_suggestion(workspace_id);
+
+create table product (
+    product_id varchar(64) primary key,
+    tenant_id varchar(64),
+    project_id varchar(64),
+    owner_asset_id varchar(64),
+    product_type varchar(32) not null,
+    representation_kind varchar(32) not null,
+    producer_type varchar(32),
+    producer_id varchar(64),
+    source_timeline_revision_id varchar(64),
+    status varchar(32) not null default 'REGISTERED',
+    storage_reference_id varchar(256),
+    checksum varchar(128),
+    content_hash varchar(128),
+    mime_type varchar(64),
+    version int not null default 1,
+    metadata_json text,
+    created_at timestamp not null,
+    updated_at timestamp not null
+);
+
+create index ix_product_tenant on product(tenant_id);
+create index ix_product_project on product(project_id);
+create index ix_product_asset on product(owner_asset_id);
+create index ix_product_producer on product(producer_id);
+create index ix_product_status on product(status);
+create index ix_product_type on product(product_type);
+
+create table product_dependency (
+    dependency_id varchar(64) primary key,
+    tenant_id varchar(64),
+    project_id varchar(64),
+    product_id varchar(64) not null,
+    depends_on_product_id varchar(64) not null,
+    dependency_type varchar(32) not null,
+    created_at timestamp not null,
+    constraint uq_prod_dep unique(product_id, depends_on_product_id, dependency_type),
+    constraint fk_dep_product foreign key (product_id) references product(product_id),
+    constraint fk_dep_upstream foreign key (depends_on_product_id) references product(product_id)
+);
+
+create index ix_prod_dep_product on product_dependency(product_id);
+create index ix_prod_dep_upstream on product_dependency(depends_on_product_id);
+create index ix_prod_dep_type on product_dependency(dependency_type);
+
+create table storage_reference (
+    storage_reference_id varchar(64) primary key,
+    provider_type varchar(32) not null default 'LOCAL',
+    storage_class varchar(32) not null default 'STANDARD',
+    root_path varchar(512) not null,
+    relative_path varchar(512) not null,
+    checksum varchar(128),
+    content_hash varchar(128),
+    file_size bigint not null default 0,
+    mime_type varchar(64),
+    created_at timestamp not null,
+    updated_at timestamp not null,
+    constraint uq_storage_path unique(provider_type, root_path, relative_path)
+);
+
+create index ix_storage_checksum on storage_reference(checksum);
+create index ix_storage_content_hash on storage_reference(content_hash);

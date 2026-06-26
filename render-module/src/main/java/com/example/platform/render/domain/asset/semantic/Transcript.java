@@ -18,4 +18,15 @@ public record Transcript(
         return new Transcript("tx_" + System.currentTimeMillis(), provider, language,
                 confidence, text, segments != null ? segments : List.of());
     }
+
+    /**
+     * Create a Transcript from an AsrResult.
+     */
+    public static Transcript fromAsrResult(AsrResult result) {
+        List<TranscriptSegment> segments = result.segments().stream()
+                .map(s -> new TranscriptSegment(s.startMs(), s.endMs(), null, s.text()))
+                .toList();
+        return new Transcript("tx_" + System.currentTimeMillis(), result.provider(),
+                result.language(), 0.9, result.fullTranscript(), segments);
+    }
 }
