@@ -2,27 +2,27 @@ package com.example.platform.render.app.planner;
 
 import com.example.platform.outbox.app.ExecutionBackendRegistry;
 import com.example.platform.outbox.domain.TaskCapability;
-import com.example.platform.render.app.producer.ProducerRuntimeService;
-import com.example.platform.render.domain.producer.Producer;
+import com.example.platform.render.app.capability.CapabilityCatalogService;
+import com.example.platform.render.domain.capability.CapabilityDescriptor;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Capability Resolution Service — resolves product type → capability → producer → backend.
- * Replaces hardcoded productType→capability mapping in the planner.
+ * Capability Resolution Service — uses CapabilityCatalogService for producer discovery.
+ * No direct Producer iteration. No hardcoded mapping.
  */
 @Service
 public class CapabilityResolutionService {
 
     private static final Logger log = LoggerFactory.getLogger(CapabilityResolutionService.class);
-    private final ProducerRuntimeService producerRuntime;
+    private final CapabilityCatalogService catalog;
     private final ExecutionBackendRegistry backendRegistry;
 
-    public CapabilityResolutionService(ProducerRuntimeService producerRuntime,
+    public CapabilityResolutionService(CapabilityCatalogService catalog,
                                          ExecutionBackendRegistry backendRegistry) {
-        this.producerRuntime = producerRuntime;
+        this.catalog = catalog;
         this.backendRegistry = backendRegistry;
     }
 
@@ -37,22 +37,37 @@ public class CapabilityResolutionService {
                     "No capability mapping for " + productType, false);
         }
 
-        List<String> producers = producerRuntime.listProducers();
-        if (producers.isEmpty()) {
+        var candidate = catalog.resolvePreferred(cap.name())
+                .orElseGet(() -> catalog.resolve(cap.name()).orElse(null));
+
+        if (candidate == null) {
             return new ResolutionResult(cap.name(), null, null, null,
-                    "No producers registered", false);
+                    "No producer in catalog for " + cap, false);
         }
-        String producer = producers.get(0);
 
         var backend = backendRegistry.resolve(cap);
         if (backend.isEmpty()) {
-            return new ResolutionResult(cap.name(), producer, null, null,
-                    "No backend for " + cap, false);
+            return new ResolutionResult(cap.name(), candidate.producerId(), null, null,
+                    candidate.producerId() + " but no backend for " + cap, false);
         }
 
         String backendId = backend.get().backendId();
-        return new ResolutionResult(cap.name(), producer, backendId, cap.name(),
-                backendId + " supports " + cap, true);
+        String reason = candidate.preferred()
+                ? "preferred producer for " + cap
+                : "highest priority (" + candidate.priority() + ") for " + cap;
+        return new ResolutionResult(cap.name(), candidate.producerId(), backendId,
+                candidate.backendType(), reason, true);
+    }
+
+    public String explain(String productType) {
+        var res = resolve(productType);
+        if (!res.resolved()) {
+            return "Unresolved: " + productType + " — " + res.selectionReason();
+        }
+        return productType + " → " + res.capability()
+                + " → Producer " + res.producerId()
+                + " → Backend " + res.backendId()
+                + " (" + res.selectionReason() + ")";
     }
 
     private TaskCapability mapToCapability(String productType) {

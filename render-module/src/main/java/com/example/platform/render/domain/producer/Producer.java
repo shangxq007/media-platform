@@ -1,5 +1,6 @@
 package com.example.platform.render.domain.producer;
 
+import com.example.platform.render.domain.capability.CapabilityDescriptor;
 import java.util.List;
 
 /**
@@ -14,4 +15,7 @@ public interface Producer {
     default List<String> requiredCapabilities() { return List.of(); }
     default String preferredBackend() { return null; }
     default List<String> supportedRepresentations() { return List.of("JSON_DOCUMENT"); }
+    default CapabilityDescriptor descriptor() {
+        return CapabilityDescriptor.of("unknown", producerId(), "local-process", "local-process");
+    }
 }
