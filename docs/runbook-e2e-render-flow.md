@@ -226,3 +226,35 @@ All external providers are mocked:
 - `docs/roo-gap-report.md` — gap analysis
 - `docs/module-boundaries.md` — module dependency graph
 - `docs/runbook-local.md` — local development runbook
+
+## Timeline Core Smoke Path
+
+The Timeline Core Testable R1 adds a backend smoke path proving Timeline → Product closure.
+
+### Flow
+
+```
+TimelineSpec (fixture)
+    → TimelineRenderJobMapper.toRenderJobRequest()
+    → controlled local output file (NOT real FFmpeg/libass)
+    → RenderOutputRegistrationService.registerOutput()
+    → StorageReference (LOCAL provider)
+    → Product (ProductType.FINAL_RENDER, RepresentationKind.MEDIA_FILE, status=READY)
+    → queryable via ProductController
+```
+
+### What This Proves
+
+- Timeline metadata survives mapping to RenderJob request
+- Mapper validates all inputs fail-closed (duration, fps, canvas, format, path safety)
+- Render output can be registered through StorageRuntime → ProductRuntime
+- Final render becomes a READY Product with checksum and provenance
+
+### What This Does NOT Prove
+
+- Real FFmpeg/libass rendering (requires baseline FFmpeg integration test)
+- Real Remotion rendering (gated for advanced template rendering)
+- Real OpenCue execution (disabled by default)
+- MinIO/S3 storage (deferred to Storage R2)
+- Full Timeline Git productization (branch/merge/conflict UI not included)
+- Full Workflow Runtime (no Temporal orchestration)

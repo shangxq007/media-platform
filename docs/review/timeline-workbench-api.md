@@ -89,3 +89,15 @@ Compilation passing. All existing tests unaffected (TimelineRevisionController, 
 | Rebase API |
 | GraphQL read layer |
 | Real-time collaborator presence |
+
+## Timeline Core Testable R1 (2026-06-27)
+
+R1 closes the first backend smoke path from Timeline to Product:
+
+- `TimelineRenderJobMapper` converts `TimelineSpec` to `SubmitRenderJobRequest` with fail-closed validation
+- Controlled render output registered through `RenderOutputRegistrationService`
+- Output becomes a READY `Product` queryable via existing `ProductController` APIs
+- Mapper rejects unsafe paths, invalid dimensions, unsupported formats, internal provider selection
+
+This is a backend smoke closure using controlled local output — not real FFmpeg/libass rendering.
+Frontend Workbench UI integration remains a next step.

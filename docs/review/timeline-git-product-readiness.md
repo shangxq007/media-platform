@@ -348,3 +348,32 @@ Three REST endpoints would unlock 80% of user value from existing code:
 **Why not continue enhancing merge/branch engine:** The engine is ahead of the product. Users cannot use merge today because there's no API. Adding rebase or MANUAL resolution before the merge API exists is premature optimization. Ship what works first.
 
 **Next sprint recommendation:** Sprint 004 — Merge API + Asset API productization.
+
+## 14. Timeline Core Testable R1 Status (2026-06-27)
+
+### What R1 Proves
+
+- Timeline/TimelineRevision can produce a RenderJob-compatible request via `TimelineRenderJobMapper`
+- A controlled render output file can be registered through `RenderOutputRegistrationService`
+- The output becomes a READY `Product` with `ProductType.FINAL_RENDER` + `RepresentationKind.MEDIA_FILE`
+- StorageReference is populated with checksum verification
+- Product is queryable via `ProductRuntimeService.find()` and `findByProject()`
+- Mapper validates all inputs fail-closed (duration, fps, canvas, format, path safety)
+
+### What R1 Does NOT Prove
+
+- **Not full FFmpeg/libass integration** — smoke test uses controlled local output file
+- **Not full Timeline Git productization** — branch/merge/conflict UI not included
+- **Not full Workflow Runtime** — no Temporal orchestration
+- **Not production dispatch** — no real OpenCue or Remotion production submit
+- **Not Storage production** — MinIO/S3 deferred, LOCAL provider only
+
+### Architecture Compliance
+
+- FFmpeg/libass remains baseline subtitle burn-in
+- Remotion remains gated for advanced template rendering
+- OpenCue remains disabled by default
+- No signed URLs persisted
+- No Artifact Runtime introduced
+- Product remains canonical communication object
+- Timeline input does not expose internal provider/backend/environment selection
