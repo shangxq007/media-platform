@@ -748,3 +748,61 @@ Response (READY):
 - No internal provider/backend/environment selection exposed
 - Product remains canonical communication object
 - Timeline remains canonical editing model
+
+---
+
+## Backend R8 — Local Real Render Harness
+
+R8 provides a repeatable local real-render smoke harness that proves the full R6.1 + R7 backend chain works with a real media file and a real FFmpeg/libass execution.
+
+### What R8 Proves
+
+- TimelineRevision → input RAW_MEDIA Product resolution works end-to-end
+- StorageRuntime materialization produces a real file path
+- FFmpeg/libass real render executes with `-i <materializedInputPath>` (no testsrc/lavfi)
+- Output is a real playable mp4 (verified via ffprobe)
+- Output Product is FINAL_RENDER + MEDIA_FILE + READY
+- ProductDependency lineage is created (output DERIVED_FROM input)
+- R7 status query returns correct status/resultAvailable/outputProductId/inputProductIds
+- R7 result query returns correct mimeType/dimensions/fps/duration
+- No sensitive data (provider/backend/environment/signedUrl/path) in responses
+
+### Running the Smoke
+
+```bash
+# Run the real render smoke test
+./gradlew :render-module:test --tests "*TimelineRevisionRealRenderSmokeTest"
+
+# Run all R6/R6.1/R7/R8 regression
+./gradlew :render-module:test \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionRenderServiceTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineInputProductResolverTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineRenderJobMapperTest" \
+  --tests "com.example.platform.render.app.output.RenderOutputRegistrationServiceTest" \
+  --tests "com.example.platform.render.app.timeline.RenderJobStatusServiceTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionServiceTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionRealRenderSmokeTest"
+
+# Run controller contract tests
+./gradlew :platform-app:test --tests "com.example.platform.web.render.TimelineRevisionRenderJobStatusControllerTest"
+```
+
+### FFmpeg Requirement
+
+The real render smoke requires FFmpeg and ffprobe on PATH. If unavailable, the test is **skipped** (not failed) with the message: "FFmpeg not available; real baseline render smoke skipped."
+
+Install FFmpeg:
+- Ubuntu/Debian: `sudo apt install ffmpeg`
+- macOS: `brew install ffmpeg`
+- Verify: `ffmpeg -version && ffprobe -version`
+
+### What R8 Does NOT Cover
+
+- Docker/Compose dev runtime
+- MinIO/S3 storage
+- OpenCue async execution
+- Remotion production dispatch
+- Multi-input track rendering
+- Subtitle burn-in (uses simple video-only timeline)
+- Frontend integration
+- Production deployment
