@@ -145,3 +145,7 @@ Compilation passes. Existing tests unaffected.
 - Provider type hardening: `S3_COMPATIBLE` and `OBJECT_STORAGE` added as accepted values
 - `StorageProviderType` enum extended with `S3_COMPATIBLE` and `OBJECT_STORAGE` (storage-neutral naming)
 - Test requires FFmpeg + S3 endpoint; skips cleanly if either unavailable
+
+## External Channel Extension Boundary
+
+See [External Channel Extension Model](../architecture/blueprint/external-channel-extension-model.md) for the reserved extension points clarifying how external input/output channels (ClientPush, ExternalStorageConnection, IngestSource, WatchSource, DeliveryTarget) relate to StorageRuntime. External channel concepts are outside StorageRuntime and do not replace Product canonical storage by default.

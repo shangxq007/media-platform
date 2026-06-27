@@ -1517,6 +1517,7 @@ A fifth pillar is forming:
 | [Architecture Re-Prioritization](../../review/architecture-reprioritization-sprint.md) | Sprint decision record (2026-06-24) |
 | [Reference Architecture Map](reference-architecture-map.md) | External reference projects |
 | [ASWF Ecosystem Analysis](../../review/aswf-ecosystem-analysis.md) | ASWF project integration roadmap |
+| [External Channel Extension Model](external-channel-extension-model.md) | Reserved extension points for external input/output channels |
 
 ---
 

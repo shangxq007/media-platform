@@ -173,3 +173,4 @@ owner: platform
 - [Release Candidate Readiness Checklist](../../review/release-candidate-readiness-2026-06-17.md)
 - [Platform Fact Gathering Report](../platform-fact-gathering-report.md)
 - [Backend-first Stabilization Plan](../backend-first-stabilization-plan.md)
+- [External Channel Extension Model](../blueprint/external-channel-extension-model.md) — Reserved extension points for external input/output channels
