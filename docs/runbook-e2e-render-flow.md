@@ -835,6 +835,10 @@ StorageReference (providerType=S3, rootPath=bucket, relativePath=objectKey)
   → FFmpeg/libass renders from local path
 ```
 
+### StorageReference Locator Semantics
+
+For S3-compatible providers, `StorageReference.rootPath` = bucket name and `StorageReference.relativePath` = object key. These are **internal locator fields** and must not be exposed in public APIs. See [Storage Runtime Foundation — StorageReference Locator Semantics](../docs/review/storage-runtime-foundation.md#storagereference-locator-semantics).
+
 ### Configuration
 
 S3 materialization uses existing `storage.s3.*` configuration:

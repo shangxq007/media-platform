@@ -212,6 +212,14 @@ The platform API remains storage-neutral. R10 will implement a generic
 S3-compatible StorageRuntime provider (not MinIO-specific or RustFS-specific).
 This task (R9.3) only verifies dev object storage startup and S3 API smoke.
 
+### StorageReference Locator Semantics
+
+For S3-compatible providers, `StorageReference.rootPath` = bucket name and
+`StorageReference.relativePath` = object key. These are **internal locator fields**
+and must not be exposed in public APIs.
+
+See [Storage Runtime Foundation — StorageReference Locator Semantics](../review/storage-runtime-foundation.md#storagereference-locator-semantics).
+
 ### Start object storage
 
 ```bash

@@ -39,6 +39,72 @@ owner: platform
 - No signed URLs, no credentials, no upload/download API
 - Storage remains optional for Products (storageReferenceId nullable)
 
+### StorageReference Locator Semantics
+
+`StorageReference` is the **internal locator** for platform-controlled StorageRuntime objects.
+It must not be treated as a universal external storage descriptor.
+
+#### Internal Interpretation by Provider Type
+
+```text
+providerType = LOCAL
+  rootPath      = internal storage root / mounted volume root
+  relativePath  = relative file path under rootPath
+
+providerType = S3 / S3_COMPATIBLE / OBJECT_STORAGE
+  rootPath      = internal bucket name
+  relativePath  = object key
+```
+
+#### Key Constraints
+
+- `rootPath` and `relativePath` are **internal locator fields**, not public API contract fields.
+- They must **not** be exposed in Product result responses, render status responses, public timeline responses, or frontend contracts.
+- They must **not** be used for external user-owned storage delivery targets by default.
+- They must **not** be confused with materialized local paths.
+- `absolutePath()` concatenates `rootPath + "/" + relativePath` for LOCAL provider; for S3-compatible, it produces `bucket/key` (internal use only).
+
+#### Materialization Semantics
+
+Materialization means:
+
+```text
+StorageReference
+→ StorageRuntime.materialize()
+→ local temporary execution file/path
+```
+
+For LOCAL:
+
+```text
+rootPath + relativePath
+→ validated local file
+```
+
+For S3-compatible:
+
+```text
+bucket + object key
+→ HeadObject / GetObject
+→ local temp file
+→ checksum verification
+```
+
+- The materialized local path is **runtime-only**.
+- The materialized local path must **not** be persisted as canonical Product storage.
+- The materialized local path must **not** be exposed through public APIs.
+- The materialized local path can be used internally by FFmpeg/libass and workers.
+
+#### Checksum and Size Semantics
+
+- StorageReference carries checksum, fileSize, and mimeType where available.
+- S3-compatible materialization must verify checksum when expected checksum is available.
+- Output registration must compute checksum after render output is complete.
+- R10B should verify checksum after upload or after object registration.
+- ETag must **not** be assumed to be SHA-256, especially for multipart uploads or non-AWS S3-compatible backends.
+
+> **Checksum is the platform integrity signal. ETag is backend metadata and must not be treated as canonical checksum unless explicitly validated.**
+
 ### Product + Execution Integration
 - Products reference storage via `storageReferenceId` (nullable)
 - ExecutionBackend receives StorageReferenceId → StorageRuntimeService.materialize() → localPath
@@ -54,6 +120,87 @@ Compilation passes. Existing tests unaffected.
 | S3 output write-back | Deferred to R10B |
 | No worker cache | Deferred to F4 |
 | No upload/download API | Read-only (R10A: download for materialization) |
+
+## R10B Output Key Strategy Reservation
+
+### Recommended Initial Internal Object Key
+
+```text
+projects/{projectId}/render-jobs/{renderJobId}/outputs/final.mp4
+```
+
+Alternative future strategy (with tenant isolation):
+
+```text
+tenants/{tenantId}/projects/{projectId}/render-jobs/{renderJobId}/outputs/final.mp4
+```
+
+### Constraints
+
+- R10B should initially write internal render output to the configured platform-controlled S3-compatible bucket.
+- The bucket is configured as **internal platform storage**.
+- The key is **internal** and must **not** be exposed publicly.
+- Product metadata may reference output Product and render job, but must **not** leak bucket/key.
+- Public result APIs should return safe Product/render metadata only.
+- Download/delivery should be separate future capabilities.
+
+### Recommended Temp Object / Failure Cleanup Strategy
+
+Preferred future-safe design:
+
+```text
+tmp/render-jobs/{renderJobId}/{uuid}.mp4
+→ upload
+→ checksum verify
+→ copy/promote to final key
+→ delete temp key
+→ register StorageReference
+→ Product READY
+```
+
+For a minimal first implementation, direct upload to final key may be acceptable only if:
+
+- Upload failures delete partial objects when possible.
+- Failed output Product is **not** marked READY.
+- ProductDependency is **not** linked for failed output.
+- Failure does **not** expose bucket/key/path/command.
+- Final key is deterministic and idempotency behavior is documented.
+
+### Transaction and Consistency Boundary
+
+R10B must treat database state and object storage state carefully.
+
+Recommended success order:
+
+```text
+render local temp output
+→ compute checksum
+→ upload to S3-compatible internal storage
+→ verify object exists / checksum
+→ register StorageReference
+→ register Product
+→ mark Product READY
+→ link ProductDependency
+```
+
+Failure rules:
+
+- If upload fails, no READY Product.
+- If checksum verification fails, delete uploaded object if possible and no READY Product.
+- If DB registration fails after upload, object may become orphaned and should be eligible for future sweeper cleanup.
+- No public API should expose partially uploaded objects.
+- R10B may document a future orphan-object sweeper.
+
+### R10B Future Output Write-Back Flow
+
+```text
+FFmpeg local temp output
+→ checksum
+→ upload to internal S3-compatible bucket/key
+→ verify
+→ StorageReference(providerType=S3_COMPATIBLE)
+→ FINAL_RENDER Product READY
+```
 
 ## R1 Output Closure Status (COMPLETED 2026-06-27)
 

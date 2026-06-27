@@ -445,7 +445,7 @@ This reservation **does not implement**:
 | Document | Relationship |
 |----------|-------------|
 | [Storage Runtime](../storage-runtime.md) | Canonical storage runtime architecture |
-| [Storage Runtime Foundation](../../review/storage-runtime-foundation.md) | Current implementation status |
+| [Storage Runtime Foundation](../../review/storage-runtime-foundation.md) | Current implementation status, StorageReference locator semantics, R10B output key strategy |
 | [OTIO Render Platform Blueprint](otio-render-platform-blueprint.md) | Render platform architecture (L1-L8) |
 | [Platform Constitution](../platform-constitution-v1.md) | Frozen architecture constraints |
 | [ADR-011: Storage Runtime](../adr/ADR-011-storage-runtime.md) | Storage runtime ADR |

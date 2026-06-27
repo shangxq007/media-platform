@@ -174,3 +174,4 @@ owner: platform
 - [Platform Fact Gathering Report](../platform-fact-gathering-report.md)
 - [Backend-first Stabilization Plan](../backend-first-stabilization-plan.md)
 - [External Channel Extension Model](../blueprint/external-channel-extension-model.md) — Reserved extension points for external input/output channels
+- [Storage Runtime Foundation](../../review/storage-runtime-foundation.md) — StorageReference locator semantics, R10B output key strategy
