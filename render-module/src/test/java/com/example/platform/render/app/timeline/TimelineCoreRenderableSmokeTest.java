@@ -538,15 +538,17 @@ class TimelineCoreRenderableSmokeTest {
 
         @Override
         public List<ProductDependency> findDependencies(String productId) {
+            // Returns what this product depends ON (upstream)
             return store.values().stream()
-                    .filter(d -> d.dependsOnProductId().equals(productId))
+                    .filter(d -> d.productId().equals(productId))
                     .toList();
         }
 
         @Override
         public List<ProductDependency> findDependents(String productId) {
+            // Returns what depends ON this product (downstream)
             return store.values().stream()
-                    .filter(d -> d.productId().equals(productId))
+                    .filter(d -> d.dependsOnProductId().equals(productId))
                     .toList();
         }
 

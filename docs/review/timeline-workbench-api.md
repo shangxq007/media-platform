@@ -101,3 +101,43 @@ R1 closes the first backend smoke path from Timeline to Product:
 
 This is a backend smoke closure using controlled local output — not real FFmpeg/libass rendering.
 Frontend Workbench UI integration remains a next step.
+
+## Timeline Core Testable R2 (2026-06-27)
+
+R2 adds real FFmpeg/libass baseline render smoke over R1:
+
+- Real test media generated with FFmpeg testsrc (2-3s, 320x180)
+- SRT and ASS subtitle fixtures for subtitle burn-in verification
+- Real FFmpeg/libass render invoked (not controlled temp output)
+- Test explicitly skips when FFmpeg is not available
+- Output registered through RenderOutputRegistrationService → READY Product
+
+R1 controlled output smoke remains as the always-fast test.
+Real FFmpeg smoke may be integration-gated if FFmpeg is unavailable in CI.
+
+## Backend R6 — TimelineRevision Render API (2026-06-27)
+
+R6 productizes the render chain into a stable backend API:
+
+- `POST /api/v1/render/projects/{projectId}/timeline/revisions/{revisionId}/render`
+- Caller submits TimelineRevision + outputProfile (no provider/backend/environment selection)
+- `TimelineRevisionRenderService` orchestrates: load revision → parse timeline → map to request → invoke FFmpeg/libass → register output
+- Output registered through `RenderOutputRegistrationService` with full provenance
+- Response includes outputProductId, productStatus, provenance metadata
+- FFmpeg/libass remains baseline subtitle burn-in
+- Remotion/OpenCue production dispatch remains disabled
+- Frontend Workbench UI integration remains a next step
+
+## Backend R6.1 — TimelineRevision Input Product Resolution (2026-06-27)
+
+R6.1 resolves input Product references from TimelineRevision:
+
+- `TimelineInputProductResolver` (@Service) resolves sourceAssetIds to inputProductIds
+- sourceAssetIds validated for safety before Product lookup (rejects unsafe patterns, exact-match provider hints)
+- Input Products materialized through StorageRuntime; FFmpeg uses `-i <materializedPath>` (no testsrc/lavfi)
+- Output Product includes `inputProductIds` and `inputDependencyCount` in metadata
+- Formal ProductDependency lineage created (DERIVED_FROM)
+- Single-primary-input only; multiple inputs/tracks remain future hardening
+- API request unchanged: `{ "outputProfile": "default_1080p" }`
+- Response excludes signed URLs, local paths, materialized paths, provider/backend/environment/storageProvider
+- Frontend Workbench UI integration remains a next step

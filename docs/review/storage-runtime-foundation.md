@@ -65,3 +65,51 @@ Compilation passes. Existing tests unaffected.
 - No Artifact Runtime created — Products with `RepresentationKind.MEDIA_FILE` serve as file-backed products
 - No signed URLs persisted
 - StorageProvider contains no pricing/billing/quota logic
+
+## R3 Provenance Hardening Status (COMPLETED 2026-06-27)
+
+- `RenderOutputRegistrationService.registerOutput()` now accepts optional `RenderProductProvenance`
+- Storage facts (fileSize, mimeType, checksum) still populated by StorageRuntime
+- Provenance metadata merged into Product metadataJson alongside storage facts
+- No StorageRuntime semantic changes — storage registration flow unchanged
+- No signed URLs persisted
+- No absolute filesystem paths exposed in metadata
+
+## R4 Input Materialization Status (COMPLETED 2026-06-27)
+
+- `RenderInputMaterializationService` uses `StorageRuntimeService.materialize()` for input resolution
+- Input Products registered as `RAW_MEDIA` with StorageReference backing
+- Materialization validates: Product exists, READY status, MEDIA_FILE kind, storageReferenceId present,
+  StorageReference exists, file exists, regular file, non-zero size, supported MIME type, safe path
+- StorageRuntime owns physical materialization — render code never resolves paths directly
+- No StorageRuntime semantic changes — materialization flow unchanged
+- No signed URLs persisted
+- No absolute filesystem paths exposed in metadata
+
+## R5 Product Graph Dependency Edges Status (COMPLETED 2026-06-27)
+
+- `RenderOutputRegistrationService` links formal Product dependency edges after output registration
+- Dependency edges created via `ProductRuntimeService.linkDependency()` using existing infrastructure
+- StorageRuntime unchanged — dependency linking is a Product lifecycle concern
+- No StorageRuntime semantic changes
+- No signed URLs persisted
+- No absolute filesystem paths exposed in dependency metadata
+
+## R6 TimelineRevision Render API Status (COMPLETED 2026-06-27)
+
+- `TimelineRevisionRenderService` uses `RenderOutputRegistrationService` for output registration
+- Output registered through StorageRuntime → ProductRuntime with full provenance
+- StorageRuntime unchanged — output registration flow unchanged
+- No StorageRuntime semantic changes
+- No signed URLs persisted
+- No absolute filesystem paths exposed in metadata
+
+## R6.1 TimelineRevision Input Product Resolution Status (COMPLETED 2026-06-27)
+
+- `TimelineInputProductResolver` resolves sourceAssetIds to inputProductIds; input materialized through `RenderInputMaterializationService` → `StorageRuntimeService.materialize()`
+- FFmpeg/libass uses materialized input file (`-i <materializedPath>`) — no testsrc/lavfi fallback
+- Defensive input path validation: null, exists, regular file, non-zero
+- StorageRuntime unchanged — materialization flow unchanged
+- No StorageRuntime semantic changes
+- No signed URLs persisted
+- No materialized input paths exposed in response metadata

@@ -2,6 +2,7 @@ package com.example.platform.web.render;
 
 import com.example.platform.render.app.timeline.TimelinePatchOpsJson;
 import com.example.platform.render.app.timeline.TimelineRevisionDiffService;
+import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.TimelineRevisionService;
 import com.example.platform.render.app.timeline.TimelineRevisionService.CompareResult;
 import com.example.platform.render.app.timeline.TimelineRevisionService.EditSessionInfo;
@@ -12,6 +13,8 @@ import com.example.platform.render.app.timeline.TimelineRevisionService.PatchSte
 import com.example.platform.render.app.timeline.TimelineRevisionService.RestoreResult;
 import com.example.platform.render.app.timeline.TimelineRevisionService.RevisionSnapshotPayload;
 import com.example.platform.render.app.timeline.TimelineMergeService;
+import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
+import com.example.platform.render.api.dto.TimelineRevisionRenderResponse;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.shared.events.TimelineMergedEvent;
 import com.example.platform.shared.events.TimelineRestoredEvent;
@@ -48,13 +51,16 @@ public class TimelineRevisionController {
     private final TimelineRevisionService revisionService;
     private final TimelineMergeService mergeService;
     private final TimelineReviewEventPublisher eventPublisher;
+    private final TimelineRevisionRenderService renderService;
 
     public TimelineRevisionController(TimelineRevisionService revisionService,
                                        TimelineMergeService mergeService,
-                                       TimelineReviewEventPublisher eventPublisher) {
+                                       TimelineReviewEventPublisher eventPublisher,
+                                       @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService) {
         this.revisionService = revisionService;
         this.mergeService = mergeService;
         this.eventPublisher = eventPublisher;
+        this.renderService = renderService;
     }
 
     @GetMapping
@@ -229,6 +235,33 @@ public class TimelineRevisionController {
         }
 
         return ResponseEntity.ok(toMergeResponse(result));
+    }
+
+    @PostMapping("/{revisionId}/render")
+    @Operation(summary = "渲染 TimelineRevision 为最终视频 Product",
+            description = "接受 TimelineRevision 引用和输出配置，使用 FFmpeg/libass 基线渲染路径生成最终视频。" +
+                    "不暴露内部 provider/backend/environment 选择。")
+    public ResponseEntity<TimelineRevisionRenderResponse> render(
+            @PathVariable String projectId,
+            @PathVariable String revisionId,
+            @RequestBody TimelineRevisionRenderRequest request) {
+        if (renderService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(TimelineRevisionRenderResponse.failure(revisionId, "Timeline revision render service is not available"));
+        }
+
+        try {
+            TimelineRevisionRenderService.RevisionRenderResult result =
+                    renderService.render(projectId, revisionId, request.profileOrDefault());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(TimelineRevisionRenderResponse.success(result));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(TimelineRevisionRenderResponse.failure(revisionId, e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(TimelineRevisionRenderResponse.failure(revisionId, e.getMessage()));
+        }
     }
 
     private static RevisionListItem toListItem(RevisionInfo r) {

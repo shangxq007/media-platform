@@ -377,3 +377,227 @@ Three REST endpoints would unlock 80% of user value from existing code:
 - No Artifact Runtime introduced
 - Product remains canonical communication object
 - Timeline input does not expose internal provider/backend/environment selection
+
+### Timeline Core Testable R2 Status (2026-06-27)
+
+#### What R2 Adds Over R1
+
+- Real FFmpeg/libass baseline render smoke (not controlled temp output)
+- Real test media generation using FFmpeg testsrc filter
+- SRT and ASS subtitle fixtures for subtitle burn-in verification
+- Proves Timeline → RenderJob → real FFmpeg render → Storage → Product closure
+- Test explicitly skips with clear message when FFmpeg is not available
+
+#### What R2 Does NOT Prove
+
+- **Not full production rendering** — smoke uses tiny test media (2-3s, 320x180)
+- **Not full Timeline Git productization** — branch/merge/conflict UI not included
+- **Not full Workflow Runtime** — no Temporal orchestration
+- **Not production dispatch** — no real OpenCue or Remotion production submit
+- **Not Storage production** — MinIO/S3 deferred, LOCAL provider only
+
+#### Architecture Compliance
+
+- FFmpeg/libass remains baseline subtitle burn-in
+- Remotion remains gated for advanced template rendering
+- OpenCue remains disabled by default
+- No signed URLs persisted
+- No Artifact Runtime introduced
+- Product remains canonical communication object
+
+### Backend R3 Status (2026-06-27)
+
+#### What R3 Adds Over R2
+
+- `RenderProductProvenance` internal value object for structured provenance metadata
+- `TimelineRenderJobMapper.MappingResult` extended with revisionId, snapshotId, subtitleFormat, sourceAssetIds
+- `RenderOutputRegistrationService.registerOutput()` overloaded to accept provenance
+- Final render Products now carry timeline/render/storage provenance through metadataJson
+- `sourceTimelineRevisionId` populated on Product record when revision provenance available
+- Provenance fields: timelineId, revisionId, snapshotId, renderJobId, outputProfile, outputFormat,
+  durationSeconds, fps, width, height, hasSubtitles, subtitleFormat, baselineRenderer, renderMode,
+  inputProductIds, sourceAssetIds
+
+#### What R3 Does NOT Prove
+
+- **Not full Product Graph** — dependency edges remain deferred
+- **Not full Timeline Git productization** — branch/merge/conflict UI not included
+- **Not full Workflow Runtime** — no Temporal orchestration
+- **Not production dispatch** — no real OpenCue or Remotion production submit
+- **Not Storage production** — MinIO/S3 deferred, LOCAL provider only
+
+#### Architecture Compliance
+
+- No Product model semantic changes (provenance uses existing metadataJson field)
+- No StorageRuntime semantic changes
+- No ProductRuntime semantic changes
+- No new database columns required
+- FFmpeg/libass remains baseline subtitle burn-in
+- Remotion remains gated for advanced template rendering
+- OpenCue remains disabled by default
+- No signed URLs persisted
+- No Artifact Runtime introduced
+- Product remains canonical communication object
+- Timeline remains canonical editing model
+
+### Backend R4 Status (2026-06-27)
+
+#### What R4 Adds Over R3
+
+- `RenderInputMaterialization` internal value object for materialized input results
+- `RenderInputMaterializationService` materializes input Products through StorageRuntime
+- Input media registered as `RAW_MEDIA` Product backed by StorageReference
+- Render input materialized via `StorageRuntimeService.materialize()` before FFmpeg/libass
+- Output Product metadata includes `inputProductIds` referencing input RAW_MEDIA Products
+- Failure path tests for: missing Product, not READY, no storageReferenceId, not MEDIA_FILE,
+  missing StorageReference, zero-byte file, unsupported MIME type
+
+#### What R4 Does NOT Prove
+
+- **Not full Product Graph** — dependency edges remain deferred
+- **Not full Timeline Git productization** — branch/merge/conflict UI not included
+- **Not full Workflow Runtime** — no Temporal orchestration
+- **Not production dispatch** — no real OpenCue or Remotion production submit
+- **Not Storage production** — MinIO/S3 deferred, LOCAL provider only
+
+#### Architecture Compliance
+
+- Input media enters render as Product/StorageReference
+- StorageRuntime owns physical input materialization
+- FFmpeg/libass receives local path only after StorageRuntime materialization
+- ProductRuntime owns input/output Product lifecycle
+- Render code does not resolve StorageReference paths directly
+- No signed URLs persisted
+- No absolute local paths exposed in public output Product metadata
+- No Product model semantic changes
+- No StorageRuntime semantic changes
+- No ProductRuntime semantic changes
+- No new database columns required
+- FFmpeg/libass remains baseline subtitle burn-in
+- Remotion remains gated for advanced template rendering
+- OpenCue remains disabled by default
+- No Artifact Runtime introduced
+- Product remains canonical communication object
+- Timeline remains canonical editing model
+
+### Backend R5 Status (2026-06-27)
+
+#### What R5 Adds Over R4
+
+- `RenderOutputRegistrationService.registerOutput()` now links formal Product dependency edges
+  after output Product registration and `markReady()`
+- Input RAW_MEDIA Products linked to output FINAL_RENDER Product via `ProductRuntimeService.linkDependency()`
+- Uses `DependencyType.DERIVED_FROM` to express output is derived from input(s)
+- `RenderProductProvenance.inputProductIds` used for both metadata and formal lineage edges
+- De-duplication: duplicate input IDs create only one dependency edge
+- Self-dependency rejected: output Product cannot depend on itself
+- Missing input Product fails closed before marking READY
+- Cycle detection remains active via existing `ProductRuntimeService` infrastructure
+- Dependency edges queryable via `findDependencies()`, `findDependents()`, `findUpstream()`, `findDownstream()`
+- Tests cover: dependency linking, de-duplication, self-dependency rejection, missing input failure,
+  cycle detection, upstream/downstream queries, tenant/project propagation
+
+#### What R5 Does NOT Prove
+
+- **Not full incremental rendering** — dependency edges are read-only lineage, not cache invalidation
+- **Not full Product Graph** — dependency edges exist but no recursive traversal or DAG validation
+- **Not full Timeline Git productization** — branch/merge/conflict UI not included
+- **Not full Workflow Runtime** — no Temporal orchestration
+- **Not production dispatch** — no real OpenCue or Remotion production submit
+- **Not Storage production** — MinIO/S3 deferred, LOCAL provider only
+
+#### Architecture Compliance
+
+- No Product model semantic changes — uses existing `ProductDependency` infrastructure
+- No StorageRuntime semantic changes
+- No ProductRuntime semantic changes — uses existing `linkDependency()` API
+- No new database columns required
+- No new graph runtime introduced
+- No Artifact Runtime introduced
+- No signed URLs persisted
+- No absolute filesystem paths exposed
+- FFmpeg/libass remains baseline subtitle burn-in
+- Remotion remains gated for advanced template rendering
+- OpenCue remains disabled by default
+- Product remains canonical communication object
+- Timeline remains canonical editing model
+
+### Backend R6 Status (2026-06-27)
+
+#### What R6 Adds Over R5
+
+- `TimelineRevisionRenderService` application service for rendering TimelineRevision into final render Product
+- `TimelineRevisionRenderRequest` / `TimelineRevisionRenderResponse` DTOs
+- `POST /{revisionId}/render` endpoint on `TimelineRevisionController`
+- Caller submits TimelineRevision reference + outputProfile (no provider/backend/environment selection)
+- FFmpeg/libass baseline render invoked through `ProcessToolRunner`
+- Output registered through `RenderOutputRegistrationService` with full provenance
+- `sourceTimelineRevisionId` populated on output Product
+- Tests cover: successful render, provenance metadata, missing revision, wrong project, missing snapshot, default profile
+
+#### What R6 Does NOT Prove
+
+- **Not full async job system** — synchronous controlled-local execution for R6
+- **Not full Render Job Status contract** — not implemented
+- **Not full Timeline Git productization** — branch/merge/conflict UI not included
+- **Not full Workflow Runtime** — no Temporal orchestration
+- **Not production dispatch** — no real OpenCue or Remotion production submit
+- **Not Storage production** — MinIO/S3 deferred, LOCAL provider only
+- **Not Frontend Workbench integration** — not implemented
+
+#### Architecture Compliance
+
+- No Kernel/SPI changes
+- No Product/Timeline model semantic changes
+- No Execution lifecycle changes
+- No Artifact Runtime
+- FFmpeg/libass remains baseline subtitle burn-in
+- Remotion production dispatch remains disabled
+- OpenCue production submit remains disabled
+- MinIO/S3 not required
+- No signed URLs persisted
+- No internal provider/backend/environment selection exposed
+- Product remains canonical communication object
+- Timeline remains canonical editing model
+
+### Backend R6.1 Status (2026-06-27)
+
+#### What R6.1 Adds Over R6
+
+- `TimelineInputProductResolver` (@Service) resolves sourceAssetIds to inputProductIds via ProductRuntimeService.findByAsset()
+- sourceAssetIds validated for safety before Product lookup (rejects absolute paths, traversal, URLs, provider hints — exact-match)
+- Input Products resolved from timeline asset registry; fail-closed if no READY RAW_MEDIA Product found
+- Input Product materialized through `RenderInputMaterializationService` → `StorageRuntimeService.materialize()`
+- FFmpeg/libass uses materialized input file (`-i <materializedPath>`) — no testsrc/lavfi fallback
+- Output Product metadata includes `inputProductIds`
+- Formal ProductDependency edges created via `RenderOutputRegistrationService` (DERIVED_FROM)
+- Single-primary-input only; multiple inputs/tracks remain future hardening
+- Defensive input path validation: null, exists, regular file, non-zero
+- Response includes `inputProductIds` and `inputDependencyCount`
+- Response excludes signed URLs, local paths, materialized paths, provider/backend/environment/storageProvider
+
+#### What R6.1 Does NOT Prove
+
+- **Not multiple input tracks** — single-primary-input only
+- **Not full async job system** — synchronous controlled-local execution
+- **Not full Render Job Status contract** — not implemented
+- **Not full Timeline Git productization** — branch/merge/conflict UI not included
+- **Not full Workflow Runtime** — no Temporal orchestration
+- **Not production dispatch** — no real OpenCue or Remotion production submit
+- **Not Storage production** — MinIO/S3 deferred, LOCAL provider only
+
+#### Architecture Compliance
+
+- No Kernel/SPI changes
+- No Product/Timeline model semantic changes
+- No Execution lifecycle changes
+- No Artifact Runtime
+- FFmpeg/libass uses materialized input file (no testsrc/lavfi)
+- Remotion production dispatch remains disabled
+- OpenCue production submit remains disabled
+- MinIO/S3 not required
+- No signed URLs persisted
+- No materialized input paths exposed in response
+- No internal provider/backend/environment selection exposed
+- Product remains canonical communication object
+- Timeline remains canonical editing model

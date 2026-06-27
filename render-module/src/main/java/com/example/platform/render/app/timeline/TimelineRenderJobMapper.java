@@ -1,11 +1,13 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
+import com.example.platform.render.app.output.RenderProductProvenance;
 import com.example.platform.render.domain.timeline.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -40,7 +42,7 @@ public class TimelineRenderJobMapper {
      * be selected from external timeline input. If found in preferredProviders
      * or blockedProviders from untrusted input, the request is rejected.
      */
-    private static final Set<String> INTERNAL_PROVIDER_NAMES = Set.of(
+    static final Set<String> INTERNAL_PROVIDER_NAMES = Set.of(
             "remotion", "ffmpeg", "mlt", "gpac", "bento4", "shaka",
             "libass", "skia", "blender", "natron", "vapoursynth",
             "bmf", "shotstack", "javacv", "opencue",
@@ -68,6 +70,25 @@ public class TimelineRenderJobMapper {
      */
     public MappingResult toRenderJobRequest(String tenantId, String projectId,
                                              TimelineSpec spec, String profile) {
+        return toRenderJobRequest(tenantId, projectId, spec, profile, null, null);
+    }
+
+    /**
+     * Maps a parsed {@link TimelineSpec} to a {@link SubmitRenderJobRequest} with
+     * optional revision and snapshot provenance.
+     *
+     * @param tenantId   must not be blank
+     * @param projectId  must not be blank
+     * @param spec       must not be null
+     * @param profile    render profile; defaults to "default_1080p" if blank
+     * @param revisionId optional timeline revision identifier
+     * @param snapshotId optional timeline snapshot identifier
+     * @return the mapped request with provenance embedded in the prompt field
+     * @throws IllegalArgumentException if any validation fails
+     */
+    public MappingResult toRenderJobRequest(String tenantId, String projectId,
+                                             TimelineSpec spec, String profile,
+                                             String revisionId, String snapshotId) {
         validateNotBlank(tenantId, "Tenant ID must not be blank");
         validateNotBlank(projectId, "Project ID must not be blank");
         validateNotNull(spec, "Timeline spec must not be null");
@@ -129,6 +150,36 @@ public class TimelineRenderJobMapper {
         boolean hasSubtitles = (spec.textOverlays() != null && !spec.textOverlays().isEmpty())
                 || spec.tracks().stream().anyMatch(t -> t.type() == TimelineTrack.TrackType.SUBTITLE);
 
+        // Detect subtitle format from tracks
+        String subtitleFormat = null;
+        if (hasSubtitles) {
+            boolean hasTextOverlays = spec.textOverlays() != null && !spec.textOverlays().isEmpty();
+            boolean hasSubtitleTrack = spec.tracks().stream()
+                    .anyMatch(t -> t.type() == TimelineTrack.TrackType.SUBTITLE);
+            if (hasTextOverlays && hasSubtitleTrack) {
+                subtitleFormat = "mixed";
+            } else if (hasTextOverlays) {
+                subtitleFormat = "text-overlay";
+            } else {
+                subtitleFormat = "subtitle-track";
+            }
+        }
+
+        // Extract safe asset identifiers
+        List<String> sourceAssetIds = new ArrayList<>();
+        if (spec.tracks() != null) {
+            for (TimelineTrack track : spec.tracks()) {
+                if (track.clips() == null) continue;
+                for (TimelineClip clip : track.clips()) {
+                    if (clip.assetRef() != null && clip.assetRef().assetId() != null) {
+                        if (!sourceAssetIds.contains(clip.assetRef().assetId())) {
+                            sourceAssetIds.add(clip.assetRef().assetId());
+                        }
+                    }
+                }
+            }
+        }
+
         // Serialize to Internal Timeline JSON for the prompt field
         String timelineJson = writer.toJson(spec);
 
@@ -152,7 +203,8 @@ public class TimelineRenderJobMapper {
                 + "duration={}s fps={} {}x{} format={} subtitles={}",
                 spec.id(), tenantId, projectId, duration, fps, width, height, format, hasSubtitles);
 
-        return new MappingResult(request, spec.id(), hasSubtitles, duration, fps, width, height, format);
+        return new MappingResult(request, spec.id(), hasSubtitles, duration, fps, width, height, format,
+                revisionId, snapshotId, subtitleFormat, sourceAssetIds);
     }
 
     /**
@@ -235,5 +287,34 @@ public class TimelineRenderJobMapper {
             int fps,
             int width,
             int height,
-            String outputFormat) {}
+            String outputFormat,
+            String revisionId,
+            String snapshotId,
+            String subtitleFormat,
+            List<String> sourceAssetIds) {
+
+        /**
+         * Converts this mapping result to a {@link RenderProductProvenance} builder
+         * pre-populated with timeline-derived provenance fields.
+         *
+         * @return a builder that can be further enriched with render-specific fields
+         */
+        public RenderProductProvenance.Builder toProvenanceBuilder() {
+            return RenderProductProvenance.builder()
+                    .tenantId(request.tenantId())
+                    .projectId(request.projectId())
+                    .timelineId(timelineId)
+                    .timelineRevisionId(revisionId)
+                    .snapshotId(snapshotId)
+                    .outputProfile(request.profile())
+                    .outputFormat(outputFormat)
+                    .durationSeconds(duration)
+                    .fps(fps)
+                    .width(width)
+                    .height(height)
+                    .hasSubtitles(hasSubtitles)
+                    .subtitleFormat(subtitleFormat)
+                    .sourceAssetIds(sourceAssetIds);
+        }
+    }
 }
