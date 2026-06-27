@@ -183,17 +183,18 @@ owner: platform
 
 ### Render Provider Registry
 
-| Provider | Status | Priority | Auto Dispatch |
-|----------|--------|----------|---------------|
-| FFmpeg | PRODUCTION | P0 | ✅ |
-| Remotion | POC | P1 | ❌ |
-| MLT | POC | P1 | ❌ |
-| GPAC | POC | P1 | ❌ |
-| Blender | POC | P1 | ❌ |
-| Libass | POC | P1 | ❌ |
-| GStreamer | HOLD | P2 | ❌ |
-| Natron | HOLD | P3 | ❌ |
-| BMF | SPIKE | P2-P3 | ❌ |
+| Provider | Status | Priority | Auto Dispatch | Integration Smoke |
+|----------|--------|----------|---------------|-------------------|
+| FFmpeg | PRODUCTION | P0 | ✅ | ✅ R8 real render |
+| Remotion | POC | P1 | ❌ | ✅ dry-run metadata |
+| MLT | POC | P1 | ❌ | ✅ dry-run metadata |
+| GPAC | POC | P1 | ❌ | ✅ dry-run metadata |
+| Blender | SPIKE | P1 | ❌ | ✅ dry-run metadata |
+| GStreamer | HOLD | P2 | ❌ | ✅ dry-run metadata |
+| Natron | HOLD | P3 | ❌ | ✅ dry-run metadata |
+| Libass | POC | P1 | ❌ | ✅ via FFmpeg |
+| BMF | SPIKE | P2-P3 | ❌ | ❌ not implemented |
+| OFX | DEPRECATED | P3 | ❌ | ❌ capability model only |
 
 ### Render Tool Capability Inventory
 
@@ -204,15 +205,26 @@ owner: platform
 | Inventory doc | `docs/review/render-tool-capability-inventory.md` |
 | Provider eligibility | `ProviderEligibility` (render-module) |
 | Provider status enum | `ProviderStatus` (9 values: PRODUCTION, POC, OPTIONAL, STUB, SKELETON, HOLD, SPIKE, DEPRECATED, MOCK) |
+| Integration smoke | `ProviderIntegrationSmokeTest` (render-module) |
 
 ### Remotion Provider POC
 
 | Attribute | Value |
 |-----------|-------|
-| Status | Plan-only (no implementation) |
+| Status | POC (dry-run smoke test) |
 | Documentation | `docs/review/remotion-provider-poc-plan.md` |
-| Implementation readiness | Checklist documented |
+| Smoke test | `RemotionProviderSmokeTest` (metadata + eligibility validation) |
+| Real render | Blocked by missing Remotion CLI |
 | Runtime requirements | Node.js 18+, Remotion CLI |
+
+### OpenFX Capability Model
+
+| Attribute | Value |
+|-----------|-------|
+| Status | Reserved (capability model only) |
+| Current implementation | `OFXRenderProvider` (deprecated Java2D simulation) |
+| Documentation | `docs/review/openfx-capability-model-reservation.md` |
+| Future work | OFX host integration (Natron or custom host) |
 
 ## References
 
@@ -224,3 +236,5 @@ owner: platform
 - [OpenCue Runtime Foundation](../../review/opencue-runtime-foundation.md) — OpenCue disabled-by-default foundation
 - [Render Tool Capability Inventory](../../review/render-tool-capability-inventory.md) — Local tool detection
 - [Remotion Provider POC Plan](../../review/remotion-provider-poc-plan.md) — Remotion implementation readiness
+- [OpenFX Capability Model Reservation](../../review/openfx-capability-model-reservation.md) — OpenFX as capability model only
+- [Multi-Provider POC Integration Report](../../review/multi-provider-poc-integration-report.md) — Provider integration pattern and smoke test results
