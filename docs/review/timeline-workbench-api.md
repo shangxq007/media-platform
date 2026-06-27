@@ -141,3 +141,16 @@ R6.1 resolves input Product references from TimelineRevision:
 - API request unchanged: `{ "outputProfile": "default_1080p" }`
 - Response excludes signed URLs, local paths, materialized paths, provider/backend/environment/storageProvider
 - Frontend Workbench UI integration remains a next step
+
+## Backend R7 — Render Job Status + Product Result Contract (2026-06-27)
+
+R7 provides a stable API contract for querying render job status and render product result:
+
+- `GET /{revisionId}/render-jobs/{renderJobId}` — status query (READY/FAILED/RUNNING)
+- `GET /{revisionId}/render-jobs/{renderJobId}/result` — result query (output Product summary)
+- `RenderJobStatusService` reconstructs status/result from Product metadata (no new DB table)
+- `RenderJobStatusResponse` — safe status DTO (no provider/backend/environment/paths)
+- `RenderJobResultResponse` — safe result DTO (mimeType, width, height, fps, durationSeconds)
+- Future-safe: works in synchronous mode, supports future async OpenCue without API change
+- No signed URLs, local paths, storageReferenceId, provider/backend/environment exposed
+- Frontend can now poll render job status by renderJobId after submit

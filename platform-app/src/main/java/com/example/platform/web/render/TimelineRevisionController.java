@@ -4,6 +4,9 @@ import com.example.platform.render.app.timeline.TimelinePatchOpsJson;
 import com.example.platform.render.app.timeline.TimelineRevisionDiffService;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.TimelineRevisionService;
+import com.example.platform.render.app.timeline.RenderJobStatusService;
+import com.example.platform.render.api.dto.RenderJobResultResponse;
+import com.example.platform.render.api.dto.RenderJobStatusResponse;
 import com.example.platform.render.app.timeline.TimelineRevisionService.CompareResult;
 import com.example.platform.render.app.timeline.TimelineRevisionService.EditSessionInfo;
 import com.example.platform.render.app.timeline.TimelineRevisionService.RevisionDetail;
@@ -52,15 +55,18 @@ public class TimelineRevisionController {
     private final TimelineMergeService mergeService;
     private final TimelineReviewEventPublisher eventPublisher;
     private final TimelineRevisionRenderService renderService;
+    private final RenderJobStatusService renderJobStatusService;
 
     public TimelineRevisionController(TimelineRevisionService revisionService,
                                        TimelineMergeService mergeService,
                                        TimelineReviewEventPublisher eventPublisher,
-                                       @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService) {
+                                       @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
+                                       @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService) {
         this.revisionService = revisionService;
         this.mergeService = mergeService;
         this.eventPublisher = eventPublisher;
         this.renderService = renderService;
+        this.renderJobStatusService = renderJobStatusService;
     }
 
     @GetMapping
@@ -262,6 +268,42 @@ public class TimelineRevisionController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(TimelineRevisionRenderResponse.failure(revisionId, e.getMessage()));
         }
+    }
+
+    @GetMapping("/{revisionId}/render-jobs/{renderJobId}")
+    @Operation(summary = "查询渲染作业状态",
+            description = "根据 renderJobId 查询渲染作业状态。" +
+                    "返回 READY/FAILED/RUNNING 状态及输出 Product 引用。" +
+                    "不暴露内部 provider/backend/environment 选择。")
+    public ResponseEntity<RenderJobStatusResponse> getRenderJobStatus(
+            @PathVariable String projectId,
+            @PathVariable String revisionId,
+            @PathVariable String renderJobId) {
+        if (renderJobStatusService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+
+        return renderJobStatusService.findStatus(projectId, revisionId, renderJobId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{revisionId}/render-jobs/{renderJobId}/result")
+    @Operation(summary = "查询渲染作业结果",
+            description = "根据 renderJobId 查询渲染作业的输出 Product 结果摘要。" +
+                    "返回输出 Product 的安全元数据（格式、分辨率、时长等）。" +
+                    "不暴露内部 provider/backend/environment 选择，不暴露 signed URL 或本地路径。")
+    public ResponseEntity<RenderJobResultResponse> getRenderJobResult(
+            @PathVariable String projectId,
+            @PathVariable String revisionId,
+            @PathVariable String renderJobId) {
+        if (renderJobStatusService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+
+        return renderJobStatusService.findResult(projectId, revisionId, renderJobId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     private static RevisionListItem toListItem(RevisionInfo r) {

@@ -206,6 +206,9 @@ public final class RenderTestSchemaFixture {
                 change_summary_json text,
                 patch_ops_json text,
                 labels_json varchar(512),
+                is_merge boolean not null default false,
+                merge_parent_revision_ids text,
+                merge_base_revision_id varchar(64),
                 created_at timestamp not null
             )
         """);

@@ -601,3 +601,37 @@ Three REST endpoints would unlock 80% of user value from existing code:
 - No internal provider/backend/environment selection exposed
 - Product remains canonical communication object
 - Timeline remains canonical editing model
+
+### Backend R7 Status (2026-06-27)
+
+R7 provides a stable API contract for querying render job status and render product result lookup.
+
+#### What R7 Adds Over R6.1
+
+- **Render job status query** — `GET /{revisionId}/render-jobs/{renderJobId}` returns READY/FAILED/RUNNING status
+- **Render job result query** — `GET /{revisionId}/render-jobs/{renderJobId}/result` returns output Product summary
+- **RenderJobStatusService** — reconstructs status/result from Product metadata and ProductDependency lineage
+- **RenderJobStatusResponse** — safe status DTO with renderJobId, status, outputProductId, inputProductIds
+- **RenderJobResultResponse** — safe result DTO with mimeType, width, height, fps, durationSeconds
+- **Future-safe contract** — works in synchronous mode, supports future async OpenCue without API change
+
+#### What R7 Does NOT Prove
+
+- **Not full async job system** — synchronous controlled-local execution
+- **Not dedicated render_job record** — reconstructs from Product metadata
+- **Not full Timeline Git productization** — branch/merge/conflict UI not included
+- **Not production dispatch** — no real OpenCue or Remotion production submit
+- **Not Storage production** — MinIO/S3 deferred, LOCAL provider only
+
+#### Architecture Compliance
+
+- No Kernel/SPI changes
+- No Product/Timeline model semantic changes
+- No Execution lifecycle changes
+- No new DB migration
+- No provider/backend/environment/storageProvider exposed
+- No signed URLs or local paths exposed
+- No storageReferenceId exposed
+- Product remains canonical communication object
+- Timeline remains canonical editing model
+- ProductDependency lineage remains formal dependency model

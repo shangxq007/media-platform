@@ -26,7 +26,7 @@ class TimelineMergeControllerTest {
         revisionService = mock(TimelineRevisionService.class);
         mergeService = mock(TimelineMergeService.class);
         eventPublisher = mock(TimelineReviewEventPublisher.class);
-        controller = new TimelineRevisionController(revisionService, mergeService, eventPublisher);
+        controller = new TimelineRevisionController(revisionService, mergeService, eventPublisher, null, null);
     }
 
     @Test

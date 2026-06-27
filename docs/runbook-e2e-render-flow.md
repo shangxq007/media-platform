@@ -619,11 +619,119 @@ Response 201:
 
 - Multiple input tracks (single-primary-input only)
 - Full async job system (still synchronous controlled-local)
-- Full Render Job Status contract (not implemented)
+- ~~Full Render Job Status contract (not implemented)~~ → Implemented in R7
 - Frontend Workbench integration (not implemented)
 - OpenCue production dispatch (disabled)
 - Remotion production dispatch (disabled)
 - MinIO/S3 storage (deferred)
+
+---
+
+## Backend R7 — Render Job Status + Product Result Contract
+
+R7 provides a stable API contract for querying render job status and render product result lookup. The frontend and future async OpenCue integration can consume render outcomes without depending on provider/backend/environment/storage internals.
+
+### What R7 Adds Over R6.1
+
+- `GET /{revisionId}/render-jobs/{renderJobId}` — status query endpoint
+- `GET /{revisionId}/render-jobs/{renderJobId}/result` — result query endpoint
+- `RenderJobStatusService` — reconstructs status/result from Product metadata
+- `RenderJobStatusResponse` — safe status DTO (no provider/backend/environment/paths)
+- `RenderJobResultResponse` — safe result DTO (no provider/backend/environment/paths)
+- Status enum: `READY`, `FAILED`, `RUNNING` (mapped from ProductStatus)
+- Future-safe: works in synchronous mode, supports future async OpenCue without API change
+
+### R7 Design Decision: Reconstruct from Product Metadata
+
+R6/R6.1 generates `renderJobId` (e.g., `rj_abc123`) during render but does NOT persist it in a dedicated render_job table. The renderJobId exists only inside `Product.metadataJson` as a provenance field.
+
+R7 reconstructs render job status by:
+1. Scanning Products in the project via `ProductRuntimeService.findByProject()`
+2. Parsing each Product's `metadataJson` to match `renderJobId` and `timelineRevisionId`
+3. Mapping `ProductStatus` to API-facing status (`READY`/`FAILED`/`RUNNING`)
+
+This avoids a new DB migration while providing a stable API contract. Future async mode can add a dedicated render_job record without changing the API.
+
+### R7 Status Query
+
+```bash
+curl -s http://localhost:8080/api/v1/render/projects/prj_123/timeline/revisions/rev_456/render-jobs/rj_789 | jq .
+```
+
+Response (READY):
+```json
+{
+  "renderJobId": "rj_789",
+  "projectId": "prj_123",
+  "timelineRevisionId": "rev_456",
+  "snapshotId": "snap_...",
+  "status": "READY",
+  "renderMode": "timeline-revision-render",
+  "outputProfile": "default_1080p",
+  "outputFormat": "mp4",
+  "outputProductId": "prod_...",
+  "productStatus": "READY",
+  "inputProductIds": ["prod_input_1"],
+  "inputDependencyCount": 1,
+  "createdAt": "2026-06-27T...",
+  "completedAt": "2026-06-27T...",
+  "message": "Render completed successfully",
+  "resultAvailable": true
+}
+```
+
+### R7 Result Query
+
+```bash
+curl -s http://localhost:8080/api/v1/render/projects/prj_123/timeline/revisions/rev_456/render-jobs/rj_789/result | jq .
+```
+
+Response (READY):
+```json
+{
+  "renderJobId": "rj_789",
+  "projectId": "prj_123",
+  "timelineRevisionId": "rev_456",
+  "snapshotId": "snap_...",
+  "outputProductId": "prod_...",
+  "productStatus": "READY",
+  "mimeType": "video/mp4",
+  "outputFormat": "mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "durationSeconds": 10.5,
+  "hasSubtitles": true,
+  "baselineRenderer": "ffmpeg-libass",
+  "renderMode": "timeline-revision-render",
+  "inputProductIds": ["prod_input_1"],
+  "inputDependencyCount": 1,
+  "createdAt": "2026-06-27T...",
+  "completedAt": "2026-06-27T...",
+  "message": "Render result available"
+}
+```
+
+### What R7 Does NOT Prove
+
+- Full async job system (still synchronous controlled-local)
+- Dedicated render_job record (reconstructs from Product metadata)
+- OpenCue production dispatch (disabled)
+- Remotion production dispatch (disabled)
+- MinIO/S3 storage (deferred)
+
+### Architecture Compliance
+
+- No Kernel/SPI changes
+- No Product/Timeline model semantic changes
+- No Execution lifecycle changes
+- No new DB migration
+- No provider/backend/environment/storageProvider exposed
+- No signed URLs or local paths exposed
+- No storageReferenceId exposed
+- Product remains canonical communication object
+- Timeline remains canonical editing model
+- ProductDependency lineage remains formal dependency model
 
 ### Architecture Compliance
 
