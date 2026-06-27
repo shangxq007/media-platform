@@ -8,13 +8,15 @@ import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.infrastructure.ExternalRenderScriptParser;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
+import com.example.platform.render.infrastructure.RenderJob;
 import com.example.platform.render.infrastructure.RenderProvider;
+import com.example.platform.render.infrastructure.font.FontPreflightResult;
+import com.example.platform.render.infrastructure.font.RenderJobFontPreflight;
 import com.example.platform.shared.Ids;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
  * React template-based video, brand packaging, title cards.
  * Frontend can preview via Remotion Player, backend outputs via Remotion Renderer.
  * Does NOT handle video trim, transcode, audio extraction, format repair.
+ * Does NOT replace FFmpeg/libass for baseline subtitle burn-in.
  * Fonts must use unified font asset management, no system font dependency.
  * Subtitle line breaks and timeline must be provided by upstream RenderJob, Remotion only renders.
  * Output passed to FFmpeg for final normalization.</p>
@@ -38,22 +41,44 @@ public class RemotionRenderProvider implements RenderProvider {
     private final ProcessToolRunner processToolRunner;
     private final RemotionRenderProviderProperties properties;
     private final TimelineScriptParser timelineScriptParser;
+    private final RenderJobFontPreflight fontPreflight;
 
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
 
     public RemotionRenderProvider(ProcessToolRunner processToolRunner,
                                   RemotionRenderProviderProperties properties,
-                                  TimelineScriptParser timelineScriptParser) {
+                                  TimelineScriptParser timelineScriptParser,
+                                  RenderJobFontPreflight fontPreflight) {
         this.processToolRunner = processToolRunner;
         this.properties = properties;
         this.timelineScriptParser = timelineScriptParser;
+        this.fontPreflight = fontPreflight;
     }
 
+    /**
+     * Render a Remotion template with font readiness preflight.
+     *
+     * <p>Before rendering, performs a font readiness check on the RenderJob.
+     * If any font asset is not ready, render is rejected with an explicit error.
+     */
     @Override
     public RenderResult render(String jobId, String aiScript, String profile) {
         log.info("RemotionRenderProvider: job={} profile={}", jobId, profile);
         try {
+            RenderJob renderJob = extractRenderJob(aiScript);
+            if (renderJob != null) {
+                FontPreflightResult fontResult = fontPreflight.preflight(renderJob);
+                if (!fontResult.passed()) {
+                    throw new IllegalStateException(
+                            "Font preflight failed for Remotion render job=" + jobId
+                            + ": " + fontResult.errors());
+                }
+                if (!fontResult.warnings().isEmpty()) {
+                    log.warn("Font preflight warnings for job={}: {}", jobId, fontResult.warnings());
+                }
+            }
+
             Path outputDir = Path.of(storageRoot, "artifacts", jobId);
             Files.createDirectories(outputDir);
             Path output = outputDir.resolve("remotion-output.mp4");
@@ -91,6 +116,39 @@ public class RemotionRenderProvider implements RenderProvider {
             log.error("Remotion render failed job={}", jobId, e);
             throw new IllegalStateException("Remotion render failed: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Extract a RenderJob from the AI script JSON for font preflight.
+     */
+    private RenderJob extractRenderJob(String aiScript) {
+        if (aiScript == null || aiScript.isBlank() || aiScript.equals("{}")) {
+            return null;
+        }
+        try {
+            String id = extractStringField(aiScript, "id");
+            String mode = extractStringField(aiScript, "mode");
+            String style = extractStringField(aiScript, "style");
+            String captions = extractStringField(aiScript, "captions");
+            if (id == null) return null;
+            return new RenderJob(id, "captioned_video_export",
+                    mode != null ? mode : "production",
+                    "1920x1080", List.of(), "{}", captions, style, "mp4",
+                    List.of(), null, true, List.of(), List.of());
+        } catch (Exception e) {
+            log.debug("Could not extract RenderJob from aiScript for font preflight: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String extractStringField(String json, String fieldName) {
+        int idx = json.indexOf("\"" + fieldName + "\":");
+        if (idx < 0) return null;
+        int startQuote = json.indexOf("\"", idx + fieldName.length() + 3);
+        if (startQuote < 0) return null;
+        int endQuote = json.indexOf("\"", startQuote + 1);
+        if (endQuote < 0) return null;
+        return json.substring(startQuote + 1, endQuote);
     }
 
     List<String> buildRenderCommand(Path propsFile, Path output,

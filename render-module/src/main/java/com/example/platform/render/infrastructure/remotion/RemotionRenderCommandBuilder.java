@@ -74,13 +74,32 @@ public class RemotionRenderCommandBuilder {
     }
 
     public List<String> build() {
+        if (outputPath == null) {
+            throw new IllegalStateException("outputPath must not be null");
+        }
+
+        List<String> validationErrors = RemotionInputPropsValidator.validate(inputProps);
+        if (!validationErrors.isEmpty()) {
+            throw new IllegalArgumentException("Invalid Remotion input props: " + validationErrors);
+        }
+
+        String propsJson = serializeProps();
+        if (inputProps != null && inputProps.fontSpecs() != null) {
+            for (RemotionFontSpec font : inputProps.fontSpecs()) {
+                if (font.sourceUrl() != null && propsJson.contains("\"sourceUrl\":\"" + font.sourceUrl() + "\"")) {
+                    throw new IllegalStateException(
+                            "sourceUrl must not be serialized. Only subsetUrl (via effectiveUrl) must appear in props.");
+                }
+            }
+        }
+
         List<String> cmd = new ArrayList<>();
         cmd.add(remotionBinary.toString());
         cmd.add("remotion");
         cmd.add("render");
         cmd.add(compositionId);
         cmd.add(outputPath.toString());
-        cmd.add("--props=" + serializeProps());
+        cmd.add("--props=" + propsJson);
         cmd.add("--format=" + format);
         cmd.add("--width=" + width);
         cmd.add("--height=" + height);
