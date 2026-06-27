@@ -226,6 +226,39 @@ owner: platform
 | Documentation | `docs/review/openfx-capability-model-reservation.md` |
 | Future work | OFX host integration (Natron or custom host) |
 
+## 8. Timeline DAG Foundation (N4+)
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Timeline Compile Contract v0 | ✅ Defined | `docs/review/timeline-compile-contract-v0.md` |
+| NormalizedTimeline v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/` |
+| TimelineNormalizationService | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| ArtifactDependencyGraph v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/` |
+| ArtifactGraphCompiler | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| LogicalCapabilityGraph v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/` |
+| CapabilityGraphCompiler | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| ProviderExecutionDocument | ✅ Reserved | `docs/review/provider-execution-document-model.md` |
+| Golden Fixture Tests | ✅ 10 tests | `TimelineCompileGoldenFixtureTest` |
+| ProviderBindingPlan | ❌ Future work | Not implemented |
+| RenderExecutionPlan | ❌ Future work | Not implemented |
+
+**Compile Pipeline v0:**
+```text
+TimelineRevision
+→ NormalizedTimeline (deterministic, provider-neutral)
+→ ArtifactDependencyGraph (deterministic, acyclic, provider-neutral)
+→ LogicalCapabilityGraph (deterministic, provider-neutral)
+→ [future: ProviderBindingPlan]
+→ [future: ProviderExecutionDocument]
+→ [future: RenderExecutionPlan]
+```
+
+**Key Constraints:**
+- v0 supports single-clip, single-track timelines deterministically
+- Multi-clip/multi-track produces valid graph but single-primary-input render only
+- Clip effects fail closed (unsupported in v0)
+- No provider binding, no command generation, no public API changes
+
 ## References
 
 - [Release Candidate Readiness Checklist](../../review/release-candidate-readiness-2026-06-17.md)
