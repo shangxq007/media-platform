@@ -25,9 +25,6 @@ public class ProductRuntimeService {
         if (product.status() != ProductStatus.REGISTERED) throw new IllegalArgumentException("Must be REGISTERED");
         if (!product.hasProvenance()) throw new IllegalArgumentException(
                 "Product must have provenance: ownerAssetId, producerId, or sourceTimelineRevisionId");
-        if (wouldCreateCycle(product.productId(), product.productId())) {
-            throw new IllegalArgumentException("Self-referencing product: " + product.productId());
-        }
         var saved = repo.save(product);
         log.info("Product registered: id={} type={} provenance ok", saved.productId(), saved.productType());
         return saved;

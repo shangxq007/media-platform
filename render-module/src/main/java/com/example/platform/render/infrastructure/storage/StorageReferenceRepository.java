@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository;
 public class StorageReferenceRepository {
 
     private final DSLContext dsl;
+
+    protected StorageReferenceRepository() { this.dsl = null; }
+
     public StorageReferenceRepository(DSLContext dsl) { this.dsl = dsl; }
 
     public StorageReference save(StorageReference r) {

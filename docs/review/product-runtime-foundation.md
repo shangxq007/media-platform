@@ -48,3 +48,12 @@ Compilation passes. Existing tests unaffected.
 | No Product Graph (dependencies) | Deferred to F2 |
 | No Producer integration | Producers use service API manually |
 | No Storage Runtime | storageReferenceId nullable |
+
+## R1 Output Closure Status (COMPLETED 2026-06-27)
+
+- `RenderOutputRegistrationService` registers render outputs as file-backed Products
+- Products use `ProductType.FINAL_RENDER` + `RepresentationKind.MEDIA_FILE`
+- Render outputs flow through StorageRuntime before Product registration
+- Product carries `storageReferenceId` linking to verified storage
+- Product metadata captures jobId, producerId, fileSize, mimeType, checksum
+- `productRuntime.register()` null-safety fix applied (self-referencing cycle check removed from registration — belongs in `linkDependency` only)

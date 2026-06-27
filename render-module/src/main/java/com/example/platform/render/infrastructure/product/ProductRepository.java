@@ -15,6 +15,8 @@ public class ProductRepository {
 
     private final DSLContext dsl;
 
+    protected ProductRepository() { this.dsl = null; }
+
     public ProductRepository(DSLContext dsl) { this.dsl = dsl; }
 
     public Product save(Product p) {

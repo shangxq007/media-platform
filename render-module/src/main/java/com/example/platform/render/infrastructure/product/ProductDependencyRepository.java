@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository;
 public class ProductDependencyRepository {
 
     private final DSLContext dsl;
+
+    protected ProductDependencyRepository() { this.dsl = null; }
+
     public ProductDependencyRepository(DSLContext dsl) { this.dsl = dsl; }
 
     public ProductDependency save(ProductDependency dep) {

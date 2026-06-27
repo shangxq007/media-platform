@@ -53,3 +53,15 @@ Compilation passes. Existing tests unaffected.
 | LOCAL provider only | MINIO/S3 deferred |
 | No worker cache | Deferred to F4 |
 | No upload/download API | Read-only |
+
+## R1 Output Closure Status (COMPLETED 2026-06-27)
+
+- `RenderOutputRegistrationService` closes the render output → StorageReference → Product registration path
+- Render output file → SHA-256 checksum → `StorageRuntimeService.register()` → `StorageRuntimeService.verifyChecksum()` → `ProductRuntimeService.register()` → `ProductRuntimeService.markReady()`
+- Path traversal, zero-byte files, directory paths, missing files all rejected fail-closed
+- Failed outputs registered as FAILED Products without invalid StorageReferences
+- Local provider (`StorageProviderType.LOCAL`, `StorageClass.STANDARD`) remains V1 baseline
+- MinIO/S3 production SDK integration deferred
+- No Artifact Runtime created — Products with `RepresentationKind.MEDIA_FILE` serve as file-backed products
+- No signed URLs persisted
+- StorageProvider contains no pricing/billing/quota logic
