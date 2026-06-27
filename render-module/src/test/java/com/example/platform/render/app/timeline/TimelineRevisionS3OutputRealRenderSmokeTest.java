@@ -209,7 +209,7 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
 
         String inputProductId = Ids.newId("prod-input");
         Product inputProduct = new Product(
-                inputProductId, "tenant_1", "prj_1", null,
+                inputProductId, "tenant_1", "prj_1", TimelineCoreSmokeFixture.ASSET_ID,
                 ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,
                 "upload", "upload-service", null,
                 ProductStatus.REGISTERED, registeredInputRef.storageReferenceId(),
@@ -492,6 +492,7 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
     static class InMemoryProductRepository extends ProductRepository {
         private final Map<String, Product> store = new ConcurrentHashMap<>();
         private final Map<String, List<Product>> byProject = new ConcurrentHashMap<>();
+        private final Map<String, List<Product>> byAsset = new ConcurrentHashMap<>();
 
         @Override
         public Product save(Product p) {
@@ -502,7 +503,15 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
                     p.checksum(), p.contentHash(), p.mimeType(), p.version(),
                     p.metadataJson(), p.createdAt(), p.updatedAt());
             store.put(id, saved);
-            byProject.computeIfAbsent(p.projectId(), k -> new ArrayList<>()).add(saved);
+            // Update byProject: replace existing entry with same ID, or add new
+            List<Product> projectList = byProject.computeIfAbsent(p.projectId(), k -> new ArrayList<>());
+            projectList.removeIf(existing -> existing.productId().equals(id));
+            projectList.add(saved);
+            if (p.ownerAssetId() != null) {
+                List<Product> assetList = byAsset.computeIfAbsent(p.ownerAssetId(), k -> new ArrayList<>());
+                assetList.removeIf(existing -> existing.productId().equals(id));
+                assetList.add(saved);
+            }
             return saved;
         }
 
@@ -519,12 +528,14 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
 
         @Override
         public List<Product> findByAsset(String assetId) {
-            return List.of();
+            return byAsset.getOrDefault(assetId, List.of());
         }
 
         @Override
         public Optional<Product> findLatest(String assetId, ProductType type) {
-            return Optional.empty();
+            return byAsset.getOrDefault(assetId, List.of()).stream()
+                    .filter(p -> p.productType() == type)
+                    .findFirst();
         }
     }
 
