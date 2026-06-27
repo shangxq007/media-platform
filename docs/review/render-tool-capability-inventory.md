@@ -39,6 +39,28 @@ Key facts:
 - **GStreamer/VapourSynth/Natron**: Hold/P2. Not enabled for dispatch.
 - **BMF**: Spike/P2-P3. Not enabled for dispatch.
 
+## Runtime Tool Detection
+
+The platform has a `RenderToolCapabilityInventory` at:
+
+`render-module/src/main/java/.../infrastructure/RenderToolCapabilityInventory.java`
+
+This component:
+- Detects locally available tools and their versions
+- Reports availability without affecting dispatch behavior
+- Does NOT install tools or execute untrusted code
+- Missing tools are reported as unavailable, not failure
+
+Usage:
+```java
+@Autowired
+RenderToolCapabilityInventory inventory;
+
+List<ToolInventoryEntry> tools = inventory.detectTools();
+Map<String, Boolean> summary = inventory.getAvailabilitySummary();
+boolean ffmpegAvailable = inventory.isToolAvailable("ffmpeg");
+```
+
 ## Provider Registry
 
 The platform has a `RenderProviderRegistry` at:
