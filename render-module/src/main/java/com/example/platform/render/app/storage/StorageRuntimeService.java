@@ -53,7 +53,7 @@ public class StorageRuntimeService {
      * Materialize a StorageReference to a local file path.
      *
      * <p>For LOCAL provider: verifies file exists on filesystem.
-     * For S3-compatible providers (S3, MINIO, OSS, GCS, AZURE): downloads
+     * For S3-compatible providers (S3, S3_COMPATIBLE, OBJECT_STORAGE): downloads
      * object to a local temp file via S3ObjectMaterializer.</p>
      *
      * @param storageReferenceId the StorageReference identifier
@@ -158,17 +158,20 @@ public class StorageRuntimeService {
      *   <li>{@code S3} — generic S3-compatible (preferred)</li>
      *   <li>{@code S3_COMPATIBLE} — explicit S3-compatible alias</li>
      *   <li>{@code OBJECT_STORAGE} — storage-neutral alias</li>
-     *   <li>{@code MINIO}, {@code OSS}, {@code GCS}, {@code AZURE} — legacy compatibility</li>
      * </ul>
      *
-     * <p>Backend-specific names (RustFS, SeaweedFS) are NOT accepted —
-     * the platform remains storage-neutral.</p>
+     * <p>Rejected values (not S3-compatible by default):
+     * <ul>
+     *   <li>{@code MINIO} — not a provider type; use S3</li>
+     *   <li>{@code OSS}, {@code GCS}, {@code AZURE} — future native providers,
+     *       not accepted as S3-compatible without explicit validation</li>
+     *   <li>RustFS, SeaweedFS — deployment backends, not provider types</li>
+     * </ul>
      */
     private static boolean isS3CompatibleProvider(String providerType) {
         if (providerType == null) return false;
         return switch (providerType.toUpperCase()) {
-            case "S3", "S3_COMPATIBLE", "OBJECT_STORAGE",
-                 "MINIO", "OSS", "GCS", "AZURE" -> true;
+            case "S3", "S3_COMPATIBLE", "OBJECT_STORAGE" -> true;
             default -> false;
         };
     }

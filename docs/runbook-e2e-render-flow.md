@@ -918,11 +918,12 @@ in `StorageRuntimeService.isS3CompatibleProvider()` and `StorageProviderType` en
 
 | Value | Status | Notes |
 |-------|--------|-------|
-| `S3` | Preferred | Generic S3-compatible |
+| `S3` | Accepted | Generic S3-compatible (preferred) |
 | `S3_COMPATIBLE` | Accepted | Explicit S3-compatible alias |
 | `OBJECT_STORAGE` | Accepted | Storage-neutral alias |
-| `MINIO`, `OSS`, `GCS`, `AZURE` | Legacy | Backward compatibility |
-| `RUSTFS`, `SEAWEEDFS` | Rejected | Backend-specific, not storage-neutral |
+| `MINIO` | Rejected | Not a provider type; use S3 |
+| `OSS`, `GCS`, `AZURE` | Rejected | Future native providers, not S3-compatible by default |
+| `RUSTFS`, `SEAWEEDFS` | Rejected | Deployment backends, not provider types |
 
 ### Running R10A.1
 

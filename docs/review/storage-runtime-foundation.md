@@ -14,7 +14,7 @@ owner: platform
 | Model | Purpose |
 |-------|---------|
 | `StorageReference` | Aggregate root: storageReferenceId, providerType, storageClass, rootPath, relativePath, checksum, contentHash, fileSize, mimeType, timestamps. `absolutePath()` concatenates root+relative. |
-| `StorageProviderType` | LOCAL, MINIO, S3, OSS, GCS, AZURE |
+| `StorageProviderType` | LOCAL, S3, S3_COMPATIBLE, OBJECT_STORAGE |
 | `StorageClass` | STANDARD, ARCHIVE, TEMPORARY, CACHE |
 
 ### Schema
@@ -33,7 +33,7 @@ owner: platform
 | `StorageController` | GET /api/v1/storage/{id} — read-only |
 
 ### Architecture
-- V1: LOCAL provider only (MINIO/S3/OSS/GCS reserved)
+- V1: LOCAL provider only; S3-compatible via R10A
 - materialize() returns local file path
 - verifyChecksum() computes SHA-256 of file and compares with stored checksum
 - No signed URLs, no credentials, no upload/download API
@@ -119,7 +119,7 @@ Compilation passes. Existing tests unaffected.
 
 - `S3ObjectMaterializer` (storage-module) materializes S3 objects to local temp files
 - `StorageRuntimeService.materialize()` now supports both LOCAL and S3-compatible providers
-- Provider detection via `StorageReference.providerType` (S3, MINIO, OSS, GCS, AZURE → S3 path; else LOCAL)
+- Provider detection via `StorageReference.providerType` (S3, S3_COMPATIBLE, OBJECT_STORAGE → S3 path; else LOCAL)
 - S3 materialization: HeadObject → GetObject → write to temp file → SHA-256 checksum verify
 - Checksum verification: compares downloaded bytes against stored `StorageReference.checksum`
 - Uses existing `StorageS3Properties` configuration (`storage.s3.*`)
@@ -145,4 +145,3 @@ Compilation passes. Existing tests unaffected.
 - Provider type hardening: `S3_COMPATIBLE` and `OBJECT_STORAGE` added as accepted values
 - `StorageProviderType` enum extended with `S3_COMPATIBLE` and `OBJECT_STORAGE` (storage-neutral naming)
 - Test requires FFmpeg + S3 endpoint; skips cleanly if either unavailable
-- Pre-existing `MinIOStorageProvider` stub remains (architecture validation, not production code)
