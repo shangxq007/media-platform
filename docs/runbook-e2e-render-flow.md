@@ -799,10 +799,93 @@ Install FFmpeg:
 ### What R8 Does NOT Cover
 
 - Docker/Compose dev runtime
-- MinIO/S3 storage
+- ~~MinIO/S3 storage~~ → R10A adds S3-compatible read/materialize path
 - OpenCue async execution
 - Remotion production dispatch
 - Multi-input track rendering
 - Subtitle burn-in (uses simple video-only timeline)
+- Frontend integration
+- Production deployment
+
+## Backend R10A — S3-Compatible StorageRuntime Provider: Read/Materialize Path
+
+R10A adds a generic S3-compatible materialization provider to the StorageRuntime,
+enabling render input materialization from S3-compatible object storage.
+
+### What R10A Adds Over R8
+
+- `S3ObjectMaterializer` — downloads S3 objects to local temp files for render input
+- `StorageRuntimeService` now supports both LOCAL and S3-compatible materialization
+- Provider-agnostic: works with any S3-compatible backend (RustFS, SeaweedFS, AWS S3, R2)
+- Checksum verification (SHA-256) for S3 materialized objects
+- Integration test against RustFS dev backend
+
+### S3 Materialization Flow
+
+```
+StorageReference (providerType=S3, rootPath=bucket, relativePath=objectKey)
+  → StorageRuntimeService.materialize()
+  → S3ObjectMaterializer.materialize(bucket, objectKey, expectedChecksum)
+  → S3 HeadObject (verify existence)
+  → S3 GetObject (download bytes)
+  → Write to local temp file
+  → Compute SHA-256, verify against stored checksum
+  → Return local temp file path
+  → RenderInputMaterializationService validates path
+  → FFmpeg/libass renders from local path
+```
+
+### Configuration
+
+S3 materialization uses existing `storage.s3.*` configuration:
+
+```yaml
+storage:
+  s3:
+    enabled: true
+    endpoint: http://localhost:9000
+    region: us-east-1
+    access-key: dev-access-key
+    secret-key: dev-secret-key
+    path-style-access: true
+    default-bucket: media-platform-dev
+```
+
+### Running R10A Tests
+
+```bash
+# Unit tests (no S3 backend required)
+./gradlew :storage-module:test --tests "com.example.platform.storage.infrastructure.S3ObjectMaterializerTest"
+
+# Integration tests (requires RustFS running)
+docker compose -f docker-compose.dev.yml --profile s3 up -d
+./gradlew :storage-module:test --tests "com.example.platform.storage.infrastructure.S3ObjectMaterializerIntegrationTest"
+
+# Regression tests
+./gradlew :render-module:test \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionRenderServiceTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineInputProductResolverTest" \
+  --tests "com.example.platform.render.app.timeline.RenderJobStatusServiceTest" \
+  --tests "*TimelineRevisionRealRenderSmokeTest"
+```
+
+### Storage Backend Compatibility
+
+| Backend | Status | License | Notes |
+|---------|--------|---------|-------|
+| RustFS | Default dev backend | Apache-2.0 | S3-compatible, tested |
+| SeaweedFS | Future compatibility target | Apache-2.0 | Planned |
+| AWS S3 | Supported | — | Generic S3 endpoint |
+| Cloudflare R2 | Supported | — | Via `compatibility: r2` |
+| MinIO | Not default | AGPLv3 | Licensing concerns |
+
+### What R10A Does NOT Cover
+
+- Output write-back to S3 (deferred to R10B)
+- Presigned URL generation for S3 objects
+- S3 multipart upload
+- S3 lifecycle policies
+- OpenCue async execution
+- Remotion production dispatch
 - Frontend integration
 - Production deployment

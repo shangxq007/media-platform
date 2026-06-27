@@ -50,9 +50,10 @@ Compilation passes. Existing tests unaffected.
 ## Known Limitations
 | Limitation | Status |
 |-----------|--------|
-| LOCAL provider only | MINIO/S3 deferred |
+| ~~LOCAL provider only~~ | R10A: S3-compatible read/materialize added |
+| S3 output write-back | Deferred to R10B |
 | No worker cache | Deferred to F4 |
-| No upload/download API | Read-only |
+| No upload/download API | Read-only (R10A: download for materialization) |
 
 ## R1 Output Closure Status (COMPLETED 2026-06-27)
 
@@ -113,3 +114,19 @@ Compilation passes. Existing tests unaffected.
 - No StorageRuntime semantic changes
 - No signed URLs persisted
 - No materialized input paths exposed in response metadata
+
+## R10A S3-Compatible Materialization Provider Status (COMPLETED 2026-06-28)
+
+- `S3ObjectMaterializer` (storage-module) materializes S3 objects to local temp files
+- `StorageRuntimeService.materialize()` now supports both LOCAL and S3-compatible providers
+- Provider detection via `StorageReference.providerType` (S3, MINIO, OSS, GCS, AZURE → S3 path; else LOCAL)
+- S3 materialization: HeadObject → GetObject → write to temp file → SHA-256 checksum verify
+- Checksum verification: compares downloaded bytes against stored `StorageReference.checksum`
+- Uses existing `StorageS3Properties` configuration (`storage.s3.*`)
+- AWS SDK v2 S3Client with path-style access for S3-compatible backends
+- `@ConditionalOnProperty(storage.s3.enabled=true)` — only active when S3 is configured
+- Integration test against RustFS dev backend (opt-in, requires `--profile s3`)
+- Storage-neutral naming: no MinIO/RustFS/SeaweedFS-specific class names in new code
+- No signed URLs generated or persisted
+- No bucket/key exposed in public API
+- Output write-back to S3 deferred to R10B
