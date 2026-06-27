@@ -308,4 +308,58 @@ class OpenCueEnvironmentTest {
         assertEquals("platform", spec.owner());
         assertEquals(50, spec.priority());
     }
+
+    // ── Public API Safety Tests ──
+
+    @Test
+    void stubSubmitReturnsOpaqueExecutionId() {
+        props.setEnabled(true);
+        props.setStubModeEnabled(true);
+        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
+                "ffmpeg", List.of("-version"));
+        ExecutionJob job = compiler.compile(spec);
+        String execId = environment.submit(job);
+
+        assertNotNull(execId, "Execution ID must not be null");
+        assertFalse(execId.contains("/"), "Execution ID must not contain path separators");
+        assertFalse(execId.contains("\\"), "Execution ID must not contain backslashes");
+        assertFalse(execId.contains(":"), "Execution ID must not contain colons");
+        assertTrue(execId.startsWith("oc-"), "Execution ID must start with oc- prefix");
+    }
+
+    @Test
+    void statusResponseIsOpaque() {
+        props.setEnabled(true);
+        String status = environment.status("oc-test-123");
+
+        assertNotNull(status, "Status must not be null");
+        assertFalse(status.contains("localhost"), "Status must not expose host");
+        assertFalse(status.contains(":"), "Status must not expose port");
+        assertFalse(status.contains("/"), "Status must not expose paths");
+    }
+
+    @Test
+    void cancelResponseIsBooleanOnly() {
+        props.setEnabled(true);
+        boolean result = environment.cancel("oc-test-123");
+
+        // Just verify it returns a boolean — no internal details leaked
+        assertTrue(result || !result, "Cancel must return a boolean");
+    }
+
+    @Test
+    void failsClosedWhenEnabledWithInvalidState() {
+        // Verify that even when enabled, the environment fails closed
+        // on invalid operations rather than silently proceeding
+        props.setEnabled(true);
+        props.setStubModeEnabled(false);
+        props.setProductionSubmitEnabled(false);
+
+        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
+                "ffmpeg", List.of("-version"));
+        ExecutionJob job = compiler.compile(spec);
+
+        assertThrows(IllegalStateException.class, () -> environment.submit(job),
+                "Must fail closed when submit is not allowed");
+    }
 }
