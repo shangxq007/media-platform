@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This runbook documents how to set up a local development environment using Docker Compose for the media platform. It covers PostgreSQL, backend API, and the R8 real render smoke test.
+This runbook documents how to set up a local development environment using Docker Compose for the media platform. It covers PostgreSQL, backend API, R8 real render smoke test, and S3-compatible object storage.
 
 ## Prerequisites
 
@@ -10,6 +10,7 @@ This runbook documents how to set up a local development environment using Docke
 - Java 25 (via asdf-vm or SDKMAN!)
 - Gradle 9.1 (via wrapper)
 - FFmpeg and ffprobe (for R8 smoke test)
+- AWS CLI (for S3 object storage smoke)
 
 ## Quick Start
 
@@ -175,6 +176,7 @@ backed by [RustFS](https://docs.rustfs.com/) (Rust-based, Apache-2.0 licensed).
 
 The platform API remains storage-neutral. R10 will implement a generic
 S3-compatible StorageRuntime provider (not MinIO-specific or RustFS-specific).
+This task (R9.3) only verifies dev object storage startup and S3 API smoke.
 
 ### Start object storage
 
@@ -182,19 +184,56 @@ S3-compatible StorageRuntime provider (not MinIO-specific or RustFS-specific).
 docker compose -f docker-compose.dev.yml --profile s3 up -d
 ```
 
-### Access
+### Verify S3 API (automated smoke)
 
-- S3 API: `http://localhost:9000`
-- Console: `http://localhost:9001`
+```bash
+./scripts/dev/s3-object-storage-smoke.sh
+```
 
-### Create a bucket (using AWS CLI)
+This script:
+- Checks connectivity to `http://localhost:9000`
+- Creates bucket `media-platform-dev`
+- Uploads, heads, downloads, and verifies a test object
+- Cleans up after itself
+- Uses dev-only credentials (no production secrets)
+
+### Manual S3 API verification
 
 ```bash
 export AWS_ACCESS_KEY_ID=dev-access-key
 export AWS_SECRET_ACCESS_KEY=dev-secret-key
 export AWS_DEFAULT_REGION=us-east-1
 
-aws --endpoint-url http://127.0.0.1:9000 s3 mb s3://render-cache-dev
+# Create bucket
+aws --endpoint-url http://localhost:9000 s3 mb s3://media-platform-dev
+
+# Upload
+echo "hello rustfs" > /tmp/test.txt
+aws --endpoint-url http://localhost:9000 s3 cp /tmp/test.txt s3://media-platform-dev/test.txt
+
+# Download and verify
+aws --endpoint-url http://localhost:9000 s3 cp s3://media-platform-dev/test.txt /tmp/test-out.txt
+diff /tmp/test.txt /tmp/test-out.txt
+
+# Cleanup
+aws --endpoint-url http://localhost:9000 s3 rm s3://media-platform-dev/test.txt
+```
+
+### Access
+
+- S3 API: `http://localhost:9000`
+- Console: `http://localhost:9001`
+- Health: `http://localhost:9000/health/live`
+
+### Create additional buckets
+
+```bash
+export AWS_ACCESS_KEY_ID=dev-access-key
+export AWS_SECRET_ACCESS_KEY=dev-secret-key
+export AWS_DEFAULT_REGION=us-east-1
+
+aws --endpoint-url http://localhost:9000 s3 mb s3://render-cache-dev
+aws --endpoint-url http://localhost:9000 s3 mb s3://delivery-out-dev
 ```
 
 **Note:** Storage R2 provider is NOT implemented yet (R10 scope). This service is for future use only.
@@ -215,8 +254,10 @@ docker compose -f docker-compose.dev.yml down -v
 |---------|-------|-----|
 | `Connection refused` on port 5432 | PostgreSQL not started | `docker compose -f docker-compose.dev.yml up -d db` |
 | `Connection refused` on port 8080 | App not started | `docker compose -f docker-compose.dev.yml up -d app` |
+| `Connection refused` on port 9000 | Object storage not started | `docker compose -f docker-compose.dev.yml --profile s3 up -d` |
 | `relation "audit_records" does not exist` | Old volume without schema | `docker compose down -v && docker compose up -d` |
 | `password authentication failed` | Wrong credentials | Check `POSTGRES_PASSWORD` matches `SPRING_DATASOURCE_PASSWORD` |
+| S3 smoke fails | Object storage not healthy | Wait a few seconds, check `docker compose --profile s3 logs object-storage` |
 | FFmpeg not found | FFmpeg not installed | Install FFmpeg (see above) |
 | R8 smoke skipped | FFmpeg not on PATH | Install FFmpeg or check PATH |
 | Port 5432 in use | Another PostgreSQL running | Stop local PostgreSQL or change port |
