@@ -41,7 +41,7 @@ class AssetSemanticMetadataTest {
 
     @Test
     void embeddingReferenceShouldNotStoreVector() {
-        var emb = new EmbeddingReference("emb_1", "clip-vit", 512, "s3://vectors/emb_1.npy");
+        var emb = EmbeddingReference.of("clip-vit", "clip-vit-model", 512, "s3://vectors/emb_1.npy");
 
         assertEquals(512, emb.vectorDimension());
         assertNotNull(emb.storageUri());
