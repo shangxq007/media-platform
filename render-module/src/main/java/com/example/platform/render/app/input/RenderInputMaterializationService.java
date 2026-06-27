@@ -8,6 +8,7 @@ import com.example.platform.render.domain.product.RepresentationKind;
 import com.example.platform.render.domain.storage.StorageReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -36,6 +37,7 @@ import java.util.Set;
  *   <li>No absolute paths exposed in public metadata</li>
  * </ul>
  */
+@Service
 public class RenderInputMaterializationService {
 
     private static final Logger log = LoggerFactory.getLogger(RenderInputMaterializationService.class);

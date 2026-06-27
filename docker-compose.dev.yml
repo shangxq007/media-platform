@@ -1,4 +1,19 @@
-version: "3.9"
+# Media Platform — Local Development Runtime
+# Usage: docker compose up --build
+#
+# Services:
+#   db      - PostgreSQL 16 (always starts)
+#   app     - Backend API (always starts)
+#   render-worker - Remote render worker (always starts)
+#   sandbox-worker - Sandbox execution worker (always starts)
+#   minio   - MinIO object storage (optional: --profile minio)
+#
+# MinIO (optional, for future Storage R2):
+#   docker compose --profile minio up -d
+#   Console: http://localhost:9001 (minioadmin/minioadmin)
+#
+# R8 Smoke Test (after services are up):
+#   ./gradlew :render-module:test --tests "*TimelineRevisionRealRenderSmokeTest"
 
 services:
   db:
@@ -90,6 +105,31 @@ services:
       retries: 3
       start_period: 15s
 
+  # MinIO object storage (optional, for future Storage R2)
+  # Start with: docker compose --profile minio up -d
+  # Console: http://localhost:9001 (minioadmin/minioadmin)
+  # Note: Storage R2 provider is NOT implemented yet. This service is for future use.
+  minio:
+    image: minio/minio:latest
+    profiles:
+      - minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - miniodata:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 volumes:
   pgdata:
   mediadata:
+  miniodata:

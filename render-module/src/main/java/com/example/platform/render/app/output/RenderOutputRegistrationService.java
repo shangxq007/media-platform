@@ -8,6 +8,8 @@ import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
@@ -40,6 +42,7 @@ import java.util.Set;
  *   <li>Never persists signed URLs</li>
  * </ul>
  */
+@Service
 public class RenderOutputRegistrationService {
 
     private static final Logger log = LoggerFactory.getLogger(RenderOutputRegistrationService.class);
@@ -48,6 +51,7 @@ public class RenderOutputRegistrationService {
     private final ProductRuntimeService productRuntime;
     private final Path storageRoot;
 
+    @Autowired
     public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
                                             ProductRuntimeService productRuntime,
                                             Path storageRoot) {

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Component;
  * @see OpenCueJobSpecValidator for job spec validation
  */
 @Component
+@ConditionalOnProperty(name = "opencue.enabled", havingValue = "true", matchIfMissing = false)
 public class OpenCueExecutionEnvironment implements ExecutionEnvironment {
 
     private static final Logger log = LoggerFactory.getLogger(OpenCueExecutionEnvironment.class);
