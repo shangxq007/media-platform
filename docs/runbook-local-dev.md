@@ -13,47 +13,45 @@ This runbook documents how to set up a local development environment using Docke
 
 ## Quick Start
 
-### 1. Start Development Services
+### Fresh Start (clean database)
 
 ```bash
 cd media-platform
 
-# Start PostgreSQL + backend services
+# Destroy old volumes and start fresh
+docker compose -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.dev.yml up -d
 
 # Wait for services to be healthy
 docker compose -f docker-compose.dev.yml ps
 ```
 
-Expected: All services show "healthy" status.
+PostgreSQL auto-bootstraps the frozen V1 baseline schema on first startup
+(no manual `psql` step required). Flyway then sees the schema already present
+and skips V1 via `baseline-on-migrate: true`.
 
-### 2. Initialize Database Schema
-
-On a fresh database, Flyway's `baseline-on-migrate: true` marks V1 as already applied
-without running it. Apply the schema manually on first run:
+### Resume (keep existing data)
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d db
-sleep 5  # wait for healthcheck
-
-# Apply V1 schema to fresh database
-docker exec -i platform-db-1 psql -U platform -d platform \
-  < platform-app/src/main/resources/db/migration/V1__init_full_schema.sql
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-**Known blocker:** This is a pre-existing issue with the Flyway V1 baseline configuration.
-The V1 migration (`V1__init_full_schema.sql`) is the frozen schema baseline and must not
-be modified per project safety constraints.
-
-### 3. Run Backend Against Dev PostgreSQL
+### Verify Backend Health
 
 ```bash
-# Option A: Run with Docker Compose (full stack, requires schema init above)
-docker compose -f docker-compose.dev.yml up --build
+curl -s http://localhost:8080/actuator/health | jq .
+```
 
-# Option B: Run backend locally with Gradle (PostgreSQL in Docker)
+Expected: `{"status":"UP"}`
+
+## Run Backend Locally with Gradle
+
+```bash
+# Start PostgreSQL only
+docker compose -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.dev.yml up -d db
-# Initialize schema first (see step 2), then:
+
+# Wait for healthcheck, then run backend
 SPRING_PROFILES_ACTIVE=dev \
   SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/platform \
   SPRING_DATASOURCE_USERNAME=platform \
@@ -63,15 +61,7 @@ SPRING_PROFILES_ACTIVE=dev \
 
 Wait for: `Started PlatformApplication in ... seconds`
 
-### 3. Verify Backend Health
-
-```bash
-curl -s http://localhost:8080/actuator/health | jq .
-```
-
-Expected: `{"status":"UP"}`
-
-### 4. Run R8 Real Render Smoke Test
+## Run R8 Real Render Smoke Test
 
 ```bash
 # Run the real render smoke test
@@ -107,6 +97,20 @@ Expected: `{"status":"UP"}`
 | Service | Port | Profile | Description |
 |---------|------|---------|-------------|
 | `minio` | 9000, 9001 | `minio` | MinIO object storage (future Storage R2) |
+
+## Database Bootstrap
+
+The `db` service mounts `V1__init_full_schema.sql` into PostgreSQL's
+`/docker-entrypoint-initdb.d/` directory. On first startup (empty data volume),
+PostgreSQL automatically runs this script to create the schema.
+
+This happens once per volume lifecycle:
+- `docker compose down -v` → next `up` triggers fresh bootstrap
+- `docker compose down` (no `-v`) → data persists, no re-bootstrap
+- `docker compose up` on existing volume → no-op (data already present)
+
+Flyway's `baseline-on-migrate: true` then finds the schema already present
+and records V1 as baseline without re-running it.
 
 ## Environment Variables
 
@@ -172,29 +176,15 @@ docker compose -f docker-compose.dev.yml --profile minio up -d
 - Username: `minioadmin`
 - Password: `minioadmin`
 
-### Create Bucket
-
-```bash
-# Install MinIO client (mc)
-brew install minio/stable/mc  # macOS
-# or download from https://min.io/docs/minio/linux/reference/minio-mc.html
-
-# Configure alias
-mc alias set local http://localhost:9000 minioadmin minioadmin
-
-# Create bucket
-mc mb local/render-cache
-```
-
 **Note:** Storage R2 provider is NOT implemented yet. MinIO is provided for future use only.
 
 ## Stopping Services
 
 ```bash
-# Stop all services
+# Stop all services (keep data)
 docker compose -f docker-compose.dev.yml down
 
-# Stop and remove volumes (clean slate)
+# Stop and remove volumes (clean slate, re-bootstrap on next start)
 docker compose -f docker-compose.dev.yml down -v
 ```
 
@@ -204,9 +194,8 @@ docker compose -f docker-compose.dev.yml down -v
 |---------|-------|-----|
 | `Connection refused` on port 5432 | PostgreSQL not started | `docker compose -f docker-compose.dev.yml up -d db` |
 | `Connection refused` on port 8080 | App not started | `docker compose -f docker-compose.dev.yml up -d app` |
-| `relation "audit_records" does not exist` | V1 schema not applied | Apply V1 schema manually (see step 2) |
+| `relation "audit_records" does not exist` | Old volume without schema | `docker compose down -v && docker compose up -d` |
 | `password authentication failed` | Wrong credentials | Check `POSTGRES_PASSWORD` matches `SPRING_DATASOURCE_PASSWORD` |
-| Flyway migration failure | Database not ready | Wait for PostgreSQL healthcheck, then restart app |
 | FFmpeg not found | FFmpeg not installed | Install FFmpeg (see above) |
 | R8 smoke skipped | FFmpeg not on PATH | Install FFmpeg or check PATH |
 | Port 5432 in use | Another PostgreSQL running | Stop local PostgreSQL or change port |

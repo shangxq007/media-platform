@@ -26,6 +26,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # Mount frozen V1 baseline for automatic bootstrap on fresh database.
+      # PostgreSQL runs files in /docker-entrypoint-initdb.d/ on first startup
+      # (when the data directory is empty). This avoids the manual psql step.
+      # Flyway's baseline-on-migrate then sees the schema already present.
+      - ./platform-app/src/main/resources/db/migration/V1__init_full_schema.sql:/docker-entrypoint-initdb.d/001_init_full_schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U platform -d platform"]
       interval: 5s
