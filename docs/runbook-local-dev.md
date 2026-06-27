@@ -96,7 +96,7 @@ Wait for: `Started PlatformApplication in ... seconds`
 
 | Service | Port | Profile | Description |
 |---------|------|---------|-------------|
-| `minio` | 9000, 9001 | `minio` | MinIO object storage (future Storage R2) |
+| `object-storage` | 9000, 9001 | `s3` | S3-compatible object storage (RustFS) |
 
 ## Database Bootstrap
 
@@ -130,12 +130,12 @@ and records V1 as baseline without re-running it.
 | `APP_JWT_SECRET` | `dev-only-insecure-key-...` | JWT secret (dev only) |
 | `APP_STORAGE_LOCAL_ROOT` | `/data/platform` | Local storage path |
 
-### MinIO (optional)
+### S3-compatible object storage (optional)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MINIO_ROOT_USER` | `minioadmin` | MinIO admin user |
-| `MINIO_ROOT_PASSWORD` | `minioadmin` | MinIO admin password |
+| `RUSTFS_ACCESS_KEY` | `dev-access-key` | S3 access key |
+| `RUSTFS_SECRET_KEY` | `dev-secret-key` | S3 secret key |
 
 ## FFmpeg Requirement
 
@@ -160,23 +160,44 @@ ffmpeg -version && ffprobe -version
 
 If FFmpeg is not available, the R8 smoke test is **skipped** (not failed) with the message: "FFmpeg not available; real baseline render smoke skipped."
 
-## MinIO (Optional, Future Storage R2)
+## S3-Compatible Object Storage (Optional, Future Storage R2)
 
-MinIO is available as an optional service for future Storage R2 development.
+An S3-compatible object storage service is available as an optional dev dependency,
+backed by [RustFS](https://docs.rustfs.com/) (Rust-based, Apache-2.0 licensed).
 
-### Start MinIO
+### Storage backend compatibility
+
+| Backend | Status | License | Notes |
+|---------|--------|---------|-------|
+| RustFS | Default dev backend | Apache-2.0 | S3-compatible, MinIO API compatible |
+| SeaweedFS | Future compatibility target | Apache-2.0 | Planned for R10+ |
+| MinIO | Not default | AGPLv3 | Licensing concerns for dev/runtime bundling |
+
+The platform API remains storage-neutral. R10 will implement a generic
+S3-compatible StorageRuntime provider (not MinIO-specific or RustFS-specific).
+
+### Start object storage
 
 ```bash
-docker compose -f docker-compose.dev.yml --profile minio up -d
+docker compose -f docker-compose.dev.yml --profile s3 up -d
 ```
 
-### Access MinIO Console
+### Access
 
-- URL: http://localhost:9001
-- Username: `minioadmin`
-- Password: `minioadmin`
+- S3 API: `http://localhost:9000`
+- Console: `http://localhost:9001`
 
-**Note:** Storage R2 provider is NOT implemented yet. MinIO is provided for future use only.
+### Create a bucket (using AWS CLI)
+
+```bash
+export AWS_ACCESS_KEY_ID=dev-access-key
+export AWS_SECRET_ACCESS_KEY=dev-secret-key
+export AWS_DEFAULT_REGION=us-east-1
+
+aws --endpoint-url http://127.0.0.1:9000 s3 mb s3://render-cache-dev
+```
+
+**Note:** Storage R2 provider is NOT implemented yet (R10 scope). This service is for future use only.
 
 ## Stopping Services
 
@@ -204,5 +225,6 @@ docker compose -f docker-compose.dev.yml down -v
 
 - `docs/runbook-e2e-render-flow.md` — E2E render flow runbook (R1-R8)
 - `docs/runbook-local.md` — Original local development runbook
+- `docs/zh/vault-and-rustfs-setup.md` — RustFS deployment and configuration
 - `docker-compose.yml` — Production-like Docker Compose
 - `docker-compose.local-postgres.yml` — PostgreSQL-only setup
