@@ -975,3 +975,111 @@ Generate test mp4 (3s, 320x180)
 - Subtitle burn-in with S3-backed subtitles
 - Async render execution
 - Production deployment
+
+---
+
+## Backend R10B — S3-backed Render Output Registration
+
+R10B implements S3-compatible internal render output write-back for the platform-controlled StorageRuntime.
+
+### What R10B Adds Over R10A.1
+
+- `S3ObjectWriter` — uploads local render output files to S3-compatible internal storage
+- `RenderOutputStorageProperties` — configuration for output storage provider selection
+- `RenderOutputRegistrationService` extended with S3 output registration path
+- Output upload to configured S3-compatible internal bucket
+- StorageReference created with `S3_COMPATIBLE` provider type for output
+- Checksum verification: local SHA-256 compared against uploaded object
+- Failure cleanup: partial uploads deleted on checksum mismatch or registration failure
+- `TimelineRevisionS3OutputRealRenderSmokeTest` — integration smoke test
+
+### S3 Output Configuration
+
+```yaml
+storage:
+  output:
+    provider: s3-compatible  # or "local" (default)
+    s3-bucket: media-platform-render-output  # optional, falls back to storage.s3.default-bucket
+    s3-key-prefix: projects  # default prefix for object keys
+  s3:
+    enabled: true
+    endpoint: http://localhost:9000
+    region: us-east-1
+    access-key: dev-access-key
+    secret-key: dev-secret-key
+    path-style-access: true
+    default-bucket: media-platform-dev
+```
+
+### S3 Output Flow
+
+```
+FFmpeg/libass renders to local temp output
+  → compute checksum / size / mimeType
+  → upload to S3-compatible internal storage
+  → verify uploaded object (HeadObject + size check)
+  → verify checksum (local vs uploaded, ETag not trusted)
+  → register StorageReference (providerType=S3_COMPATIBLE)
+  → register FINAL_RENDER Product
+  → mark Product READY
+  → link ProductDependency (DERIVED_FROM)
+  → R7 status/result APIs return safe metadata only
+```
+
+### StorageReference Locator for S3 Output
+
+- `providerType`: `S3_COMPATIBLE`
+- `rootPath`: bucket name (internal)
+- `relativePath`: object key (internal)
+- `checksum`: SHA-256 of the uploaded file
+- `fileSize`: size in bytes
+- `mimeType`: content type (e.g., `video/mp4`)
+
+### Object Key Strategy
+
+```
+{prefix}/{projectId}/render-jobs/{renderJobId}/outputs/{filename}
+```
+
+Example:
+```
+projects/prj_123/render-jobs/rj_456/outputs/output.mp4
+```
+
+### Running R10B
+
+```bash
+# Prerequisites: FFmpeg + S3 endpoint
+docker compose -f docker-compose.dev.yml --profile s3 up -d
+
+# Run S3 output smoke test
+./gradlew :render-module:test --tests "*TimelineRevisionS3OutputRealRenderSmokeTest"
+
+# Run R10B unit tests
+./gradlew :storage-module:test --tests "com.example.platform.storage.infrastructure.S3ObjectWriterTest"
+
+# Full regression
+./gradlew :render-module:test \
+  --tests "com.example.platform.render.app.output.RenderOutputRegistrationServiceTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionRenderServiceTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineInputProductResolverTest" \
+  --tests "com.example.platform.render.app.timeline.RenderJobStatusServiceTest"
+```
+
+### Transaction and Consistency Boundary
+
+- Upload failure: no READY Product, no ProductDependency
+- Checksum mismatch: delete uploaded object, no READY Product
+- DB registration failure after upload: object may remain (orphan, future sweeper)
+- No atomic transaction across S3 and DB
+
+### What R10B Does NOT Cover
+
+- Temp→promote object key strategy (direct upload to final key)
+- Orphan object sweeper
+- User-owned external storage delivery (DeliveryTarget)
+- Signed URL download API
+- S3 output for input media (input remains LOCAL or S3-backed via R10A)
+- Multiple output files per render
+- Async render execution
+- Production deployment

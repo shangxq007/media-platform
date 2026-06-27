@@ -116,6 +116,32 @@ What R10A.1 verifies:
 - R7 status/result queries
 - No bucket/key/path/signed URL exposure in public API
 
+## Run R10B S3-Backed Output Smoke Test
+
+This test proves render outputs can be uploaded to S3-compatible internal storage:
+
+```bash
+# Prerequisites: S3 endpoint must be running
+docker compose -f docker-compose.dev.yml --profile s3 up -d
+
+# Run the S3 output smoke test
+./gradlew :render-module:test --tests "*TimelineRevisionS3OutputRealRenderSmokeTest"
+
+# Run R10B unit tests
+./gradlew :storage-module:test --tests "com.example.platform.storage.infrastructure.S3ObjectWriterTest"
+```
+
+If FFmpeg or S3 endpoint is unavailable, the test is **skipped** (not failed).
+
+What R10B verifies:
+- Render output uploaded to S3-compatible internal storage
+- Output StorageReference uses S3_COMPATIBLE provider type
+- Object exists in S3 after render
+- Object can be materialized/read back
+- Output Product FINAL_RENDER READY
+- ProductDependency lineage (DERIVED_FROM)
+- R7 status/result APIs safe (no bucket/key/path/signed URL exposure)
+
 ## Docker Compose Services
 
 ### Core Services (always started)

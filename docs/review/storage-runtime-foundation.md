@@ -117,9 +117,9 @@ Compilation passes. Existing tests unaffected.
 | Limitation | Status |
 |-----------|--------|
 | ~~LOCAL provider only~~ | R10A: S3-compatible read/materialize added |
-| S3 output write-back | Deferred to R10B |
+| ~~S3 output write-back~~ | R10B: S3-compatible internal output write-back added |
 | No worker cache | Deferred to F4 |
-| No upload/download API | Read-only (R10A: download for materialization) |
+| No upload/download API | Read-only (R10A: download for materialization, R10B: upload for output) |
 
 ## R10B Output Key Strategy Reservation
 
@@ -292,6 +292,23 @@ FFmpeg local temp output
 - Provider type hardening: `S3_COMPATIBLE` and `OBJECT_STORAGE` added as accepted values
 - `StorageProviderType` enum extended with `S3_COMPATIBLE` and `OBJECT_STORAGE` (storage-neutral naming)
 - Test requires FFmpeg + S3 endpoint; skips cleanly if either unavailable
+
+## R10B S3-Compatible Internal Output Write-Back Status (COMPLETED 2026-06-28)
+
+- `S3ObjectWriter` (storage-module) uploads local render output files to S3-compatible internal storage
+- `RenderOutputRegistrationService` now supports both LOCAL and S3-compatible output registration
+- Output provider selection via `RenderOutputStorageProperties` (`storage.output.provider=local|s3-compatible`)
+- S3 output flow: render local temp → compute checksum → upload to S3 → verify → register StorageReference → Product READY
+- StorageReference created with `S3_COMPATIBLE` provider type, rootPath=bucket, relativePath=object key
+- Object key strategy: `{prefix}/{projectId}/render-jobs/{renderJobId}/outputs/{filename}`
+- Checksum verification: local SHA-256 compared against uploaded object (ETag not trusted as SHA-256)
+- Failure cleanup: partial uploads deleted on checksum mismatch or registration failure
+- Direct upload to final key (temp→promote deferred as future hardening)
+- Orphan object sweeper documented as future hardening
+- ProductDependency lineage linked after successful S3 output registration
+- R7 status/result APIs remain safe: no bucket/key/path/signed URL exposure
+- Integration smoke test: `TimelineRevisionS3OutputRealRenderSmokeTest` (opt-in, requires FFmpeg + S3 endpoint)
+- Storage-neutral naming: no MinIO/RustFS/SeaweedFS-specific class names in new code
 
 ## External Channel Extension Boundary
 

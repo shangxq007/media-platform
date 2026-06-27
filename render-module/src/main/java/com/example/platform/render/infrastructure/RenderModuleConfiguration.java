@@ -2,6 +2,7 @@ package com.example.platform.render.infrastructure;
 
 import com.example.platform.render.infrastructure.effects.EffectFilterGraphBuilder;
 import com.example.platform.render.app.RenderWorkerQueueProperties;
+import com.example.platform.render.app.storage.RenderOutputStorageProperties;
 import com.example.platform.render.domain.environment.OpenCueProperties;
 import com.example.platform.render.infrastructure.bento4.Bento4PackagingProviderProperties;
 import com.example.platform.render.infrastructure.natron.NatronRenderProviderProperties;
@@ -22,7 +23,8 @@ import org.springframework.context.annotation.Configuration;
         RenderWorkerQueueProperties.class,
         RenderCacheProperties.class,
         TimelineAssetGcProperties.class,
-        OpenCueProperties.class
+        OpenCueProperties.class,
+        RenderOutputStorageProperties.class
 })
 public class RenderModuleConfiguration {
 
