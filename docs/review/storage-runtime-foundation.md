@@ -130,3 +130,19 @@ Compilation passes. Existing tests unaffected.
 - No signed URLs generated or persisted
 - No bucket/key exposed in public API
 - Output write-back to S3 deferred to R10B
+
+## R10A.1 S3-Backed Real Render Smoke Status (COMPLETED 2026-06-28)
+
+- `TimelineRevisionS3RealRenderSmokeTest` proves full R6.1 + R7 chain with S3-backed input
+- Input media uploaded to S3 (RustFS dev backend), StorageReference created with `S3_COMPATIBLE` provider type
+- `StorageRuntimeService.materialize()` routes to `S3ObjectMaterializer` for S3-compatible provider types
+- S3ObjectMaterializer downloads object to local temp file, verifies SHA-256 checksum
+- FFmpeg/libass renders from materialized local path (no testsrc/lavfi)
+- Output registered as LOCAL storage (S3 output write-back deferred to R10B)
+- ProductDependency lineage verified: output DERIVED_FROM input
+- R7 status/result queries verified: READY, resultAvailable, inputProductIds preserved
+- Public response safety verified: no bucket/key/path/signed URL/provider/backend/environment exposure
+- Provider type hardening: `S3_COMPATIBLE` and `OBJECT_STORAGE` added as accepted values
+- `StorageProviderType` enum extended with `S3_COMPATIBLE` and `OBJECT_STORAGE` (storage-neutral naming)
+- Test requires FFmpeg + S3 endpoint; skips cleanly if either unavailable
+- Pre-existing `MinIOStorageProvider` stub remains (architecture validation, not production code)

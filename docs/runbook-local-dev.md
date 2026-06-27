@@ -82,6 +82,40 @@ Wait for: `Started PlatformApplication in ... seconds`
 ./gradlew :platform-app:test --tests "com.example.platform.web.render.TimelineRevisionRenderJobStatusControllerTest"
 ```
 
+## Run R10A.1 S3-Backed Real Render Smoke Test
+
+This test proves the full chain with input media stored in S3-compatible object storage:
+
+```bash
+# Prerequisites: S3 endpoint must be running
+docker compose -f docker-compose.dev.yml --profile s3 up -d
+
+# Run the S3-backed real render smoke test
+./gradlew :render-module:test --tests "*TimelineRevisionS3RealRenderSmokeTest"
+
+# Run R10A integration tests (S3 materialization)
+./gradlew :storage-module:test --tests "*S3ObjectMaterializerIntegrationTest"
+
+# Run full R10A.1 regression
+./gradlew :render-module:test \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionS3RealRenderSmokeTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionRealRenderSmokeTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionRenderServiceTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineInputProductResolverTest" \
+  --tests "com.example.platform.render.app.timeline.RenderJobStatusServiceTest"
+```
+
+If FFmpeg or S3 endpoint is unavailable, the test is **skipped** (not failed).
+
+What R10A.1 verifies:
+- Input media uploaded to S3-compatible object storage
+- StorageRuntime materializes from S3 to local temp file
+- FFmpeg/libass renders using materialized input (no testsrc/lavfi)
+- Output registered as LOCAL storage (S3 output write-back is R10B)
+- ProductDependency lineage (DERIVED_FROM)
+- R7 status/result queries
+- No bucket/key/path/signed URL exposure in public API
+
 ## Docker Compose Services
 
 ### Core Services (always started)

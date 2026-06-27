@@ -152,11 +152,23 @@ public class StorageRuntimeService {
 
     /**
      * Check if the provider type is an S3-compatible object storage.
+     *
+     * <p>Accepted values:
+     * <ul>
+     *   <li>{@code S3} — generic S3-compatible (preferred)</li>
+     *   <li>{@code S3_COMPATIBLE} — explicit S3-compatible alias</li>
+     *   <li>{@code OBJECT_STORAGE} — storage-neutral alias</li>
+     *   <li>{@code MINIO}, {@code OSS}, {@code GCS}, {@code AZURE} — legacy compatibility</li>
+     * </ul>
+     *
+     * <p>Backend-specific names (RustFS, SeaweedFS) are NOT accepted —
+     * the platform remains storage-neutral.</p>
      */
     private static boolean isS3CompatibleProvider(String providerType) {
         if (providerType == null) return false;
         return switch (providerType.toUpperCase()) {
-            case "S3", "MINIO", "OSS", "GCS", "AZURE" -> true;
+            case "S3", "S3_COMPATIBLE", "OBJECT_STORAGE",
+                 "MINIO", "OSS", "GCS", "AZURE" -> true;
             default -> false;
         };
     }

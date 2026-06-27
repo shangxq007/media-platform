@@ -889,3 +889,84 @@ docker compose -f docker-compose.dev.yml --profile s3 up -d
 - Remotion production dispatch
 - Frontend integration
 - Production deployment
+
+---
+
+## Backend R10A.1 — S3-Backed Real Render Smoke
+
+R10A.1 adds a real end-to-end smoke test proving that a TimelineRevision render
+can use input media stored in S3-compatible object storage, materialize it through
+StorageRuntime, render with real FFmpeg/libass, and produce a READY FINAL_RENDER
+Product with ProductDependency lineage and R7 status/result query support.
+
+### What R10A.1 Verifies Over R10A
+
+- Full render chain with S3-backed input (not just S3 materialization in isolation)
+- Input media uploaded to S3, StorageReference created with S3_COMPATIBLE provider type
+- StorageRuntime materializes from S3 to local temp file
+- FFmpeg/libass renders using materialized input (no testsrc/lavfi)
+- Output registered as LOCAL storage (S3 output write-back is R10B)
+- ProductDependency lineage (output DERIVED_FROM input)
+- R7 status query: READY, resultAvailable, outputProductId, inputProductIds
+- R7 result query: mimeType, dimensions, fps, duration, baselineRenderer
+- Public response safety: no bucket/key/path/signed URL exposure
+
+### Provider Type Hardening
+
+R10A.1 adds `S3_COMPATIBLE` and `OBJECT_STORAGE` as accepted provider types
+in `StorageRuntimeService.isS3CompatibleProvider()` and `StorageProviderType` enum:
+
+| Value | Status | Notes |
+|-------|--------|-------|
+| `S3` | Preferred | Generic S3-compatible |
+| `S3_COMPATIBLE` | Accepted | Explicit S3-compatible alias |
+| `OBJECT_STORAGE` | Accepted | Storage-neutral alias |
+| `MINIO`, `OSS`, `GCS`, `AZURE` | Legacy | Backward compatibility |
+| `RUSTFS`, `SEAWEEDFS` | Rejected | Backend-specific, not storage-neutral |
+
+### Running R10A.1
+
+```bash
+# Prerequisites: FFmpeg + S3 endpoint
+docker compose -f docker-compose.dev.yml --profile s3 up -d
+
+# Run S3-backed real render smoke
+./gradlew :render-module:test --tests "*TimelineRevisionS3RealRenderSmokeTest"
+
+# Full regression
+./gradlew :render-module:test \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionS3RealRenderSmokeTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionRealRenderSmokeTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineRevisionRenderServiceTest" \
+  --tests "com.example.platform.render.app.timeline.TimelineInputProductResolverTest" \
+  --tests "com.example.platform.render.app.timeline.RenderJobStatusServiceTest"
+```
+
+### S3-Backed Render Flow
+
+```
+Generate test mp4 (3s, 320x180)
+  → Upload to S3 (RustFS at localhost:9000)
+  → Create StorageReference (providerType=S3_COMPATIBLE, rootPath=bucket, relativePath=key)
+  → Register RAW_MEDIA Product (READY, ownerAssetId=sourceAssetId)
+  → Create TimelineRevision
+  → TimelineRevisionRenderService.render()
+    → Resolve input Product from sourceAssetId
+    → RenderInputMaterializationService.materialize()
+      → StorageRuntimeService.materialize()
+        → S3ObjectMaterializer.materialize(bucket, key, checksum)
+        → HeadObject + GetObject → local temp file
+    → FFmpeg/libass renders from local temp file
+    → RenderOutputRegistrationService.registerOutput()
+      → StorageReference (LOCAL) + Product (FINAL_RENDER, READY)
+      → ProductDependency (DERIVED_FROM)
+    → R7 status/result queries verified
+```
+
+### What R10A.1 Does NOT Cover
+
+- S3 output write-back (R10B)
+- Multiple input tracks
+- Subtitle burn-in with S3-backed subtitles
+- Async render execution
+- Production deployment
