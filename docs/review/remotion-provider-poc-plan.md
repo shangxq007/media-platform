@@ -1,8 +1,39 @@
 # Remotion Provider POC Plan
 
-> **Status:** plan-only — no implementation in this task
+> **Status:** implementation-ready checklist — no code implementation in this task
 > **Created:** 2026-06-28
+> **Updated:** 2026-06-28
 > **Scope:** planning document for future Remotion provider implementation
+
+## Implementation Readiness Checklist
+
+### Phase 1: POC (Basic CLI)
+
+- [ ] Create `RemotionRenderProvider` implementing `RenderProvider` interface
+- [ ] Add `@ConditionalOnProperty(name = "render.providers.remotion.enabled")` gating
+- [ ] Implement `render()` method calling Remotion CLI via `ProcessBuilder`
+- [ ] Add `RemotionInputProps` record for composition parameters
+- [ ] Implement `TimelineSpec` → `RemotionInputProps` mapping
+- [ ] Add `ProviderMetadata` with `ProviderStatus.POC`, `autoDispatch=false`
+- [ ] Register in `RenderProviderRegistry` via auto-configuration
+- [ ] Add unit tests for props validation and mapping
+- [ ] Add smoke test: generate static composition, verify output mp4
+
+### Phase 2: SPIKE (Caption Burn-in)
+
+- [ ] Extend `RemotionInputProps` with caption style and word-level timing
+- [ ] Implement font manifest integration with platform font pipeline
+- [ ] Add transparent overlay output (RGBA PNG/WebM)
+- [ ] Add caption fidelity tests (word-level timing, style presets)
+- [ ] Add CJK font support tests
+
+### Phase 3: Production (Auto-dispatch)
+
+- [ ] Upgrade `ProviderStatus` to `PRODUCTION`
+- [ ] Enable `autoDispatch=true`
+- [ ] Add capability-based routing via `ProviderEligibility`
+- [ ] Add health check via `RenderProviderHealthCheck`
+- [ ] Add OpenCue worker compatibility
 
 ## Why Remotion Matters
 
@@ -57,6 +88,20 @@ public record RemotionInputProps(
 - Caption style presets → Remotion component props
 - Word-level timing → per-word React components
 - Animation presets → Framer Motion integration
+
+## Runtime and Sandbox Requirements
+
+| Requirement | Description |
+|-------------|-------------|
+| Node.js runtime | Node 18+ required for Remotion CLI |
+| Remotion CLI | `npx remotion render` for server-side rendering |
+| No arbitrary user JS | Only platform-defined compositions (no user-provided code) |
+| Bounded render duration | Configurable timeout (default: 300s) |
+| File access restriction | Only temp dirs and StorageRuntime paths |
+| Network restriction | No outbound network from render process |
+| SSRF prevention | No user-controlled URLs in composition props |
+| Path traversal prevention | Validate all file paths before passing to Remotion |
+| Dependency isolation | Remotion deps in isolated node_modules |
 
 ## Safety Constraints
 
