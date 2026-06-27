@@ -1,8 +1,26 @@
 # Media Platform
 
-AI 视频生产与渲染编排平台（Spring Modulith 模块化单体 + React 19 前端）。
+Media Build Platform — low-level reusable media capabilities for AI video production, rendering orchestration, and media asset management.
 
-## 快速开始
+**Status:** Platform Kernel Baseline 1.0 is FROZEN. See [Platform Constitution](docs/architecture/platform-constitution-v1.md).
+
+## Architecture Overview
+
+```
+Applications → Workflow → Creative Planning → Timeline → Capability Runtime → Kernel → Infrastructure
+```
+
+- 7 Stable Public SPIs (Producer, BackendCompiler, ExecutionEnvironment, ExecutionBackend, StorageProvider, AccessGovernance, Metering)
+- 10 Kernel Invariants enforced
+- 4 Architecture Validations passed (OpenCue, Storage, Whisper, Remotion)
+
+## Documentation Entry Point
+
+**[Documentation Index](docs/documentation/documentation-index.md)** — Single entry point for all documentation.
+
+**New contributors start here:** [Reading Guide](docs/handoff/reading-guide.md)
+
+## Quick Start
 
 ```bash
 docker compose up -d db

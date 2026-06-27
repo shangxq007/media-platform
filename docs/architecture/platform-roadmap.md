@@ -117,3 +117,25 @@ owner: platform
 | Kubernetes Environment | ExecutionBackend SPI | Phase 2 |
 | Ray Distributed Workers | ExecutionBackend SPI | Phase 3 |
 | Worker Capability Registry | Execution Environment | Phase 3 |
+
+### Platform Governance (NEW — Domain, not Runtime)
+
+| Capability | Dependencies | Phase |
+|-----------|-------------|-------|
+| Metering Service (OpenMeter/Lago integration) | Producer metrics | Phase 2 |
+| Access Control (rate limits, quotas) | Metering data | Phase 2 |
+| Policy Engine (free tier, promotions) | Access Control | Phase 3 |
+| Pricing Service (versioned models) | Metering + Policy | Phase 3 |
+| Cost Attribution (cloud provider costs) | Metering | Phase 3 |
+| Billing (metering + pricing + policy) | All above | Phase 4 |
+
+### Workflow Platform & Capability Composition (NEW)
+
+| Capability | Dependencies | Phase |
+|-----------|-------------|-------|
+| Workflow Layer (node orchestration) | Public Capability + Kernel | Phase 2 |
+| Capability Composition Engine | Capability Resolution + Producer | Phase 2 |
+| Script Node (JS/Python/WASM) | Sandbox + Product Model | Phase 3 |
+| External Capability Registration | Public Capability API | Phase 3 |
+| Workflow Template Marketplace | Marketplace + Capability | Phase 3 |
+| Visual Workflow Composer | Workflow Layer | Phase 4 |

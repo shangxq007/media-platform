@@ -1,11 +1,16 @@
 ---
-status: accepted
+status: superseded
+superseded_by: ADR-010
 created: 2026-06-25
 scope: platform-wide
 owner: platform
 ---
 
-# ADR-009: Artifact Runtime
+# ADR-009: Artifact Runtime (SUPERSEDED by ADR-010)
+
+> **Status:** This ADR has been superseded by [ADR-010](ADR-010-product-runtime-postgresql-modeling.md).
+> The term "Artifact" is now descriptive terminology only (file-backed Product), not a root domain concept.
+> See [Platform Kernel §0](../platform-kernel.md) for canonical domain model.
 
 ## Context
 

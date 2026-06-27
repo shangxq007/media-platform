@@ -8,6 +8,45 @@ owner: platform
 
 # Platform Kernel Baseline 1.0
 
+## 0. Canonical Domain Model
+
+### Asset
+User-owned logical media. Examples: uploaded video, audio, image, subtitle, font.
+Asset represents ownership. Asset is NOT execution. Asset is NOT build output.
+
+### Product
+The canonical object produced, consumed, transformed and tracked by the platform.
+Every build result is a Product. Examples: transcript, OCR result, embedding, thumbnail,
+proxy, preview, final render, package, timeline edit plan, search index, feature vector.
+
+### Artifact
+**Descriptive terminology only.** NOT a root domain concept.
+"Artifact" describes a file-backed Product (e.g., "media artifact", "render artifact").
+No independent Artifact runtime exists or should be created.
+
+### Kernel Invariants
+
+| # | Invariant |
+|---|-----------|
+| 1 | Asset is user-owned |
+| 2 | Product is platform-owned (the canonical build object) |
+| 3 | Artifact is descriptive terminology only |
+| 4 | Product Graph is always a DAG (cycles rejected) |
+| 5 | Execution Task Graph is always a DAG |
+| 6 | Planner is pure (computation only, no side effects) |
+| 7 | Backend is stateless (no local state between executions) |
+| 8 | Environment owns execution only (no planning, no product lifecycle) |
+| 9 | Storage is transparent (ExecutionBackend never resolves paths directly) |
+| 10 | Every Product has complete lineage (producer, upstream Products, originating Asset/TimelineRevision) | ✅ Validated — `hasProvenance()` enforced on registration |
+
+### Provenance Enforcement (S2)
+
+`ProductRuntimeService.register()` validates `Product.hasProvenance()` before persistence. At least one of `ownerAssetId`, `producerId`, or `sourceTimelineRevisionId` must be non-null. Products without provenance are rejected with `"Product must have provenance"`.
+
+Root products: `ownerAssetId` (e.g., uploaded media).
+Derived products: `producerId` (e.g., AI-generated transcript).
+Timeline products: `sourceTimelineRevisionId` (e.g., render output, mutation).
+
 ## 1. Runtime Inventory
 
 ### Product Runtime
@@ -185,7 +224,8 @@ Capability Layer:   Producer Runtime, Producer SPI, CapabilityDescriptor
 Compilation Layer:  Backend Compiler Runtime, BackendCompiler SPI, BackendExecutionSpec
 Execution Layer:    Execution Pipeline, Execution Backend, ExecutionBackend SPI
 Runtime Layer:      Product Runtime, Product Graph, Storage Runtime
-Storage Layer:      StorageReference, StorageRuntimeService
+Storage Layer:       StorageReference, StorageRuntimeService
+Governance Layer:    Metering, Access Control, Policy, Pricing, Cost, Billing (future — see ADR-018)
 ```
 
 No component belongs to multiple layers.
@@ -198,3 +238,7 @@ No component belongs to multiple layers.
 | New Render Backend | ExecutionBackend + BackendCompiler + ExecutionSpec | No |
 | New Runtime | None of the above | Yes (ADR required) |
 | New Registry | None of the above | Yes (ADR required) |
+
+## 11. Component Descriptor Model (ADR-019)
+
+Every extensible component is self-describing through a unified model (Identity + Capability + Resource + Metering + Security + Configuration + Observability + Health). Metadata belongs to the component, never the platform. Platform aggregates metadata, governance consumes it. See [Component Descriptor Architecture](component-descriptor.md).

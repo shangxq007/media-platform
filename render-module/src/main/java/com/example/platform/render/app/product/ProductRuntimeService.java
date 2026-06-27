@@ -23,8 +23,13 @@ public class ProductRuntimeService {
     @Transactional
     public Product register(Product product) {
         if (product.status() != ProductStatus.REGISTERED) throw new IllegalArgumentException("Must be REGISTERED");
+        if (!product.hasProvenance()) throw new IllegalArgumentException(
+                "Product must have provenance: ownerAssetId, producerId, or sourceTimelineRevisionId");
+        if (wouldCreateCycle(product.productId(), product.productId())) {
+            throw new IllegalArgumentException("Self-referencing product: " + product.productId());
+        }
         var saved = repo.save(product);
-        log.info("Product registered: id={} type={}", saved.productId(), saved.productType());
+        log.info("Product registered: id={} type={} provenance ok", saved.productId(), saved.productType());
         return saved;
     }
 
@@ -49,10 +54,27 @@ public class ProductRuntimeService {
     @Transactional
     public ProductDependency linkDependency(String productId, String dependsOnId,
                                                DependencyType type, String tenantId, String projectId) {
+        if (wouldCreateCycle(productId, dependsOnId)) {
+            throw new IllegalArgumentException("Cycle detected: " + productId + " ← " + dependsOnId);
+        }
         var dep = new ProductDependency(null, tenantId, projectId, productId, dependsOnId, type, null);
         var saved = depRepo.save(dep);
         log.info("Dependency linked: {} → {} ({})", productId, dependsOnId, type);
         return saved;
+    }
+
+    private boolean wouldCreateCycle(String productId, String dependsOnId) {
+        if (productId.equals(dependsOnId)) return true;
+        Set<String> upstream = new HashSet<>();
+        collectUpstream(dependsOnId, upstream);
+        return upstream.contains(productId);
+    }
+
+    private void collectUpstream(String productId, Set<String> visited) {
+        if (!visited.add(productId)) return;
+        for (var dep : depRepo.findDependencies(productId)) {
+            collectUpstream(dep.dependsOnProductId(), visited);
+        }
     }
 
     @Transactional

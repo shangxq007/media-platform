@@ -32,4 +32,12 @@ public record Product(
                 newStatus, storageReferenceId, checksum, contentHash, mimeType, version,
                 metadataJson, createdAt, Instant.now());
     }
+
+    /**
+     * A Product must have at least one provenance source.
+     * Root products: ownerAssetId. Derived products: producerId. Timeline products: sourceTimelineRevisionId.
+     */
+    public boolean hasProvenance() {
+        return ownerAssetId != null || producerId != null || sourceTimelineRevisionId != null;
+    }
 }

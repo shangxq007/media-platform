@@ -28,6 +28,23 @@ Modular media platform skeleton for AI video production, rendering orchestration
   - TanStack Virtual for virtual scrolling
   - Font asset management via FontManifest (no system font dependency)
 
+## Architecture Status (2026-06-27)
+
+**Platform Kernel Baseline 1.0 is FROZEN.** See `docs/architecture/platform-constitution-v1.md`.
+
+- 10 Kernel Invariants documented and enforced
+- 7 Stable Public SPIs (Producer, BackendCompiler, ExecutionEnvironment, ExecutionBackend, StorageProvider, AccessGovernanceService, MeteringService)
+- 4 Architecture Validations passed (OpenCue, Storage Providers, Whisper, Remotion)
+- Category A changes (performance, bugs, logging) — no ADR required
+- Category B changes (new Producers, Backends, Environments, Storage) — no ADR required
+- Category C changes (new Runtime, SPI modification, domain model change) — **ADR required**
+
+## Current Capability Production Era
+
+1. Capability Production: Remotion, OpenCue, Storage Providers
+2. Governance: Pricing, Billing, Policy Engine  
+3. Marketplace: Template/Effect/Plugin marketplace
+
 ## Development Priorities
 1. P0: observability-module, outbox-event-module, audit-compliance-module
 2. P1: identity-access-module, scheduler-module, quota-billing-module
