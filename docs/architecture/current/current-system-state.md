@@ -168,6 +168,52 @@ owner: platform
 
 ---
 
+## 7. Execution Environment and Provider Capability Status
+
+### OpenCue Execution Environment
+
+| Attribute | Value |
+|-----------|-------|
+| Status | Disabled-by-default stub |
+| Conditional Bean | `@ConditionalOnProperty(name = "opencue.enabled", havingValue = "true")` |
+| Default | `opencue.enabled=false` |
+| Real Client | Not implemented (stub only) |
+| Docker Service | Not in docker-compose.dev.yml |
+| Documentation | `docs/review/opencue-runtime-foundation.md` |
+
+### Render Provider Registry
+
+| Provider | Status | Priority | Auto Dispatch |
+|----------|--------|----------|---------------|
+| FFmpeg | PRODUCTION | P0 | ✅ |
+| Remotion | POC | P1 | ❌ |
+| MLT | POC | P1 | ❌ |
+| GPAC | POC | P1 | ❌ |
+| Blender | POC | P1 | ❌ |
+| Libass | POC | P1 | ❌ |
+| GStreamer | HOLD | P2 | ❌ |
+| Natron | HOLD | P3 | ❌ |
+| BMF | SPIKE | P2-P3 | ❌ |
+
+### Render Tool Capability Inventory
+
+| Component | Location |
+|-----------|----------|
+| Runtime inventory | `RenderToolCapabilityInventory` (render-module) |
+| Capability matrix | `docs/render/capability-matrix.md` |
+| Inventory doc | `docs/review/render-tool-capability-inventory.md` |
+| Provider eligibility | `ProviderEligibility` (render-module) |
+| Provider status enum | `ProviderStatus` (9 values: PRODUCTION, POC, OPTIONAL, STUB, SKELETON, HOLD, SPIKE, DEPRECATED, MOCK) |
+
+### Remotion Provider POC
+
+| Attribute | Value |
+|-----------|-------|
+| Status | Plan-only (no implementation) |
+| Documentation | `docs/review/remotion-provider-poc-plan.md` |
+| Implementation readiness | Checklist documented |
+| Runtime requirements | Node.js 18+, Remotion CLI |
+
 ## References
 
 - [Release Candidate Readiness Checklist](../../review/release-candidate-readiness-2026-06-17.md)
@@ -175,3 +221,6 @@ owner: platform
 - [Backend-first Stabilization Plan](../backend-first-stabilization-plan.md)
 - [External Channel Extension Model](../blueprint/external-channel-extension-model.md) — Reserved extension points for external input/output channels
 - [Storage Runtime Foundation](../../review/storage-runtime-foundation.md) — StorageReference locator semantics, R10B output key strategy
+- [OpenCue Runtime Foundation](../../review/opencue-runtime-foundation.md) — OpenCue disabled-by-default foundation
+- [Render Tool Capability Inventory](../../review/render-tool-capability-inventory.md) — Local tool detection
+- [Remotion Provider POC Plan](../../review/remotion-provider-poc-plan.md) — Remotion implementation readiness
