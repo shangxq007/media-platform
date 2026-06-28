@@ -39,8 +39,18 @@ TimelineRevisionRenderFacade.render()
     → create RenderCorrelationContext(projectId, revisionId, mode)
     → attach fingerprint after dedup check
     → emit audit events with fromCorrelation(ctx)
-    → pass to plan-based/legacy service
-    → attach result IDs (renderJobId, outputProductId)
+    → pass correlation to plan-based service
+    → plan-based service enriches with:
+        → renderJobId (step 3)
+        → inputProductIds (step 4)
+        → artifactGraphId (after ArtifactDependencyGraph compile)
+        → capabilityGraphId (after LogicalCapabilityGraph compile)
+        → providerBindingPlanId (after ProviderBindingPlan compile)
+        → renderExecutionPlanId (after RenderExecutionPlan compile)
+        → emit ARTIFACT_GRAPH_COMPILED, CAPABILITY_GRAPH_COMPILED,
+          PROVIDER_BINDING_COMPLETED, RENDER_EXECUTION_PLAN_COMPILED
+    → LocalExecutionPlanRunner generates localExecutionRunId
+    → outputProductId attached after output registration
     → emit RENDER_COMPLETED with full correlation
 ```
 
@@ -73,7 +83,6 @@ Correlation context does NOT include:
 
 ## Known Limitations
 
-- v0: localExecutionRunId not propagated (reserved for future)
 - v0: Step executor events don't include renderCorrelationId (use renderJobId to correlate)
 - v0: No OpenTelemetry or distributed tracing integration
 - v0: No persistent correlation store

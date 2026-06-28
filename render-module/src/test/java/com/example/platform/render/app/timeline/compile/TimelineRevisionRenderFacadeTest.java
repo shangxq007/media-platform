@@ -191,5 +191,11 @@ class TimelineRevisionRenderFacadeTest {
                 String projectId, String revisionId, String outputProfile) {
             called = true; return result;
         }
+        @Override
+        public TimelineRevisionRenderService.RevisionRenderResult render(
+                String projectId, String revisionId, String outputProfile,
+                RenderCorrelationContext correlation) {
+            called = true; return result;
+        }
     }
 }

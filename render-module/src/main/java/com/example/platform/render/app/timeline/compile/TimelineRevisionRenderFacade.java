@@ -112,7 +112,7 @@ public class TimelineRevisionRenderFacade {
             if (properties.isPlanBasedEnabled()) {
                 log.info("Rendering via plan-based path: project={} revision={} mode={}",
                         projectId, revisionId, properties.executionMode());
-                result = planBasedService.render(projectId, revisionId, outputProfile);
+                result = planBasedService.render(projectId, revisionId, outputProfile, correlation);
             } else {
                 log.info("Rendering via legacy path: project={} revision={} mode={}",
                         projectId, revisionId, properties.executionMode());

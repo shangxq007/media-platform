@@ -17,6 +17,7 @@ import java.util.List;
 public record LocalExecutionPlanRunResult(
         LocalExecutionPlanRunStatus status,
         String planId,
+        String localExecutionRunId,
         List<LocalExecutionPlanStepResult> stepResults,
         String message,
         String outputProductId) {
@@ -32,11 +33,11 @@ public record LocalExecutionPlanRunResult(
 
     public static LocalExecutionPlanRunResult failedClosed(String message) {
         return new LocalExecutionPlanRunResult(
-                LocalExecutionPlanRunStatus.FAILED_CLOSED, null, List.of(), message, null);
+                LocalExecutionPlanRunStatus.FAILED_CLOSED, null, null, List.of(), message, null);
     }
 
     public static LocalExecutionPlanRunResult notExecutable(String message) {
         return new LocalExecutionPlanRunResult(
-                LocalExecutionPlanRunStatus.NOT_EXECUTABLE, null, List.of(), message, null);
+                LocalExecutionPlanRunStatus.NOT_EXECUTABLE, null, null, List.of(), message, null);
     }
 }

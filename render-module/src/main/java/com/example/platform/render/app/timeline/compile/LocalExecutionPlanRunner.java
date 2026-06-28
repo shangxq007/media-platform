@@ -63,9 +63,12 @@ public class LocalExecutionPlanRunner {
                     "Plan contains non-executable steps (only FFmpeg LOCAL PRODUCTION is allowed)");
         }
 
-        // Step 3: Execute steps in dependency order
-        log.info("Starting plan execution: planId={} steps={} context={}",
-                plan.planId(), plan.steps().size(), context.summary());
+        // Step 3: Generate local execution run ID
+        String localExecutionRunId = "ler-" + java.util.UUID.randomUUID().toString().substring(0, 12);
+
+        // Step 4: Execute steps in dependency order
+        log.info("Starting plan execution: planId={} localRunId={} steps={} context={}",
+                plan.planId(), localExecutionRunId, plan.steps().size(), context.summary());
 
         List<LocalExecutionPlanStepResult> stepResults = new ArrayList<>();
         boolean allSucceeded = true;
@@ -99,7 +102,7 @@ public class LocalExecutionPlanRunner {
                 plan.planId(), overallStatus, stepResults.size());
 
         return new LocalExecutionPlanRunResult(
-                overallStatus, plan.planId().toString(), stepResults,
+                overallStatus, plan.planId().toString(), localExecutionRunId, stepResults,
                 allSucceeded ? "All steps succeeded" : "One or more steps failed",
                 context.outputProductId() != null ? context.outputProductId() : null);
     }

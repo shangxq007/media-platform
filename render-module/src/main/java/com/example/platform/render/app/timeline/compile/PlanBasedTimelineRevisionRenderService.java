@@ -8,6 +8,7 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.app.timeline.TimelineInputProductResolver;
 import com.example.platform.render.app.timeline.TimelineRenderJobMapper;
+import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.TimelineRevisionService;
 import com.example.platform.render.domain.product.Product;
@@ -64,6 +65,7 @@ public class PlanBasedTimelineRevisionRenderService {
     private final StorageRuntimeService storageRuntime;
     private final RenderToolCapabilityInventory toolInventory;
     private final Path storageRoot;
+    private final RenderAuditRecorder auditRecorder;
 
     public PlanBasedTimelineRevisionRenderService(
             TimelineRevisionService revisionService,
@@ -85,6 +87,34 @@ public class PlanBasedTimelineRevisionRenderService {
             StorageRuntimeService storageRuntime,
             RenderToolCapabilityInventory toolInventory,
             Path storageRoot) {
+        this(revisionService, snapshotService, mapper, parser, inputProductResolver,
+                normalizer, artifactCompiler, capabilityCompiler, bindingCompiler,
+                draftCompiler, planCompiler, policyGuard, planRunner,
+                materializationService, registrationService, productRuntime,
+                storageRuntime, toolInventory, storageRoot, null);
+    }
+
+    public PlanBasedTimelineRevisionRenderService(
+            TimelineRevisionService revisionService,
+            TimelineSnapshotService snapshotService,
+            TimelineRenderJobMapper mapper,
+            TimelineScriptParser parser,
+            TimelineInputProductResolver inputProductResolver,
+            TimelineNormalizationService normalizer,
+            ArtifactGraphCompiler artifactCompiler,
+            CapabilityGraphCompiler capabilityCompiler,
+            ProviderBindingCompiler bindingCompiler,
+            ProviderExecutionDocumentDraftCompiler draftCompiler,
+            RenderExecutionPlanCompiler planCompiler,
+            RenderPlanPolicyGuard policyGuard,
+            LocalExecutionPlanRunner planRunner,
+            RenderInputMaterializationService materializationService,
+            RenderOutputRegistrationService registrationService,
+            ProductRuntimeService productRuntime,
+            StorageRuntimeService storageRuntime,
+            RenderToolCapabilityInventory toolInventory,
+            Path storageRoot,
+            RenderAuditRecorder auditRecorder) {
         this.revisionService = revisionService;
         this.snapshotService = snapshotService;
         this.mapper = mapper;
@@ -104,21 +134,37 @@ public class PlanBasedTimelineRevisionRenderService {
         this.storageRuntime = storageRuntime;
         this.toolInventory = toolInventory;
         this.storageRoot = storageRoot;
+        this.auditRecorder = auditRecorder;
+    }
+
+    /**
+     * Render with correlation context — enriched with graph/plan IDs as compile progresses.
+     */
+    public TimelineRevisionRenderService.RevisionRenderResult render(
+            String projectId, String revisionId, String outputProfile,
+            RenderCorrelationContext correlation) {
+        RenderCorrelationContext corr = correlation != null ? correlation
+                : RenderCorrelationContext.create(projectId, revisionId, "PLAN_BASED");
+        return doRender(projectId, revisionId, outputProfile, corr);
     }
 
     /**
      * Render a TimelineRevision through the plan-based execution pipeline.
-     *
-     * @param projectId     the project identifier
-     * @param revisionId    the timeline revision identifier
-     * @param outputProfile the render profile
-     * @return the render result
      */
     public TimelineRevisionRenderService.RevisionRenderResult render(
             String projectId, String revisionId, String outputProfile) {
+        return doRender(projectId, revisionId, outputProfile, null);
+    }
+
+    private TimelineRevisionRenderService.RevisionRenderResult doRender(
+            String projectId, String revisionId, String outputProfile,
+            RenderCorrelationContext correlation) {
 
         log.info("Plan-based render requested: project={} revision={} profile={}",
                 projectId, revisionId, outputProfile);
+
+        RenderCorrelationContext corr = correlation != null ? correlation
+                : RenderCorrelationContext.create(projectId, revisionId, "PLAN_BASED");
 
         // 1. Load TimelineRevision and verify ownership
         var revisionOpt = revisionService.findById(revisionId);
@@ -149,6 +195,7 @@ public class PlanBasedTimelineRevisionRenderService {
         var mappingResult = mapper.toRenderJobRequest(
                 tenantId, projectId, spec, outputProfile, revisionId, snapshotId);
         String renderJobId = Ids.newId("rj");
+        corr = corr.withRenderJobId(renderJobId);
 
         // 4. Resolve input Products
         var resolverResult = inputProductResolver.resolve(mappingResult.sourceAssetIds());
@@ -156,12 +203,20 @@ public class PlanBasedTimelineRevisionRenderService {
             throw new IllegalStateException("Input resolution failed: " + resolverResult.failureReason());
         }
         List<String> inputProductIds = resolverResult.inputProductIds();
+        corr = corr.withInputProductIds(inputProductIds);
         String primaryInputProductId = inputProductIds.get(0);
 
-        // 5. Compile pipeline: TimelineSpec → RenderExecutionPlan
+        // 5. Compile pipeline with correlation enrichment
         NormalizedTimeline timeline = normalizer.normalize(spec, projectId);
         ArtifactDependencyGraph artifactGraph = artifactCompiler.compile(timeline);
+        corr = corr.withGraphIds(artifactGraph.graphId(), null);
+        emitAudit(RenderAuditEventType.ARTIFACT_GRAPH_COMPILED, corr,
+                "Artifact graph compiled: " + artifactGraph.graphId());
+
         LogicalCapabilityGraph capGraph = capabilityCompiler.compile(artifactGraph);
+        corr = corr.withGraphIds(artifactGraph.graphId(), capGraph.graphId());
+        emitAudit(RenderAuditEventType.CAPABILITY_GRAPH_COMPILED, corr,
+                "Capability graph compiled: " + capGraph.graphId());
 
         // 6. Provider binding (PRODUCTION mode, FFmpeg only)
         var ffmpegCandidate = new ProviderBindingCompiler.ProviderCandidate(
@@ -179,11 +234,18 @@ public class PlanBasedTimelineRevisionRenderService {
 
         ProviderBindingPlan bindingPlan = bindingCompiler.compile(
                 capGraph, List.of(ffmpegCandidate), "PRODUCTION");
+        corr = corr.withPlanIds(bindingPlan.planId().toString(), null);
+        emitAudit(RenderAuditEventType.PROVIDER_BINDING_COMPLETED, corr,
+                "Provider binding completed: " + bindingPlan.planId());
+
         List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
 
         // 7. Compile execution plan
         RenderExecutionPlan executionPlan = planCompiler.compile(
                 bindingPlan, drafts, ExecutionPolicy.production());
+        corr = corr.withPlanIds(bindingPlan.planId().toString(), executionPlan.planId().toString());
+        emitAudit(RenderAuditEventType.RENDER_EXECUTION_PLAN_COMPILED, corr,
+                "Execution plan compiled: " + executionPlan.planId());
 
         // 8. Build execution context
         Path outputDir = storageRoot.resolve("render-output").resolve(renderJobId);
@@ -217,6 +279,8 @@ public class PlanBasedTimelineRevisionRenderService {
                 .orElseThrow(() -> new IllegalStateException(
                         "No output product ID found in registration step result"));
 
+        corr = corr.withOutputProductId(outputProductId);
+
         var outputProductOpt = productRuntime.find(outputProductId);
         if (outputProductOpt.isEmpty()) {
             throw new IllegalStateException("Output product not found: " + outputProductId);
@@ -245,5 +309,14 @@ public class PlanBasedTimelineRevisionRenderService {
             return message.substring(start, end).trim();
         }
         return null;
+    }
+
+    private void emitAudit(RenderAuditEventType type, RenderCorrelationContext corr, String message) {
+        if (auditRecorder == null) return;
+        auditRecorder.record(RenderAuditEvent.builder()
+                .eventType(type)
+                .fromCorrelation(corr)
+                .message(message)
+                .build());
     }
 }
