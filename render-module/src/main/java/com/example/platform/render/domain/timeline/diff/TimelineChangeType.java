@@ -1,0 +1,33 @@
+package com.example.platform.render.domain.timeline.diff;
+
+/**
+ * Type of timeline change operation.
+ * Internal domain model — provider-neutral, storage-neutral.
+ */
+public enum TimelineChangeType {
+    TRACK_ADDED,
+    TRACK_REMOVED,
+    TRACK_REORDERED,
+    TRACK_MUTED,
+    CLIP_ADDED,
+    CLIP_REMOVED,
+    CLIP_MOVED,
+    CLIP_TRIMMED,
+    CLIP_SPEED_CHANGED,
+    CLIP_VOLUME_CHANGED,
+    ASSET_BINDING_CHANGED,
+    CAPTION_SEGMENT_CHANGED,
+    TEXT_STYLE_CHANGED,
+    WATERMARK_CHANGED,
+    TRANSITION_CHANGED,
+    EFFECT_CHANGED,
+    BRAND_STYLE_CHANGED,
+    AUDIO_MIX_CHANGED,
+    TEMPLATE_PARAMETER_CHANGED,
+    TEMPLATE_PROFILE_CHANGED,
+    COMPOSITE_CHILD_TEMPLATE_CHANGED,
+    WORKFLOW_APPLY_TEMPLATE_STEP_CHANGED,
+    OUTPUT_PROFILE_CHANGED,
+    TIMELINE_DURATION_CHANGED,
+    METADATA_CHANGED
+}
