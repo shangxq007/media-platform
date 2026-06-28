@@ -1,5 +1,7 @@
 # Caption Template Render MVP Contract v0
 
+> **Note:** Caption Template Render is the first vertical Template Application profile within the General Template System (ADR-022). It is not the final boundary of the Template System. Future TemplateDefinitions may target text, image, video, audio, layout, transition, brand, and composition operations. The existing caption-specific API remains stable for MVP delivery.
+
 ## MVP Product Definition
 
 **Caption Template Render**: A caller supplies a source video Product + caption segments + template/style → platform produces a caption-burned rendered video Product via FFmpeg/libass.

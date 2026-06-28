@@ -309,6 +309,50 @@ TimelineRevision
 - LocalExecutionPlanRunner (actual execution) remains future work
 - OpenCue submit remains future work
 
+## 9. Caption Template Render Backend MVP (P2C.0–P2C.6)
+
+Caption Template Render backend MVP loop is complete through safe result lookup. A caller can submit caption segments + style + source video Product and receive a READY FINAL_RENDER Product via FFmpeg/libass baseline.
+
+| Component | Status |
+|-----------|--------|
+| MVP contract (P2C.0) | ✅ Implemented |
+| Timeline adapter (P2C.1) | ✅ Implemented |
+| API endpoint (P2C.2) | ✅ Implemented |
+| Audit/correlation (P2C.2) | ✅ Implemented |
+| Service E2E smoke (P2C.3) | ✅ Verified |
+| API E2E smoke (P2C.4) | ✅ Verified |
+| Safe result lookup (P2C.5) | ✅ Implemented |
+| Readiness review + demo runbook (P2C.6) | ✅ Documented |
+| Safe delivery resolver | ❌ Future work |
+| Download/preview URL | ❌ Not exposed |
+| Remotion execution | ❌ Not implemented |
+
+**Endpoints:**
+- `POST /api/v1/tenants/{tenantId}/projects/{projectId}/caption-template/render`
+- `GET /api/v1/tenants/{tenantId}/projects/{projectId}/caption-template/results/{outputProductId}`
+
+**Key constraints:**
+- FFmpeg/libass is the only executable provider
+- sourceProductId must be an existing RAW_MEDIA Product asset ID
+- downloadAvailable=false, previewAvailable=false in v0.2
+- No storage/provider internals exposed in public API
+- Remotion remains non-executable
+- Safe delivery resolver is future work
+
+## 10. General Template System Design (P2T.0)
+
+General Template System design has been accepted (ADR-022). Caption Template Render remains the first vertical MVP profile. Templates compile to TimelineSpec/TimelinePatch, can be orchestrated by WorkflowSteps, and may be extended by controlled plugin points. Providers remain hidden behind PLAN_BASED capability binding.
+
+| Component | Status |
+|-----------|--------|
+| ADR-022 (General Template System) | ✅ Accepted |
+| General Template System design doc | ✅ Documented |
+| Template Workflow Integration design | ✅ Documented |
+| Caption Template reframed as first profile | ✅ Updated |
+| TemplateDefinition domain skeleton | ❌ Future (P2T.1) |
+| Workflow semantic model | ❌ Future (P2W.0) |
+| Plugin registry | ❌ Future (P2P.0) |
+
 ## References
 
 - [Release Candidate Readiness Checklist](../../review/release-candidate-readiness-2026-06-17.md)
