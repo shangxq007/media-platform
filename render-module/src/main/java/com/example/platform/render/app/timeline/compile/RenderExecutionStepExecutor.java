@@ -4,6 +4,7 @@ import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.output.RenderProductProvenance;
 import com.example.platform.render.app.product.ProductRuntimeService;
+import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.timeline.compile.executionplan.*;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
@@ -20,7 +21,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Executes individual render execution plan steps.
+ * Executes individual render execution plan steps with audit events.
  *
  * <p>Internal only — delegates to existing services for each step type.
  * Only FFmpeg LOCAL PRODUCTION steps are executable.</p>
@@ -35,18 +36,21 @@ public class RenderExecutionStepExecutor {
     private final ProductRuntimeService productRuntime;
     private final RenderToolCapabilityInventory toolInventory;
     private final ProcessToolRunner processToolRunner;
+    private final RenderAuditRecorder auditRecorder;
 
     public RenderExecutionStepExecutor(
             RenderInputMaterializationService materializationService,
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
             RenderToolCapabilityInventory toolInventory,
-            ProcessToolRunner processToolRunner) {
+            ProcessToolRunner processToolRunner,
+            RenderAuditRecorder auditRecorder) {
         this.materializationService = materializationService;
         this.registrationService = registrationService;
         this.productRuntime = productRuntime;
         this.toolInventory = toolInventory;
         this.processToolRunner = processToolRunner;
+        this.auditRecorder = auditRecorder;
     }
 
     /**
@@ -60,7 +64,7 @@ public class RenderExecutionStepExecutor {
                                                   LocalExecutionPlanContext context) {
         long start = System.currentTimeMillis();
 
-        return switch (step.type()) {
+        LocalExecutionPlanStepResult result = switch (step.type()) {
             case MATERIALIZE_INPUT -> executeMaterializeInput(step, context, start);
             case PREPARE_PROVIDER_DOCUMENT -> executePrepareDocument(step, context, start);
             case EXECUTE_PROVIDER -> executeProvider(step, context, start);
@@ -69,6 +73,37 @@ public class RenderExecutionStepExecutor {
             case LINK_PRODUCT_DEPENDENCY -> executeLinkDependency(step, context, start);
             case FINALIZE_RENDER -> executeFinalize(step, context, start);
         };
+
+        // Emit audit event for completed steps
+        emitStepAuditEvent(step, context, result);
+        return result;
+    }
+
+    private void emitStepAuditEvent(RenderExecutionStep step, LocalExecutionPlanContext context,
+                                      LocalExecutionPlanStepResult result) {
+        RenderAuditEventType eventType = switch (step.type()) {
+            case MATERIALIZE_INPUT -> RenderAuditEventType.INPUT_MATERIALIZATION_COMPLETED;
+            case EXECUTE_PROVIDER -> RenderAuditEventType.PROVIDER_EXECUTION_COMPLETED;
+            case VERIFY_OUTPUT -> RenderAuditEventType.OUTPUT_VERIFICATION_COMPLETED;
+            case REGISTER_OUTPUT -> RenderAuditEventType.OUTPUT_REGISTRATION_COMPLETED;
+            case LINK_PRODUCT_DEPENDENCY -> RenderAuditEventType.PRODUCT_DEPENDENCY_LINKED;
+            default -> null;
+        };
+        if (eventType == null) return;
+
+        RenderAuditEventSeverity severity = result.isSuccess()
+                ? RenderAuditEventSeverity.INFO
+                : RenderAuditEventSeverity.ERROR;
+
+        auditRecorder.record(RenderAuditEvent.builder()
+                .eventType(eventType)
+                .severity(severity)
+                .projectId(context.projectId())
+                .timelineRevisionId(context.timelineRevisionId())
+                .renderJobId(context.renderJobId())
+                .providerName(step.providerName())
+                .message(step.type().name() + ": " + result.message())
+                .build());
     }
 
     private LocalExecutionPlanStepResult executeMaterializeInput(RenderExecutionStep step,

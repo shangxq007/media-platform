@@ -3,6 +3,7 @@ package com.example.platform.render.app.timeline.compile;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
+import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.extension.domain.ToolSandboxPolicy;
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
@@ -134,8 +135,9 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
             }
         };
 
+        RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new NoopRenderAuditEventSink());
         stepExecutor = new RenderExecutionStepExecutor(
-                materializationService, registrationService, productRuntime, toolInventory, toolRunner);
+                materializationService, registrationService, productRuntime, toolInventory, toolRunner, auditRecorder);
         planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
 
         renderService = new PlanBasedTimelineRevisionRenderService(

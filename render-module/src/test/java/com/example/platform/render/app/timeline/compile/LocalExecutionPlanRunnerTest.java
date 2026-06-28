@@ -262,7 +262,7 @@ class LocalExecutionPlanRunnerTest {
         private boolean succeedAll = true;
 
         MockStepExecutor() {
-            super(null, null, null, null, null);
+            super(null, null, null, null, null, null);
         }
 
         void setSucceedAll(boolean succeedAll) {

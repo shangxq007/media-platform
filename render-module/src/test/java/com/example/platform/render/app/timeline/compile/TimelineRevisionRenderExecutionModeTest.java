@@ -3,6 +3,7 @@ package com.example.platform.render.app.timeline.compile;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
+import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.extension.domain.ToolSandboxPolicy;
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
@@ -239,9 +240,10 @@ class TimelineRevisionRenderExecutionModeTest {
         ProviderExecutionDocumentDraftCompiler draftCompiler = new ProviderExecutionDocumentDraftCompiler();
         RenderExecutionPlanCompiler planCompiler = new RenderExecutionPlanCompiler();
         RenderPlanPolicyGuard policyGuard = new RenderPlanPolicyGuard();
+        RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new NoopRenderAuditEventSink());
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
                 materializationService, registrationService, productRuntime,
-                toolInventory, toolRunner);
+                toolInventory, toolRunner, auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
 
         PlanBasedTimelineRevisionRenderService planBasedService =
@@ -255,7 +257,7 @@ class TimelineRevisionRenderExecutionModeTest {
                         productRuntime, storageRuntime, toolInventory, tempDir);
 
         RenderDeduplicationService dedupService = new RenderDeduplicationService(productRuntime);
-        return new TimelineRevisionRenderFacade(legacyService, planBasedService, dedupService, props);
+        return new TimelineRevisionRenderFacade(legacyService, planBasedService, dedupService, props, auditRecorder);
     }
 
     private void registerReadyRawMediaProduct() throws Exception {
