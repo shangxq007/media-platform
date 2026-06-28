@@ -198,6 +198,15 @@ All compile tests pass:
 - ✅ ExecutionPolicy v0 — PRODUCTION/MANUAL/EXPERIMENT/DRY_RUN modes
 - ✅ 31 tests (12 plan compiler, 12 policy guard, 7 golden fixtures)
 
+## Completed in N7 (Local Execution Plan Runner)
+
+- ✅ LocalExecutionPlanRunner v0 — FFmpeg baseline execution through plan
+- ✅ RenderExecutionStepExecutor v0 — delegates to existing services per step type
+- ✅ PlanBasedTimelineRevisionRenderService — bridges render API to plan-based path
+- ✅ Real render smoke: READY Product + ProductDependency lineage
+- ✅ Non-FFmpeg providers remain non-executable
+- ✅ 13 tests (8 runner, 5 smoke)
+
 ## Follow-up Items
 
 1. **LocalExecutionPlanRunner** — Actually execute plans locally (FFmpeg baseline)

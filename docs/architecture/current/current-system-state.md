@@ -226,7 +226,7 @@ owner: platform
 | Documentation | `docs/review/openfx-capability-model-reservation.md` |
 | Future work | OFX host integration (Natron or custom host) |
 
-## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+)
+## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+) + Local Runner (N7)
 
 | Component | Status | Location |
 |-----------|--------|----------|
@@ -246,6 +246,9 @@ owner: platform
 | RenderExecutionPlanCompiler | ✅ Implemented | `render-module/.../app/timeline/compile/` |
 | RenderPlanPolicyGuard v0 | ✅ Implemented | `render-module/.../app/timeline/compile/` |
 | Execution Policy v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/executionplan/` |
+| LocalExecutionPlanRunner v0 | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| RenderExecutionStepExecutor v0 | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| PlanBasedTimelineRevisionRenderService | ✅ Implemented | `render-module/.../app/timeline/compile/` |
 | Golden Fixture Tests (N4+) | ✅ 10 tests | `TimelineCompileGoldenFixtureTest` |
 | Binding Compiler Tests | ✅ 12 tests | `ProviderBindingCompilerTest` |
 | Execution Draft Tests | ✅ 8 tests | `ProviderExecutionDocumentDraftCompilerTest` |
@@ -253,9 +256,12 @@ owner: platform
 | Execution Plan Compiler Tests | ✅ 12 tests | `RenderExecutionPlanCompilerTest` |
 | Policy Guard Tests | ✅ 12 tests | `RenderPlanPolicyGuardTest` |
 | Execution Plan Golden Fixture Tests | ✅ 7 tests | `RenderExecutionPlanGoldenFixtureTest` |
+| Local Execution Plan Runner Tests | ✅ 8 tests | `LocalExecutionPlanRunnerTest` |
+| Plan-Based Render Smoke Tests | ✅ 5 tests | `PlanBasedTimelineRevisionRenderSmokeTest` |
 | Provider Binding Compile Doc | ✅ Defined | `docs/review/provider-binding-compile-v0.md` |
 | Render Execution Plan Doc | ✅ Defined | `docs/review/render-execution-plan-v0.md` |
-| LocalExecutionPlanRunner | ❌ Future work | Not implemented |
+| Local Execution Plan Runner Doc | ✅ Defined | `docs/review/local-execution-plan-runner-v0.md` |
+| OpenCue Submit | ❌ Future work | Not implemented |
 
 **Compile Pipeline v0:**
 ```text
@@ -267,7 +273,10 @@ TimelineRevision
 → List<ProviderExecutionDocumentDraft> (planning artifacts, generationReady=false)
 → RenderExecutionPlan (deterministic, step plan, executionReady=false)
 → RenderPlanPolicyResult (validation verdict, VALID_FOR_DRY_RUN)
-→ [future: LocalExecutionPlanRunner / OpenCue submit]
+→ LocalExecutionPlanRunner (FFmpeg baseline execution)
+→ StorageRuntime output registration
+→ ProductRuntime READY Product
+→ ProductDependency lineage
 ```
 
 **Key Constraints:**
@@ -275,6 +284,10 @@ TimelineRevision
 - Multi-clip/multi-track produces valid graph but single-primary-input render only
 - Clip effects fail closed (unsupported in v0)
 - Provider binding is internal only — no provider names in public APIs
+- FFmpeg remains the only PRODUCTION baseline provider
+- Non-FFmpeg providers remain POC/SPIKE/HOLD/OPTIONAL and are not executable
+- LocalExecutionPlanRunner is internal only
+- OpenCue submit remains future work
 - Execution document drafts are planning artifacts only — no command generation
 - RenderExecutionPlan is internal only — all steps are placeholders (executionReady=false)
 - RenderPlanPolicyGuard validates plans against 14 safety constraints
