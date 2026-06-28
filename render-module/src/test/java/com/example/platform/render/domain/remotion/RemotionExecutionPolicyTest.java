@@ -313,6 +313,23 @@ class RemotionExecutionPolicyTest {
     }
 
     @Test
+    @DisplayName("READY_BUT_EXECUTION_DISABLED has readyToExecute=false")
+    void readyButExecutionDisabledHasReadyFalse() {
+        RemotionExecutionPolicyEvaluator evaluator = new RemotionExecutionPolicyEvaluator();
+        // disabledDefault has executionEnabled=false and no violations when no readiness/commandPlan
+        RemotionExecutionPreflightResult result = evaluator.evaluate(
+                RemotionExecutionPolicy.disabledDefault(),
+                RemotionSandboxPolicy.lockedDown(),
+                null, null);
+
+        assertEquals(RemotionExecutionPreflightStatus.READY_BUT_EXECUTION_DISABLED, result.status());
+        assertFalse(result.readyToExecute());
+        assertFalse(result.blocked()); // not blocked — structurally ready
+        assertFalse(result.notImplemented());
+        assertTrue(result.passed()); // passed structural checks
+    }
+
+    @Test
     @DisplayName("Preflight requires audit/correlation when policy requires them")
     void preflightRequiresAuditCorrelation() {
         RemotionExecutionPolicy policy = RemotionExecutionPolicy.disabledDefault();

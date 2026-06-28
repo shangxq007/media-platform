@@ -29,12 +29,9 @@ public class RemotionExecutionPolicyEvaluator {
 
         List<String> violations = new ArrayList<>();
 
-        // 1. Execution must be enabled
-        if (!policy.executionEnabled()) {
-            violations.add("Execution not enabled by policy");
-        }
+        // Note: executionEnabled=false is not a violation — it's handled by READY_BUT_EXECUTION_DISABLED
 
-        // 2. Runtime must be ready
+        // 1. Runtime must be ready
         if (readiness != null && !readiness.executionReady()) {
             violations.add("Runtime executionReady=false");
         }
@@ -64,7 +61,14 @@ public class RemotionExecutionPolicyEvaluator {
             violations.addAll(validateSandbox(sandbox));
         }
 
-        // v0: Always NOT_IMPLEMENTED even if no violations
+        // If no violations but execution still disabled, return READY_BUT_EXECUTION_DISABLED
+        if (violations.isEmpty() && !policy.executionEnabled()) {
+            return new RemotionExecutionPreflightResult(
+                    RemotionExecutionPreflightStatus.READY_BUT_EXECUTION_DISABLED,
+                    List.of(), "All structural checks passed but execution remains disabled by policy", false);
+        }
+
+        // v0: NOT_IMPLEMENTED if execution would be enabled but runner does not exist
         if (violations.isEmpty()) {
             return new RemotionExecutionPreflightResult(
                     RemotionExecutionPreflightStatus.NOT_IMPLEMENTED,

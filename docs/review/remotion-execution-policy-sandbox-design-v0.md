@@ -21,8 +21,8 @@ All preflight, status, policy, sandbox, and evaluator classes are **Remotion-spe
 | executionEnabled | false | Execution disabled in v0 |
 | productionAllowed | false | Never in production |
 | autoDispatchAllowed | false | Never auto-dispatched |
-| manualModeAllowed | false (default), true (design-only) | For future manual POC |
-| experimentModeAllowed | false (default), true (design-only) | For future experiment |
+| manualModeAllowed | false (default), true (design-only) | Manual mode not yet wired to runner |
+| experimentModeAllowed | false (default), true (design-only) | Experiment mode not yet wired to runner |
 | publicSelectionAllowed | false | No public API selection |
 | userSuppliedComponentAllowed | false | No user React components |
 | userSuppliedJavaScriptAllowed | false | No user JS |
@@ -36,9 +36,9 @@ All preflight, status, policy, sandbox, and evaluator classes are **Remotion-spe
 
 ### Factory Methods
 
-- `disabledDefault()` — everything disabled
-- `manualExperimentDesignOnly()` — manual/experiment flags true, still no execution
-- `futureLocalPocDisabledByDefault()` — same as design-only, for future POC
+- `disabledDefault()` — everything disabled, executionEnabled=false
+- `manualExperimentDesignOnly()` — manual/experiment flags true, executionEnabled=false
+- `futureLocalPocDisabledByDefault()` — same as design-only, executionEnabled=false
 
 ## Sandbox Policy
 
