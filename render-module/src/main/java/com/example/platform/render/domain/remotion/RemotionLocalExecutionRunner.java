@@ -1,6 +1,10 @@
 package com.example.platform.render.domain.remotion;
 
+import com.example.platform.render.app.timeline.compile.RenderCorrelationContext;
+import com.example.platform.render.app.timeline.compile.audit.*;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Remotion local execution runner — skeleton only, disabled by default.
@@ -16,10 +20,26 @@ import java.util.List;
  */
 public class RemotionLocalExecutionRunner {
 
-    private final RemotionExecutionPolicyEvaluator evaluator;
+    private static final Logger log = LoggerFactory.getLogger(RemotionLocalExecutionRunner.class);
 
+    private final RemotionExecutionPolicyEvaluator evaluator;
+    private final RenderAuditRecorder auditRecorder;
+
+    /**
+     * Create runner without audit recorder.
+     */
     public RemotionLocalExecutionRunner() {
+        this(null);
+    }
+
+    /**
+     * Create runner with optional audit recorder.
+     *
+     * @param auditRecorder audit recorder (null-safe, may be null)
+     */
+    public RemotionLocalExecutionRunner(RenderAuditRecorder auditRecorder) {
         this.evaluator = new RemotionExecutionPolicyEvaluator();
+        this.auditRecorder = auditRecorder;
     }
 
     /**
@@ -34,15 +54,19 @@ public class RemotionLocalExecutionRunner {
     public RemotionLocalExecutionResult execute(RemotionLocalExecutionRequest request) {
         // 1. Null request fails closed
         if (request == null) {
-            return RemotionLocalExecutionResult.failedClosed("Request must not be null");
+            RemotionLocalExecutionResult result = RemotionLocalExecutionResult.failedClosed("Request must not be null");
+            emitAuditRejected(null, result, null);
+            return result;
         }
 
         // 2. Unsupported document rejected
         if (request.documentGenerationResult() != null
                 && !request.documentGenerationResult().isGenerated()
                 && request.documentGenerationResult().isRejected()) {
-            return RemotionLocalExecutionResult.rejectedUnsupported(
+            RemotionLocalExecutionResult result = RemotionLocalExecutionResult.rejectedUnsupported(
                     "Document generation rejected: " + request.documentGenerationResult().generationStatus());
+            emitAuditRejected(request, result, null);
+            return result;
         }
 
         // 3. Run preflight evaluation
@@ -55,7 +79,16 @@ public class RemotionLocalExecutionRunner {
                 request.commandPlan());
 
         // 4. Map preflight to execution result
-        return mapPreflightToResult(preflight);
+        RemotionLocalExecutionResult result = mapPreflightToResult(preflight);
+
+        // 5. Emit safe audit event
+        if (result.notImplemented()) {
+            emitAuditNotImplemented(request, result, preflight);
+        } else {
+            emitAuditRejected(request, result, preflight);
+        }
+
+        return result;
     }
 
     private RemotionLocalExecutionResult mapPreflightToResult(RemotionExecutionPreflightResult preflight) {
@@ -75,5 +108,80 @@ public class RemotionLocalExecutionRunner {
             case NOT_IMPLEMENTED -> RemotionLocalExecutionResult.notImplemented(
                     preflight.explanation());
         };
+    }
+
+    /**
+     * Emit safe audit event for rejected/blocked outcomes.
+     */
+    private void emitAuditRejected(RemotionLocalExecutionRequest request,
+                                     RemotionLocalExecutionResult result,
+                                     RemotionExecutionPreflightResult preflight) {
+        if (auditRecorder == null) return;
+        try {
+            RenderAuditEvent.Builder builder = RenderAuditEvent.builder()
+                    .eventType(RenderAuditEventType.PROVIDER_LOCAL_EXECUTION_PRECHECK_REJECTED)
+                    .severity(RenderAuditEventSeverity.WARN)
+                    .providerName("remotion")
+                    .message("Remotion precheck rejected: " + result.status());
+
+            applySafeFields(builder, request, result, preflight);
+            auditRecorder.record(builder.build());
+        } catch (Exception e) {
+            log.warn("Failed to emit Remotion precheck audit event: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Emit safe audit event for not-implemented outcomes.
+     */
+    private void emitAuditNotImplemented(RemotionLocalExecutionRequest request,
+                                           RemotionLocalExecutionResult result,
+                                           RemotionExecutionPreflightResult preflight) {
+        if (auditRecorder == null) return;
+        try {
+            RenderAuditEvent.Builder builder = RenderAuditEvent.builder()
+                    .eventType(RenderAuditEventType.PROVIDER_LOCAL_EXECUTION_NOT_IMPLEMENTED)
+                    .severity(RenderAuditEventSeverity.INFO)
+                    .providerName("remotion")
+                    .message("Remotion execution not implemented: " + result.safeMessage());
+
+            applySafeFields(builder, request, result, preflight);
+            auditRecorder.record(builder.build());
+        } catch (Exception e) {
+            log.warn("Failed to emit Remotion not-implemented audit event: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Apply safe fields to audit event builder. No raw commands, paths, storage internals, or secrets.
+     */
+    private void applySafeFields(RenderAuditEvent.Builder builder,
+                                   RemotionLocalExecutionRequest request,
+                                   RemotionLocalExecutionResult result,
+                                   RemotionExecutionPreflightResult preflight) {
+        // Correlation fields (safe)
+        if (request != null && request.correlationContext() != null) {
+            RenderCorrelationContext corr = request.correlationContext();
+            builder.renderCorrelationId(corr.renderCorrelationId());
+            builder.renderRequestFingerprint(corr.renderRequestFingerprint());
+            builder.timelineRevisionId(corr.timelineRevisionId());
+            builder.providerBindingPlanId(corr.providerBindingPlanId());
+            builder.renderExecutionPlanId(corr.renderExecutionPlanId());
+        }
+
+        // Document fields (safe)
+        if (request != null && request.documentGenerationResult() != null) {
+            var doc = request.documentGenerationResult();
+            builder.sanitizedDetails(
+                    "documentId=" + doc.documentId()
+                    + " documentType=" + doc.documentType()
+                    + " draftId=" + doc.draftId()
+                    + " generationReady=" + doc.generationReady());
+        }
+
+        // Preflight/result status (safe)
+        if (preflight != null && preflight.violations() != null) {
+            builder.artifactGraphId("violations=" + preflight.violations().size());
+        }
     }
 }
