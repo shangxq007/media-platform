@@ -108,7 +108,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
                 new TimelineInputProductResolver(productRuntime), tempDir);
 
         controller = new CaptionTemplateRenderController(
-                service, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                service, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
     }
 
     @Test

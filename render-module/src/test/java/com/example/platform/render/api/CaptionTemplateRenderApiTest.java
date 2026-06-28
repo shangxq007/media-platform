@@ -117,7 +117,7 @@ class CaptionTemplateRenderApiTest {
                 "rj-1", "prod-out-1", CaptionOutputProfileSpec.hd1080p());
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response = controller.render(
                 "tenant-1", "proj-1", validApiRequest());
@@ -134,7 +134,7 @@ class CaptionTemplateRenderApiTest {
                 List.of("text is blank"));
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
 
         CaptionTemplateRenderApiRequest invalidRequest = new CaptionTemplateRenderApiRequest(
                 "prod-1", List.of(new CaptionTemplateSegmentDto(0L, 1000L, "")),
@@ -156,7 +156,7 @@ class CaptionTemplateRenderApiTest {
                 List.of(), "Internal error", Map.of());
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response = controller.render(
                 "tenant-1", "proj-1", validApiRequest());
@@ -174,7 +174,7 @@ class CaptionTemplateRenderApiTest {
                 "rj-1", "prod-out-1", CaptionOutputProfileSpec.hd1080p());
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
         controller.render("tenant-1", "proj-1", validApiRequest());
 
         assertTrue(auditSink.findAll().stream()
@@ -189,7 +189,7 @@ class CaptionTemplateRenderApiTest {
                 "rj-1", "prod-out-1", CaptionOutputProfileSpec.hd1080p());
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
         controller.render("tenant-1", "proj-1", validApiRequest());
 
         assertTrue(auditSink.findAll().stream()
@@ -203,7 +203,7 @@ class CaptionTemplateRenderApiTest {
         mockService.result = CaptionTemplateRenderResult.validationFailed(List.of("error"));
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
         controller.render("tenant-1", "proj-1", validApiRequest());
 
         assertTrue(auditSink.findAll().stream()
@@ -218,7 +218,7 @@ class CaptionTemplateRenderApiTest {
                 "rj-1", null, "FAILED", false, null, List.of(), "error", Map.of());
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
         controller.render("tenant-1", "proj-1", validApiRequest());
 
         assertTrue(auditSink.findAll().stream()
@@ -233,7 +233,7 @@ class CaptionTemplateRenderApiTest {
                 "rj-1", "prod-out-1", CaptionOutputProfileSpec.hd1080p());
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
         controller.render("tenant-1", "proj-1", validApiRequest());
 
         auditSink.findAll().forEach(event -> {
@@ -260,7 +260,7 @@ class CaptionTemplateRenderApiTest {
                 "rj-1", "prod-out-1", CaptionOutputProfileSpec.hd1080p());
 
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
-                mockService, new CaptionTemplateRenderApiMapper(), failingRecorder);
+                mockService, null, new CaptionTemplateRenderApiMapper(), failingRecorder);
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response = controller.render(
                 "tenant-1", "proj-1", validApiRequest());
