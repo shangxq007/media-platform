@@ -68,6 +68,17 @@ public class ProductRepository {
         return r == null ? Optional.empty() : Optional.of(map(r));
     }
 
+    /**
+     * Find products by source timeline revision ID.
+     * Used for render deduplication — no DB migration needed (column exists).
+     */
+    public List<Product> findBySourceTimelineRevisionId(String timelineRevisionId) {
+        return dsl.select().from(table("product"))
+                .where(field("source_timeline_revision_id").eq(timelineRevisionId))
+                .orderBy(field("created_at").desc())
+                .fetch().map(ProductRepository::map);
+    }
+
     private static Product map(Record r) {
         return new Product(
                 r.get(field("product_id", String.class)), r.get(field("tenant_id", String.class)),

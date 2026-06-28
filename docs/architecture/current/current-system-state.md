@@ -226,7 +226,7 @@ owner: platform
 | Documentation | `docs/review/openfx-capability-model-reservation.md` |
 | Future work | OFX host integration (Natron or custom host) |
 
-## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+) + Local Runner (N7)
+## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+) + Local Runner (N7) + Plan-Based Switch (N7.1) + Idempotency (N7.2)
 
 | Component | Status | Location |
 |-----------|--------|----------|
@@ -258,6 +258,17 @@ owner: platform
 | Execution Plan Golden Fixture Tests | ✅ 7 tests | `RenderExecutionPlanGoldenFixtureTest` |
 | Local Execution Plan Runner Tests | ✅ 8 tests | `LocalExecutionPlanRunnerTest` |
 | Plan-Based Render Smoke Tests | ✅ 5 tests | `PlanBasedTimelineRevisionRenderSmokeTest` |
+| TimelineRenderExecutionMode | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| TimelineRenderExecutionProperties | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| TimelineRevisionRenderFacade | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| Render Facade Tests | ✅ 6 tests | `TimelineRevisionRenderFacadeTest` |
+| Execution Mode Tests | ✅ 6 tests | `TimelineRevisionRenderExecutionModeTest` |
+| Plan-Based Switch Doc | ✅ Defined | `docs/review/timeline-render-plan-based-switch-v0.md` |
+| RenderRequestFingerprint | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| RenderDeduplicationService | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| Fingerprint Tests | ✅ 9 tests | `RenderRequestFingerprintGeneratorTest` |
+| Dedup Service Tests | ✅ 8 tests | `RenderDeduplicationServiceTest` |
+| Render Idempotency Doc | ✅ Defined | `docs/review/render-request-idempotency-v0.md` |
 | Provider Binding Compile Doc | ✅ Defined | `docs/review/provider-binding-compile-v0.md` |
 | Render Execution Plan Doc | ✅ Defined | `docs/review/render-execution-plan-v0.md` |
 | Local Execution Plan Runner Doc | ✅ Defined | `docs/review/local-execution-plan-runner-v0.md` |

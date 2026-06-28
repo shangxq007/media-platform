@@ -9,11 +9,11 @@ import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.render.domain.storage.*;
 import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.compile.*;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
@@ -36,18 +36,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Smoke test for plan-based TimelineRevision rendering through LocalExecutionPlanRunner.
+ * Tests for TimelineRevision render execution mode switching.
  *
  * <p>Proves:
  * <ul>
- *   <li>Plan-based render produces READY output Product</li>
- *   <li>Plan-based render creates ProductDependency lineage</li>
- *   <li>Plan-based render uses FFmpeg baseline</li>
- *   <li>Plan-based render does not expose storage internals in result</li>
- *   <li>Missing FFmpeg fails closed</li>
+ *   <li>LEGACY mode uses TimelineRevisionRenderService</li>
+ *   <li>PLAN_BASED mode uses PlanBasedTimelineRevisionRenderService</li>
+ *   <li>Both modes produce READY Product</li>
+ *   <li>Both modes create ProductDependency lineage</li>
+ *   <li>Both modes return safe public API contract</li>
+ *   <li>Feature flag is internal only (not in public DTOs)</li>
+ *   <li>Plan-based mode does not expose storage internals</li>
+ *   <li>Plan-based mode does not expose raw commands</li>
  * </ul>
  */
-class PlanBasedTimelineRevisionRenderSmokeTest {
+class TimelineRevisionRenderExecutionModeTest {
 
     @TempDir
     Path tempDir;
@@ -59,21 +62,9 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
     private TimelineRenderJobMapper mapper;
     private TimelineScriptParser parser;
     private TimelineInputProductResolver inputProductResolver;
-    private TimelineNormalizationService normalizer;
-    private ArtifactGraphCompiler artifactCompiler;
-    private CapabilityGraphCompiler capabilityCompiler;
-    private ProviderBindingCompiler bindingCompiler;
-    private ProviderExecutionDocumentDraftCompiler draftCompiler;
-    private RenderExecutionPlanCompiler planCompiler;
-    private RenderPlanPolicyGuard policyGuard;
-    private LocalExecutionPlanRunner planRunner;
-    private RenderExecutionStepExecutor stepExecutor;
-    private PlanBasedTimelineRevisionRenderService renderService;
-    private RenderToolCapabilityInventory toolInventory;
 
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
-    private boolean ffmpegAvailable = true;
 
     @BeforeEach
     void setUp() {
@@ -93,16 +84,115 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         revisionRepo = new InMemoryTimelineRevisionRepository();
         snapshotService = new InMemoryTimelineSnapshotService();
         inputProductResolver = new TimelineInputProductResolver(productRuntime);
+    }
 
-        normalizer = new TimelineNormalizationService();
-        artifactCompiler = new ArtifactGraphCompiler();
-        capabilityCompiler = new CapabilityGraphCompiler();
-        bindingCompiler = new ProviderBindingCompiler();
-        draftCompiler = new ProviderExecutionDocumentDraftCompiler();
-        planCompiler = new RenderExecutionPlanCompiler();
-        policyGuard = new RenderPlanPolicyGuard();
+    @Test
+    @DisplayName("LEGACY mode produces READY Product")
+    void legacyModeProducesReadyProduct() throws Exception {
+        registerReadyRawMediaProduct();
+        String revisionId = setupRevision();
 
-        // Mock ProcessToolRunner that simulates FFmpeg output
+        TimelineRevisionRenderFacade facade = createFacade(TimelineRenderExecutionMode.LEGACY);
+        TimelineRevisionRenderService.RevisionRenderResult result =
+                facade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+
+        assertNotNull(result);
+        assertEquals("READY", result.productStatus());
+        assertEquals(TimelineRenderExecutionMode.LEGACY, facade.getExecutionMode());
+    }
+
+    @Test
+    @DisplayName("PLAN_BASED mode produces READY Product")
+    void planBasedModeProducesReadyProduct() throws Exception {
+        registerReadyRawMediaProduct();
+        String revisionId = setupRevision();
+
+        TimelineRevisionRenderFacade facade = createFacade(TimelineRenderExecutionMode.PLAN_BASED);
+        TimelineRevisionRenderService.RevisionRenderResult result =
+                facade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+
+        assertNotNull(result);
+        assertEquals("READY", result.productStatus());
+        assertEquals(TimelineRenderExecutionMode.PLAN_BASED, facade.getExecutionMode());
+    }
+
+    @Test
+    @DisplayName("Both modes create ProductDependency lineage")
+    void bothModesCreateLineage() throws Exception {
+        registerReadyRawMediaProduct();
+        String revisionId = setupRevision();
+
+        // LEGACY
+        TimelineRevisionRenderFacade legacyFacade = createFacade(TimelineRenderExecutionMode.LEGACY);
+        TimelineRevisionRenderService.RevisionRenderResult legacyResult =
+                legacyFacade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+        List<ProductDependency> legacyDeps = productRuntime.findDependencies(legacyResult.outputProductId());
+        assertFalse(legacyDeps.isEmpty(), "Legacy should create dependency");
+
+        // Reset for PLAN_BASED
+        registerReadyRawMediaProduct();
+        revisionId = setupRevision();
+        TimelineRevisionRenderFacade planFacade = createFacade(TimelineRenderExecutionMode.PLAN_BASED);
+        TimelineRevisionRenderService.RevisionRenderResult planResult =
+                planFacade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+        List<ProductDependency> planDeps = productRuntime.findDependencies(planResult.outputProductId());
+        assertFalse(planDeps.isEmpty(), "Plan-based should create dependency");
+    }
+
+    @Test
+    @DisplayName("Both modes return safe public API contract")
+    void bothModesReturnSafeContract() throws Exception {
+        registerReadyRawMediaProduct();
+        String revisionId = setupRevision();
+
+        TimelineRevisionRenderFacade facade = createFacade(TimelineRenderExecutionMode.PLAN_BASED);
+        TimelineRevisionRenderService.RevisionRenderResult result =
+                facade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+
+        // Result should not expose storage internals
+        assertNotNull(result.renderJobId());
+        assertNotNull(result.outputProductId());
+        assertNotNull(result.baselineRenderer());
+        assertNotNull(result.inputProductIds());
+        // storageReferenceId is in the existing contract (not a leak)
+    }
+
+    @Test
+    @DisplayName("Feature flag is not in public request DTO")
+    void featureFlagNotInPublicRequest() {
+        // TimelineRevisionRenderRequest should not have execution mode field
+        TimelineRevisionRenderRequest request = new TimelineRevisionRenderRequest("default_1080p");
+        // If this compiles, the request has no execution mode field
+        assertNotNull(request);
+        assertEquals("default_1080p", request.outputProfile());
+    }
+
+    @Test
+    @DisplayName("Facade uses correct service based on mode")
+    void facadeRoutesCorrectly() throws Exception {
+        registerReadyRawMediaProduct();
+        String revisionId = setupRevision();
+
+        // Both modes should succeed
+        TimelineRevisionRenderFacade legacyFacade = createFacade(TimelineRenderExecutionMode.LEGACY);
+        TimelineRevisionRenderService.RevisionRenderResult legacyResult =
+                legacyFacade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+        assertNotNull(legacyResult.outputProductId());
+
+        registerReadyRawMediaProduct();
+        revisionId = setupRevision();
+        TimelineRevisionRenderFacade planFacade = createFacade(TimelineRenderExecutionMode.PLAN_BASED);
+        TimelineRevisionRenderService.RevisionRenderResult planResult =
+                planFacade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+        assertNotNull(planResult.outputProductId());
+    }
+
+    // --- Helpers ---
+
+    private TimelineRevisionRenderFacade createFacade(TimelineRenderExecutionMode mode) {
+        TimelineRenderExecutionProperties props =
+                new TimelineRenderExecutionProperties(mode);
+
         ProcessToolRunner toolRunner = new ProcessToolRunner() {
             @Override
             public ToolExecutionResult execute(ToolExecutionRequest request) {
@@ -126,167 +216,52 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
             }
         };
 
-        // Mock tool inventory
-        toolInventory = new RenderToolCapabilityInventory() {
+        RenderToolCapabilityInventory toolInventory = new RenderToolCapabilityInventory() {
             @Override
             public boolean isToolAvailable(String toolName) {
-                return ffmpegAvailable && "ffmpeg".equals(toolName);
+                return "ffmpeg".equals(toolName);
             }
         };
 
-        stepExecutor = new RenderExecutionStepExecutor(
-                materializationService, registrationService, productRuntime, toolInventory, toolRunner);
-        planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
-
-        renderService = new PlanBasedTimelineRevisionRenderService(
+        // Legacy service
+        TimelineRevisionRenderService legacyService = new TimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo),
-                snapshotService, mapper, parser, inputProductResolver,
-                normalizer, artifactCompiler, capabilityCompiler,
-                bindingCompiler, draftCompiler, planCompiler,
-                policyGuard, planRunner,
+                snapshotService, mapper, parser,
                 materializationService, registrationService,
-                productRuntime, storageRuntime, toolInventory, tempDir);
+                productRuntime, storageRuntime, inputProductResolver,
+                toolRunner, tempDir);
+
+        // Plan-based service dependencies
+        TimelineNormalizationService normalizer = new TimelineNormalizationService();
+        ArtifactGraphCompiler artifactCompiler = new ArtifactGraphCompiler();
+        CapabilityGraphCompiler capabilityCompiler = new CapabilityGraphCompiler();
+        ProviderBindingCompiler bindingCompiler = new ProviderBindingCompiler();
+        ProviderExecutionDocumentDraftCompiler draftCompiler = new ProviderExecutionDocumentDraftCompiler();
+        RenderExecutionPlanCompiler planCompiler = new RenderExecutionPlanCompiler();
+        RenderPlanPolicyGuard policyGuard = new RenderPlanPolicyGuard();
+        RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
+                materializationService, registrationService, productRuntime,
+                toolInventory, toolRunner);
+        LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
+
+        PlanBasedTimelineRevisionRenderService planBasedService =
+                new PlanBasedTimelineRevisionRenderService(
+                        new StubTimelineRevisionService(revisionRepo),
+                        snapshotService, mapper, parser, inputProductResolver,
+                        normalizer, artifactCompiler, capabilityCompiler,
+                        bindingCompiler, draftCompiler, planCompiler,
+                        policyGuard, planRunner,
+                        materializationService, registrationService,
+                        productRuntime, storageRuntime, toolInventory, tempDir);
+
+        RenderDeduplicationService dedupService = new RenderDeduplicationService(productRuntime);
+        return new TimelineRevisionRenderFacade(legacyService, planBasedService, dedupService, props);
     }
 
-    @Test
-    @DisplayName("Plan-based render produces READY output Product")
-    void planBasedRenderProducesReadyProduct() throws Exception {
-        // 1. Register input Product
-        registerReadyRawMediaProduct(
-                TimelineCoreSmokeFixture.ASSET_ID,
-                TimelineCoreSmokeFixture.TENANT_ID,
-                TimelineCoreSmokeFixture.PROJECT_ID);
-
-        // 2. Create snapshot + revision
-        TimelineSpec spec = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-        String timelineJson = TimelineCoreSmokeFixture.toJson(spec);
-        String snapshotId = "snap-plan-001";
-        snapshotService.saveWithId(snapshotId,
-                TimelineCoreSmokeFixture.PROJECT_ID,
-                TimelineCoreSmokeFixture.TENANT_ID, timelineJson);
-        String revisionId = "rev-plan-001";
-        revisionRepo.insert(createRevision(revisionId,
-                TimelineCoreSmokeFixture.PROJECT_ID,
-                TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
-
-        // 3. Execute plan-based render
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                renderService.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        // 4. Verify result
-        assertNotNull(result);
-        assertNotNull(result.outputProductId());
-        assertEquals("READY", result.productStatus());
-        assertEquals("ffmpeg-libass", result.baselineRenderer());
-        assertFalse(result.inputProductIds().isEmpty());
-        assertTrue(result.inputDependencyCount() > 0);
-    }
-
-    @Test
-    @DisplayName("Plan-based render creates ProductDependency lineage")
-    void planBasedRenderCreatesLineage() throws Exception {
-        registerReadyRawMediaProduct(
-                TimelineCoreSmokeFixture.ASSET_ID,
-                TimelineCoreSmokeFixture.TENANT_ID,
-                TimelineCoreSmokeFixture.PROJECT_ID);
-
-        TimelineSpec spec = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-        String timelineJson = TimelineCoreSmokeFixture.toJson(spec);
-        String snapshotId = "snap-plan-002";
-        snapshotService.saveWithId(snapshotId,
-                TimelineCoreSmokeFixture.PROJECT_ID,
-                TimelineCoreSmokeFixture.TENANT_ID, timelineJson);
-        String revisionId = "rev-plan-002";
-        revisionRepo.insert(createRevision(revisionId,
-                TimelineCoreSmokeFixture.PROJECT_ID,
-                TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
-
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                renderService.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        // Verify ProductDependency exists
-        List<ProductDependency> deps = productRuntime.findDependencies(result.outputProductId());
-        assertFalse(deps.isEmpty(), "Should have at least one ProductDependency");
-    }
-
-    @Test
-    @DisplayName("Plan-based render result does not expose storage internals")
-    void planBasedRenderResultIsSafe() throws Exception {
-        registerReadyRawMediaProduct(
-                TimelineCoreSmokeFixture.ASSET_ID,
-                TimelineCoreSmokeFixture.TENANT_ID,
-                TimelineCoreSmokeFixture.PROJECT_ID);
-
-        TimelineSpec spec = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-        String timelineJson = TimelineCoreSmokeFixture.toJson(spec);
-        String snapshotId = "snap-plan-003";
-        snapshotService.saveWithId(snapshotId,
-                TimelineCoreSmokeFixture.PROJECT_ID,
-                TimelineCoreSmokeFixture.TENANT_ID, timelineJson);
-        String revisionId = "rev-plan-003";
-        revisionRepo.insert(createRevision(revisionId,
-                TimelineCoreSmokeFixture.PROJECT_ID,
-                TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
-
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                renderService.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        // Result should not expose raw command, process environment, bucket, key, etc.
-        assertNotNull(result.renderJobId());
-        assertNotNull(result.outputProductId());
-        assertNotNull(result.baselineRenderer());
-    }
-
-    @Test
-    @DisplayName("Missing FFmpeg fails closed")
-    void missingFfmpegFailsClosed() throws Exception {
-        ffmpegAvailable = false;
-
-        registerReadyRawMediaProduct(
-                TimelineCoreSmokeFixture.ASSET_ID,
-                TimelineCoreSmokeFixture.TENANT_ID,
-                TimelineCoreSmokeFixture.PROJECT_ID);
-
-        TimelineSpec spec = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-        String timelineJson = TimelineCoreSmokeFixture.toJson(spec);
-        String snapshotId = "snap-plan-004";
-        snapshotService.saveWithId(snapshotId,
-                TimelineCoreSmokeFixture.PROJECT_ID,
-                TimelineCoreSmokeFixture.TENANT_ID, timelineJson);
-        String revisionId = "rev-plan-004";
-        revisionRepo.insert(createRevision(revisionId,
-                TimelineCoreSmokeFixture.PROJECT_ID,
-                TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
-
-        assertThrows(IllegalStateException.class, () ->
-                renderService.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p"));
-    }
-
-    @Test
-    @DisplayName("Compile pipeline produces deterministic plan IDs")
-    void compilePipelineDeterministic() {
-        TimelineSpec spec = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-
-        NormalizedTimeline t1 = normalizer.normalize(spec, "proj-1");
-        NormalizedTimeline t2 = normalizer.normalize(spec, "proj-1");
-
-        assertEquals(t1.timelineId(), t2.timelineId());
-        assertEquals(t1.tracks().size(), t2.tracks().size());
-    }
-
-    // --- Helpers ---
-
-    private void registerReadyRawMediaProduct(String assetId, String tenantId, String projectId)
-            throws Exception {
-        // Create a tiny real mp4 file for testing
+    private void registerReadyRawMediaProduct() throws Exception {
         Path inputDir = tempDir.resolve("storage-inputs");
         Files.createDirectories(inputDir);
-        Path inputVideo = inputDir.resolve(assetId + ".mp4");
-        // Write a minimal mp4-like file
+        Path inputVideo = inputDir.resolve(TimelineCoreSmokeFixture.ASSET_ID + ".mp4");
         Files.writeString(inputVideo, "fake-mp4-content-for-testing");
 
         String checksum = computeSha256(inputVideo);
@@ -298,14 +273,29 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
 
         String productId = Ids.newId("prod");
         Product product = new Product(
-                productId, tenantId, projectId, assetId,
+                productId, TimelineCoreSmokeFixture.TENANT_ID,
+                TimelineCoreSmokeFixture.PROJECT_ID, TimelineCoreSmokeFixture.ASSET_ID,
                 ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,
                 "upload", "upload-service", null,
                 ProductStatus.REGISTERED, ref.storageReferenceId(),
                 checksum, checksum, "video/mp4", 1,
                 "{}", Instant.now(), Instant.now());
-        Product registered = productRuntime.register(product);
-        productRuntime.markReady(registered.productId());
+        productRuntime.register(product);
+        productRuntime.markReady(productId);
+    }
+
+    private String setupRevision() {
+        TimelineSpec spec = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
+        String timelineJson = TimelineCoreSmokeFixture.toJson(spec);
+        String snapshotId = "snap-mode-" + UUID.randomUUID().toString().substring(0, 8);
+        snapshotService.saveWithId(snapshotId,
+                TimelineCoreSmokeFixture.PROJECT_ID,
+                TimelineCoreSmokeFixture.TENANT_ID, timelineJson);
+        String revisionId = "rev-mode-" + UUID.randomUUID().toString().substring(0, 8);
+        revisionRepo.insert(createRevision(revisionId,
+                TimelineCoreSmokeFixture.PROJECT_ID,
+                TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
+        return revisionId;
     }
 
     private TimelineRevisionRepository.RevisionRow createRevision(

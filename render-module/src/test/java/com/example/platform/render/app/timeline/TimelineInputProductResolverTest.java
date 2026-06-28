@@ -398,6 +398,13 @@ class TimelineInputProductResolverTest {
                     .filter(p -> p.productType() == type)
                     .findFirst();
         }
+
+        @Override
+        public List<Product> findBySourceTimelineRevisionId(String timelineRevisionId) {
+            return store.values().stream()
+                    .filter(p -> timelineRevisionId.equals(p.sourceTimelineRevisionId()))
+                    .toList();
+        }
     }
 
     static class InMemoryProductDependencyRepository extends ProductDependencyRepository {

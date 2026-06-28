@@ -47,6 +47,9 @@ public class ProductRuntimeService {
     public Optional<Product> findLatest(String assetId, ProductType type) { return repo.findLatest(assetId, type); }
     public List<Product> findByAsset(String assetId) { return repo.findByAsset(assetId); }
     public List<Product> findByProject(String projectId, int limit) { return repo.findByProject(projectId, limit); }
+    public List<Product> findBySourceTimelineRevisionId(String timelineRevisionId) {
+        return repo.findBySourceTimelineRevisionId(timelineRevisionId);
+    }
 
     @Transactional
     public ProductDependency linkDependency(String productId, String dependsOnId,
