@@ -1,6 +1,6 @@
 ---
 status: current
-last_verified: 2026-06-22
+last_verified: 2026-06-28
 scope: preview
 truth_level: implemented
 owner: platform
@@ -8,7 +8,7 @@ owner: platform
 
 # Current System State
 
-> **Last validated:** 2026-06-22 (Source of Truth Validation)
+> **Last validated:** 2026-06-28 (Source of Truth Validation)
 
 ## 1. Validated Startup Profiles
 
@@ -226,7 +226,7 @@ owner: platform
 | Documentation | `docs/review/openfx-capability-model-reservation.md` |
 | Future work | OFX host integration (Natron or custom host) |
 
-## 8. Timeline DAG Foundation (N4+)
+## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+)
 
 | Component | Status | Location |
 |-----------|--------|----------|
@@ -238,9 +238,24 @@ owner: platform
 | LogicalCapabilityGraph v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/` |
 | CapabilityGraphCompiler | ✅ Implemented | `render-module/.../app/timeline/compile/` |
 | ProviderExecutionDocument | ✅ Reserved | `docs/review/provider-execution-document-model.md` |
-| Golden Fixture Tests | ✅ 10 tests | `TimelineCompileGoldenFixtureTest` |
-| ProviderBindingPlan | ❌ Future work | Not implemented |
-| RenderExecutionPlan | ❌ Future work | Not implemented |
+| ProviderBindingPlan v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/binding/` |
+| ProviderBindingCompiler | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| ProviderExecutionDocumentDraft v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/execution/` |
+| ProviderExecutionDocumentDraftCompiler | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| RenderExecutionPlan v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/executionplan/` |
+| RenderExecutionPlanCompiler | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| RenderPlanPolicyGuard v0 | ✅ Implemented | `render-module/.../app/timeline/compile/` |
+| Execution Policy v0 | ✅ Implemented | `render-module/.../domain/timeline/compile/executionplan/` |
+| Golden Fixture Tests (N4+) | ✅ 10 tests | `TimelineCompileGoldenFixtureTest` |
+| Binding Compiler Tests | ✅ 12 tests | `ProviderBindingCompilerTest` |
+| Execution Draft Tests | ✅ 8 tests | `ProviderExecutionDocumentDraftCompilerTest` |
+| Binding Golden Fixture Tests | ✅ 8 tests | `ProviderBindingGoldenFixtureTest` |
+| Execution Plan Compiler Tests | ✅ 12 tests | `RenderExecutionPlanCompilerTest` |
+| Policy Guard Tests | ✅ 12 tests | `RenderPlanPolicyGuardTest` |
+| Execution Plan Golden Fixture Tests | ✅ 7 tests | `RenderExecutionPlanGoldenFixtureTest` |
+| Provider Binding Compile Doc | ✅ Defined | `docs/review/provider-binding-compile-v0.md` |
+| Render Execution Plan Doc | ✅ Defined | `docs/review/render-execution-plan-v0.md` |
+| LocalExecutionPlanRunner | ❌ Future work | Not implemented |
 
 **Compile Pipeline v0:**
 ```text
@@ -248,16 +263,25 @@ TimelineRevision
 → NormalizedTimeline (deterministic, provider-neutral)
 → ArtifactDependencyGraph (deterministic, acyclic, provider-neutral)
 → LogicalCapabilityGraph (deterministic, provider-neutral)
-→ [future: ProviderBindingPlan]
-→ [future: ProviderExecutionDocument]
-→ [future: RenderExecutionPlan]
+→ ProviderBindingPlan (deterministic, provider-bound, mode-aware)
+→ List<ProviderExecutionDocumentDraft> (planning artifacts, generationReady=false)
+→ RenderExecutionPlan (deterministic, step plan, executionReady=false)
+→ RenderPlanPolicyResult (validation verdict, VALID_FOR_DRY_RUN)
+→ [future: LocalExecutionPlanRunner / OpenCue submit]
 ```
 
 **Key Constraints:**
 - v0 supports single-clip, single-track timelines deterministically
 - Multi-clip/multi-track produces valid graph but single-primary-input render only
 - Clip effects fail closed (unsupported in v0)
-- No provider binding, no command generation, no public API changes
+- Provider binding is internal only — no provider names in public APIs
+- Execution document drafts are planning artifacts only — no command generation
+- RenderExecutionPlan is internal only — all steps are placeholders (executionReady=false)
+- RenderPlanPolicyGuard validates plans against 14 safety constraints
+- FFmpeg remains the only PRODUCTION baseline provider
+- Non-FFmpeg providers remain POC/SPIKE/HOLD/OPTIONAL
+- LocalExecutionPlanRunner (actual execution) remains future work
+- OpenCue submit remains future work
 
 ## References
 

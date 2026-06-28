@@ -175,19 +175,34 @@ All compile tests pass:
 
 ## Non-Goals Achieved
 
-- ❌ No ProviderBindingPlan implementation
-- ❌ No RenderExecutionPlan execution
 - ❌ No real provider rendering
+- ❌ No real command generation
 - ❌ No OpenCue submit
 - ❌ No public API changes
 - ❌ No DB migration
 - ❌ No provider/backend/storage internals exposed
 
+## Completed in N5+ (Provider Binding)
+
+- ✅ ProviderBindingPlan v0 — internal binding model with mode-aware eligibility
+- ✅ ProviderBindingCompiler — LogicalCapabilityGraph → ProviderBindingPlan
+- ✅ ProviderExecutionDocumentDraft v0 — planning artifacts (generationReady=false)
+- ✅ ProviderExecutionDocumentDraftCompiler — plan → draft list
+- ✅ 28 tests (12 binding, 8 execution draft, 8 golden fixtures)
+
+## Completed in N6+ (Execution Plan)
+
+- ✅ RenderExecutionPlan v0 — deterministic step planning (executionReady=false)
+- ✅ RenderExecutionPlanCompiler — ProviderBindingPlan → RenderExecutionPlan
+- ✅ RenderPlanPolicyGuard v0 — 14 safety constraint checks
+- ✅ ExecutionPolicy v0 — PRODUCTION/MANUAL/EXPERIMENT/DRY_RUN modes
+- ✅ 31 tests (12 plan compiler, 12 policy guard, 7 golden fixtures)
+
 ## Follow-up Items
 
-1. **ProviderBindingPlan** — Select provider per artifact node based on capability requirements
-2. **ProviderExecutionDocument generation** — Create provider-specific execution documents
-3. **RenderExecutionPlan** — Orchestrate execution across providers
+1. **LocalExecutionPlanRunner** — Actually execute plans locally (FFmpeg baseline)
+2. **ProviderExecutionDocument generation** — Create real provider-specific execution documents
+3. **OpenCue submit** — Submit execution plans to OpenCue cluster
 4. **Multi-clip/multi-input support** — Extend v0 for multi-track compositing
 5. **Effect compilation** — Support clip effects in compile pipeline
 6. **Cache/incremental render** — Leverage artifact graph for cache invalidation
