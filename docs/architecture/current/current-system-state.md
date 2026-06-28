@@ -226,7 +226,7 @@ owner: platform
 | Documentation | `docs/review/openfx-capability-model-reservation.md` |
 | Future work | OFX host integration (Natron or custom host) |
 
-## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+) + Local Runner (N7) + Plan-Based Switch (N7.1) + Idempotency (N7.2) + PLAN_BASED Default (N7.4)
+## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+) + Local Runner (N7) + Plan-Based Switch (N7.1) + Idempotency (N7.2) + PLAN_BASED Default (N7.4) + Stabilization (N7.5)
 
 | Component | Status | Location |
 |-----------|--------|----------|
