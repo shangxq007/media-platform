@@ -49,6 +49,7 @@ public class RenderToolCapabilityInventory {
         entries.add(detectTool("MP4Box", "MP4Box", "-version"));
         entries.add(detectTool("node", "node", "--version"));
         entries.add(detectTool("npm", "npm", "--version"));
+        entries.add(detectTool("npx", "npx", "--version"));
         entries.add(detectTool("python3", "python3", "--version"));
 
         return entries;
