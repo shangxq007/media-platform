@@ -66,6 +66,7 @@ public class PlanBasedTimelineRevisionRenderService {
     private final RenderToolCapabilityInventory toolInventory;
     private final Path storageRoot;
     private final RenderAuditRecorder auditRecorder;
+    private final com.example.platform.render.domain.timeline.compile.remotion.ProviderExecutionDocumentGenerationService docGenerationService;
 
     public PlanBasedTimelineRevisionRenderService(
             TimelineRevisionService revisionService,
@@ -135,6 +136,7 @@ public class PlanBasedTimelineRevisionRenderService {
         this.toolInventory = toolInventory;
         this.storageRoot = storageRoot;
         this.auditRecorder = auditRecorder;
+        this.docGenerationService = new com.example.platform.render.domain.timeline.compile.remotion.ProviderExecutionDocumentGenerationService();
     }
 
     /**
@@ -239,6 +241,22 @@ public class PlanBasedTimelineRevisionRenderService {
                 "Provider binding completed: " + bindingPlan.planId());
 
         List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
+
+        // 6b. Generate execution documents for drafts (diagnostic/planning only)
+        var docResults = docGenerationService.generate(drafts, timeline);
+        for (var docResult : docResults) {
+            if (docResult.isGenerated()) {
+                emitAudit(RenderAuditEventType.PROVIDER_EXECUTION_DOCUMENT_GENERATED, corr,
+                        "Document generated: provider=" + docResult.providerName()
+                                + " type=" + docResult.documentType()
+                                + " ready=" + docResult.generationReady());
+            } else if (docResult.isRejected()) {
+                emitAudit(RenderAuditEventType.PROVIDER_EXECUTION_DOCUMENT_REJECTED, corr,
+                        "Document rejected: provider=" + docResult.providerName()
+                                + " type=" + docResult.documentType()
+                                + " issues=" + docResult.validationIssues());
+            }
+        }
 
         // 7. Compile execution plan
         RenderExecutionPlan executionPlan = planCompiler.compile(
