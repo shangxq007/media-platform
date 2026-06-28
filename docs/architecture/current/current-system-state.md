@@ -226,7 +226,7 @@ owner: platform
 | Documentation | `docs/review/openfx-capability-model-reservation.md` |
 | Future work | OFX host integration (Natron or custom host) |
 
-## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+) + Local Runner (N7) + Plan-Based Switch (N7.1) + Idempotency (N7.2)
+## 8. Timeline DAG Foundation (N4+) + Provider Binding (N5+) + Execution Plan (N6+) + Local Runner (N7) + Plan-Based Switch (N7.1) + Idempotency (N7.2) + PLAN_BASED Default (N7.4)
 
 | Component | Status | Location |
 |-----------|--------|----------|
@@ -298,6 +298,8 @@ TimelineRevision
 - FFmpeg remains the only PRODUCTION baseline provider
 - Non-FFmpeg providers remain POC/SPIKE/HOLD/OPTIONAL and are not executable
 - LocalExecutionPlanRunner is internal only
+- PLAN_BASED is now the default execution mode (was LEGACY)
+- LEGACY remains available via config: `media.render.timeline.execution-mode: LEGACY`
 - OpenCue submit remains future work
 - Execution document drafts are planning artifacts only — no command generation
 - RenderExecutionPlan is internal only — all steps are placeholders (executionReady=false)

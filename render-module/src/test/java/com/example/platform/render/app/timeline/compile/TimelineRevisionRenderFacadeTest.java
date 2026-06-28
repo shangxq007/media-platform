@@ -13,12 +13,12 @@ class TimelineRevisionRenderFacadeTest {
             new RenderAuditRecorder(new NoopRenderAuditEventSink());
 
     @Test
-    @DisplayName("Default properties use LEGACY mode")
-    void defaultPropertiesUseLegacy() {
+    @DisplayName("Default properties use PLAN_BASED mode")
+    void defaultPropertiesUsePlanBased() {
         TimelineRenderExecutionProperties props = TimelineRenderExecutionProperties.defaults();
-        assertEquals(TimelineRenderExecutionMode.LEGACY, props.executionMode());
-        assertTrue(props.isLegacyEnabled());
-        assertFalse(props.isPlanBasedEnabled());
+        assertEquals(TimelineRenderExecutionMode.PLAN_BASED, props.executionMode());
+        assertTrue(props.isPlanBasedEnabled());
+        assertFalse(props.isLegacyEnabled());
     }
 
     @Test
@@ -38,8 +38,10 @@ class TimelineRevisionRenderFacadeTest {
         legacy.result = createTestResult();
         MockPlanBasedService planBased = new MockPlanBasedService();
         MockDedupService dedup = new MockDedupService();
+        TimelineRenderExecutionProperties legacyProps =
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY);
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
-                legacy, planBased, dedup, TimelineRenderExecutionProperties.defaults(), auditRecorder);
+                legacy, planBased, dedup, legacyProps, auditRecorder);
         facade.render("proj-1", "rev-1", "default_1080p");
         assertTrue(legacy.called);
         assertFalse(planBased.called);
@@ -69,9 +71,11 @@ class TimelineRevisionRenderFacadeTest {
         MockPlanBasedService planBased = new MockPlanBasedService();
         planBased.result = expectedResult;
         MockDedupService dedup = new MockDedupService();
+        TimelineRenderExecutionProperties legacyProps =
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY);
 
         TimelineRevisionRenderFacade legacyFacade = new TimelineRevisionRenderFacade(
-                legacy, planBased, dedup, TimelineRenderExecutionProperties.defaults(), auditRecorder);
+                legacy, planBased, dedup, legacyProps, auditRecorder);
         TimelineRevisionRenderService.RevisionRenderResult legacyResult =
                 legacyFacade.render("proj-1", "rev-1", "default_1080p");
 
@@ -93,12 +97,12 @@ class TimelineRevisionRenderFacadeTest {
         MockDedupService dedup = new MockDedupService();
 
         TimelineRevisionRenderFacade legacyFacade = new TimelineRevisionRenderFacade(
-                legacy, planBased, dedup, TimelineRenderExecutionProperties.defaults(), auditRecorder);
+                legacy, planBased, dedup,
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY), auditRecorder);
         assertFalse(legacyFacade.isPlanBasedEnabled());
 
         TimelineRevisionRenderFacade planFacade = new TimelineRevisionRenderFacade(
-                legacy, planBased, dedup,
-                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.PLAN_BASED), auditRecorder);
+                legacy, planBased, dedup, TimelineRenderExecutionProperties.defaults(), auditRecorder);
         assertTrue(planFacade.isPlanBasedEnabled());
     }
 
@@ -141,7 +145,7 @@ class TimelineRevisionRenderFacadeTest {
         MockDedupService dedup = new MockDedupService();
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
                 legacy, new MockPlanBasedService(), dedup,
-                TimelineRenderExecutionProperties.defaults(), recorder);
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY), recorder);
         facade.render("proj-1", "rev-1", "default_1080p");
         List<RenderAuditEvent> events = sink.findAll();
         assertTrue(events.stream().anyMatch(e -> e.eventType() == RenderAuditEventType.RENDER_REQUEST_RECEIVED));

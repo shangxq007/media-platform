@@ -9,25 +9,26 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * <p>Usage in application.yml/application.properties:
  * <pre>
- * media.render.timeline.execution-mode: PLAN_BASED
+ * media.render.timeline.execution-mode: PLAN_BASED  # default
+ * media.render.timeline.execution-mode: LEGACY       # rollback
  * </pre>
  *
- * <p>Default is LEGACY for safe backward compatibility.</p>
+ * <p>Default is PLAN_BASED. Set to LEGACY for rollback.</p>
  */
 @ConfigurationProperties(prefix = "media.render.timeline")
 public record TimelineRenderExecutionProperties(
         /**
          * Execution mode for TimelineRevision rendering.
-         * Default: LEGACY (safe, backward-compatible).
-         * Set to PLAN_BASED to use the compile pipeline + LocalExecutionPlanRunner.
+         * Default: PLAN_BASED (compile pipeline + LocalExecutionPlanRunner).
+         * Set to LEGACY for rollback to direct FFmpeg path.
          */
         TimelineRenderExecutionMode executionMode) {
 
     /**
-     * Default properties with LEGACY mode.
+     * Default properties with PLAN_BASED mode.
      */
     public static TimelineRenderExecutionProperties defaults() {
-        return new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY);
+        return new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.PLAN_BASED);
     }
 
     /**

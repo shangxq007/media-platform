@@ -17,10 +17,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class PlanBasedDefaultReadinessTest {
 
     @Test
-    @DisplayName("Default execution mode is LEGACY")
-    void defaultModeIsLegacy() {
+    @DisplayName("Default execution mode is PLAN_BASED")
+    void defaultModeIsPlanBased() {
         TimelineRenderExecutionProperties props = TimelineRenderExecutionProperties.defaults();
-        assertEquals(TimelineRenderExecutionMode.LEGACY, props.executionMode());
+        assertEquals(TimelineRenderExecutionMode.PLAN_BASED, props.executionMode());
     }
 
     @Test
@@ -124,12 +124,12 @@ class PlanBasedDefaultReadinessTest {
     @Test
     @DisplayName("Rollback: switching to LEGACY requires no data migration")
     void rollbackRequiresNoMigration() {
-        TimelineRenderExecutionProperties legacyProps = TimelineRenderExecutionProperties.defaults();
-        TimelineRenderExecutionProperties planProps =
-                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.PLAN_BASED);
+        TimelineRenderExecutionProperties defaultProps = TimelineRenderExecutionProperties.defaults();
+        TimelineRenderExecutionProperties legacyProps =
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY);
         // Switching is just config change - no data migration
+        assertEquals(TimelineRenderExecutionMode.PLAN_BASED, defaultProps.executionMode());
         assertEquals(TimelineRenderExecutionMode.LEGACY, legacyProps.executionMode());
-        assertEquals(TimelineRenderExecutionMode.PLAN_BASED, planProps.executionMode());
     }
 
     @Test

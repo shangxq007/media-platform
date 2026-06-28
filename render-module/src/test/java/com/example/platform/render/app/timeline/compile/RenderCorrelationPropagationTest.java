@@ -2,6 +2,7 @@ package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.compile.audit.*;
+import com.example.platform.render.app.timeline.compile.TimelineRenderExecutionMode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.util.List;
@@ -23,7 +24,7 @@ class RenderCorrelationPropagationTest {
         MockDedupService dedup = new MockDedupService();
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
                 legacy, new MockPlanBasedService(), dedup,
-                TimelineRenderExecutionProperties.defaults(), recorder);
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY), recorder);
 
         facade.render("proj-1", "rev-1", "default_1080p");
 
@@ -47,7 +48,7 @@ class RenderCorrelationPropagationTest {
         MockDedupService dedup = new MockDedupService();
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
                 legacy, new MockPlanBasedService(), dedup,
-                TimelineRenderExecutionProperties.defaults(), recorder);
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY), recorder);
 
         facade.render("proj-1", "rev-1", "default_1080p");
 
@@ -69,7 +70,7 @@ class RenderCorrelationPropagationTest {
         dedup.reuseResult = createTestResult();
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
                 legacy, new MockPlanBasedService(), dedup,
-                TimelineRenderExecutionProperties.defaults(), recorder);
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY), recorder);
 
         facade.render("proj-1", "rev-1", "default_1080p");
 
@@ -91,7 +92,7 @@ class RenderCorrelationPropagationTest {
         MockDedupService dedup = new MockDedupService();
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
                 legacy, new MockPlanBasedService(), dedup,
-                TimelineRenderExecutionProperties.defaults(), recorder);
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY), recorder);
 
         facade.render("proj-1", "rev-1", "default_1080p");
 
@@ -111,7 +112,7 @@ class RenderCorrelationPropagationTest {
         MockDedupService dedup = new MockDedupService();
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
                 legacy, new MockPlanBasedService(), dedup,
-                TimelineRenderExecutionProperties.defaults(),
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY),
                 new RenderAuditRecorder(new NoopRenderAuditEventSink()));
 
         TimelineRevisionRenderService.RevisionRenderResult result =
@@ -141,7 +142,7 @@ class RenderCorrelationPropagationTest {
         MockDedupService dedup = new MockDedupService();
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
                 legacy, new MockPlanBasedService(), dedup,
-                TimelineRenderExecutionProperties.defaults(),
+                new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY),
                 new RenderAuditRecorder(failingSink));
 
         // Should not throw
