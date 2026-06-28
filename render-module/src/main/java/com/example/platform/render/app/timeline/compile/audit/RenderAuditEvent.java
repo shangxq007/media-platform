@@ -14,6 +14,7 @@ public record RenderAuditEvent(
         Instant occurredAt,
         RenderAuditEventType eventType,
         RenderAuditEventSeverity severity,
+        String renderCorrelationId,
         String projectId,
         String timelineRevisionId,
         String renderJobId,
@@ -32,7 +33,7 @@ public record RenderAuditEvent(
     public static RenderAuditEvent of(RenderAuditEventType type, RenderAuditEventSeverity severity,
                                        String projectId, String timelineRevisionId, String message) {
         return new RenderAuditEvent(UUID.randomUUID().toString(), Instant.now(),
-                type, severity, projectId, timelineRevisionId,
+                type, severity, null, projectId, timelineRevisionId,
                 null, null, null, null, null, null, null, null, null, null, message, null);
     }
 
@@ -43,6 +44,7 @@ public record RenderAuditEvent(
         private Instant occurredAt = Instant.now();
         private RenderAuditEventType eventType;
         private RenderAuditEventSeverity severity = RenderAuditEventSeverity.INFO;
+        private String renderCorrelationId;
         private String projectId, timelineRevisionId, renderJobId, renderRequestFingerprint;
         private String executionMode, artifactGraphId, capabilityGraphId;
         private String providerBindingPlanId, renderExecutionPlanId, providerName;
@@ -51,6 +53,7 @@ public record RenderAuditEvent(
 
         public Builder eventType(RenderAuditEventType v) { this.eventType = v; return this; }
         public Builder severity(RenderAuditEventSeverity v) { this.severity = v; return this; }
+        public Builder renderCorrelationId(String v) { this.renderCorrelationId = v; return this; }
         public Builder projectId(String v) { this.projectId = v; return this; }
         public Builder timelineRevisionId(String v) { this.timelineRevisionId = v; return this; }
         public Builder renderJobId(String v) { this.renderJobId = v; return this; }
@@ -66,10 +69,30 @@ public record RenderAuditEvent(
         public Builder message(String v) { this.message = v; return this; }
         public Builder sanitizedDetails(String v) { this.sanitizedDetails = v; return this; }
 
+        /**
+         * Copy all correlation fields from a context snapshot.
+         */
+        public Builder fromCorrelation(com.example.platform.render.app.timeline.compile.RenderCorrelationContext ctx) {
+            if (ctx == null) return this;
+            this.renderCorrelationId = ctx.renderCorrelationId();
+            this.projectId = ctx.projectId();
+            this.timelineRevisionId = ctx.timelineRevisionId();
+            this.executionMode = ctx.executionMode();
+            this.renderJobId = ctx.renderJobId();
+            this.renderRequestFingerprint = ctx.renderRequestFingerprint();
+            this.artifactGraphId = ctx.artifactGraphId();
+            this.capabilityGraphId = ctx.capabilityGraphId();
+            this.providerBindingPlanId = ctx.providerBindingPlanId();
+            this.renderExecutionPlanId = ctx.renderExecutionPlanId();
+            this.inputProductIds = ctx.inputProductIds();
+            this.outputProductId = ctx.outputProductId();
+            return this;
+        }
+
         public RenderAuditEvent build() {
             return new RenderAuditEvent(eventId, occurredAt, eventType, severity,
-                    projectId, timelineRevisionId, renderJobId, renderRequestFingerprint,
-                    executionMode, artifactGraphId, capabilityGraphId,
+                    renderCorrelationId, projectId, timelineRevisionId, renderJobId,
+                    renderRequestFingerprint, executionMode, artifactGraphId, capabilityGraphId,
                     providerBindingPlanId, renderExecutionPlanId,
                     providerName, inputProductIds, outputProductId, message, sanitizedDetails);
         }

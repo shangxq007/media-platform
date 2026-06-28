@@ -38,16 +38,19 @@ public class TimelineRevisionRenderFacade {
 
     /**
      * Render a TimelineRevision using the configured execution path,
-     * with deduplication and audit event trail.
+     * with deduplication, audit event trail, and correlation context.
      */
     public TimelineRevisionRenderService.RevisionRenderResult render(
             String projectId, String revisionId, String outputProfile) {
 
+        // Create correlation context
+        RenderCorrelationContext correlation = RenderCorrelationContext.create(
+                projectId, revisionId, properties.executionMode().name());
+
         // Audit: request received
         auditRecorder.record(RenderAuditEvent.builder()
                 .eventType(RenderAuditEventType.RENDER_REQUEST_RECEIVED)
-                .projectId(projectId).timelineRevisionId(revisionId)
-                .executionMode(properties.executionMode().name())
+                .fromCorrelation(correlation)
                 .message("Render request received")
                 .build());
 
@@ -55,25 +58,27 @@ public class TimelineRevisionRenderFacade {
         RenderDeduplicationDecision dedupDecision = deduplicationService.check(
                 projectId, revisionId, outputProfile, properties.executionMode().name());
 
+        // Attach fingerprint to correlation
+        if (dedupDecision.fingerprint() != null) {
+            correlation = correlation.withFingerprint(dedupDecision.fingerprint().value());
+        }
+
         // Audit: dedup checked
         auditRecorder.record(RenderAuditEvent.builder()
                 .eventType(RenderAuditEventType.RENDER_DEDUP_CHECKED)
                 .severity(dedupDecision.isFailed() ? RenderAuditEventSeverity.WARN : RenderAuditEventSeverity.INFO)
-                .projectId(projectId).timelineRevisionId(revisionId)
-                .renderRequestFingerprint(dedupDecision.fingerprint() != null
-                        ? dedupDecision.fingerprint().value() : null)
-                .executionMode(properties.executionMode().name())
+                .fromCorrelation(correlation)
                 .message("Dedup decision: " + dedupDecision.type() + " reason=" + dedupDecision.reason())
                 .build());
 
         if (dedupDecision.shouldReuse()) {
             log.info("Dedup: reusing existing READY product for project={} revision={} profile={}",
                     projectId, revisionId, outputProfile);
+            RenderCorrelationContext reuseCorr = correlation.withOutputProductId(
+                    dedupDecision.reusedResult() != null ? dedupDecision.reusedResult().outputProductId() : null);
             auditRecorder.record(RenderAuditEvent.builder()
                     .eventType(RenderAuditEventType.RENDER_READY_PRODUCT_REUSED)
-                    .projectId(projectId).timelineRevisionId(revisionId)
-                    .outputProductId(dedupDecision.reusedResult() != null
-                            ? dedupDecision.reusedResult().outputProductId() : null)
+                    .fromCorrelation(reuseCorr)
                     .message("Reusing existing READY product")
                     .build());
             return dedupDecision.reusedResult();
@@ -85,7 +90,7 @@ public class TimelineRevisionRenderFacade {
             auditRecorder.record(RenderAuditEvent.builder()
                     .eventType(RenderAuditEventType.RENDER_DEDUP_FAILED_CLOSED)
                     .severity(RenderAuditEventSeverity.ERROR)
-                    .projectId(projectId).timelineRevisionId(revisionId)
+                    .fromCorrelation(correlation)
                     .message("Dedup failed closed: " + dedupDecision.message())
                     .build());
             throw new IllegalStateException("Render deduplication failed: " + dedupDecision.message());
@@ -97,9 +102,7 @@ public class TimelineRevisionRenderFacade {
                 : RenderAuditEventType.RENDER_NEW_ATTEMPT_STARTED;
         auditRecorder.record(RenderAuditEvent.builder()
                 .eventType(attemptType)
-                .projectId(projectId).timelineRevisionId(revisionId)
-                .renderRequestFingerprint(dedupDecision.fingerprint().value())
-                .executionMode(properties.executionMode().name())
+                .fromCorrelation(correlation)
                 .message("Starting new render attempt via " + properties.executionMode())
                 .build());
 
@@ -119,19 +122,22 @@ public class TimelineRevisionRenderFacade {
             auditRecorder.record(RenderAuditEvent.builder()
                     .eventType(RenderAuditEventType.RENDER_FAILED)
                     .severity(RenderAuditEventSeverity.ERROR)
-                    .projectId(projectId).timelineRevisionId(revisionId)
+                    .fromCorrelation(correlation)
                     .message("Render failed: " + sanitizeMessage(e.getMessage()))
                     .build());
             throw e;
         }
 
+        // Attach result to correlation
+        RenderCorrelationContext completedCorr = correlation
+                .withRenderJobId(result.renderJobId())
+                .withOutputProductId(result.outputProductId())
+                .withInputProductIds(result.inputProductIds());
+
         // Audit: completed
         auditRecorder.record(RenderAuditEvent.builder()
                 .eventType(RenderAuditEventType.RENDER_COMPLETED)
-                .projectId(projectId).timelineRevisionId(revisionId)
-                .renderJobId(result.renderJobId())
-                .outputProductId(result.outputProductId())
-                .inputProductIds(result.inputProductIds())
+                .fromCorrelation(completedCorr)
                 .message("Render completed successfully")
                 .build());
 
