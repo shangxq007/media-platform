@@ -72,3 +72,13 @@ P2L.0 introduced a local-only explicit render smoke harness. Controlled FFmpeg/f
 - Controlled output directory under /tmp
 - Execution disabled by default; requires -Dmedia.platform.localSmoke.enabled=true
 - Does not implement public API, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG
+
+## P2L.1 BasicRenderPlan-to-Local-Runner Bridge
+
+P2L.1 bridges FFmpegLibassBasicRenderPlan to the P2L.0 local execution boundary:
+- Consumes plan, extracts output profile, maps supported subset to controlled FFmpeg execution
+- Uses synthetic testsrc input (real media source materialization not implemented)
+- Unsupported plan steps reported as warnings, do not block execution
+- Execution disabled by default; requires -Dmedia.platform.localSmoke.enabled=true
+- Same safety constraints as P2L.0 (binary allowlist, no shell invocation, List<String> args, timeout)
+- Does not implement full timeline rendering, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG

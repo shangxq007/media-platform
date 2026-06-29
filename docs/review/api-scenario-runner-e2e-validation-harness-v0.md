@@ -145,3 +145,7 @@ P2X.0 does not use Artifact DAG. Artifact DAG is indefinitely deferred and is an
 ## 21. Relationship to P2L.0 Local Smoke
 
 P2L.0 introduced a local-only explicit render smoke harness. It does not consume scenario runner output. Both are independent validation mechanisms — scenario runner validates planning correctness, local smoke validates FFmpeg/ffprobe execution boundary.
+
+## 22. Relationship to P2L.1 BasicRenderPlan Bridge
+
+P2L.1 introduced the first bridge from FFmpegLibassBasicRenderPlan to controlled local execution. It does not consume scenario runner output. The scenario runner validates planning correctness; P2L.1 validates that a plan can drive actual FFmpeg execution. Both are independent validation layers.

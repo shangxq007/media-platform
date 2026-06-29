@@ -465,3 +465,9 @@ Artifact DAG remains indefinitely deferred (P2A.2). Artifact DAG is an extension
 P2L.0 introduced a local-only explicit render smoke harness. Controlled FFmpeg/ffprobe execution with fixed binary allowlist, no shell invocation, List<String> args, timeout enforcement, controlled output directory, execution gated by `-Dmedia.platform.localSmoke.enabled=true`. Does not implement public API, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG.
 
 Review: `docs/review/local-explicit-render-smoke-harness-v0.md`
+
+### BasicRenderPlan-to-Local-Runner Bridge (P2L.1)
+
+P2L.1 introduced the first bridge from FFmpegLibassBasicRenderPlan to controlled local execution. It consumes a plan, extracts the output profile, maps a conservative supported subset (DECLARE_OUTPUT_PROFILE, ENCODE_OUTPUT, VERIFY_OUTPUT) to controlled FFmpeg/ffprobe execution through the P2L.0 boundary. Uses synthetic testsrc input. Unsupported steps are reported as warnings. Execution remains disabled by default. Does not implement full timeline rendering, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG.
+
+Review: `docs/review/basic-render-plan-local-runner-bridge-v0.md`

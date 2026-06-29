@@ -1,9 +1,11 @@
 package com.example.platform.render.domain.render.local;
 
 /**
- * Diagnostic codes for issues encountered during local render smoke.
+ * Diagnostic codes for issues encountered during local render smoke
+ * and BasicRenderPlan-to-local-runner bridge execution.
  */
 public enum LocalRenderSmokeIssueCode {
+    // P2L.0 local smoke codes
     FFMPEG_NOT_AVAILABLE,
     FFPROBE_NOT_AVAILABLE,
     OUTPUT_DIRECTORY_UNAVAILABLE,
@@ -27,5 +29,16 @@ public enum LocalRenderSmokeIssueCode {
     PRODUCT_CREATION_FORBIDDEN,
     ARTIFACT_DAG_FORBIDDEN,
     REMOTION_EXECUTION_FORBIDDEN,
-    PUBLIC_API_FORBIDDEN
+    PUBLIC_API_FORBIDDEN,
+
+    // P2L.1 BasicRenderPlan bridge codes
+    BASIC_RENDER_PLAN_MISSING,
+    BASIC_RENDER_PLAN_INVALID,
+    BASIC_RENDER_PLAN_BLOCKED,
+    BASIC_RENDER_PLAN_UNSUPPORTED,
+    UNSUPPORTED_RENDER_STAGE,
+    UNSUPPORTED_RENDER_STEP,
+    OUTPUT_PROFILE_MISSING,
+    OUTPUT_PROFILE_UNSUPPORTED,
+    SYNTHETIC_INPUT_REQUIRED
 }

@@ -102,6 +102,93 @@ public final class LocalFfmpegSmokeCommandBuilder {
     }
 
     /**
+     * Builds the FFmpeg command for a plan-driven local execution request.
+     * Uses synthetic testsrc input with the output profile from the plan.
+     *
+     * @param width        output width
+     * @param height       output height
+     * @param durationSec  duration in seconds
+     * @param fps          frame rate
+     * @param videoCodec   target video codec (e.g. "h264")
+     * @param container    target container (e.g. "mp4")
+     * @param outputDir    output directory
+     * @param policy       smoke policy
+     * @return build result with args, output path, and any issues
+     */
+    public static BuildResult buildPlanDrivenTestsrc(int width, int height, double durationSec,
+                                                      int fps, String videoCodec, String container,
+                                                      java.nio.file.Path outputDir,
+                                                      LocalRenderSmokePolicy policy) {
+        Objects.requireNonNull(videoCodec, "videoCodec must not be null");
+        Objects.requireNonNull(container, "container must not be null");
+        Objects.requireNonNull(outputDir, "outputDir must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
+
+        List<LocalRenderSmokeIssue> issues = new ArrayList<>();
+
+        // Validate binary allowlist
+        if (!policy.isBinaryAllowed(FFMPEG_BINARY)) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.COMMAND_ALLOWLIST_VIOLATION,
+                    "Binary '" + FFMPEG_BINARY + "' is not on the allowlist"));
+            return new BuildResult(List.of(), null, issues);
+        }
+
+        // Prepare output directory
+        Path outputPath = outputDir.resolve("output." + container);
+
+        try {
+            Files.createDirectories(outputDir);
+        } catch (Exception e) {
+            issues.add(LocalRenderSmokeIssue.error(
+                    LocalRenderSmokeIssueCode.OUTPUT_DIRECTORY_UNAVAILABLE,
+                    "Cannot create output directory: " + outputDir));
+            return new BuildResult(List.of(), outputPath, issues);
+        }
+
+        // Map codec name to FFmpeg encoder
+        String encoder = mapCodecToEncoder(videoCodec);
+
+        // Build args as List<String> — never as shell command
+        List<String> args = List.of(
+                FFMPEG_BINARY,
+                "-y",
+                "-f", "lavfi", "-i",
+                "testsrc=duration=" + durationSec
+                        + ":size=" + width + "x" + height
+                        + ":rate=" + fps,
+                "-pix_fmt", "yuv420p",
+                "-c:v", encoder,
+                "-preset", "ultrafast",
+                outputPath.toString()
+        );
+
+        // Validate no shell invocation patterns
+        if (policy.containsShellInvocation(args)) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.SHELL_INVOCATION_FORBIDDEN,
+                    "Shell invocation detected in built arguments"));
+            return new BuildResult(List.of(), outputPath, issues);
+        }
+
+        return new BuildResult(args, outputPath, issues);
+    }
+
+    /**
+     * Maps a semantic codec name to an FFmpeg encoder name.
+     */
+    private static String mapCodecToEncoder(String codec) {
+        if (codec == null) return "libx264";
+        return switch (codec.toLowerCase()) {
+            case "h264", "avc" -> "libx264";
+            case "h265", "hevc" -> "libx265";
+            case "vp8" -> "libvpx";
+            case "vp9" -> "libvpx-vp9";
+            default -> "libx264";
+        };
+    }
+
+    /**
      * Extracts the binary name from a command argument list.
      */
     public static String extractBinary(List<String> args) {

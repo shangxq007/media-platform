@@ -131,6 +131,7 @@ P2L.0 does not execute Remotion. Remotion remains non-executable.
 
 ## 20. Follow-up Tasks
 
-- P2L.1 — Bridge BasicRenderPlan to local runner
-- P2L.2 — Local caption overlay smoke
+- P2L.1 — Bridge BasicRenderPlan to local runner (implemented)
+- P2L.2 — Expand supported step types for local execution
+- P2L.3 — Real media source materialization for local execution
 - P2O.0 — OpenCue PVE Testbed Smoke Harness

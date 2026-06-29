@@ -243,3 +243,7 @@ P2X.0 introduced an internal API/Agent Scenario Runner and E2E Validation Harnes
 ## 27. P2L.0 Status
 
 P2L.0 introduced a local-only explicit render smoke harness. It allows controlled FFmpeg/ffprobe execution only inside a local smoke boundary with fixed binary allowlist, no shell invocation, no user-provided command, no raw user filtergraph, timeout enforcement, controlled output directory, and optional execution gated by an explicit system property. It does not implement public API, RenderExecutionPlan integration, OpenCue integration, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion execution, or Artifact DAG.
+
+## 28. P2L.1 Status
+
+P2L.1 introduced the first BasicRenderPlan-to-local-runner bridge. It consumes FFmpegLibassBasicRenderPlan and maps a conservative supported subset (DECLARE_OUTPUT_PROFILE, ENCODE_OUTPUT, VERIFY_OUTPUT) to controlled local FFmpeg/ffprobe execution through the P2L.0 boundary. Uses synthetic testsrc input. Unsupported steps are reported as warnings. Execution remains disabled by default. Does not implement full timeline rendering, RenderExecutionPlan integration, OpenCue integration, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion execution, or Artifact DAG.
