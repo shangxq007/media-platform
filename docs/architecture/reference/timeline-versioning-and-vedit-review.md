@@ -194,11 +194,13 @@ OTIO diff alone is not sufficient. The platform must own its Canonical Timeline 
 | Three-way merge | Unclear | ✅ (future) |
 | Template-aware diff | ❌ | ✅ (required) |
 | Workflow-aware diff | ❌ | ✅ (required) |
-| Artifact DAG impact | ❌ | ✅ (required) |
+| Artifact DAG impact | ❌ | ⏸ indefinitely deferred extension only; not required for current Timeline Git, render planning, Product API, OpenCue, or roadmap work |
 | Product lineage impact | ❌ | ✅ (required) |
 | Provider-neutral model | ❌ | ✅ (required) |
 | Java/Spring integration | ❌ | ✅ (required) |
 | Production maturity | ❌ | ✅ (required) |
+
+> **Clarification:** The "Artifact DAG impact" row describes future/platform-extension potential only. Artifact DAG is indefinitely deferred and is not a current roadmap dependency. See [ADR-025](../adr/ADR-025-artifact-dag-indefinite-deferral.md).
 
 ## 13. vedit Maturity and Risk Assessment
 

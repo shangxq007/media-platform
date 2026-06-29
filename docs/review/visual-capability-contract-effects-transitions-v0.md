@@ -213,5 +213,6 @@ Forbidden capabilities include:
 - P2R.1: FFmpeg Baseline Effect Plan
 - P2R.2: FFmpeg Baseline Transition Plan
 - P2R.3: Provider Visual Consistency Matrix
+- P2TLE.0: Basic Timeline Editing Model and Validation (implemented)
 - P2X.0: API Scenario Runner and E2E Validation Harness
 - P2X.1: OpenCue PVE Smoke Harness
