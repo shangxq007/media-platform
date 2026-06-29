@@ -1,0 +1,27 @@
+package com.example.platform.render.domain.timeline.diff.merge.plan;
+
+/**
+ * Code identifying the type of merge plan issue.
+ * Internal domain model. Provider-neutral, storage-neutral.
+ */
+public enum TimelineMergePlanIssueCode {
+    INVALID_REQUEST,
+    MISSING_BASE,
+    MISSING_OURS,
+    MISSING_THEIRS,
+    PREVIEW_FAILED,
+    CONFLICT_REQUIRES_MANUAL_REVIEW,
+    UNSUPPORTED_OPERATION,
+    BLOCKED_OPERATION,
+    DUPLICATE_IDENTICAL_OPERATION,
+    PATCH_APPLICATION_NOT_ALLOWED,
+    MERGE_ENGINE_NOT_IMPLEMENTED,
+    CONFLICT_RESOLUTION_NOT_IMPLEMENTED,
+    PERSISTENCE_NOT_IMPLEMENTED,
+    RENDER_NOT_ALLOWED,
+    PRODUCT_CREATION_NOT_ALLOWED,
+    STORAGE_INTERNALS_NOT_ALLOWED,
+    PROVIDER_INTERNALS_NOT_ALLOWED,
+    ARTIFACT_DAG_NOT_USED,
+    GLOBAL_OPTIMIZATION_NOT_ALLOWED
+}

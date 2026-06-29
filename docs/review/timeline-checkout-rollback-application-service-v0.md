@@ -148,6 +148,7 @@ No references to vedit, pyvedit, OpenTimelineIO, Remotion, or any external rende
 
 ## 21. Follow-up Tasks
 
-- P2V.7: Timeline Git Persistence (when persistence layer is ready)
-- P2V.8: Timeline Merge Engine
-- P2V.9: Timeline Conflict Resolution
+- P2V.7: Timeline Non-conflicting Merge Plan (completed)
+- P2V.8: Timeline Git Persistence (when persistence layer is ready)
+- P2V.9: Timeline Merge Engine
+- P2V.10: Timeline Conflict Resolution

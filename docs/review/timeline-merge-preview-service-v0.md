@@ -163,5 +163,6 @@ No OpenTimelineIO runtime dependency.
 
 - P2V.5: Timeline Branch and Commit Semantics (completed)
 - P2V.6: Timeline Merge Engine
-- P2V.7: Timeline Conflict Resolution
-- P2V.8: Timeline Git Persistence
+- P2V.7: Timeline Non-conflicting Merge Plan (completed)
+- P2V.8: Timeline Conflict Resolution
+- P2V.9: Timeline Git Persistence
