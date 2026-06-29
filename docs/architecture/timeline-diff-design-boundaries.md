@@ -146,3 +146,5 @@ WorkflowApplyTemplateStepDiff — workflow step changes
 > Artifact DAG is retained as a future optimization and artifact-lineage layer. It is not required for Timeline Git, rollback, branch switching, merge preview, template workflow MVP, or explicit full render. The default mode is DISABLED. DRY_RUN is non-blocking and must not affect ProviderBindingPlan or RenderExecutionPlan. EXPERIMENTAL is internal-only. REQUIRED is future-only and not enabled.
 
 > Render DAG and timeline-related graph structures are constrained media-domain DAGs, not arbitrary user-programmable graphs or global optimization systems. Provider binding uses deterministic eligibility and priority rather than global combinatorial optimization. See ADR-024.
+
+> P2V.5 introduced pure Timeline Branch and Commit Semantics. Branch, commit, pointer, checkout, rollback, and branch-switch plans are side-effect-free domain concepts. They do not persist Timeline Git history, render media, create Products, call StorageRuntime/ProductRuntime, invoke Artifact DAG, or implement merge/conflict resolution.

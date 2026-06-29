@@ -1,0 +1,24 @@
+package com.example.platform.render.domain.timeline.version;
+
+/**
+ * Code for branch operation issues.
+ * Internal domain model.
+ */
+public enum TimelineBranchOperationIssueCode {
+    INVALID_BRANCH_NAME,
+    INVALID_BRANCH_ID,
+    INVALID_REVISION_REF,
+    INVALID_COMMIT_ID,
+    MISSING_PARENT,
+    MULTIPLE_PRIMARY_PARENTS,
+    UNSAVED_CHANGES,
+    CHECKOUT_TARGET_NOT_FOUND,
+    ROLLBACK_TARGET_NOT_FOUND,
+    ROLLBACK_IS_NON_DESTRUCTIVE,
+    MERGE_NOT_IMPLEMENTED,
+    PERSISTENCE_NOT_IMPLEMENTED,
+    RENDER_NOT_ALLOWED,
+    PRODUCT_CREATION_NOT_ALLOWED,
+    STORAGE_INTERNALS_NOT_ALLOWED,
+    PROVIDER_INTERNALS_NOT_ALLOWED
+}

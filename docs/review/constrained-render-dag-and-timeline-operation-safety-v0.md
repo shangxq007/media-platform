@@ -237,3 +237,5 @@ TemplateApplication may produce semantic timeline changes, not arbitrary executi
 - Validate Render DAG node type set remains finite
 - Review provider binding if multi-provider PRODUCTION mode is enabled
 - Review Artifact DAG boundaries when REQUIRED mode is considered
+
+> P2V.5 introduced pure Timeline Branch and Commit Semantics. Branch, commit, pointer, checkout, rollback, and branch-switch plans are side-effect-free domain concepts. They do not persist Timeline Git history, render media, create Products, call StorageRuntime/ProductRuntime, invoke Artifact DAG, or implement merge/conflict resolution.
