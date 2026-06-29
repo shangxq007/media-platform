@@ -140,3 +140,5 @@ WorkflowApplyTemplateStepDiff — workflow step changes
 | Timeline Merge Conflicts | How to classify and resolve conflicts | Concurrent editing need |
 | Content-addressed Hash | How to compute stable timeline identity | Cache identity need |
 | Render Impact Analysis | How to map diff to artifact invalidation | Incremental render need |
+
+> P2V.4 introduced a side-effect-free Timeline Merge Preview Service. It wraps three-way conflict analysis into a safe preview result with status, summary, readiness, and issues. It does not perform automatic merge, conflict resolution, patch application, Timeline Git persistence, render execution, StorageRuntime operations, or ProductRuntime operations.

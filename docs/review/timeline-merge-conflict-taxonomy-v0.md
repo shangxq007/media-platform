@@ -156,6 +156,7 @@ No OpenTimelineIO runtime dependency.
 
 ## Follow-up Tasks
 
-- P2V.4: Timeline Merge Engine (applies non-conflicting patches)
-- P2V.5: Timeline Conflict Resolution Strategies
-- P2V.6: Timeline Git Persistence
+- P2V.4: Timeline Merge Preview Service
+- P2V.5: Timeline Merge Engine (applies non-conflicting patches)
+- P2V.6: Timeline Conflict Resolution Strategies
+- P2V.7: Timeline Git Persistence

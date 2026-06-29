@@ -71,5 +71,6 @@ Compile-safe platform-owned Timeline Diff domain skeleton. Defines vocabulary on
 - P2V.1: Canonical Timeline Diff Calculator
 - P2V.2: TimelinePatch Application Semantics
 - P2V.3: Timeline Merge Conflict Taxonomy
+- P2V.4: Timeline Merge Preview Service
 - P2T.4: Composite Template Semantics
 - P2D.0: Artifact DAG / Cache Identity Review

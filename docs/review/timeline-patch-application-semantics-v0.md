@@ -68,3 +68,4 @@ TimelinePatchValidator checks:
 ## Follow-up
 
 - P2V.3: Timeline Merge Conflict Taxonomy
+- P2V.4: Timeline Merge Preview Service

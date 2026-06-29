@@ -83,3 +83,4 @@ Operations sorted by type priority (TIMELINE_DURATION_CHANGED first, METADATA_CH
 
 - P2V.2: TimelinePatch Application Semantics
 - P2V.3: Timeline Merge Conflict Taxonomy
+- P2V.4: Timeline Merge Preview Service

@@ -365,3 +365,4 @@ General Template System design has been accepted (ADR-022). Caption Template Ren
 - [Remotion Provider POC Plan](../../review/remotion-provider-poc-plan.md) — Remotion implementation readiness
 - [OpenFX Capability Model Reservation](../../review/openfx-capability-model-reservation.md) — OpenFX as capability model only
 - [Multi-Provider POC Integration Report](../../review/multi-provider-poc-integration-report.md) — Provider integration pattern and smoke test results
+- [Timeline Merge Preview Service](../../review/timeline-merge-preview-service-v0.md) — Side-effect-free merge preview with conflict analysis, status, summary, and issues
