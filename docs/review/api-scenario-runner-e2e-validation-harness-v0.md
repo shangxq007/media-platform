@@ -149,3 +149,7 @@ P2L.0 introduced a local-only explicit render smoke harness. It does not consume
 ## 22. Relationship to P2L.1 BasicRenderPlan Bridge
 
 P2L.1 introduced the first bridge from FFmpegLibassBasicRenderPlan to controlled local execution. It does not consume scenario runner output. The scenario runner validates planning correctness; P2L.1 validates that a plan can drive actual FFmpeg execution. Both are independent validation layers.
+
+## 23. Relationship to P2L.2 Caption Overlay Smoke
+
+P2L.2 expands the P2L.1 bridge to support caption overlay. It does not consume scenario runner output. The scenario runner validates planning correctness; P2L.2 validates that a plan with caption overlay can drive actual FFmpeg/libass execution. Both are independent validation layers.

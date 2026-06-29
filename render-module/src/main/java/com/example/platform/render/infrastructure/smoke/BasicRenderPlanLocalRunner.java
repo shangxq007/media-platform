@@ -90,11 +90,19 @@ public final class BasicRenderPlanLocalRunner {
         }
 
         // Step 5: Build controlled FFmpeg command
-        LocalFfmpegSmokeCommandBuilder.BuildResult buildResult =
-                LocalFfmpegSmokeCommandBuilder.buildPlanDrivenTestsrc(
-                        request.width(), request.height(), request.durationSec(),
-                        request.fps(), request.videoCodec(), request.container(),
-                        request.outputRoot(), policy);
+        // Use caption overlay command if captions are present; otherwise plain testsrc
+        LocalFfmpegSmokeCommandBuilder.BuildResult buildResult;
+        if (!request.captionOverlaySpecs().isEmpty()) {
+            buildResult = LocalFfmpegSmokeCommandBuilder.buildPlanDrivenTestsrcWithCaptions(
+                    request.width(), request.height(), request.durationSec(),
+                    request.fps(), request.videoCodec(), request.container(),
+                    request.outputRoot(), request.captionOverlaySpecs(), policy);
+        } else {
+            buildResult = LocalFfmpegSmokeCommandBuilder.buildPlanDrivenTestsrc(
+                    request.width(), request.height(), request.durationSec(),
+                    request.fps(), request.videoCodec(), request.container(),
+                    request.outputRoot(), policy);
+        }
 
         if (!buildResult.issues().isEmpty()) {
             issues.addAll(buildResult.issues());
@@ -165,6 +173,11 @@ public final class BasicRenderPlanLocalRunner {
             status = LocalRenderExecutionStatus.PASS;
         }
 
+        int captionOverlayCount = request.captionOverlaySpecs().size();
+        int supportedCaptionCount = captionOverlayCount; // all extracted specs are supported
+        int unsupportedCaptionCount = request.unsupportedSteps().stream()
+                .filter(s -> s.contains("CAPTION")).toList().size();
+
         return new LocalRenderExecutionResult(
                 request.executionId(),
                 request.planId(),
@@ -186,7 +199,10 @@ public final class BasicRenderPlanLocalRunner {
                         "argumentCount", String.valueOf(buildResult.args().size()),
                         "executionTimeMs", String.valueOf(ffmpegResult.duration().toMillis()),
                         "syntheticInput", "testsrc",
-                        "planId", request.planId()
+                        "planId", request.planId(),
+                        "captionOverlayCount", String.valueOf(captionOverlayCount),
+                        "supportedCaptionOverlayCount", String.valueOf(supportedCaptionCount),
+                        "unsupportedCaptionOverlayCount", String.valueOf(unsupportedCaptionCount)
                 )
         );
     }
@@ -259,6 +275,13 @@ public final class BasicRenderPlanLocalRunner {
                 sb.append("  Resolution: ").append(r.actualWidth()).append("x").append(r.actualHeight()).append("\n");
                 sb.append("  Codec: ").append(r.actualCodec()).append("\n");
                 sb.append("  Format: ").append(r.actualFormat()).append("\n");
+                // Caption overlay counts
+                String captionCount = r.safeMetadata().getOrDefault("captionOverlayCount", "0");
+                String supportedCount = r.safeMetadata().getOrDefault("supportedCaptionOverlayCount", "0");
+                String unsupportedCount = r.safeMetadata().getOrDefault("unsupportedCaptionOverlayCount", "0");
+                sb.append("  Caption Overlay Count: ").append(captionCount).append("\n");
+                sb.append("  Supported Caption Overlay Count: ").append(supportedCount).append("\n");
+                sb.append("  Unsupported Caption Overlay Count: ").append(unsupportedCount).append("\n");
                 if (!r.unsupportedSteps().isEmpty()) {
                     sb.append("  Unsupported Steps: ").append(String.join(", ", r.unsupportedSteps())).append("\n");
                 }

@@ -233,11 +233,11 @@ class BasicRenderPlanLocalRunnerTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new LocalRenderExecutionRequest(
                         LocalRenderExecutionId.generate(), "plan-1",
-                        0, 180, 2.0, 30, "h264", "mp4", tempDir, List.of(), Map.of()));
+                        0, 180, 2.0, 30, "h264", "mp4", tempDir, List.of(), List.of(), Map.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> new LocalRenderExecutionRequest(
                         LocalRenderExecutionId.generate(), "plan-1",
-                        320, 0, 2.0, 30, "h264", "mp4", tempDir, List.of(), Map.of()));
+                        320, 0, 2.0, 30, "h264", "mp4", tempDir, List.of(), List.of(), Map.of()));
     }
 
     @Test
@@ -280,6 +280,206 @@ class BasicRenderPlanLocalRunnerTest {
         assertTrue(result.args().contains("-c:v"));
         int codecIdx = result.args().indexOf("-c:v");
         assertEquals("libx264", result.args().get(codecIdx + 1));
+    }
+
+    // --- Caption overlay adapter tests ---
+
+    @Test
+    void adapterRecognizesCaptionOverlay() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var captionStep = buildCaptionOverlayStep("cap-1", "Hello World", 0, 2000);
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(
+                        buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep)),
+                        buildStage(FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(captionStep))
+                ));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+
+        assertFalse(result.blocked());
+        assertNotNull(result.request());
+        assertFalse(result.request().captionOverlaySpecs().isEmpty());
+        assertEquals(1, result.request().captionOverlaySpecs().size());
+        assertEquals("Hello World", result.request().captionOverlaySpecs().get(0).text());
+    }
+
+    @Test
+    void captionMissingTextIsRejected() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var captionStep = buildCaptionOverlayStep("cap-1", "", 0, 2000);
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(
+                        buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep)),
+                        buildStage(FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(captionStep))
+                ));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+
+        assertFalse(result.blocked());
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.code() == LocalRenderSmokeIssueCode.CAPTION_TEXT_MISSING));
+    }
+
+    @Test
+    void captionInvalidTimeRangeIsRejected() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var captionStep = buildCaptionOverlayStep("cap-1", "Text", 5000, 2000); // end < start
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(
+                        buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep)),
+                        buildStage(FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(captionStep))
+                ));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+
+        assertFalse(result.blocked());
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.code() == LocalRenderSmokeIssueCode.CAPTION_TIME_RANGE_INVALID));
+    }
+
+    @Test
+    void captionRawFiltergraphIsRejected() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var captionStep = buildCaptionOverlayStepWithRawField("cap-1", "Text", 0, 2000, "rawFiltergraph", "drawtext=...");
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(
+                        buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep)),
+                        buildStage(FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(captionStep))
+                ));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+
+        assertFalse(result.blocked());
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.code() == LocalRenderSmokeIssueCode.CAPTION_RAW_FILTERGRAPH_FORBIDDEN));
+    }
+
+    @Test
+    void captionRawAssStyleIsRejected() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var captionStep = buildCaptionOverlayStepWithRawField("cap-1", "Text", 0, 2000, "rawAssStyle", "{\\pos(0,0)}");
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(
+                        buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep)),
+                        buildStage(FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(captionStep))
+                ));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.code() == LocalRenderSmokeIssueCode.CAPTION_RAW_ASS_STYLE_FORBIDDEN));
+    }
+
+    @Test
+    void captionExternalSubtitleIsRejected() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var captionStep = buildCaptionOverlayStepWithRawField("cap-1", "Text", 0, 2000, "externalSubtitlePath", "/tmp/sub.srt");
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(
+                        buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep)),
+                        buildStage(FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(captionStep))
+                ));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.code() == LocalRenderSmokeIssueCode.CAPTION_EXTERNAL_SUBTITLE_FORBIDDEN));
+    }
+
+    @Test
+    void captionFontPathIsRejected() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var captionStep = buildCaptionOverlayStepWithRawField("cap-1", "Text", 0, 2000, "fontPath", "/tmp/font.ttf");
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(
+                        buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep)),
+                        buildStage(FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(captionStep))
+                ));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.code() == LocalRenderSmokeIssueCode.CAPTION_FONT_PATH_FORBIDDEN));
+    }
+
+    @Test
+    void captionOverlayIssueCodesExist() {
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_OVERLAY_MISSING);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_OVERLAY_UNSUPPORTED);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_TEXT_MISSING);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_TEXT_TOO_LONG);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_TIME_RANGE_INVALID);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_PLACEMENT_UNSUPPORTED);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_STYLE_UNSUPPORTED);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_FONT_UNSUPPORTED);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_RAW_FILTERGRAPH_FORBIDDEN);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_RAW_ASS_STYLE_FORBIDDEN);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_EXTERNAL_SUBTITLE_FORBIDDEN);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_FONT_PATH_FORBIDDEN);
+        assertNotNull(LocalRenderSmokeIssueCode.CAPTION_OVERLAY_RENDER_FAILED);
+    }
+
+    @Test
+    void captionTextIsSafelyEscaped() {
+        var assContent = LocalFfmpegSmokeCommandBuilder.buildAssContent(
+                List.of(new LocalCaptionOverlaySpec(
+                        "cap-1", "Hello {World} \\test", 0, 2000)),
+                320, 180);
+
+        // Should not contain raw braces or backslashes in dialogue line
+        assertTrue(assContent.contains("Hello World test"));
+        assertFalse(assContent.contains("{World}"));
+    }
+
+    @Test
+    void captionOverlayCountAppearsInResult() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var captionStep = buildCaptionOverlayStep("cap-1", "Hello", 0, 2000);
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(
+                        buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep)),
+                        buildStage(FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS,
+                                FFmpegLibassBasicRenderStageStatus.VALID, List.of(captionStep))
+                ));
+        // Use enabled policy so the runner doesn't skip
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalRunner.execute(plan, policy);
+
+        assertNotNull(result.safeMetadata());
+        // Caption count should be present (may be 0 if adaptation rejected, but metadata key should exist)
+        assertTrue(result.safeMetadata().containsKey("captionOverlayCount"),
+                "Result metadata should contain captionOverlayCount");
     }
 
     @Test
@@ -373,5 +573,51 @@ class BasicRenderPlanLocalRunnerTest {
                         "test-output", Map.of()),
                 List.of(),
                 FFmpegLibassBasicRenderStepSource.VERIFICATION, Map.of());
+    }
+
+    private FFmpegLibassBasicRenderStep buildCaptionOverlayStep(
+            String captionId, String text, double startMs, double endMs) {
+        return new FFmpegLibassBasicRenderStep(
+                new FFmpegLibassBasicRenderStepId("step-caption-" + captionId),
+                FFmpegLibassBasicRenderStepType.APPLY_CAPTION_OVERLAY,
+                new FFmpegLibassBasicRenderStepTarget(
+                        FFmpegLibassBasicRenderStepTargetType.CAPTION,
+                        captionId, Map.of()),
+                List.of(
+                        new FFmpegLibassBasicRenderStepParameter(
+                                "captionId", FFmpegLibassBasicRenderStepParameterType.STRING, captionId, Map.of()),
+                        new FFmpegLibassBasicRenderStepParameter(
+                                "startMs", FFmpegLibassBasicRenderStepParameterType.DECIMAL, startMs, Map.of()),
+                        new FFmpegLibassBasicRenderStepParameter(
+                                "endMs", FFmpegLibassBasicRenderStepParameterType.DECIMAL, endMs, Map.of()),
+                        new FFmpegLibassBasicRenderStepParameter(
+                                "textRef", FFmpegLibassBasicRenderStepParameterType.STRING, text, Map.of())
+                ),
+                FFmpegLibassBasicRenderStepSource.CAPTION_OVERLAY, Map.of());
+    }
+
+    private FFmpegLibassBasicRenderStep buildCaptionOverlayStepWithRawField(
+            String captionId, String text, double startMs, double endMs,
+            String rawFieldName, String rawFieldValue) {
+        var params = new java.util.ArrayList<>(List.of(
+                new FFmpegLibassBasicRenderStepParameter(
+                        "captionId", FFmpegLibassBasicRenderStepParameterType.STRING, captionId, Map.of()),
+                new FFmpegLibassBasicRenderStepParameter(
+                        "startMs", FFmpegLibassBasicRenderStepParameterType.DECIMAL, startMs, Map.of()),
+                new FFmpegLibassBasicRenderStepParameter(
+                        "endMs", FFmpegLibassBasicRenderStepParameterType.DECIMAL, endMs, Map.of()),
+                new FFmpegLibassBasicRenderStepParameter(
+                        "textRef", FFmpegLibassBasicRenderStepParameterType.STRING, text, Map.of())
+        ));
+        params.add(new FFmpegLibassBasicRenderStepParameter(
+                rawFieldName, FFmpegLibassBasicRenderStepParameterType.STRING, rawFieldValue, Map.of()));
+        return new FFmpegLibassBasicRenderStep(
+                new FFmpegLibassBasicRenderStepId("step-caption-" + captionId),
+                FFmpegLibassBasicRenderStepType.APPLY_CAPTION_OVERLAY,
+                new FFmpegLibassBasicRenderStepTarget(
+                        FFmpegLibassBasicRenderStepTargetType.CAPTION,
+                        captionId, Map.of()),
+                params,
+                FFmpegLibassBasicRenderStepSource.CAPTION_OVERLAY, Map.of());
     }
 }

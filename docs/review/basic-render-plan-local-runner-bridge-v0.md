@@ -190,7 +190,7 @@ P2L.1 does not execute Remotion. Remotion remains non-executable.
 
 ## 22. Follow-up Tasks
 
-- P2L.2 — Expand supported step types (effects, transitions, captions)
+- P2L.2 — Local Caption Overlay Smoke (completed)
 - P2L.3 — Real media source materialization for local execution
 - P2O.0 — OpenCue PVE Testbed Smoke Harness
 - Future: RenderExecutionPlan integration

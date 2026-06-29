@@ -247,3 +247,7 @@ P2L.0 introduced a local-only explicit render smoke harness. It allows controlle
 ## 28. P2L.1 Status
 
 P2L.1 introduced the first BasicRenderPlan-to-local-runner bridge. It consumes FFmpegLibassBasicRenderPlan and maps a conservative supported subset (DECLARE_OUTPUT_PROFILE, ENCODE_OUTPUT, VERIFY_OUTPUT) to controlled local FFmpeg/ffprobe execution through the P2L.0 boundary. Uses synthetic testsrc input. Unsupported steps are reported as warnings. Execution remains disabled by default. Does not implement full timeline rendering, RenderExecutionPlan integration, OpenCue integration, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion execution, or Artifact DAG.
+
+## 29. P2L.2 Status
+
+P2L.2 expands the BasicRenderPlan-to-local-runner bridge to support caption overlay. Recognizes APPLY_CAPTION_OVERLAY steps, extracts safe typed caption fields, generates a platform-owned ASS subtitle file, and burns it in via FFmpeg/libass. Caption text is sanitized (braces/backslashes removed, length bounded to 200 chars). No raw filtergraph, no raw ASS style, no external subtitle path, no font path. Caption overlay counts included in result/report. Execution remains disabled by default. Does not implement full caption rendering, full timeline rendering, RenderExecutionPlan integration, OpenCue integration, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion execution, or Artifact DAG.

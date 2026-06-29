@@ -82,3 +82,14 @@ P2L.1 bridges FFmpegLibassBasicRenderPlan to the P2L.0 local execution boundary:
 - Execution disabled by default; requires -Dmedia.platform.localSmoke.enabled=true
 - Same safety constraints as P2L.0 (binary allowlist, no shell invocation, List<String> args, timeout)
 - Does not implement full timeline rendering, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG
+
+## P2L.2 Local Caption Overlay Smoke Safety
+
+P2L.2 expands the BasicRenderPlan-to-local-runner bridge to support caption overlay:
+- Caption overlay uses platform-owned ASS subtitle file generated from safe typed fields
+- Text sanitized: braces removed (prevents ASS override tag injection), backslashes removed, length bounded to 200 chars
+- No raw filtergraph input, no raw ASS style input, no external subtitle path, no font path
+- Caption time range validated (start >= 0, end > start, max 5 min)
+- Placement fixed to bottom-center (ASS Default style)
+- Same safety constraints as P2L.0/P2L.1 (binary allowlist, no shell invocation, List<String> args, timeout)
+- Does not implement full caption rendering, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG

@@ -1,5 +1,6 @@
 package com.example.platform.render.infrastructure.smoke;
 
+import com.example.platform.render.domain.render.local.LocalCaptionOverlaySpec;
 import com.example.platform.render.domain.render.local.LocalRenderExecutionId;
 import com.example.platform.render.domain.render.local.LocalRenderExecutionRequest;
 import com.example.platform.render.domain.render.local.LocalRenderSmokeIssue;
@@ -14,15 +15,15 @@ import java.util.*;
  * Adapter that bridges a {@link FFmpegLibassBasicRenderPlan} to a
  * {@link LocalRenderExecutionRequest}.
  *
- * <p>This is the first bridge proving BasicRenderPlan can drive controlled
- * local execution. It supports a conservative subset of plan steps:</p>
+ * <p>P2L.2 expands the supported subset to include caption overlay:</p>
  * <ul>
  *   <li>{@code DECLARE_OUTPUT_PROFILE} — extracts resolution, codec, container</li>
  *   <li>{@code ENCODE_OUTPUT} — validates encoding parameters</li>
  *   <li>{@code VERIFY_OUTPUT} — triggers ffprobe validation</li>
+ *   <li>{@code APPLY_CAPTION_OVERLAY} — extracts safe caption overlay specs</li>
  * </ul>
  *
- * <p>Unsupported steps (effects, transitions, captions, watermarks, audio,
+ * <p>Unsupported steps (effects, transitions, watermarks, audio,
  * clip assembly) are reported as warnings or UNSUPPORTED. The adapter uses
  * a synthetic {@code testsrc} input when real media source materialization
  * is not implemented.</p>
@@ -32,25 +33,28 @@ import java.util.*;
  */
 public final class BasicRenderPlanLocalExecutionAdapter {
 
-    /** Steps supported by P2L.1 bridge. */
+    /** Steps supported by P2L.2 bridge. */
     private static final Set<FFmpegLibassBasicRenderStepType> SUPPORTED_STEP_TYPES = Set.of(
             FFmpegLibassBasicRenderStepType.DECLARE_OUTPUT_PROFILE,
             FFmpegLibassBasicRenderStepType.ENCODE_OUTPUT,
             FFmpegLibassBasicRenderStepType.VERIFY_OUTPUT,
             FFmpegLibassBasicRenderStepType.VALIDATE_TIMELINE,
-            FFmpegLibassBasicRenderStepType.DECLARE_SAFE_METADATA
+            FFmpegLibassBasicRenderStepType.DECLARE_SAFE_METADATA,
+            FFmpegLibassBasicRenderStepType.APPLY_CAPTION_OVERLAY
     );
 
-    /** Stages supported by P2L.1 bridge. */
+    /** Stages supported by P2L.2 bridge. */
     private static final Set<FFmpegLibassBasicRenderStageType> SUPPORTED_STAGE_TYPES = Set.of(
             FFmpegLibassBasicRenderStageType.VALIDATE_TIMELINE,
             FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
             FFmpegLibassBasicRenderStageType.PLAN_OUTPUT_ENCODING,
-            FFmpegLibassBasicRenderStageType.PLAN_OUTPUT_VERIFICATION
+            FFmpegLibassBasicRenderStageType.PLAN_OUTPUT_VERIFICATION,
+            FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS
     );
 
     private static final double DEFAULT_SYNTHETIC_DURATION_SEC = 2.0;
     private static final int DEFAULT_FPS = 30;
+    private static final int MAX_CAPTION_OVERLAYS = 10;
 
     private BasicRenderPlanLocalExecutionAdapter() {}
 
@@ -139,22 +143,39 @@ public final class BasicRenderPlanLocalExecutionAdapter {
             return new AdaptResult(null, issues, true);
         }
 
+        // Extract caption overlay specs
+        List<LocalCaptionOverlaySpec> captionSpecs = extractCaptionOverlaySpecs(plan, issues);
+
         // Build request with synthetic testsrc input
         LocalRenderExecutionId executionId = LocalRenderExecutionId.generate();
         Path outputRoot = policy.outputRoot();
         String planId = plan.id() != null ? plan.id().value() : "unknown";
+
+        // Adjust duration to cover all captions if needed
+        double effectiveDuration = DEFAULT_SYNTHETIC_DURATION_SEC;
+        for (LocalCaptionOverlaySpec spec : captionSpecs) {
+            double captionEndSec = spec.endSec();
+            if (captionEndSec > effectiveDuration) {
+                effectiveDuration = Math.min(captionEndSec + 1.0, 30.0); // cap at 30s
+            }
+        }
+
+        String outputSubdir = captionSpecs.isEmpty()
+                ? "local-plan-smoke-001-basic-render-plan-testsrc-h264-mp4"
+                : "local-plan-smoke-002-basic-render-plan-caption-overlay";
 
         LocalRenderExecutionRequest request = new LocalRenderExecutionRequest(
                 executionId,
                 planId,
                 profile.width,
                 profile.height,
-                DEFAULT_SYNTHETIC_DURATION_SEC,
+                effectiveDuration,
                 profile.fps > 0 ? profile.fps : DEFAULT_FPS,
                 profile.videoCodec != null ? profile.videoCodec : "h264",
                 profile.container != null ? profile.container : "mp4",
-                outputRoot.resolve("local-plan-smoke-001-basic-render-plan-testsrc-h264-mp4"),
+                outputRoot.resolve(outputSubdir),
                 unsupportedSteps,
+                captionSpecs,
                 plan.safeMetadata()
         );
 
@@ -163,6 +184,137 @@ public final class BasicRenderPlanLocalExecutionAdapter {
                 "Using synthetic testsrc input; real media source materialization not implemented"));
 
         return new AdaptResult(request, issues, false);
+    }
+
+    /**
+     * Extracts caption overlay specs from the plan's APPLY_CAPTION_OVERLAY steps.
+     */
+    private static List<LocalCaptionOverlaySpec> extractCaptionOverlaySpecs(
+            FFmpegLibassBasicRenderPlan plan,
+            List<LocalRenderSmokeIssue> issues) {
+
+        List<LocalCaptionOverlaySpec> specs = new ArrayList<>();
+        int count = 0;
+
+        for (FFmpegLibassBasicRenderStage stage : plan.stages()) {
+            for (FFmpegLibassBasicRenderStep step : stage.steps()) {
+                if (step.type() != FFmpegLibassBasicRenderStepType.APPLY_CAPTION_OVERLAY) {
+                    continue;
+                }
+
+                count++;
+
+                if (count > MAX_CAPTION_OVERLAYS) {
+                    issues.add(LocalRenderSmokeIssue.warning(
+                            LocalRenderSmokeIssueCode.CAPTION_OVERLAY_UNSUPPORTED,
+                            "Caption overlay count exceeds max (" + MAX_CAPTION_OVERLAYS + "); skipping remaining"));
+                    return specs;
+                }
+
+                // Extract parameters
+                String captionId = null;
+                double startMs = -1;
+                double endMs = -1;
+                String text = null;
+                boolean hasRawFiltergraph = false;
+                boolean hasRawAssStyle = false;
+                boolean hasExternalSubtitle = false;
+                boolean hasFontPath = false;
+
+                if (step.parameters() != null) {
+                    for (FFmpegLibassBasicRenderStepParameter param : step.parameters()) {
+                        switch (param.name()) {
+                            case "captionId" -> captionId = toString(param.value());
+                            case "startMs" -> startMs = toDouble(param.value());
+                            case "endMs" -> endMs = toDouble(param.value());
+                            case "textRef" -> text = toString(param.value());
+                            case "rawFiltergraph" -> hasRawFiltergraph = true;
+                            case "rawAssStyle" -> hasRawAssStyle = true;
+                            case "externalSubtitlePath" -> hasExternalSubtitle = true;
+                            case "fontPath" -> hasFontPath = true;
+                        }
+                    }
+                }
+
+                // Reject forbidden fields
+                if (hasRawFiltergraph) {
+                    issues.add(LocalRenderSmokeIssue.blocking(
+                            LocalRenderSmokeIssueCode.CAPTION_RAW_FILTERGRAPH_FORBIDDEN,
+                            "Caption contains raw filtergraph: " + captionId));
+                    continue;
+                }
+                if (hasRawAssStyle) {
+                    issues.add(LocalRenderSmokeIssue.blocking(
+                            LocalRenderSmokeIssueCode.CAPTION_RAW_ASS_STYLE_FORBIDDEN,
+                            "Caption contains raw ASS style: " + captionId));
+                    continue;
+                }
+                if (hasExternalSubtitle) {
+                    issues.add(LocalRenderSmokeIssue.blocking(
+                            LocalRenderSmokeIssueCode.CAPTION_EXTERNAL_SUBTITLE_FORBIDDEN,
+                            "Caption references external subtitle: " + captionId));
+                    continue;
+                }
+                if (hasFontPath) {
+                    issues.add(LocalRenderSmokeIssue.blocking(
+                            LocalRenderSmokeIssueCode.CAPTION_FONT_PATH_FORBIDDEN,
+                            "Caption references font path: " + captionId));
+                    continue;
+                }
+
+                // Validate text
+                if (text == null || text.isBlank()) {
+                    issues.add(LocalRenderSmokeIssue.error(
+                            LocalRenderSmokeIssueCode.CAPTION_TEXT_MISSING,
+                            "Caption text is missing: " + captionId));
+                    continue;
+                }
+                if (text.length() > LocalCaptionOverlaySpec.MAX_TEXT_LENGTH) {
+                    issues.add(LocalRenderSmokeIssue.warning(
+                            LocalRenderSmokeIssueCode.CAPTION_TEXT_TOO_LONG,
+                            "Caption text too long (" + text.length() + " chars), will be truncated: " + captionId));
+                    text = text.substring(0, LocalCaptionOverlaySpec.MAX_TEXT_LENGTH);
+                }
+
+                // Validate time range
+                if (startMs < 0) {
+                    issues.add(LocalRenderSmokeIssue.error(
+                            LocalRenderSmokeIssueCode.CAPTION_TIME_RANGE_INVALID,
+                            "Caption startMs < 0: " + captionId));
+                    continue;
+                }
+                if (endMs <= startMs) {
+                    issues.add(LocalRenderSmokeIssue.error(
+                            LocalRenderSmokeIssueCode.CAPTION_TIME_RANGE_INVALID,
+                            "Caption endMs <= startMs: " + captionId));
+                    continue;
+                }
+
+                // Use step target id as captionId if not provided
+                if (captionId == null && step.target() != null) {
+                    captionId = step.target().targetId();
+                }
+                if (captionId == null) {
+                    captionId = "caption-" + count;
+                }
+
+                try {
+                    specs.add(new LocalCaptionOverlaySpec(captionId, text, startMs, endMs));
+                } catch (IllegalArgumentException e) {
+                    issues.add(LocalRenderSmokeIssue.error(
+                            LocalRenderSmokeIssueCode.CAPTION_OVERLAY_UNSUPPORTED,
+                            "Invalid caption spec: " + e.getMessage()));
+                }
+            }
+        }
+
+        if (count == 0) {
+            issues.add(LocalRenderSmokeIssue.info(
+                    LocalRenderSmokeIssueCode.CAPTION_OVERLAY_MISSING,
+                    "No APPLY_CAPTION_OVERLAY steps found in plan"));
+        }
+
+        return specs;
     }
 
     /**
@@ -197,6 +349,11 @@ public final class BasicRenderPlanLocalExecutionAdapter {
     private static int toInt(Object value) {
         if (value instanceof Number n) return n.intValue();
         try { return Integer.parseInt(String.valueOf(value)); } catch (Exception e) { return 0; }
+    }
+
+    private static double toDouble(Object value) {
+        if (value instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(String.valueOf(value)); } catch (Exception e) { return 0; }
     }
 
     private static String toString(Object value) {
