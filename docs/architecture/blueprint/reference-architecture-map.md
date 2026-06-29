@@ -948,7 +948,7 @@ Used in production by Sony Pictures Imageworks, Google Cloud, and others.
 ```
 Platform Layer              →  OpenCue Equivalent
 ─────────────────────────────────────────────────────
-Artifact DAG (nodes + deps) →  OpenCue Job (layers + frames)
+Artifact DAG (nodes + deps) →  OpenCue Job (layers + frames)  *(indefinitely deferred, P2A.2; current OpenCue work does not depend on Artifact DAG)
 Execution Graph (bindings)  →  OpenCue Job Dispatch
 Render Job (logical)        →  OpenCue Job
 Artifact Node (per-segment) →  OpenCue Layer

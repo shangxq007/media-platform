@@ -18,6 +18,8 @@ AI must generate: `TimelineEditPlan`
 TimelineEditPlan → TimelineMutationService → TimelineRevision → Review/Merge → Execution Planner → Artifact DAG → Render/Export
 ```
 
+> **Note:** Artifact DAG is indefinitely deferred (P2A.2) and retained only as an extension layer. The current render pipeline does not include Artifact DAG. See [ADR-025](adr/ADR-025-artifact-dag-indefinite-deferral.md).
+
 ## 2. Creative Planner Role
 
 | Owns | Does NOT Own |

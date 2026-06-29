@@ -1376,10 +1376,10 @@ User: "Make the intro shorter"
 ### Key Invariants
 
 1. **Timeline IR is the editing source of truth** — not the Artifact DAG, not the Execution Graph
-2. **Artifact DAG is the execution source of truth** — derived from Timeline IR, never edited directly
+2. **Artifact DAG is the execution source of truth** — derived from Timeline IR, never edited directly *(indefinitely deferred, P2A.2; current pipeline operates without Artifact DAG)*
 3. **Execution Graph is ephemeral** — created per render, discarded after completion
 4. **LLM generates patches, not commands** — the planner compiles patches into execution plans
-5. **Provider binding is the last step** — Timeline IR → Artifact DAG → Capability Graph → Execution Graph → Provider
+5. **Provider binding is the last step** — Timeline IR → *(Artifact DAG is indefinitely deferred)* → Capability Graph → Execution Graph → Provider
 
 ---
 

@@ -3,14 +3,18 @@ package com.example.platform.render.domain.artifact;
 /**
  * Runtime mode for Artifact DAG evaluation.
  *
- * <p>Artifact DAG is a deferred render optimization layer for incremental render,
- * cache reuse, artifact lineage, and partial recomputation. It is not required for
- * Timeline Git, rollback, branch switching, merge preview, template workflow MVP,
- * or explicit full render.</p>
+ * <p>Artifact DAG is indefinitely deferred and retained only as an extension layer
+ * for incremental render, cache reuse, artifact lineage, and partial recomputation.
+ * It is not on the current roadmap and must not be required for current rendering,
+ * Timeline Git, effects/transitions, Provider Binding, Render Execution Plan, OpenCue,
+ * Product API, or E2E validation.</p>
  *
  * <p>Default mode is {@link #DISABLED}. Artifact DAG must not block render,
  * must not drive provider binding, and must not drive render execution planning
- * by default.</p>
+ * by default. Production implementation may be reconsidered only after measured
+ * production bottlenecks demonstrate a clear need.</p>
+ *
+ * @see <a href="docs/architecture/adr/ADR-025-artifact-dag-indefinite-deferral.md">ADR-025</a>
  */
 public enum ArtifactDagMode {
 
@@ -36,9 +40,10 @@ public enum ArtifactDagMode {
     EXPERIMENTAL,
 
     /**
-     * Future-only. Must not be enabled by default.
+     * Future-only. Not on current roadmap. Must not be enabled by default.
      * If enum value is present, tests must prove it is not default.
-     * When Artifact DAG is ready for production, this mode enables full evaluation.
+     * Reserved for when measured production need triggers re-evaluation.
+     * Must not be used in product path.
      */
     REQUIRED;
 

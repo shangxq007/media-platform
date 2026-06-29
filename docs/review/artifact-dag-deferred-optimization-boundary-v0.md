@@ -1,5 +1,7 @@
 # Artifact DAG Deferred Optimization Boundary v0 (P2A.0)
 
+> **Superseded by P2A.2**: Artifact DAG is now **indefinitely deferred** and retained only as an extension layer. See [ADR-025](../architecture/adr/ADR-025-artifact-dag-indefinite-deferral.md) and [Artifact DAG Indefinite Deferral Review](artifact-dag-indefinite-deferral-extension-boundary-v0.md).
+
 ## 1. Purpose
 
 Mark Artifact DAG as a deferred render optimization layer with safe runtime modes. Prevent future code or agents from treating Artifact DAG as a required near-term render path. Artifact DAG remains in the blueprint as a future optimization for incremental render, cache reuse, artifact lineage, partial recomputation, and performance bottleneck handling.

@@ -38,6 +38,8 @@ Backend Compiler (translate to backend-specific format)
 ExecutionBackend (execute)
 ```
 
+> **Note:** Artifact DAG is indefinitely deferred (P2A.2) and retained only as an extension layer. The current execution planner operates without Artifact DAG. See [ADR-025](adr/ADR-025-artifact-dag-indefinite-deferral.md).
+
 ## 3. Artifact DAG
 
 ### ArtifactNode

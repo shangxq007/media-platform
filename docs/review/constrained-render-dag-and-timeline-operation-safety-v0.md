@@ -130,12 +130,13 @@ Complexity: O(nodes × providers), providers bounded.
 
 ## 10. Artifact DAG Constraints
 
-Artifact DAG is deferred:
+Artifact DAG is **indefinitely deferred** (P2A.2) and retained only as an extension layer:
 
 - Default mode: DISABLED
 - DRY_RUN: non-blocking analysis only
 - EXPERIMENTAL: internal-only
 - REQUIRED: future-only, not enabled
+- Not on current roadmap; not a dependency for any current work item
 
 Boundaries:
 - Must not drive ProviderBindingPlan by default

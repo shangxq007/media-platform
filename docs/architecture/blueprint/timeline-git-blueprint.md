@@ -137,6 +137,8 @@ The Execution Graph describes **where and how to execute each artifact productio
 
 **Key invariant:** Timeline IR → Artifact DAG → Execution Graph. Each layer is derived from the layer above. No layer edits a layer above it. Provider binding is always the last step.
 
+> **Note:** Artifact DAG is indefinitely deferred (P2A.2) and retained only as an extension layer. The current pipeline derives Execution Graph from Timeline IR without Artifact DAG. See [ADR-025](../adr/ADR-025-artifact-dag-indefinite-deferral.md).
+
 ---
 
 ## 4. Timeline Snapshot Model

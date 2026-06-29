@@ -143,7 +143,7 @@ WorkflowApplyTemplateStepDiff — workflow step changes
 
 > P2V.4 introduced a side-effect-free Timeline Merge Preview Service. It wraps three-way conflict analysis into a safe preview result with status, summary, readiness, and issues. It does not perform automatic merge, conflict resolution, patch application, Timeline Git persistence, render execution, StorageRuntime operations, or ProductRuntime operations.
 
-> Artifact DAG is retained as a future optimization and artifact-lineage layer. It is not required for Timeline Git, rollback, branch switching, merge preview, template workflow MVP, or explicit full render. The default mode is DISABLED. DRY_RUN is non-blocking and must not affect ProviderBindingPlan or RenderExecutionPlan. EXPERIMENTAL is internal-only. REQUIRED is future-only and not enabled.
+> Artifact DAG is indefinitely deferred and retained only as an extension layer (P2A.2). It is not on the current roadmap and must not be required for current rendering, Timeline Git, effects/transitions, Provider Binding, Render Execution Plan, OpenCue, Product API, or E2E validation. It may be reconsidered only after measured production bottlenecks prove a need. See [ADR-025](../adr/ADR-025-artifact-dag-indefinite-deferral.md).
 
 > Render DAG and timeline-related graph structures are constrained media-domain DAGs, not arbitrary user-programmable graphs or global optimization systems. Provider binding uses deterministic eligibility and priority rather than global combinatorial optimization. See ADR-024.
 
