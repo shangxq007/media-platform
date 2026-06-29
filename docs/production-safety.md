@@ -36,3 +36,15 @@ export APP_AI_DEFAULT_PROVIDER=openAiChatProvider
 
 - `PlatformReadinessHealthIndicator`：数据库连通 + Flyway 无 pending。
 - prod 将 `platformReadiness` 纳入 `management.endpoint.health.group.readiness`。
+
+## P2X.0 Scenario Runner Safety
+
+P2X.0 introduced an internal API/Agent Scenario Runner. The runner is pure and side-effect-free:
+- Does not execute FFmpeg
+- Does not call OpenCue
+- Does not create RenderJob or Product
+- Does not call StorageRuntime or ProductRuntime
+- Does not expose public APIs
+- Does not use Artifact DAG
+- Does not persist scenario results
+- Does not expose filter_complex, raw commands, or provider internals

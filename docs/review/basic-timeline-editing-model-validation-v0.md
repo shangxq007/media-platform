@@ -264,3 +264,7 @@ No Artifact DAG dependency. P2TLE.0 is independent of Artifact DAG (indefinitely
 - Implement remaining edit operations (remove, update, reorder)
 - Watermark dedicated record type (currently metadata-based)
 - Transition dedicated tracking (currently metadata-based)
+
+## 24. P2X.0 Status
+
+P2X.0 introduced an internal API/Agent Scenario Runner and E2E Validation Harness. It validates the current core planning flow from timeline editing through visual capability validation, FFmpeg baseline effect planning, FFmpeg baseline transition planning, and FFmpeg/libass basic timeline render planning. It does not execute FFmpeg, does not call OpenCue, does not create RenderJob/Product, does not call StorageRuntime/ProductRuntime, does not expose public APIs, and does not use Artifact DAG.
