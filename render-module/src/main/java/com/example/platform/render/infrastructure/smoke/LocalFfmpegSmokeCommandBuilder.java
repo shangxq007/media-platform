@@ -1,6 +1,7 @@
 package com.example.platform.render.infrastructure.smoke;
 
 import com.example.platform.render.domain.render.local.LocalCaptionOverlaySpec;
+import com.example.platform.render.domain.render.local.LocalMediaSourceSpec;
 import com.example.platform.render.domain.render.local.LocalRenderSmokeIssue;
 import com.example.platform.render.domain.render.local.LocalRenderSmokeIssueCode;
 import com.example.platform.render.domain.render.local.LocalRenderSmokePolicy;
@@ -263,6 +264,112 @@ public final class LocalFfmpegSmokeCommandBuilder {
                 "-vf", "ass=" + assPath.toAbsolutePath(),
                 outputPath.toString()
         );
+
+        // Validate no shell invocation patterns
+        if (policy.containsShellInvocation(args)) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.SHELL_INVOCATION_FORBIDDEN,
+                    "Shell invocation detected in built arguments"));
+            return new BuildResult(List.of(), outputPath, issues);
+        }
+
+        return new BuildResult(args, outputPath, issues);
+    }
+
+    /**
+     * Builds the FFmpeg command for a plan-driven local execution with real media input.
+     * Uses a controlled media fixture file as input instead of synthetic testsrc.
+     * Supports optional caption overlay via ASS subtitle burn-in.
+     *
+     * @param inputPath    path to the input media file (must be under controlled root)
+     * @param width        output width
+     * @param height       output height
+     * @param fps          frame rate
+     * @param videoCodec   target video codec
+     * @param container    target container
+     * @param outputDir    output directory
+     * @param captionSpecs safe caption overlay specs (may be empty)
+     * @param policy       smoke policy
+     * @return build result with args, output path, and any issues
+     */
+    public static BuildResult buildPlanDrivenRealMediaWithCaptions(
+            Path inputPath, int width, int height, int fps,
+            String videoCodec, String container, Path outputDir,
+            List<LocalCaptionOverlaySpec> captionSpecs,
+            LocalRenderSmokePolicy policy) {
+        Objects.requireNonNull(inputPath, "inputPath must not be null");
+        Objects.requireNonNull(videoCodec, "videoCodec must not be null");
+        Objects.requireNonNull(container, "container must not be null");
+        Objects.requireNonNull(outputDir, "outputDir must not be null");
+        Objects.requireNonNull(captionSpecs, "captionSpecs must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
+
+        List<LocalRenderSmokeIssue> issues = new ArrayList<>();
+
+        // Validate binary allowlist
+        if (!policy.isBinaryAllowed(FFMPEG_BINARY)) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.COMMAND_ALLOWLIST_VIOLATION,
+                    "Binary '" + FFMPEG_BINARY + "' is not on the allowlist"));
+            return new BuildResult(List.of(), null, issues);
+        }
+
+        // Prepare output directory
+        Path outputPath = outputDir.resolve("output." + container);
+
+        try {
+            Files.createDirectories(outputDir);
+        } catch (Exception e) {
+            issues.add(LocalRenderSmokeIssue.error(
+                    LocalRenderSmokeIssueCode.OUTPUT_DIRECTORY_UNAVAILABLE,
+                    "Cannot create output directory: " + outputDir));
+            return new BuildResult(List.of(), outputPath, issues);
+        }
+
+        // Map codec name to FFmpeg encoder
+        String encoder = mapCodecToEncoder(videoCodec);
+
+        List<String> args;
+
+        if (!captionSpecs.isEmpty()) {
+            // Generate platform-owned ASS subtitle file
+            Path assPath = outputDir.resolve("caption-overlay-input.ass");
+            try {
+                String assContent = buildAssContent(captionSpecs, width, height);
+                Files.writeString(assPath, assContent, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                issues.add(LocalRenderSmokeIssue.error(
+                        LocalRenderSmokeIssueCode.CAPTION_OVERLAY_RENDER_FAILED,
+                        "Failed to write ASS subtitle file: " + e.getMessage()));
+                return new BuildResult(List.of(), outputPath, issues);
+            }
+
+            // Build command with real media input + caption overlay
+            args = List.of(
+                    FFMPEG_BINARY,
+                    "-y",
+                    "-i", inputPath.toAbsolutePath().toString(),
+                    "-vf", "scale=" + width + ":" + height + ",ass=" + assPath.toAbsolutePath(),
+                    "-c:v", encoder,
+                    "-preset", "ultrafast",
+                    "-r", String.valueOf(fps),
+                    "-pix_fmt", "yuv420p",
+                    outputPath.toString()
+            );
+        } else {
+            // Build command with real media input, no caption overlay
+            args = List.of(
+                    FFMPEG_BINARY,
+                    "-y",
+                    "-i", inputPath.toAbsolutePath().toString(),
+                    "-vf", "scale=" + width + ":" + height,
+                    "-c:v", encoder,
+                    "-preset", "ultrafast",
+                    "-r", String.valueOf(fps),
+                    "-pix_fmt", "yuv420p",
+                    outputPath.toString()
+            );
+        }
 
         // Validate no shell invocation patterns
         if (policy.containsShellInvocation(args)) {

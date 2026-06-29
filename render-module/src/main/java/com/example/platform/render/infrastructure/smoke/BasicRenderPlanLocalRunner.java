@@ -18,14 +18,15 @@ import java.util.*;
  * <ol>
  *   <li>Accept BasicRenderPlan</li>
  *   <li>Use {@link BasicRenderPlanLocalExecutionAdapter} to create local request</li>
+ *   <li>Materialize input fixture if real media source requested</li>
  *   <li>Build controlled FFmpeg command via {@link LocalFfmpegSmokeCommandBuilder}</li>
  *   <li>Execute via {@link LocalProcessRunner}</li>
  *   <li>Validate output with {@link LocalFfprobeValidator}</li>
  *   <li>Return {@link LocalRenderExecutionResult}</li>
  * </ol>
  *
- * <p>This is not a full timeline renderer. This is the first bridge proving
- * BasicRenderPlan can drive controlled local execution.</p>
+ * <p>This is not a full timeline renderer. This is the bridge proving
+ * BasicRenderPlan can drive controlled local execution with real media input.</p>
  *
  * <p>Execution must remain disabled by default. The runner reuses
  * {@link LocalRenderSmokePolicy} for safety enforcement.</p>
@@ -35,14 +36,24 @@ public final class BasicRenderPlanLocalRunner {
     private BasicRenderPlanLocalRunner() {}
 
     /**
-     * Executes a BasicRenderPlan through the local runner bridge.
-     *
-     * @param plan   the render plan to execute
-     * @param policy the local smoke policy
-     * @return execution result
+     * Executes a BasicRenderPlan through the local runner bridge (synthetic testsrc input).
      */
     public static LocalRenderExecutionResult execute(FFmpegLibassBasicRenderPlan plan,
                                                       LocalRenderSmokePolicy policy) {
+        return execute(plan, policy, null);
+    }
+
+    /**
+     * Executes a BasicRenderPlan through the local runner bridge.
+     *
+     * @param plan        the render plan to execute
+     * @param policy      the local smoke policy
+     * @param mediaSource controlled media source spec (null = use synthetic testsrc)
+     * @return execution result
+     */
+    public static LocalRenderExecutionResult execute(FFmpegLibassBasicRenderPlan plan,
+                                                      LocalRenderSmokePolicy policy,
+                                                      LocalMediaSourceSpec mediaSource) {
         Objects.requireNonNull(plan, "plan must not be null");
         Objects.requireNonNull(policy, "policy must not be null");
 
@@ -58,8 +69,12 @@ public final class BasicRenderPlanLocalRunner {
         }
 
         // Step 2: Adapt plan to local request
-        BasicRenderPlanLocalExecutionAdapter.AdaptResult adaptResult =
-                BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+        BasicRenderPlanLocalExecutionAdapter.AdaptResult adaptResult;
+        if (mediaSource != null) {
+            adaptResult = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy, mediaSource);
+        } else {
+            adaptResult = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+        }
 
         if (adaptResult.blocked() || adaptResult.request() == null) {
             issues.addAll(adaptResult.issues());
@@ -89,10 +104,38 @@ public final class BasicRenderPlanLocalRunner {
             return buildNotAvailableResult(plan, request, issues);
         }
 
-        // Step 5: Build controlled FFmpeg command
-        // Use caption overlay command if captions are present; otherwise plain testsrc
+        // Step 5: Materialize/generate input fixture if needed
+        LocalMediaSourceSpec resolvedSource = request.mediaSourceSpec();
+        LocalFfprobeValidator.ValidationResult inputValidation = null;
+
+        if (request.hasRealMediaSource()) {
+            // Validate existing input fixture with ffprobe
+            inputValidation = LocalFfprobeValidator.validate(
+                    resolvedSource.path(), 0, 0, 0.1, 30.0, policy.timeoutSeconds());
+
+            if (!inputValidation.valid()) {
+                issues.add(LocalRenderSmokeIssue.error(
+                        LocalRenderSmokeIssueCode.MEDIA_SOURCE_VALIDATION_FAILED,
+                        "Input fixture validation failed: " + resolvedSource.path()));
+                issues.addAll(inputValidation.issues());
+                return buildFailResult(plan, request, null, -1, Duration.ZERO, issues);
+            }
+
+            issues.add(LocalRenderSmokeIssue.info(
+                    LocalRenderSmokeIssueCode.SYNTHETIC_INPUT_REQUIRED,
+                    "Using controlled local media fixture: " + resolvedSource.path().getFileName()));
+        }
+
+        // Step 6: Build controlled FFmpeg command
         LocalFfmpegSmokeCommandBuilder.BuildResult buildResult;
-        if (!request.captionOverlaySpecs().isEmpty()) {
+        if (request.hasRealMediaSource()) {
+            // Real media input with optional caption overlay
+            buildResult = LocalFfmpegSmokeCommandBuilder.buildPlanDrivenRealMediaWithCaptions(
+                    resolvedSource.path(),
+                    request.width(), request.height(), request.fps(),
+                    request.videoCodec(), request.container(),
+                    request.outputRoot(), request.captionOverlaySpecs(), policy);
+        } else if (!request.captionOverlaySpecs().isEmpty()) {
             buildResult = LocalFfmpegSmokeCommandBuilder.buildPlanDrivenTestsrcWithCaptions(
                     request.width(), request.height(), request.durationSec(),
                     request.fps(), request.videoCodec(), request.container(),
@@ -120,7 +163,7 @@ public final class BasicRenderPlanLocalRunner {
             return buildFailResult(plan, request, null, -1, Duration.ZERO, issues);
         }
 
-        // Step 6: Execute FFmpeg with timeout
+        // Step 7: Execute FFmpeg with timeout
         LocalProcessRunner.LocalProcessExecutionResult ffmpegResult =
                 LocalProcessRunner.execute(buildResult.args(), policy.timeoutSeconds());
 
@@ -138,18 +181,19 @@ public final class BasicRenderPlanLocalRunner {
                     ffmpegResult.exitCode(), ffmpegResult.duration(), issues);
         }
 
-        // Step 7: Validate output with ffprobe
-        LocalFfprobeValidator.ValidationResult validation = LocalFfprobeValidator.validate(
+        // Step 8: Validate output with ffprobe
+        LocalFfprobeValidator.ValidationResult outputValidation = LocalFfprobeValidator.validate(
                 buildResult.outputPath(),
                 request.width(), request.height(),
-                request.durationSec() * 0.5, request.durationSec() * 2.0,
+                request.hasRealMediaSource() ? 0.1 : request.durationSec() * 0.5,
+                request.hasRealMediaSource() ? 30.0 : request.durationSec() * 2.0,
                 policy.timeoutSeconds());
 
-        if (!validation.issues().isEmpty()) {
-            issues.addAll(validation.issues());
+        if (!outputValidation.issues().isEmpty()) {
+            issues.addAll(outputValidation.issues());
         }
 
-        // Step 8: Check output file
+        // Step 9: Check output file
         long outputBytes = 0;
         try {
             if (Files.exists(buildResult.outputPath())) {
@@ -157,7 +201,7 @@ public final class BasicRenderPlanLocalRunner {
             }
         } catch (IOException ignored) {}
 
-        // Step 9: Determine final status
+        // Step 10: Determine final status
         boolean hasErrors = issues.stream().anyMatch(i ->
                 i.severity() == LocalRenderSmokeIssueSeverity.ERROR
                 || i.severity() == LocalRenderSmokeIssueSeverity.BLOCKING);
@@ -173,53 +217,78 @@ public final class BasicRenderPlanLocalRunner {
             status = LocalRenderExecutionStatus.PASS;
         }
 
+        // Build input metadata
+        LocalMediaSourceKind inputKind = request.hasRealMediaSource() ? resolvedSource.kind() : null;
+        LocalMediaSourceOrigin inputOrigin = request.hasRealMediaSource() ? resolvedSource.origin() : null;
+        Path inputPath = request.hasRealMediaSource() ? resolvedSource.path() : null;
+        long inputBytes = 0;
+        if (request.hasRealMediaSource() && Files.exists(resolvedSource.path())) {
+            try { inputBytes = Files.size(resolvedSource.path()); } catch (IOException ignored) {}
+        }
+
         int captionOverlayCount = request.captionOverlaySpecs().size();
-        int supportedCaptionCount = captionOverlayCount; // all extracted specs are supported
+        int supportedCaptionCount = captionOverlayCount;
         int unsupportedCaptionCount = request.unsupportedSteps().stream()
                 .filter(s -> s.contains("CAPTION")).toList().size();
+
+        Map<String, String> safeMetadata = new LinkedHashMap<>();
+        safeMetadata.put("binary", "ffmpeg");
+        safeMetadata.put("argumentCount", String.valueOf(buildResult.args().size()));
+        safeMetadata.put("executionTimeMs", String.valueOf(ffmpegResult.duration().toMillis()));
+        safeMetadata.put("planId", request.planId());
+        safeMetadata.put("captionOverlayCount", String.valueOf(captionOverlayCount));
+        safeMetadata.put("supportedCaptionOverlayCount", String.valueOf(supportedCaptionCount));
+        safeMetadata.put("unsupportedCaptionOverlayCount", String.valueOf(unsupportedCaptionCount));
+        if (request.hasRealMediaSource()) {
+            safeMetadata.put("inputSourceKind", resolvedSource.kind().name());
+            safeMetadata.put("inputSourceOrigin", resolvedSource.origin().name());
+            safeMetadata.put("inputFileName", resolvedSource.path().getFileName().toString());
+        } else {
+            safeMetadata.put("syntheticInput", "testsrc");
+        }
 
         return new LocalRenderExecutionResult(
                 request.executionId(),
                 request.planId(),
                 status,
-                buildResult.outputPath(),
-                outputBytes,
-                ffmpegResult.exitCode(),
-                ffmpegResult.duration(),
-                validation.ffprobeExitCode(),
-                validation.width(),
-                validation.height(),
-                validation.durationSec(),
-                validation.codec(),
-                validation.format(),
-                request.unsupportedSteps(),
-                issues,
-                Map.of(
-                        "binary", "ffmpeg",
-                        "argumentCount", String.valueOf(buildResult.args().size()),
-                        "executionTimeMs", String.valueOf(ffmpegResult.duration().toMillis()),
-                        "syntheticInput", "testsrc",
-                        "planId", request.planId(),
-                        "captionOverlayCount", String.valueOf(captionOverlayCount),
-                        "supportedCaptionOverlayCount", String.valueOf(supportedCaptionCount),
-                        "unsupportedCaptionOverlayCount", String.valueOf(unsupportedCaptionCount)
-                )
+                // Input metadata
+                inputKind, inputOrigin, inputPath, inputBytes,
+                inputValidation != null ? inputValidation.ffprobeExitCode() : -1,
+                inputValidation != null ? inputValidation.width() : 0,
+                inputValidation != null ? inputValidation.height() : 0,
+                inputValidation != null ? inputValidation.durationSec() : 0,
+                inputValidation != null ? inputValidation.codec() : null,
+                inputValidation != null ? inputValidation.format() : null,
+                // Output metadata
+                buildResult.outputPath(), outputBytes,
+                ffmpegResult.exitCode(), ffmpegResult.duration(),
+                outputValidation.ffprobeExitCode(),
+                outputValidation.width(), outputValidation.height(),
+                outputValidation.durationSec(), outputValidation.codec(), outputValidation.format(),
+                // Other
+                request.unsupportedSteps(), captionOverlayCount,
+                issues, safeMetadata
         );
     }
 
     /**
      * Executes a BasicRenderPlan and writes a report under the configured output root.
-     *
-     * @param plan   the render plan to execute
-     * @param policy the local smoke policy
-     * @return execution report
      */
     public static LocalRenderExecutionReport executeAndReport(FFmpegLibassBasicRenderPlan plan,
                                                                LocalRenderSmokePolicy policy) {
+        return executeAndReport(plan, policy, null);
+    }
+
+    /**
+     * Executes a BasicRenderPlan with optional media source and writes a report.
+     */
+    public static LocalRenderExecutionReport executeAndReport(FFmpegLibassBasicRenderPlan plan,
+                                                               LocalRenderSmokePolicy policy,
+                                                               LocalMediaSourceSpec mediaSource) {
         Objects.requireNonNull(plan, "plan must not be null");
         Objects.requireNonNull(policy, "policy must not be null");
 
-        LocalRenderExecutionResult result = execute(plan, policy);
+        LocalRenderExecutionResult result = execute(plan, policy, mediaSource);
 
         LocalRenderExecutionReport report = new LocalRenderExecutionReport(
                 "exec-report-" + result.executionId().value(),
@@ -235,7 +304,6 @@ public final class BasicRenderPlanLocalRunner {
                 Map.of()
         );
 
-        // Write report
         writeReport(report, result);
 
         return report;
@@ -268,20 +336,33 @@ public final class BasicRenderPlanLocalRunner {
                 sb.append("  Execution ID: ").append(r.executionId().value()).append("\n");
                 sb.append("  BasicRenderPlan ID: ").append(r.planId()).append("\n");
                 sb.append("  Status: ").append(r.status()).append("\n");
+
+                // Input source info
+                if (r.hasInputSource()) {
+                    sb.append("  Input Source Kind: ").append(r.inputSourceKind()).append("\n");
+                    sb.append("  Input Source Origin: ").append(r.inputSourceOrigin()).append("\n");
+                    sb.append("  Input Path: ").append(r.inputPath()).append("\n");
+                    sb.append("  Input Size: ").append(r.inputFileBytes()).append(" bytes\n");
+                    sb.append("  Input Width: ").append(r.inputWidth()).append("\n");
+                    sb.append("  Input Height: ").append(r.inputHeight()).append("\n");
+                    sb.append("  Input Duration: ").append(r.inputDurationSec()).append("s\n");
+                    sb.append("  Input Codec: ").append(r.inputCodec()).append("\n");
+                    sb.append("  Input Format: ").append(r.inputFormat()).append("\n");
+                } else {
+                    sb.append("  Input: synthetic testsrc\n");
+                }
+
                 sb.append("  Output: ").append(r.outputPath()).append("\n");
-                sb.append("  Size: ").append(r.outputFileBytes()).append(" bytes\n");
+                sb.append("  Output Size: ").append(r.outputFileBytes()).append(" bytes\n");
                 sb.append("  FFmpeg exit: ").append(r.ffmpegExitCode()).append("\n");
-                sb.append("  Duration: ").append(r.actualDurationSec()).append("s\n");
-                sb.append("  Resolution: ").append(r.actualWidth()).append("x").append(r.actualHeight()).append("\n");
-                sb.append("  Codec: ").append(r.actualCodec()).append("\n");
-                sb.append("  Format: ").append(r.actualFormat()).append("\n");
+                sb.append("  Output Duration: ").append(r.actualDurationSec()).append("s\n");
+                sb.append("  Output Resolution: ").append(r.actualWidth()).append("x").append(r.actualHeight()).append("\n");
+                sb.append("  Output Codec: ").append(r.actualCodec()).append("\n");
+                sb.append("  Output Format: ").append(r.actualFormat()).append("\n");
+
                 // Caption overlay counts
-                String captionCount = r.safeMetadata().getOrDefault("captionOverlayCount", "0");
-                String supportedCount = r.safeMetadata().getOrDefault("supportedCaptionOverlayCount", "0");
-                String unsupportedCount = r.safeMetadata().getOrDefault("unsupportedCaptionOverlayCount", "0");
-                sb.append("  Caption Overlay Count: ").append(captionCount).append("\n");
-                sb.append("  Supported Caption Overlay Count: ").append(supportedCount).append("\n");
-                sb.append("  Unsupported Caption Overlay Count: ").append(unsupportedCount).append("\n");
+                sb.append("  Caption Overlay Count: ").append(r.captionOverlayCount()).append("\n");
+
                 if (!r.unsupportedSteps().isEmpty()) {
                     sb.append("  Unsupported Steps: ").append(String.join(", ", r.unsupportedSteps())).append("\n");
                 }
@@ -317,8 +398,9 @@ public final class BasicRenderPlanLocalRunner {
         return new LocalRenderExecutionResult(
                 LocalRenderExecutionId.generate(), planId,
                 LocalRenderExecutionStatus.SKIPPED,
+                null, null, null, 0, -1, 0, 0, 0, null, null,
                 null, 0, -1, Duration.ZERO, -1, 0, 0, 0, null, null,
-                List.of(), issues, Map.of("reason", "policy-disabled"));
+                List.of(), 0, issues, Map.of("reason", "policy-disabled"));
     }
 
     private static LocalRenderExecutionResult buildRejectedResult(
@@ -328,9 +410,10 @@ public final class BasicRenderPlanLocalRunner {
         return new LocalRenderExecutionResult(
                 LocalRenderExecutionId.generate(), planId,
                 status,
+                null, null, null, 0, -1, 0, 0, 0, null, null,
                 null, 0, -1, Duration.ZERO, -1, 0, 0, 0, null, null,
                 request != null ? request.unsupportedSteps() : List.of(),
-                issues, Map.of("reason", "plan-rejected"));
+                0, issues, Map.of("reason", "plan-rejected"));
     }
 
     private static LocalRenderExecutionResult buildNotAvailableResult(
@@ -339,8 +422,9 @@ public final class BasicRenderPlanLocalRunner {
         return new LocalRenderExecutionResult(
                 request.executionId(), request.planId(),
                 LocalRenderExecutionStatus.NOT_AVAILABLE,
+                null, null, null, 0, -1, 0, 0, 0, null, null,
                 null, 0, -1, Duration.ZERO, -1, 0, 0, 0, null, null,
-                request.unsupportedSteps(), issues, Map.of("reason", "binary-not-available"));
+                request.unsupportedSteps(), 0, issues, Map.of("reason", "binary-not-available"));
     }
 
     private static LocalRenderExecutionResult buildBlockedResult(
@@ -349,8 +433,9 @@ public final class BasicRenderPlanLocalRunner {
         return new LocalRenderExecutionResult(
                 request.executionId(), request.planId(),
                 LocalRenderExecutionStatus.BLOCKED,
+                null, null, null, 0, -1, 0, 0, 0, null, null,
                 null, 0, -1, Duration.ZERO, -1, 0, 0, 0, null, null,
-                request.unsupportedSteps(), issues, Map.of("reason", "safety-violation"));
+                request.unsupportedSteps(), 0, issues, Map.of("reason", "safety-violation"));
     }
 
     private static LocalRenderExecutionResult buildFailResult(
@@ -360,7 +445,11 @@ public final class BasicRenderPlanLocalRunner {
         return new LocalRenderExecutionResult(
                 request.executionId(), request.planId(),
                 LocalRenderExecutionStatus.FAIL,
+                request.hasRealMediaSource() ? request.mediaSourceSpec().kind() : null,
+                request.hasRealMediaSource() ? request.mediaSourceSpec().origin() : null,
+                request.hasRealMediaSource() ? request.mediaSourceSpec().path() : null,
+                0, -1, 0, 0, 0, null, null,
                 outputPath, 0, exitCode, duration, -1, 0, 0, 0, null, null,
-                request.unsupportedSteps(), issues, Map.of());
+                request.unsupportedSteps(), 0, issues, Map.of());
     }
 }

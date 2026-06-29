@@ -93,3 +93,13 @@ P2L.2 expands the BasicRenderPlan-to-local-runner bridge to support caption over
 - Placement fixed to bottom-center (ASS Default style)
 - Same safety constraints as P2L.0/P2L.1 (binary allowlist, no shell invocation, List<String> args, timeout)
 - Does not implement full caption rendering, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG
+
+## P2L.3 Real Media Source Materialization Safety
+
+P2L.3 expands the local runner to consume controlled real media fixture input:
+- Generates deterministic input-fixture.mp4 under controlled output root using FFmpeg testsrc
+- Controlled local fixture only — rejects arbitrary user paths, remote URLs, storage references
+- Path validation rejects traversal sequences, remote URLs, storage internals
+- Input validated with ffprobe before main render
+- Same safety constraints as P2L.0/P2L.1/P2L.2 (binary allowlist, no shell invocation, List<String> args, timeout)
+- Does not implement arbitrary user media ingestion, StorageRuntime materialization, ProductRuntime, RenderExecutionPlan, OpenCue, ProviderBindingRegistry, Remotion, or Artifact DAG

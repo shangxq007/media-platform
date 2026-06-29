@@ -1,6 +1,9 @@
 package com.example.platform.render.infrastructure.smoke;
 
 import com.example.platform.render.domain.render.local.LocalCaptionOverlaySpec;
+import com.example.platform.render.domain.render.local.LocalMediaSourceKind;
+import com.example.platform.render.domain.render.local.LocalMediaSourceOrigin;
+import com.example.platform.render.domain.render.local.LocalMediaSourceSpec;
 import com.example.platform.render.domain.render.local.LocalRenderExecutionId;
 import com.example.platform.render.domain.render.local.LocalRenderExecutionRequest;
 import com.example.platform.render.domain.render.local.LocalRenderSmokeIssue;
@@ -176,12 +179,156 @@ public final class BasicRenderPlanLocalExecutionAdapter {
                 outputRoot.resolve(outputSubdir),
                 unsupportedSteps,
                 captionSpecs,
+                null, // no media source — using synthetic testsrc
                 plan.safeMetadata()
         );
 
         issues.add(LocalRenderSmokeIssue.info(
                 LocalRenderSmokeIssueCode.SYNTHETIC_INPUT_REQUIRED,
                 "Using synthetic testsrc input; real media source materialization not implemented"));
+
+        return new AdaptResult(request, issues, false);
+    }
+
+    /**
+     * Adapts a BasicRenderPlan to a local execution request with a controlled media source.
+     *
+     * @param plan          the render plan to adapt
+     * @param policy        the local smoke policy
+     * @param mediaSource   controlled media source spec (must be validated)
+     * @return adaptation result with request, issues, and blocked flag
+     */
+    public static AdaptResult adapt(FFmpegLibassBasicRenderPlan plan, LocalRenderSmokePolicy policy,
+                                     LocalMediaSourceSpec mediaSource) {
+        Objects.requireNonNull(plan, "plan must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
+        Objects.requireNonNull(mediaSource, "mediaSource must not be null");
+
+        List<LocalRenderSmokeIssue> issues = new ArrayList<>();
+        List<String> unsupportedSteps = new ArrayList<>();
+
+        // Validate plan status (same as base adapt)
+        if (plan.status() == FFmpegLibassBasicRenderPlanStatus.BLOCKED
+                || plan.status() == FFmpegLibassBasicRenderPlanStatus.FAILED) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.BASIC_RENDER_PLAN_BLOCKED,
+                    "BasicRenderPlan is " + plan.status() + "; cannot execute locally"));
+            return new AdaptResult(null, issues, true);
+        }
+
+        if (plan.status() == FFmpegLibassBasicRenderPlanStatus.UNSUPPORTED) {
+            issues.add(LocalRenderSmokeIssue.error(
+                    LocalRenderSmokeIssueCode.BASIC_RENDER_PLAN_UNSUPPORTED,
+                    "BasicRenderPlan is UNSUPPORTED; cannot execute locally"));
+            return new AdaptResult(null, issues, true);
+        }
+
+        if (plan.status() == FFmpegLibassBasicRenderPlanStatus.INVALID) {
+            issues.add(LocalRenderSmokeIssue.error(
+                    LocalRenderSmokeIssueCode.BASIC_RENDER_PLAN_INVALID,
+                    "BasicRenderPlan is INVALID; cannot execute locally"));
+            return new AdaptResult(null, issues, true);
+        }
+
+        // Validate media source
+        if (mediaSource.kind() != LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.MEDIA_SOURCE_KIND_UNSUPPORTED,
+                    "Unsupported media source kind: " + mediaSource.kind()));
+            return new AdaptResult(null, issues, true);
+        }
+
+        if (mediaSource.origin() != LocalMediaSourceOrigin.PLATFORM_GENERATED
+                && mediaSource.origin() != LocalMediaSourceOrigin.CONTROLLED_TEST_FIXTURE) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.MEDIA_SOURCE_ORIGIN_UNSUPPORTED,
+                    "Unsupported media source origin: " + mediaSource.origin()));
+            return new AdaptResult(null, issues, true);
+        }
+
+        // Validate path safety
+        if (!mediaSource.isPathSafe()) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.MEDIA_SOURCE_PATH_FORBIDDEN,
+                    "Media source path is not safe: " + mediaSource.path()));
+            return new AdaptResult(null, issues, true);
+        }
+
+        // Validate path is under controlled root
+        if (!mediaSource.isUnderControlledRoot(policy.outputRoot())) {
+            issues.add(LocalRenderSmokeIssue.blocking(
+                    LocalRenderSmokeIssueCode.MEDIA_SOURCE_PATH_FORBIDDEN,
+                    "Media source path is outside controlled root: " + mediaSource.path()));
+            return new AdaptResult(null, issues, true);
+        }
+
+        // Scan stages/steps for unsupported content
+        for (FFmpegLibassBasicRenderStage stage : plan.stages()) {
+            if (!SUPPORTED_STAGE_TYPES.contains(stage.type())) {
+                unsupportedSteps.add("stage:" + stage.type());
+                issues.add(LocalRenderSmokeIssue.warning(
+                        LocalRenderSmokeIssueCode.UNSUPPORTED_RENDER_STAGE,
+                        "Unsupported stage: " + stage.type()));
+            }
+            for (FFmpegLibassBasicRenderStep step : stage.steps()) {
+                if (!SUPPORTED_STEP_TYPES.contains(step.type())) {
+                    unsupportedSteps.add("step:" + step.type());
+                    issues.add(LocalRenderSmokeIssue.warning(
+                            LocalRenderSmokeIssueCode.UNSUPPORTED_RENDER_STEP,
+                            "Unsupported step: " + step.type()));
+                }
+            }
+        }
+
+        // Extract output profile from plan
+        OutputProfile profile = extractOutputProfile(plan);
+        if (profile == null) {
+            issues.add(LocalRenderSmokeIssue.error(
+                    LocalRenderSmokeIssueCode.OUTPUT_PROFILE_MISSING,
+                    "No DECLARE_OUTPUT_PROFILE or ENCODE_OUTPUT step found in plan"));
+            return new AdaptResult(null, issues, true);
+        }
+
+        // Validate output profile
+        if (profile.width <= 0 || profile.height <= 0) {
+            issues.add(LocalRenderSmokeIssue.error(
+                    LocalRenderSmokeIssueCode.OUTPUT_PROFILE_UNSUPPORTED,
+                    "Invalid output dimensions: " + profile.width + "x" + profile.height));
+            return new AdaptResult(null, issues, true);
+        }
+
+        // Extract caption overlay specs
+        List<LocalCaptionOverlaySpec> captionSpecs = extractCaptionOverlaySpecs(plan, issues);
+
+        // Build request with controlled media source
+        LocalRenderExecutionId executionId = LocalRenderExecutionId.generate();
+        Path outputRoot = policy.outputRoot();
+        String planId = plan.id() != null ? plan.id().value() : "unknown";
+
+        // Duration from input media (use profile fps as default)
+        double effectiveDuration = 3.0; // will be overridden by ffprobe validation
+
+        String outputSubdir = "local-plan-smoke-003-real-media-source-caption-overlay";
+
+        LocalRenderExecutionRequest request = new LocalRenderExecutionRequest(
+                executionId,
+                planId,
+                profile.width,
+                profile.height,
+                effectiveDuration,
+                profile.fps > 0 ? profile.fps : DEFAULT_FPS,
+                profile.videoCodec != null ? profile.videoCodec : "h264",
+                profile.container != null ? profile.container : "mp4",
+                outputRoot.resolve(outputSubdir),
+                unsupportedSteps,
+                captionSpecs,
+                mediaSource,
+                plan.safeMetadata()
+        );
+
+        issues.add(LocalRenderSmokeIssue.info(
+                LocalRenderSmokeIssueCode.SYNTHETIC_INPUT_REQUIRED,
+                "Using controlled local media fixture: " + mediaSource.path().getFileName()));
 
         return new AdaptResult(request, issues, false);
     }

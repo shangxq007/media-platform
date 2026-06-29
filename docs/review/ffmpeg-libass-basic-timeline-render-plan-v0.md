@@ -251,3 +251,7 @@ P2L.1 introduced the first BasicRenderPlan-to-local-runner bridge. It consumes F
 ## 29. P2L.2 Status
 
 P2L.2 expands the BasicRenderPlan-to-local-runner bridge to support caption overlay. Recognizes APPLY_CAPTION_OVERLAY steps, extracts safe typed caption fields, generates a platform-owned ASS subtitle file, and burns it in via FFmpeg/libass. Caption text is sanitized (braces/backslashes removed, length bounded to 200 chars). No raw filtergraph, no raw ASS style, no external subtitle path, no font path. Caption overlay counts included in result/report. Execution remains disabled by default. Does not implement full caption rendering, full timeline rendering, RenderExecutionPlan integration, OpenCue integration, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion execution, or Artifact DAG.
+
+## 30. P2L.3 Status
+
+P2L.3 expands the local runner from synthetic testsrc input to controlled real media fixture input. Generates a deterministic input-fixture.mp4 under the controlled output root using FFmpeg testsrc. Validates input and output with ffprobe. Preserves caption overlay support on real media input. Controlled local fixture only — rejects arbitrary user paths, remote URLs, storage references. Input source metadata included in result/report. Execution remains disabled by default. Does not implement arbitrary user media ingestion, StorageRuntime materialization, ProductRuntime, RenderExecutionPlan, OpenCue, ProviderBindingRegistry, Remotion, or Artifact DAG.

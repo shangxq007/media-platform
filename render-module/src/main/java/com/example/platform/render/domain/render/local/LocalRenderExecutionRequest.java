@@ -12,13 +12,14 @@ import java.util.Objects;
  * @param planId             reference to the originating BasicRenderPlan id
  * @param width              output width from plan's output profile
  * @param height             output height from plan's output profile
- * @param durationSec        synthetic duration for testsrc input
+ * @param durationSec        synthetic duration for testsrc input (used when mediaSourceSpec is null)
  * @param fps                frame rate from plan's output profile
  * @param videoCodec         target video codec from plan
  * @param container          target container from plan
  * @param outputRoot         root directory for output
  * @param unsupportedSteps   steps that were detected as unsupported
  * @param captionOverlaySpecs safe caption overlay specs extracted from plan (empty if none)
+ * @param mediaSourceSpec    controlled media source spec (null = use synthetic testsrc)
  * @param safeMetadata       safe metadata from plan
  */
 public record LocalRenderExecutionRequest(
@@ -33,6 +34,7 @@ public record LocalRenderExecutionRequest(
         Path outputRoot,
         List<String> unsupportedSteps,
         List<LocalCaptionOverlaySpec> captionOverlaySpecs,
+        LocalMediaSourceSpec mediaSourceSpec,
         Map<String, String> safeMetadata
 ) {
     public LocalRenderExecutionRequest {
@@ -48,5 +50,12 @@ public record LocalRenderExecutionRequest(
         if (height <= 0) throw new IllegalArgumentException("height must be positive");
         if (durationSec <= 0) throw new IllegalArgumentException("durationSec must be positive");
         if (fps <= 0) throw new IllegalArgumentException("fps must be positive");
+    }
+
+    /**
+     * Returns true if this request uses a real media source (not synthetic testsrc).
+     */
+    public boolean hasRealMediaSource() {
+        return mediaSourceSpec != null;
     }
 }

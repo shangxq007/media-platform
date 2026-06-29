@@ -145,6 +145,7 @@ The DSL does not reference Artifact DAG. Artifact DAG is indefinitely deferred (
 | P2L.0 | Local Explicit Render Smoke Harness | Complete |
 | P2L.1 | BasicRenderPlan-to-Local-Runner Bridge | Complete |
 | P2L.2 | Local Caption Overlay Smoke | Complete |
+| P2L.3 | Real Media Source Materialization | Complete |
 | P2B.1 | FFmpeg/libass Binding Fixtures | Future |
 | P2B.2 | Binding Validator / Registry | Future |
 | P2B.3 | Scenario Runner Capability Discovery | Future |

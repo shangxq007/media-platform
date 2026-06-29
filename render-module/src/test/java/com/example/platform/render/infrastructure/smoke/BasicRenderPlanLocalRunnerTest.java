@@ -233,11 +233,11 @@ class BasicRenderPlanLocalRunnerTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new LocalRenderExecutionRequest(
                         LocalRenderExecutionId.generate(), "plan-1",
-                        0, 180, 2.0, 30, "h264", "mp4", tempDir, List.of(), List.of(), Map.of()));
+                        0, 180, 2.0, 30, "h264", "mp4", tempDir, List.of(), List.of(), null, Map.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> new LocalRenderExecutionRequest(
                         LocalRenderExecutionId.generate(), "plan-1",
-                        320, 0, 2.0, 30, "h264", "mp4", tempDir, List.of(), List.of(), Map.of()));
+                        320, 0, 2.0, 30, "h264", "mp4", tempDir, List.of(), List.of(), null, Map.of()));
     }
 
     @Test
@@ -245,9 +245,10 @@ class BasicRenderPlanLocalRunnerTest {
         var result = new LocalRenderExecutionResult(
                 LocalRenderExecutionId.generate(), "plan-1",
                 LocalRenderExecutionStatus.PASS,
+                null, null, null, 0, -1, 0, 0, 0, null, null,
                 null, 0, 0, java.time.Duration.ZERO, 0,
                 320, 180, 2.0, "h264", "mp4",
-                List.of("step:EFFECT"), List.of(), Map.of("key", "value"));
+                List.of("step:EFFECT"), 0, List.of(), Map.of("key", "value"));
 
         assertNotNull(result.issues());
         assertNotNull(result.safeMetadata());
@@ -499,6 +500,261 @@ class BasicRenderPlanLocalRunnerTest {
         assertEquals(result1.request().outputRoot(), result2.request().outputRoot());
         assertTrue(result1.request().outputRoot().toString()
                 .contains("local-plan-smoke-001-basic-render-plan-testsrc-h264-mp4"));
+    }
+
+    // --- Media source tests (P2L.3) ---
+
+    @Test
+    void mediaSourceIssueCodesExist() {
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_MISSING);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_UNSUPPORTED);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_KIND_UNSUPPORTED);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_ORIGIN_UNSUPPORTED);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_PATH_FORBIDDEN);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_REMOTE_URL_FORBIDDEN);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_STORAGE_REFERENCE_FORBIDDEN);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_PRODUCT_REFERENCE_FORBIDDEN);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_MATERIALIZATION_FAILED);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_FILE_MISSING);
+        assertNotNull(LocalRenderSmokeIssueCode.MEDIA_SOURCE_VALIDATION_FAILED);
+        assertNotNull(LocalRenderSmokeIssueCode.INPUT_FFMPEG_EXIT_NONZERO);
+        assertNotNull(LocalRenderSmokeIssueCode.INPUT_FFPROBE_EXIT_NONZERO);
+        assertNotNull(LocalRenderSmokeIssueCode.INPUT_OUTPUT_DIRECTORY_UNAVAILABLE);
+    }
+
+    @Test
+    void mediaSourceKindEnumValues() {
+        assertNotNull(LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE);
+    }
+
+    @Test
+    void mediaSourceOriginEnumValues() {
+        assertNotNull(LocalMediaSourceOrigin.PLATFORM_GENERATED);
+        assertNotNull(LocalMediaSourceOrigin.CONTROLLED_TEST_FIXTURE);
+    }
+
+    @Test
+    void mediaSourceSpecAcceptsControlledLocalFixture() {
+        var spec = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                tempDir.resolve("input-fixture.mp4"),
+                "mp4", "h264");
+
+        assertEquals(LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE, spec.kind());
+        assertEquals(LocalMediaSourceOrigin.PLATFORM_GENERATED, spec.origin());
+        assertEquals("mp4", spec.format());
+        assertEquals("h264", spec.codec());
+    }
+
+    @Test
+    void mediaSourceSpecRejectsNullKind() {
+        assertThrows(NullPointerException.class,
+                () -> new LocalMediaSourceSpec(
+                        null, LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                        tempDir.resolve("test.mp4"), "mp4", "h264"));
+    }
+
+    @Test
+    void mediaSourceSpecRejectsNullPath() {
+        assertThrows(NullPointerException.class,
+                () -> new LocalMediaSourceSpec(
+                        LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                        LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                        null, "mp4", "h264"));
+    }
+
+    @Test
+    void mediaSourceSpecAcceptsPathUnderControlledRoot() {
+        var spec = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                tempDir.resolve("subdir").resolve("input.mp4"),
+                "mp4", "h264");
+
+        assertTrue(spec.isUnderControlledRoot(tempDir));
+        assertFalse(spec.isUnderControlledRoot(Path.of("/other/root")));
+    }
+
+    @Test
+    void mediaSourceSpecRejectsRemoteUrl() {
+        // Path.of() normalizes double slashes, so we test with the normalized form
+        var spec1 = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                Path.of("http://example.com/video.mp4"),
+                "mp4", "h264");
+        assertFalse(spec1.isPathSafe(), "http URL should be rejected");
+
+        var spec2 = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                Path.of("ftp://example.com/video.mp4"),
+                "mp4", "h264");
+        assertFalse(spec2.isPathSafe(), "ftp URL should be rejected");
+    }
+
+    @Test
+    void mediaSourceSpecRejectsPathTraversal() {
+        var spec = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                tempDir.resolve("../../../etc/passwd"),
+                "mp4", "h264");
+
+        assertFalse(spec.isPathSafe());
+    }
+
+    @Test
+    void mediaSourceSpecRejectsStorageInternals() {
+        var spec = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                Path.of("/bucket/my-bucket/objectKey/my-key"),
+                "mp4", "h264");
+
+        assertFalse(spec.isPathSafe());
+    }
+
+    @Test
+    void executionRequestHasRealMediaSourceReturnsFalseByDefault() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                        FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep))));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy);
+
+        assertFalse(result.blocked());
+        assertFalse(result.request().hasRealMediaSource());
+        assertNull(result.request().mediaSourceSpec());
+    }
+
+    @Test
+    void adapterAcceptsControlledMediaSource() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                        FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep))));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+        var mediaSource = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                tempDir.resolve("input-fixture.mp4"),
+                "mp4", "h264");
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy, mediaSource);
+
+        assertFalse(result.blocked());
+        assertNotNull(result.request());
+        assertTrue(result.request().hasRealMediaSource());
+        assertEquals(LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE, result.request().mediaSourceSpec().kind());
+    }
+
+    @Test
+    void adapterRejectsMediaSourceOutsideControlledRoot() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                        FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep))));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+        var mediaSource = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                Path.of("/other/root/input.mp4"),
+                "mp4", "h264");
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy, mediaSource);
+
+        assertTrue(result.blocked());
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.code() == LocalRenderSmokeIssueCode.MEDIA_SOURCE_PATH_FORBIDDEN));
+    }
+
+    @Test
+    void adapterRejectsRemoteUrlMediaSource() {
+        var profileStep = buildOutputProfileStep(320, 180, 30, "h264", "mp4");
+        var plan = buildPlan(FFmpegLibassBasicRenderPlanStatus.READY,
+                List.of(buildStage(FFmpegLibassBasicRenderStageType.PREPARE_INPUTS,
+                        FFmpegLibassBasicRenderStageStatus.VALID, List.of(profileStep))));
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+        var mediaSource = new LocalMediaSourceSpec(
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                Path.of("https://example.com/video.mp4"),
+                "mp4", "h264");
+
+        var result = BasicRenderPlanLocalExecutionAdapter.adapt(plan, policy, mediaSource);
+
+        assertTrue(result.blocked());
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> i.code() == LocalRenderSmokeIssueCode.MEDIA_SOURCE_PATH_FORBIDDEN));
+    }
+
+    @Test
+    void fixtureGeneratorBuildsValidConfig() {
+        var config = LocalMediaSourceFixtureGenerator.FixtureConfig.defaults(tempDir);
+
+        assertEquals(320, config.width());
+        assertEquals(180, config.height());
+        assertEquals(3.0, config.durationSec());
+        assertEquals(30, config.fps());
+        assertEquals("h264", config.codec());
+        assertEquals("mp4", config.container());
+    }
+
+    @Test
+    void fixtureGeneratorRejectsInvalidDimensions() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new LocalMediaSourceFixtureGenerator.FixtureConfig(
+                        tempDir, 0, 180, 3.0, 30, "h264", "mp4"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new LocalMediaSourceFixtureGenerator.FixtureConfig(
+                        tempDir, 320, 0, 3.0, 30, "h264", "mp4"));
+    }
+
+    @Test
+    void realMediaSourceCommandBuilderRejectsNullInputPath() {
+        var policy = new LocalRenderSmokePolicy(
+                true, 20, tempDir, true, Set.of("ffmpeg", "ffprobe"), false);
+
+        assertThrows(NullPointerException.class,
+                () -> LocalFfmpegSmokeCommandBuilder.buildPlanDrivenRealMediaWithCaptions(
+                        null, 320, 180, 30, "h264", "mp4", tempDir, List.of(), policy));
+    }
+
+    @Test
+    void resultHasInputSourceReturnsFalseForSyntheticInput() {
+        var result = new LocalRenderExecutionResult(
+                LocalRenderExecutionId.generate(), "plan-1",
+                LocalRenderExecutionStatus.PASS,
+                null, null, null, 0, -1, 0, 0, 0, null, null,
+                null, 0, 0, java.time.Duration.ZERO, 0,
+                320, 180, 2.0, "h264", "mp4",
+                List.of(), 0, List.of(), Map.of());
+
+        assertFalse(result.hasInputSource());
+    }
+
+    @Test
+    void resultHasInputSourceReturnsTrueForRealMedia() {
+        var result = new LocalRenderExecutionResult(
+                LocalRenderExecutionId.generate(), "plan-1",
+                LocalRenderExecutionStatus.PASS,
+                LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE,
+                LocalMediaSourceOrigin.PLATFORM_GENERATED,
+                tempDir.resolve("input.mp4"), 1000, 0, 320, 180, 3.0, "h264", "mp4",
+                null, 0, 0, java.time.Duration.ZERO, 0,
+                320, 180, 3.0, "h264", "mp4",
+                List.of(), 0, List.of(), Map.of());
+
+        assertTrue(result.hasInputSource());
+        assertEquals(LocalMediaSourceKind.CONTROLLED_LOCAL_FIXTURE, result.inputSourceKind());
     }
 
     // --- Helpers ---

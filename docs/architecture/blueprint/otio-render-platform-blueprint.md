@@ -1754,6 +1754,7 @@ Next:
   P2L.0 — Local Explicit Render Smoke Harness
   P2L.1 — BasicRenderPlan-to-Local-Runner Bridge
   P2L.2 — Local Caption Overlay Smoke
+  P2L.3 — Real Media Source Materialization
   P2B.1 — FFmpeg/libass Binding Fixtures
   P2B.2 — Binding Validator / Registry
   P2B.3 — Scenario Runner Capability Discovery
