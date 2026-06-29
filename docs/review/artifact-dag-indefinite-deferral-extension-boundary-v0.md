@@ -163,7 +163,7 @@ With stronger wording:
 | ID | Work Item |
 |----|-----------|
 | P2A.2 | Artifact DAG Indefinite Deferral and Extension Boundary |
-| P2R.0 | Visual Capability Contract for Effects and Transitions |
+| P2R.0 | Visual Capability Contract for Effects and Transitions | ✅ Implemented |
 | P2R.1 | FFmpeg Baseline Effect Plan |
 | P2R.2 | FFmpeg Baseline Transition Plan |
 | P2R.3 | Provider Visual Consistency Matrix |

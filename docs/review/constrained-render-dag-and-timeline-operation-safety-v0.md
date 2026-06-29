@@ -231,7 +231,27 @@ TemplateApplication may produce semantic timeline changes, not arbitrary executi
 - User-programmable execution graph system
 - Plugin-generated arbitrary execution DAG
 
-## 18. Follow-up Tasks
+## 18. Forbidden Visual Capabilities (P2R.0)
+
+P2R.0 added explicit forbidden visual capabilities:
+- Arbitrary FFmpeg filtergraph
+- Arbitrary shader
+- Arbitrary script effect
+- Arbitrary OFX plugin
+- Natron node graph
+- Blender compositor graph
+- Remotion component execution
+- User-defined Render DAG
+- Plugin-inserted Render node
+- Provider-specific raw command
+- Shader transition
+- Arbitrary transition plugin
+- User-defined transition graph
+- Provider-specific transition graph
+
+See [Visual Capability Contract](visual-capability-contract-effects-transitions-v0.md).
+
+## 19. Follow-up Tasks
 
 - Monitor Workflow DAG complexity as step types grow
 - Enforce fan-out/fan-in bounds when Workflow engine is implemented
@@ -244,3 +264,5 @@ TemplateApplication may produce semantic timeline changes, not arbitrary executi
 > P2V.6 introduced pure Timeline Checkout, Rollback, and Branch Switch application services. They produce safe planning/result objects for editing context changes and non-destructive rollback intent. They do not persist Timeline Git history, render media, create Products, call StorageRuntime/ProductRuntime, invoke Artifact DAG, or implement merge/conflict resolution.
 
 > P2V.7 introduced a pure Timeline Non-conflicting Merge Plan. It classifies operations from base/ours/theirs merge preview into safe-to-apply-later, manual-review conflict, unsupported, blocked, and duplicate buckets. It does not apply patches, create a merged snapshot, persist Timeline Git history, render media, create Products, call StorageRuntime/ProductRuntime, invoke Artifact DAG, use provider binding, or implement conflict resolution.
+
+> P2R.0 introduced a platform-owned Visual Capability Contract for effects and transitions. Effects and transitions are represented as bounded semantic capabilities with explicit status, provider consistency, fallback behavior, and safety rules. This does not implement effect/transition rendering, does not expose raw provider commands or arbitrary filtergraphs, does not execute Remotion, does not use Artifact DAG, and does not add public APIs.

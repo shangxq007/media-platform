@@ -13,7 +13,7 @@ Define the design boundaries for media-platform's future Canonical Timeline Diff
 | TemplateApplication Diff | Template-applied changes | Yes (required) |
 | CompositeTemplate Diff | Composite template changes | Yes (required) |
 | WorkflowStep Diff | Workflow step changes | Yes (required) |
-| Artifact DAG Impact | Render cache invalidation | Yes (required) |
+| Artifact DAG Impact | Render cache invalidation | Indefinitely deferred extension only; not required for Timeline Git, render planning, OpenCue, Product API, or current roadmap |
 | Product Lineage Impact | Provenance changes | Yes (required) |
 
 ## 3. OTIO Exchange Diff
@@ -63,6 +63,10 @@ Platform-owned diff covering:
 - Which artifacts must re-render
 - Which capability nodes affected
 - Which provider binding decisions affected
+
+## 8a. Timeline Git Render Impact Note
+
+Timeline Git render impact is semantic and coarse-grained in the current roadmap. It must not require Artifact DAG, artifact-level impact, cache reuse, or partial render region calculation.
 
 ## 9. Render Cache Impact Diff
 
