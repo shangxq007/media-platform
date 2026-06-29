@@ -1726,12 +1726,15 @@ Recommended future path:
 
 YAML/JSON Schema is the preferred first step. ANTLR/JavaCC are future-only parser-generator options for textual DSL if needed later.
 
-### OpenCue Position (Future)
+### OpenCue Position
 
 OpenCue is the next execution-environment validation target after planning/scenario validation. OpenCue is ExecutionEnvironment, not Provider. OpenCue does not decide visual capability semantics. OpenCue does not require Artifact DAG for initial smoke.
 
-Recommended future path:
-- P2O.0 — OpenCue PVE Testbed Smoke Harness
+P2O.0a introduced the local Docker OpenCue shared-path smoke preparation. It validates the execution-environment model on a single local Docker host before PVE. Cross-service-provider execution is deferred; future cross-provider/cloud execution should use object storage + worker local materialization + StorageRuntime registration.
+
+Recommended path:
+- P2O.0a — Local Docker OpenCue Shared-Path Smoke ✅
+- P2O.0b — OpenCue Cuebot/RQD Job Submission (future)
 - P2O.1 — OpenCue ExecutionEnvironment Model Alignment
 - P2O.2 — OpenCue Job Submission Adapter
 - P2O.3 — OpenCue Worker Result Collection
@@ -1749,16 +1752,17 @@ Completed:
   P2X.0 — API Scenario Runner and E2E Validation Harness
   P2REF.0 — Blueprint and Reference Project Alignment after P2X.0
   P2B.0 — Provider Capability Binding DSL Design
-
-Next:
   P2L.0 — Local Explicit Render Smoke Harness
   P2L.1 — BasicRenderPlan-to-Local-Runner Bridge
   P2L.2 — Local Caption Overlay Smoke
   P2L.3 — Real Media Source Materialization
+  P2O.0a — Local Docker OpenCue Shared-Path Smoke
+
+Next:
+  P2O.0b — OpenCue Cuebot/RQD Job Submission
   P2B.1 — FFmpeg/libass Binding Fixtures
   P2B.2 — Binding Validator / Registry
   P2B.3 — Scenario Runner Capability Discovery
-  P2O.0 — OpenCue PVE Testbed Smoke Harness
   P2O.1 — OpenCue ExecutionEnvironment Model Alignment
   P2O.2 — OpenCue Job Submission Adapter
 

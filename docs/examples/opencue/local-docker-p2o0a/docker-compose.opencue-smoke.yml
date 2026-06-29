@@ -1,0 +1,66 @@
+# P2O.0a — Local Docker OpenCue Smoke Example
+# Example only. Not production. Not deployed automatically.
+# Operator-run local smoke only.
+#
+# IMPORTANT: Replace <opencue-cuebot-image> and <opencue-rqd-image-with-ffmpeg>
+# with actual OpenCue Docker image names/tags before running.
+# See: https://github.com/AcademySoftwareFoundation/OpenCue
+#
+# Usage:
+#   docker compose -f docker-compose.opencue-smoke.yml up -d
+#   # run smoke scripts
+#   docker compose -f docker-compose.opencue-smoke.yml down -v
+
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: opencue
+      POSTGRES_USER: opencue
+      POSTGRES_PASSWORD: opencue_local_smoke
+    volumes:
+      - opencue-postgres:/var/lib/postgresql/data
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opencue"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cuebot:
+    # Replace with actual OpenCue Cuebot image
+    image: <opencue-cuebot-image>
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      CUE_DB_HOST: postgres
+      CUE_DB_PORT: 5432
+      CUE_DB_NAME: opencue
+      CUE_DB_USER: opencue
+      CUE_DB_PASS: opencue_local_smoke
+    ports:
+      - "8443:8443"
+    volumes:
+      - media-smoke:/mnt/opencue-shared/media-platform-smoke
+
+  rqd:
+    # Replace with actual OpenCue RQD image that includes ffmpeg/ffprobe
+    image: <opencue-rqd-image-with-ffmpeg>
+    depends_on:
+      cuebot:
+        condition: service_started
+    environment:
+      CUEBOT_HOSTNAME: cuebot
+      CUEBOT_GRPC_PORT: 8443
+    volumes:
+      - media-smoke:/mnt/opencue-shared/media-platform-smoke
+      # Optional: bind mount host shared path for direct host inspection
+      # - ./build/opencue-shared/media-platform-smoke:/mnt/opencue-shared/media-platform-smoke
+
+volumes:
+  opencue-postgres:
+  media-smoke:

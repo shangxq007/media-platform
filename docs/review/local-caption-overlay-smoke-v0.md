@@ -217,7 +217,8 @@ P2L.2 does not execute Remotion. Remotion remains non-executable.
 
 ## 24. Follow-up Tasks
 
-- P2L.3 — Real media source materialization for local execution
+- P2L.3 — Real media source materialization for local execution (completed)
 - P2L.4 — Multi-caption support expansion
-- P2O.0 — OpenCue PVE Testbed Smoke Harness
+- P2O.0a — Local Docker OpenCue Shared-Path Smoke (complete)
+- P2O.0b — OpenCue Cuebot/RQD Job Submission (future)
 - Future: Full Local Runner with arbitrary timeline rendering

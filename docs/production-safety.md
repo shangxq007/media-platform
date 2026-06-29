@@ -103,3 +103,14 @@ P2L.3 expands the local runner to consume controlled real media fixture input:
 - Input validated with ffprobe before main render
 - Same safety constraints as P2L.0/P2L.1/P2L.2 (binary allowlist, no shell invocation, List<String> args, timeout)
 - Does not implement arbitrary user media ingestion, StorageRuntime materialization, ProductRuntime, RenderExecutionPlan, OpenCue, ProviderBindingRegistry, Remotion, or Artifact DAG
+
+## P2O.0a Local Docker OpenCue Shared-Path Smoke Safety
+
+P2O.0a validates the OpenCue shared-path execution model locally with Docker before PVE:
+- Local Docker host shared path only (build/opencue-shared/media-platform-smoke)
+- Operator-run manual testbed commands only
+- Not public APIs, not user-provided commands
+- No raw shell command from user, no raw FFmpeg filtergraph from user
+- No cross-service-provider execution, no cross-cloud shared filesystem
+- Future cross-provider execution should use object storage + worker local materialization + StorageRuntime registration
+- Does not implement production OpenCue adapter, RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG

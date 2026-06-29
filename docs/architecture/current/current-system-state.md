@@ -483,3 +483,11 @@ Review: `docs/review/local-caption-overlay-smoke-v0.md`
 P2L.3 expands the local runner from synthetic testsrc input to controlled real media fixture input. Generates a deterministic input-fixture.mp4 under the controlled output root using FFmpeg testsrc. Validates input and output with ffprobe. Preserves caption overlay support on real media input. Controlled local fixture only — rejects arbitrary user paths, remote URLs, storage references. Input source metadata included in result/report. Execution remains disabled by default. Does not implement arbitrary user media ingestion, StorageRuntime materialization, ProductRuntime, RenderExecutionPlan, OpenCue, ProviderBindingRegistry, Remotion, or Artifact DAG.
 
 Review: `docs/review/real-media-source-materialization-v0.md`
+
+### Local Docker OpenCue Shared-Path Smoke (P2O.0a)
+
+P2O.0a introduced the local Docker OpenCue shared-path smoke preparation. It validates the OpenCue execution-environment model on a single local Docker host before PVE. Defines a local shared path under `build/opencue-shared/media-platform-smoke`, smoke levels for shared-path probe, FFmpeg probe, and local-runner-equivalent output, plus local Docker runbook/examples. Does not implement production OpenCue adapter, RenderExecutionPlan integration, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG.
+
+Review: `docs/review/local-docker-opencue-shared-path-smoke-v0.md`
+Runbook: `docs/operations/opencue-local-docker-smoke-runbook.md`
+Examples: `docs/examples/opencue/local-docker-p2o0a/`
