@@ -168,4 +168,7 @@ Until then, Artifact DAG remains a deferred optimization layer.
 - P2V.5: Timeline Merge Engine
 - P2V.6: Timeline Conflict Resolution
 - P2V.7: Timeline Git Persistence
-- P2A.1: Incremental Render Planning (future, when triggered)
+- P2A.1: Constrained Render DAG and Timeline Operation Safety Rules (see ADR-024)
+- P2A.2: Incremental Render Planning (future, when triggered)
+
+> Render DAG and timeline-related graph structures are constrained media-domain DAGs, not arbitrary user-programmable graphs or global optimization systems. Provider binding uses deterministic eligibility and priority rather than global combinatorial optimization. See ADR-024.

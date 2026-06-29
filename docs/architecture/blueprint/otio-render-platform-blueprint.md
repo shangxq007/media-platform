@@ -1638,3 +1638,5 @@ Execution Backend / Render Providers (Execution Layer)
 ### Design Principle
 
 **Coordination is PostgreSQL-native on purpose.** All state (jobs, tasks, bitmask, lease) is in PostgreSQL ACID transactions. No external queue, no external workflow engine. This keeps operational complexity low until scale demands otherwise.
+
+> Render DAG and timeline-related graph structures are constrained media-domain DAGs, not arbitrary user-programmable graphs or global optimization systems. Provider binding uses deterministic eligibility and priority rather than global combinatorial optimization. Artifact DAG remains deferred and cannot drive default render execution. See ADR-024.
