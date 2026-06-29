@@ -1642,3 +1642,5 @@ Execution Backend / Render Providers (Execution Layer)
 > Render DAG and timeline-related graph structures are constrained media-domain DAGs, not arbitrary user-programmable graphs or global optimization systems. Provider binding uses deterministic eligibility and priority rather than global combinatorial optimization. Artifact DAG remains deferred and cannot drive default render execution. See ADR-024.
 
 > P2V.5 introduced pure Timeline Branch and Commit Semantics. Branch, commit, pointer, checkout, rollback, and branch-switch plans are side-effect-free domain concepts. They do not persist Timeline Git history, render media, create Products, call StorageRuntime/ProductRuntime, invoke Artifact DAG, or implement merge/conflict resolution.
+
+> P2V.6 introduced pure Timeline Checkout, Rollback, and Branch Switch application services. They produce safe planning/result objects for editing context changes and non-destructive rollback intent. They do not persist Timeline Git history, render media, create Products, call StorageRuntime/ProductRuntime, invoke Artifact DAG, or implement merge/conflict resolution.

@@ -239,3 +239,5 @@ TemplateApplication may produce semantic timeline changes, not arbitrary executi
 - Review Artifact DAG boundaries when REQUIRED mode is considered
 
 > P2V.5 introduced pure Timeline Branch and Commit Semantics. Branch, commit, pointer, checkout, rollback, and branch-switch plans are side-effect-free domain concepts. They do not persist Timeline Git history, render media, create Products, call StorageRuntime/ProductRuntime, invoke Artifact DAG, or implement merge/conflict resolution.
+
+> P2V.6 introduced pure Timeline Checkout, Rollback, and Branch Switch application services. They produce safe planning/result objects for editing context changes and non-destructive rollback intent. They do not persist Timeline Git history, render media, create Products, call StorageRuntime/ProductRuntime, invoke Artifact DAG, or implement merge/conflict resolution.

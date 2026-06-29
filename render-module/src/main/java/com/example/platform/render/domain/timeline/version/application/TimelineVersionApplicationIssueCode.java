@@ -1,0 +1,26 @@
+package com.example.platform.render.domain.timeline.version.application;
+
+/**
+ * Code identifying the type of version application issue.
+ * Internal domain model.
+ */
+public enum TimelineVersionApplicationIssueCode {
+    INVALID_REQUEST,
+    INVALID_TARGET,
+    BRANCH_NOT_FOUND,
+    REVISION_NOT_FOUND,
+    COMMIT_NOT_FOUND,
+    SOURCE_BRANCH_NOT_FOUND,
+    TARGET_BRANCH_NOT_FOUND,
+    UNSAVED_CHANGES_REQUIRE_DECISION,
+    ROLLBACK_IS_NON_DESTRUCTIVE,
+    TARGET_NOT_ANCESTOR,
+    PERSISTENCE_NOT_IMPLEMENTED,
+    RENDER_NOT_ALLOWED,
+    PRODUCT_CREATION_NOT_ALLOWED,
+    STORAGE_INTERNALS_NOT_ALLOWED,
+    PROVIDER_INTERNALS_NOT_ALLOWED,
+    ARTIFACT_DAG_NOT_USED,
+    MERGE_ENGINE_NOT_IMPLEMENTED,
+    CONFLICT_RESOLUTION_NOT_IMPLEMENTED
+}
