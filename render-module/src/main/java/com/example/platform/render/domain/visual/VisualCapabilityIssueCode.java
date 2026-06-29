@@ -1,0 +1,22 @@
+package com.example.platform.render.domain.visual;
+
+/**
+ * Issue codes for visual capability validation.
+ * Immutable enum. Internal domain model.
+ */
+public enum VisualCapabilityIssueCode {
+    INVALID_CAPABILITY_ID,
+    FORBIDDEN_CAPABILITY,
+    RESTRICTED_CAPABILITY,
+    UNSUPPORTED_PROVIDER,
+    PARAMETER_VALIDATION_FAILED,
+    PROVIDER_NOT_PRODUCTION_ALLOWED,
+    AUTO_DISPATCH_NOT_ALLOWED,
+    CONSISTENCY_LEVEL_UNKNOWN,
+    FALLBACK_NOT_DEFINED,
+    SAFETY_LEVEL_FORBIDDEN,
+    MISSING_REQUIRED_PARAMETER,
+    ARBITRARY_GRAPH_REJECTED,
+    SHELL_COMMAND_REJECTED,
+    PROVIDER_INTERNAL_LEAK
+}
