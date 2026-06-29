@@ -1,0 +1,16 @@
+schemaVersion: "1.0"
+kind: ExecutionEnvironmentNote
+metadata:
+  environment: opencue
+  notProvider: true
+  doesNotOwnCapabilitySemantics: true
+  doesNotReplaceProviderBindingPlan: true
+  doesNotRequireArtifactDag: true
+  notes: >
+    OpenCue is an ExecutionEnvironment, not a Provider.
+    OpenCue scheduling happens after platform-owned timeline validation,
+    visual capability planning, provider binding, and render planning.
+    OpenCue does not own visual capability semantics.
+    OpenCue does not replace ProviderBindingPlan.
+    OpenCue initial P2O.0 smoke does not require Artifact DAG.
+    This file is not a provider binding. It is a clarification note.

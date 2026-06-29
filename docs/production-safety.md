@@ -48,3 +48,15 @@ P2X.0 introduced an internal API/Agent Scenario Runner. The runner is pure and s
 - Does not use Artifact DAG
 - Does not persist scenario results
 - Does not expose filter_complex, raw commands, or provider internals
+
+## P2B.0 Provider Capability Binding DSL Safety
+
+P2B.0 introduced the Provider Capability Binding DSL design. The DSL is declarative and safe by default:
+- DSL is not an execution language
+- DSL is not a scripting language
+- DSL does not generate raw commands
+- DSL does not expose provider internals
+- DSL does not define OpenCue jobs
+- DSL is future work, not runtime-integrated
+- DSL forbids: shell commands, filtergraphs, scripts, Remotion components, Blender scripts, Natron graphs, OpenCue job definitions, storage internals, ProductRuntime internals
+- ANTLR/JavaCC remain future-only, not adopted now

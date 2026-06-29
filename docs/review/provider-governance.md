@@ -90,4 +90,4 @@ Compilation passes. All existing coordination + marketplace tests unaffected.
 | Vision (YOLO) | Same as OCR/Whipser — ProviderExtensionSPI | 044 |
 | Embedding (CLIP) | Same pattern | 045 |
 | BMF Media | ProviderExtensionSPI (media processing) | 046 |
-| OpenCue | ProviderExtensionSPI (render farm) | 047 |
+| OpenCue | ExecutionEnvironment (render farm scheduling) — not a Provider; not ProviderExtensionSPI | P2O.0 |

@@ -1,0 +1,37 @@
+schemaVersion: "1.0"
+kind: ProviderBinding
+metadata:
+  providerId: remotion
+  providerType: COMPOSITION
+  providerStatus: POC_CANDIDATE
+  executionAllowed: false
+  autoDispatchAllowed: false
+  notes: "Remotion is non-executable. POC/dry-run only. Not production. Not auto-dispatch. Future spike for caption/text rendering."
+
+capabilities:
+  - capabilityId: CAPTION_OVERLAY
+    category: OVERLAY
+    status: POC
+    consistency: PROVIDER_SPECIFIC
+    fallback: FADE_OUT_IN
+    productionAllowed: false
+    autoDispatchAllowed: false
+    notes: "Remotion caption overlay. POC only. Not executable."
+
+  - capabilityId: TEXT_OVERLAY
+    category: OVERLAY
+    status: POC
+    consistency: PROVIDER_SPECIFIC
+    fallback: FADE_OUT_IN
+    productionAllowed: false
+    autoDispatchAllowed: false
+    notes: "Remotion text overlay. POC only. Not executable."
+
+  - capabilityId: REMOTION_COMPONENT_EXECUTION
+    category: EFFECT
+    status: FORBIDDEN
+    consistency: FORBIDDEN
+    fallback: REJECT_REQUEST
+    productionAllowed: false
+    autoDispatchAllowed: false
+    notes: "Remotion component execution is forbidden in the current path."

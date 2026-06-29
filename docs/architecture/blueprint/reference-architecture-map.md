@@ -1518,7 +1518,7 @@ Each reference project has one status classification:
 |-----------|--------|-------|
 | **ANTLR** | FUTURE_EXTENSION | Parser-generator option for future textual DSL only. Not current dependency. |
 | **JavaCC** | FUTURE_EXTENSION | Parser-generator option for future textual DSL only. Not current dependency. |
-| **YAML / JSON Schema declarative DSL** | FUTURE_EXTENSION | Preferred first step for Provider Binding DSL / template / scenario declarations. Future work. |
+| **YAML / JSON Schema declarative DSL** | FUTURE_EXTENSION | Preferred first step for Provider Binding DSL / template / scenario declarations. P2B.0 design complete; runtime integration future. |
 
 ### ASWF Ecosystem
 

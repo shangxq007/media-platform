@@ -427,7 +427,7 @@ This compile pipeline is implemented and tested (N4-N7.5). It is a separate path
 
 - No FFmpeg execution through the new planning chain (planning only, no execution)
 - No OpenCue integration
-- No Provider Binding DSL (future declarative configuration layer)
+- No Provider Binding DSL runtime integration (P2B.0 design complete; P2B.1/P2B.2/P2B.3 future)
 - No public Product-facing API for scenario runner
 - No ProductRuntime integration through new planning chain
 - No StorageRuntime integration through new planning chain
@@ -438,7 +438,11 @@ This compile pipeline is implemented and tested (N4-N7.5). It is a separate path
 
 ### Provider Binding DSL Position
 
-Provider Binding DSL is a future declarative configuration layer, not a runtime scripting language. It will declare capability ids, provider support, status, consistency, fallback, parameter schema, productionAllowed, and autoDispatchAllowed. It must not declare shell commands, FFmpeg filtergraphs, Remotion components, Blender scripts, Natron graphs, user-submitted Render DAGs, or plugin-inserted execution nodes. YAML/JSON Schema is the preferred first step. ANTLR/JavaCC are future-only parser-generator options.
+P2B.0 introduced the Provider Capability Binding DSL design. The DSL is declarative, YAML/JSON Schema first, fail-closed, and future-oriented. It describes provider capability support, status, consistency, fallback, parameter schema, productionAllowed, and autoDispatchAllowed. It does not allow shell commands, raw FFmpeg filtergraphs, scripts, Remotion component execution, OpenCue job definitions, user-submitted Render DAGs, storage internals, ProductRuntime internals, or Artifact DAG requirements. ANTLR and JavaCC remain future-only and are not adopted now. Runtime integration is deferred to P2B.1/P2B.2/P2B.3.
+
+Design doc: `docs/architecture/provider-capability-binding-dsl.md`
+Examples: `docs/examples/provider-bindings/`
+Review: `docs/review/provider-capability-binding-dsl-design-v0.md`
 
 ### OpenCue Position
 

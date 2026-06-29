@@ -1711,12 +1711,15 @@ future Provider Binding DSL (YAML/JSON Schema, declarative)
   → future RenderExecutionPlan
 ```
 
-### Provider Binding DSL Position (Future)
+### Provider Binding DSL Position
 
-Provider Binding DSL is a future declarative configuration layer, not a runtime scripting language. It will declare: capability id, provider support, status, consistency, fallback, parameter schema, productionAllowed, autoDispatchAllowed. It must not declare: shell commands, FFmpeg filtergraphs, Remotion components, Blender scripts, Natron graphs, user-submitted Render DAGs, or plugin-inserted execution nodes.
+P2B.0 introduced the Provider Capability Binding DSL design. The DSL is declarative, YAML/JSON Schema first, fail-closed, and future-oriented. It describes provider capability support, status, consistency, fallback, parameter schema, productionAllowed, and autoDispatchAllowed. It does not allow shell commands, raw FFmpeg filtergraphs, scripts, Remotion component execution, OpenCue job definitions, user-submitted Render DAGs, storage internals, ProductRuntime internals, or Artifact DAG requirements. ANTLR and JavaCC remain future-only and are not adopted now.
+
+Design doc: `docs/architecture/provider-capability-binding-dsl.md`
+Examples: `docs/examples/provider-bindings/`
 
 Recommended future path:
-- P2B.0 — Provider Capability Binding DSL Design
+- P2B.0 — Provider Capability Binding DSL Design ✅
 - P2B.1 — FFmpeg/libass Binding Fixtures
 - P2B.2 — Binding Validator / Registry
 - P2B.3 — Scenario Runner Capability Discovery

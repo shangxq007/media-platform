@@ -119,9 +119,9 @@ Scenario results are `InternalScenarioResult` containing:
 
 P2X.0 is internal-only. A future Product-facing API would wrap `InternalScenarioRunner` behind a REST controller, add authentication, and persist results to a database. None of that is implemented here.
 
-## 16. Relationship to Future Provider Binding DSL
+## 16. Relationship to Provider Binding DSL
 
-P2X.0 does not use or reference Provider Binding. Provider binding is a future extension point.
+P2X.0 does not use or reference Provider Binding. Provider binding is a future extension point. P2B.0 introduced the Provider Capability Binding DSL design (declarative, YAML/JSON Schema first, fail-closed). Future P2B.3 will add capability discovery to the scenario runner.
 
 ## 17. Relationship to Future Local Runner
 

@@ -81,7 +81,7 @@ There is ONE plugin system: `ExtensionRegistryService` + `ProviderExtensionSPI`.
 
 | Criteria | Example |
 |----------|---------|
-| Multiple implementations of the same capability | `ExecutionBackend` (LocalProcess, future BMF, OpenCue) |
+| Multiple implementations of the same capability | `ExecutionBackend` (LocalProcess, future BMF; OpenCue is ExecutionEnvironment, not ExecutionBackend) |
 | All implementations are built-in (not externally loaded) | `TaskHandler` (ASR, OCR, Vision, Embedding) |
 | No lifecycle management needed | No enable/disable, no version tracking, no rollback |
 
@@ -170,13 +170,13 @@ All Providers MUST:
 
 **NOT:** New runtime.
 
-### Example 3: OpenCue Distributed Render Farm
+### Example 3: OpenCue Execution Environment
 
 **Question:** OpenCue provides render farm scheduling.
 
-**Decision:** OpenCue as distributed execution backend → implement `ExecutionBackend` (same level as LocalProcess). OpenCue job submission → may be wrapped as `ProviderExtensionSPI` plugin.
+**Decision:** OpenCue is an ExecutionEnvironment, not a Provider or ExecutionBackend. OpenCue scheduling happens after platform-owned timeline validation, visual capability planning, provider binding, and render planning. OpenCue does not own visual capability semantics, does not replace ProviderBindingPlan, and does not require Artifact DAG for initial P2O.0 smoke. Future integration: OpenCue adapter consumes RenderExecutionPlan output and dispatches jobs to the farm.
 
-**NOT:** Replace Coordination Runtime. Coordination handles fan-out/fan-in; OpenCue handles distributed execution.
+**NOT:** OpenCue is not a ProviderExtensionSPI. OpenCue is not an ExecutionBackend in the platform SPI sense. OpenCue does not replace the Coordination Runtime.
 
 ### Example 4: S3 Storage Provider
 

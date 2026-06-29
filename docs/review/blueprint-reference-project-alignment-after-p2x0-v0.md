@@ -98,9 +98,11 @@ Recommended future path:
 
 Remotion remains non-executable. Remotion is POC/dry-run only. Remotion is not production. Remotion is not auto-dispatch. Remotion execution is not available. Remotion is a future spike candidate for caption/text rendering.
 
-## 9. Provider Binding DSL Future Position
+## 9. Provider Binding DSL Position
 
-Provider Binding DSL is a future declarative configuration layer, not a runtime scripting language.
+P2B.0 introduced the Provider Capability Binding DSL design. The DSL is declarative, YAML/JSON Schema first, fail-closed, and future-oriented. It describes provider capability support, status, consistency, fallback, parameter schema, productionAllowed, and autoDispatchAllowed. It does not allow shell commands, raw FFmpeg filtergraphs, scripts, Remotion component execution, OpenCue job definitions, user-submitted Render DAGs, storage internals, ProductRuntime internals, or Artifact DAG requirements. ANTLR and JavaCC remain future-only and are not adopted now. Runtime integration is deferred to P2B.1/P2B.2/P2B.3.
+
+Provider Binding DSL is a declarative configuration layer, not a runtime scripting language.
 
 DSL can declare:
 - capability id
@@ -164,7 +166,7 @@ Completed:
   P2REF.0 — Blueprint and Reference Project Alignment after P2X.0
 
 Next:
-  P2B.0 — Provider Capability Binding DSL Design
+  P2B.0 — Provider Capability Binding DSL Design ✅
   P2O.0 — OpenCue PVE Testbed Smoke Harness
   P2O.1 — OpenCue ExecutionEnvironment Model Alignment
   P2O.2 — OpenCue Job Submission Adapter
@@ -182,7 +184,7 @@ Later:
 ## 17. What Was Intentionally Not Changed
 
 - No new runtime functionality implemented
-- No Provider Binding DSL implementation
+- No Provider Binding DSL runtime implementation (P2B.0 design complete; runtime deferred to P2B.2)
 - No OpenCue adapter implementation
 - No FFmpeg execution
 - No public API controllers
@@ -193,7 +195,7 @@ Later:
 
 ## 18. Follow-up Tasks
 
-- P2B.0: Provider Capability Binding DSL Design (YAML/JSON Schema, declarative)
+- P2B.0: Provider Capability Binding DSL Design (complete — design doc, examples, review report)
 - P2O.0: OpenCue PVE Testbed Smoke Harness
 - Future: Scenario DSL (YAML/JSON Schema external scenario definitions)
 - Future: Template DSL (YAML/JSON Schema reusable template structures)

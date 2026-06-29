@@ -1,0 +1,28 @@
+schemaVersion: "1.0"
+kind: ProviderBinding
+metadata:
+  providerId: libass
+  providerType: SUBTITLE_RENDERER
+  providerStatus: PRODUCTION_BASELINE
+  executionAllowed: true
+  autoDispatchAllowed: true
+  notes: "libass is the current production baseline for subtitle/caption overlay via FFmpeg/libass pipeline."
+
+capabilities:
+  - capabilityId: CAPTION_OVERLAY
+    category: OVERLAY
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Burn subtitle/caption overlay onto video using ASS/SSA format via FFmpeg libass filter."
+
+  - capabilityId: TEXT_OVERLAY
+    category: OVERLAY
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Static text overlay using FFmpeg drawtext filter with libass rendering."

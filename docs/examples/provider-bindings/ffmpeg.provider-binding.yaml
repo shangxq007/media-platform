@@ -1,0 +1,127 @@
+schemaVersion: "1.0"
+kind: ProviderBinding
+metadata:
+  providerId: ffmpeg
+  providerType: MEDIA_PIPELINE
+  providerStatus: PRODUCTION_BASELINE
+  executionAllowed: true
+  autoDispatchAllowed: true
+  notes: "FFmpeg is the current production baseline for media transcoding, effects, and composition."
+
+capabilities:
+  - capabilityId: SCALE
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Scale video to target resolution."
+
+  - capabilityId: CROP
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Crop video to target region."
+
+  - capabilityId: FIT
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Fit video within target dimensions, preserving aspect ratio."
+
+  - capabilityId: FILL
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Fill target dimensions, cropping excess."
+
+  - capabilityId: CONTAIN
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Contain video within target dimensions with letterboxing."
+
+  - capabilityId: ROTATE
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Rotate video by specified degrees."
+
+  - capabilityId: OPACITY
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Adjust video opacity."
+
+  - capabilityId: FADE_IN
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Fade in from black."
+
+  - capabilityId: FADE_OUT
+    category: EFFECT
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Fade out to black."
+
+  - capabilityId: CUT
+    category: TRANSITION
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Hard cut between clips."
+
+  - capabilityId: FADE
+    category: TRANSITION
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Fade transition between clips."
+
+  - capabilityId: CROSSFADE
+    category: TRANSITION
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Crossfade between clips."
+
+  - capabilityId: DISSOLVE
+    category: TRANSITION
+    status: PRODUCTION
+    consistency: EXACT
+    fallback: NO_FALLBACK
+    productionAllowed: true
+    autoDispatchAllowed: true
+    notes: "Dissolve transition between clips."
