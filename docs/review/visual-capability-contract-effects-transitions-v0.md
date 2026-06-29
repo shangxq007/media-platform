@@ -210,7 +210,7 @@ Forbidden capabilities include:
 
 ## 20. Follow-up Tasks
 
-- P2R.1: FFmpeg Baseline Effect Plan
+- P2R.1: FFmpeg Baseline Effect Plan (implemented)
 - P2R.2: FFmpeg Baseline Transition Plan
 - P2R.3: Provider Visual Consistency Matrix
 - P2TLE.0: Basic Timeline Editing Model and Validation (implemented)
