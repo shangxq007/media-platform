@@ -160,19 +160,19 @@ With stronger wording:
 
 ### Current Roadmap (Active)
 
-| ID | Work Item |
-|----|-----------|
-| P2A.2 | Artifact DAG Indefinite Deferral and Extension Boundary |
+| ID | Work Item | Status |
+|----|-----------|--------|
+| P2A.2 | Artifact DAG Indefinite Deferral and Extension Boundary | ✅ Implemented |
 | P2R.0 | Visual Capability Contract for Effects and Transitions | ✅ Implemented |
-| P2R.1 | FFmpeg Baseline Effect Plan |
-| P2R.2 | FFmpeg Baseline Transition Plan |
-| P2R.3 | Provider Visual Consistency Matrix |
-| P2X.0 | API Scenario Runner and E2E Validation Harness |
-| P2X.1 | OpenCue PVE Smoke Harness |
-| P2X.2 | OpenCue ExecutionEnvironment Adapter |
-| P2X.3 | Explicit Render to Product E2E Scenario |
-| P2P.0 | Product-facing Timeline Version / Render API Contract |
-| P2D.0 | Temporary Timeline Debug Console / Agent-driven Validation |
+| P2R.1 | FFmpeg Baseline Effect Plan | ✅ Implemented |
+| P2R.2 | FFmpeg Baseline Transition Plan | ✅ Implemented |
+| P2R.3 | FFmpeg/libass Basic Timeline Render Plan | ✅ Implemented |
+| P2X.0 | API Scenario Runner and E2E Validation Harness | ✅ Implemented |
+| P2REF.0 | Blueprint and Reference Project Alignment after P2X.0 | ✅ Implemented |
+| P2B.0 | Provider Capability Binding DSL Design | Future |
+| P2O.0 | OpenCue PVE Testbed Smoke Harness | Future |
+| P2O.1 | OpenCue ExecutionEnvironment Model Alignment | Future |
+| P2O.2 | OpenCue Job Submission Adapter | Future |
 
 ### Future Extension (Conditional, Not Committed)
 

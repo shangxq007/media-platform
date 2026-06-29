@@ -1,6 +1,6 @@
 ---
 status: current
-last_verified: 2026-06-28
+last_verified: 2026-06-29
 scope: preview
 truth_level: implemented
 owner: platform
@@ -379,3 +379,79 @@ General Template System design has been accepted (ADR-022). Caption Template Ren
 - [FFmpeg/libass Basic Timeline Render Plan](../../review/ffmpeg-libass-basic-timeline-render-plan-v0.md) — P2R.3 pure FFmpeg/libass Basic Timeline Render Plan. Composes BasicTimeline validation, FFmpeg baseline effect planning, FFmpeg baseline transition planning, caption/watermark overlay semantics, and output profile validation into a deterministic internal render plan. Does not execute FFmpeg/libass, does not generate public raw filtergraphs, does not create RenderJob/Product, does not call StorageRuntime/ProductRuntime, does not use OpenCue, and does not use Artifact DAG.
 
 > P2X.0 introduced an internal API/Agent Scenario Runner and E2E Validation Harness. It validates the current core planning flow from timeline editing through visual capability validation, FFmpeg baseline effect planning, FFmpeg baseline transition planning, and FFmpeg/libass basic timeline render planning. It does not execute FFmpeg, does not call OpenCue, does not create RenderJob/Product, does not call StorageRuntime/ProductRuntime, does not expose public APIs, and does not use Artifact DAG.
+
+## 11. P2X.0 — Current Planning Chain and Roadmap Position (2026-06-29)
+
+### Current Implemented Planning Chain
+
+```text
+BasicTimeline / TimelineSpec
+  → BasicTimelineValidator (P2TLE.0)
+  → VisualCapabilityContract (P2R.0)
+  → FFmpegBaselineEffectPlanner (P2R.1)
+  → FFmpegBaselineTransitionPlanner (P2R.2)
+  → FFmpegLibassBasicRenderPlanner (P2R.3)
+  → InternalScenarioRunner (P2X.0)
+```
+
+This chain is fully implemented, pure, side-effect-free, and validated by 10 internal scenarios.
+
+### Current Implemented Compile Pipeline (Separate Path)
+
+```text
+TimelineRevision
+  → NormalizedTimeline
+  → ArtifactDependencyGraph
+  → LogicalCapabilityGraph
+  → ProviderBindingPlan
+  → RenderExecutionPlan
+  → LocalExecutionPlanRunner (FFmpeg baseline)
+```
+
+This compile pipeline is implemented and tested (N4-N7.5). It is a separate path from the new planning chain above. Both paths coexist.
+
+### What Is Implemented
+
+- Basic Timeline Editing and Validation (P2TLE.0)
+- Visual Capability Contract for Effects and Transitions (P2R.0)
+- FFmpeg Baseline Effect Plan (P2R.1)
+- FFmpeg Baseline Transition Plan (P2R.2)
+- FFmpeg/libass Basic Timeline Render Plan (P2R.3)
+- Internal Scenario Runner and E2E Validation Harness (P2X.0)
+- Timeline Git (revision chain, diff, merge engine, checkout, rollback)
+- Compile pipeline (NormalizedTimeline → ArtifactGraph → CapabilityGraph → ProviderBinding → RenderExecutionPlan → LocalExecutionPlanRunner)
+- FFmpeg as production baseline provider
+- Caption Template Render backend MVP (P2C.0-P2C.6)
+
+### What Is NOT Yet Implemented
+
+- No FFmpeg execution through the new planning chain (planning only, no execution)
+- No OpenCue integration
+- No Provider Binding DSL (future declarative configuration layer)
+- No public Product-facing API for scenario runner
+- No ProductRuntime integration through new planning chain
+- No StorageRuntime integration through new planning chain
+- No Artifact DAG requirement (indefinitely deferred, P2A.2)
+- No Remotion execution (non-executable, POC only)
+- No parallel segment/layer rendering
+- No incremental render through new planning chain
+
+### Provider Binding DSL Position
+
+Provider Binding DSL is a future declarative configuration layer, not a runtime scripting language. It will declare capability ids, provider support, status, consistency, fallback, parameter schema, productionAllowed, and autoDispatchAllowed. It must not declare shell commands, FFmpeg filtergraphs, Remotion components, Blender scripts, Natron graphs, user-submitted Render DAGs, or plugin-inserted execution nodes. YAML/JSON Schema is the preferred first step. ANTLR/JavaCC are future-only parser-generator options.
+
+### OpenCue Position
+
+OpenCue is the next execution-environment validation target after planning/scenario validation. OpenCue is ExecutionEnvironment, not Provider. OpenCue does not decide visual capability semantics. OpenCue does not require Artifact DAG for initial smoke.
+
+### Remotion Position
+
+Remotion remains non-executable. Remotion is POC/dry-run only. Remotion is not production. Remotion is not auto-dispatch. Remotion execution is not available.
+
+### FFmpeg/libass Position
+
+FFmpeg/libass is the current production baseline for basic full explicit rendering and subtitle/caption overlay semantics.
+
+### Artifact DAG Boundary
+
+Artifact DAG remains indefinitely deferred (P2A.2). Artifact DAG is an extension layer only. Artifact DAG is not a roadmap dependency. Artifact DAG is not required by render planning, Timeline Git, OpenCue, Product API, effects, transitions, or E2E validation.

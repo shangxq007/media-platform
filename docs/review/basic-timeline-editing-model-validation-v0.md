@@ -256,11 +256,12 @@ No Artifact DAG dependency. P2TLE.0 is independent of Artifact DAG (indefinitely
 
 ## 23. Follow-up Tasks
 
-- P2R.1: FFmpeg Baseline Effect Plan
+- P2R.1: FFmpeg Baseline Effect Plan (implemented)
 - P2R.2: FFmpeg Baseline Transition Plan (implemented)
 - P2R.3: FFmpeg/libass Basic Timeline Render Plan (implemented)
-- P2X.0: API Scenario Runner and E2E Validation Harness
-- P2O.0: OpenCue PVE Testbed Smoke Harness
+- P2X.0: API Scenario Runner and E2E Validation Harness (implemented)
+- P2REF.0: Blueprint and Reference Project Alignment (implemented)
+- P2O.0: OpenCue PVE Testbed Smoke Harness (future)
 - Implement remaining edit operations (remove, update, reorder)
 - Watermark dedicated record type (currently metadata-based)
 - Transition dedicated tracking (currently metadata-based)

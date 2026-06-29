@@ -1,6 +1,6 @@
 ---
 status: blueprint
-last_verified: 2026-06-24
+last_verified: 2026-06-29
 scope: render-module + V1 baseline
 truth_level: target
 owner: platform
@@ -8,7 +8,15 @@ owner: platform
 
 # OTIO-first Semantic Video Rendering Platform Blueprint
 
-> **Current Reality Check (2026-06-24):**
+> **Current Reality Check (2026-06-29):**
+>
+> **Planning Chain (P2X.0 complete):** The internal planning flow is fully validated:
+> `BasicTimeline → BasicTimelineValidator → VisualCapabilityContract → FFmpegBaselineEffectPlanner → FFmpegBaselineTransitionPlanner → FFmpegLibassBasicRenderPlanner → InternalScenarioRunner`
+> 10 scenarios pass. This chain is pure, side-effect-free, and does not execute FFmpeg, call OpenCue, create Product, or use Artifact DAG.
+>
+> **Compile Pipeline (separate path, also implemented):** `TimelineRevision → NormalizedTimeline → ArtifactDependencyGraph → CapabilityGraph → ProviderBindingPlan → RenderExecutionPlan → LocalExecutionPlanRunner`. This is the existing N4-N7.5 compile path. Both paths coexist.
+>
+> **What is NOT yet implemented:** No FFmpeg execution through the new planning chain. No OpenCue integration. No Provider Binding DSL. No public Product API. No Remotion execution. No Artifact DAG requirement (indefinitely deferred). No parallel segment/layer rendering.
 >
 > **Timeline Git:** Revision chain fully implemented (`timeline_revision` table, 22 tests). Patch (RFC6902), structural diff, semantic diff (25 change types), restore endpoint, and AI proposal loop all have REST APIs. Merge engine complete with three-way algorithm + conflict detection (8 conflict types) + resolution intent support — **no REST endpoint yet**. Branch model not implemented. Rebase not implemented.
 >
@@ -19,6 +27,8 @@ owner: platform
 > **Product Readiness:** Engineering 8/10, Product 5/10, User Value 4/10. Core gap: Merge API + Asset APIs need REST endpoints. See `docs/review/timeline-git-product-readiness.md`.
 >
 > **Strategic Shift:** OpenLineage, OpenAssetIO, Knowledge Graph deferred to P3+. Priority is Timeline Git productization and Asset Ecosystem blueprint.
+>
+> **Reference Project Alignment:** See `docs/review/blueprint-reference-project-alignment-after-p2x0-v0.md` for full reference status matrix.
 
 ---
 
@@ -1656,3 +1666,102 @@ Execution Backend / Render Providers (Execution Layer)
 > P2R.3 introduced a pure FFmpeg/libass Basic Timeline Render Plan. It composes BasicTimeline validation, FFmpeg baseline effect planning, FFmpeg baseline transition planning, caption/watermark overlay semantics, and output profile validation into a deterministic internal render plan. It does not execute FFmpeg/libass, does not generate public raw filtergraphs, does not create RenderJob/Product, does not call StorageRuntime/ProductRuntime, does not use OpenCue, and does not use Artifact DAG.
 
 - [API Scenario Runner and E2E Validation Harness](../../review/api-scenario-runner-e2e-validation-harness-v0.md) — P2X.0 internal scenario runner validating the full planning flow from timeline editing through effect/transition/render planning. Pure, side-effect-free. Does not execute FFmpeg, does not call OpenCue, does not create RenderJob/Product, does not call StorageRuntime/ProductRuntime, does not expose public APIs, and does not use Artifact DAG.
+- [Blueprint and Reference Project Alignment after P2X.0](../../review/blueprint-reference-project-alignment-after-p2x0-v0.md) — P2REF.0 alignment pass clarifying implemented vs not-implemented status, reference project classifications, Provider Binding DSL position, OpenCue position, and updated roadmap.
+
+### Current Planning Chain (Post-P2X.0)
+
+The platform now has two coexisting paths:
+
+**Path 1: New Planning Chain (P2TLE.0 → P2X.0)** — Pure, side-effect-free, validated by scenario runner:
+```text
+BasicTimeline / TimelineSpec
+  → BasicTimelineValidator
+  → VisualCapabilityContract
+  → FFmpegBaselineEffectPlanner
+  → FFmpegBaselineTransitionPlanner
+  → FFmpegLibassBasicRenderPlanner
+  → InternalScenarioRunner
+```
+
+**Path 2: Compile Pipeline (N4-N7.5)** — Existing implementation with execution capability:
+```text
+TimelineRevision
+  → NormalizedTimeline
+  → ArtifactDependencyGraph
+  → LogicalCapabilityGraph
+  → ProviderBindingPlan
+  → RenderExecutionPlan
+  → LocalExecutionPlanRunner (FFmpeg baseline)
+```
+
+**Future convergence:**
+```text
+InternalScenarioRunner
+  → future RenderExecutionPlan bridge
+  → future Local Runner smoke
+  → future OpenCue ExecutionEnvironment smoke
+  → future Product registration
+```
+
+**Future Provider Binding DSL evolution:**
+```text
+future Provider Binding DSL (YAML/JSON Schema, declarative)
+  → future ProviderBindingRegistry
+  → future ProviderBindingPlan
+  → future RenderExecutionPlan
+```
+
+### Provider Binding DSL Position (Future)
+
+Provider Binding DSL is a future declarative configuration layer, not a runtime scripting language. It will declare: capability id, provider support, status, consistency, fallback, parameter schema, productionAllowed, autoDispatchAllowed. It must not declare: shell commands, FFmpeg filtergraphs, Remotion components, Blender scripts, Natron graphs, user-submitted Render DAGs, or plugin-inserted execution nodes.
+
+Recommended future path:
+- P2B.0 — Provider Capability Binding DSL Design
+- P2B.1 — FFmpeg/libass Binding Fixtures
+- P2B.2 — Binding Validator / Registry
+- P2B.3 — Scenario Runner Capability Discovery
+
+YAML/JSON Schema is the preferred first step. ANTLR/JavaCC are future-only parser-generator options for textual DSL if needed later.
+
+### OpenCue Position (Future)
+
+OpenCue is the next execution-environment validation target after planning/scenario validation. OpenCue is ExecutionEnvironment, not Provider. OpenCue does not decide visual capability semantics. OpenCue does not require Artifact DAG for initial smoke.
+
+Recommended future path:
+- P2O.0 — OpenCue PVE Testbed Smoke Harness
+- P2O.1 — OpenCue ExecutionEnvironment Model Alignment
+- P2O.2 — OpenCue Job Submission Adapter
+- P2O.3 — OpenCue Worker Result Collection
+- P2O.4 — OpenCue Failure / Retry / Log Mapping
+
+### Updated Roadmap
+
+```text
+Completed:
+  P2TLE.0 — Basic Timeline Editing Model and Validation
+  P2R.0 — Visual Capability Contract for Effects and Transitions
+  P2R.1 — FFmpeg Baseline Effect Plan
+  P2R.2 — FFmpeg Baseline Transition Plan
+  P2R.3 — FFmpeg/libass Basic Timeline Render Plan
+  P2X.0 — API Scenario Runner and E2E Validation Harness
+  P2REF.0 — Blueprint and Reference Project Alignment after P2X.0
+
+Next:
+  P2B.0 — Provider Capability Binding DSL Design
+  P2O.0 — OpenCue PVE Testbed Smoke Harness
+  P2O.1 — OpenCue ExecutionEnvironment Model Alignment
+  P2O.2 — OpenCue Job Submission Adapter
+
+Later:
+  Product-facing API Contract
+  Local Runner integration
+  ProductRuntime integration
+  Provider Binding Registry integration
+  OpenCue E2E explicit render
+  Parallel segment/layer render
+  Artifact DAG re-evaluation only if measured production bottleneck appears
+```
+
+### Parallel Segment/Layer Rendering (Future Only)
+
+The platform should eventually support bounded multi-stage rendering, including segment/layer parallel execution and final assembly. This should evolve from RenderExecutionPlan and OpenCue execution modeling, not from user-submitted DAGs or plugin-inserted execution nodes. Artifact DAG may be re-evaluated later for cache/lineage/incremental render only after measured production bottlenecks appear.

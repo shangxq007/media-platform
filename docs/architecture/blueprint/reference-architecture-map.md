@@ -1,6 +1,6 @@
 ---
 status: blueprint
-last_verified: 2026-06-24
+last_verified: 2026-06-29
 scope: platform-wide
 truth_level: target
 owner: platform
@@ -1465,3 +1465,71 @@ This architecture is chosen because:
 2. **Operational complexity stays low** — no Temporal server, no Kafka cluster, no PGMQ extension. Just PostgreSQL.
 3. **Purpose-built for coordination** — bitmask barrier, task lease, exponential backoff are built into the model, not layered on top of a queue.
 4. **Future migration path is clear** — When coordination needs exceed this model (complex DAGs, Saga patterns, days-long waits), Temporal is the upgrade target. Outbox stays. Kafka adapter connects to outbox for external consumers.
+
+---
+
+## 46. Reference Project Status Matrix (Post-P2X.0, 2026-06-29)
+
+Each reference project has one status classification:
+
+| Status | Meaning |
+|--------|---------|
+| PRODUCTION_BASELINE | Currently used in production path |
+| INTERNAL_FOUNDATION | Internal implementation foundation, not user-facing |
+| REFERENCE_ONLY | Design reference only, no runtime dependency |
+| POC_CANDIDATE | Proof-of-concept candidate for future evaluation |
+| SPIKE_CANDIDATE | Technical spike candidate for feasibility |
+| FUTURE_EXTENSION | Planned future extension point |
+| NOT_ADOPTED | Evaluated and not adopted |
+| DEFERRED | Deferred to later phase |
+| FORBIDDEN_FOR_CURRENT_PATH | Explicitly excluded from current architecture |
+
+### Media/Render Technologies
+
+| Technology | Status | Notes |
+|-----------|--------|-------|
+| **FFmpeg** | PRODUCTION_BASELINE | Current production baseline for basic full explicit rendering. Used by LocalExecutionPlanRunner. |
+| **libass** | PRODUCTION_BASELINE | Current production baseline for subtitle/caption overlay semantics through controlled FFmpeg/libass planning. |
+| **OpenCue** | FUTURE_EXTENSION | Future ExecutionEnvironment for scheduling. Not a Provider. Not yet integrated. P2O.0-P2O.4 roadmap. |
+| **OTIO / OpenTimelineIO** | INTERNAL_FOUNDATION | Reference/exchange model. Import/export implemented. Not current runtime dependency for rendering. |
+| **Remotion** | POC_CANDIDATE | Non-executable. POC/dry-run only. Not production. Not auto-dispatch. Future spike only. |
+| **MLT** | POC_CANDIDATE | POC candidate. Not current execution path. |
+| **GStreamer** | POC_CANDIDATE | POC candidate. Not current execution path. |
+| **BMF** | SPIKE_CANDIDATE | Spike candidate for GPU/AI media pipeline. Not current execution path. |
+| **GPAC** | POC_CANDIDATE | POC candidate for packaging. Not current execution path. |
+| **Blender** | SPIKE_CANDIDATE | Spike candidate for 3D/VFX. Not current execution path. |
+| **Natron** | SPIKE_CANDIDATE | Spike candidate for compositing. Not current execution path. |
+| **OFX** | NOT_ADOPTED | Deprecated. Capability model only. Not current execution path. |
+| **Shotstack** | FUTURE_EXTENSION | Cloud render spike/future reference. Not current path. |
+| **JavaCV** | NOT_ADOPTED | Not evaluated in this repository pass. Requires separate dependency/license review before adoption. |
+| **OpenCV** | NOT_ADOPTED | Not evaluated in this repository pass. Requires separate dependency/license review before adoption. |
+| **Aegisub** | NOT_ADOPTED | Not evaluated in this repository pass. Requires separate dependency/license review before adoption. |
+| **VapourSynth / AviSynth+** | NOT_ADOPTED | Not evaluated in this repository pass. Requires separate dependency/license review before adoption. |
+
+### Editing/Versioning Tools
+
+| Technology | Status | Notes |
+|-----------|--------|-------|
+| **vedit / pyvedit** | NOT_ADOPTED | Not adopted as production dependency. Possible reference/benchmark only. |
+
+### DSL/Parser Technologies
+
+| Technology | Status | Notes |
+|-----------|--------|-------|
+| **ANTLR** | FUTURE_EXTENSION | Parser-generator option for future textual DSL only. Not current dependency. |
+| **JavaCC** | FUTURE_EXTENSION | Parser-generator option for future textual DSL only. Not current dependency. |
+| **YAML / JSON Schema declarative DSL** | FUTURE_EXTENSION | Preferred first step for Provider Binding DSL / template / scenario declarations. Future work. |
+
+### ASWF Ecosystem
+
+| Project | Status | Notes |
+|---------|--------|-------|
+| **OpenTimelineIO** | INTERNAL_FOUNDATION | Core interchange. Import/export implemented. |
+| **OpenCue** | FUTURE_EXTENSION | Future ExecutionEnvironment. P2O.0-P2O.4. |
+| **OpenColorIO** | FUTURE_EXTENSION | Future color management adapter. P2. |
+| **OpenImageIO** | FUTURE_EXTENSION | Future asset ingestion adapter. P2. |
+| **OpenEXR** | FUTURE_EXTENSION | Future HDR intermediate format. P2. |
+| **MaterialX** | REFERENCE_ONLY | Reference for style/look description. Not current integration. |
+| **OpenFX** | REFERENCE_ONLY | Reference for plugin standard. Deprecated in current path. |
+| **Rez** | REFERENCE_ONLY | Reference for runtime packaging. Not current integration. |
+| **OpenAssetIO** | DEFERRED | Deferred to 2027+. Reference only.
