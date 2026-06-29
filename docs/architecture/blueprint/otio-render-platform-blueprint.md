@@ -16,7 +16,7 @@ owner: platform
 >
 > **Compile Pipeline (separate path, also implemented):** `TimelineRevision → NormalizedTimeline → ArtifactDependencyGraph → CapabilityGraph → ProviderBindingPlan → RenderExecutionPlan → LocalExecutionPlanRunner`. This is the existing N4-N7.5 compile path. Both paths coexist.
 >
-> **What is NOT yet implemented:** No FFmpeg execution through the new planning chain. No OpenCue integration. No Provider Binding DSL. No public Product API. No Remotion execution. No Artifact DAG requirement (indefinitely deferred). No parallel segment/layer rendering.
+> **What is NOT yet implemented:** No FFmpeg execution through the new planning chain. No OpenCue integration. No Provider Binding DSL runtime integration (P2B.0 design complete; P2B.1/P2B.2/P2B.3 future). No public Product API. No Remotion execution. No Artifact DAG requirement (indefinitely deferred). No parallel segment/layer rendering.
 >
 > **Timeline Git:** Revision chain fully implemented (`timeline_revision` table, 22 tests). Patch (RFC6902), structural diff, semantic diff (25 change types), restore endpoint, and AI proposal loop all have REST APIs. Merge engine complete with three-way algorithm + conflict detection (8 conflict types) + resolution intent support — **no REST endpoint yet**. Branch model not implemented. Rebase not implemented.
 >
@@ -1748,9 +1748,12 @@ Completed:
   P2R.3 — FFmpeg/libass Basic Timeline Render Plan
   P2X.0 — API Scenario Runner and E2E Validation Harness
   P2REF.0 — Blueprint and Reference Project Alignment after P2X.0
+  P2B.0 — Provider Capability Binding DSL Design
 
 Next:
-  P2B.0 — Provider Capability Binding DSL Design
+  P2B.1 — FFmpeg/libass Binding Fixtures
+  P2B.2 — Binding Validator / Registry
+  P2B.3 — Scenario Runner Capability Discovery
   P2O.0 — OpenCue PVE Testbed Smoke Harness
   P2O.1 — OpenCue ExecutionEnvironment Model Alignment
   P2O.2 — OpenCue Job Submission Adapter

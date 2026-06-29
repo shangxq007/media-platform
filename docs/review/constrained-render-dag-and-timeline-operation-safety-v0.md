@@ -128,6 +128,8 @@ Must not use:
 
 Complexity: O(nodes × providers), providers bounded.
 
+> P2B.0 introduced the Provider Capability Binding DSL (declarative, YAML/JSON Schema first, fail-closed). The DSL enforces 11 fail-closed rules: unknown provider/capability → reject, missing schemaVersion/providerId/capabilityId → reject, FORBIDDEN capability → reject, RESTRICTED → manual review, POC → internal only, autoDispatchAllowed requires productionAllowed, executionAllowed=false blocks selection. See `docs/architecture/provider-capability-binding-dsl.md` section 22.
+
 ## 10. Artifact DAG Constraints
 
 Artifact DAG is **indefinitely deferred** (P2A.2) and retained only as an extension layer:
