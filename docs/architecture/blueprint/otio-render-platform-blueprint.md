@@ -1732,9 +1732,11 @@ OpenCue is the next execution-environment validation target after planning/scena
 
 P2O.0a introduced the local Docker OpenCue shared-path smoke preparation. It validates the execution-environment model on a single local Docker host before PVE. Cross-service-provider execution is deferred; future cross-provider/cloud execution should use object storage + worker local materialization + StorageRuntime registration.
 
+P2O.0b introduced the local Docker Cuebot/RQD runtime smoke design and validation path. It defines how Cuebot submits smoke work to an RQD worker, includes runtime smoke submission scripts, Docker Compose example, runbook, and image status documentation. OpenCue images remain placeholder-only; operator must provide confirmed images.
+
 Recommended path:
 - P2O.0a — Local Docker OpenCue Shared-Path Smoke ✅
-- P2O.0b — OpenCue Cuebot/RQD Job Submission (future)
+- P2O.0b — Local Docker Cuebot/RQD Runtime Smoke ✅
 - P2O.1 — OpenCue ExecutionEnvironment Model Alignment
 - P2O.2 — OpenCue Job Submission Adapter
 - P2O.3 — OpenCue Worker Result Collection
@@ -1757,9 +1759,9 @@ Completed:
   P2L.2 — Local Caption Overlay Smoke
   P2L.3 — Real Media Source Materialization
   P2O.0a — Local Docker OpenCue Shared-Path Smoke
+  P2O.0b — Local Docker Cuebot/RQD Runtime Smoke
 
 Next:
-  P2O.0b — OpenCue Cuebot/RQD Job Submission
   P2B.1 — FFmpeg/libass Binding Fixtures
   P2B.2 — Binding Validator / Registry
   P2B.3 — Scenario Runner Capability Discovery

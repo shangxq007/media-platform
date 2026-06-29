@@ -114,3 +114,14 @@ P2O.0a validates the OpenCue shared-path execution model locally with Docker bef
 - No cross-service-provider execution, no cross-cloud shared filesystem
 - Future cross-provider execution should use object storage + worker local materialization + StorageRuntime registration
 - Does not implement production OpenCue adapter, RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG
+
+## P2O.0b Local Docker Cuebot/RQD Runtime Smoke Safety
+
+P2O.0b validates the Cuebot/RQD runtime scheduling model locally with Docker:
+- Moves beyond P2O.0a dry-run scripts to define actual OpenCue runtime scheduling path
+- Runtime smoke submission scripts are operator-controlled testbed commands, not application runtime
+- OpenCue images are placeholder-only; operator must provide confirmed images
+- Scripts support both host dry-run mode and container execution mode
+- No production OpenCue adapter, no Cuebot API client in application runtime
+- No raw shell command from user, no raw FFmpeg filtergraph from user
+- Does not implement RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG

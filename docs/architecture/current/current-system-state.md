@@ -491,3 +491,11 @@ P2O.0a introduced the local Docker OpenCue shared-path smoke preparation. It val
 Review: `docs/review/local-docker-opencue-shared-path-smoke-v0.md`
 Runbook: `docs/operations/opencue-local-docker-smoke-runbook.md`
 Examples: `docs/examples/opencue/local-docker-p2o0a/`
+
+### Local Docker Cuebot/RQD Runtime Smoke (P2O.0b)
+
+P2O.0b introduced the local Docker Cuebot/RQD runtime smoke design and validation path. Moves beyond P2O.0a shared-path dry runs by defining how Cuebot submits smoke work to an RQD worker that reads and writes the shared path. Includes runtime smoke submission scripts (host dry-run mode), Docker Compose example with placeholder OpenCue images, runtime smoke runbook, and image status documentation. P2O.0b remains a local Docker execution-environment smoke only. Does not implement production OpenCue adapter, RenderExecutionPlan integration, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG.
+
+Review: `docs/review/local-docker-cuebot-rqd-runtime-smoke-v0.md`
+Runbook: `docs/operations/opencue-local-docker-runtime-smoke-runbook.md`
+Examples: `docs/examples/opencue/local-docker-p2o0b/`
