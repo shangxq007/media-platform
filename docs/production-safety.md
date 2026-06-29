@@ -60,3 +60,15 @@ P2B.0 introduced the Provider Capability Binding DSL design. The DSL is declarat
 - DSL is future work, not runtime-integrated
 - DSL forbids: shell commands, filtergraphs, scripts, Remotion components, Blender scripts, Natron graphs, OpenCue job definitions, storage internals, ProductRuntime internals
 - ANTLR/JavaCC remain future-only, not adopted now
+
+## P2L.0 Local Render Smoke Safety
+
+P2L.0 introduced a local-only explicit render smoke harness. Controlled FFmpeg/ffprobe execution only inside local smoke boundary:
+- Fixed binary allowlist (ffmpeg, ffprobe only)
+- No shell invocation (sh -c, bash -c forbidden)
+- No user-provided command input
+- Arguments built as List<String>, never shell string
+- Timeout required (default 20s)
+- Controlled output directory under /tmp
+- Execution disabled by default; requires -Dmedia.platform.localSmoke.enabled=true
+- Does not implement public API, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG

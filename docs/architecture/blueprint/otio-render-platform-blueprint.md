@@ -1751,6 +1751,7 @@ Completed:
   P2B.0 — Provider Capability Binding DSL Design
 
 Next:
+  P2L.0 — Local Explicit Render Smoke Harness
   P2B.1 — FFmpeg/libass Binding Fixtures
   P2B.2 — Binding Validator / Registry
   P2B.3 — Scenario Runner Capability Discovery

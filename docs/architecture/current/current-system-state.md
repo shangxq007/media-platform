@@ -459,3 +459,9 @@ FFmpeg/libass is the current production baseline for basic full explicit renderi
 ### Artifact DAG Boundary
 
 Artifact DAG remains indefinitely deferred (P2A.2). Artifact DAG is an extension layer only. Artifact DAG is not a roadmap dependency. Artifact DAG is not required by render planning, Timeline Git, OpenCue, Product API, effects, transitions, or E2E validation.
+
+### Local Render Smoke (P2L.0)
+
+P2L.0 introduced a local-only explicit render smoke harness. Controlled FFmpeg/ffprobe execution with fixed binary allowlist, no shell invocation, List<String> args, timeout enforcement, controlled output directory, execution gated by `-Dmedia.platform.localSmoke.enabled=true`. Does not implement public API, RenderExecutionPlan, OpenCue, ProductRuntime, StorageRuntime, ProviderBindingRegistry, Remotion, or Artifact DAG.
+
+Review: `docs/review/local-explicit-render-smoke-harness-v0.md`
