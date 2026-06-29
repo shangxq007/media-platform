@@ -1,0 +1,15 @@
+package com.example.platform.render.domain.timeline.diff.application;
+
+public enum TimelinePatchApplicationIssueCode {
+    BASE_REVISION_MISMATCH,
+    UNSUPPORTED_CHANGE_TYPE,
+    INVALID_CHANGE_PATH,
+    INVALID_PAYLOAD,
+    TARGET_NOT_FOUND,
+    TARGET_ALREADY_EXISTS,
+    VALIDATION_FAILED,
+    PATCH_APPLICATION_FAILED,
+    PROVIDER_INTERNALS_NOT_ALLOWED,
+    STORAGE_INTERNALS_NOT_ALLOWED,
+    EXECUTION_NOT_ALLOWED
+}
