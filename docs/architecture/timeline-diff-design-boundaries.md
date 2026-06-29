@@ -142,3 +142,5 @@ WorkflowApplyTemplateStepDiff — workflow step changes
 | Render Impact Analysis | How to map diff to artifact invalidation | Incremental render need |
 
 > P2V.4 introduced a side-effect-free Timeline Merge Preview Service. It wraps three-way conflict analysis into a safe preview result with status, summary, readiness, and issues. It does not perform automatic merge, conflict resolution, patch application, Timeline Git persistence, render execution, StorageRuntime operations, or ProductRuntime operations.
+
+> Artifact DAG is retained as a future optimization and artifact-lineage layer. It is not required for Timeline Git, rollback, branch switching, merge preview, template workflow MVP, or explicit full render. The default mode is DISABLED. DRY_RUN is non-blocking and must not affect ProviderBindingPlan or RenderExecutionPlan. EXPERIMENTAL is internal-only. REQUIRED is future-only and not enabled.

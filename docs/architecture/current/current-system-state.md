@@ -366,3 +366,4 @@ General Template System design has been accepted (ADR-022). Caption Template Ren
 - [OpenFX Capability Model Reservation](../../review/openfx-capability-model-reservation.md) — OpenFX as capability model only
 - [Multi-Provider POC Integration Report](../../review/multi-provider-poc-integration-report.md) — Provider integration pattern and smoke test results
 - [Timeline Merge Preview Service](../../review/timeline-merge-preview-service-v0.md) — Side-effect-free merge preview with conflict analysis, status, summary, and issues
+- [Artifact DAG Deferred Optimization Boundary](../../review/artifact-dag-deferred-optimization-boundary-v0.md) — Artifact DAG is retained as a future optimization layer; default mode is DISABLED
