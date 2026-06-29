@@ -141,7 +141,8 @@ The DSL does not reference Artifact DAG. Artifact DAG is indefinitely deferred (
 
 | ID | Task | Status |
 |----|------|--------|
-| P2B.0 | Provider Capability Binding DSL Design | Current (this task) |
+| P2B.0 | Provider Capability Binding DSL Design | Complete |
+| P2L.0 | Local Explicit Render Smoke Harness | Current |
 | P2B.1 | FFmpeg/libass Binding Fixtures | Future |
 | P2B.2 | Binding Validator / Registry | Future |
 | P2B.3 | Scenario Runner Capability Discovery | Future |

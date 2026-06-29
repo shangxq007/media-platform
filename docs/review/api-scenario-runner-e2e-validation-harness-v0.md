@@ -141,3 +141,7 @@ P2X.0 does not use Artifact DAG. Artifact DAG is indefinitely deferred and is an
 - Add public API controller wrapping the scenario runner (future)
 - Add scenario result persistence (future)
 - Add scenario result comparison across runs (future)
+
+## 21. Relationship to P2L.0 Local Smoke
+
+P2L.0 introduced a local-only explicit render smoke harness. It does not consume scenario runner output. Both are independent validation mechanisms — scenario runner validates planning correctness, local smoke validates FFmpeg/ffprobe execution boundary.

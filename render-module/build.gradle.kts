@@ -31,6 +31,9 @@ tasks.test {
     useJUnitPlatform {
         excludeTags("native-media")
     }
+    systemProperty("media.platform.localSmoke.enabled", System.getProperty("media.platform.localSmoke.enabled") ?: "")
+    systemProperty("media.platform.localSmoke.strict", System.getProperty("media.platform.localSmoke.strict") ?: "")
+    systemProperty("media.platform.localSmoke.outputRoot", System.getProperty("media.platform.localSmoke.outputRoot") ?: "")
 }
 
 tasks.register<Test>("nativeMediaTest") {
