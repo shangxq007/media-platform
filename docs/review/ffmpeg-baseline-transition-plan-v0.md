@@ -150,5 +150,5 @@ P2R.2 only implements the transition planning portion.
 
 ## 15-22. Follow-up
 
-- P2R.3: FFmpeg/libass Basic Timeline Render Plan
+- P2R.3: FFmpeg/libass Basic Timeline Render Plan (implemented)
 - Future: RenderExecutionPlan integration, OpenCue integration

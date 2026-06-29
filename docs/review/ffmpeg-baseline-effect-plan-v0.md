@@ -137,5 +137,5 @@ Operations ordered by:
 ## 12-21. Follow-up
 
 - P2R.2: FFmpeg Baseline Transition Plan (implemented)
-- P2R.3: FFmpeg/libass Basic Timeline Render Plan
+- P2R.3: FFmpeg/libass Basic Timeline Render Plan (implemented)
 - Future: RenderExecutionPlan integration, OpenCue integration

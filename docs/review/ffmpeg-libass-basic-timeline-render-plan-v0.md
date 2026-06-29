@@ -1,0 +1,236 @@
+# FFmpeg/libass Basic Timeline Render Plan v0 (P2R.3)
+
+## 1. Purpose
+
+Pure, side-effect-free FFmpeg/libass Basic Timeline Render Plan that composes BasicTimeline validation, FFmpeg baseline effect planning, FFmpeg baseline transition planning, caption/watermark overlay semantics, and output profile validation into a deterministic internal render plan.
+
+## 2. Relationship to Current Project Goal
+
+Supports:
+- Complete basic timeline editing
+- Complete basic rendering foundation
+- Complete architecture boundary construction
+- Prepare for OpenCue deployment testing
+
+Foundation for:
+- P2X.0 — API Scenario Runner and E2E Validation Harness
+- P2O.0 — OpenCue PVE Testbed Smoke Harness
+- Future RenderExecutionPlan integration
+- Future Local Runner integration
+
+## 3. Relationship to Basic Timeline Editing
+
+Consumes P2TLE.0 types:
+- `TimelineSpec` / `BasicTimeline` — source timeline
+- `TimelineTrack`, `TimelineClip` — structural context
+- `TimelineTextOverlay` — caption overlays
+- `TimelineClipEffect` — effect references
+- `TimelineOutputSpec` — output profile
+- `BasicTimelineValidator` — timeline validation
+
+Does not call `BasicTimelineEditor.apply()`.
+
+## 4. Relationship to Visual Capability Contract
+
+Uses P2R.0 vocabulary indirectly through P2R.1/P2R.2 planners:
+- `EffectCapabilityProfile` — resolves effect keys to capability definitions
+- `TransitionCapabilityProfile` — resolves transition keys to capability definitions
+- `VisualCapabilityPolicy` — checks forbidden/restricted/POC status
+
+## 5. Relationship to P2R.1 Effect Plan
+
+Delegates to `FFmpegBaselineEffectPlanner.plan()` for effect planning. Consumes `FFmpegBaselineEffectPlan` result. Effect operations become `APPLY_EFFECT_OPERATION` render steps.
+
+## 6. Relationship to P2R.2 Transition Plan
+
+Delegates to `FFmpegBaselineTransitionPlanner.plan()` for transition planning. Consumes `FFmpegBaselineTransitionPlan` result. Transition operations become `APPLY_TRANSITION_OPERATION` render steps.
+
+## 7. Relationship to FFmpeg/libass Baseline
+
+FFmpeg/libass is the current production baseline. P2R.3 produces internal plan vocabulary only. No raw FFmpeg commands, no shell commands, no filter_complex exposure. FFmpeg/libass is not called by P2R.3.
+
+## 8. Render Planning Scope
+
+First version is conservative and full-render only:
+
+| Stage | Type | Description |
+|-------|------|-------------|
+| 1 | VALIDATE_TIMELINE | Validate timeline structure |
+| 2 | PREPARE_INPUTS | Declare output profile |
+| 3 | PLAN_CLIP_SEQUENCE | Declare input clips in timeline order |
+| 4 | PLAN_EFFECTS | Include effect operations from P2R.1 |
+| 5 | PLAN_TRANSITIONS | Include transition operations from P2R.2 |
+| 6 | PLAN_CAPTION_OVERLAYS | Apply caption overlay steps |
+| 7 | PLAN_WATERMARK_OVERLAYS | Apply watermark overlay steps |
+| 8 | PLAN_FINAL_ASSEMBLY | Assemble clip sequences |
+| 9 | PLAN_OUTPUT_ENCODING | Encode output |
+| 10 | PLAN_OUTPUT_VERIFICATION | Verify output |
+
+## 9. Plan Model
+
+```
+FFmpegLibassBasicRenderPlan(id, status, stages, summary, issues, safeMetadata)
+```
+
+Status: READY, VALID_WITH_WARNINGS, INVALID, BLOCKED, UNSUPPORTED, FAILED
+
+## 10. Stage Model
+
+```
+FFmpegLibassBasicRenderStage(id, type, status, steps, safeMetadata)
+```
+
+Stage types: VALIDATE_TIMELINE, PREPARE_INPUTS, PLAN_CLIP_SEQUENCE, PLAN_EFFECTS, PLAN_TRANSITIONS, PLAN_CAPTION_OVERLAYS, PLAN_WATERMARK_OVERLAYS, PLAN_AUDIO, PLAN_METADATA, PLAN_FINAL_ASSEMBLY, PLAN_OUTPUT_ENCODING, PLAN_OUTPUT_VERIFICATION
+
+## 11. Step Model
+
+```
+FFmpegLibassBasicRenderStep(id, type, target, parameters, source, safeMetadata)
+```
+
+Step types: VALIDATE_TIMELINE, DECLARE_INPUT_CLIP, DECLARE_OUTPUT_PROFILE, APPLY_EFFECT_OPERATION, APPLY_TRANSITION_OPERATION, APPLY_CAPTION_OVERLAY, APPLY_WATERMARK_OVERLAY, ASSEMBLE_CLIP_SEQUENCE, ENCODE_OUTPUT, VERIFY_OUTPUT, DECLARE_AUDIO_TRACK, APPLY_AUDIO_OPERATION, DECLARE_SAFE_METADATA
+
+## 12. Parameter Model
+
+Typed parameters with `FFmpegLibassBasicRenderStepParameterType`: STRING, INTEGER, DECIMAL, BOOLEAN, DURATION_MS, PERCENT, PIXEL, RATIO, ENUM, COLOR, SAFE_REF.
+
+All parameters are semantic only — no raw FFmpeg commands, no filtergraph strings, no provider-specific parameters.
+
+## 13. Output Profile Validation
+
+- MP4 container accepted
+- H264/H265/HEVC/VP8/VP9 video codecs accepted
+- AAC/MP3/Opus/Vorbis/FLAC audio codecs accepted
+- Width/height/fps required and validated
+- Unsupported container/video codec blocked
+- Unsupported audio codec warned
+
+## 14. Caption Overlay Planning
+
+- Each `TimelineTextOverlay` produces an `APPLY_CAPTION_OVERLAY` step
+- Requires valid text (non-blank)
+- Requires valid time range (startTime >= 0, duration > 0)
+- Parameters: captionId, startMs, endMs, textRef
+
+## 15. Watermark Overlay Planning
+
+- Watermarks stored in timeline metadata (current model limitation)
+- Detected via `watermark.placement` or `watermark.opacity` metadata keys
+- Opacity validated to 0..1 range
+- Parameters: watermarkId, placement, opacity
+
+## 16. Policy Model
+
+```
+FFmpegLibassBasicRenderPolicy(
+    allowWarnings, allowPocEffects, allowPocTransitions,
+    failOnTimelineWarnings, failOnEffectWarnings, failOnTransitionWarnings,
+    failOnUnsupportedOutputProfile,
+    requireCaptionOverlayValidation, requireWatermarkOverlayValidation
+)
+```
+
+Default conservative policy:
+- allowWarnings = true
+- allowPocEffects = false
+- allowPocTransitions = false
+- failOnUnsupportedOutputProfile = true
+- requireCaptionOverlayValidation = true
+- requireWatermarkOverlayValidation = true
+
+## 17. Deterministic Ordering
+
+Stage ordering is fixed (10 stages in predefined order).
+
+Step ordering within stages:
+1. Timeline order
+2. Track order
+3. Clip timelineStart
+4. Caption startTime
+5. Watermark startMs if available
+6. Operation type enum order
+7. Entity id lexicographic
+
+## 18. Safety Boundaries
+
+- No raw FFmpeg commands
+- No shell command generation
+- No filter_complex exposure
+- No provider-specific parameters
+- No storage/internal path exposure
+- No Artifact DAG usage
+- No Remotion execution
+- No OpenCue job/layer/frame IDs
+- No global optimization
+- No parallel segment rendering
+- No incremental render
+- No RenderExecutionPlan integration
+
+## 19. Relationship to Future RenderExecutionPlan
+
+```
+BasicTimeline
+  → FFmpeg/libass Basic Timeline Render Plan
+  → RenderExecutionPlan
+  → Local Runner or OpenCue ExecutionEnvironment
+  → output verification
+  → Product registration
+```
+
+P2R.3 only implements the Basic Timeline Render Plan.
+
+## 20. Relationship to Future Local Runner
+
+Future Local Runner will consume the render plan stages and steps. P2R.3 does not implement Local Runner.
+
+## 21. Relationship to Future OpenCue
+
+```
+FFmpeg/libass Basic Timeline Render Plan
+  → future RenderExecutionPlan
+  → future OpenCue job/layer/frame mapping
+```
+
+P2R.3 does not call OpenCue. P2R.3 does not include OpenCue job/layer/frame IDs.
+
+## 22. Relationship to Future Parallel Segment/Layer Rendering
+
+Future only:
+- Parallel segment rendering
+- Layer rendering
+- Intermediate products
+- Multi-stage OpenCue execution
+- Artifact DAG / cache / incremental render
+
+Current P2R.3 is full explicit render planning only.
+
+## 23. Artifact DAG Boundary
+
+No Artifact DAG dependency. Artifact DAG is indefinitely deferred (P2A.2/ADR-025).
+
+## 24. What is Intentionally Not Implemented
+
+- FFmpeg execution
+- libass execution
+- Shell command generation
+- Raw filtergraph exposure
+- Local Runner
+- OpenCue integration
+- RenderExecutionPlan integration
+- RenderJob/Product creation
+- StorageRuntime/ProductRuntime calls
+- Artifact DAG
+- Incremental render
+- Partial render
+- Cache reuse
+- Parallel segment/layer rendering
+- Database tables / migrations / repositories
+- Controllers / public APIs
+
+## 25. Follow-up Tasks
+
+- P2X.0: API Scenario Runner and E2E Validation Harness
+- P2O.0: OpenCue PVE Testbed Smoke Harness
+- Future: RenderExecutionPlan integration
+- Future: Local Runner integration
+- Future: OpenCue job/layer/frame mapping
