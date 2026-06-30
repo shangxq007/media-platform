@@ -175,7 +175,10 @@ Remotion is a separate execution path.
 
 ## 25. Follow-Up Tasks
 
-- P2O.0f: More comprehensive submission testing
+- P2O.0f: Multi-frame, multi-layer, dependency, and failure visibility validation (COMPLETED 2026-06-30)
+  - 7 CJSL specs, 14 scripts, review doc, runbook, CJSL discovery notes
+  - See `docs/review/opencue-multiframe-multilayer-validation-v0.md`
+  - See `docs/operations/opencue-multiframe-multilayer-runbook.md`
 - P2O.1: PVE smoke validation
 - Future: Production OpenCue adapter (separate task)
 - Future: RenderExecutionPlan integration (separate task)
