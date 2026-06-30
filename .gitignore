@@ -74,3 +74,4 @@ test-assets/golden-render-project-v1/outputs/*.mp4
 test-assets/golden-render-project-v1/outputs/frames/*.png
 test-assets/golden-render-project-v1/outputs/reports/*.txt
 test-assets/golden-render-project-v1/expected/reports/*.txt
+AGENT_TASK.md
