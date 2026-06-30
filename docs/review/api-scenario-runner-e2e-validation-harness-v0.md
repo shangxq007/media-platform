@@ -157,3 +157,7 @@ P2L.2 expands the P2L.1 bridge to support caption overlay. It does not consume s
 ## 24. Relationship to P2L.3 Real Media Source Materialization
 
 P2L.3 expands the local runner to consume controlled real media fixture input instead of synthetic testsrc. It does not consume scenario runner output. The scenario runner validates planning correctness; P2L.3 validates that a plan can drive actual FFmpeg execution with real media input. Both are independent validation layers.
+
+## 25. Relationship to P2O.0c OpenCue Runtime Readiness
+
+P2O.0c validates that a local Docker OpenCue runtime (Cuebot + RQD) can start, connect, and access shared paths. It does not consume scenario runner output. The scenario runner validates planning correctness; P2O.0c validates that the execution environment is ready for future job submission. Both are independent validation layers.

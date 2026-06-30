@@ -255,3 +255,7 @@ P2L.2 expands the BasicRenderPlan-to-local-runner bridge to support caption over
 ## 30. P2L.3 Status
 
 P2L.3 expands the local runner from synthetic testsrc input to controlled real media fixture input. Generates a deterministic input-fixture.mp4 under the controlled output root using FFmpeg testsrc. Validates input and output with ffprobe. Preserves caption overlay support on real media input. Controlled local fixture only — rejects arbitrary user paths, remote URLs, storage references. Input source metadata included in result/report. Execution remains disabled by default. Does not implement arbitrary user media ingestion, StorageRuntime materialization, ProductRuntime, RenderExecutionPlan, OpenCue, ProviderBindingRegistry, Remotion, or Artifact DAG.
+
+## 31. P2O.0c Status
+
+P2O.0c resolved OpenCue image selection and validated local Docker runtime readiness. Confirmed opencue/cuebot:1.19.1 and opencue/rqd:1.19.1. Built local smoke RQD image with ffmpeg. PostgreSQL + Cuebot + RQD start successfully on local Docker. RQD registers with Cuebot. Shared path and ffmpeg/ffprobe verified inside RQD. Status: COMPLETE_RUNTIME_READY. Does not implement OpenCue job submission, RenderExecutionPlan, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG.

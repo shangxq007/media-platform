@@ -147,7 +147,8 @@ The DSL does not reference Artifact DAG. Artifact DAG is indefinitely deferred (
 | P2L.2 | Local Caption Overlay Smoke | Complete |
 | P2L.3 | Real Media Source Materialization | Complete |
 | P2O.0a | Local Docker OpenCue Shared-Path Smoke | Complete |
-| P2O.0b | OpenCue Cuebot/RQD Job Submission | Future |
+| P2O.0b | OpenCue Cuebot/RQD Runtime Smoke | Complete |
+| P2O.0c | OpenCue Image Selection and Runtime Readiness | Complete |
 | P2B.1 | FFmpeg/libass Binding Fixtures | Future |
 | P2B.2 | Binding Validator / Registry | Future |
 | P2B.3 | Scenario Runner Capability Discovery | Future |
