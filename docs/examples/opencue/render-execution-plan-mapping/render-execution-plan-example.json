@@ -1,0 +1,102 @@
+{
+  "planId": "rep-abc123def456",
+  "bindingPlanId": "bp-789xyz",
+  "timelineId": "tl-001",
+  "policy": {
+    "mode": "DRY_RUN",
+    "allowOpenCueSubmit": true,
+    "allowProviderExecution": false
+  },
+  "environmentTarget": "OPENCUE",
+  "steps": [
+    {
+      "stepId": "step-mat-001",
+      "type": "MATERIALIZE_INPUT",
+      "status": "READY",
+      "nodeId": "node-input-001",
+      "artifactNodeType": "INPUT_MEDIA",
+      "dependencies": [],
+      "executionEnvironmentTarget": "OPENCUE",
+      "label": "Materialize input video from storage",
+      "metadata": {
+        "inputAssetId": "asset-video-001",
+        "storageReferenceId": "sr-abc123",
+        "mimeType": "video/mp4"
+      }
+    },
+    {
+      "stepId": "step-prep-001",
+      "type": "PREPARE_PROVIDER_DOCUMENT",
+      "status": "READY",
+      "nodeId": "node-cap-001",
+      "providerName": "ffmpeg-libass",
+      "dependencies": ["step-mat-001"],
+      "executionEnvironmentTarget": "OPENCUE",
+      "label": "Prepare FFmpeg command for subtitle burn-in",
+      "metadata": {
+        "providerRef": "ffmpeg-libass",
+        "documentType": "FFmpegLibassRenderDocument"
+      }
+    },
+    {
+      "stepId": "step-exec-001",
+      "type": "EXECUTE_PROVIDER",
+      "status": "PENDING",
+      "nodeId": "node-cap-001",
+      "providerName": "ffmpeg-libass",
+      "dependencies": ["step-prep-001"],
+      "executionEnvironmentTarget": "OPENCUE",
+      "label": "Execute FFmpeg subtitle burn-in",
+      "metadata": {
+        "providerRef": "ffmpeg-libass",
+        "frameRange": "1-10",
+        "chunkSize": 1
+      }
+    },
+    {
+      "stepId": "step-verify-001",
+      "type": "VERIFY_OUTPUT",
+      "status": "PENDING",
+      "nodeId": "node-output-001",
+      "artifactNodeType": "FINAL_RENDER",
+      "dependencies": ["step-exec-001"],
+      "executionEnvironmentTarget": "OPENCUE",
+      "label": "Verify rendered output exists and is valid",
+      "metadata": {
+        "expectedMimeType": "video/mp4"
+      }
+    },
+    {
+      "stepId": "step-reg-001",
+      "type": "REGISTER_OUTPUT",
+      "status": "PENDING",
+      "nodeId": "node-output-001",
+      "dependencies": ["step-verify-001"],
+      "executionEnvironmentTarget": "OPENCUE",
+      "label": "Register output in StorageRuntime",
+      "metadata": {}
+    },
+    {
+      "stepId": "step-link-001",
+      "type": "LINK_PRODUCT_DEPENDENCY",
+      "status": "PENDING",
+      "nodeId": "node-output-001",
+      "dependencies": ["step-reg-001"],
+      "executionEnvironmentTarget": "OPENCUE",
+      "label": "Link input→output ProductDependency",
+      "metadata": {}
+    },
+    {
+      "stepId": "step-final-001",
+      "type": "FINALIZE_RENDER",
+      "status": "PENDING",
+      "nodeId": null,
+      "dependencies": ["step-link-001"],
+      "executionEnvironmentTarget": "OPENCUE",
+      "label": "Finalize render job",
+      "metadata": {}
+    }
+  ],
+  "executionReady": false,
+  "failureReasons": []
+}

@@ -1,0 +1,61 @@
+{
+  "draftId": "ocjsd-shared-001",
+  "planId": "rep-abc123def456",
+  "environmentTarget": "OPENCUE",
+  "storageStrategy": "SHARED_PATH",
+  "facility": "local",
+  "show": "testing",
+  "shot": "render-abc123",
+  "user": "platform-worker",
+  "jobName": "render-abc123-ffmpeg-burn-in",
+  "paused": false,
+  "layers": [
+    {
+      "name": "ffmpeg-burn-in",
+      "type": "Render",
+      "commandSpec": {
+        "binary": "ffmpeg",
+        "args": [
+          "-i", "/mnt/opencue-shared/media-platform-smoke/inputs/asset-video-001.mp4",
+          "-vf", "ass=/mnt/opencue-shared/media-platform-smoke/inputs/subtitle-001.ass",
+          "-c:v", "libx264", "-preset", "medium",
+          "-c:a", "copy",
+          "/mnt/opencue-shared/media-platform-smoke/outputs/render-abc123/frame-${CUE_FRAME}.mp4"
+        ],
+        "timeout": 300
+      },
+      "frameRange": {
+        "start": 1,
+        "end": 10
+      },
+      "chunkSize": 1,
+      "resources": {
+        "cores": 100,
+        "memoryMB": 512
+      },
+      "dependencies": []
+    }
+  ],
+  "inputPaths": [
+    {
+      "assetId": "asset-video-001",
+      "sharedPath": "/mnt/opencue-shared/media-platform-smoke/inputs/asset-video-001.mp4"
+    },
+    {
+      "assetId": "subtitle-001",
+      "sharedPath": "/mnt/opencue-shared/media-platform-smoke/inputs/subtitle-001.ass"
+    }
+  ],
+  "outputPaths": [
+    {
+      "artifactType": "FINAL_RENDER",
+      "sharedPathPattern": "/mnt/opencue-shared/media-platform-smoke/outputs/render-abc123/frame-${CUE_FRAME}.mp4"
+    }
+  ],
+  "traceability": {
+    "planId": "rep-abc123def456",
+    "bindingPlanId": "bp-789xyz",
+    "timelineId": "tl-001",
+    "stepId": "step-exec-001"
+  }
+}

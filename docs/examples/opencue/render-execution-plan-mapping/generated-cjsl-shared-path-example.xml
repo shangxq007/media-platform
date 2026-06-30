@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE spec SYSTEM "http://localhost:8080/spcue/dtd/cjsl-1.15.dtd">
+<spec>
+  <facility>local</facility>
+  <show>testing</show>
+  <shot>render-abc123</shot>
+  <user>platform-worker</user>
+  <job name="render-abc123-ffmpeg-burn-in">
+    <paused>false</paused>
+    <layers>
+      <layer name="ffmpeg-burn-in" type="Render">
+        <cmd>
+          <arg>ffmpeg -i /mnt/opencue-shared/media-platform-smoke/inputs/asset-video-001.mp4 -vf ass=/mnt/opencue-shared/media-platform-smoke/inputs/subtitle-001.ass -c:v libx264 -preset medium -c:a copy /mnt/opencue-shared/media-platform-smoke/outputs/render-abc123/frame-${CUE_FRAME}.mp4</arg>
+        </cmd>
+        <range>1-10</range>
+        <chunk>1</chunk>
+        <memory>512</memory>
+        <cores>100</cores>
+      </layer>
+    </layers>
+  </job>
+</spec>

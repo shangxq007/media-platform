@@ -523,3 +523,19 @@ P2O.0e investigates Cuebot gRPC job submission after P2O.0d fallback execution. 
 Review: `docs/review/cuebot-grpc-job-submission-discovery-v0.md`
 Runbook: `docs/operations/cuebot-grpc-job-submission-spike-runbook.md`
 Examples: `docs/examples/opencue/local-docker-p2o0e/`
+
+### OpenCue Multi-Frame / Multi-Layer / Failure Visibility Validation (P2O.0f)
+
+P2O.0f validated local Docker OpenCue multi-frame, multi-layer, and failure visibility behavior. Multi-frame jobs (10, 20 frames) with chunking, multi-layer jobs (2, 3 layers), and failure visibility (DEAD frames, exit codes) all passed. CJSL dependency syntax blocked by DTD. Status: COMPLETE_MULTI_FRAME_SMOKE. Does not implement production OpenCue adapter, RenderExecutionPlan integration, StorageRuntime, ProductRuntime, public API, Remotion execution, cross-service-provider execution, or Artifact DAG.
+
+Review: `docs/review/opencue-multiframe-multilayer-validation-v0.md`
+Runbook: `docs/operations/opencue-multiframe-multilayer-runbook.md`
+Examples: `docs/examples/opencue/local-docker-p2o0f/`
+
+### RenderExecutionPlan-to-CJSL Mapping Design (P2O.0g)
+
+P2O.0g designs the mapping from platform RenderExecutionPlan concepts to OpenCue CJSL job/layer/frame structures after P2O.0f validated multi-frame, chunking, multi-layer, and failure visibility behavior. Because current CJSL dependency syntax is not available, RenderExecutionPlan dependencies are handled by platform-side stage splitting and submission ordering. P2O.0g also defines the storage strategy boundary: shared path for local/PVE smoke, object storage plus worker local materialization for production and cross-host execution. Status: COMPLETE_MAPPING_DESIGN. Does not implement production OpenCue adapter, live RenderExecutionPlan execution, StorageRuntime integration, ProductRuntime integration, public API, Remotion execution, cross-service-provider execution, or Artifact DAG.
+
+Review: `docs/review/render-execution-plan-to-cjsl-mapping-v0.md`
+Runbook: `docs/operations/opencue-render-execution-plan-mapping-runbook.md`
+Examples: `docs/examples/opencue/render-execution-plan-mapping/`

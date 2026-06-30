@@ -162,3 +162,19 @@ P2O.0e validates Cuebot gRPC job submission:
 - No secrets in code
 - No signed URLs or filesystem paths in API responses
 - Does not implement RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG
+
+## P2O.0g RenderExecutionPlan-to-CJSL Mapping Design Safety
+
+P2O.0g designs the mapping from platform RenderExecutionPlan to OpenCue CJSL:
+- Design and documentation only, not production adapter
+- CJSL generation is internal implementation detail, not user-provided
+- Dependencies handled by platform-side stage splitting (CJSL depends blocked by DTD)
+- Shared path strategy for local/PVE smoke
+- Object storage materialization strategy for production/cross-host
+- No signed URLs in CJSL or public API
+- No local host paths in CJSL or public API
+- No storage provider internals in public API
+- No raw user input in commands
+- No production OpenCue adapter
+- No live Cuebot submission
+- Does not implement RenderExecutionPlan execution, StorageRuntime integration, ProductRuntime integration, cross-service-provider execution, Remotion execution, public API, or Artifact DAG

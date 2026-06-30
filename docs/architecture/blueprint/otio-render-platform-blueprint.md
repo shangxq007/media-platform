@@ -1766,6 +1766,8 @@ Completed:
   P2O.0c — OpenCue Image Selection and Runtime Readiness
   P2O.0d — Local Docker OpenCue Job Submission Smoke Fallback
   P2O.0e — Cuebot gRPC Job Submission Discovery and Spike
+  P2O.0f — OpenCue Multi-Frame / Multi-Layer / Failure Visibility Validation
+  P2O.0g — RenderExecutionPlan-to-CJSL Mapping Design with Storage Strategy Boundary
 
 Next:
   P2B.1 — FFmpeg/libass Binding Fixtures

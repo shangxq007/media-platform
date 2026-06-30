@@ -1,0 +1,77 @@
+{
+  "draftId": "ocjsd-objstore-001",
+  "planId": "rep-abc123def456",
+  "environmentTarget": "OPENCUE",
+  "storageStrategy": "OBJECT_STORAGE_MATERIALIZATION",
+  "facility": "cloud",
+  "show": "testing",
+  "shot": "render-abc123",
+  "user": "platform-worker",
+  "jobName": "render-abc123-ffmpeg-burn-in",
+  "paused": false,
+  "layers": [
+    {
+      "name": "ffmpeg-burn-in",
+      "type": "Render",
+      "commandSpec": {
+        "binary": "media-worker-materialize-and-render",
+        "args": [
+          "--manifest", "/mnt/opencue-shared/job-manifests/render-abc123/manifest.json"
+        ],
+        "timeout": 600,
+        "note": "Operator-controlled wrapper; not implemented in P2O.0g"
+      },
+      "frameRange": {
+        "start": 1,
+        "end": 10
+      },
+      "chunkSize": 1,
+      "resources": {
+        "cores": 100,
+        "memoryMB": 1024
+      },
+      "dependencies": []
+    }
+  ],
+  "materializationManifest": {
+    "manifestId": "manifest-abc123",
+    "inputs": [
+      {
+        "assetId": "asset-video-001",
+        "storageReferenceId": "sr-abc123",
+        "objectKey": "platform-inputs/asset-video-001.mp4",
+        "localPath": "/scratch/render-abc123/input/asset-video-001.mp4",
+        "checksum": "sha256-placeholder"
+      },
+      {
+        "assetId": "subtitle-001",
+        "storageReferenceId": "sr-def456",
+        "objectKey": "platform-inputs/subtitle-001.ass",
+        "localPath": "/scratch/render-abc123/input/subtitle-001.ass",
+        "checksum": "sha256-placeholder"
+      }
+    ],
+    "outputs": [
+      {
+        "artifactType": "FINAL_RENDER",
+        "objectKeyPattern": "platform-outputs/render-abc123/frame-${CUE_FRAME}.mp4",
+        "localPathPattern": "/scratch/render-abc123/output/frame-${CUE_FRAME}.mp4"
+      }
+    ],
+    "scratchRoot": "/scratch/render-abc123",
+    "cleanupPolicy": "POST_JOB"
+  },
+  "traceability": {
+    "planId": "rep-abc123def456",
+    "bindingPlanId": "bp-789xyz",
+    "timelineId": "tl-001",
+    "stepId": "step-exec-001"
+  },
+  "safetyNotes": [
+    "No signed URLs in manifest or CJSL",
+    "No bucket names in public API",
+    "No local host paths in public API",
+    "Object keys are internal storage references",
+    "Worker materialization wrapper is future code, not implemented"
+  ]
+}
