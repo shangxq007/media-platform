@@ -1,0 +1,50 @@
+# P2O.0d — Shared Path Layout
+
+## Host shared root
+build/opencue-shared/media-platform-smoke
+
+## Container shared root
+/mnt/opencue-shared/media-platform-smoke
+
+## Execution outputs
+jobs/smoke-001/
+  input/
+    input-fixture.mp4
+  work/
+    caption-overlay-input.ass
+  output/
+    output.mp4
+    local-render-execution-report.txt
+  logs/
+    shared-path-probe.txt
+    ffprobe-output.txt
+    ffprobe-input.txt
+    ffmpeg.stdout.log
+    ffmpeg.stderr.log
+    opencue-job-summary.txt
+    worker-log.txt
+
+## Preview artifacts (copied from execution outputs)
+preview/p2o0d/
+  smoke-level-0/
+    shared-path-probe.txt
+    opencue-job-summary.txt
+    worker-log.txt
+  smoke-level-1/
+    output.mp4
+    ffprobe-output.txt
+    ffmpeg.stdout.log
+    ffmpeg.stderr.log
+    opencue-job-summary.txt
+    worker-log.txt
+  smoke-level-2/
+    input-fixture.mp4
+    caption-overlay-input.ass
+    output.mp4
+    local-render-execution-report.txt
+    ffprobe-input.txt
+    ffprobe-output.txt
+    ffmpeg.stdout.log
+    ffmpeg.stderr.log
+    opencue-job-summary.txt
+    worker-log.txt

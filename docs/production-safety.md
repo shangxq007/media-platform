@@ -137,3 +137,14 @@ P2O.0c resolves OpenCue image selection and validates local Docker runtime readi
 - No production OpenCue adapter, no Cuebot API client in application runtime
 - No raw shell command from user, no raw FFmpeg filtergraph from user
 - Does not implement OpenCue job submission, RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG
+
+## P2L.0d Local Docker OpenCue Job Submission Smoke Safety
+
+P2L.0d validates local Docker OpenCue job submission smoke:
+- Submits smoke work through local Cuebot/RQD runtime (container exec fallback)
+- Verifies worker-side shared-path outputs
+- Copies final preview artifacts under build/opencue-shared/media-platform-smoke/preview/p2o0d
+- No production OpenCue adapter
+- No raw shell command from user
+- No raw FFmpeg filtergraph from user
+- Does not implement RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG

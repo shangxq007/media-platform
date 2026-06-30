@@ -1,0 +1,13 @@
+# P2O.0d — Docker Compose Override
+# Overrides P2O.0c compose to use bind mount for shared path.
+# This allows host to access container outputs directly.
+# Note: path is relative to the compose file location.
+
+services:
+  cuebot:
+    volumes:
+      - ../../../../build/opencue-shared/media-platform-smoke:/mnt/opencue-shared/media-platform-smoke
+
+  rqd:
+    volumes:
+      - ../../../../build/opencue-shared/media-platform-smoke:/mnt/opencue-shared/media-platform-smoke
