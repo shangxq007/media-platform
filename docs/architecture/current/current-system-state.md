@@ -507,3 +507,19 @@ P2O.0c resolved OpenCue image selection and validated local Docker runtime readi
 Review: `docs/review/opencue-image-selection-runtime-readiness-v0.md`
 Runbook: `docs/operations/opencue-local-docker-runtime-readiness-runbook.md`
 Examples: `docs/examples/opencue/local-docker-p2o0c/`
+
+### Local Docker OpenCue Job Submission Smoke Fallback (P2O.0d)
+
+P2O.0d validated worker-side execution through docker exec fallback. Smoke Level 0/1/2 all passed. Preview artifacts saved locally. But no true OpenCue job was submitted through Cuebot. Status: PARTIAL_JOB_SUBMISSION_READY. Does not implement production OpenCue adapter, RenderExecutionPlan integration, cross-service-provider execution, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG.
+
+Review: `docs/review/local-docker-opencue-job-submission-smoke-v0.md`
+Runbook: `docs/operations/opencue-local-docker-job-submission-smoke-runbook.md`
+Examples: `docs/examples/opencue/local-docker-p2o0d/`
+
+### Cuebot gRPC Job Submission Discovery and Spike (P2O.0e)
+
+P2O.0e investigates Cuebot gRPC job submission after P2O.0d fallback execution. It discovers available submission tooling, proto/API surfaces, and minimal client options for true Cuebot-submitted jobs. P2O.0e remains a spike and does not implement production OpenCue adapter, RenderExecutionPlan integration, StorageRuntime, ProductRuntime, public API, Remotion execution, cross-service-provider execution, or Artifact DAG. Status: COMPLETE_TRUE_SUBMISSION_SPIKE. Key findings: gRPC reflection not enabled, proto files required for grpcurl, submission API is job.JobInterface/LaunchSpecAndWait, CJSL XML spec format, V11 GPU column migration required for Cuebot 1.19.1. All 3 smoke levels passed via true Cuebot submission.
+
+Review: `docs/review/cuebot-grpc-job-submission-discovery-v0.md`
+Runbook: `docs/operations/cuebot-grpc-job-submission-spike-runbook.md`
+Examples: `docs/examples/opencue/local-docker-p2o0e/`

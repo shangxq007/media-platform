@@ -1,0 +1,41 @@
+# P2O.0e Shared Path Layout
+
+## Docker Volume
+
+media-smoke (internal Docker volume)
+
+## Container Mount Point
+
+/mnt/opencue-shared/media-platform-smoke
+
+## Host Copy Location
+
+build/opencue-shared/media-platform-smoke
+
+## P2O.0e Preview Structure
+
+```
+preview/p2o0e/
+├── smoke-level-0/
+│   ├── shared-path-probe.txt      (echo output from true Cuebot job)
+│   └── opencue-job-summary.txt    (gRPC GetJob response)
+├── smoke-level-1/
+│   ├── output.mp4                 (1s blue video, ffmpeg via Cuebot)
+│   ├── ffmpeg.stderr.log          (ffmpeg log)
+│   ├── ffprobe-output.txt         (ffprobe format info)
+│   └── opencue-job-summary.txt    (gRPC GetJob response)
+└── smoke-level-2/
+    ├── output.mp4                 (2s green video with text overlay)
+    ├── ffmpeg.stderr.log          (ffmpeg log)
+    ├── ffprobe-output.txt         (ffprobe format info)
+    └── opencue-job-summary.txt    (gRPC GetJob response)
+```
+
+## P2O.0d Preview Structure (preserved)
+
+```
+preview/p2o0d/
+├── smoke-level-0/
+├── smoke-level-1/
+└── smoke-level-2/
+```

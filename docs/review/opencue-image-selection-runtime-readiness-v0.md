@@ -122,6 +122,7 @@ P2O.0c does not execute Remotion.
 
 ## 24. Follow-up Tasks
 
-- P2O.0d: OpenCue job submission
+- P2O.0d: OpenCue job submission (DONE — fallback via docker exec)
+- P2O.0e: Cuebot gRPC job submission discovery and spike (DONE — true submission via grpcurl)
 - P2O.1: OpenCue ExecutionEnvironment integration
 - Future: Production OpenCue adapter

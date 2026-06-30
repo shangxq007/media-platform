@@ -163,3 +163,7 @@ P2L.0d does not execute Remotion.
 - P2O.2: OpenCue provider integration
 - Future: True OpenCue job submission via Python client
 - Future: Cross-provider execution with object storage
+
+## P2O.0e Update
+
+P2O.0e resolved the fallback limitation. True Cuebot gRPC job submission achieved via grpcurl + CJSL XML spec. All 3 smoke levels passed via true submission. See `docs/review/cuebot-grpc-job-submission-discovery-v0.md`.

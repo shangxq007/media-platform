@@ -1763,6 +1763,9 @@ Completed:
   P2L.3 — Real Media Source Materialization
   P2O.0a — Local Docker OpenCue Shared-Path Smoke
   P2O.0b — Local Docker Cuebot/RQD Runtime Smoke
+  P2O.0c — OpenCue Image Selection and Runtime Readiness
+  P2O.0d — Local Docker OpenCue Job Submission Smoke Fallback
+  P2O.0e — Cuebot gRPC Job Submission Discovery and Spike
 
 Next:
   P2B.1 — FFmpeg/libass Binding Fixtures

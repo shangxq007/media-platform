@@ -148,3 +148,17 @@ P2L.0d validates local Docker OpenCue job submission smoke:
 - No raw shell command from user
 - No raw FFmpeg filtergraph from user
 - Does not implement RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG
+
+## P2O.0e Cuebot gRPC Job Submission Spike Safety
+
+P2O.0e validates Cuebot gRPC job submission:
+- Discovers submission API via proto files and grpcurl
+- Submits smoke work through true Cuebot gRPC submission (not fallback)
+- Verifies worker-side shared-path outputs
+- Copies final preview artifacts under build/opencue-shared/media-platform-smoke/preview/p2o0e
+- No production OpenCue adapter
+- No raw shell command from user in public API
+- No raw FFmpeg filtergraph from user in public API
+- No secrets in code
+- No signed URLs or filesystem paths in API responses
+- Does not implement RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG
