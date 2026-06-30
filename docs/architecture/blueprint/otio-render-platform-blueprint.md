@@ -1734,9 +1734,12 @@ P2O.0a introduced the local Docker OpenCue shared-path smoke preparation. It val
 
 P2O.0b introduced the local Docker Cuebot/RQD runtime smoke design and validation path. It defines how Cuebot submits smoke work to an RQD worker, includes runtime smoke submission scripts, Docker Compose example, runbook, and image status documentation. OpenCue images remain placeholder-only; operator must provide confirmed images.
 
+P2O.0c resolved OpenCue image selection and validated local Docker runtime readiness. Confirmed opencue/cuebot:1.19.1 and opencue/rqd:1.19.1. Built local smoke RQD image with ffmpeg. PostgreSQL + Cuebot + RQD start successfully. RQD registers with Cuebot. Shared path and ffmpeg/ffprobe verified inside RQD. Status: COMPLETE_RUNTIME_READY.
+
 Recommended path:
 - P2O.0a — Local Docker OpenCue Shared-Path Smoke ✅
 - P2O.0b — Local Docker Cuebot/RQD Runtime Smoke ✅
+- P2O.0c — OpenCue Image Selection and Runtime Readiness ✅
 - P2O.1 — OpenCue ExecutionEnvironment Model Alignment
 - P2O.2 — OpenCue Job Submission Adapter
 - P2O.3 — OpenCue Worker Result Collection

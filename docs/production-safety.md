@@ -125,3 +125,15 @@ P2O.0b validates the Cuebot/RQD runtime scheduling model locally with Docker:
 - No production OpenCue adapter, no Cuebot API client in application runtime
 - No raw shell command from user, no raw FFmpeg filtergraph from user
 - Does not implement RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG
+
+## P2O.0c OpenCue Image Selection and Runtime Readiness Safety
+
+P2O.0c resolves OpenCue image selection and validates local Docker runtime readiness:
+- Confirmed opencue/cuebot:1.19.1 and opencue/rqd:1.19.1 as official ASWF images
+- Built local smoke RQD image (opencue-rqd-smoke:local) extending official RQD with ffmpeg
+- Local smoke image is example-only, not pushed, not production
+- Runtime startup, health checks, shared path validation, ffmpeg/ffprobe verification are all local Docker only
+- Database schema initialization uses official OpenCue migration scripts
+- No production OpenCue adapter, no Cuebot API client in application runtime
+- No raw shell command from user, no raw FFmpeg filtergraph from user
+- Does not implement OpenCue job submission, RenderExecutionPlan, cross-service-provider execution, object storage materialization, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG

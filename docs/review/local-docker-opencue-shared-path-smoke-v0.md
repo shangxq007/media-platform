@@ -189,7 +189,8 @@ P2O.0a does not execute Remotion.
 
 ## 27. Follow-up Tasks
 
-- P2O.0b: Actual Cuebot/RQD job submission
+- P2O.0b: Actual Cuebot/RQD job submission ✅
+- P2O.0c: OpenCue Image Selection and Runtime Readiness ✅
 - P2O.1: OpenCue ExecutionEnvironment integration
 - P2O.2: OpenCue provider integration
 - Future: Cross-provider execution with object storage

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Operator-run runbook for P2O.0b local Docker Cuebot/RQD runtime smoke validation.
+Operator-run runbook for P2O.0b/P2O.0c local Docker Cuebot/RQD runtime smoke validation.
 Not production. Not automated. Manual testbed commands only.
 
 ## 2. Prerequisites
@@ -11,7 +11,7 @@ Not production. Not automated. Manual testbed commands only.
 - Docker Compose v2+ installed
 - FFmpeg and ffprobe available on host (for dry run fallback)
 - Repository cloned
-- OpenCue Docker images confirmed or operator-provided
+- OpenCue Docker images confirmed (P2O.0c confirmed: opencue/cuebot:1.19.1, opencue/rqd:1.19.1)
 
 ## 3. Required Local Tools
 

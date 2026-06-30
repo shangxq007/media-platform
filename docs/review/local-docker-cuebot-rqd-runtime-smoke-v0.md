@@ -213,6 +213,7 @@ P2O.0b does not execute Remotion.
 
 ## 28. Follow-up Tasks
 
+- P2O.0c: OpenCue Image Selection and Runtime Readiness ✅
 - P2O.1: OpenCue ExecutionEnvironment integration
 - P2O.2: OpenCue provider integration
 - Future: Cross-provider execution with object storage

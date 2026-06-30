@@ -499,3 +499,11 @@ P2O.0b introduced the local Docker Cuebot/RQD runtime smoke design and validatio
 Review: `docs/review/local-docker-cuebot-rqd-runtime-smoke-v0.md`
 Runbook: `docs/operations/opencue-local-docker-runtime-smoke-runbook.md`
 Examples: `docs/examples/opencue/local-docker-p2o0b/`
+
+### OpenCue Image Selection and Runtime Readiness (P2O.0c)
+
+P2O.0c resolved OpenCue image selection and validated local Docker runtime readiness. Confirmed images: opencue/cuebot:1.19.1, opencue/rqd:1.19.1 (base, no ffmpeg). Built local smoke RQD image extending opencue/rqd:1.19.1 with ffmpeg. PostgreSQL + Cuebot + RQD start successfully on local Docker. RQD registers with Cuebot via gRPC. Shared path mount verified inside RQD container. ffmpeg/ffprobe verified inside RQD container. Status: COMPLETE_RUNTIME_READY. Key findings: RQD config requires OPENCUE_RQD_CONFIG env var (tilde not expanded), Cuebot requires CUEBOT_DB_URL env var, database requires schema migrations + seed data. Does not implement production OpenCue adapter, OpenCue job submission, RenderExecutionPlan, cross-service-provider execution, StorageRuntime, ProductRuntime, ProviderBindingRegistry, Remotion execution, public API, or Artifact DAG.
+
+Review: `docs/review/opencue-image-selection-runtime-readiness-v0.md`
+Runbook: `docs/operations/opencue-local-docker-runtime-readiness-runbook.md`
+Examples: `docs/examples/opencue/local-docker-p2o0c/`

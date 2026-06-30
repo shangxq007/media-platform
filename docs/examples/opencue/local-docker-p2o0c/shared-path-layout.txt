@@ -1,0 +1,34 @@
+P2O.0c — Shared Path Layout
+
+Host shared root:
+  build/opencue-shared/media-platform-smoke
+
+Container shared root:
+  /mnt/opencue-shared/media-platform-smoke
+
+Directory layout (identical on host and container):
+
+  media-platform-smoke/
+    jobs/
+      smoke-001/
+        input/                  # input fixtures
+        work/                   # intermediate files (ASS subtitles, etc.)
+        output/                 # render output (output.mp4, reports)
+        logs/                   # execution logs
+          shared-path-probe.txt # smoke level 0
+          ffprobe-output.txt    # smoke level 1
+          ffmpeg.stdout.log     # ffmpeg stdout
+          ffmpeg.stderr.log     # ffmpeg stderr
+          opencue-job.log       # OpenCue job log
+          cuebot.log            # Cuebot log (if collected)
+          rqd.log               # RQD log (if collected)
+          rqd-shared-path-ready.txt  # shared path mount verification
+
+Container mount:
+  Docker named volume: media-smoke
+  Mounted at: /mnt/opencue-shared/media-platform-smoke
+
+Host inspection:
+  Named volumes are managed by Docker. To inspect:
+    docker volume inspect media-platform-smoke_media-smoke
+  Or use bind mount instead of named volume for direct host access.
