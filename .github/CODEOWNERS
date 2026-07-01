@@ -1,0 +1,35 @@
+# Default owner for all files
+* @soul142857
+
+# Architecture and safety documentation
+/docs/architecture/ @soul142857
+/docs/production-safety.md @soul142857
+/docs/module-boundaries.md @soul142857
+
+# Render module (core domain)
+/render-module/ @soul142857
+
+# AI module
+/ai-module/ @soul142857
+
+# Platform application entry point
+/platform-app/ @soul142857
+
+# Database migrations (critical — never auto-modify)
+/flyway/ @soul142857
+
+# Build configuration
+/build.gradle.kts @soul142857
+/settings.gradle.kts @soul142857
+
+# CI/CD configuration
+/.github/ @soul142857
+
+# Shared kernel
+/shared-kernel/ @soul142857
+
+# Workflow module (inactive — protect from accidental activation)
+/workflow-module/ @soul142857
+
+# Spring AI adapter (inactive — protect from accidental activation)
+/spring-ai-adapter/ @soul142857

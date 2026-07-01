@@ -1,0 +1,23 @@
+name: Semgrep Architecture Rules
+
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+    paths:
+      - "render-module/**/*.java"
+      - "ai-module/**/*.java"
+      - "platform-app/**/*.java"
+      - "platform-app/build.gradle*"
+  workflow_dispatch:
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: semgrep/semgrep-action@v1
+        with:
+          config: .semgrep/media-platform-architecture.yml
+        env:
+          SEMGREP_RULES: .semgrep/media-platform-architecture.yml
