@@ -2,7 +2,6 @@ package com.example.platform.render.integration;
 
 import com.example.platform.render.api.RenderController;
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
-import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.render.app.RenderJobService;
 import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
@@ -17,6 +16,11 @@ import com.example.platform.render.domain.product.*;
 import com.example.platform.render.domain.storage.StorageClass;
 import com.example.platform.render.domain.storage.StorageProviderType;
 import com.example.platform.render.domain.storage.StorageReference;
+import com.example.platform.render.testsupport.fakes.FakeProductDependencyRepository;
+import com.example.platform.render.testsupport.fakes.FakeProductRepository;
+import com.example.platform.render.testsupport.fakes.FakeRenderJobService;
+import com.example.platform.render.testsupport.fakes.FakeRenderOrchestratorPort;
+import com.example.platform.render.testsupport.fakes.FakeStorageReferenceRepository;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
@@ -25,11 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.*;
-import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
  * VS.1 smoke integration test — end-to-end flow for Preview Render Job.
@@ -46,26 +47,37 @@ import static org.mockito.Mockito.*;
  * </ol>
  *
  * <p>Does NOT use H2, Spring context, or real database.
- * Uses Mockito mocks for all infrastructure dependencies.
+ * Uses hand-written fakes for all infrastructure dependencies.
+ * No Mockito — all collaborators are explicit fake implementations.
  *
  * <p>Integration package: com.example.platform.render.integration
  */
 class VS1SmokeIntegrationTest {
 
-    private RenderJobService renderJobService;
+    private FakeRenderJobService fakeJobService;
+    private FakeProductRepository fakeProductRepo;
+    private FakeProductDependencyRepository fakeDepRepo;
+    private FakeStorageReferenceRepository fakeStorageRepo;
     private ProductRuntimeService productRuntimeService;
     private StorageRuntimeService storageRuntimeService;
-    private RenderOrchestratorPort orchestratorPort;
+    private FakeRenderOrchestratorPort fakeOrchestrator;
     private RenderController controller;
     private RenderJobStateMachine stateMachine;
 
     @BeforeEach
     void setUp() {
-        renderJobService = Mockito.mock(RenderJobService.class);
-        productRuntimeService = Mockito.mock(ProductRuntimeService.class);
-        storageRuntimeService = Mockito.mock(StorageRuntimeService.class);
-        orchestratorPort = Mockito.mock(RenderOrchestratorPort.class);
-        controller = new RenderController(renderJobService, orchestratorPort,
+        fakeJobService = new FakeRenderJobService();
+        fakeJobService.registerProject("proj-1", "t-1");
+        fakeJobService.registerProject("proj-2", "t-1");
+
+        fakeProductRepo = new FakeProductRepository();
+        fakeDepRepo = new FakeProductDependencyRepository();
+        fakeStorageRepo = new FakeStorageReferenceRepository();
+        productRuntimeService = new ProductRuntimeService(fakeProductRepo, fakeDepRepo);
+        storageRuntimeService = new StorageRuntimeService(fakeStorageRepo);
+
+        fakeOrchestrator = new FakeRenderOrchestratorPort();
+        controller = new RenderController(fakeJobService, fakeOrchestrator,
                 null, null, null, null, null, null, null);
         stateMachine = new RenderJobStateMachine();
     }
@@ -84,19 +96,18 @@ class VS1SmokeIntegrationTest {
         @Test
         @DisplayName("Create job → get by ID → verify QUEUED status")
         void createAndGetJob() {
-            // Create
             CreateRenderJobRequest createReq = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
-            RenderJobResponse created = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED");
-            when(renderJobService.createForProject("t-1", "proj-1", createReq)).thenReturn(created);
 
             RenderJobResponse createResult = controller.createRenderJob("t-1", "proj-1", createReq);
             assertEquals("QUEUED", createResult.status());
-            assertEquals("rj-1", createResult.id());
+            assertNotNull(createResult.id());
+            assertEquals("proj-1", createResult.projectId());
+            assertEquals("snap-1", createResult.timelineSnapshotId());
+            assertEquals("default_1080p", createResult.profile());
 
             // Get by ID
-            when(renderJobService.getByIdAndProject("t-1", "proj-1", "rj-1")).thenReturn(created);
-            RenderJobResponse getResult = controller.getRenderJob("t-1", "proj-1", "rj-1");
-            assertEquals("rj-1", getResult.id());
+            RenderJobResponse getResult = controller.getRenderJob("t-1", "proj-1", createResult.id());
+            assertEquals(createResult.id(), getResult.id());
             assertEquals("proj-1", getResult.projectId());
             assertEquals("default_1080p", getResult.profile());
         }
@@ -137,10 +148,8 @@ class VS1SmokeIntegrationTest {
         @Test
         @DisplayName("List jobs returns tenant-scoped results")
         void listJobsTenantScoped() {
-            List<RenderJobResponse> jobs = List.of(
-                    new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED"),
-                    new RenderJobResponse("rj-2", "proj-1", "snap-2", "social_1080p", "COMPLETED"));
-            when(renderJobService.listByProject("t-1", "proj-1")).thenReturn(jobs);
+            fakeJobService.seedJob("rj-1", "proj-1", "t-1", "snap-1", "default_1080p", "QUEUED");
+            fakeJobService.seedJob("rj-2", "proj-1", "t-1", "snap-2", "social_1080p", "COMPLETED");
 
             List<RenderJobResponse> result = controller.listRenderJobs("t-1", "proj-1");
 
@@ -160,25 +169,26 @@ class VS1SmokeIntegrationTest {
         void submitJobViaOrchestrator() {
             SubmitRenderJobRequest submitReq = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "Create promo video", "default_1080p", "snap-1");
-            when(orchestratorPort.submitRenderJob(submitReq)).thenReturn("rj-sub-1");
 
             Map<String, String> result = controller.submitJob(submitReq);
 
-            assertEquals("rj-sub-1", result.get("jobId"));
+            assertNotNull(result.get("jobId"));
             assertEquals("QUEUED", result.get("status"));
+            assertEquals(1, fakeOrchestrator.getSubmittedJobs().size());
         }
 
         @Test
         @DisplayName("Start existing job → delegates to orchestrator")
         void startExistingJob() {
-            RenderJobResponse queued = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED");
-            when(renderJobService.getByIdAndProject("t-1", "proj-1", "rj-1")).thenReturn(queued);
-            when(orchestratorPort.executeExistingRenderJob("t-1", "rj-1")).thenReturn("rj-1");
+            fakeJobService.registerProject("proj-1", "t-1");
+            CreateRenderJobRequest createReq = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
+            RenderJobResponse created = fakeJobService.createForProject("t-1", "proj-1", createReq);
 
-            Map<String, String> result = controller.startRenderJob("t-1", "proj-1", "rj-1");
+            Map<String, String> result = controller.startRenderJob("t-1", "proj-1", created.id());
 
-            assertEquals("rj-1", result.get("jobId"));
+            assertEquals(created.id(), result.get("jobId"));
             assertEquals("STARTED", result.get("status"));
+            assertTrue(fakeOrchestrator.getExecutedJobs().contains(created.id()));
         }
     }
 
@@ -198,13 +208,9 @@ class VS1SmokeIntegrationTest {
                     ProductStatus.REGISTERED, "stor-1", "abc123", "abc123", "video/mp4", 1,
                     "{}", Instant.now(), Instant.now());
 
-            Product ready = registered.withStatus(ProductStatus.READY);
-
-            when(productRuntimeService.register(any())).thenReturn(registered);
-            when(productRuntimeService.markReady("prod-1")).thenReturn(ready);
-
             Product result = productRuntimeService.register(registered);
             assertEquals(ProductStatus.REGISTERED, result.status());
+            assertEquals("prod-1", result.productId());
 
             Product readyResult = productRuntimeService.markReady("prod-1");
             assertEquals(ProductStatus.READY, readyResult.status());
@@ -221,8 +227,6 @@ class VS1SmokeIntegrationTest {
                     "sha256-abc", "sha256-abc", 10485760L, "video/mp4",
                     Instant.now(), Instant.now());
 
-            when(storageRuntimeService.register(any())).thenReturn(ref);
-
             StorageReference registered = storageRuntimeService.register(ref);
 
             // Verify no internal leak fields
@@ -237,21 +241,33 @@ class VS1SmokeIntegrationTest {
         @Test
         @DisplayName("Product dependency linking with cycle detection")
         void productDependencyLinking() {
-            ProductDependency dep = new ProductDependency(
-                    "dep-1", "t-1", "proj-1", "prod-out", "prod-in",
-                    DependencyType.DERIVED_FROM, Instant.now());
-            when(productRuntimeService.linkDependency("prod-out", "prod-in",
-                    DependencyType.DERIVED_FROM, "t-1", "proj-1")).thenReturn(dep);
+            // Register products first
+            Product output = new Product(
+                    "prod-out", "t-1", "proj-1", "asset-1",
+                    ProductType.FINAL_RENDER, RepresentationKind.MEDIA_FILE,
+                    "render", "render:rj-1", null,
+                    ProductStatus.REGISTERED, null, null, null, null, 1,
+                    null, Instant.now(), Instant.now());
+            Product input = new Product(
+                    "prod-in", "t-1", "proj-1", "asset-2",
+                    ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,
+                    "import", "import:src-1", null,
+                    ProductStatus.REGISTERED, null, null, null, null, 1,
+                    null, Instant.now(), Instant.now());
+            productRuntimeService.register(output);
+            productRuntimeService.register(input);
 
-            ProductDependency result = productRuntimeService.linkDependency(
+            ProductDependency dep = productRuntimeService.linkDependency(
                     "prod-out", "prod-in", DependencyType.DERIVED_FROM, "t-1", "proj-1");
 
-            assertNotNull(result);
-            assertEquals("prod-out", result.productId());
-            assertEquals("prod-in", result.dependsOnProductId());
+            assertNotNull(dep);
+            assertEquals("prod-out", dep.productId());
+            assertEquals("prod-in", dep.dependsOnProductId());
 
-            // Self-dependency should be caught by real service
-            // (mocked here, but domain model validates in ProductRuntimeServiceTest)
+            // Self-dependency should be caught
+            assertThrows(IllegalArgumentException.class,
+                    () -> productRuntimeService.linkDependency(
+                            "prod-out", "prod-out", DependencyType.DERIVED_FROM, "t-1", "proj-1"));
         }
     }
 
@@ -264,9 +280,6 @@ class VS1SmokeIntegrationTest {
         @Test
         @DisplayName("Job not found returns IllegalArgumentException → 404")
         void jobNotFoundReturns404() {
-            when(renderJobService.getByIdAndProject("t-1", "proj-1", "rj-missing"))
-                    .thenThrow(new IllegalArgumentException("Render job not found: rj-missing"));
-
             assertThrows(IllegalArgumentException.class,
                     () -> controller.getRenderJob("t-1", "proj-1", "rj-missing"));
         }
@@ -292,15 +305,13 @@ class VS1SmokeIntegrationTest {
         @Test
         @DisplayName("Missing orchestrator on submit falls back gracefully")
         void missingOrchestratorFallback() {
-            RenderController controllerNoOrch = new RenderController(renderJobService);
+            RenderController controllerNoOrch = new RenderController(fakeJobService);
             SubmitRenderJobRequest req = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "test", "default_1080p", "snap-1");
-            RenderJobResponse created = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED");
-            when(renderJobService.create(any())).thenReturn(created);
 
             Map<String, String> result = controllerNoOrch.submitJob(req);
 
-            assertEquals("rj-1", result.get("jobId"));
+            assertNotNull(result.get("jobId"));
             assertEquals("QUEUED", result.get("status"));
         }
 

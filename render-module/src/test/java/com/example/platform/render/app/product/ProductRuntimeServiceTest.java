@@ -187,10 +187,10 @@ class ProductRuntimeServiceTest {
         @Test
         @DisplayName("linkDependency() detects transitive cycle")
         void linkDependencyDetectsTransitiveCycle() {
-            // prod-1 → prod-2 exists
-            fakeDepRepo.dependencies.put("prod-2", List.of(
+            // prod-1 depends on prod-2 (stored under key prod-1 per save() convention)
+            fakeDepRepo.dependencies.put("prod-1", new ArrayList<>(List.of(
                     new ProductDependency("dep-1", "t-1", "proj-1", "prod-1", "prod-2",
-                            DependencyType.DERIVED_FROM, Instant.now())));
+                            DependencyType.DERIVED_FROM, Instant.now()))));
 
             // Trying to create prod-2 → prod-1 would create cycle
             assertThrows(IllegalArgumentException.class,
