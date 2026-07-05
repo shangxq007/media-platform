@@ -215,7 +215,7 @@ public class S3ObjectWriter {
         if (resolved.endpointUri() != null) {
             builder.endpointOverride(resolved.endpointUri());
         }
-        if (properties.getAccessKey() != null && properties.getSecretKey() != null) {
+        if (properties.getAccessKey() != null && !properties.getAccessKey().isBlank() && properties.getSecretKey() != null && !properties.getSecretKey().isBlank()) {
             builder.credentialsProvider(StaticCredentialsProvider.create(
                     AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey())));
         }
