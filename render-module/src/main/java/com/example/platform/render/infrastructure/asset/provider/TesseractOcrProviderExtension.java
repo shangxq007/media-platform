@@ -4,7 +4,8 @@ import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
 import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ public class TesseractOcrProviderExtension implements ProviderExtensionSPI {
                 List.of("OCR", "TEXT_EXTRACTION"));
     }
 
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     void registerInPlatform() {
         extensionRegistry.registerProviderExtension(providerKey(), this,
                 ExtensionTrustLevel.FULLY_TRUSTED, "system");
