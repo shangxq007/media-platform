@@ -114,7 +114,7 @@ public class RenderInputMaterializationService {
         // 6. Materialize through StorageRuntime
         String materializedPathStr;
         try {
-            materializedPathStr = storageRuntime.materialize(product.storageReferenceId());
+            materializedPathStr = storageRuntime.materialize(product.storageReferenceId()).orElse(null);
         } catch (IllegalArgumentException e) {
             log.warn("StorageReference not found during materialization: {}", e.getMessage());
             return RenderInputMaterialization.failure(inputProductId, product.storageReferenceId(),

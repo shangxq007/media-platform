@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,10 +49,14 @@ public class StorageRuntimeService {
     }
 
     /**
+     * Find a StorageReference by ID.
+     */
+    public Optional<StorageReference> find(String storageReferenceId) {
+        return repo.findById(storageReferenceId);
+    }
+
+    /**
      * Materialize a StorageReference to a local file path.
-     *
-     * @param storageReferenceId the StorageReference identifier
-     * @return the local file path, or empty if materialization fails
      */
     public Optional<String> materialize(String storageReferenceId) {
         var ref = repo.findById(storageReferenceId);
@@ -61,18 +66,18 @@ public class StorageRuntimeService {
         }
 
         var storageRef = ref.get();
-        if (storageRef.provider() == null) {
-            log.warn("Storage reference has no provider: {}", storageReferenceId);
-            return Optional.empty();
-        }
-
-        // Try S3 materialization if available
-        if (s3Materializer != null && storageRef.provider().name().startsWith("S3")) {
-            return s3Materializer.materialize(
+        
+        // Try S3 materialization if available and provider is S3-compatible
+        if (s3Materializer != null && storageRef.providerType() != null 
+                && storageRef.providerType().contains("S3")) {
+            var result = s3Materializer.materialize(
                 storageRef.rootPath(),
                 storageRef.relativePath(),
                 storageRef.checksum()
-            ).map(result -> result.localPath().toString());
+            );
+            if (result.isPresent()) {
+                return Optional.of(result.get().localPath().toString());
+            }
         }
 
         // Fall back to local file verification
@@ -83,5 +88,37 @@ public class StorageRuntimeService {
 
         log.warn("Local file does not exist: {}", localPath);
         return Optional.empty();
+    }
+
+    /**
+     * Verify checksum of a stored file.
+     */
+    public boolean verifyChecksum(String storageReferenceId) {
+        var ref = repo.findById(storageReferenceId);
+        if (ref.isEmpty()) {
+            return false;
+        }
+        var storageRef = ref.get();
+        if (storageRef.checksum() == null || storageRef.checksum().isBlank()) {
+            return true; // No checksum to verify
+        }
+        var localPath = java.nio.file.Path.of(storageRef.absolutePath());
+        if (!java.nio.file.Files.exists(localPath)) {
+            return false;
+        }
+        try {
+            var bytes = java.nio.file.Files.readAllBytes(localPath);
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            var hash = digest.digest(bytes);
+            var hexString = new java.math.BigInteger(1, hash).toString(16);
+            // Pad with leading zeros
+            while (hexString.length() < 64) {
+                hexString = "0" + hexString;
+            }
+            return hexString.equals(storageRef.checksum());
+        } catch (Exception e) {
+            log.error("Checksum verification failed: {}", e.getMessage());
+            return false;
+        }
     }
 }

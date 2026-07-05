@@ -69,14 +69,10 @@ public class RenderOutputRegistrationService {
         this.outputStorageProperties = outputStoragePropertiesProvider.getIfAvailable();
     }
 
-    public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
-                                            ProductRuntimeService productRuntime,
-                                            String storageRoot) {
-        this(storageRuntime, productRuntime, Path.of(storageRoot), null, null);
-    }
 
     // Legacy constructor for backward compatibility
-    public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
+    // Legacy constructor removed - use ObjectProvider version instead
+    private RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
                                             ProductRuntimeService productRuntime,
                                             Path storageRoot,
                                             S3ObjectWriter s3Writer,
