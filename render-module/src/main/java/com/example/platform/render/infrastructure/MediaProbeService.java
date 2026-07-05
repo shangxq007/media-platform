@@ -17,7 +17,7 @@ public class MediaProbeService {
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
 
-    public MediaProbeService(JavaCVMediaProbeAdapter probeAdapter) {
+    public MediaProbeService(MediaProbeAdapter probeAdapter) {
         this.probeAdapter = probeAdapter;
     }
 
