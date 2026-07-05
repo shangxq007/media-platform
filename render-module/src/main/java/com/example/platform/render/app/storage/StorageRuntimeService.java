@@ -6,6 +6,7 @@ import com.example.platform.storage.infrastructure.S3ObjectMaterializer;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class StorageRuntimeService {
         this(repo, null);
     }
 
+    @Autowired(required = false)
     public StorageRuntimeService(StorageReferenceRepository repo,
                                   S3ObjectMaterializer s3Materializer) {
         this.repo = repo;
