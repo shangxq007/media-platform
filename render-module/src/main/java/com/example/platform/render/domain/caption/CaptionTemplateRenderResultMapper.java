@@ -4,11 +4,14 @@ import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.stereotype.Component;
+
 /**
  * Maps internal render results to CaptionTemplateRenderResult.
  *
  * <p>Internal domain mapper — filters out provider/storage internals.</p>
  */
+@Component
 public class CaptionTemplateRenderResultMapper {
 
     /**
