@@ -539,3 +539,106 @@ P2O.0g designs the mapping from platform RenderExecutionPlan concepts to OpenCue
 Review: `docs/review/render-execution-plan-to-cjsl-mapping-v0.md`
 Runbook: `docs/operations/opencue-render-execution-plan-mapping-runbook.md`
 Examples: `docs/examples/opencue/render-execution-plan-mapping/`
+
+---
+
+## Phase 2b Status (2026-07-01)
+
+**Phase:** Phase 2b — High-Autonomy Feature Completion Mode
+**Authority:** HERMES.7b
+
+### Completion Status
+
+| Item | Status |
+|------|--------|
+| Phase 1 | ✅ COMPLETE |
+| Phase 2 review infrastructure | ✅ COMMITTED (8c9cb11) |
+| Phase 2b mode | ✅ ENABLED |
+| TL.0 (Timeline edit commands) | ✅ COMPLETE |
+| PB.0 (Provider hardening) | ✅ COMPLETE |
+| REV.0 (Architecture preflight) | ✅ 14/14 PASS |
+| ARCH.1 (VS.0 readiness) | ✅ READY_WITH_CONSTRAINTS |
+| Cloudflare dashboard | ✅ LIVE (scribe.cc.cd) |
+| Review workflow | ✅ AVAILABLE |
+
+### Agent Permission Model
+
+| Agent | Level | Role |
+|-------|-------|------|
+| Hermes | 3 | Feature Coordinator / PR Creator |
+| OpenCode | 2 | Feature Branch Pusher |
+| Codex | 2 | Feature Branch Pusher |
+| Kilo Code | 2 | Feature Branch Pusher |
+| Claude Code | 2 | Feature Branch Pusher + Reviewer |
+| Human | 5 | Final Arbiter |
+
+### Next Milestone
+
+**VS.0 — First Timeline-to-Caption-Render Vertical Slice**
+
+- CT.0 can begin (Caption template typed intent)
+- VS.0-PLAN can proceed
+- VS.0-LAUNCH after CT.0 + VS.0-PLAN
+
+### Review Infrastructure
+
+- `.github/CODEOWNERS` — committed
+- `.github/pull_request_template.md` — committed
+- `.semgrep/media-platform-architecture.yml` — 7 rules, committed
+- `docs/review/human-review-workflow.md` — committed
+- `docs/review/review-packet-template.md` — committed
+
+### Human Final Arbiter
+
+All merges require human review. No auto-merge. Human reviews at VS.0 milestone.
+
+## VS.0 Progress (2026-07-01)
+
+| Task | Status | Branch | Commit | PR |
+|------|--------|--------|--------|-----|
+| CT.0 | ✅ COMPLETE | agent/CT.0-opencode | bc01fe3 | #6 |
+| TEST.0 | ✅ COMPLETE | agent/TEST.0-codex | 1414cbf | #7 |
+| DOCSYNC.0 | ✅ COMPLETE | (documentation only) | — | — |
+| VS.0-LAUNCH | 🟡 READY | — | — | — |
+| VS.0-REVIEW | ⏳ BLOCKED | — | — | — |
+| ARCH-MAP.2 | ⏳ BLOCKED | — | — | — |
+
+### CT.0 Output
+- CaptionTemplate typed model (record/sealed class)
+- Typed caption style parameters
+- ASS subtitle format mapping
+- Safe, bounded output validation
+- 71 caption tests passed
+
+### TEST.0 Output
+- Vs0VerticalSliceIntegrationTest.java (7 test groups)
+- CompileDomainBoundaryTest.java
+- Integration test harness for VS.0 flow
+
+### VS.0-LAUNCH Dependencies
+- ✅ CT.0 complete
+- ✅ TEST.0 complete
+- ✅ Review Packets generated
+- ✅ Draft PRs created
+- ✅ Architecture constraints documented
+
+### Frontend Status
+
+| Item | Status |
+|------|--------|
+| Frontend rebuild | PLANNED (contract-first, not migration) |
+| Backend contract gate | Mostly stable |
+| StyleX evaluation | CANDIDATE (not adopted) |
+| Astryx evaluation | CANDIDATE (not adopted) |
+| Styling decision | PENDING (requires POC) |
+| Editor components | Platform-owned (custom) |
+| Video render styles | Platform schemas (not Web UI CSS) |
+
+**Key documents:**
+- `docs/frontend/new-frontend-architecture.md`
+- `docs/frontend/styling-technology-decision.md`
+- `docs/frontend/new-frontend-roadmap.md`
+
+**Next steps:**
+- FRONTEND-CONTRACT-GATE.0 — Audit backend API readiness
+- FRONTEND-STYLE-POC.0 — Evaluate styling technologies
