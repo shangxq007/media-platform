@@ -11,11 +11,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.stereotype.Component;
+
 /**
  * In-memory implementation of {@link PreviewRenderJobRepository} for testing.
  *
  * <p>Thread-safe via ConcurrentHashMap. Not suitable for production use.</p>
  */
+@Component
 public class InMemoryPreviewRenderJobRepository implements PreviewRenderJobRepository {
 
     private final Map<String, PreviewRenderJob> store = new ConcurrentHashMap<>();

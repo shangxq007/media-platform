@@ -26,6 +26,7 @@ import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
@@ -68,6 +69,7 @@ public class PlanBasedTimelineRevisionRenderService {
     private final RenderAuditRecorder auditRecorder;
     private final com.example.platform.render.domain.timeline.compile.remotion.ProviderExecutionDocumentGenerationService docGenerationService;
 
+    @Autowired
     public PlanBasedTimelineRevisionRenderService(
             TimelineRevisionService revisionService,
             TimelineSnapshotService snapshotService,

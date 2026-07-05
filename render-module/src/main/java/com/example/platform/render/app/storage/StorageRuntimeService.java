@@ -33,11 +33,11 @@ public class StorageRuntimeService {
     private final StorageReferenceRepository repo;
     private final S3ObjectMaterializer s3Materializer;
 
+    @Autowired
     public StorageRuntimeService(StorageReferenceRepository repo) {
         this(repo, null);
     }
 
-    @Autowired(required = false)
     public StorageRuntimeService(StorageReferenceRepository repo,
                                   S3ObjectMaterializer s3Materializer) {
         this.repo = repo;

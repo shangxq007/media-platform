@@ -68,7 +68,6 @@ public class RenderOutputRegistrationService {
         this(storageRuntime, productRuntime, Path.of(storageRoot), null, null);
     }
 
-    @Autowired(required = false)
     public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
                                             ProductRuntimeService productRuntime,
                                             Path storageRoot,
