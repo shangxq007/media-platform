@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.springframework.stereotype.Component;
 
 /**
  * Validator for CaptionTemplateRenderRequest.
@@ -11,6 +12,7 @@ import java.util.regex.Pattern;
  * <p>Internal domain validator — validates request contract before mapping
  * to the existing PLAN_BASED render flow.</p>
  */
+@Component
 public class CaptionTemplateRenderContractValidator {
 
     private static final int MAX_SEGMENTS = 1000;
