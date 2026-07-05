@@ -6,7 +6,7 @@ import com.example.platform.storage.infrastructure.S3ObjectMaterializer;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,14 +34,10 @@ public class StorageRuntimeService {
     private final S3ObjectMaterializer s3Materializer;
 
     @Autowired
-    public StorageRuntimeService(StorageReferenceRepository repo) {
-        this(repo, null);
-    }
-
     public StorageRuntimeService(StorageReferenceRepository repo,
-                                  S3ObjectMaterializer s3Materializer) {
+                                  ObjectProvider<S3ObjectMaterializer> s3MaterializerProvider) {
         this.repo = repo;
-        this.s3Materializer = s3Materializer;
+        this.s3Materializer = s3MaterializerProvider.getIfAvailable();
     }
 
     @Transactional
@@ -54,127 +50,38 @@ public class StorageRuntimeService {
     /**
      * Materialize a StorageReference to a local file path.
      *
-     * <p>For LOCAL provider: verifies file exists on filesystem.
-     * For S3-compatible providers (S3, S3_COMPATIBLE, OBJECT_STORAGE): downloads
-     * object to a local temp file via S3ObjectMaterializer.</p>
-     *
      * @param storageReferenceId the StorageReference identifier
-     * @return the local file path
-     * @throws IllegalArgumentException if StorageReference not found
-     * @throws IllegalStateException if materialization fails
+     * @return the local file path, or empty if materialization fails
      */
-    public String materialize(String storageReferenceId) {
-        var ref = repo.findById(storageReferenceId)
-                .orElseThrow(() -> new IllegalArgumentException("Storage not found: " + storageReferenceId));
-
-        String providerType = ref.providerType();
-        if (isS3CompatibleProvider(providerType)) {
-            return materializeS3(ref);
+    public Optional<String> materialize(String storageReferenceId) {
+        var ref = repo.findById(storageReferenceId);
+        if (ref.isEmpty()) {
+            log.warn("Storage reference not found: {}", storageReferenceId);
+            return Optional.empty();
         }
 
-        // Local provider: verify file exists
-        String path = ref.absolutePath();
-        var file = new java.io.File(path);
-        if (!file.exists()) throw new IllegalStateException("File not materialized: " + path);
-        return path;
-    }
-
-    /**
-     * Verify checksum of a materialized StorageReference.
-     *
-     * <p>For LOCAL provider: reads file bytes and computes SHA-256.
-     * For S3-compatible providers: if the temp file still exists from
-     * materialization, verifies against it; otherwise re-downloads and verifies.</p>
-     */
-    public boolean verifyChecksum(String storageReferenceId) {
-        var ref = repo.findById(storageReferenceId).orElseThrow();
-        try {
-            String providerType = ref.providerType();
-            if (isS3CompatibleProvider(providerType) && s3Materializer != null) {
-                return verifyS3Checksum(ref);
-            }
-
-            byte[] fileBytes = java.nio.file.Files.readAllBytes(java.nio.file.Path.of(ref.absolutePath()));
-            byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest(fileBytes);
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString().equalsIgnoreCase(ref.checksum());
-        } catch (Exception e) { return false; }
-    }
-
-    public Optional<StorageReference> find(String id) { return repo.findById(id); }
-    public boolean exists(String id) { return repo.exists(id); }
-    @Transactional public void delete(String id) { repo.delete(id); }
-
-    /**
-     * Materialize an S3-compatible object to a local temp file.
-     */
-    private String materializeS3(StorageReference ref) {
-        if (s3Materializer == null || !s3Materializer.isEnabled()) {
-            throw new IllegalStateException(
-                    "S3 materialization not available: S3ObjectMaterializer not enabled");
+        var storageRef = ref.get();
+        if (storageRef.provider() == null) {
+            log.warn("Storage reference has no provider: {}", storageReferenceId);
+            return Optional.empty();
         }
 
-        String bucket = ref.rootPath();
-        String objectKey = ref.relativePath();
-
-        var result = s3Materializer.materialize(bucket, objectKey, ref.checksum());
-        if (result.isEmpty()) {
-            throw new IllegalStateException(
-                    "S3 object not materialized: bucket=" + bucket + " key=" + objectKey);
+        // Try S3 materialization if available
+        if (s3Materializer != null && storageRef.provider().name().startsWith("S3")) {
+            return s3Materializer.materialize(
+                storageRef.rootPath(),
+                storageRef.relativePath(),
+                storageRef.checksum()
+            ).map(result -> result.localPath().toString());
         }
 
-        var materialized = result.get();
-        log.info("S3 object materialized: storageRef={} bucket={} key={} localSize={} checksum={}",
-                ref.storageReferenceId(), bucket, objectKey, materialized.sizeBytes(),
-                materialized.checksum());
+        // Fall back to local file verification
+        var localPath = java.nio.file.Path.of(storageRef.absolutePath());
+        if (java.nio.file.Files.exists(localPath)) {
+            return Optional.of(localPath.toString());
+        }
 
-        return materialized.localPath().toAbsolutePath().toString();
-    }
-
-    /**
-     * Verify checksum for an S3-compatible StorageReference.
-     */
-    private boolean verifyS3Checksum(StorageReference ref) {
-        // Re-materialize to verify
-        String bucket = ref.rootPath();
-        String objectKey = ref.relativePath();
-
-        var result = s3Materializer.materialize(bucket, objectKey, ref.checksum());
-        if (result.isEmpty()) return false;
-
-        var materialized = result.get();
-        // Clean up the temp file after verification
-        try {
-            java.nio.file.Files.deleteIfExists(materialized.localPath());
-        } catch (java.io.IOException ignored) {}
-
-        return materialized.checksum().equalsIgnoreCase(ref.checksum());
-    }
-
-    /**
-     * Check if the provider type is an S3-compatible object storage.
-     *
-     * <p>Accepted values:
-     * <ul>
-     *   <li>{@code S3} — generic S3-compatible (preferred)</li>
-     *   <li>{@code S3_COMPATIBLE} — explicit S3-compatible alias</li>
-     *   <li>{@code OBJECT_STORAGE} — storage-neutral alias</li>
-     * </ul>
-     *
-     * <p>Rejected values (not S3-compatible by default):
-     * <ul>
-     *   <li>{@code MINIO} — not a provider type; use S3</li>
-     *   <li>{@code OSS}, {@code GCS}, {@code AZURE} — future native providers,
-     *       not accepted as S3-compatible without explicit validation</li>
-     *   <li>RustFS, SeaweedFS — deployment backends, not provider types</li>
-     * </ul>
-     */
-    private static boolean isS3CompatibleProvider(String providerType) {
-        if (providerType == null) return false;
-        return switch (providerType.toUpperCase()) {
-            case "S3", "S3_COMPATIBLE", "OBJECT_STORAGE" -> true;
-            default -> false;
-        };
+        log.warn("Local file does not exist: {}", localPath);
+        return Optional.empty();
     }
 }

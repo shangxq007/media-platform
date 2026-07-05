@@ -10,6 +10,7 @@ import com.example.platform.storage.infrastructure.S3ObjectWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,8 +59,14 @@ public class RenderOutputRegistrationService {
     @Autowired
     public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
                                             ProductRuntimeService productRuntime,
-                                            Path storageRoot) {
-        this(storageRuntime, productRuntime, storageRoot, null, null);
+                                            Path storageRoot,
+                                            ObjectProvider<S3ObjectWriter> s3WriterProvider,
+                                            ObjectProvider<RenderOutputStorageProperties> outputStoragePropertiesProvider) {
+        this.storageRuntime = storageRuntime;
+        this.productRuntime = productRuntime;
+        this.storageRoot = storageRoot;
+        this.s3Writer = s3WriterProvider.getIfAvailable();
+        this.outputStorageProperties = outputStoragePropertiesProvider.getIfAvailable();
     }
 
     public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
@@ -68,6 +75,7 @@ public class RenderOutputRegistrationService {
         this(storageRuntime, productRuntime, Path.of(storageRoot), null, null);
     }
 
+    // Legacy constructor for backward compatibility
     public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
                                             ProductRuntimeService productRuntime,
                                             Path storageRoot,
