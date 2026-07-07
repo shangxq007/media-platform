@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProductAgentWorkflowResult",
+  "type": "object",
+  "properties": {
+    "correlationId": {"type": "string"},
+    "mode": {"type": "string"},
+    "startTime": {"type": "string", "format": "date-time"},
+    "endTime": {"type": "string", "format": "date-time"},
+    "health": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "string"},
+        "ok": {"type": "boolean"}
+      }
+    },
+    "workspaces": {
+      "type": "object",
+      "properties": {"count": {"type": "integer"}}
+    },
+    "products": {
+      "type": "object",
+      "properties": {"count": {"type": "integer"}}
+    },
+    "renderJobs": {
+      "type": "object",
+      "properties": {"count": {"type": "integer"}}
+    },
+    "ok": {"type": "boolean"},
+    "errors": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["correlationId", "mode", "ok"]
+}

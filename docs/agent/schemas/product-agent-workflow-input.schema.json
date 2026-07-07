@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProductAgentWorkflowInput",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["read-only", "inspect-product", "create-render-job"],
+      "default": "read-only"
+    },
+    "workspaceId": {"type": "string"},
+    "productId": {"type": "string"},
+    "renderJobId": {"type": "string"},
+    "artifactId": {"type": "string"},
+    "renderPayloadFile": {"type": "string"},
+    "correlationId": {"type": "string"},
+    "timeoutSeconds": {"type": "integer", "default": 60},
+    "pollIntervalSeconds": {"type": "integer", "default": 2}
+  }
+}
