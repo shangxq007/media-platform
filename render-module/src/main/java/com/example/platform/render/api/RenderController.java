@@ -1,5 +1,8 @@
 package com.example.platform.render.api;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.example.platform.render.api.dto.GenerateIncrementalPlanRequest;
 import com.example.platform.render.api.dto.IncrementalRenderPlanResponse;
 import com.example.platform.render.api.dto.RenderCacheEntryPresignDto;
@@ -39,6 +42,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1")
 @Tag(name = "Render Jobs", description = "渲染作业与增量渲染 REST API")
 public class RenderController {
+    private static final Logger log = LoggerFactory.getLogger(RenderController.class);
     private final RenderJobService renderJobService;
     private final RenderOrchestratorPort orchestratorPort;
     private final RenderIncrementalApiService incrementalApiService;
