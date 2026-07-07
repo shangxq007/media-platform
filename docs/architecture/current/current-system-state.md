@@ -657,3 +657,9 @@ All merges require human review. No auto-merge. Human reviews at VS.0 milestone.
 | OpenCue | NOT STARTED |
 
 **Note:** FFmpeg in platform-api is temporary preview bootstrap, not final production architecture.
+
+## Open-source Capability Reference
+
+Open-source capability map added as reference. See [Open-source Capability Extension Blueprint](../blueprint/open-source-capability-extension-blueprint.md).
+
+**Important:** No new production dependency has been adopted by this documentation task. Current implementation remains focused on Real Media Input endpoint stabilization. OpenCue remains NOT STARTED. FFmpeg in platform-api remains temporary preview bootstrap. Artifact DAG remains postponed.

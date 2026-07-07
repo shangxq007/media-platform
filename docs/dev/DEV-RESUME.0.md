@@ -43,3 +43,7 @@ Long term:
 3. **ARTIFACT-ACCESS.0** — Define safe artifact access
 4. **OPENCUE-WORKER-EXECUTION.0** — Move to OpenCue scheduling
 5. **FFMPEG-RUNTIME-SPLIT.0** — Remove FFmpeg from platform-api
+
+## Open-source Capability Reference
+
+See [Open-source Capability Extension Blueprint](../architecture/blueprint/open-source-capability-extension-blueprint.md) for candidate tool evaluation and technology selection.
