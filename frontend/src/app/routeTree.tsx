@@ -5,6 +5,7 @@ import { RenderJobDashboard } from '../pages/RenderJobDashboard.js'
 import { CapabilitiesPage } from '../shared/CapabilitiesPage.js'
 import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
 import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
+import { DevConsolePage } from '../pages/DevConsolePage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -40,10 +41,17 @@ const observabilityRoute = createRoute({
   component: ObservabilityDashboard,
 })
 
+const devConsoleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/preview',
+  component: DevConsolePage,
+})
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   renderJobsRoute,
   capabilitiesRoute,
   smokeEditorRoute,
   observabilityRoute,
+  devConsoleRoute,
 ])
