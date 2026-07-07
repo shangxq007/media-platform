@@ -27,7 +27,7 @@ RUN ./gradlew :platform-app:bootJar --no-daemon -x test \
 
 FROM eclipse-temurin:25-jre-jammy
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/*
+RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg && rm -rf /var/lib/apt/*
 RUN groupadd --gid 10001 spring && useradd --uid 10001 --gid 10001 spring
 USER spring:spring
 COPY --from=build /workspace/app.jar /app/app.jar

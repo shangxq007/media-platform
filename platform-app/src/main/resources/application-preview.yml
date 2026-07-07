@@ -51,6 +51,9 @@ delivery:
     adaptive-routing-enabled: false
     provider-fallback-enabled: false
     mode: local
+    providers:
+      ffmpeg:
+        enabled: true
 
   billing:
     enforcement-enabled: false
