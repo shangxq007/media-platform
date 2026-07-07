@@ -455,4 +455,55 @@ public class RenderController {
         pd.setTitle("Operation Failed");
         return pd;
     }
+
+    // -------------------------------------------------------------------------
+    // Preview media upload & artifact content endpoints
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/preview/media")
+    @Operation(summary = "Upload preview media (dev/preview only)")
+    public Map<String, String> uploadPreviewMedia(@RequestParam("file") MultipartFile file) {
+        if (!"video/mp4".equals(file.getContentType())) {
+            throw new IllegalArgumentException("Only video/mp4 is supported");
+        }
+        if (file.getSize() > 20 * 1024 * 1024) {
+            throw new IllegalArgumentException("File too large (max 20MB)");
+        }
+        try {
+            String mediaId = "media_" + System.currentTimeMillis();
+            String objectKey = mediaId + "/input.mp4";
+            java.nio.file.Path storageRoot = java.nio.file.Path.of("/tmp/platform");
+            java.nio.file.Path mediaPath = storageRoot.resolve("preview-media").resolve(objectKey);
+            java.nio.file.Files.createDirectories(mediaPath.getParent());
+            java.nio.file.Files.write(mediaPath, file.getBytes());
+            String storageUri = "localFsStorageProvider://preview-media/" + objectKey;
+            return Map.of("mediaId", mediaId, "storageUri", storageUri, "size", String.valueOf(file.getSize()));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Failed to store media", e);
+        }
+    }
+
+    @GetMapping("/render/jobs/{jobId}/artifacts/{artifactId}/content")
+    @Operation(summary = "Get artifact content")
+    public ResponseEntity<byte[]> getArtifactContent(
+            @PathVariable String jobId,
+            @PathVariable String artifactId) {
+        if (orchestratorPort == null) {
+            throw new IllegalStateException("Render orchestrator not available");
+        }
+        List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
+        boolean belongsToJob = artifacts.stream().anyMatch(a -> a.artifactId().equals(artifactId));
+        if (!belongsToJob) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] content = orchestratorPort.getArtifactContent(artifactId);
+        if (content == null || content.length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .header("Content-Type", "video/mp4")
+                .header("Content-Disposition", "inline; filename=output.mp4")
+                .header("Content-Length", String.valueOf(content.length))
+                .body(content);
+    }
 }
