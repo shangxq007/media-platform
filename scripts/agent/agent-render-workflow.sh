@@ -74,7 +74,7 @@ if [ "$WRITE_MODE" = "1" ]; then
         FINAL_STATUS="$CREATED_JOB_STATUS"
         
         while [ "$ELAPSED" -lt "$((TIMEOUT * 1000))" ]; do
-            if [ "$FINAL_STATUS" = "SUCCEEDED" ] || [ "$FINAL_STATUS" = "FAILED" ] || [ "$FINAL_STATUS" = "CANCELLED" ]; then
+            if [ "$FINAL_STATUS" = "COMPLETED" ] || [ "$FINAL_STATUS" = "FAILED" ] || [ "$FINAL_STATUS" = "CANCELLED" ]; then
                 break
             fi
             
