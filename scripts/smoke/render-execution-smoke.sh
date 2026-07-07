@@ -25,59 +25,30 @@ else
     exit 1
 fi
 
-# 2. Verify FFmpeg provider (read-only)
-echo "2. FFmpeg provider check..."
-API_DOCS=$(curl -sS "$API_BASE/v3/api-docs" 2>/dev/null)
-if echo "$API_DOCS" | grep -q "render"; then
-    echo "   ✅ Render endpoints available"
-else
-    echo "   ⚠️ Render endpoints not found in OpenAPI"
-fi
-
 if [ "$WRITE_MODE" != "1" ]; then
     echo ""
     echo "=== Read-only mode. Set RENDER_EXECUTION_WRITE=1 to run execution test ==="
     exit 0
 fi
 
-# 3. Get dev token
-echo "3. Getting dev token..."
+# 2. Get dev token
+echo "2. Getting dev token..."
 TOKEN_RESPONSE=$(curl -sS -X POST "$API_BASE/api/v1/dev/auth/token" \
     -H "Content-Type: application/json" \
     -d "{\"tenantId\":\"$TENANT_ID\",\"userId\":\"smoke-user\"}" 2>/dev/null)
 TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
 if [ -z "$TOKEN" ]; then
-    echo "   ❌ Failed to get token: $TOKEN_RESPONSE"
+    echo "   ❌ Failed to get token"
     exit 1
 fi
 echo "   ✅ Token obtained"
 
-# 4. Create tenant and project
-echo "4. Creating tenant and project..."
-curl -sS -X POST "$API_BASE/api/v1/tenants" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{\"tenantId\":\"$TENANT_ID\"}" 2>/dev/null > /dev/null || true
-
-curl -sS -X POST "$API_BASE/api/v1/tenants/$TENANT_ID/projects" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{\"projectId\":\"$PROJECT_ID\",\"name\":\"Smoke Project\"}" 2>/dev/null > /dev/null || true
-echo "   ✅ Tenant/project setup attempted"
-
-# 5. Create and execute render job
-echo "5. Creating render job..."
-TIMELINE_JSON='{"version":"1.0","tracks":[{"id":"v1","type":"video","clips":[{"id":"c1","source":"lavfi","sourceParams":{"filter":"testsrc=size=320x180:rate=30"},"duration":2}]}]}'
-
+# 3. Create render job (create-only, does NOT execute)
+echo "3. Creating render job..."
 JOB_RESPONSE=$(curl -sS -X POST "$API_BASE/api/v1/render/jobs" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    -d "{
-        \"projectId\":\"$PROJECT_ID\",
-        \"timelineSnapshotId\":\"snap-smoke-$(date +%s)\",
-        \"profile\":\"default_1080p\"
-    }" 2>/dev/null)
-
+    -d "{\"projectId\":\"$PROJECT_ID\",\"timelineSnapshotId\":\"snap-$(date +%s)\",\"profile\":\"default_1080p\"}" 2>/dev/null)
 JOB_ID=$(echo "$JOB_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 if [ -z "$JOB_ID" ]; then
     echo "   ❌ Failed to create job: $JOB_RESPONSE"
@@ -85,33 +56,25 @@ if [ -z "$JOB_ID" ]; then
 fi
 echo "   ✅ Job created: $JOB_ID"
 
-# 6. Execute job
-echo "6. Executing job..."
+# 4. Execute job (canonical execution endpoint)
+echo "4. Executing job via canonical endpoint..."
 EXEC_RESPONSE=$(curl -sS -X POST "$API_BASE/api/v1/render/jobs/$JOB_ID/execute" \
     -H "Authorization: Bearer $TOKEN" 2>/dev/null)
-EXEC_STATUS=$(echo "$EXEC_RESPONSE" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
-echo "   Execute response: $EXEC_STATUS"
+FINAL_STATUS=$(echo "$EXEC_RESPONSE" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+echo "   Execute response status: $FINAL_STATUS"
 
-# 7. Poll job status
-echo "7. Polling job status..."
+# 5. Poll if still non-terminal
+echo "5. Polling job status..."
 ELAPSED=0
-FINAL_STATUS="$EXEC_STATUS"
+TIMEOUT_MS=$((TIMEOUT * 1000))
 
-while [ "$ELAPSED" -lt "$((TIMEOUT * 1000))" ]; do
-    # Terminal success
-    if [ "$FINAL_STATUS" = "COMPLETED" ]; then
+while [ "$ELAPSED" -lt "$TIMEOUT_MS" ]; do
+    if [ "$FINAL_STATUS" = "COMPLETED" ] || [ "$FINAL_STATUS" = "FAILED" ] || [ "$FINAL_STATUS" = "CANCELLED" ] || [ "$FINAL_STATUS" = "REJECTED" ]; then
         break
     fi
-    # Terminal failure
-    if [ "$FINAL_STATUS" = "FAILED" ] || [ "$FINAL_STATUS" = "CANCELLED" ] || [ "$FINAL_STATUS" = "REJECTED" ]; then
-        break
-    fi
-    
-    sleep "$POLL_INTERVAL"
-    ELAPSED=$((ELAPSED + (POLL_INTERVAL * 1000)))
-    
-    STATUS_RESPONSE=$(curl -sS "$API_BASE/api/v1/render/jobs/$JOB_ID" \
-        -H "Authorization: Bearer $TOKEN" 2>/dev/null)
+    sleep 3
+    ELAPSED=$((ELAPSED + 3000))
+    STATUS_RESPONSE=$(curl -sS "$API_BASE/api/v1/render/jobs/$JOB_ID" -H "Authorization: Bearer $TOKEN" 2>/dev/null)
     FINAL_STATUS=$(echo "$STATUS_RESPONSE" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
     echo "   Status: $FINAL_STATUS (${ELAPSED}ms)"
 done
@@ -120,32 +83,22 @@ echo ""
 echo "=== Results ==="
 echo "Job ID: $JOB_ID"
 echo "Final Status: $FINAL_STATUS"
-echo "Elapsed: ${ELAPSED}ms"
 
-# 8. Check artifacts if completed
+# 6. Check artifacts if COMPLETED
 if [ "$FINAL_STATUS" = "COMPLETED" ]; then
     echo ""
-    echo "8. Checking artifacts..."
-    ARTIFACTS=$(curl -sS "$API_BASE/api/v1/render/jobs/$JOB_ID/artifacts" \
-        -H "Authorization: Bearer $TOKEN" 2>/dev/null)
+    echo "6. Checking artifacts..."
+    ARTIFACTS=$(curl -sS "$API_BASE/api/v1/render/jobs/$JOB_ID/artifacts" -H "Authorization: Bearer $TOKEN" 2>/dev/null)
     ARTIFACT_COUNT=$(echo "$ARTIFACTS" | grep -o '"artifactId"' | wc -l)
     echo "   Artifacts: $ARTIFACT_COUNT"
     
     if [ "$ARTIFACT_COUNT" -gt 0 ]; then
-        ARTIFACT_ID=$(echo "$ARTIFACTS" | grep -o '"artifactId":"[^"]*"' | head -1 | cut -d'"' -f4)
-        echo "   Artifact ID: $ARTIFACT_ID"
-        echo "   ✅ PASS: Render execution produced artifact"
+        echo "   ✅ PASS"
     else
-        echo "   ❌ FAIL: No artifacts produced"
+        echo "   ❌ FAIL: No artifacts"
         exit 1
     fi
-elif [ "$FINAL_STATUS" = "FAILED" ]; then
-    echo "   ❌ FAIL: Job failed"
-    exit 1
-elif [ "$FINAL_STATUS" = "CANCELLED" ] || [ "$FINAL_STATUS" = "REJECTED" ]; then
-    echo "   ❌ FAIL: Job $FINAL_STATUS"
-    exit 1
 else
-    echo "   ⚠️ TIMEOUT: Job still $FINAL_STATUS after ${ELAPSED}ms"
+    echo "   ❌ FAIL: Status=$FINAL_STATUS"
     exit 1
 fi

@@ -100,11 +100,11 @@ public class RenderController {
             throw new IllegalArgumentException("tenantId is required");
         }
         if (orchestratorPort == null) {
-            return ResponseEntity.ok(Map.of("jobId", jobId, "status", "QUEUED"));
+            throw new IllegalStateException("Render orchestrator not available");
         }
-        String resultJobId = orchestratorPort.executeExistingRenderJob(ctx.tenantId(), jobId);
+        orchestratorPort.executeExistingRenderJob(ctx.tenantId(), jobId);
         RenderJobResponse job = renderJobService.getById(jobId);
-        return ResponseEntity.ok(Map.of("jobId", resultJobId, "status", job.status()));
+        return ResponseEntity.ok(Map.of("jobId", jobId, "status", job.status()));
     }
 
     private CallerContext buildCallerContext(HttpServletRequest req) {

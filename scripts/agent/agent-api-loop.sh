@@ -63,7 +63,7 @@ if [ "$WRITE_MODE" = "1" ]; then
         FINAL_STATUS="$JOB_STATUS"
         
         while [ "$ELAPSED" -lt "$POLL_TIMEOUT" ]; do
-            if [ "$FINAL_STATUS" = "SUCCEEDED" ] || [ "$FINAL_STATUS" = "FAILED" ] || [ "$FINAL_STATUS" = "CANCELLED" ]; then
+            if [ "$FINAL_STATUS" = "COMPLETED" ] || [ "$FINAL_STATUS" = "FAILED" ] || [ "$FINAL_STATUS" = "CANCELLED" ]; then
                 break
             fi
             
