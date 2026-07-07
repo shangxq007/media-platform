@@ -67,7 +67,7 @@ app:
     dispatcher-enabled: false
   security:
     enabled: false
-    dev-auth-endpoint: false
+    dev-auth-endpoint: true
     oidc-dev-bootstrap:
       enabled: false
   identity:
