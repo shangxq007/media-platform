@@ -102,7 +102,14 @@ public class RenderController {
         if (orchestratorPort == null) {
             throw new IllegalStateException("Render orchestrator not available");
         }
-        orchestratorPort.executeExistingRenderJob(ctx.tenantId(), jobId);
+        try {
+            orchestratorPort.executeExistingRenderJob(ctx.tenantId(), jobId);
+        } catch (Exception e) {
+            log.warn("Render execution failed for job {}: {}", jobId, e.getMessage());
+            // Reload job to get actual persisted status after failure
+            RenderJobResponse job = renderJobService.getById(jobId);
+            return ResponseEntity.ok(Map.of("jobId", jobId, "status", job.status()));
+        }
         RenderJobResponse job = renderJobService.getById(jobId);
         return ResponseEntity.ok(Map.of("jobId", jobId, "status", job.status()));
     }
