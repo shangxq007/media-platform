@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>media-platform Architecture Map</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; background: #0d1117; color: #e6edf3; }
+    h1 { color: #58a6ff; }
+    .view { margin: 20px 0; padding: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
+    .view h2 { color: #bc8cff; margin-top: 0; }
+    likec4-view { width: 100%; min-height: 400px; }
+  </style>
+</head>
+<body>
+  <h1>media-platform Architecture Map</h1>
+  
+  <div class="view">
+    <h2>System Context</h2>
+    <likec4-view view-id="systemContext"></likec4-view>
+  </div>
+  
+  <div class="view">
+    <h2>Container View</h2>
+    <likec4-view view-id="containerDiagram"></likec4-view>
+  </div>
+  
+  <div class="view">
+    <h2>Hermes Control Plane</h2>
+    <likec4-view view-id="controlPlane"></likec4-view>
+  </div>
+  
+  <div class="view">
+    <h2>Control Plane in Context</h2>
+    <likec4-view view-id="controlPlaneContext"></likec4-view>
+  </div>
+  
+  <script src="./likec4-views.js"></script>
+</body>
+</html>

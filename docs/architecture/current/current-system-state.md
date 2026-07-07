@@ -642,3 +642,18 @@ All merges require human review. No auto-merge. Human reviews at VS.0 milestone.
 **Next steps:**
 - FRONTEND-CONTRACT-GATE.0 — Audit backend API readiness
 - FRONTEND-STYLE-POC.0 — Evaluate styling technologies
+
+
+## Render Execution Status (2026-07-07)
+
+| Component | Status |
+|-----------|--------|
+| Control Plane | READY |
+| Execution Plane | PARTIAL |
+| FFmpeg Runtime | BOOTSTRAPPED (temporary preview) |
+| FFmpeg Provider | ENABLED |
+| Worker | In-process submit fallback |
+| Artifact Output | PENDING VALIDATION |
+| OpenCue | NOT STARTED |
+
+**Note:** FFmpeg in platform-api is temporary preview bootstrap, not final production architecture.
