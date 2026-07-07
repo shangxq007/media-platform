@@ -66,6 +66,9 @@ app:
   outbox:
     dispatcher-enabled: false
   security:
+    jwt:
+      secret-key: dev-only-insecure-key-replace-in-production-min-256-bits!!
+      expiration-ms: 86400000
     enabled: false
     dev-auth-endpoint: true
     oidc-dev-bootstrap:
