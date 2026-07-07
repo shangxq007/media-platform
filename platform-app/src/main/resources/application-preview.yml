@@ -80,3 +80,13 @@ app:
       enabled: false
   sandbox:
     enabled: false
+  storage:
+    local-root: /tmp/platform
+
+# Synthetic FFmpeg validation path (preview/dev only)
+render:
+  synthetic:
+    enabled: true
+
+# Storage configuration for preview
+    local-root: /tmp/platform

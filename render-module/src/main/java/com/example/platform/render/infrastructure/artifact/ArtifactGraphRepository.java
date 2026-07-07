@@ -56,7 +56,7 @@ public class ArtifactGraphRepository {
                         node.version(),
                         node.hash(),
                         serializeMetadata(node.metadata()),
-                        OffsetDateTime.from(node.createdAt())
+                        node.createdAt().atOffset(java.time.ZoneOffset.UTC)
                 )
                 .onConflict(field("id"))
                 .doUpdate()
@@ -98,7 +98,7 @@ public class ArtifactGraphRepository {
                         graph.jobId(),
                         graph.rootArtifactId(),
                         graph.version(),
-                        OffsetDateTime.from(graph.createdAt())
+                        graph.createdAt().atOffset(java.time.ZoneOffset.UTC)
                 )
                 .onConflict(field("graph_id"))
                 .doUpdate()

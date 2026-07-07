@@ -17,6 +17,8 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import com.example.platform.render.app.dto.ArtifactInfoResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -183,5 +185,60 @@ public class RenderController {
         } catch (Exception e) {
             log.warn("Audit logging failed: {}", e.getMessage());
         }
+    }
+
+    @PostMapping("/dev/preview/media")
+    public Map<String, String> uploadPreviewMedia(@RequestParam("file") MultipartFile file) {
+        if (!"video/mp4".equals(file.getContentType())) {
+            throw new IllegalArgumentException("Only video/mp4 is supported");
+        }
+        if (file.getSize() > 20 * 1024 * 1024) {
+            throw new IllegalArgumentException("File too large (max 20MB)");
+        }
+
+        try {
+            String mediaId = "media_" + System.currentTimeMillis();
+            String objectKey = mediaId + "/input.mp4";
+
+            java.nio.file.Path storageRoot = java.nio.file.Path.of("/tmp/platform");
+            java.nio.file.Path mediaPath = storageRoot.resolve("preview-media").resolve(objectKey);
+            java.nio.file.Files.createDirectories(mediaPath.getParent());
+            java.nio.file.Files.write(mediaPath, file.getBytes());
+
+            String storageUri = "localFsStorageProvider://preview-media/" + objectKey;
+            return Map.of("mediaId", mediaId, "storageUri", storageUri, "size", String.valueOf(file.getSize()));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Failed to store media", e);
+        }
+    }
+
+    @GetMapping("/{jobId}/artifacts/{artifactId}/content")
+    @Operation(summary = "获取渲染产物内容", description = "下载指定渲染任务的产物文件")
+    public ResponseEntity<byte[]> getArtifactContent(
+            @PathVariable String jobId,
+            @PathVariable String artifactId) {
+        if (orchestratorPort == null) {
+            throw new IllegalStateException("Render orchestrator not available");
+        }
+
+        // Verify artifact belongs to job
+        List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
+        boolean belongsToJob = artifacts.stream()
+                .anyMatch(a -> a.artifactId().equals(artifactId));
+        if (!belongsToJob) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Get artifact content
+        byte[] content = orchestratorPort.getArtifactContent(artifactId);
+        if (content == null || content.length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "video/mp4")
+                .header("Content-Disposition", "inline; filename=output.mp4")
+                .header("Content-Length", String.valueOf(content.length))
+                .body(content);
     }
 }

@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -45,6 +47,7 @@ public class RenderController {
     private static final Logger log = LoggerFactory.getLogger(RenderController.class);
     private final RenderJobService renderJobService;
     private final RenderOrchestratorPort orchestratorPort;
+    private final java.util.List<com.example.platform.storage.domain.BlobStorage> storageProviders;
     private final RenderIncrementalApiService incrementalApiService;
     private final RenderCachePresignService cachePresignService;
     private final RenderCacheCleanupService cacheCleanupService;
@@ -54,12 +57,13 @@ public class RenderController {
     private final TimelineRevisionService timelineRevisionService;
 
     public RenderController(RenderJobService renderJobService) {
-        this(renderJobService, null, null, null, null, null, null, null, null);
+        this(renderJobService, null, null, null, null, null, null, null, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public RenderController(RenderJobService renderJobService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderOrchestratorPort orchestratorPort,
+                             java.util.List<com.example.platform.storage.domain.BlobStorage> storageProviders,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderIncrementalApiService incrementalApiService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderCachePresignService cachePresignService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderCacheCleanupService cacheCleanupService,
@@ -69,6 +73,7 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionService timelineRevisionService) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
+        this.storageProviders = storageProviders;
         this.incrementalApiService = incrementalApiService;
         this.cachePresignService = cachePresignService;
         this.cacheCleanupService = cacheCleanupService;

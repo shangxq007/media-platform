@@ -26,7 +26,7 @@ public class RenderOrchestratorService implements RenderOrchestratorPort {
 
     private final RenderJobSubmissionService submissionService;
     private final RenderJobExecutionService executionService;
-    private final RenderArtifactQueryService artifactQueryService;
+        private final RenderArtifactQueryService artifactQueryService;
     private final RenderJobTimelineQueryService timelineQueryService;
     private final RenderJobSubmitContinuation submitContinuation;
 
@@ -74,5 +74,10 @@ public class RenderOrchestratorService implements RenderOrchestratorPort {
     @Override
     public List<ArtifactInfoResponse> getArtifactsByJob(String jobId) {
         return artifactQueryService.getArtifactsByJob(jobId);
+    }
+
+    @Override
+    public byte[] getArtifactContent(String artifactId) {
+        return artifactQueryService.getArtifactContent(artifactId);
     }
 }

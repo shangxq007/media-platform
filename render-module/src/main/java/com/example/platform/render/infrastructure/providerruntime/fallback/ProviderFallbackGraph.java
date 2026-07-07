@@ -60,6 +60,11 @@ public class ProviderFallbackGraph {
         registerFallbackChain("VapourSynthRenderProvider", List.of(
                 "FFmpegRenderProvider"
         ));
+
+        // RemoteRender falls back to FFmpeg (when no remote workers available)
+        registerFallbackChain("RemoteRenderProvider", List.of(
+                "FFmpegRenderProvider"
+        ));
     }
 
     /**

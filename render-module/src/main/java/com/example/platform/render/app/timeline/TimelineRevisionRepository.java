@@ -220,6 +220,9 @@ public class TimelineRevisionRepository {
         if (value instanceof OffsetDateTime odt) {
             return odt;
         }
+        if (value instanceof java.time.Instant instant) {
+            return instant.atOffset(ZoneOffset.UTC);
+        }
         if (value instanceof java.sql.Timestamp ts) {
             return ts.toInstant().atOffset(ZoneOffset.UTC);
         }

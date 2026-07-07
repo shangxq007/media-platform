@@ -1,0 +1,3 @@
+FROM ghcr.io/shangxq007/platform-api:synthetic-ffmpeg-validation-4
+COPY platform-app/build/libs/platform-app.jar /workspace/app.jar
+COPY frontend/dist/ /app/static/
