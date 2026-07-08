@@ -102,3 +102,10 @@ SPRING-BOOT-CLASSLOADER-DEEP-DIAG.0: COMPLETE. Root cause: Dockerfile copied JAR
 REAL-MEDIA-INPUT.0: COMPLETE. Upload and content endpoints working.
 
 Recommended next: TIMELINE-RENDER-MVP.0 or cleanup diagnostic code
+
+## Timeline Render MVP (2026-07-08)
+
+TIMELINE-RENDER-MVP.0: COMPLETE. Existing infrastructure supports timeline-based rendering.
+See [Timeline Render MVP](../render/timeline-render-mvp.md)
+
+Recommended next: BASIC-EFFECTS-DSL.0 or TIMELINE-GIT-PLANNING.0

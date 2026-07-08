@@ -734,3 +734,10 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Upload endpoint: WORKING
 - Content endpoint: WORKING
 - See [Diagnostic](../render/spring-boot-classloader-deep-diagnostic.md)
+
+## Timeline Render MVP (2026-07-08)
+
+- TIMELINE-RENDER-MVP.0: COMPLETE
+- Timeline revision-based render: WORKING
+- One video clip with real media: VERIFIED
+- See [Timeline Render MVP](../render/timeline-render-mvp.md)
