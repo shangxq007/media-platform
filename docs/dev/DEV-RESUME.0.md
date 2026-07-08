@@ -172,3 +172,10 @@ TIMELINE-REVISION-API.0: EXISTING_API_VALIDATED. API already exists at /api/v1/r
 See [Timeline Revision API](../timeline/timeline-revision-api.md)
 
 Recommended next: TIMELINE-RENDER-BY-REVISION.0 or TIMELINE-DIFF-MVP.0
+
+## Timeline Render by Revision (2026-07-09)
+
+TIMELINE-RENDER-BY-REVISION.0: PARTIAL. Endpoint exists but tenant context issue blocks validation.
+See [Timeline Render by Revision](../timeline/timeline-render-by-revision.md)
+
+Recommended next: TIMELINE-RENDER-BY-REVISION-FIX.0 or TIMELINE-DIFF-MVP.0
