@@ -81,3 +81,10 @@ OUTBOX-RELAY-SPI.0: COMPLETE. OutboxRelay and EventDeliveryProvider interfaces d
 See [Outbox Relay SPI](../architecture/eventing/outbox-relay-spi.md)
 
 Recommended next: OUTBOX-LIGHTWEIGHT-REDESIGN.0 or CAMEL-OUTBOX-RELAY-POC.0
+
+## Event Subscription Model (2026-07-08)
+
+EVENT-SUBSCRIPTION-MODEL.0: DESIGN_ONLY. EventSubscription and DestinationRef models defined. Routing kept outside outbox.
+See [Event Subscription Model](../architecture/eventing/event-subscription-model.md)
+
+Recommended next: EVENT-SUBSCRIPTION-SPI.0 or WEBHOOK-DELIVERY-PROVIDER.0

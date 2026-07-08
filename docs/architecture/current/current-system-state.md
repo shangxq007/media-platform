@@ -707,3 +707,12 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Current behavior preserved: YES
 - External dependencies added: NO
 - See [Outbox Relay SPI](../eventing/outbox-relay-spi.md)
+
+## Event Subscription Model (2026-07-08)
+
+- EVENT-SUBSCRIPTION-MODEL.0: COMPLETE (DESIGN_ONLY)
+- EventSubscription model: DEFINED
+- DestinationRef model: DEFINED
+- Retry policy model: DEFINED
+- Routing kept outside outbox: YES
+- See [Event Subscription Model](../eventing/event-subscription-model.md)
