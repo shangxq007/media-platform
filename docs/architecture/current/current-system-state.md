@@ -725,3 +725,12 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Tenant/project filtering: YES
 - No runtime behavior changed
 - See [Event Subscription SPI](../eventing/event-subscription-spi.md)
+
+## Spring MVC Route Registration Fix (2026-07-08)
+
+- SPRING-BOOT-CLASSLOADER-DEEP-DIAG.0: COMPLETE
+- Root cause: Dockerfile.incremental copied JAR to wrong path
+- REAL-MEDIA-INPUT.0: COMPLETE
+- Upload endpoint: WORKING
+- Content endpoint: WORKING
+- See [Diagnostic](../render/spring-boot-classloader-deep-diagnostic.md)

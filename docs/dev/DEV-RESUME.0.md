@@ -95,3 +95,10 @@ EVENT-SUBSCRIPTION-SPI.0: INTERFACES_ONLY. 14 types in outbox.subscription packa
 See [Event Subscription SPI](../architecture/eventing/event-subscription-spi.md)
 
 Recommended next: WEBHOOK-DELIVERY-PROVIDER.0 or DELIVERY-ATTEMPT-MODEL.0
+
+## Route Registration Fix (2026-07-08)
+
+SPRING-BOOT-CLASSLOADER-DEEP-DIAG.0: COMPLETE. Root cause: Dockerfile copied JAR to wrong path.
+REAL-MEDIA-INPUT.0: COMPLETE. Upload and content endpoints working.
+
+Recommended next: TIMELINE-RENDER-MVP.0 or cleanup diagnostic code
