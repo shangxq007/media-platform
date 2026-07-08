@@ -663,3 +663,11 @@ All merges require human review. No auto-merge. Human reviews at VS.0 milestone.
 Open-source capability map added as reference. See [Open-source Capability Extension Blueprint](../blueprint/open-source-capability-extension-blueprint.md).
 
 **Important:** No new production dependency has been adopted by this documentation task. Current implementation remains focused on Real Media Input endpoint stabilization. OpenCue remains NOT STARTED. FFmpeg in platform-api remains temporary preview bootstrap. Artifact DAG remains postponed.
+
+## Route Registration Status (2026-07-08)
+
+- Synthetic Preview Render E2E: COMPLETE
+- Real Media Execution: VERIFIED via fixture
+- Real Media API Upload/Content: BLOCKED (Spring MVC route registration anomaly)
+- REAL-MEDIA-INPUT.0: PARTIAL
+- See [Debug](../../render/spring-mvc-route-registration-debug.md)

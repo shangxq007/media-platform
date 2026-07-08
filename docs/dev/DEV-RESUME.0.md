@@ -47,3 +47,11 @@ Long term:
 ## Open-source Capability Reference
 
 See [Open-source Capability Extension Blueprint](../architecture/blueprint/open-source-capability-extension-blueprint.md) for candidate tool evaluation and technology selection.
+
+## Spring MVC Route Registration Blocker (2026-07-08)
+
+REAL-MEDIA-INPUT.0 is PARTIAL. Upload/content endpoints return 404 despite being in compiled JAR.
+See [Debug](../render/spring-mvc-route-registration-debug.md)
+
+Do not continue REAL-MEDIA-INPUT.0 feature expansion.
+Recommended next task: SPRING-BOOT-CLASSLOADER-DEEP-DIAG.0
