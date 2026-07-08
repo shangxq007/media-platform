@@ -1,4 +1,4 @@
-package com.example.platform.outbox.domain;
+package com.example.platform.outbox.coordination;
 
 /**
  * Status lifecycle for platform coordination jobs.

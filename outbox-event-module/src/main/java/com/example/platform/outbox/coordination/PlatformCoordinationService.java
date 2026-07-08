@@ -1,6 +1,7 @@
-package com.example.platform.outbox.app;
+package com.example.platform.outbox.coordination;
 
-import com.example.platform.outbox.domain.*;
+import com.example.platform.outbox.coordination.*;
+import com.example.platform.outbox.app.PostgresNotificationService;
 import com.example.platform.shared.Ids;
 import java.util.*;
 import org.slf4j.Logger;

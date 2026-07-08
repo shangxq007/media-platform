@@ -62,3 +62,8 @@ OUTBOX-BOUNDARY-REVIEW.0: COMPLETE. Current outbox is CLEAN (no routing leakage)
 See [Outbox Boundary Review](../architecture/eventing/outbox-boundary-review.md)
 
 Recommended next: OUTBOX-LIGHTWEIGHT-REDESIGN.0 or SPRING-BOOT-CLASSLOADER-DEEP-DIAG.0
+
+## Outbox Module Separation (2026-07-08)
+
+OUTBOX-MODULE-SEPARATION.0: COMPLETE. PlatformJob/PlatformTask orchestration moved to coordination subpackage.
+See [Outbox Module Separation](../architecture/eventing/outbox-module-separation.md)

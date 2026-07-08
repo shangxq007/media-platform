@@ -254,7 +254,7 @@ class OpenCueEnvironmentTest {
     void doesNotRequireExecutionBackendSpiChanges() {
         assertDoesNotThrow(() -> {
             Class<?> backendClass = Class.forName(
-                    "com.example.platform.outbox.app.ExecutionBackend");
+                    "com.example.platform.outbox.coordination.ExecutionBackend");
             assertTrue(backendClass.isInterface());
         }, "ExecutionBackend SPI must exist unchanged");
     }

@@ -1,9 +1,9 @@
-package com.example.platform.outbox.app;
+package com.example.platform.outbox.coordination;
 
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 
-import com.example.platform.outbox.domain.*;
+import com.example.platform.outbox.coordination.*;
 import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.time.OffsetDateTime;

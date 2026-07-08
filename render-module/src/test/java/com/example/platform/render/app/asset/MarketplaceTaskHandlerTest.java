@@ -3,8 +3,8 @@ package com.example.platform.render.app.asset;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.outbox.app.TaskExecutionContext;
-import com.example.platform.outbox.domain.*;
+import com.example.platform.outbox.coordination.TaskExecutionContext;
+import com.example.platform.outbox.coordination.*;
 import com.example.platform.render.domain.asset.marketplace.*;
 import com.example.platform.render.infrastructure.asset.*;
 import java.time.Instant;

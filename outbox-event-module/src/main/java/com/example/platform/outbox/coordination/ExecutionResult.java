@@ -1,4 +1,4 @@
-package com.example.platform.outbox.app;
+package com.example.platform.outbox.coordination;
 
 import java.util.List;
 import java.util.Map;

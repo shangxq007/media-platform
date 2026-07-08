@@ -1,6 +1,6 @@
-package com.example.platform.outbox.app;
+package com.example.platform.outbox.coordination;
 
-import com.example.platform.outbox.domain.TaskCapability;
+import com.example.platform.outbox.coordination.TaskCapability;
 
 /**
  * SPI for platform task handlers.

@@ -1,6 +1,6 @@
-package com.example.platform.outbox.app;
+package com.example.platform.outbox.coordination;
 
-import com.example.platform.outbox.domain.*;
+import com.example.platform.outbox.coordination.*;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

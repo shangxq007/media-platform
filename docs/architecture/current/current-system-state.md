@@ -681,3 +681,10 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - APISIX: Candidate for external API/webhook gateway
 - EventMesh: Future extension
 - See [Outbox Boundary Review](../eventing/outbox-boundary-review.md)
+
+## Outbox Module Separation (2026-07-08)
+
+- OUTBOX-MODULE-SEPARATION.0: COMPLETE
+- Outbox module: CLEAN (transactional outbox only)
+- Platform coordination: SEPARATED (moved to com.example.platform.outbox.coordination)
+- See [Outbox Module Separation](../eventing/outbox-module-separation.md)

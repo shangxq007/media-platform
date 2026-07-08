@@ -3,10 +3,10 @@ package com.example.platform.render.app.asset;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.outbox.app.PlatformCoordinationService;
-import com.example.platform.outbox.domain.PlatformJob;
-import com.example.platform.outbox.domain.JobType;
-import com.example.platform.outbox.domain.JobStatus;
+import com.example.platform.outbox.coordination.PlatformCoordinationService;
+import com.example.platform.outbox.coordination.PlatformJob;
+import com.example.platform.outbox.coordination.JobType;
+import com.example.platform.outbox.coordination.JobStatus;
 import com.example.platform.shared.events.AssetPublishedEvent;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;

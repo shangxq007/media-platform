@@ -2,9 +2,9 @@ package com.example.platform.render.infrastructure.asset.provider;
 
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
-import com.example.platform.outbox.app.TaskHandler;
-import com.example.platform.outbox.app.TaskExecutionContext;
-import com.example.platform.outbox.domain.TaskCapability;
+import com.example.platform.outbox.coordination.TaskHandler;
+import com.example.platform.outbox.coordination.TaskExecutionContext;
+import com.example.platform.outbox.coordination.TaskCapability;
 import com.example.platform.render.app.asset.AssetSemanticMetadataService;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.render.domain.asset.semantic.*;

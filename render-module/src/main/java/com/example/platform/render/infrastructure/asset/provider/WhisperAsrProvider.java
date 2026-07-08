@@ -1,7 +1,7 @@
 package com.example.platform.render.infrastructure.asset.provider;
 
-import com.example.platform.outbox.app.*;
-import com.example.platform.outbox.domain.TaskCapability;
+import com.example.platform.outbox.coordination.*;
+import com.example.platform.outbox.coordination.TaskCapability;
 import com.example.platform.render.domain.asset.semantic.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
