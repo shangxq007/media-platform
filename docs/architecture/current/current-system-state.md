@@ -716,3 +716,12 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Retry policy model: DEFINED
 - Routing kept outside outbox: YES
 - See [Event Subscription Model](../eventing/event-subscription-model.md)
+
+## Event Subscription SPI (2026-07-08)
+
+- EVENT-SUBSCRIPTION-SPI.0: COMPLETE (INTERFACES_ONLY)
+- 14 types added to outbox.subscription package
+- Exact/wildcard matching: YES
+- Tenant/project filtering: YES
+- No runtime behavior changed
+- See [Event Subscription SPI](../eventing/event-subscription-spi.md)

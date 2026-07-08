@@ -88,3 +88,10 @@ EVENT-SUBSCRIPTION-MODEL.0: DESIGN_ONLY. EventSubscription and DestinationRef mo
 See [Event Subscription Model](../architecture/eventing/event-subscription-model.md)
 
 Recommended next: EVENT-SUBSCRIPTION-SPI.0 or WEBHOOK-DELIVERY-PROVIDER.0
+
+## Event Subscription SPI (2026-07-08)
+
+EVENT-SUBSCRIPTION-SPI.0: INTERFACES_ONLY. 14 types in outbox.subscription package.
+See [Event Subscription SPI](../architecture/eventing/event-subscription-spi.md)
+
+Recommended next: WEBHOOK-DELIVERY-PROVIDER.0 or DELIVERY-ATTEMPT-MODEL.0
