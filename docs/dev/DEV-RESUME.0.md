@@ -158,3 +158,10 @@ TIMELINE-GIT-PLANNING.0: DOCS_ONLY. Revision model, diff, patch planned.
 See [Timeline Git Planning](../timeline/timeline-git-planning.md)
 
 Recommended next: TIMELINE-REVISION-MODEL.0 or TIMELINE-REVISION-API.0
+
+## Timeline Revision Model (2026-07-09)
+
+TIMELINE-REVISION-MODEL.0: EXISTING_INFRASTRUCTURE. Model already implemented.
+See [Timeline Revision Model](../timeline/timeline-revision-model.md)
+
+Recommended next: TIMELINE-REVISION-API.0 or TIMELINE-RENDER-BY-REVISION.0
