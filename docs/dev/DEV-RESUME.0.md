@@ -67,3 +67,10 @@ Recommended next: OUTBOX-LIGHTWEIGHT-REDESIGN.0 or SPRING-BOOT-CLASSLOADER-DEEP-
 
 OUTBOX-MODULE-SEPARATION.0: COMPLETE. PlatformJob/PlatformTask orchestration moved to coordination subpackage.
 See [Outbox Module Separation](../architecture/eventing/outbox-module-separation.md)
+
+## Event Contract (2026-07-08)
+
+EVENT-CONTRACT.0: COMPLETE. Platform event contract defined with naming convention, taxonomy, envelope, and payload guidelines.
+See [Event Contract](../architecture/eventing/event-contract.md)
+
+Recommended next: OUTBOX-RELAY-SPI.0 or OUTBOX-LIGHTWEIGHT-REDESIGN.0

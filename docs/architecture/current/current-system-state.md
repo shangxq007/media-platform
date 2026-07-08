@@ -688,3 +688,13 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Outbox module: CLEAN (transactional outbox only)
 - Platform coordination: SEPARATED (moved to com.example.platform.outbox.coordination)
 - See [Outbox Module Separation](../eventing/outbox-module-separation.md)
+
+## Event Contract (2026-07-08)
+
+- EVENT-CONTRACT.0: COMPLETE
+- Event naming convention: domain.resource.action
+- Event taxonomy: 6 categories defined
+- Internal event envelope: 16 fields defined
+- CloudEvents: Recommended for external envelope
+- AsyncAPI: Candidate for documentation
+- See [Event Contract](../eventing/event-contract.md)
