@@ -116,3 +116,10 @@ BASIC-EFFECTS-DSL.0: DOCS_ONLY. 7 MVP effects defined (trim, scale, crop, fade, 
 See [Basic Effects DSL](../render/basic-effects-dsl.md)
 
 Recommended next: FFMPEG-FILTERGRAPH-COMPILER.0 or SUBTITLE-DSL-ASS.0
+
+## FFmpeg Filtergraph Compiler (2026-07-08)
+
+FFMPEG-FILTERGRAPH-COMPILER.0: COMPLETE. Existing infrastructure supports effect compilation.
+See [FFmpeg Filtergraph Compiler](../render/ffmpeg-filtergraph-compiler.md)
+
+Recommended next: SUBTITLE-DSL-ASS.0 or TIMELINE-GIT-PLANNING.0

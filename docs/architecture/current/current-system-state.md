@@ -750,3 +750,10 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Validation rules: DEFINED
 - FFmpeg mapping: GUIDANCE only
 - See [Basic Effects DSL](../render/basic-effects-dsl.md)
+
+## FFmpeg Filtergraph Compiler (2026-07-08)
+
+- FFMPEG-FILTERGRAPH-COMPILER.0: COMPLETE (EXISTING_INFRASTRUCTURE)
+- EffectFilterGraphBuilder: EXISTS
+- Fade/brightness/contrast/blur: VERIFIED
+- See [FFmpeg Filtergraph Compiler](../render/ffmpeg-filtergraph-compiler.md)
