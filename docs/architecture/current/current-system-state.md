@@ -781,3 +781,11 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Resource limits: ENFORCED
 - ASS injection risk: LOW
 - See [ASS Generator MVP](../render/ass-generator-mvp.md)
+
+## Subtitle Render Smoke (2026-07-09)
+
+- SUBTITLE-RENDER-SMOKE.0: COMPLETE (SMOKE_VERIFIED)
+- Subtitle burn-in: ✅ COMPLETED
+- Escaped text: ✅ COMPLETED
+- Unicode: ✅ COMPLETED
+- See [Subtitle Render Smoke](../render/subtitle-render-smoke.md)

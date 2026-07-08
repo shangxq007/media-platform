@@ -144,3 +144,10 @@ ASS-GENERATOR-MVP.0: CODE_AND_TESTS. ASS escaping hardened, resource limits enfo
 See [ASS Generator MVP](../render/ass-generator-mvp.md)
 
 Recommended next: SUBTITLE-RENDER-SMOKE.0 or TIMELINE-GIT-PLANNING.0
+
+## Subtitle Render Smoke (2026-07-09)
+
+SUBTITLE-RENDER-SMOKE.0: SMOKE_VERIFIED. Subtitle burn-in, escaped text, Unicode all passed.
+See [Subtitle Render Smoke](../render/subtitle-render-smoke.md)
+
+Recommended next: TIMELINE-GIT-PLANNING.0 or FONT-MANIFEST-RENDER-INTEGRATION.0
