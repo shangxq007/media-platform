@@ -55,3 +55,10 @@ See [Debug](../render/spring-mvc-route-registration-debug.md)
 
 Do not continue REAL-MEDIA-INPUT.0 feature expansion.
 Recommended next task: SPRING-BOOT-CLASSLOADER-DEEP-DIAG.0
+
+## Outbox Boundary Review (2026-07-08)
+
+OUTBOX-BOUNDARY-REVIEW.0: COMPLETE. Current outbox is CLEAN (no routing leakage). Module is MIXED (job orchestration co-located).
+See [Outbox Boundary Review](../architecture/eventing/outbox-boundary-review.md)
+
+Recommended next: OUTBOX-LIGHTWEIGHT-REDESIGN.0 or SPRING-BOOT-CLASSLOADER-DEEP-DIAG.0

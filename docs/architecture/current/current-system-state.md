@@ -671,3 +671,13 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Real Media API Upload/Content: BLOCKED (Spring MVC route registration anomaly)
 - REAL-MEDIA-INPUT.0: PARTIAL
 - See [Debug](../../render/spring-mvc-route-registration-debug.md)
+
+## Eventing/Outbox Status (2026-07-08)
+
+- Outbox boundary review: COMPLETE
+- Current outbox: CLEAN (no routing leakage)
+- Outbox module: MIXED (event outbox + job orchestration co-located)
+- Camel: Candidate for relay/integration runtime
+- APISIX: Candidate for external API/webhook gateway
+- EventMesh: Future extension
+- See [Outbox Boundary Review](../eventing/outbox-boundary-review.md)
