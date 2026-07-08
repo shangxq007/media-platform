@@ -773,3 +773,11 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - ASS escaping: PARTIAL (follow-up)
 - Path exposure: NONE (safe)
 - See [Text Overlay Security](../render/text-overlay-security.md)
+
+## ASS Generator MVP (2026-07-08)
+
+- ASS-GENERATOR-MVP.0: COMPLETE (CODE_AND_TESTS)
+- ASS escaping: HARDENED
+- Resource limits: ENFORCED
+- ASS injection risk: LOW
+- See [ASS Generator MVP](../render/ass-generator-mvp.md)

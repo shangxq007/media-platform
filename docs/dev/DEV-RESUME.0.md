@@ -137,3 +137,10 @@ TEXT-OVERLAY-SECURITY.0: COMPLETE. FFmpeg command argv-based, no path exposure, 
 See [Text Overlay Security](../render/text-overlay-security.md)
 
 Recommended next: ASS-GENERATOR-MVP.0 or TIMELINE-GIT-PLANNING.0
+
+## ASS Generator MVP (2026-07-08)
+
+ASS-GENERATOR-MVP.0: CODE_AND_TESTS. ASS escaping hardened, resource limits enforced.
+See [ASS Generator MVP](../render/ass-generator-mvp.md)
+
+Recommended next: SUBTITLE-RENDER-SMOKE.0 or TIMELINE-GIT-PLANNING.0
