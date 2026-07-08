@@ -255,3 +255,105 @@ outbox-event-module/
 - Current behavior preserved: YES
 - External dependencies added: NO
 - Schema changes: NO
+
+---
+
+## EventRouter Responsibilities
+
+### What EventRouter Does
+
+- Match event against subscriptions/rules
+- Fan out to zero or more delivery providers
+- Apply lightweight filters
+- Choose delivery target based on subscription config
+- Handle subscription-level routing
+
+### What EventRouter Does NOT Do
+
+- Write domain state
+- Own transactional outbox
+- Mutate original event payload
+- Persist routing config inside outbox row
+
+### Current State
+
+EventRouter is not implemented yet. Current dispatch goes directly to Spring events.
+
+### Future Implementation
+
+When EventSubscription model is introduced, EventRouter will sit between OutboxRelay and EventDeliveryProvider.
+
+---
+
+## Default Delivery Path
+
+### Current
+
+```
+outbox_events → OutboxEventDispatcher → Spring ApplicationEventPublisher
+```
+
+All events go to Spring in-process listeners. No external delivery.
+
+### Preserved Behavior
+
+- OutboxEventDispatcher polls every 3 seconds
+- Events locked, deserialized, published
+- Marked PROCESSED on success
+- Marked FAILED on failure
+- Retry after max-retries → DEAD_LETTER
+
+---
+
+## What Must NOT Go Into Outbox
+
+| Item | Reason |
+|------|--------|
+| Destination URL | Belongs to delivery provider config |
+| Connector credentials | Belongs to provider secrets |
+| Camel route ID | Belongs to integration runtime |
+| APISIX route ID | Belongs to gateway config |
+| EventMesh broker config | Belongs to event bus config |
+| Route-specific retry policy | Belongs to subscription model |
+| External protocol config | Belongs to provider |
+
+---
+
+## Risks
+
+| Risk | Mitigation |
+|------|------------|
+| Duplicate delivery | Idempotency key exists in outbox |
+| Retry policy split | Current: per-event global. Future: per-subscription |
+| Over-engineering | Conservative: interfaces only, no runtime change |
+| Premature Camel adoption | Document as candidate, don't implement |
+| Losing transaction reliability | Keep outbox as DB-backed boundary |
+| Route leakage returning | Explicit rules in this document |
+
+---
+
+## Open Questions
+
+1. Do we need event claiming/locking beyond current implementation?
+2. Is retry policy per event or per subscription?
+3. Do we need a delivery attempt table for audit?
+4. Should CloudEvents be external envelope only?
+5. When should AsyncAPI spec be generated?
+6. Are current outbox schema fields sufficient for relay?
+
+---
+
+## Phase A — Current Dispatch Answers
+
+| Question | Answer |
+|----------|--------|
+| 1. Who writes outbox events? | Domain services via `OutboxEventService.append()` in same DB transaction |
+| 2. Who reads pending outbox events? | `OutboxEventDispatcher.scheduledDispatch()` polls every 3s |
+| 3. Who marks events published/failed? | `OutboxEventService.markProcessed()` / `markFailed()` |
+| 4. Does dispatcher publish Spring events only? | YES — `ApplicationEventPublisher.publishEvent()` |
+| 5. Are there existing retry semantics? | YES — global max-retries, exponential backoff, DEAD_LETTER |
+| 6. Are there existing transaction boundaries? | YES — append is in domain transaction, dispatch is separate |
+| 7. Are there existing scheduler/poller classes? | YES — `OutboxEventDispatcher`, `DispatchBooster` |
+| 8. Are any delivery targets hardcoded? | NO — all events go to Spring `ApplicationEventPublisher` |
+| 9. Are any event type routes hardcoded? | NO — `OutboxEventRouter` uses registration-based mapping |
+| 10. Module cycles or unwanted dependencies? | NO — after OUTBOX-MODULE-SEPARATION.0, outbox is clean |
