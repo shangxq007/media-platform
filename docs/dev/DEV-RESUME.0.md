@@ -165,3 +165,10 @@ TIMELINE-REVISION-MODEL.0: EXISTING_INFRASTRUCTURE. Model already implemented.
 See [Timeline Revision Model](../timeline/timeline-revision-model.md)
 
 Recommended next: TIMELINE-REVISION-API.0 or TIMELINE-RENDER-BY-REVISION.0
+
+## Timeline Revision API (2026-07-09)
+
+TIMELINE-REVISION-API.0: EXISTING_API_VALIDATED. API already exists at /api/v1/render/projects/{projectId}/timeline/revisions.
+See [Timeline Revision API](../timeline/timeline-revision-api.md)
+
+Recommended next: TIMELINE-RENDER-BY-REVISION.0 or TIMELINE-DIFF-MVP.0
