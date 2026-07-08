@@ -130,3 +130,10 @@ SUBTITLE-DSL-ASS.0: DOCS_FIRST. Existing infrastructure supports subtitle render
 See [Subtitle DSL](../render/subtitle-dsl-ass.md)
 
 Recommended next: TEXT-OVERLAY-SECURITY.0 or TIMELINE-GIT-PLANNING.0
+
+## Text Overlay Security (2026-07-08)
+
+TEXT-OVERLAY-SECURITY.0: COMPLETE. FFmpeg command argv-based, no path exposure, ASS escaping partial.
+See [Text Overlay Security](../render/text-overlay-security.md)
+
+Recommended next: ASS-GENERATOR-MVP.0 or TIMELINE-GIT-PLANNING.0

@@ -765,3 +765,11 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Subtitle Render API: EXISTS (MVP)
 - libass provider: EXISTS
 - See [Subtitle DSL](../render/subtitle-dsl-ass.md)
+
+## Text Overlay Security (2026-07-08)
+
+- TEXT-OVERLAY-SECURITY.0: COMPLETE
+- FFmpeg command: argv-based (safe)
+- ASS escaping: PARTIAL (follow-up)
+- Path exposure: NONE (safe)
+- See [Text Overlay Security](../render/text-overlay-security.md)
