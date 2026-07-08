@@ -109,3 +109,10 @@ TIMELINE-RENDER-MVP.0: COMPLETE. Existing infrastructure supports timeline-based
 See [Timeline Render MVP](../render/timeline-render-mvp.md)
 
 Recommended next: BASIC-EFFECTS-DSL.0 or TIMELINE-GIT-PLANNING.0
+
+## Basic Effects DSL (2026-07-08)
+
+BASIC-EFFECTS-DSL.0: DOCS_ONLY. 7 MVP effects defined (trim, scale, crop, fade, volume, textOverlay, colorAdjust).
+See [Basic Effects DSL](../render/basic-effects-dsl.md)
+
+Recommended next: FFMPEG-FILTERGRAPH-COMPILER.0 or SUBTITLE-DSL-ASS.0

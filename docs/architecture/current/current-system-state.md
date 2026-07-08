@@ -741,3 +741,12 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Timeline revision-based render: WORKING
 - One video clip with real media: VERIFIED
 - See [Timeline Render MVP](../render/timeline-render-mvp.md)
+
+## Basic Effects DSL (2026-07-08)
+
+- BASIC-EFFECTS-DSL.0: COMPLETE (DOCS_ONLY)
+- Effect schema: DEFINED (7 MVP effects)
+- Placement model: clip/track/timeline
+- Validation rules: DEFINED
+- FFmpeg mapping: GUIDANCE only
+- See [Basic Effects DSL](../render/basic-effects-dsl.md)
