@@ -74,3 +74,10 @@ EVENT-CONTRACT.0: COMPLETE. Platform event contract defined with naming conventi
 See [Event Contract](../architecture/eventing/event-contract.md)
 
 Recommended next: OUTBOX-RELAY-SPI.0 or OUTBOX-LIGHTWEIGHT-REDESIGN.0
+
+## Outbox Relay SPI (2026-07-08)
+
+OUTBOX-RELAY-SPI.0: COMPLETE. OutboxRelay and EventDeliveryProvider interfaces defined. Current behavior preserved.
+See [Outbox Relay SPI](../architecture/eventing/outbox-relay-spi.md)
+
+Recommended next: OUTBOX-LIGHTWEIGHT-REDESIGN.0 or CAMEL-OUTBOX-RELAY-POC.0

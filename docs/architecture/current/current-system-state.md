@@ -698,3 +698,12 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - CloudEvents: Recommended for external envelope
 - AsyncAPI: Candidate for documentation
 - See [Event Contract](../eventing/event-contract.md)
+
+## Outbox Relay SPI (2026-07-08)
+
+- OUTBOX-RELAY-SPI.0: COMPLETE
+- OutboxRelay SPI: DEFINED
+- EventDeliveryProvider SPI: DEFINED
+- Current behavior preserved: YES
+- External dependencies added: NO
+- See [Outbox Relay SPI](../eventing/outbox-relay-spi.md)
