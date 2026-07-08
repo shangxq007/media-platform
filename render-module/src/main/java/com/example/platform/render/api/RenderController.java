@@ -83,6 +83,48 @@ public class RenderController {
         this.timelineRevisionService = timelineRevisionService;
     }
 
+
+    @jakarta.annotation.PostConstruct
+    public void _diagnosticInit() {
+        log.info("=== RENDER CONTROLLER DIAGNOSTIC ===");
+        log.info("Class: {}", this.getClass().getName());
+        log.info("ClassLoader: {}", this.getClass().getClassLoader());
+        log.info("Resource: {}", this.getClass().getResource("RenderController.class"));
+        
+        java.util.List<String> methodNames = new java.util.ArrayList<>();
+        for (var m : this.getClass().getDeclaredMethods()) {
+            methodNames.add(m.getName());
+        }
+        log.info("Declared methods ({}): {}", methodNames.size(), methodNames);
+        log.info("Has uploadPreviewMedia: {}", methodNames.contains("uploadPreviewMedia"));
+        log.info("Has getArtifactContent: {}", methodNames.contains("getArtifactContent"));
+        
+        // Check annotations
+        for (var m : this.getClass().getDeclaredMethods()) {
+            if (m.getName().equals("uploadPreviewMedia") || m.getName().equals("getArtifactContent")) {
+                log.info("Method {} annotations: {}", m.getName(), java.util.Arrays.toString(m.getAnnotations()));
+            }
+        }
+        
+        // Check resource URL for bytecode hash
+        try {
+            var url = this.getClass().getResource("RenderController.class");
+            if (url != null) {
+                var conn = url.openConnection();
+                try (var is = conn.getInputStream()) {
+                    var bytes = is.readAllBytes();
+                    var md = java.security.MessageDigest.getInstance("SHA-256");
+                    var hash = java.util.HexFormat.of().formatHex(md.digest(bytes));
+                    log.info("RenderController bytecode SHA-256: {}", hash);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not compute bytecode hash: {}", e.getMessage());
+        }
+        
+        log.info("=== END DIAGNOSTIC ===");
+    }
+
     // -------------------------------------------------------------------------
     // Tenant-scoped render job endpoints (Prompt 13)
     // -------------------------------------------------------------------------
