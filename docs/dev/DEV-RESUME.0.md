@@ -151,3 +151,10 @@ SUBTITLE-RENDER-SMOKE.0: SMOKE_VERIFIED. Subtitle burn-in, escaped text, Unicode
 See [Subtitle Render Smoke](../render/subtitle-render-smoke.md)
 
 Recommended next: TIMELINE-GIT-PLANNING.0 or FONT-MANIFEST-RENDER-INTEGRATION.0
+
+## Timeline Git Planning (2026-07-09)
+
+TIMELINE-GIT-PLANNING.0: DOCS_ONLY. Revision model, diff, patch planned.
+See [Timeline Git Planning](../timeline/timeline-git-planning.md)
+
+Recommended next: TIMELINE-REVISION-MODEL.0 or TIMELINE-REVISION-API.0

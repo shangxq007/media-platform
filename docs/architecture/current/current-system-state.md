@@ -789,3 +789,12 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Escaped text: ✅ COMPLETED
 - Unicode: ✅ COMPLETED
 - See [Subtitle Render Smoke](../render/subtitle-render-smoke.md)
+
+## Timeline Git Planning (2026-07-09)
+
+- TIMELINE-GIT-PLANNING.0: COMPLETE (DOCS_ONLY)
+- TimelineRevision model: DEFINED
+- Semantic diff model: DEFINED
+- Patch model: DEFINED
+- Timeline Git: NOT IMPLEMENTED
+- See [Timeline Git Planning](../timeline/timeline-git-planning.md)
