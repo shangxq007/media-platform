@@ -757,3 +757,11 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - EffectFilterGraphBuilder: EXISTS
 - Fade/brightness/contrast/blur: VERIFIED
 - See [FFmpeg Filtergraph Compiler](../render/ffmpeg-filtergraph-compiler.md)
+
+## Subtitle DSL (2026-07-08)
+
+- SUBTITLE-DSL-ASS.0: COMPLETE (DOCS_FIRST)
+- TimelineTextOverlay: EXISTS
+- Subtitle Render API: EXISTS (MVP)
+- libass provider: EXISTS
+- See [Subtitle DSL](../render/subtitle-dsl-ass.md)

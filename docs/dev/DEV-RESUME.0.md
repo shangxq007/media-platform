@@ -123,3 +123,10 @@ FFMPEG-FILTERGRAPH-COMPILER.0: COMPLETE. Existing infrastructure supports effect
 See [FFmpeg Filtergraph Compiler](../render/ffmpeg-filtergraph-compiler.md)
 
 Recommended next: SUBTITLE-DSL-ASS.0 or TIMELINE-GIT-PLANNING.0
+
+## Subtitle DSL (2026-07-08)
+
+SUBTITLE-DSL-ASS.0: DOCS_FIRST. Existing infrastructure supports subtitle rendering.
+See [Subtitle DSL](../render/subtitle-dsl-ass.md)
+
+Recommended next: TEXT-OVERLAY-SECURITY.0 or TIMELINE-GIT-PLANNING.0
