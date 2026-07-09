@@ -114,6 +114,22 @@ function useCompare(fromId: string | null, toId: string | null) {
   })
 }
 
+// RenderJob Status hooks
+function useRenderJobEvents(renderJobId: string | null) {
+  return useQuery({
+    queryKey: ["render-job-events", PROJECT_ID, renderJobId],
+    queryFn: () => api.get(`/render/projects/${PROJECT_ID}/jobs/${renderJobId}/events`).then(r => r.data),
+    enabled: !!renderJobId,
+  })
+}
+
+function useRenderWorkerMetrics() {
+  return useQuery({
+    queryKey: ["render-worker-metrics", PROJECT_ID],
+    queryFn: () => api.get(`/render/projects/${PROJECT_ID}/jobs/metrics?lookback=PT1H`).then(r => r.data),
+  })
+}
+
 function useRenderRevision() {
   return useMutation({
     mutationFn: (revisionId: string) =>
@@ -286,6 +302,109 @@ function DiffViewer({ fromId, toId }: { fromId: string | null; toId: string | nu
   )
 }
 
+function RenderJobStatusPanel({ renderJobId }: { renderJobId: string | null }) {
+  const { data: events, isLoading } = useRenderJobEvents(renderJobId)
+  if (!renderJobId) return <div style={{ color: "#9ca3af" }}>No render job selected</div>
+  if (isLoading) return <div style={{ color: "#9ca3af" }}>Loading events...</div>
+
+  const eventList = events?.events || events || []
+  return (
+    <div>
+      <h4 style={{ margin: "0 0 8px" }}>RenderJob: {renderJobId.slice(0, 20)}...</h4>
+      <div style={{ fontSize: 12, marginBottom: 8 }}>
+        <span style={{ color: "#9ca3af" }}>Events: {eventList.length}</span>
+      </div>
+      {eventList.length > 0 ? (
+        <table style={{ fontSize: 12, width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #333" }}>
+              <th style={{ textAlign: "left", padding: 4 }}>Time</th>
+              <th style={{ textAlign: "left", padding: 4 }}>Event</th>
+              <th style={{ textAlign: "left", padding: 4 }}>Status</th>
+              <th style={{ textAlign: "left", padding: 4 }}>Worker</th>
+              <th style={{ textAlign: "left", padding: 4 }}>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {eventList.map((e: any, i: number) => (
+              <tr key={i} style={{ borderBottom: "1px solid #222" }}>
+                <td style={{ padding: 4, fontSize: 11 }}>{new Date(e.eventTime || e.timestamp).toLocaleTimeString()}</td>
+                <td style={{ padding: 4 }}>
+                  <span style={{
+                    padding: "1px 4px",
+                    borderRadius: 3,
+                    fontSize: 10,
+                    background: e.eventType?.includes("COMPLETE") ? "#16a34a" :
+                               e.eventType?.includes("FAIL") ? "#dc2626" :
+                               e.eventType?.includes("CLAIM") ? "#2563eb" :
+                               e.eventType?.includes("RETRY") ? "#d97706" : "#4b5563",
+                    color: "white",
+                  }}>
+                    {e.eventType}
+                  </span>
+                </td>
+                <td style={{ padding: 4, fontSize: 11 }}>{e.statusFrom} → {e.statusTo}</td>
+                <td style={{ padding: 4, fontSize: 11, fontFamily: "monospace" }}>{e.workerId || "-"}</td>
+                <td style={{ padding: 4, fontSize: 11 }}>{e.reason || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div style={{ color: "#9ca3af", fontSize: 12 }}>No lifecycle events recorded</div>
+      )}
+    </div>
+  )
+}
+
+function WorkerHealthPanel() {
+  const { data: metrics, isLoading } = useRenderWorkerMetrics()
+  if (isLoading) return <div style={{ color: "#9ca3af" }}>Loading metrics...</div>
+  if (!metrics) return <div style={{ color: "#9ca3af" }}>No metrics available</div>
+
+  const stateCounts = metrics.stateCounts || {}
+  const health = metrics.health || {}
+  const warnings = metrics.warnings || []
+
+  return (
+    <div>
+      <h4 style={{ margin: "0 0 8px" }}>Worker Health</h4>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+        <div style={{ background: "#161b22", padding: 8, borderRadius: 4 }}>
+          <div style={{ fontSize: 11, color: "#9ca3af" }}>Queued</div>
+          <div style={{ fontSize: 18, fontWeight: 600 }}>{stateCounts.queued || 0}</div>
+        </div>
+        <div style={{ background: "#161b22", padding: 8, borderRadius: 4 }}>
+          <div style={{ fontSize: 11, color: "#9ca3af" }}>Executing</div>
+          <div style={{ fontSize: 18, fontWeight: 600 }}>{stateCounts.executing || 0}</div>
+        </div>
+        <div style={{ background: "#161b22", padding: 8, borderRadius: 4 }}>
+          <div style={{ fontSize: 11, color: "#9ca3af" }}>Completed</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#4ade80" }}>{stateCounts.completed || 0}</div>
+        </div>
+        <div style={{ background: "#161b22", padding: 8, borderRadius: 4 }}>
+          <div style={{ fontSize: 11, color: "#9ca3af" }}>Failed</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#ef4444" }}>{stateCounts.failed || 0}</div>
+        </div>
+      </div>
+      <div style={{ fontSize: 12, marginBottom: 8 }}>
+        <strong>Health:</strong>
+        <span style={{ marginLeft: 8 }}>Stale: {health.staleExecuting || 0}</span>
+        <span style={{ marginLeft: 8 }}>Retry Eligible: {health.retryEligibleFailed || 0}</span>
+        <span style={{ marginLeft: 8 }}>Exhausted: {health.retryExhausted || 0}</span>
+      </div>
+      {warnings.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <strong style={{ color: "#f59e0b" }}>Warnings:</strong>
+          {warnings.map((w: string, i: number) => (
+            <span key={i} style={{ marginLeft: 4, padding: "1px 4px", background: "#78350f", borderRadius: 3, fontSize: 10 }}>{w}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RenderPanel({ revisionId, onRender }: { revisionId: string | null; onRender: () => void }) {
   const renderMutation = useRenderRevision()
   const result = renderMutation.data
@@ -408,7 +527,8 @@ export default function TimelineGitConsolePage() {
     }
   }
 
-  const tabs = ['details', 'snapshot', 'diff', 'render', 'restore'] as const
+  const [renderJobId, setRenderJobId] = useState<string | null>(null)
+  const tabs = ['details', 'snapshot', 'diff', 'render', 'restore', 'job-status', 'worker-health'] as const
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0d1117', color: '#e6edf3' }}>
@@ -468,6 +588,8 @@ export default function TimelineGitConsolePage() {
               {activeTab === 'diff' && <DiffViewer fromId={diffFromId} toId={diffToId} />}
               {activeTab === 'render' && <RenderPanel revisionId={selectedId} onRender={() => {}} />}
               {activeTab === 'restore' && <RestorePanel revisionId={selectedId} />}
+              {activeTab === 'job-status' && <RenderJobStatusPanel renderJobId={renderJobId} />}
+              {activeTab === 'worker-health' && <WorkerHealthPanel />}
             </>
           )}
         </div>
