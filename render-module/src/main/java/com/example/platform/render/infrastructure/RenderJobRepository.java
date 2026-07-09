@@ -404,4 +404,22 @@ public class RenderJobRepository {
                 record.get(field("status", String.class))
         );
     }
+
+    public List<Record> findRetryEligibleFailedJobs(java.time.Instant now, int limit) {
+        return dsl.select()
+                .from(table("render_job"))
+                .where(field("status").eq("FAILED")
+                        .and(field("error_message").like("%RETRYABLE%")))
+                .orderBy(field("created_at").asc())
+                .limit(limit)
+                .fetch();
+    }
+
+    public int requeueFailedJob(String jobId) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "QUEUED")
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(field("status").eq("FAILED")))
+                .execute();
+    }
 }

@@ -32,15 +32,18 @@ public class FFmpegWorkerRunner implements CommandLineRunner {
     private final RenderWorkerExecutionService workerExecutionService;
     private final RenderJobRepository renderJobRepository;
     private final RenderWorkerRecoveryService recoveryService;
+    private final RenderWorkerRetryService retryService;
     private final AtomicBoolean running = new AtomicBoolean(true);
 
     public FFmpegWorkerRunner(
             RenderWorkerExecutionService workerExecutionService,
             RenderJobRepository renderJobRepository,
-            RenderWorkerRecoveryService recoveryService) {
+            RenderWorkerRecoveryService recoveryService,
+            RenderWorkerRetryService retryService) {
         this.workerExecutionService = workerExecutionService;
         this.renderJobRepository = renderJobRepository;
         this.recoveryService = recoveryService;
+        this.retryService = retryService;
     }
 
     @Override
@@ -121,6 +124,12 @@ public class FFmpegWorkerRunner implements CommandLineRunner {
                         } catch (Exception e) {
                             log.debug("Recovery cycle failed: {}", e.getMessage());
                         }
+                    }
+                    // Run retry scan
+                    try {
+                        retryService.requeueRetryEligibleJobs(5);
+                    } catch (Exception e) {
+                        log.debug("Retry scan failed: {}", e.getMessage());
                     }
                     Thread.sleep(pollInterval.toMillis());
                     continue;
