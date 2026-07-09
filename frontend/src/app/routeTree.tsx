@@ -8,6 +8,7 @@ import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
 import { DevConsolePage } from '../pages/DevConsolePage.js'
 import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
 import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
+import UserRenderHistoryPage from '../pages/UserRenderHistoryPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -49,6 +50,12 @@ const timelineGitRoute = createRoute({
   component: TimelineGitConsolePage,
 })
 
+const userRenderHistoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/app/renders',
+  component: UserRenderHistoryPage,
+})
+
 const adminRenderJobsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/render-jobs',
@@ -70,4 +77,5 @@ export const routeTree = rootRoute.addChildren([
   devConsoleRoute,
   timelineGitRoute,
   adminRenderJobsRoute,
+  userRenderHistoryRoute,
 ])
