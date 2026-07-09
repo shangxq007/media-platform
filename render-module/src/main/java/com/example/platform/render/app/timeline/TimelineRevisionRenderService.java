@@ -11,6 +11,7 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.app.timeline.InternalTimelineAdapter;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
@@ -56,6 +57,7 @@ public class TimelineRevisionRenderService {
     private final TimelineSnapshotService snapshotService;
     private final TimelineRenderJobMapper mapper;
     private final TimelineScriptParser parser;
+    private final InternalTimelineAdapter internalTimelineAdapter;
     private final RenderInputMaterializationService materializationService;
     private final RenderOutputRegistrationService registrationService;
     private final ProductRuntimeService productRuntime;
@@ -69,6 +71,7 @@ public class TimelineRevisionRenderService {
             TimelineSnapshotService snapshotService,
             TimelineRenderJobMapper mapper,
             TimelineScriptParser parser,
+            InternalTimelineAdapter internalTimelineAdapter,
             RenderInputMaterializationService materializationService,
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
@@ -80,6 +83,7 @@ public class TimelineRevisionRenderService {
         this.snapshotService = snapshotService;
         this.mapper = mapper;
         this.parser = parser;
+        this.internalTimelineAdapter = internalTimelineAdapter;
         this.materializationService = materializationService;
         this.registrationService = registrationService;
         this.productRuntime = productRuntime;
@@ -126,12 +130,15 @@ public class TimelineRevisionRenderService {
         }
         String timelineJson = payloadOpt.get();
 
-        // 4. Parse to TimelineSpec
-        var specOpt = parser.parse(timelineJson);
-        if (specOpt.isEmpty()) {
-            throw new IllegalStateException("Failed to parse timeline JSON for revision: " + revisionId);
+        // 4. Parse to TimelineSpec — try internal adapter first, fall back to script parser
+        TimelineSpec spec = internalTimelineAdapter.toSpec(timelineJson).orElse(null);
+        if (spec == null) {
+            var specOpt = parser.parse(timelineJson);
+            if (specOpt.isEmpty()) {
+                throw new IllegalStateException("Failed to parse timeline JSON for revision: " + revisionId);
+            }
+            spec = specOpt.get();
         }
-        TimelineSpec spec = specOpt.get();
 
         // 5. Map to render job request
         var mappingResult = mapper.toRenderJobRequest(
