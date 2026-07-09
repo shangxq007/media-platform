@@ -122,6 +122,10 @@ public class RenderJobRepository {
     }
 
     public int claimJob(String jobId) {
+        return claimJob(jobId, "ffmpeg-worker");
+    }
+
+    public int claimJob(String jobId, String workerId) {
         return dsl.update(table("render_job"))
                 .set(field("status"), "EXECUTING")
                 .set(field("updated_at"), java.time.OffsetDateTime.now())
