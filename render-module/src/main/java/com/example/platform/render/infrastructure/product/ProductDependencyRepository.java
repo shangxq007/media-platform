@@ -17,6 +17,7 @@ public class ProductDependencyRepository {
 
     protected ProductDependencyRepository() { this.dsl = null; }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ProductDependencyRepository(DSLContext dsl) { this.dsl = dsl; }
 
     public ProductDependency save(ProductDependency dep) {

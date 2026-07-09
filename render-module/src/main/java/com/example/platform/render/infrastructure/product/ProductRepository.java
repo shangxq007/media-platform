@@ -17,6 +17,7 @@ public class ProductRepository {
 
     protected ProductRepository() { this.dsl = null; }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ProductRepository(DSLContext dsl) { this.dsl = dsl; }
 
     public Product save(Product p) {
