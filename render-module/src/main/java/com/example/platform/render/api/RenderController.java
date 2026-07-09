@@ -55,9 +55,10 @@ public class RenderController {
     private final TimelineConversionService timelineConversionService;
     private final AiTimelineProposalService aiTimelineProposalService;
     private final TimelineRevisionService timelineRevisionService;
+    private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
 
     public RenderController(RenderJobService renderJobService) {
-        this(renderJobService, null, null, null, null, null, null, null, null, null);
+        this(renderJobService, null, null, null, null, null, null, null, null, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -70,7 +71,8 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineEditService aiTimelineEditService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineConversionService timelineConversionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionService timelineRevisionService) {
+            @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionService timelineRevisionService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
         this.storageProviders = storageProviders;
@@ -81,6 +83,7 @@ public class RenderController {
         this.timelineConversionService = timelineConversionService;
         this.aiTimelineProposalService = aiTimelineProposalService;
         this.timelineRevisionService = timelineRevisionService;
+        this.productRuntimeService = productRuntimeService;
     }
 
 
@@ -519,6 +522,32 @@ public class RenderController {
             java.nio.file.Files.createDirectories(mediaPath.getParent());
             java.nio.file.Files.write(mediaPath, file.getBytes());
             String storageUri = "localFsStorageProvider://preview-media/" + objectKey;
+
+            // Create RAW_MEDIA Product for Product-backed resolution
+            try {
+                String tenantId = com.example.platform.shared.web.TenantContext.get();
+                if (tenantId != null) {
+                    var existing = productRuntimeService.findByAsset(mediaId);
+                    if (existing.isEmpty()) {
+                        String productId = com.example.platform.shared.Ids.newId("prod");
+                        var product = new com.example.platform.render.domain.product.Product(
+                                productId, tenantId, null, mediaId,
+                                com.example.platform.render.domain.product.ProductType.RAW_MEDIA,
+                                com.example.platform.render.domain.product.RepresentationKind.MEDIA_FILE,
+                                "upload", mediaId, null,
+                                com.example.platform.render.domain.product.ProductStatus.READY,
+                                null, null, null, "video/mp4", 1,
+                                "{\"source\":\"preview-upload\",\"storageUri\":\"" + storageUri + "\"}",
+                                java.time.Instant.now(), java.time.Instant.now());
+                        productRuntimeService.register(product);
+                        log.info("Created RAW_MEDIA Product {} for media: {}", productId, mediaId);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to create RAW_MEDIA Product for {}: {}", mediaId, e.getMessage());
+                // Continue without Product - URI fallback will work
+            }
+
             return Map.of("mediaId", mediaId, "storageUri", storageUri, "size", String.valueOf(file.getSize()));
         } catch (java.io.IOException e) {
             throw new IllegalStateException("Failed to store media", e);
