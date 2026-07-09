@@ -73,4 +73,31 @@ public class RenderJobLifecycleEventRepository {
         if (s == null) return null;
         return s.length() <= maxLen ? s : s.substring(0, maxLen);
     }
+
+
+    // === Retention / Cleanup ===
+
+    public int countEventsOlderThan(java.time.Instant cutoff) {
+        return dsl.fetchCount(DSL.table("render_job_lifecycle_events"),
+                DSL.field("event_time").lessThan(java.sql.Timestamp.from(cutoff)));
+    }
+
+    public java.time.Instant findOldestEventTime() {
+        java.sql.Timestamp ts = dsl.select(DSL.min(DSL.field("event_time")))
+                .from(DSL.table("render_job_lifecycle_events"))
+                .fetchOneInto(java.sql.Timestamp.class);
+        return ts != null ? ts.toInstant() : null;
+    }
+
+    public int deleteEventsOlderThan(java.time.Instant cutoff, int batchSize) {
+        // Delete events older than cutoff, excluding active EXECUTING jobs
+        return dsl.deleteFrom(DSL.table("render_job_lifecycle_events"))
+                .where(DSL.field("event_time").lessThan(java.sql.Timestamp.from(cutoff))
+                        .and(DSL.field("render_job_id").notIn(
+                                dsl.select(DSL.field("id"))
+                                        .from(DSL.table("render_job"))
+                                        .where(DSL.field("status").eq("EXECUTING")))))
+                .limit(batchSize)
+                .execute();
+    }
 }
