@@ -20,6 +20,12 @@ public class RenderJobLifecycleEventService {
     private static final int MAX_EVENTS_PER_JOB = 50;
 
     // In-memory event store for diagnostics
+    private final com.example.platform.render.infrastructure.RenderJobLifecycleEventRepository eventRepository;
+
+    public RenderJobLifecycleEventService(com.example.platform.render.infrastructure.RenderJobLifecycleEventRepository eventRepository) {
+        this.eventRepository = eventRepository;
+    }
+
     private final Map<String, List<LifecycleEvent>> eventStore = new LinkedHashMap<>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, List<LifecycleEvent>> eldest) {
@@ -109,6 +115,25 @@ public class RenderJobLifecycleEventService {
         List<LifecycleEvent> events = eventStore.get(jobId);
         if (events.size() > MAX_EVENTS_PER_JOB) {
             events.remove(0);
+        }
+        // Persist to database
+        try {
+            eventRepository.append(
+                    "unknown", // tenantId - will be resolved from job context
+                    "unknown", // projectId - will be resolved from job context
+                    jobId,
+                    event.eventType(),
+                    event.statusFrom(),
+                    event.statusTo(),
+                    event.workerId(),
+                    event.attempt(),
+                    event.outputProductId(),
+                    event.reasonCode(),
+                    event.reason(),
+                    event.retryable(),
+                    event.durationMs());
+        } catch (Exception e) {
+            log.warn("Failed to persist lifecycle event for job {}: {}", jobId, e.getMessage());
         }
     }
 }
