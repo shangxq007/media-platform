@@ -1,0 +1,35 @@
+# FFmpeg Render Worker — CLI Once Mode
+# Packages platform-app.jar with FFmpeg/libass/fonts for standalone worker execution
+
+FROM eclipse-temurin:25-jre-jammy
+
+# Install FFmpeg, libass, and fonts
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libass9 \
+    fontconfig \
+    fonts-dejavu-core \
+    fonts-noto-cjk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r worker && useradd -r -g worker -d /app worker
+
+WORKDIR /app
+
+# Copy application jar
+COPY platform-app/build/libs/platform-app.jar /app/platform-app.jar
+
+# Create temp directories
+RUN mkdir -p /tmp/render-worker /tmp/platform/preview-media /tmp/platform/render-output \
+    && chown -R worker:worker /tmp/render-worker /tmp/platform /app
+
+USER worker
+
+# Environment
+ENV RENDER_WORKER_ENABLED=true
+ENV RENDER_WORKER_JOB_ID=
+
+# Default: run worker with job id
+# Override at runtime: docker run ... --render.worker.job-id=rj_xxx
+ENTRYPOINT ["java", "-jar", "/app/platform-app.jar", "--spring.profiles.active=ffmpeg-worker"]
