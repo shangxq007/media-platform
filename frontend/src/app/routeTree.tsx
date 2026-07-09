@@ -9,6 +9,7 @@ import { DevConsolePage } from '../pages/DevConsolePage.js'
 import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
 import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
 import UserRenderHistoryPage from '../pages/UserRenderHistoryPage.js'
+import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -50,6 +51,12 @@ const timelineGitRoute = createRoute({
   component: TimelineGitConsolePage,
 })
 
+const adminStorageHealthRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/storage-health',
+  component: AdminStorageHealthPage,
+})
+
 const userRenderHistoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/app/renders',
@@ -78,4 +85,5 @@ export const routeTree = rootRoute.addChildren([
   timelineGitRoute,
   adminRenderJobsRoute,
   userRenderHistoryRoute,
+  adminStorageHealthRoute,
 ])
