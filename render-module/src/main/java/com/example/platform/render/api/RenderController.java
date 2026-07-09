@@ -56,9 +56,10 @@ public class RenderController {
     private final AiTimelineProposalService aiTimelineProposalService;
     private final TimelineRevisionService timelineRevisionService;
     private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
+    private final com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository;
 
     public RenderController(RenderJobService renderJobService) {
-        this(renderJobService, null, null, null, null, null, null, null, null, null, null);
+        this(renderJobService, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -72,7 +73,8 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineConversionService timelineConversionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionService timelineRevisionService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService) {
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
         this.storageProviders = storageProviders;
@@ -84,6 +86,7 @@ public class RenderController {
         this.aiTimelineProposalService = aiTimelineProposalService;
         this.timelineRevisionService = timelineRevisionService;
         this.productRuntimeService = productRuntimeService;
+        this.storageReferenceRepository = storageReferenceRepository;
     }
 
 
@@ -523,12 +526,23 @@ public class RenderController {
             java.nio.file.Files.write(mediaPath, file.getBytes());
             String storageUri = "localFsStorageProvider://preview-media/" + objectKey;
 
-            // Create RAW_MEDIA Product for Product-backed resolution
+            // Create StorageReference and RAW_MEDIA Product for Product-backed resolution
             try {
                 String tenantId = com.example.platform.shared.web.TenantContext.get();
                 if (tenantId != null) {
                     var existing = productRuntimeService.findByAsset(mediaId);
                     if (existing.isEmpty()) {
+                        // Create StorageReference
+                        String storageRefId = com.example.platform.shared.Ids.newId("stor");
+                        var storageRef = new com.example.platform.render.domain.storage.StorageReference(
+                                storageRefId, "localFsStorageProvider",
+                                com.example.platform.render.domain.storage.StorageClass.STANDARD,
+                                "/tmp/platform", "preview-media/" + objectKey,
+                                null, null, file.getSize(), "video/mp4",
+                                java.time.Instant.now(), java.time.Instant.now());
+                        storageReferenceRepository.save(storageRef);
+
+                        // Create RAW_MEDIA Product with storageReferenceId
                         String productId = com.example.platform.shared.Ids.newId("prod");
                         var product = new com.example.platform.render.domain.product.Product(
                                 productId, tenantId, null, mediaId,
@@ -536,12 +550,12 @@ public class RenderController {
                                 com.example.platform.render.domain.product.RepresentationKind.MEDIA_FILE,
                                 "upload", mediaId, null,
                                 com.example.platform.render.domain.product.ProductStatus.REGISTERED,
-                                null, null, null, "video/mp4", 1,
-                                "{\"source\":\"preview-upload\",\"storageUri\":\"" + storageUri + "\"}",
+                                storageRefId, null, null, "video/mp4", 1,
+                                "{\"source\":\"preview-upload\"}",
                                 java.time.Instant.now(), java.time.Instant.now());
                         productRuntimeService.register(product);
                         productRuntimeService.markReady(productId);
-                        log.info("Created RAW_MEDIA Product {} for media: {}", productId, mediaId);
+                        log.info("Created RAW_MEDIA Product {} with storageRef {} for media: {}", productId, storageRefId, mediaId);
                     }
                 }
             } catch (Exception e) {
