@@ -124,7 +124,36 @@ public class RenderJobRepository {
     public int claimJob(String jobId) {
         return dsl.update(table("render_job"))
                 .set(field("status"), "EXECUTING")
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
                 .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
+                .execute();
+    }
+
+    public List<Record> findStaleExecutingJobs(java.time.Instant cutoff, int limit) {
+        return dsl.select()
+                .from(table("render_job"))
+                .where(field("status").eq("EXECUTING")
+                        .and(field("updated_at").lessThan(java.sql.Timestamp.from(cutoff))))
+                .orderBy(field("updated_at").asc())
+                .limit(limit)
+                .fetch();
+    }
+
+    public int markExecutingJobFailed(String jobId, String reason) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "FAILED")
+                .set(field("error_message"), reason)
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(field("status").eq("EXECUTING")))
+                .execute();
+    }
+
+    public int requeueExecutingJob(String jobId, String reason) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "QUEUED")
+                .set(field("error_message"), reason)
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(field("status").eq("EXECUTING")))
                 .execute();
     }
 

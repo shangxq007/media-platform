@@ -31,13 +31,16 @@ public class FFmpegWorkerRunner implements CommandLineRunner {
 
     private final RenderWorkerExecutionService workerExecutionService;
     private final RenderJobRepository renderJobRepository;
+    private final RenderWorkerRecoveryService recoveryService;
     private final AtomicBoolean running = new AtomicBoolean(true);
 
     public FFmpegWorkerRunner(
             RenderWorkerExecutionService workerExecutionService,
-            RenderJobRepository renderJobRepository) {
+            RenderJobRepository renderJobRepository,
+            RenderWorkerRecoveryService recoveryService) {
         this.workerExecutionService = workerExecutionService;
         this.renderJobRepository = renderJobRepository;
+        this.recoveryService = recoveryService;
     }
 
     @Override
@@ -82,7 +85,28 @@ public class FFmpegWorkerRunner implements CommandLineRunner {
 
     private void runPollMode(String pollIntervalStr) {
         Duration pollInterval = parseDuration(pollIntervalStr);
-        log.info("FFmpeg Worker [poll] starting with interval: {}", pollInterval);
+        boolean recoveryEnabled = Boolean.parseBoolean(
+                System.getProperty("render.worker.recovery.enabled",
+                        System.getenv().getOrDefault("RENDER_WORKER_RECOVERY_ENABLED", "true")));
+        Duration staleTimeout = parseDuration(
+                System.getProperty("render.worker.recovery.stale-timeout",
+                        System.getenv().getOrDefault("RENDER_WORKER_RECOVERY_STALE_TIMEOUT", "30m")));
+        String recoveryAction = System.getProperty("render.worker.recovery.action",
+                System.getenv().getOrDefault("RENDER_WORKER_RECOVERY_ACTION", "FAIL"));
+
+        log.info("FFmpeg Worker [poll] starting with interval: {}, recovery: {}", pollInterval, recoveryEnabled);
+
+        // Run recovery on startup
+        if (recoveryEnabled) {
+            try {
+                int recovered = recoveryService.recoverStaleJobs(staleTimeout, recoveryAction, 10);
+                if (recovered > 0) {
+                    log.info("Startup recovery: recovered {} stale jobs", recovered);
+                }
+            } catch (Exception e) {
+                log.warn("Startup recovery failed: {}", e.getMessage());
+            }
+        }
 
         while (running.get()) {
             try {
@@ -90,7 +114,14 @@ public class FFmpegWorkerRunner implements CommandLineRunner {
                 Record job = findQueuedJob();
                 
                 if (job == null) {
-                    // No jobs available, sleep
+                    // No jobs available, run recovery and sleep
+                    if (recoveryEnabled) {
+                        try {
+                            recoveryService.recoverStaleJobs(staleTimeout, recoveryAction, 5);
+                        } catch (Exception e) {
+                            log.debug("Recovery cycle failed: {}", e.getMessage());
+                        }
+                    }
                     Thread.sleep(pollInterval.toMillis());
                     continue;
                 }
