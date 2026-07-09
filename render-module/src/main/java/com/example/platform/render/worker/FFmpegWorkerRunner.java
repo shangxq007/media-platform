@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Minimal FFmpeg render worker that executes a single RenderJob by ID.
+ * CLI once FFmpeg render worker that executes a single RenderJob by ID.
  * 
  * Usage:
  *   java -jar platform-app.jar --spring.profiles.active=ffmpeg-worker \
@@ -18,6 +18,12 @@ import org.springframework.stereotype.Component;
 public class FFmpegWorkerRunner implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(FFmpegWorkerRunner.class);
+
+    private final RenderWorkerExecutionService workerExecutionService;
+
+    public FFmpegWorkerRunner(RenderWorkerExecutionService workerExecutionService) {
+        this.workerExecutionService = workerExecutionService;
+    }
 
     @Override
     public void run(String... args) throws Exception {
@@ -32,15 +38,11 @@ public class FFmpegWorkerRunner implements CommandLineRunner {
         log.info("FFmpeg Worker starting for job: {}", jobId);
         
         try {
-            // TODO: Implement direct RenderJob execution
-            // For now, log the worker boundary
-            log.info("FFmpeg Worker boundary established. Job: {}", jobId);
-            log.info("Worker would execute: materialize inputs → FFmpeg → store output");
-            log.info("This is a design placeholder. Full implementation requires RenderJob execution service extraction.");
-            
+            String resultJobId = workerExecutionService.executeOnce(jobId);
+            log.info("FFmpeg Worker completed successfully: jobId={}", resultJobId);
             System.exit(0);
         } catch (Exception e) {
-            log.error("FFmpeg Worker failed for job {}: {}", jobId, e.getMessage(), e);
+            log.error("FFmpeg Worker failed for job {}: {}", jobId, e.getMessage());
             System.exit(1);
         }
     }
