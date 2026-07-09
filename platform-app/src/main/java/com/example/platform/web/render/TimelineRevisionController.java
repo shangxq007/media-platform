@@ -339,6 +339,22 @@ public class TimelineRevisionController {
         List<PatchPathDto> paths = result.patchPaths().stream()
                 .map(p -> new PatchPathDto(p.op(), p.path()))
                 .toList();
+
+        // Map semantic diff
+        SemanticDiffDto semanticDto = null;
+        if (result.semanticDiff() != null) {
+            var sd = result.semanticDiff();
+            List<SemanticChangeDto> changeDtos = sd.changes().stream()
+                    .map(c -> new SemanticChangeDto(
+                            c.type().name(),
+                            c.entity().kind().name(),
+                            c.entity().id(),
+                            c.summary(),
+                            isRenderAffecting(c.type().name())))
+                    .toList();
+            semanticDto = new SemanticDiffDto(true, sd.structurallyEqual(), changeDtos.size(), changeDtos);
+        }
+
         return new CompareResponse(
                 toListItem(result.fromRevision()),
                 toListItem(result.toRevision()),
@@ -347,7 +363,13 @@ public class TimelineRevisionController {
                         .map(e -> new EntityChangeDto(e.kind(), e.entityId(), e.action()))
                         .toList(),
                 paths,
-                paths.size());
+                paths.size(),
+                semanticDto);
+    }
+
+    private static boolean isRenderAffecting(String changeType) {
+        // All semantic changes are render-affecting except metadata-only
+        return !changeType.contains("METADATA") && !changeType.contains("MESSAGE") && !changeType.contains("AUTHOR");
     }
 
     private static PatchPreviewResponse toPatchPreview(PatchPreviewResult r) {
@@ -436,7 +458,21 @@ public class TimelineRevisionController {
             ChangeSummaryDto summary,
             List<EntityChangeDto> entityChanges,
             List<PatchPathDto> patchPaths,
-            int patchOpCount) {}
+            int patchOpCount,
+            SemanticDiffDto semanticDiff) {}
+
+    public record SemanticDiffDto(
+            boolean supported,
+            boolean structurallyEqual,
+            int changeCount,
+            List<SemanticChangeDto> changes) {}
+
+    public record SemanticChangeDto(
+            String changeType,
+            String entityKind,
+            String entityId,
+            String description,
+            boolean renderAffecting) {}
 
     public record PatchPreviewResponse(
             String revisionId,
