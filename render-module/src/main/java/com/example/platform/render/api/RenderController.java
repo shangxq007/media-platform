@@ -535,11 +535,12 @@ public class RenderController {
                                 com.example.platform.render.domain.product.ProductType.RAW_MEDIA,
                                 com.example.platform.render.domain.product.RepresentationKind.MEDIA_FILE,
                                 "upload", mediaId, null,
-                                com.example.platform.render.domain.product.ProductStatus.READY,
+                                com.example.platform.render.domain.product.ProductStatus.REGISTERED,
                                 null, null, null, "video/mp4", 1,
                                 "{\"source\":\"preview-upload\",\"storageUri\":\"" + storageUri + "\"}",
                                 java.time.Instant.now(), java.time.Instant.now());
                         productRuntimeService.register(product);
+                        productRuntimeService.markReady(productId);
                         log.info("Created RAW_MEDIA Product {} for media: {}", productId, mediaId);
                     }
                 }

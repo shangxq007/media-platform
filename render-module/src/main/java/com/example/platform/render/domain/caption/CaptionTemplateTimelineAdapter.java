@@ -53,7 +53,7 @@ public class CaptionTemplateTimelineAdapter {
                 (long) (request.captionSegments().stream()
                         .mapToDouble(CaptionSegmentSpec::endSeconds)
                         .max().orElse(5.0)),
-                profile.width(), profile.height(), Map.of());
+                profile.width(), profile.height(), Map.of(), null);
 
         double totalDuration = request.captionSegments().stream()
                 .mapToDouble(CaptionSegmentSpec::endSeconds)

@@ -13,6 +13,7 @@ import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.app.timeline.InternalTimelineAdapter;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import java.util.Map;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,7 +152,20 @@ public class TimelineRevisionRenderService {
         List<String> inputProductIds = List.of();
         String mediaResolutionMode = "UNKNOWN";
 
-        var resolverResult = inputProductResolver.resolve(mappingResult.sourceAssetIds());
+        // Extract product bindings from spec
+        Map<String, String> productBindings = new java.util.HashMap<>();
+        if (spec.tracks() != null) {
+            for (var track : spec.tracks()) {
+                if (track.clips() != null) {
+                    for (var clip : track.clips()) {
+                        if (clip.assetRef() != null && clip.assetRef().productId() != null) {
+                            productBindings.put(clip.assetRef().assetId(), clip.assetRef().productId());
+                        }
+                    }
+                }
+            }
+        }
+        var resolverResult = inputProductResolver.resolveWithBindings(mappingResult.sourceAssetIds(), productBindings);
         if (resolverResult.valid()) {
             inputProductIds = resolverResult.inputProductIds();
             String primaryInputProductId = inputProductIds.get(0);
