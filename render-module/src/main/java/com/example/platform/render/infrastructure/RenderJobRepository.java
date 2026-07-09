@@ -1,4 +1,6 @@
 package com.example.platform.render.infrastructure;
+import org.jooq.impl.DSL;
+import java.util.Map;
 
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
@@ -422,4 +424,58 @@ public class RenderJobRepository {
                 .where(field("id").eq(jobId).and(field("status").eq("FAILED")))
                 .execute();
     }
+
+
+    // === Metrics Queries ===
+
+    public Map<String, Integer> countByStatus(String projectId) {
+        Map<String, Integer> counts = new java.util.HashMap<>();
+        var results = dsl.select(field("status"), DSL.count().as("cnt"))
+                .from(table("render_job"))
+                .where(field("project_id").eq(projectId))
+                .groupBy(field("status"))
+                .fetch();
+        for (var row : results) {
+            counts.put(row.get("status", String.class), row.get("cnt", Integer.class));
+        }
+        return counts;
+    }
+
+    public int countStaleExecuting(String projectId, java.time.Instant cutoff) {
+        return dsl.fetchCount(table("render_job"),
+                field("project_id").eq(projectId)
+                        .and(field("status").eq("EXECUTING"))
+                        .and(field("updated_at").lessThan(java.sql.Timestamp.from(cutoff))));
+    }
+
+    public int countRetryEligibleFailed(String projectId) {
+        return dsl.fetchCount(table("render_job"),
+                field("project_id").eq(projectId)
+                        .and(field("status").eq("FAILED"))
+                        .and(field("error_message").like("%RETRYABLE%")));
+    }
+
+    public int countRetryExhausted(String projectId) {
+        return dsl.fetchCount(table("render_job"),
+                field("project_id").eq(projectId)
+                        .and(field("status").eq("FAILED"))
+                        .and(field("error_message").like("%RETRY_EXHAUSTED%")));
+    }
+
+    public java.time.Instant oldestQueuedCreatedAt(String projectId) {
+        return dsl.select(DSL.min(field("created_at")))
+                .from(table("render_job"))
+                .where(field("project_id").eq(projectId).and(field("status").eq("QUEUED")))
+                .fetchOneInto(java.sql.Timestamp.class)
+                .toInstant();
+    }
+
+    public java.time.Instant oldestExecutingUpdatedAt(String projectId) {
+        return dsl.select(DSL.min(field("updated_at")))
+                .from(table("render_job"))
+                .where(field("project_id").eq(projectId).and(field("status").eq("EXECUTING")))
+                .fetchOneInto(java.sql.Timestamp.class)
+                .toInstant();
+    }
+
 }
