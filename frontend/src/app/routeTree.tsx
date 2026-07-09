@@ -6,6 +6,7 @@ import { CapabilitiesPage } from '../shared/CapabilitiesPage.js'
 import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
 import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
 import { DevConsolePage } from '../pages/DevConsolePage.js'
+import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -41,6 +42,12 @@ const observabilityRoute = createRoute({
   component: ObservabilityDashboard,
 })
 
+const timelineGitRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/timeline-git',
+  component: TimelineGitConsolePage,
+})
+
 const devConsoleRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dev/preview',
@@ -54,4 +61,5 @@ export const routeTree = rootRoute.addChildren([
   smokeEditorRoute,
   observabilityRoute,
   devConsoleRoute,
+  timelineGitRoute,
 ])
