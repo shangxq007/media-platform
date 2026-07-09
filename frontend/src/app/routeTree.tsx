@@ -7,6 +7,7 @@ import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
 import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
 import { DevConsolePage } from '../pages/DevConsolePage.js'
 import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
+import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -48,6 +49,12 @@ const timelineGitRoute = createRoute({
   component: TimelineGitConsolePage,
 })
 
+const adminRenderJobsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/render-jobs',
+  component: AdminRenderJobsPage,
+})
+
 const devConsoleRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dev/preview',
@@ -62,4 +69,5 @@ export const routeTree = rootRoute.addChildren([
   observabilityRoute,
   devConsoleRoute,
   timelineGitRoute,
+  adminRenderJobsRoute,
 ])
