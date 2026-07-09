@@ -60,9 +60,15 @@ public class ProductDependencyRepository {
                 r.get(field("project_id", String.class)), r.get(field("product_id", String.class)),
                 r.get(field("depends_on_product_id", String.class)),
                 e(DependencyType.class, r.get(field("dependency_type", String.class))),
-                toInst(r.get(field("created_at", OffsetDateTime.class))));
+                toInst(r.get(field("created_at"))));
     }
 
-    private static Instant toInst(OffsetDateTime o) { return o != null ? o.toInstant() : null; }
+    private static Instant toInst(Object o) {
+        if (o == null) return null;
+        if (o instanceof OffsetDateTime odt) return odt.toInstant();
+        if (o instanceof java.sql.Timestamp ts) return ts.toInstant();
+        if (o instanceof Instant i) return i;
+        return null;
+    }
     private static <E extends Enum<E>> E e(Class<E> t, String v) { try { return Enum.valueOf(t, v); } catch (Exception ex) { return null; } }
 }

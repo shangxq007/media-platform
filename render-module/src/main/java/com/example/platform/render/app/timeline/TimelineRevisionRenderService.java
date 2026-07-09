@@ -146,25 +146,48 @@ public class TimelineRevisionRenderService {
 
         String renderJobId = Ids.newId("rj");
 
-        // 6. Resolve input Products from timeline source assets
+        // 6. Resolve input media — try Product-backed, fall back to URI-based (preview/bootstrap)
+        Path materializedInput;
+        List<String> inputProductIds = List.of();
+        String mediaResolutionMode = "UNKNOWN";
+
         var resolverResult = inputProductResolver.resolve(mappingResult.sourceAssetIds());
-        if (!resolverResult.valid()) {
-            throw new IllegalStateException(
-                    "Input product resolution failed: " + resolverResult.failureReason());
+        if (resolverResult.valid()) {
+            inputProductIds = resolverResult.inputProductIds();
+            String primaryInputProductId = inputProductIds.get(0);
+            var materialization = materializationService.materialize(primaryInputProductId, null, null);
+            if (!materialization.valid()) {
+                throw new IllegalStateException(
+                        "Input materialization failed for " + primaryInputProductId
+                        + ": " + materialization.failureReason());
+            }
+            materializedInput = materialization.materializedPath();
+            mediaResolutionMode = "PRODUCT_BACKED";
+        } else {
+            log.info("Product resolution failed, falling back to URI-based media: {}", resolverResult.failureReason());
+            String mediaUri = spec.tracks().stream()
+                    .filter(t -> t.clips() != null)
+                    .flatMap(t -> t.clips().stream())
+                    .filter(c -> c.assetRef() != null && c.assetRef().storageUri() != null && !c.assetRef().storageUri().isBlank())
+                    .map(c -> c.assetRef().storageUri())
+                    .findFirst()
+                    .orElse(null);
+            if (mediaUri == null || mediaUri.isBlank()) {
+                throw new IllegalStateException(
+                        "No renderable media source found for assets: " + mappingResult.sourceAssetIds());
+            }
+            String localPath = mediaUri.startsWith("localFsStorageProvider://")
+                    ? storageRoot.resolve(mediaUri.substring("localFsStorageProvider://".length())).toAbsolutePath().toString()
+                    : mediaUri.startsWith("/") ? mediaUri : null;
+            if (localPath == null || !java.nio.file.Files.exists(Path.of(localPath))) {
+                throw new IllegalStateException("Cannot resolve media URI: " + mediaUri);
+            }
+            materializedInput = Path.of(localPath);
+            mediaResolutionMode = "URI_BACKED_PREVIEW";
         }
-        List<String> inputProductIds = resolverResult.inputProductIds();
+        log.info("Media resolution: mode={} assetIds={}", mediaResolutionMode, mappingResult.sourceAssetIds());
 
-        // 7. Materialize primary input Product (single-primary-input for R6.1)
-        String primaryInputProductId = inputProductIds.get(0);
-        var materialization = materializationService.materialize(primaryInputProductId, null, null);
-        if (!materialization.valid()) {
-            throw new IllegalStateException(
-                    "Input materialization failed for " + primaryInputProductId
-                    + ": " + materialization.failureReason());
-        }
-        Path materializedInput = materialization.materializedPath();
-
-        // 8. Build provenance with inputProductIds
+        // 7. Build provenance with inputProductIds
         RenderProductProvenance provenance = mappingResult.toProvenanceBuilder()
                 .renderJobId(renderJobId)
                 .baselineRenderer("ffmpeg-libass")

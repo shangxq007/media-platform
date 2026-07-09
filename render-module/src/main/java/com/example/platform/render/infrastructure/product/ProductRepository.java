@@ -92,10 +92,16 @@ public class ProductRepository {
                 r.get(field("storage_reference_id", String.class)), r.get(field("checksum", String.class)),
                 r.get(field("content_hash", String.class)), r.get(field("mime_type", String.class)),
                 r.get(field("version", Integer.class)), r.get(field("metadata_json", String.class)),
-                toInst(r.get(field("created_at", OffsetDateTime.class))),
-                toInst(r.get(field("updated_at", OffsetDateTime.class))));
+                toInst(r.get(field("created_at"))),
+                toInst(r.get(field("updated_at"))));
     }
 
-    private static Instant toInst(OffsetDateTime o) { return o != null ? o.toInstant() : null; }
+    private static Instant toInst(Object o) {
+        if (o == null) return null;
+        if (o instanceof OffsetDateTime odt) return odt.toInstant();
+        if (o instanceof java.sql.Timestamp ts) return ts.toInstant();
+        if (o instanceof Instant i) return i;
+        return null;
+    }
     private static <E extends Enum<E>> E e(Class<E> t, String v) { try { return Enum.valueOf(t, v); } catch (Exception ex) { return null; } }
 }
