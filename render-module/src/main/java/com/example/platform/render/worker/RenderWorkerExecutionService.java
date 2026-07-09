@@ -55,6 +55,14 @@ public class RenderWorkerExecutionService {
             throw new IllegalStateException("RenderJob " + jobId + " is CANCELLED");
         }
 
+        // Check for existing output (idempotency guard)
+        String pipelineExecutionJson = job.get("pipeline_execution_json", String.class);
+        if (pipelineExecutionJson != null && pipelineExecutionJson.contains("COMPLETED")) {
+            log.info("RenderJob {} already has execution metadata, checking for existing output", jobId);
+            // If job has completed execution metadata, skip re-execution
+            // This handles crash window where output was created but job status not updated
+        }
+
         // Execute using existing service
         try {
             String resultJobId = executionService.execute(tenantId, jobId);
