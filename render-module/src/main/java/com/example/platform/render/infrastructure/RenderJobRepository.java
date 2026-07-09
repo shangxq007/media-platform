@@ -112,6 +112,22 @@ public class RenderJobRepository {
     /**
      * Update the status of a render job.
      */
+    public List<Record> findQueuedJobs(int limit) {
+        return dsl.select()
+                .from(table("render_job"))
+                .where(field("status").eq("QUEUED"))
+                .orderBy(field("created_at").asc())
+                .limit(limit)
+                .fetch();
+    }
+
+    public int claimJob(String jobId) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "EXECUTING")
+                .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
+                .execute();
+    }
+
     public void updateStatus(String jobId, String newStatus) {
         dsl.update(table("render_job"))
                 .set(field("status"), newStatus)
