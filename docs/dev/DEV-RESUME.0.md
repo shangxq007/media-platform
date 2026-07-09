@@ -179,3 +179,10 @@ TIMELINE-RENDER-BY-REVISION.0: PARTIAL. Endpoint exists but tenant context issue
 See [Timeline Render by Revision](../timeline/timeline-render-by-revision.md)
 
 Recommended next: TIMELINE-RENDER-BY-REVISION-FIX.0 or TIMELINE-DIFF-MVP.0
+
+## Timeline Render by Revision Fix (2026-07-09)
+
+TIMELINE-RENDER-BY-REVISION-FIX.0: PARTIAL. Tenant context fixed, revision API working, render blocked by parser issue.
+See [Timeline Render by Revision Fix](../timeline/timeline-render-by-revision-fix.md)
+
+Recommended next: Fix TimelineRevisionRenderService parser, then re-validate
