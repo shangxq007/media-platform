@@ -10,6 +10,7 @@ import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
 import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
 import UserRenderHistoryPage from '../pages/UserRenderHistoryPage.js'
 import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
+import UserRenderResultDetailPage from '../pages/UserRenderResultDetailPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -51,6 +52,12 @@ const timelineGitRoute = createRoute({
   component: TimelineGitConsolePage,
 })
 
+const userRenderResultDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/app/renders/$productId',
+  component: UserRenderResultDetailPage,
+})
+
 const adminStorageHealthRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/storage-health',
@@ -86,4 +93,5 @@ export const routeTree = rootRoute.addChildren([
   adminRenderJobsRoute,
   userRenderHistoryRoute,
   adminStorageHealthRoute,
+  userRenderResultDetailRoute,
 ])
