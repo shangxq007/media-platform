@@ -67,9 +67,11 @@ public class ArtifactAccessService {
                 return AccessDescriptor.unsupported("Signed access not enabled");
             }
             try {
-                // Use S3 presigner (simplified - actual implementation needs AWS S3Presigner)
-                // For now, return unsupported until presigner is integrated
-                return AccessDescriptor.unsupported("S3 presigner not yet integrated");
+                java.time.Duration ttl = java.time.Duration.parse("PT" + signedAccessTtl);
+                String url = s3Materializer.createPresignedGetUrl(bucket, objectKey, ttl);
+                return new AccessDescriptor(null, null, AccessDescriptor.AccessType.SIGNED_URL, "GET", url,
+                        Instant.now().plus(ttl), (int) ttl.getSeconds(),
+                        mimeType, filename, storageRef.fileSize(), "READY", null, true);
             } catch (Exception e) {
                 log.warn("Failed to generate signed URL: {}", e.getMessage());
                 return AccessDescriptor.accessFailed("Access generation failed");

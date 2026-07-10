@@ -20,6 +20,9 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 /**
  * Materializes objects from S3-compatible storage to local temporary files.
@@ -145,6 +148,31 @@ public class S3ObjectMaterializer {
     /**
      * Check if the S3 properties are enabled and configured.
      */
+    /**
+     * Create presigned GET URL for S3/R2 object access.
+     * Access-layer only, never persisted, never exposes bucket/key separately.
+     */
+    public String createPresignedGetUrl(String bucket, String objectKey, java.time.Duration ttl) {
+        S3Presigner presigner = S3Presigner.builder()
+                .credentialsProvider(s3Client.serviceClientConfiguration().credentialsProvider())
+                .region(s3Client.serviceClientConfiguration().region())
+                .endpointOverride(s3Client.serviceClientConfiguration().endpointOverride().orElse(null))
+                .build();
+
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .build();
+
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(ttl)
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        PresignedGetObjectRequest presignedRequest = presigner.presignGetObject(presignRequest);
+        return presignedRequest.url().toString();
+    }
+
     public boolean isEnabled() {
         return properties.isEnabled()
                 && properties.getEndpoint() != null
