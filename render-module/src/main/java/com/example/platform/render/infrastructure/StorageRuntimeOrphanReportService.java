@@ -1,4 +1,6 @@
 package com.example.platform.render.infrastructure;
+import java.nio.file.Path;
+import java.nio.file.Files;
 
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -135,5 +137,71 @@ public class StorageRuntimeOrphanReportService {
         } catch (Exception e) {
             log.debug("RenderJob output product check skipped: {}", e.getMessage());
         }
+    }
+
+
+    /**
+     * Check physical existence of objects referenced by StorageReferences.
+     * Report-only, never deletes or mutates.
+     */
+    public Map<String, Object> generatePhysicalReport(Path storageRoot, int limit) {
+        Instant now = Instant.now();
+        List<Map<String, Object>> issues = new ArrayList<>();
+        int checked = 0;
+        int found = 0;
+        int missing = 0;
+
+        // Get StorageReference IDs from Products
+        try {
+            var refs = dsl.select(
+                    DSL.field("sr.id"),
+                    DSL.field("sr.storage_path"))
+                .from(DSL.table("storage_reference").as("sr"))
+                .join(DSL.table("product").as("p"))
+                .on(DSL.field("p.storage_reference_id").eq(DSL.field("sr.id")))
+                .limit(limit)
+                .fetch();
+
+            for (var row : refs) {
+                checked++;
+                String refId = row.get("id", String.class);
+                String storagePath = row.get("storage_path", String.class);
+
+                if (storagePath != null) {
+                    Path filePath = storageRoot.resolve(storagePath);
+                    if (Files.exists(filePath) && !Files.isSymbolicLink(filePath)) {
+                        found++;
+                    } else {
+                        missing++;
+                        Map<String, Object> issue = new LinkedHashMap<>();
+                        issue.put("issueType", "STORAGE_OBJECT_MISSING");
+                        issue.put("severity", "HIGH");
+                        issue.put("entityType", "StorageReference");
+                        issue.put("entityId", refId);
+                        issue.put("message", "Referenced storage object does not exist");
+                        issue.put("recommendedAction", "Investigate missing storage object");
+                        issue.put("safeToAutoDelete", false);
+                        issue.put("destructiveActionAvailable", false);
+                        issues.add(issue);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Physical check skipped: {}", e.getMessage());
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("generatedAt", now.toString());
+        summary.put("reportOnly", true);
+        summary.put("destructive", false);
+        summary.put("physicalChecksEnabled", true);
+        summary.put("storageRoot", storageRoot.toString());
+        summary.put("limit", limit);
+        summary.put("referencesChecked", checked);
+        summary.put("objectsFound", found);
+        summary.put("objectsMissing", missing);
+        summary.put("issueCount", issues.size());
+        summary.put("issues", issues);
+        return summary;
     }
 }
