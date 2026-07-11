@@ -41,6 +41,9 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
  *   <li>Local temp files only returned to internal runtime code</li>
  *   <li>Checksum verification against stored SHA-256</li>
  * </ul>
+ *
+ * <p>S3Client is initialized lazily on first use to avoid network calls
+ * (DNS resolution, HTTP client init) during Spring startup.</p>
  */
 @Component
 @ConditionalOnProperty(prefix = "storage.s3", name = "enabled", havingValue = "true")
@@ -49,14 +52,27 @@ public class S3ObjectMaterializer {
     private static final Logger log = LoggerFactory.getLogger(S3ObjectMaterializer.class);
 
     private final StorageS3Properties properties;
-    private final S3Client s3Client;
+    private volatile S3Client s3Client;
 
     public S3ObjectMaterializer(StorageS3Properties properties) {
         this.properties = properties;
-        this.s3Client = buildClient(properties);
         S3ClientSettingsResolver.Resolved resolved = S3ClientSettingsResolver.resolve(properties);
-        log.info("S3ObjectMaterializer initialized: endpoint={} region={} pathStyle={}",
+        log.info("S3ObjectMaterializer initialized: endpoint={} region={} pathStyle={} (client will be initialized on first use)",
                 resolved.endpoint(), resolved.region(), resolved.pathStyleAccess());
+    }
+
+    private S3Client getClient() {
+        S3Client result = s3Client;
+        if (result == null) {
+            synchronized (this) {
+                result = s3Client;
+                if (result == null) {
+                    log.info("Lazily initializing S3ObjectMaterializer S3Client...");
+                    s3Client = result = buildClient(properties);
+                }
+            }
+        }
+        return result;
     }
 
     /**
@@ -77,7 +93,7 @@ public class S3ObjectMaterializer {
         // Head object to verify existence and get metadata
         HeadObjectResponse headResponse;
         try {
-            headResponse = s3Client.headObject(HeadObjectRequest.builder()
+            headResponse = getClient().headObject(HeadObjectRequest.builder()
                     .bucket(bucket)
                     .key(objectKey)
                     .build());
@@ -109,7 +125,7 @@ public class S3ObjectMaterializer {
                     .build();
 
             // Use getObjectAsBytes for broad S3-compatible backend support
-            byte[] objectBytes = s3Client.getObjectAsBytes(getRequest).asByteArray();
+            byte[] objectBytes = getClient().getObjectAsBytes(getRequest).asByteArray();
 
             if (objectBytes.length == 0) {
                 log.warn("S3 downloaded zero-byte object: bucket={} key={}", bucket, objectKey);
@@ -153,10 +169,11 @@ public class S3ObjectMaterializer {
      * Access-layer only, never persisted, never exposes bucket/key separately.
      */
     public String createPresignedGetUrl(String bucket, String objectKey, java.time.Duration ttl) {
+        S3Client client = getClient();
         S3Presigner presigner = S3Presigner.builder()
-                .credentialsProvider(s3Client.serviceClientConfiguration().credentialsProvider())
-                .region(s3Client.serviceClientConfiguration().region())
-                .endpointOverride(s3Client.serviceClientConfiguration().endpointOverride().orElse(null))
+                .credentialsProvider(client.serviceClientConfiguration().credentialsProvider())
+                .region(client.serviceClientConfiguration().region())
+                .endpointOverride(client.serviceClientConfiguration().endpointOverride().orElse(null))
                 .build();
 
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()

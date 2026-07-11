@@ -30,6 +30,11 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 
 /**
  * S3-compatible {@link BlobStorage} for render cache and artifact persistence.
+ *
+ * <p>S3Client and S3Presigner are initialized lazily on first use to avoid
+ * network calls (DNS resolution, HTTP client init) during Spring startup.
+ * This prevents startup hangs when the S3/R2 endpoint is slow or unreachable
+ * at boot time.</p>
  */
 @Component
 @Primary
@@ -39,16 +44,42 @@ public class S3BlobStorageProvider implements BlobStorage {
     private static final Logger log = LoggerFactory.getLogger(S3BlobStorageProvider.class);
 
     private final StorageS3Properties properties;
-    private final S3Client s3Client;
-    private final S3Presigner presigner;
+    private volatile S3Client s3Client;
+    private volatile S3Presigner presigner;
 
     public S3BlobStorageProvider(StorageS3Properties properties) {
         this.properties = properties;
-        this.s3Client = buildClient(properties);
-        this.presigner = buildPresigner(properties);
         S3ClientSettingsResolver.Resolved resolved = S3ClientSettingsResolver.resolve(properties);
-        log.info("S3BlobStorageProvider enabled compatibility={} region={} endpoint={}",
+        log.info("S3BlobStorageProvider enabled compatibility={} region={} endpoint={} (client will be initialized on first use)",
                 resolved.compatibilityMode(), resolved.region(), resolved.endpoint());
+    }
+
+    private S3Client getClient() {
+        S3Client result = s3Client;
+        if (result == null) {
+            synchronized (this) {
+                result = s3Client;
+                if (result == null) {
+                    log.info("Lazily initializing S3Client...");
+                    s3Client = result = buildClient(properties);
+                }
+            }
+        }
+        return result;
+    }
+
+    private S3Presigner getPresigner() {
+        S3Presigner result = presigner;
+        if (result == null) {
+            synchronized (this) {
+                result = presigner;
+                if (result == null) {
+                    log.info("Lazily initializing S3Presigner...");
+                    presigner = result = buildPresigner(properties);
+                }
+            }
+        }
+        return result;
     }
 
     @Override
@@ -70,14 +101,14 @@ public class S3BlobStorageProvider implements BlobStorage {
         } else {
             body = RequestBody.fromBytes(command.content());
         }
-        s3Client.putObject(request, body);
+        getClient().putObject(request, body);
         return new StorageObjectRef(code(), bucket, command.objectKey());
     }
 
     @Override
     public boolean delete(String bucket, String objectKey) {
         String resolvedBucket = bucket != null && !bucket.isBlank() ? bucket : properties.getDefaultBucket();
-        s3Client.deleteObject(DeleteObjectRequest.builder()
+        getClient().deleteObject(DeleteObjectRequest.builder()
                 .bucket(resolvedBucket)
                 .key(objectKey)
                 .build());
@@ -100,7 +131,7 @@ public class S3BlobStorageProvider implements BlobStorage {
             if (continuationToken != null) {
                 builder.continuationToken(continuationToken);
             }
-            ListObjectsV2Response response = s3Client.listObjectsV2(builder.build());
+            ListObjectsV2Response response = getClient().listObjectsV2(builder.build());
             for (S3Object obj : response.contents()) {
                 if (obj.key() == null || obj.key().endsWith("/")) {
                     continue;
@@ -123,7 +154,7 @@ public class S3BlobStorageProvider implements BlobStorage {
                 .key(objectKey)
                 .build();
         try {
-            return Optional.of(s3Client.getObjectAsBytes(request).asByteArray());
+            return Optional.of(getClient().getObjectAsBytes(request).asByteArray());
         } catch (software.amazon.awssdk.services.s3.model.S3Exception e) {
             if (isObjectNotFound(e)) {
                 log.debug("S3 object not found: bucket={} key={}", resolvedBucket, objectKey);
@@ -159,7 +190,7 @@ public class S3BlobStorageProvider implements BlobStorage {
                 .signatureDuration(java.time.Duration.ofHours(1))
                 .getObjectRequest(b -> b.bucket(resolvedBucket).key(objectKey))
                 .build();
-        return presigner.presignGetObject(presignRequest).url().toString();
+        return getPresigner().presignGetObject(presignRequest).url().toString();
     }
 
     private static S3Client buildClient(StorageS3Properties properties) {
