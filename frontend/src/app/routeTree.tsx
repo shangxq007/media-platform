@@ -13,6 +13,7 @@ import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
 import UserRenderResultDetailPage from '../pages/UserRenderResultDetailPage.js'
 import { DevDiagnosticsHubPage } from '../pages/DevDiagnosticsHubPage.js'
 import { DevStorageDeliveryProfileDiagnosticsPage } from '../pages/DevStorageDeliveryProfileDiagnosticsPage.js'
+import { DevIngestPreflightPolicyDiagnosticsPage } from '../pages/DevIngestPreflightPolicyDiagnosticsPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -96,6 +97,12 @@ const devStorageDeliveryProfileDiagnosticsRoute = createRoute({
   component: DevStorageDeliveryProfileDiagnosticsPage,
 })
 
+const devIngestPreflightPolicyDiagnosticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/ingest/preflight-policy',
+  component: DevIngestPreflightPolicyDiagnosticsPage,
+})
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   renderJobsRoute,
@@ -110,4 +117,5 @@ export const routeTree = rootRoute.addChildren([
   userRenderResultDetailRoute,
   devDiagnosticsHubRoute,
   devStorageDeliveryProfileDiagnosticsRoute,
+  devIngestPreflightPolicyDiagnosticsRoute,
 ])
