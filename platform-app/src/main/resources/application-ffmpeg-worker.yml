@@ -1,0 +1,27 @@
+# FFmpeg Render Worker Profile
+# Runs as standalone worker to execute RenderJobs using Product-backed inputs
+
+spring:
+  main:
+    web-application-type: none
+    banner-mode: log
+
+server:
+  port: 0
+
+render:
+  worker:
+    enabled: true
+    mode: once
+    job-id: ${RENDER_WORKER_JOB_ID:}
+    max-concurrent-jobs: 1
+    provider: ffmpeg
+    allow-uri-preview-fallback: true
+    temp-dir: /tmp/render-worker
+    cleanup-enabled: true
+
+platform:
+  preview:
+    enabled: true
+  security:
+    enabled: false

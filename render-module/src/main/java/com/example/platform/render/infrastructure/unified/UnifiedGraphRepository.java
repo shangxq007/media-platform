@@ -52,15 +52,15 @@ public class UnifiedGraphRepository {
                         graph.jobId(),
                         graph.rootNodeId(),
                         graph.status().name(),
-                        OffsetDateTime.from(graph.createdAt()),
-                        graph.completedAt() != null ? OffsetDateTime.from(graph.completedAt()) : null
+                        graph.createdAt().atOffset(java.time.ZoneOffset.UTC),
+                        graph.completedAt() != null ? graph.completedAt().atOffset(java.time.ZoneOffset.UTC) : null
                 )
                 .onConflict(field("graph_id"))
                 .doUpdate()
                 .set(field("job_id"), graph.jobId())
                 .set(field("root_node_id"), graph.rootNodeId())
                 .set(field("status"), graph.status().name())
-                .set(field("completed_at"), graph.completedAt() != null ? OffsetDateTime.from(graph.completedAt()) : null)
+                .set(field("completed_at"), graph.completedAt() != null ? graph.completedAt().atOffset(java.time.ZoneOffset.UTC) : null)
                 .execute();
 
         // Save nodes
@@ -100,7 +100,7 @@ public class UnifiedGraphRepository {
                         node.action(),
                         node.status(),
                         serializeMap(node.data()),
-                        OffsetDateTime.from(node.timestamp())
+                        node.timestamp().atOffset(java.time.ZoneOffset.UTC)
                 )
                 .onConflict(field("node_id"))
                 .doUpdate()
@@ -128,7 +128,7 @@ public class UnifiedGraphRepository {
                         edge.sourceNodeId(),
                         edge.targetNodeId(),
                         edge.edgeType(),
-                        OffsetDateTime.from(edge.timestamp())
+                        edge.timestamp().atOffset(java.time.ZoneOffset.UTC)
                 )
                 .onConflict(field("edge_id"))
                 .doNothing()

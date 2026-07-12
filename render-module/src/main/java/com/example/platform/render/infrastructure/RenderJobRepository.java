@@ -1,4 +1,6 @@
 package com.example.platform.render.infrastructure;
+import org.jooq.impl.DSL;
+import java.util.Map;
 
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
@@ -112,6 +114,55 @@ public class RenderJobRepository {
     /**
      * Update the status of a render job.
      */
+    public List<Record> findQueuedJobs(int limit) {
+        return dsl.select()
+                .from(table("render_job"))
+                .where(field("status").eq("QUEUED"))
+                .orderBy(field("created_at").asc())
+                .limit(limit)
+                .fetch();
+    }
+
+    public int claimJob(String jobId) {
+        return claimJob(jobId, "ffmpeg-worker");
+    }
+
+    public int claimJob(String jobId, String workerId) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "EXECUTING")
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
+                .execute();
+    }
+
+    public List<Record> findStaleExecutingJobs(java.time.Instant cutoff, int limit) {
+        return dsl.select()
+                .from(table("render_job"))
+                .where(field("status").eq("EXECUTING")
+                        .and(field("updated_at").lessThan(java.sql.Timestamp.from(cutoff))))
+                .orderBy(field("updated_at").asc())
+                .limit(limit)
+                .fetch();
+    }
+
+    public int markExecutingJobFailed(String jobId, String reason) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "FAILED")
+                .set(field("error_message"), reason)
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(field("status").eq("EXECUTING")))
+                .execute();
+    }
+
+    public int requeueExecutingJob(String jobId, String reason) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "QUEUED")
+                .set(field("error_message"), reason)
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(field("status").eq("EXECUTING")))
+                .execute();
+    }
+
     public void updateStatus(String jobId, String newStatus) {
         dsl.update(table("render_job"))
                 .set(field("status"), newStatus)
@@ -355,4 +406,76 @@ public class RenderJobRepository {
                 record.get(field("status", String.class))
         );
     }
+
+    public List<Record> findRetryEligibleFailedJobs(java.time.Instant now, int limit) {
+        return dsl.select()
+                .from(table("render_job"))
+                .where(field("status").eq("FAILED")
+                        .and(field("error_message").like("%RETRYABLE%")))
+                .orderBy(field("created_at").asc())
+                .limit(limit)
+                .fetch();
+    }
+
+    public int requeueFailedJob(String jobId) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "QUEUED")
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(field("status").eq("FAILED")))
+                .execute();
+    }
+
+
+    // === Metrics Queries ===
+
+    public Map<String, Integer> countByStatus(String projectId) {
+        Map<String, Integer> counts = new java.util.HashMap<>();
+        var results = dsl.select(field("status"), DSL.count().as("cnt"))
+                .from(table("render_job"))
+                .where(field("project_id").eq(projectId))
+                .groupBy(field("status"))
+                .fetch();
+        for (var row : results) {
+            counts.put(row.get("status", String.class), row.get("cnt", Integer.class));
+        }
+        return counts;
+    }
+
+    public int countStaleExecuting(String projectId, java.time.Instant cutoff) {
+        return dsl.fetchCount(table("render_job"),
+                field("project_id").eq(projectId)
+                        .and(field("status").eq("EXECUTING"))
+                        .and(field("updated_at").lessThan(java.sql.Timestamp.from(cutoff))));
+    }
+
+    public int countRetryEligibleFailed(String projectId) {
+        return dsl.fetchCount(table("render_job"),
+                field("project_id").eq(projectId)
+                        .and(field("status").eq("FAILED"))
+                        .and(field("error_message").like("%RETRYABLE%")));
+    }
+
+    public int countRetryExhausted(String projectId) {
+        return dsl.fetchCount(table("render_job"),
+                field("project_id").eq(projectId)
+                        .and(field("status").eq("FAILED"))
+                        .and(field("error_message").like("%RETRY_EXHAUSTED%")));
+    }
+
+    public java.time.Instant oldestQueuedCreatedAt(String projectId) {
+        return dsl.select(DSL.min(field("created_at")))
+                .from(table("render_job"))
+                .where(field("project_id").eq(projectId).and(field("status").eq("QUEUED")))
+                .fetchOneInto(java.sql.Timestamp.class)
+                .toInstant();
+    }
+
+    public java.time.Instant oldestExecutingUpdatedAt(String projectId) {
+        return dsl.select(DSL.min(field("updated_at")))
+                .from(table("render_job"))
+                .where(field("project_id").eq(projectId).and(field("status").eq("EXECUTING")))
+                .fetchOneInto(java.sql.Timestamp.class)
+                .toInstant();
+    }
+
 }

@@ -178,3 +178,41 @@ P2O.0g designs the mapping from platform RenderExecutionPlan to OpenCue CJSL:
 - No production OpenCue adapter
 - No live Cuebot submission
 - Does not implement RenderExecutionPlan execution, StorageRuntime integration, ProductRuntime integration, cross-service-provider execution, Remotion execution, public API, or Artifact DAG
+
+---
+
+## Phase 2b High-Autonomy Safety Rules (2026-07-01)
+
+**Authority:** HERMES.7b / ARCH.1
+
+### Absolute Prohibitions
+
+| # | Rule | Enforcement |
+|---|------|-------------|
+| 1 | No push to main | Human only (Level 5) |
+| 2 | No force push | Never |
+| 3 | No auto merge | Human only |
+| 4 | No production deploy | Human only |
+| 5 | No production secrets modification | Except explicitly authorized |
+| 6 | No Flyway V1 baseline modification | Never |
+| 7 | No Spring AI activation | Forbidden |
+| 8 | No Artifact DAG runtime | Forbidden |
+| 9 | No OpenCue-as-Provider | Forbidden |
+| 10 | No Remotion production dispatch | Forbidden |
+| 11 | No public API leak of provider/storage internals | Forbidden |
+
+### VS.0-Specific Constraints
+
+| # | Constraint |
+|---|-----------|
+| 1 | CT.0 must remain typed intent slice — no generic Template System |
+| 2 | VS.0 must use FFmpeg/libass only — no Remotion production dispatch |
+| 3 | No schema changes unless necessary; new migration only |
+| 4 | All subtasks must respect stop-conditions.md |
+| 5 | Review packets generated per task |
+| 6 | Claude Code architecture review at VS.0 milestone |
+| 7 | Human reviews before merge to main |
+
+### Stop Conditions
+
+Agents MUST stop and report if any of 12 stop conditions trigger. See `policies/stop-conditions.md` for full list.

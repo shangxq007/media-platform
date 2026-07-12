@@ -1,0 +1,21 @@
+# .sops.yaml — SOPS configuration example
+# This is a TEMPLATE only
+# Do NOT use without generating real age keys
+# SOPS/age status: PLANNED
+
+# To generate an age key:
+#   age-keygen -o keys/age-key.txt
+#
+# To get the public key:
+#   age-keygen -y keys/age-key.txt
+
+creation_rules:
+  # Encrypt secrets directory
+  - path_regex: secrets/.*\.sops\.yaml$
+    age: >-
+      age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+  # Encrypt ops/secrets directory
+  - path_regex: ops/secrets/.*\.sops\.yaml$
+    age: >-
+      age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

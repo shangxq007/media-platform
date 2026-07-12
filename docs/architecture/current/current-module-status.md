@@ -146,3 +146,14 @@ owner: platform
 | Plugin security sandbox | ❌ Not implemented | No Wasm/container isolation |
 | Temporal integration | ✅ Implemented | workflow-module (20 files): RenderWorkflow, RenderPipelineWorkflow, activities, adapters |
 | LiteFlow integration | ✅ Implemented | render-module (7 files): LiteFlow nodes for subtitle burn-in, policy routing |
+
+
+## Render Module Status (2026-07-07)
+
+| Component | Status |
+|-----------|--------|
+| Provider Config | ACTIVE |
+| FFmpeg Provider | ENABLED |
+| Execution Validation | PENDING |
+| Artifact Validation | PENDING |
+| OpenCue Worker | NOT STARTED |

@@ -178,7 +178,7 @@ public class TimelineScriptParser {
             assetMetadata = mergeMaps(assetMetadata, parseStringMap(assetRefNode.get("metadata")));
         }
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                clipId, mediaRef, "unknown", 0, 0, 0, assetMetadata);
+                clipId, mediaRef, "unknown", 0, 0, 0, assetMetadata, null);
         List<TimelineClipEffect> effects = parseClipEffects(clipNode);
         return new TimelineClip(clipId, assetRef, timelineStart, startTime, outPoint,
                 duration, effects);

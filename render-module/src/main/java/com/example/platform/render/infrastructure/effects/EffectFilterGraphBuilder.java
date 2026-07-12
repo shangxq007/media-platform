@@ -64,13 +64,40 @@ public class EffectFilterGraphBuilder {
         String text = str(params, "text", "Subtitle");
         String position = str(params, "position", "bottom");
         int fontSize = (int) num(params, "fontSize", 24);
-        String escaped = text.replace("'", "\\'").replace(":", "\\:");
+        
+        // Resource limits
+        if (text.length() > 500) {
+            throw new IllegalArgumentException("Subtitle text exceeds max length (500 chars)");
+        }
+        if (fontSize < 8 || fontSize > 160) {
+            throw new IllegalArgumentException("fontSize must be between 8 and 160");
+        }
+        
+        // ASS escaping: neutralize override tags and special characters
+        String escaped = escapeDrawText(text);
+        
         String y = switch (position.toLowerCase()) {
             case "top" -> "50";
             case "center" -> "h/2";
             default -> "h-th-50";
         };
         return "drawtext=text='" + escaped + "':fontsize=" + fontSize + ":fontcolor=white:x=(w-tw)/2:y=" + y;
+    }
+    
+    /**
+     * Escape text for FFmpeg drawtext filter.
+     * Neutralizes ASS override tags and special characters.
+     */
+    static String escapeDrawText(String text) {
+        if (text == null) return "";
+        return text
+            .replace("\\", "\\\\")  // backslash first
+            .replace("'", "\\'")         // single quote
+            .replace(":", "\\:")         // colon
+            .replace("{", "\\{")         // ASS override open
+            .replace("}", "\\}")         // ASS override close
+            .replace("\n", "\\n")       // literal newline escape
+            .replace("\r", "");           // remove carriage return
     }
 
     private static double num(Map<String, Object> params, String key, double defaultValue) {

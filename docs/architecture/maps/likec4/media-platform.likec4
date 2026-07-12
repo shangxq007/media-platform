@@ -1,0 +1,273 @@
+specification {
+  element system
+  element container
+  element component
+  element person
+  element external
+}
+
+model {
+
+  user = person 'User' {
+    description 'Platform user'
+  }
+
+  reviewer = person 'Human Reviewer' {
+    description 'Final arbiter'
+  }
+
+  cloudflare = external 'Cloudflare' {
+    description 'R2, Pages, AI Gateway'
+  }
+
+  telegram = external 'Telegram' {
+    description 'Notifications'
+  }
+
+  aiProviders = external 'AI Providers' {
+    description 'MiMo, LongCat, OpenRouter, etc.'
+  }
+
+  storage = external 'Storage' {
+    description 'Object storage / shared filesystem'
+  }
+
+  mediaPlatform = system 'media-platform' {
+    description 'Render platform'
+
+    platformApp = container 'platform-app' {
+      description 'Spring Boot entry point'
+    }
+
+    renderModule = container 'render-module' {
+      description 'Core render domain'
+
+      timelineEdit = component 'Timeline Edit Command' {
+        description 'TL.0: Sealed interface with 12 typed command records'
+      }
+
+      captionTemplate = component 'Caption Template' {
+        description 'CT.0: Typed intent model for caption/subtitle rendering'
+      }
+
+      assStyleMapper = component 'AssStyleMapper' {
+        description 'CT.0: Maps CaptionTemplateSpec to ASS format parameters'
+      }
+
+      providerBinding = component 'Provider Binding' {
+        description 'Deterministic eligibility + priority provider selection'
+      }
+
+      ffmpegBaseline = component 'FFmpeg/libass Baseline' {
+        description 'Production rendering baseline'
+      }
+
+      productRuntime = component 'Product Runtime' {
+        description 'Product lifecycle management'
+      }
+
+      storageRuntime = component 'Storage Runtime' {
+        description 'Storage/materialization management'
+      }
+
+      previewRenderJobService = component 'Preview Render Job Service' {
+        description 'VS.1: Preview render job lifecycle'
+      }
+
+      previewArtifactQueryService = component 'Preview Artifact Query Service' {
+        description 'VS.1: Product/artifact metadata query'
+      }
+
+      fakeTestLayer = component 'Fake Test Layer' {
+        description 'VS.1-TEST.1: Fake implementations for integration testing'
+      }
+    }
+
+    aiModule = container 'ai-module' {
+      description 'AI integration'
+    }
+
+    sharedKernel = container 'shared-kernel' {
+      description 'Shared domain primitives'
+    }
+
+    opencue = container 'OpenCue' {
+      description 'ExecutionEnvironment only — NOT a Provider'
+    }
+
+    remotion = container 'Remotion' {
+      description 'Non-production/POC subtitle template provider'
+    }
+  }
+
+  hermes = system 'Hermes Control Plane' {
+    description 'Multi-agent orchestration'
+
+    hermesAgent = component 'Hermes Agent' {
+      description 'Gateway, orchestrator, Level 3 Feature Coordinator'
+    }
+
+    codingAgents = component 'Coding Agents' {
+      description 'OpenCode, Codex, Kilo Code, Claude Code, Aider'
+    }
+
+    reviewInfra = component 'Review Infrastructure' {
+      description 'CODEOWNERS, Semgrep, Review Packets'
+    }
+
+    policies = component 'Policies' {
+      description 'Permissions, stop conditions'
+    }
+
+    dashboard = component 'Dashboard' {
+      description 'scribe.cc.cd'
+    }
+  }
+
+  // External relationships
+  user -> mediaPlatform 'uses'
+  reviewer -> hermes 'reviews'
+  mediaPlatform -> storage 'reads/writes'
+  mediaPlatform -> aiProviders 'calls models'
+  hermes -> cloudflare 'publishes'
+  hermes -> telegram 'notifies'
+  hermes -> mediaPlatform 'develops'
+
+  // Internal: application structure
+  platformApp -> renderModule 'uses'
+  platformApp -> aiModule 'uses'
+  renderModule -> sharedKernel 'depends on'
+  aiModule -> sharedKernel 'depends on'
+
+  // VS.0 vertical slice flow
+  timelineEdit -> captionTemplate 'generates typed intent'
+  captionTemplate -> assStyleMapper 'maps to ASS parameters'
+  assStyleMapper -> providerBinding 'resolves provider'
+  providerBinding -> ffmpegBaseline 'routes PRODUCTION'
+  ffmpegBaseline -> productRuntime 'produces output'
+  productRuntime -> storageRuntime 'manages lifecycle'
+  storageRuntime -> storage 'persists artifacts'
+
+  // Boundaries
+  providerBinding -> opencue 'routes ExecutionEnv only'
+  providerBinding -> remotion 'routes POC only'
+
+  // VS.1 Preview Render Job flow
+  previewRenderJobService -> providerBinding 'compiles plan'
+  previewRenderJobService -> ffmpegBaseline 'executes preview'
+  previewRenderJobService -> productRuntime 'creates product'
+  previewArtifactQueryService -> productRuntime 'queries product'
+  previewArtifactQueryService -> storageRuntime 'queries storage'
+  platformApp -> previewRenderJobService 'exposes API'
+  platformApp -> previewArtifactQueryService 'exposes API'
+
+  // VS.1 Test layer
+  fakeTestLayer -> previewRenderJobService 'tests'
+  fakeTestLayer -> previewArtifactQueryService 'tests'
+}
+
+views {
+
+  view systemContext of mediaPlatform {
+    title 'System Context'
+    description 'External actors and systems'
+    include *
+    exclude renderModule
+    exclude aiModule
+    exclude sharedKernel
+    exclude platformApp
+  }
+
+  view containerDiagram of mediaPlatform {
+    title 'Container View'
+    description 'Major modules'
+    include *
+  }
+
+  view controlPlane of hermes {
+    title 'Hermes Control Plane'
+    description 'Control plane components'
+    include *
+  }
+
+  view controlPlaneContext of hermes {
+    title 'Control Plane in Context'
+    description 'Hermes with external integrations'
+    include *
+    include user
+    include reviewer
+    include cloudflare
+    include telegram
+    include mediaPlatform
+  }
+
+  view vs0VerticalSlice of renderModule {
+    title 'VS.0 — Timeline-to-Caption-Render Vertical Slice'
+    description 'Complete flow: Timeline edit → Caption template → ASS mapping → Provider binding → FFmpeg plan → Product output'
+    include *
+    exclude opencue
+    exclude remotion
+  }
+
+  view captionTemplateBoundary of renderModule {
+    title 'Caption Template Boundary'
+    description 'Typed intent slice only — no generic Template System, no raw commands, no provider calls'
+    include
+      renderModule.timelineEdit,
+      renderModule.captionTemplate,
+      renderModule.assStyleMapper,
+      renderModule.providerBinding,
+      renderModule.ffmpegBaseline
+  }
+
+  view productStorageBoundary of renderModule {
+    title 'Product/Storage Boundary'
+    description 'Product output through ProductRuntime/StorageRuntime — no local path exposure, no provider/storage internals in public API'
+    include
+      renderModule.ffmpegBaseline,
+      renderModule.productRuntime,
+      renderModule.storageRuntime,
+      storage
+  }
+
+  view providerExecutionBoundary of renderModule {
+    title 'Provider Binding vs Execution Environment'
+    description 'FFmpeg/libass production baseline, OpenCue ExecutionEnvironment only, Remotion non-production only'
+    include
+      renderModule.providerBinding,
+      renderModule.ffmpegBaseline,
+      opencue,
+      remotion
+  }
+
+  view previewRenderJobApiFlow of renderModule {
+    title 'VS.1 — Preview Render Job API Flow'
+    description 'Headless client → Preview Render Job API → Provider binding → FFmpeg plan → Product output'
+    include
+      renderModule.previewRenderJobService,
+      renderModule.providerBinding,
+      renderModule.ffmpegBaseline,
+      renderModule.productRuntime,
+      renderModule.storageRuntime,
+      storage
+  }
+
+  view productArtifactResponseFlow of renderModule {
+    title 'VS.1 — Product/Artifact Response Flow'
+    description 'ProductRuntime → Product → StorageRuntime → PreviewArtifactResponse'
+    include
+      renderModule.previewArtifactQueryService,
+      renderModule.productRuntime,
+      renderModule.storageRuntime,
+      storage
+  }
+
+  view headlessApiValidationFlow of renderModule {
+    title 'VS.1 — Headless API Validation Flow'
+    description 'Agent/API smoke test → Fake test layer → Contract tests → Exposure safety checks'
+    include
+      renderModule.fakeTestLayer,
+      renderModule.previewRenderJobService,
+      renderModule.previewArtifactQueryService
+  }
+}

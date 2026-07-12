@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +53,15 @@ public class TimelineInputProductResolver {
      * @return the resolution result (success with Product IDs or failure with reason)
      */
     public TimelineInputProductResolverResult resolve(List<String> sourceAssetIds) {
+        return resolveWithBindings(sourceAssetIds, null);
+    }
+
+    /**
+     * Resolve source asset IDs to input Product IDs, with optional explicit product bindings.
+     * @param sourceAssetIds the asset IDs extracted from timeline clips
+     * @param productBindings optional map of assetId -> productId for explicit binding
+     */
+    public TimelineInputProductResolverResult resolveWithBindings(List<String> sourceAssetIds, Map<String, String> productBindings) {
         if (sourceAssetIds == null || sourceAssetIds.isEmpty()) {
             return TimelineInputProductResolverResult.failure(
                     sourceAssetIds != null ? sourceAssetIds : List.of(),
@@ -72,13 +82,29 @@ public class TimelineInputProductResolver {
                 return TimelineInputProductResolverResult.failure(sourceAssetIds, validationError);
             }
 
-            List<Product> candidates = productRuntime.findByAsset(sourceAssetId);
-            Product matched = candidates.stream()
-                    .filter(p -> p.status() == ProductStatus.READY)
-                    .filter(p -> p.productType() == ProductType.RAW_MEDIA)
-                    .filter(p -> p.representationKind() == RepresentationKind.MEDIA_FILE)
-                    .findFirst()
-                    .orElse(null);
+            // Try explicit binding first
+            Product matched = null;
+            if (productBindings != null && productBindings.containsKey(sourceAssetId)) {
+                String boundProductId = productBindings.get(sourceAssetId);
+                matched = productRuntime.find(boundProductId)
+                        .filter(p -> p.status() == ProductStatus.READY)
+                        .filter(p -> p.productType() == ProductType.RAW_MEDIA)
+                        .orElse(null);
+                if (matched != null) {
+                    log.info("Resolved asset {} to Product {} via explicit binding", sourceAssetId, matched.productId());
+                }
+            }
+
+            // Fall back to direct asset ID lookup
+            if (matched == null) {
+                List<Product> candidates = productRuntime.findByAsset(sourceAssetId);
+                matched = candidates.stream()
+                        .filter(p -> p.status() == ProductStatus.READY)
+                        .filter(p -> p.productType() == ProductType.RAW_MEDIA)
+                        .filter(p -> p.representationKind() == RepresentationKind.MEDIA_FILE)
+                        .findFirst()
+                        .orElse(null);
+            }
 
             if (matched == null) {
                 log.warn("No READY RAW_MEDIA Product found for asset: {}", sourceAssetId);

@@ -18,6 +18,7 @@ import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,9 @@ public class FFmpegRenderProvider implements RenderProvider {
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
 
+    @Value("${render.synthetic.enabled:false}")
+    private boolean syntheticEnabled;
+
     private final ProcessToolRunner processToolRunner;
     private final FFmpegCommandFactory commandFactory;
     private final TimelineScriptParser timelineScriptParser;
@@ -63,6 +67,11 @@ public class FFmpegRenderProvider implements RenderProvider {
     @Override
     public RenderResult render(String jobId, String aiScript, String profile) {
         log.info("FFmpegRenderProvider: rendering job={}, profile={}", jobId, profile);
+
+        // Synthetic testsrc path for preview/dev validation
+        if ("synthetic_testsrc".equals(profile) || "minimal-test".equals(profile)) {
+            return renderSynthetic(jobId);
+        }
 
         try {
             Path outputDir = Path.of(storageRoot, "artifacts", jobId);
@@ -267,6 +276,11 @@ public class FFmpegRenderProvider implements RenderProvider {
     }
 
     @Override
+    public String getPriority() {
+        return "P-1";  // Highest priority - primary local provider
+    }
+
+    @Override
     public EnvironmentValidationResult validateEnvironment() {
         try {
             ToolExecutionRequest request = ToolExecutionRequest.withTimeout(
@@ -423,4 +437,61 @@ public class FFmpegRenderProvider implements RenderProvider {
         }
         return null;
     }
+
+
+    /**
+     * Synthetic FFmpeg testsrc render for preview/dev validation only.
+     * Produces a 2-second 320x180 test pattern video.
+     * NOT production render architecture.
+     */
+    public RenderResult renderSynthetic(String jobId) {
+        if (!syntheticEnabled) {
+            throw new IllegalStateException("Synthetic render not enabled (render.synthetic.enabled=false)");
+        }
+        
+        log.info("FFmpegRenderProvider: synthetic render job={}", jobId);
+        
+        Path outputDir = Path.of(storageRoot, "artifacts", jobId);
+        outputDir.toFile().mkdirs();
+        String outputPath = outputDir.resolve("output.mp4").toString();
+        
+        List<String> args = List.of(
+                "-y",
+                "-f", "lavfi",
+                "-i", "testsrc=size=320x180:rate=30",
+                "-t", "2",
+                "-pix_fmt", "yuv420p",
+                outputPath
+        );
+        
+        ToolExecutionRequest request = ToolExecutionRequest.withTimeout("ffmpeg", args, 30_000);
+        ToolExecutionResult result = processToolRunner.execute(request);
+        
+        if (!result.isSuccess()) {
+            String errSnippet = result.stderr() != null 
+                    ? result.stderr().substring(0, Math.min(500, result.stderr().length())) 
+                    : "null";
+            log.error("FFmpegRenderProvider: synthetic ffmpeg failed: exit={} stderr={}", 
+                    result.exitCode(), errSnippet);
+            throw new IllegalStateException("Synthetic FFmpeg failed (exit=" + result.exitCode() + "): " + errSnippet);
+        }
+        
+        File outputFile = new File(outputPath);
+        if (!outputFile.exists() || outputFile.length() == 0) {
+            throw new IllegalStateException("Synthetic render output missing or empty: " + outputPath);
+        }
+        
+        String artifactId = Ids.newId("art");
+        log.info("FFmpegRenderProvider: synthetic render complete job={} artifact={} size={}", 
+                jobId, artifactId, outputFile.length());
+        
+        return new RenderResult(
+                artifactId,
+                "localFsStorageProvider://artifacts/" + jobId + "/output.mp4",
+                2, // duration seconds
+                "mp4",
+                "320x180"
+        );
+    }
+
 }

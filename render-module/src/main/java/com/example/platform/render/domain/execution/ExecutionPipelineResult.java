@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.execution;
 
-import com.example.platform.outbox.app.ExecutionResult;
+import com.example.platform.outbox.coordination.ExecutionResult;
 import java.util.List;
 
 /**

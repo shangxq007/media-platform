@@ -56,6 +56,7 @@ public interface RenderOrchestratorPort {
      * @throws IllegalArgumentException if the job is not found or tenant access is denied
      */
     List<ArtifactInfoResponse> getArtifactsByJob(String jobId);
+    byte[] getArtifactContent(String artifactId);
 
     /**
      * Loads Internal Timeline 1.0 JSON (or best available script) for edit-and-rerender flows.

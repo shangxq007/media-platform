@@ -59,6 +59,7 @@ public class StorageCatalogService implements StorageCatalogPort {
                 .toList();
     }
 
+    @Override
     public Optional<StorageCatalogPort.ArtifactRef> findArtifact(String artifactId) {
         return artifactRepository.findById(artifactId)
                 .map(a -> new StorageCatalogPort.ArtifactRef(

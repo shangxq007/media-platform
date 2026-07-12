@@ -17,7 +17,7 @@
 **/out
 **/bin
 *.class
-*.jar
+# *.jar
 *.war
 *.nar
 hs_err_pid*
@@ -32,7 +32,7 @@ Thumbs.db
 
 # ── Frontend (not needed for backend Docker builds) ──────────────────────
 frontend/node_modules
-frontend/dist
+# frontend/dist
 frontend/.next
 frontend/.turbo
 frontend/.cache

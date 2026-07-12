@@ -3,7 +3,7 @@ package com.example.platform.outbox.app;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.outbox.domain.*;
+import com.example.platform.outbox.coordination.*
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;

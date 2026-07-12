@@ -1789,3 +1789,163 @@ Later:
 ### Parallel Segment/Layer Rendering (Future Only)
 
 The platform should eventually support bounded multi-stage rendering, including segment/layer parallel execution and final assembly. This should evolve from RenderExecutionPlan and OpenCue execution modeling, not from user-submitted DAGs or plugin-inserted execution nodes. Artifact DAG may be re-evaluated later for cache/lineage/incremental render only after measured production bottlenecks appear.
+
+---
+
+## Development Control Plane (Phase 2b)
+
+**Status:** ACTIVE
+**Authority:** HERMES.7b
+
+The media-platform project uses a multi-agent development control plane managed by Hermes.
+
+### Control Plane Architecture
+
+```
+Hermes (Level 3 Feature Coordinator)
+  → Assigns TASK_IDs to coding agents
+  → Creates worktrees and feature branches
+  → Generates Review Packets
+  → Publishes reports to Cloudflare R2/Pages
+  → Sends Telegram summaries
+
+Coding Agents (Level 2 Feature Branch Pushers)
+  → OpenCode, Codex, Kilo Code, Claude Code, Kiro CLI
+  → Work in assigned worktrees
+  → Commit, push feature branches, create draft PRs
+  → Run tests, fix own branches
+
+Human (Level 5 Final Arbiter)
+  → Reviews at VS.0 milestone
+  → Approves and merges PRs
+  → Final architecture decisions
+```
+
+### Agent Dashboard
+
+- **URL:** https://scribe.cc.cd
+- **Reports:** Cloudflare R2 (r2.scribe.cc.cd)
+- **Status:** 9 agents registered, 15 providers, 18+ reports
+
+---
+
+## VS.0 — First Timeline-to-Caption-Render Vertical Slice
+
+**Status:** READY_WITH_CONSTRAINTS (per ARCH.1)
+**Prerequisites:** TL.0 ✅, PB.0 ✅, CT.0 (ready to begin)
+
+### Flow
+
+```
+Timeline edit command (TL.0) ✅
+  → Caption template typed intent (CT.0)
+  → Provider capability binding
+  → FFmpeg/libass baseline plan
+  → Product output / preview artifact
+```
+
+### Parallel Lanes
+
+| Lane | TASK_ID | Status |
+|------|---------|--------|
+| Caption | CT.0 | Ready to begin |
+| Integration | VS.0-PLAN | Ready to proceed |
+| Testing | TEST.0 | Ready |
+| Documentation | DOCSYNC.0 | Continuous |
+
+### Constraints (per ARCH.1)
+
+1. CT.0 must remain a typed intent slice — no generic Template System
+2. VS.0 must use FFmpeg/libass only — no Remotion production dispatch
+3. No schema changes unless necessary (new migration only)
+4. All subtasks must respect stop-conditions.md
+5. Review packets generated per task
+6. Claude Code architecture review at VS.0 milestone
+7. Human reviews before merge to main
+
+---
+
+## Review Packet / CODEOWNERS / Semgrep Workflow
+
+**Status:** ACTIVE (committed in 8c9cb11)
+
+### Review Infrastructure
+
+| File | Purpose |
+|------|---------|
+| `.github/CODEOWNERS` | Enforce review ownership |
+| `.github/pull_request_template.md` | PR template with architecture checklist |
+| `.github/workflows/semgrep-architecture.yml` | Semgrep CI workflow |
+| `.semgrep/media-platform-architecture.yml` | 7 architecture boundary rules |
+| `docs/review/human-review-workflow.md` | Review workflow documentation |
+| `docs/review/review-packet-template.md` | Review Packet template |
+
+### Review Flow
+
+```
+Agent completes task → Pre-review checks → Review Packet
+→ Claude Code architecture review → Human reviews → Merge
+```
+
+---
+
+## Cloudflare R2/Pages Dashboard Publishing
+
+**Status:** ACTIVE
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Pages | scribe.cc.cd | Dashboard |
+| R2 | r2.scribe.cc.cd | Report storage |
+| AI Gateway | gateway.ai.cloudflare.com | Model observability |
+
+---
+
+## Stop Conditions for Autonomous Agents
+
+Agents MUST stop if any of these conditions trigger:
+
+1. Flyway V1 baseline change needed
+2. Production secret needed
+3. Spring AI activation needed
+4. Artifact DAG runtime needed
+5. OpenCue-as-Provider needed
+6. Remotion production dispatch needed
+7. Public API leak of provider/storage internals
+8. Tests fail twice without clear fix
+9. Changed files exceed task allowed paths
+10. Force push needed
+11. Main merge needed
+12. Large deletion needed (>50 lines)
+
+---
+
+## ARCH.1 Readiness Conclusion
+
+**Date:** 2026-07-01
+**Status:** READY_WITH_CONSTRAINTS
+
+All 12 architecture boundary checks passed. VS.0 can be decomposed and launched as a high-autonomy multi-agent feature milestone subject to the constraints above.
+
+
+---
+
+## Implementation Status Note — Preview FFmpeg Bootstrap
+
+**Updated:** 2026-07-07
+
+As of RENDER-WORKER-MINIMAL.0, FFmpeg is temporarily packaged into the platform-api preview image to validate the minimal execution and artifact-output loop before OpenCue integration. This is a preview bootstrap path, not the final production render architecture.
+
+**Current Classification:**
+- Control Plane: READY
+- Execution Plane: PARTIAL
+- FFmpeg Runtime: BOOTSTRAPPED (temporary)
+- Artifact Output: PENDING VALIDATION
+- OpenCue: NOT STARTED
+
+**Long-term architecture remains unchanged:**
+- platform-api = control plane
+- render-worker-ffmpeg = dedicated execution image
+- OpenCue = distributed scheduler
+- FFmpeg should move out of platform-api after OpenCue worker execution is stable
+

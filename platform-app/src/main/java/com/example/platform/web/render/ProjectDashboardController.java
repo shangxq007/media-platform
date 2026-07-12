@@ -1,7 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.outbox.app.OutboxEventService;
-import com.example.platform.outbox.app.PlatformJobRepository;
+import com.example.platform.outbox.coordination.PlatformJobRepository;
 import com.example.platform.render.infrastructure.asset.*;
 import com.example.platform.render.app.timeline.*;
 import io.swagger.v3.oas.annotations.Operation;

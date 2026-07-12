@@ -183,7 +183,14 @@ public class RenderJobExecutionService {
                 "Starting provider selection", "RenderJobExecutionService");
         updateStatus(jobId, projectId, currentStatus, RenderJobStatus.SELECTING_PROVIDER, null);
 
-        String aiScript = resolveRenderScript(jobId, snapshotId, null, projectId);
+        String aiScript;
+        try {
+            aiScript = resolveRenderScript(jobId, snapshotId, null, projectId);
+        } catch (Exception e) {
+            failJob(jobId, projectId, RenderJobStatus.SELECTING_PROVIDER, "SCRIPT_RESOLUTION_FAILED",
+                    "Failed to resolve render script: " + e.getMessage());
+            throw e;
+        }
 
         EffectTimelineInspector.EffectUsage usage = effectTimelineInspector.extractFromScript(aiScript);
         String resolvedProfile = renderProfileResolver.resolve(profile, usage.effectKeys(), aiScript);
