@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.platform.render.domain.timeline.internal.SemanticDiffResult;
 /**
  * Domain version control for Internal Timeline: revision chain per project with snapshot blobs.
  */
@@ -29,6 +30,7 @@ public class TimelineRevisionService {
     private final InternalTimelineToEditorConverter editorConverter;
     private final TimelineConversionService timelineConversionService;
     private final TimelinePatchService timelinePatchService;
+    private final TimelineSemanticDiffService semanticDiffService;
 
     public TimelineRevisionService(
             TimelineRevisionRepository revisionRepository,
@@ -37,7 +39,8 @@ public class TimelineRevisionService {
             TimelineRevisionDiffService diffService,
             InternalTimelineToEditorConverter editorConverter,
             TimelineConversionService timelineConversionService,
-            TimelinePatchService timelinePatchService) {
+            TimelinePatchService timelinePatchService,
+            TimelineSemanticDiffService semanticDiffService) {
         this.revisionRepository = revisionRepository;
         this.snapshotService = snapshotService;
         this.contentHasher = contentHasher;
@@ -45,6 +48,7 @@ public class TimelineRevisionService {
         this.editorConverter = editorConverter;
         this.timelineConversionService = timelineConversionService;
         this.timelinePatchService = timelinePatchService;
+        this.semanticDiffService = semanticDiffService;
     }
 
     @Transactional
@@ -256,12 +260,22 @@ public class TimelineRevisionService {
                 .orElseThrow(() -> new IllegalArgumentException("Snapshot missing: " + to.snapshotId()));
         TimelineRevisionDiffService.DetailedCompare detailed = diffService.compare(fromPayload, toPayload);
         List<PatchPathItem> patchPaths = toPatchPaths(TimelinePatchOpsJson.fromJson(to.patchOpsJson()));
+
+        // Add semantic diff for effects, text overlays, subtitles
+        SemanticDiffResult semanticResult = null;
+        try {
+            semanticResult = semanticDiffService.diff(fromPayload, toPayload);
+        } catch (Exception e) {
+            // Semantic diff is best-effort; structural diff is primary
+        }
+
         return new CompareResult(
                 toInfo(from),
                 toInfo(to),
                 detailed.summary(),
                 detailed.entities(),
-                patchPaths);
+                patchPaths,
+                semanticResult);
     }
 
     /**
@@ -493,7 +507,8 @@ public class TimelineRevisionService {
             RevisionInfo toRevision,
             TimelineRevisionDiffService.ChangeSummary summary,
             List<TimelineRevisionDiffService.EntityChange> entityChanges,
-            List<PatchPathItem> patchPaths) {}
+            List<PatchPathItem> patchPaths,
+            SemanticDiffResult semanticDiff) {}
 
     public record PatchPreviewResult(
             String revisionId,

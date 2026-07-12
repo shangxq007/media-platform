@@ -1,5 +1,8 @@
 package com.example.platform.render.api;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.example.platform.render.api.dto.GenerateIncrementalPlanRequest;
 import com.example.platform.render.api.dto.IncrementalRenderPlanResponse;
 import com.example.platform.render.api.dto.RenderCacheEntryPresignDto;
@@ -33,14 +36,18 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1")
 @Tag(name = "Render Jobs", description = "渲染作业与增量渲染 REST API")
 public class RenderController {
+    private static final Logger log = LoggerFactory.getLogger(RenderController.class);
     private final RenderJobService renderJobService;
     private final RenderOrchestratorPort orchestratorPort;
+    private final java.util.List<com.example.platform.storage.domain.BlobStorage> storageProviders;
     private final RenderIncrementalApiService incrementalApiService;
     private final RenderCachePresignService cachePresignService;
     private final RenderCacheCleanupService cacheCleanupService;
@@ -48,23 +55,31 @@ public class RenderController {
     private final TimelineConversionService timelineConversionService;
     private final AiTimelineProposalService aiTimelineProposalService;
     private final TimelineRevisionService timelineRevisionService;
+    private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
+    private final com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository;
+    private final com.example.platform.render.app.access.ArtifactAccessService artifactAccessService;
 
     public RenderController(RenderJobService renderJobService) {
-        this(renderJobService, null, null, null, null, null, null, null, null);
+        this(renderJobService, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public RenderController(RenderJobService renderJobService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderOrchestratorPort orchestratorPort,
+                             java.util.List<com.example.platform.storage.domain.BlobStorage> storageProviders,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderIncrementalApiService incrementalApiService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderCachePresignService cachePresignService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderCacheCleanupService cacheCleanupService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineEditService aiTimelineEditService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineConversionService timelineConversionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionService timelineRevisionService) {
+            @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionService timelineRevisionService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.access.ArtifactAccessService artifactAccessService) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
+        this.storageProviders = storageProviders;
         this.incrementalApiService = incrementalApiService;
         this.cachePresignService = cachePresignService;
         this.cacheCleanupService = cacheCleanupService;
@@ -72,6 +87,51 @@ public class RenderController {
         this.timelineConversionService = timelineConversionService;
         this.aiTimelineProposalService = aiTimelineProposalService;
         this.timelineRevisionService = timelineRevisionService;
+        this.productRuntimeService = productRuntimeService;
+        this.storageReferenceRepository = storageReferenceRepository;
+        this.artifactAccessService = artifactAccessService;
+    }
+
+
+    @jakarta.annotation.PostConstruct
+    public void _diagnosticInit() {
+        log.info("=== RENDER CONTROLLER DIAGNOSTIC ===");
+        log.info("Class: {}", this.getClass().getName());
+        log.info("ClassLoader: {}", this.getClass().getClassLoader());
+        log.info("Resource: {}", this.getClass().getResource("RenderController.class"));
+        
+        java.util.List<String> methodNames = new java.util.ArrayList<>();
+        for (var m : this.getClass().getDeclaredMethods()) {
+            methodNames.add(m.getName());
+        }
+        log.info("Declared methods ({}): {}", methodNames.size(), methodNames);
+        log.info("Has uploadPreviewMedia: {}", methodNames.contains("uploadPreviewMedia"));
+        log.info("Has getArtifactContent: {}", methodNames.contains("getArtifactContent"));
+        
+        // Check annotations
+        for (var m : this.getClass().getDeclaredMethods()) {
+            if (m.getName().equals("uploadPreviewMedia") || m.getName().equals("getArtifactContent")) {
+                log.info("Method {} annotations: {}", m.getName(), java.util.Arrays.toString(m.getAnnotations()));
+            }
+        }
+        
+        // Check resource URL for bytecode hash
+        try {
+            var url = this.getClass().getResource("RenderController.class");
+            if (url != null) {
+                var conn = url.openConnection();
+                try (var is = conn.getInputStream()) {
+                    var bytes = is.readAllBytes();
+                    var md = java.security.MessageDigest.getInstance("SHA-256");
+                    var hash = java.util.HexFormat.of().formatHex(md.digest(bytes));
+                    log.info("RenderController bytecode SHA-256: {}", hash);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not compute bytecode hash: {}", e.getMessage());
+        }
+        
+        log.info("=== END DIAGNOSTIC ===");
     }
 
     // -------------------------------------------------------------------------
@@ -169,16 +229,18 @@ public class RenderController {
     public Map<String, String> executeLocal(@PathVariable String tenantId,
             @PathVariable String projectId,
             @PathVariable String jobId) {
-        if (orchestratorPort != null) {
-            try {
-                renderJobService.getByIdAndProject(tenantId, projectId, jobId);
-                String resultJobId = orchestratorPort.executeExistingRenderJob(tenantId, jobId);
-                return Map.of("jobId", resultJobId, "status", "COMPLETED");
-            } catch (Exception ex) {
-                return Map.of("jobId", jobId, "status", "COMPLETED");
-            }
+        if (orchestratorPort == null) {
+            throw new IllegalStateException("Render orchestrator not available");
         }
-        return Map.of("jobId", jobId, "status", "COMPLETED");
+        renderJobService.getByIdAndProject(tenantId, projectId, jobId);
+        try {
+            orchestratorPort.executeExistingRenderJob(tenantId, jobId);
+        } catch (Exception ex) {
+            log.warn("execute-local failed for job {}: {}", jobId, ex.getMessage());
+        }
+        // Reload actual persisted status
+        RenderJobResponse job = renderJobService.getByIdAndProject(tenantId, projectId, jobId);
+        return Map.of("jobId", jobId, "status", job.status());
     }
 
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/execution")
@@ -443,5 +505,160 @@ public class RenderController {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         pd.setTitle("Operation Failed");
         return pd;
+    }
+
+    // -------------------------------------------------------------------------
+    // Preview media upload & artifact content endpoints
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/preview/media")
+    @Operation(summary = "Upload preview media (dev/preview only)")
+    public Map<String, String> uploadPreviewMedia(@RequestParam("file") MultipartFile file) {
+        if (!"video/mp4".equals(file.getContentType())) {
+            throw new IllegalArgumentException("Only video/mp4 is supported");
+        }
+        if (file.getSize() > 20 * 1024 * 1024) {
+            throw new IllegalArgumentException("File too large (max 20MB)");
+        }
+        try {
+            String mediaId = "media_" + System.currentTimeMillis();
+            String objectKey = mediaId + "/input.mp4";
+            java.nio.file.Path storageRoot = java.nio.file.Path.of("/tmp/platform");
+            java.nio.file.Path mediaPath = storageRoot.resolve("preview-media").resolve(objectKey);
+            java.nio.file.Files.createDirectories(mediaPath.getParent());
+            java.nio.file.Files.write(mediaPath, file.getBytes());
+            String storageUri = "localFsStorageProvider://preview-media/" + objectKey;
+
+            // Create StorageReference and RAW_MEDIA Product for Product-backed resolution
+            try {
+                String tenantId = com.example.platform.shared.web.TenantContext.get();
+                if (tenantId != null) {
+                    var existing = productRuntimeService.findByAsset(mediaId);
+                    if (existing.isEmpty()) {
+                        // Create StorageReference
+                        String storageRefId = com.example.platform.shared.Ids.newId("stor");
+                        var storageRef = new com.example.platform.render.domain.storage.StorageReference(
+                                storageRefId, "localFsStorageProvider",
+                                com.example.platform.render.domain.storage.StorageClass.STANDARD,
+                                "/tmp/platform", "preview-media/" + objectKey,
+                                null, null, file.getSize(), "video/mp4",
+                                java.time.Instant.now(), java.time.Instant.now());
+                        storageReferenceRepository.save(storageRef);
+
+                        // Create RAW_MEDIA Product with storageReferenceId
+                        String productId = com.example.platform.shared.Ids.newId("prod");
+                        var product = new com.example.platform.render.domain.product.Product(
+                                productId, tenantId, null, mediaId,
+                                com.example.platform.render.domain.product.ProductType.RAW_MEDIA,
+                                com.example.platform.render.domain.product.RepresentationKind.MEDIA_FILE,
+                                "upload", mediaId, null,
+                                com.example.platform.render.domain.product.ProductStatus.REGISTERED,
+                                storageRefId, null, null, "video/mp4", 1,
+                                "{\"source\":\"preview-upload\"}",
+                                java.time.Instant.now(), java.time.Instant.now());
+                        productRuntimeService.register(product);
+                        productRuntimeService.markReady(productId);
+                        log.info("Created RAW_MEDIA Product {} with storageRef {} for media: {}", productId, storageRefId, mediaId);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to create RAW_MEDIA Product for {}: {}", mediaId, e.getMessage());
+                // Continue without Product - URI fallback will work
+            }
+
+            return Map.of("mediaId", mediaId, "storageUri", storageUri, "size", String.valueOf(file.getSize()));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Failed to store media", e);
+        }
+    }
+
+    @GetMapping("/render/jobs/{jobId}/artifacts/{artifactId}/content")
+    @Operation(summary = "Get artifact content")
+    public ResponseEntity<byte[]> getArtifactContent(
+            @PathVariable String jobId,
+            @PathVariable String artifactId) {
+        if (orchestratorPort == null) {
+            throw new IllegalStateException("Render orchestrator not available");
+        }
+        List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
+        boolean belongsToJob = artifacts.stream().anyMatch(a -> a.artifactId().equals(artifactId));
+        if (!belongsToJob) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] content = orchestratorPort.getArtifactContent(artifactId);
+        if (content == null || content.length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .header("Content-Type", "video/mp4")
+                .header("Content-Disposition", "inline; filename=output.mp4")
+                .header("Content-Length", String.valueOf(content.length))
+                .body(content);
+    }
+
+    @GetMapping("/render/jobs/{jobId}/artifacts/{artifactId}/access")
+    @Operation(summary = "Get artifact access descriptor with signed download URL",
+            description = "Returns an ephemeral access descriptor (signed URL) for downloading the artifact. "
+                    + "The signed URL expires after a configured TTL. Does not expose storage internals.")
+    public ResponseEntity<?> getArtifactAccess(
+            @PathVariable String jobId,
+            @PathVariable String artifactId) {
+        if (artifactAccessService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Artifact access service not available"));
+        }
+        if (orchestratorPort == null) {
+            throw new IllegalStateException("Render orchestrator not available");
+        }
+
+        // Verify artifact belongs to job (same pattern as getArtifactContent)
+        List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
+        var artifact = artifacts.stream()
+                .filter(a -> a.artifactId().equals(artifactId))
+                .findFirst();
+        if (artifact.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Parse storageUri: "bucket/objectKey" format
+        String storageUri = artifact.get().storageUri();
+        if (storageUri == null || storageUri.isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("status", "NOT_FOUND", "message", "No storage location for artifact"));
+        }
+        String[] parts = storageUri.split("/", 2);
+        if (parts.length < 2) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("status", "ACCESS_FAILED", "message", "Invalid storage reference"));
+        }
+        String bucket = parts[0];
+        String objectKey = parts[1];
+
+        // Derive filename from objectKey (last path segment)
+        String filename = objectKey.contains("/")
+                ? objectKey.substring(objectKey.lastIndexOf('/') + 1)
+                : objectKey;
+
+        // Delegate to ArtifactAccessService (assumes S3/R2 for artifact storage)
+        var descriptor = artifactAccessService.createAccessDescriptor(
+                "S3", bucket, objectKey, null, filename, null);
+
+        // Map descriptor status to HTTP response
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.SIGNED_URL) {
+            return ResponseEntity.ok(descriptor);
+        }
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.NOT_FOUND) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(descriptor);
+        }
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.UNSUPPORTED) {
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(descriptor);
+        }
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.ACCESS_FAILED) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(descriptor);
+        }
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.NOT_READY) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(descriptor);
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(descriptor);
     }
 }

@@ -136,7 +136,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: remote-render-worker/Dockerfile
+          file: remote-render-worker/Dockerfile.optimized
           push: true
           tags: |
             ${{ env.REGISTRY }}/platform-render-worker:${{ steps.tag.outputs.IMAGE_TAG }}

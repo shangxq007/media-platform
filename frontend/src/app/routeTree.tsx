@@ -5,6 +5,12 @@ import { RenderJobDashboard } from '../pages/RenderJobDashboard.js'
 import { CapabilitiesPage } from '../shared/CapabilitiesPage.js'
 import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
 import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
+import { DevConsolePage } from '../pages/DevConsolePage.js'
+import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
+import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
+import UserRenderHistoryPage from '../pages/UserRenderHistoryPage.js'
+import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
+import UserRenderResultDetailPage from '../pages/UserRenderResultDetailPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -40,10 +46,52 @@ const observabilityRoute = createRoute({
   component: ObservabilityDashboard,
 })
 
+const timelineGitRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/timeline-git',
+  component: TimelineGitConsolePage,
+})
+
+const userRenderResultDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/app/renders/$productId',
+  component: UserRenderResultDetailPage,
+})
+
+const adminStorageHealthRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/storage-health',
+  component: AdminStorageHealthPage,
+})
+
+const userRenderHistoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/app/renders',
+  component: UserRenderHistoryPage,
+})
+
+const adminRenderJobsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/render-jobs',
+  component: AdminRenderJobsPage,
+})
+
+const devConsoleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/preview',
+  component: DevConsolePage,
+})
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   renderJobsRoute,
   capabilitiesRoute,
   smokeEditorRoute,
   observabilityRoute,
+  devConsoleRoute,
+  timelineGitRoute,
+  adminRenderJobsRoute,
+  userRenderHistoryRoute,
+  adminStorageHealthRoute,
+  userRenderResultDetailRoute,
 ])

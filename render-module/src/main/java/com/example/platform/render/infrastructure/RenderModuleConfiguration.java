@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableConfigurationProperties({
+        com.example.platform.render.app.timeline.compile.TimelineRenderExecutionProperties.class,
         RenderProviderProperties.class,
         NatronRenderProviderProperties.class,
         Bento4PackagingProviderProperties.class,

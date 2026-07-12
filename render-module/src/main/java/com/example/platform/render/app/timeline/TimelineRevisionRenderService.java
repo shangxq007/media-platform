@@ -11,7 +11,9 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.app.timeline.InternalTimelineAdapter;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import java.util.Map;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +58,7 @@ public class TimelineRevisionRenderService {
     private final TimelineSnapshotService snapshotService;
     private final TimelineRenderJobMapper mapper;
     private final TimelineScriptParser parser;
+    private final InternalTimelineAdapter internalTimelineAdapter;
     private final RenderInputMaterializationService materializationService;
     private final RenderOutputRegistrationService registrationService;
     private final ProductRuntimeService productRuntime;
@@ -69,6 +72,7 @@ public class TimelineRevisionRenderService {
             TimelineSnapshotService snapshotService,
             TimelineRenderJobMapper mapper,
             TimelineScriptParser parser,
+            InternalTimelineAdapter internalTimelineAdapter,
             RenderInputMaterializationService materializationService,
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
@@ -80,6 +84,7 @@ public class TimelineRevisionRenderService {
         this.snapshotService = snapshotService;
         this.mapper = mapper;
         this.parser = parser;
+        this.internalTimelineAdapter = internalTimelineAdapter;
         this.materializationService = materializationService;
         this.registrationService = registrationService;
         this.productRuntime = productRuntime;
@@ -126,12 +131,15 @@ public class TimelineRevisionRenderService {
         }
         String timelineJson = payloadOpt.get();
 
-        // 4. Parse to TimelineSpec
-        var specOpt = parser.parse(timelineJson);
-        if (specOpt.isEmpty()) {
-            throw new IllegalStateException("Failed to parse timeline JSON for revision: " + revisionId);
+        // 4. Parse to TimelineSpec — try internal adapter first, fall back to script parser
+        TimelineSpec spec = internalTimelineAdapter.toSpec(timelineJson).orElse(null);
+        if (spec == null) {
+            var specOpt = parser.parse(timelineJson);
+            if (specOpt.isEmpty()) {
+                throw new IllegalStateException("Failed to parse timeline JSON for revision: " + revisionId);
+            }
+            spec = specOpt.get();
         }
-        TimelineSpec spec = specOpt.get();
 
         // 5. Map to render job request
         var mappingResult = mapper.toRenderJobRequest(
@@ -139,25 +147,61 @@ public class TimelineRevisionRenderService {
 
         String renderJobId = Ids.newId("rj");
 
-        // 6. Resolve input Products from timeline source assets
-        var resolverResult = inputProductResolver.resolve(mappingResult.sourceAssetIds());
-        if (!resolverResult.valid()) {
-            throw new IllegalStateException(
-                    "Input product resolution failed: " + resolverResult.failureReason());
-        }
-        List<String> inputProductIds = resolverResult.inputProductIds();
+        // 6. Resolve input media — try Product-backed, fall back to URI-based (preview/bootstrap)
+        Path materializedInput;
+        List<String> inputProductIds = List.of();
+        String mediaResolutionMode = "UNKNOWN";
 
-        // 7. Materialize primary input Product (single-primary-input for R6.1)
-        String primaryInputProductId = inputProductIds.get(0);
-        var materialization = materializationService.materialize(primaryInputProductId, null, null);
-        if (!materialization.valid()) {
-            throw new IllegalStateException(
-                    "Input materialization failed for " + primaryInputProductId
-                    + ": " + materialization.failureReason());
+        // Extract product bindings from spec
+        Map<String, String> productBindings = new java.util.HashMap<>();
+        if (spec.tracks() != null) {
+            for (var track : spec.tracks()) {
+                if (track.clips() != null) {
+                    for (var clip : track.clips()) {
+                        if (clip.assetRef() != null && clip.assetRef().productId() != null) {
+                            productBindings.put(clip.assetRef().assetId(), clip.assetRef().productId());
+                        }
+                    }
+                }
+            }
         }
-        Path materializedInput = materialization.materializedPath();
+        var resolverResult = inputProductResolver.resolveWithBindings(mappingResult.sourceAssetIds(), productBindings);
+        if (resolverResult.valid()) {
+            inputProductIds = resolverResult.inputProductIds();
+            String primaryInputProductId = inputProductIds.get(0);
+            var materialization = materializationService.materialize(primaryInputProductId, null, null);
+            if (!materialization.valid()) {
+                throw new IllegalStateException(
+                        "Input materialization failed for " + primaryInputProductId
+                        + ": " + materialization.failureReason());
+            }
+            materializedInput = materialization.materializedPath();
+            mediaResolutionMode = "PRODUCT_BACKED";
+        } else {
+            log.info("Product resolution failed, falling back to URI-based media: {}", resolverResult.failureReason());
+            String mediaUri = spec.tracks().stream()
+                    .filter(t -> t.clips() != null)
+                    .flatMap(t -> t.clips().stream())
+                    .filter(c -> c.assetRef() != null && c.assetRef().storageUri() != null && !c.assetRef().storageUri().isBlank())
+                    .map(c -> c.assetRef().storageUri())
+                    .findFirst()
+                    .orElse(null);
+            if (mediaUri == null || mediaUri.isBlank()) {
+                throw new IllegalStateException(
+                        "No renderable media source found for assets: " + mappingResult.sourceAssetIds());
+            }
+            String localPath = mediaUri.startsWith("localFsStorageProvider://")
+                    ? storageRoot.resolve(mediaUri.substring("localFsStorageProvider://".length())).toAbsolutePath().toString()
+                    : mediaUri.startsWith("/") ? mediaUri : null;
+            if (localPath == null || !java.nio.file.Files.exists(Path.of(localPath))) {
+                throw new IllegalStateException("Cannot resolve media URI: " + mediaUri);
+            }
+            materializedInput = Path.of(localPath);
+            mediaResolutionMode = "URI_BACKED_PREVIEW";
+        }
+        log.info("Media resolution: mode={} assetIds={}", mediaResolutionMode, mappingResult.sourceAssetIds());
 
-        // 8. Build provenance with inputProductIds
+        // 7. Build provenance with inputProductIds
         RenderProductProvenance provenance = mappingResult.toProvenanceBuilder()
                 .renderJobId(renderJobId)
                 .baselineRenderer("ffmpeg-libass")

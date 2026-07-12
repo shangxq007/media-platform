@@ -4,10 +4,11 @@ import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
 import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,7 +30,8 @@ public class EmbeddingProviderExtension implements ProviderExtensionSPI {
                 List.of("TEXT_EMBEDDING", "IMAGE_EMBEDDING", "MULTIMODAL_EMBEDDING"));
     }
 
-    @PostConstruct void registerInPlatform() {
+    @EventListener(ApplicationReadyEvent.class)
+    void registerInPlatform() {
         extensionRegistry.registerProviderExtension(providerKey(), this,
                 ExtensionTrustLevel.FULLY_TRUSTED, "system");
         log.info("Embedding provider registered: key={} caps={}", providerKey(), descriptor().capabilities());

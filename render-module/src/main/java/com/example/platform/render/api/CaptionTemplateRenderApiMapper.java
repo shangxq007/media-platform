@@ -6,10 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.stereotype.Component;
+
 /**
  * Maps between API DTOs and domain models for Caption Template Render.
  * Internal only.
  */
+@Component
 public class CaptionTemplateRenderApiMapper {
 
     public CaptionTemplateRenderRequest toDomainRequest(

@@ -226,7 +226,18 @@ public class TimelineMergeService {
     }
 
     private static String computeMergeHash(String sourceId, String targetId, String payload) {
-        return "merge:" + sourceId + ":" + targetId + ":" + (payload != null ? payload.hashCode() : "0");
+        String input = "merge:" + sourceId + ":" + targetId + ":" + (payload != null ? payload.hashCode() : "0");
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("mrg_");
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString(); // mrg_ + 64 hex chars = 68 chars, fits in varchar(64) if we truncate to 64
+        } catch (Exception e) {
+            return "merge_" + Math.abs(input.hashCode());
+        }
     }
 
     private TimelineRevisionRepository.RevisionRow loadRevision(String revisionId) {

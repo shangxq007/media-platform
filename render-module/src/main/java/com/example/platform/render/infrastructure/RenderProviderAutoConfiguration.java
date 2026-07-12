@@ -1,7 +1,6 @@
 package com.example.platform.render.infrastructure;
 
 import com.example.platform.render.infrastructure.ffmpeg.FFmpegRenderProvider;
-import com.example.platform.render.infrastructure.gpac.GPACRenderProvider;
 import com.example.platform.render.infrastructure.gpac.GPACPackagingProvider;
 import com.example.platform.render.infrastructure.gstreamer.GStreamerRenderProvider;
 import com.example.platform.render.infrastructure.mlt.MltRenderProvider;
@@ -34,14 +33,14 @@ public class RenderProviderAutoConfiguration {
 
     @Bean
     CommandLineRunner registerProviders(RenderProviderRegistry registry,
-                                         Optional<JavaCVRenderProvider> javacvProvider,
-                                         Optional<OFXRenderProvider> ofxProvider,
+                                         
+                                         
                                          Optional<MockRenderProvider> mockProvider,
                                          RenderProviderProperties properties,
                                          Optional<MltRenderProvider> mltProvider,
                                          Optional<FFmpegRenderProvider> ffmpegProvider,
                                          Optional<GStreamerRenderProvider> gstreamerProvider,
-                                         Optional<GPACRenderProvider> gpacRenderProvider,
+                                         
                                          Optional<GPACPackagingProvider> gpacPackagingProvider,
                                          Optional<NatronRenderProvider> natronProvider,
                                          Optional<NatronRenderProviderProperties> natronProperties,
@@ -54,8 +53,6 @@ public class RenderProviderAutoConfiguration {
                                          Optional<SkiaStickerOverlayProvider> skiaProvider,
                                          Optional<VapourSynthRenderProvider> vapourSynthProvider) {
         return args -> {
-            javacvProvider.ifPresent(p -> registry.register("javacv", p, p.getCapability()));
-            ofxProvider.ifPresent(p -> registry.register("ofx", p, p.getCapability()));
             mockProvider.ifPresent(p -> registry.register("mock", p, RenderProviderCapability.legacy(
                     "mock",
                     Set.of("mp4"),
@@ -83,11 +80,6 @@ public class RenderProviderAutoConfiguration {
             gstreamerProvider.ifPresent(gstreamer -> {
                 registry.register("gstreamer", gstreamer, gstreamer.getCapability());
                 log.info("GStreamer render provider registered (HOLD/P2/Realtime Pipeline)");
-            });
-
-            gpacRenderProvider.ifPresent(gpac -> {
-                registry.register("gpac", gpac, gpac.getCapability());
-                log.info("GPAC packaging provider registered (POC/P1/DASH-HLS Packaging)");
             });
 
             gpacPackagingProvider.ifPresent(gpac ->

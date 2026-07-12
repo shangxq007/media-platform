@@ -51,6 +51,9 @@ delivery:
     adaptive-routing-enabled: false
     provider-fallback-enabled: false
     mode: local
+    providers:
+      ffmpeg:
+        enabled: true
 
   billing:
     enforcement-enabled: false
@@ -63,8 +66,11 @@ app:
   outbox:
     dispatcher-enabled: false
   security:
+    jwt:
+      secret-key: dev-only-insecure-key-replace-in-production-min-256-bits!!
+      expiration-ms: 86400000
     enabled: false
-    dev-auth-endpoint: false
+    dev-auth-endpoint: true
     oidc-dev-bootstrap:
       enabled: false
   identity:
@@ -74,3 +80,13 @@ app:
       enabled: false
   sandbox:
     enabled: false
+  storage:
+    local-root: /tmp/platform
+
+# Synthetic FFmpeg validation path (preview/dev only)
+render:
+  synthetic:
+    enabled: true
+
+# Storage configuration for preview
+    local-root: /tmp/platform

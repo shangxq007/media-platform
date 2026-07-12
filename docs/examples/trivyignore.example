@@ -1,0 +1,9 @@
+# .trivyignore.example — Trivy ignore rules
+# Copy to .trivyignore to use
+# Do NOT suppress real findings without review
+
+# Example: known false positive in test dependency
+# CVE-2024-XXXXX
+
+# Example: accepted risk with documented reason
+# CVE-2024-YYYYY # accepted: only affects unused code path

@@ -55,8 +55,8 @@ public class RenderBillingRecordRepository {
                         record.providerId(),
                         record.outputSizeBytes(),
                         record.status().name(),
-                        OffsetDateTime.from(record.createdAt()),
-                        record.completedAt() != null ? OffsetDateTime.from(record.completedAt()) : null
+                        record.createdAt().atOffset(java.time.ZoneOffset.UTC),
+                        record.completedAt() != null ? record.completedAt().atOffset(java.time.ZoneOffset.UTC) : null
                 )
                 .onConflict(field("id"))
                 .doUpdate()
@@ -65,7 +65,7 @@ public class RenderBillingRecordRepository {
                 .set(field("provider_id"), record.providerId())
                 .set(field("output_size_bytes"), record.outputSizeBytes())
                 .set(field("status"), record.status().name())
-                .set(field("completed_at"), record.completedAt() != null ? OffsetDateTime.from(record.completedAt()) : null)
+                .set(field("completed_at"), record.completedAt() != null ? record.completedAt().atOffset(java.time.ZoneOffset.UTC) : null)
                 .execute();
 
         log.debug("Saved billing record: id={} jobId={} status={}", 

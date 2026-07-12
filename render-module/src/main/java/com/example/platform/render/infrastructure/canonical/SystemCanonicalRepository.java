@@ -48,13 +48,13 @@ public class SystemCanonicalRepository {
                         graph.tenantId(),
                         graph.workspaceId(),
                         graph.status().name(),
-                        OffsetDateTime.from(graph.createdAt()),
-                        graph.completedAt() != null ? OffsetDateTime.from(graph.completedAt()) : null
+                        graph.createdAt().atOffset(java.time.ZoneOffset.UTC),
+                        graph.completedAt() != null ? graph.completedAt().atOffset(java.time.ZoneOffset.UTC) : null
                 )
                 .onConflict(field("graph_id"))
                 .doUpdate()
                 .set(field("status"), graph.status().name())
-                .set(field("completed_at"), graph.completedAt() != null ? OffsetDateTime.from(graph.completedAt()) : null)
+                .set(field("completed_at"), graph.completedAt() != null ? graph.completedAt().atOffset(java.time.ZoneOffset.UTC) : null)
                 .execute();
 
         // Save events
@@ -91,7 +91,7 @@ public class SystemCanonicalRepository {
                         event.eventId(),
                         graphId,
                         event.eventType(),
-                        OffsetDateTime.from(event.timestamp()),
+                        event.timestamp().atOffset(java.time.ZoneOffset.UTC),
                         event.tenantId(),
                         event.workspaceId(),
                         event.jobId(),
@@ -123,7 +123,7 @@ public class SystemCanonicalRepository {
                         edge.sourceEventId(),
                         edge.targetEventId(),
                         edge.edgeType(),
-                        OffsetDateTime.from(edge.timestamp())
+                        edge.timestamp().atOffset(java.time.ZoneOffset.UTC)
                 )
                 .onConflict(field("edge_id"))
                 .doNothing()

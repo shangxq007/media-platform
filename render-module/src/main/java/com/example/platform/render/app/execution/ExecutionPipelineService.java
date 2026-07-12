@@ -1,9 +1,9 @@
 package com.example.platform.render.app.execution;
 
-import com.example.platform.outbox.app.ExecutionBackendRegistry;
-import com.example.platform.outbox.app.ExecutionRequest;
-import com.example.platform.outbox.app.ExecutionResult;
-import com.example.platform.outbox.domain.TaskCapability;
+import com.example.platform.outbox.coordination.ExecutionBackendRegistry;
+import com.example.platform.outbox.coordination.ExecutionRequest;
+import com.example.platform.outbox.coordination.ExecutionResult;
+import com.example.platform.outbox.coordination.TaskCapability;
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.execution.*;

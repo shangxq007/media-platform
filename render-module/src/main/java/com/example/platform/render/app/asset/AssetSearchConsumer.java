@@ -1,8 +1,8 @@
 package com.example.platform.render.app.asset;
 
-import com.example.platform.outbox.app.PlatformCoordinationService;
-import com.example.platform.outbox.domain.JobType;
-import com.example.platform.outbox.domain.TaskCapability;
+import com.example.platform.outbox.coordination.PlatformCoordinationService;
+import com.example.platform.outbox.coordination.JobType;
+import com.example.platform.outbox.coordination.TaskCapability;
 import com.example.platform.shared.events.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.stereotype.Component;
+
 /**
  * Adapts a validated CaptionTemplateRenderRequest into a TimelineSpec
  * compatible with the existing PLAN_BASED compile pipeline.
@@ -21,6 +23,7 @@ import java.util.UUID;
  *
  * <p>Does NOT call FFmpeg, libass, StorageRuntime, or ProductRuntime.</p>
  */
+@Component
 public class CaptionTemplateTimelineAdapter {
 
     /**
@@ -50,7 +53,7 @@ public class CaptionTemplateTimelineAdapter {
                 (long) (request.captionSegments().stream()
                         .mapToDouble(CaptionSegmentSpec::endSeconds)
                         .max().orElse(5.0)),
-                profile.width(), profile.height(), Map.of());
+                profile.width(), profile.height(), Map.of(), null);
 
         double totalDuration = request.captionSegments().stream()
                 .mapToDouble(CaptionSegmentSpec::endSeconds)

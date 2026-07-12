@@ -13,7 +13,8 @@ public record TimelineAssetRef(
         long duration,
         int width,
         int height,
-        Map<String, String> metadata) {
+        Map<String, String> metadata,
+        String productId) {
 
     public TimelineAssetRef {
         if (metadata == null) {
@@ -22,12 +23,16 @@ public record TimelineAssetRef(
     }
 
     public static TimelineAssetRef of(String assetId, String storageUri) {
-        return new TimelineAssetRef(assetId, storageUri, "unknown", 0, 0, 0, Map.of());
+        return new TimelineAssetRef(assetId, storageUri, "unknown", 0, 0, 0, Map.of(), null);
+    }
+
+    public static TimelineAssetRef of(String assetId, String storageUri, String productId) {
+        return new TimelineAssetRef(assetId, storageUri, "unknown", 0, 0, 0, Map.of(), productId);
     }
 
     public TimelineAssetRef withMetadata(Map<String, String> extra) {
         Map<String, String> merged = new LinkedHashMap<>(metadata);
         merged.putAll(extra);
-        return new TimelineAssetRef(assetId, storageUri, format, duration, width, height, Map.copyOf(merged));
+        return new TimelineAssetRef(assetId, storageUri, format, duration, width, height, Map.copyOf(merged), productId);
     }
 }

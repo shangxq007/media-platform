@@ -1,8 +1,8 @@
 package com.example.platform.render.app.asset;
 
-import com.example.platform.outbox.app.TaskHandler;
-import com.example.platform.outbox.app.TaskExecutionContext;
-import com.example.platform.outbox.domain.TaskCapability;
+import com.example.platform.outbox.coordination.TaskHandler;
+import com.example.platform.outbox.coordination.TaskExecutionContext;
+import com.example.platform.outbox.coordination.TaskCapability;
 import com.example.platform.render.domain.asset.marketplace.MarketplaceListing;
 import com.example.platform.render.infrastructure.asset.MarketplaceListingRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;

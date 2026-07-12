@@ -2,6 +2,7 @@ package com.example.platform.storage.api;
 
 import com.example.platform.storage.domain.StorageObjectRef;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Port interface for storage catalog operations.
@@ -26,6 +27,11 @@ public interface StorageCatalogPort {
      * @return list of artifact references
      */
     List<ArtifactRef> findArtifactsByJob(String renderJobId);
+
+    /**
+     * Find a single artifact by ID.
+     */
+    Optional<ArtifactRef> findArtifact(String artifactId);
 
     /**
      * Value object representing a registered artifact reference.

@@ -1,7 +1,7 @@
 package com.example.platform.render.app.planner;
 
-import com.example.platform.outbox.app.ExecutionBackendRegistry;
-import com.example.platform.outbox.domain.TaskCapability;
+import com.example.platform.outbox.coordination.ExecutionBackendRegistry;
+import com.example.platform.outbox.coordination.TaskCapability;
 import com.example.platform.render.app.capability.CapabilityCatalogService;
 import com.example.platform.render.domain.capability.CapabilityDescriptor;
 import java.util.*;

@@ -57,6 +57,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final Set<String> WEB_API_PREFIXES = Set.of(
             "/api/v1/render/jobs",
+            "/api/v1/render/projects",
             "/api/v1/prompts",
             "/api/v1/tenants",
             "/api/v1/artifacts",

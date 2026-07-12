@@ -539,3 +539,262 @@ P2O.0g designs the mapping from platform RenderExecutionPlan concepts to OpenCue
 Review: `docs/review/render-execution-plan-to-cjsl-mapping-v0.md`
 Runbook: `docs/operations/opencue-render-execution-plan-mapping-runbook.md`
 Examples: `docs/examples/opencue/render-execution-plan-mapping/`
+
+---
+
+## Phase 2b Status (2026-07-01)
+
+**Phase:** Phase 2b — High-Autonomy Feature Completion Mode
+**Authority:** HERMES.7b
+
+### Completion Status
+
+| Item | Status |
+|------|--------|
+| Phase 1 | ✅ COMPLETE |
+| Phase 2 review infrastructure | ✅ COMMITTED (8c9cb11) |
+| Phase 2b mode | ✅ ENABLED |
+| TL.0 (Timeline edit commands) | ✅ COMPLETE |
+| PB.0 (Provider hardening) | ✅ COMPLETE |
+| REV.0 (Architecture preflight) | ✅ 14/14 PASS |
+| ARCH.1 (VS.0 readiness) | ✅ READY_WITH_CONSTRAINTS |
+| Cloudflare dashboard | ✅ LIVE (scribe.cc.cd) |
+| Review workflow | ✅ AVAILABLE |
+
+### Agent Permission Model
+
+| Agent | Level | Role |
+|-------|-------|------|
+| Hermes | 3 | Feature Coordinator / PR Creator |
+| OpenCode | 2 | Feature Branch Pusher |
+| Codex | 2 | Feature Branch Pusher |
+| Kilo Code | 2 | Feature Branch Pusher |
+| Claude Code | 2 | Feature Branch Pusher + Reviewer |
+| Human | 5 | Final Arbiter |
+
+### Next Milestone
+
+**VS.0 — First Timeline-to-Caption-Render Vertical Slice**
+
+- CT.0 can begin (Caption template typed intent)
+- VS.0-PLAN can proceed
+- VS.0-LAUNCH after CT.0 + VS.0-PLAN
+
+### Review Infrastructure
+
+- `.github/CODEOWNERS` — committed
+- `.github/pull_request_template.md` — committed
+- `.semgrep/media-platform-architecture.yml` — 7 rules, committed
+- `docs/review/human-review-workflow.md` — committed
+- `docs/review/review-packet-template.md` — committed
+
+### Human Final Arbiter
+
+All merges require human review. No auto-merge. Human reviews at VS.0 milestone.
+
+## VS.0 Progress (2026-07-01)
+
+| Task | Status | Branch | Commit | PR |
+|------|--------|--------|--------|-----|
+| CT.0 | ✅ COMPLETE | agent/CT.0-opencode | bc01fe3 | #6 |
+| TEST.0 | ✅ COMPLETE | agent/TEST.0-codex | 1414cbf | #7 |
+| DOCSYNC.0 | ✅ COMPLETE | (documentation only) | — | — |
+| VS.0-LAUNCH | 🟡 READY | — | — | — |
+| VS.0-REVIEW | ⏳ BLOCKED | — | — | — |
+| ARCH-MAP.2 | ⏳ BLOCKED | — | — | — |
+
+### CT.0 Output
+- CaptionTemplate typed model (record/sealed class)
+- Typed caption style parameters
+- ASS subtitle format mapping
+- Safe, bounded output validation
+- 71 caption tests passed
+
+### TEST.0 Output
+- Vs0VerticalSliceIntegrationTest.java (7 test groups)
+- CompileDomainBoundaryTest.java
+- Integration test harness for VS.0 flow
+
+### VS.0-LAUNCH Dependencies
+- ✅ CT.0 complete
+- ✅ TEST.0 complete
+- ✅ Review Packets generated
+- ✅ Draft PRs created
+- ✅ Architecture constraints documented
+
+### Frontend Status
+
+| Item | Status |
+|------|--------|
+| Frontend rebuild | PLANNED (contract-first, not migration) |
+| Backend contract gate | Mostly stable |
+| StyleX evaluation | CANDIDATE (not adopted) |
+| Astryx evaluation | CANDIDATE (not adopted) |
+| Styling decision | PENDING (requires POC) |
+| Editor components | Platform-owned (custom) |
+| Video render styles | Platform schemas (not Web UI CSS) |
+
+**Key documents:**
+- `docs/frontend/new-frontend-architecture.md`
+- `docs/frontend/styling-technology-decision.md`
+- `docs/frontend/new-frontend-roadmap.md`
+
+**Next steps:**
+- FRONTEND-CONTRACT-GATE.0 — Audit backend API readiness
+- FRONTEND-STYLE-POC.0 — Evaluate styling technologies
+
+
+## Render Execution Status (2026-07-07)
+
+| Component | Status |
+|-----------|--------|
+| Control Plane | READY |
+| Execution Plane | PARTIAL |
+| FFmpeg Runtime | BOOTSTRAPPED (temporary preview) |
+| FFmpeg Provider | ENABLED |
+| Worker | In-process submit fallback |
+| Artifact Output | PENDING VALIDATION |
+| OpenCue | NOT STARTED |
+
+**Note:** FFmpeg in platform-api is temporary preview bootstrap, not final production architecture.
+
+## Open-source Capability Reference
+
+Open-source capability map added as reference. See [Open-source Capability Extension Blueprint](../blueprint/open-source-capability-extension-blueprint.md).
+
+**Important:** No new production dependency has been adopted by this documentation task. Current implementation remains focused on Real Media Input endpoint stabilization. OpenCue remains NOT STARTED. FFmpeg in platform-api remains temporary preview bootstrap. Artifact DAG remains postponed.
+
+## Route Registration Status (2026-07-08)
+
+- Synthetic Preview Render E2E: COMPLETE
+- Real Media Execution: VERIFIED via fixture
+- Real Media API Upload/Content: BLOCKED (Spring MVC route registration anomaly)
+- REAL-MEDIA-INPUT.0: PARTIAL
+- See [Debug](../../render/spring-mvc-route-registration-debug.md)
+
+## Eventing/Outbox Status (2026-07-08)
+
+- Outbox boundary review: COMPLETE
+- Current outbox: CLEAN (no routing leakage)
+- Outbox module: MIXED (event outbox + job orchestration co-located)
+- Camel: Candidate for relay/integration runtime
+- APISIX: Candidate for external API/webhook gateway
+- EventMesh: Future extension
+- See [Outbox Boundary Review](../eventing/outbox-boundary-review.md)
+
+## Outbox Module Separation (2026-07-08)
+
+- OUTBOX-MODULE-SEPARATION.0: COMPLETE
+- Outbox module: CLEAN (transactional outbox only)
+- Platform coordination: SEPARATED (moved to com.example.platform.outbox.coordination)
+- See [Outbox Module Separation](../eventing/outbox-module-separation.md)
+
+## Event Contract (2026-07-08)
+
+- EVENT-CONTRACT.0: COMPLETE
+- Event naming convention: domain.resource.action
+- Event taxonomy: 6 categories defined
+- Internal event envelope: 16 fields defined
+- CloudEvents: Recommended for external envelope
+- AsyncAPI: Candidate for documentation
+- See [Event Contract](../eventing/event-contract.md)
+
+## Outbox Relay SPI (2026-07-08)
+
+- OUTBOX-RELAY-SPI.0: COMPLETE
+- OutboxRelay SPI: DEFINED
+- EventDeliveryProvider SPI: DEFINED
+- Current behavior preserved: YES
+- External dependencies added: NO
+- See [Outbox Relay SPI](../eventing/outbox-relay-spi.md)
+
+## Event Subscription Model (2026-07-08)
+
+- EVENT-SUBSCRIPTION-MODEL.0: COMPLETE (DESIGN_ONLY)
+- EventSubscription model: DEFINED
+- DestinationRef model: DEFINED
+- Retry policy model: DEFINED
+- Routing kept outside outbox: YES
+- See [Event Subscription Model](../eventing/event-subscription-model.md)
+
+## Event Subscription SPI (2026-07-08)
+
+- EVENT-SUBSCRIPTION-SPI.0: COMPLETE (INTERFACES_ONLY)
+- 14 types added to outbox.subscription package
+- Exact/wildcard matching: YES
+- Tenant/project filtering: YES
+- No runtime behavior changed
+- See [Event Subscription SPI](../eventing/event-subscription-spi.md)
+
+## Spring MVC Route Registration Fix (2026-07-08)
+
+- SPRING-BOOT-CLASSLOADER-DEEP-DIAG.0: COMPLETE
+- Root cause: Dockerfile.incremental copied JAR to wrong path
+- REAL-MEDIA-INPUT.0: COMPLETE
+- Upload endpoint: WORKING
+- Content endpoint: WORKING
+- See [Diagnostic](../render/spring-boot-classloader-deep-diagnostic.md)
+
+## Timeline Render MVP (2026-07-08)
+
+- TIMELINE-RENDER-MVP.0: COMPLETE
+- Timeline revision-based render: WORKING
+- One video clip with real media: VERIFIED
+- See [Timeline Render MVP](../render/timeline-render-mvp.md)
+
+## Basic Effects DSL (2026-07-08)
+
+- BASIC-EFFECTS-DSL.0: COMPLETE (DOCS_ONLY)
+- Effect schema: DEFINED (7 MVP effects)
+- Placement model: clip/track/timeline
+- Validation rules: DEFINED
+- FFmpeg mapping: GUIDANCE only
+- See [Basic Effects DSL](../render/basic-effects-dsl.md)
+
+## FFmpeg Filtergraph Compiler (2026-07-08)
+
+- FFMPEG-FILTERGRAPH-COMPILER.0: COMPLETE (EXISTING_INFRASTRUCTURE)
+- EffectFilterGraphBuilder: EXISTS
+- Fade/brightness/contrast/blur: VERIFIED
+- See [FFmpeg Filtergraph Compiler](../render/ffmpeg-filtergraph-compiler.md)
+
+## Subtitle DSL (2026-07-08)
+
+- SUBTITLE-DSL-ASS.0: COMPLETE (DOCS_FIRST)
+- TimelineTextOverlay: EXISTS
+- Subtitle Render API: EXISTS (MVP)
+- libass provider: EXISTS
+- See [Subtitle DSL](../render/subtitle-dsl-ass.md)
+
+## Text Overlay Security (2026-07-08)
+
+- TEXT-OVERLAY-SECURITY.0: COMPLETE
+- FFmpeg command: argv-based (safe)
+- ASS escaping: PARTIAL (follow-up)
+- Path exposure: NONE (safe)
+- See [Text Overlay Security](../render/text-overlay-security.md)
+
+## ASS Generator MVP (2026-07-08)
+
+- ASS-GENERATOR-MVP.0: COMPLETE (CODE_AND_TESTS)
+- ASS escaping: HARDENED
+- Resource limits: ENFORCED
+- ASS injection risk: LOW
+- See [ASS Generator MVP](../render/ass-generator-mvp.md)
+
+## Subtitle Render Smoke (2026-07-09)
+
+- SUBTITLE-RENDER-SMOKE.0: COMPLETE (SMOKE_VERIFIED)
+- Subtitle burn-in: ✅ COMPLETED
+- Escaped text: ✅ COMPLETED
+- Unicode: ✅ COMPLETED
+- See [Subtitle Render Smoke](../render/subtitle-render-smoke.md)
+
+## Timeline Git Planning (2026-07-09)
+
+- TIMELINE-GIT-PLANNING.0: COMPLETE (DOCS_ONLY)
+- TimelineRevision model: DEFINED
+- Semantic diff model: DEFINED
+- Patch model: DEFINED
+- Timeline Git: NOT IMPLEMENTED
+- See [Timeline Git Planning](../timeline/timeline-git-planning.md)

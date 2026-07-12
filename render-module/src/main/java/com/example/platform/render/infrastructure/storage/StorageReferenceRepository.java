@@ -17,19 +17,26 @@ public class StorageReferenceRepository {
 
     protected StorageReferenceRepository() { this.dsl = null; }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public StorageReferenceRepository(DSLContext dsl) { this.dsl = dsl; }
 
     public StorageReference save(StorageReference r) {
         var id = r.storageReferenceId() != null ? r.storageReferenceId() : Ids.newId("stor");
         var now = OffsetDateTime.now();
-        dsl.execute(
-                "INSERT INTO storage_reference (storage_reference_id, provider_type, storage_class, root_path, relative_path, checksum, content_hash, file_size, mime_type, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                        + "ON CONFLICT (provider_type, root_path, relative_path) DO UPDATE SET "
-                        + "checksum = EXCLUDED.checksum, content_hash = EXCLUDED.content_hash, "
-                        + "file_size = EXCLUDED.file_size, mime_type = EXCLUDED.mime_type, updated_at = EXCLUDED.updated_at",
-                id, r.providerType(), r.storageClass().name(), r.rootPath(), r.relativePath(),
-                r.checksum(), r.contentHash(), r.fileSize(), r.mimeType(), now, now, now);
+        dsl.insertInto(table("storage_reference"))
+                .columns(field("storage_reference_id"), field("provider_type"), field("storage_class"),
+                        field("root_path"), field("relative_path"), field("checksum"), field("content_hash"),
+                        field("file_size"), field("mime_type"), field("created_at"), field("updated_at"))
+                .values(id, r.providerType(), r.storageClass().name(), r.rootPath(), r.relativePath(),
+                        r.checksum(), r.contentHash(), r.fileSize(), r.mimeType(), now, now)
+                .onConflict(field("provider_type"), field("root_path"), field("relative_path"))
+                .doUpdate()
+                .set(field("checksum"), r.checksum())
+                .set(field("content_hash"), r.contentHash())
+                .set(field("file_size"), r.fileSize())
+                .set(field("mime_type"), r.mimeType())
+                .set(field("updated_at"), now)
+                .execute();
         return findById(id).orElseThrow();
     }
 
@@ -54,9 +61,15 @@ public class StorageReferenceRepository {
                 r.get(field("root_path", String.class)), r.get(field("relative_path", String.class)),
                 r.get(field("checksum", String.class)), r.get(field("content_hash", String.class)),
                 r.get(field("file_size", Long.class)), r.get(field("mime_type", String.class)),
-                toInst(r.get(field("created_at", OffsetDateTime.class))),
-                toInst(r.get(field("updated_at", OffsetDateTime.class))));
+                toInst(r.get(field("created_at"))),
+                toInst(r.get(field("updated_at"))));
     }
-    private static Instant toInst(OffsetDateTime o) { return o != null ? o.toInstant() : null; }
+    private static Instant toInst(Object o) {
+        if (o == null) return null;
+        if (o instanceof OffsetDateTime odt) return odt.toInstant();
+        if (o instanceof java.sql.Timestamp ts) return ts.toInstant();
+        if (o instanceof Instant i) return i;
+        return null;
+    }
     private static <E extends Enum<E>> E e(Class<E> t, String v) { try { return Enum.valueOf(t, v); } catch (Exception ex) { return null; } }
 }
