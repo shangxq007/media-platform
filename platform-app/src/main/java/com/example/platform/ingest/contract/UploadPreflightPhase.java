@@ -1,0 +1,12 @@
+package com.example.platform.ingest.contract;
+
+public enum UploadPreflightPhase {
+    REQUEST_METADATA_VALIDATION,
+    STORAGE_STAGING,
+    GENERIC_CONTENT_DETECTION,
+    MEDIA_SPECIFIC_PROBE,
+    SECURITY_SAFETY_GATE,
+    POLICY_EVALUATION,
+    RAW_MEDIA_PRODUCT_CREATION,
+    POST_ACCEPT_ENRICHMENT
+}
