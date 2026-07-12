@@ -1,6 +1,7 @@
 plugins { id("org.springframework.boot") }
 
 dependencies {
+    implementation("org.apache.tika:tika-core:2.9.2")  // Tika experimental (disabled by default)
     implementation(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))
     implementation(project(":render-module"))
