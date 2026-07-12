@@ -8,4 +8,6 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(testFixtures(project(":shared-kernel")))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    implementation("org.apache.opendal:opendal-java:0.46.4")  // OpenDAL experimental (disabled by default)
 }
+
