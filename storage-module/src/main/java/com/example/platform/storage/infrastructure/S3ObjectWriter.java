@@ -41,6 +41,9 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
  *   <li>Checksum verification against computed SHA-256</li>
  *   <li>ETag is not treated as canonical SHA-256</li>
  * </ul>
+ *
+ * <p>S3Client is initialized lazily on first use to avoid network calls
+ * (DNS resolution, HTTP client init) during Spring startup.</p>
  */
 @Component
 @ConditionalOnProperty(prefix = "storage.s3", name = "enabled", havingValue = "true")
@@ -49,14 +52,27 @@ public class S3ObjectWriter {
     private static final Logger log = LoggerFactory.getLogger(S3ObjectWriter.class);
 
     private final StorageS3Properties properties;
-    private final S3Client s3Client;
+    private volatile S3Client s3Client;
 
     public S3ObjectWriter(StorageS3Properties properties) {
         this.properties = properties;
-        this.s3Client = buildClient(properties);
         S3ClientSettingsResolver.Resolved resolved = S3ClientSettingsResolver.resolve(properties);
-        log.info("S3ObjectWriter initialized: endpoint={} region={} pathStyle={}",
+        log.info("S3ObjectWriter initialized: endpoint={} region={} pathStyle={} (client will be initialized on first use)",
                 resolved.endpoint(), resolved.region(), resolved.pathStyleAccess());
+    }
+
+    private S3Client getClient() {
+        S3Client result = s3Client;
+        if (result == null) {
+            synchronized (this) {
+                result = s3Client;
+                if (result == null) {
+                    log.info("Lazily initializing S3ObjectWriter S3Client...");
+                    s3Client = result = buildClient(properties);
+                }
+            }
+        }
+        return result;
     }
 
     /**
@@ -106,7 +122,7 @@ public class S3ObjectWriter {
                 requestBuilder.contentType(contentType);
             }
 
-            s3Client.putObject(requestBuilder.build(), RequestBody.fromFile(localFilePath));
+            getClient().putObject(requestBuilder.build(), RequestBody.fromFile(localFilePath));
             log.info("S3 upload completed: bucket={} key={} size={} checksum={}",
                     bucket, objectKey, fileSize, checksum);
         } catch (S3Exception e) {
@@ -126,7 +142,7 @@ public class S3ObjectWriter {
         // Verify object exists via HeadObject
         HeadObjectResponse headResponse;
         try {
-            headResponse = s3Client.headObject(HeadObjectRequest.builder()
+            headResponse = getClient().headObject(HeadObjectRequest.builder()
                     .bucket(bucket)
                     .key(objectKey)
                     .build());
@@ -183,7 +199,7 @@ public class S3ObjectWriter {
 
     private void attemptDelete(String bucket, String objectKey) {
         try {
-            s3Client.deleteObject(DeleteObjectRequest.builder()
+            getClient().deleteObject(DeleteObjectRequest.builder()
                     .bucket(bucket)
                     .key(objectKey)
                     .build());
