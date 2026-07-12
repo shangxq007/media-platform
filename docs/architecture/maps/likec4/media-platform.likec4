@@ -83,6 +83,70 @@ model {
       }
     }
 
+    storageModule = container 'storage-module' {
+      description 'Storage delivery and materialization'
+
+      storageDeliveryProfile = component 'Storage Delivery Profile' {
+        description 'Profile contract: 8 canonical profiles, access modes, capabilities'
+      }
+
+      storageDeliveryProfileDTO = component 'StorageDeliveryProfile DTO' {
+        description 'Internal value objects: Profile, Capabilities, SecurityPolicy'
+      }
+
+      storageDeliveryProfileValidator = component 'StorageDeliveryProfileValidator' {
+        description 'Local validation: access mode, capability, security rules'
+      }
+
+      storageDeliveryProfileConfig = component 'StorageDeliveryProfileConfig' {
+        description 'Spring config binding: storage.delivery.*'
+      }
+
+      storageDeliveryProfileRegistry = component 'StorageDeliveryProfileRegistry' {
+        description 'Read-only registry: 8 canonical profiles, not used for provider selection'
+      }
+
+      s3Materializer = component 'S3ObjectMaterializer' {
+        description 'S3/R2-compatible storage materializer'
+      }
+
+      accessDescriptor = component 'AccessDescriptor' {
+        description 'User-facing access contract: SIGNED_URL generated on demand'
+      }
+    }
+
+    ingestModule = container 'ingest-module' {
+      description 'Upload preflight and metadata detection'
+
+      uploadHook = component 'UploadReportOnlyPreflightHook' {
+        description 'Report-only hook: disabled by default, fail-open, never rejects'
+      }
+
+      tikaProvider = component 'TikaDetectorProvider' {
+        description 'MIME detection, extension mismatch, content-type detection'
+      }
+
+      ffprobeProvider = component 'FFprobeMetadataProvider' {
+        description 'Media technical metadata: duration, codec, resolution'
+      }
+
+      metadataMerger = component 'IngestMetadataMerger' {
+        description 'Merges Tika + FFprobe into unified result'
+      }
+
+      safeReportDTO = component 'SafePreflightReportSummary' {
+        description 'Safe internal DTO: no raw metadata, no storage internals'
+      }
+
+      policyEvaluator = component 'ReportOnlyPreflightPolicyEvaluator' {
+        description 'Report-only evaluator: never rejects, fails open'
+      }
+
+      policyResult = component 'PreflightPolicyEvaluationResult' {
+        description 'Policy result: ACCEPT, ACCEPT_WITH_WARNINGS, REJECT_CANDIDATE'
+      }
+    }
+
     aiModule = container 'ai-module' {
       description 'AI integration'
     }
@@ -135,8 +199,11 @@ model {
 
   // Internal: application structure
   platformApp -> renderModule 'uses'
-  platformApp -> aiModule 'uses'
+  platformApp -> storageModule 'uses'
+  platformApp -> ingestModule 'uses'
   renderModule -> sharedKernel 'depends on'
+  storageModule -> sharedKernel 'depends on'
+  ingestModule -> sharedKernel 'depends on'
   aiModule -> sharedKernel 'depends on'
 
   // VS.0 vertical slice flow
@@ -164,6 +231,22 @@ model {
   // VS.1 Test layer
   fakeTestLayer -> previewRenderJobService 'tests'
   fakeTestLayer -> previewArtifactQueryService 'tests'
+
+  // Storage Delivery Profile relationships
+  storageDeliveryProfileRegistry -> storageDeliveryProfile 'holds profiles'
+  storageDeliveryProfileValidator -> storageDeliveryProfile 'validates'
+  storageDeliveryProfileConfig -> storageDeliveryProfile 'binds config'
+  storageDeliveryProfile -> storageDeliveryProfileDTO 'maps to DTOs'
+  s3Materializer -> storage 'R2/S3-compatible'
+  s3Materializer -> accessDescriptor 'generates signed URL'
+
+  // Ingest Preflight Policy relationships
+  uploadHook -> tikaProvider 'detects MIME'
+  uploadHook -> ffprobeProvider 'probes media'
+  uploadHook -> metadataMerger 'merges results'
+  metadataMerger -> safeReportDTO 'produces safe report'
+  safeReportDTO -> policyEvaluator 'evaluates policy'
+  policyEvaluator -> policyResult 'produces result'
 }
 
 views {
@@ -173,6 +256,8 @@ views {
     description 'External actors and systems'
     include *
     exclude renderModule
+    exclude storageModule
+    exclude ingestModule
     exclude aiModule
     exclude sharedKernel
     exclude platformApp
@@ -269,5 +354,29 @@ views {
       renderModule.fakeTestLayer,
       renderModule.previewRenderJobService,
       renderModule.previewArtifactQueryService
+  }
+
+  view storageDeliveryProfileArchitecture of storageModule {
+    title 'Storage Delivery Profile Architecture'
+    description 'Profile contract, DTO, validator, config binding, registry — read-only, not used for provider selection'
+    include *
+    exclude s3Materializer
+    exclude accessDescriptor
+  }
+
+  view ingestPreflightPolicyFlow of ingestModule {
+    title 'Ingest Preflight Policy Flow'
+    description 'Report-only: Tika + FFprobe → SafeReport → PolicyEvaluator → non-blocking result'
+    include *
+  }
+
+  view r2ArtifactAccessPath of renderModule {
+    title 'R2 Artifact Access Path'
+    description 'Active runtime: StorageReference → S3/R2 → signed URL → AccessDescriptor'
+    include
+      renderModule.storageRuntime,
+      storageModule.s3Materializer,
+      storageModule.accessDescriptor,
+      storage
   }
 }
