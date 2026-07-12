@@ -12,6 +12,7 @@ import UserRenderHistoryPage from '../pages/UserRenderHistoryPage.js'
 import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
 import UserRenderResultDetailPage from '../pages/UserRenderResultDetailPage.js'
 import { DevDiagnosticsHubPage } from '../pages/DevDiagnosticsHubPage.js'
+import { DevStorageDeliveryProfileDiagnosticsPage } from '../pages/DevStorageDeliveryProfileDiagnosticsPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -89,6 +90,12 @@ const devDiagnosticsHubRoute = createRoute({
   component: DevDiagnosticsHubPage,
 })
 
+const devStorageDeliveryProfileDiagnosticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/storage-delivery-profiles',
+  component: DevStorageDeliveryProfileDiagnosticsPage,
+})
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   renderJobsRoute,
@@ -102,4 +109,5 @@ export const routeTree = rootRoute.addChildren([
   adminStorageHealthRoute,
   userRenderResultDetailRoute,
   devDiagnosticsHubRoute,
+  devStorageDeliveryProfileDiagnosticsRoute,
 ])
