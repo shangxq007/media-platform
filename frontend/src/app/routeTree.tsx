@@ -11,6 +11,7 @@ import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
 import UserRenderHistoryPage from '../pages/UserRenderHistoryPage.js'
 import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
 import UserRenderResultDetailPage from '../pages/UserRenderResultDetailPage.js'
+import { DevDiagnosticsHubPage } from '../pages/DevDiagnosticsHubPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -82,6 +83,12 @@ const devConsoleRoute = createRoute({
   component: DevConsolePage,
 })
 
+const devDiagnosticsHubRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/diagnostics',
+  component: DevDiagnosticsHubPage,
+})
+
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   renderJobsRoute,
@@ -94,4 +101,5 @@ export const routeTree = rootRoute.addChildren([
   userRenderHistoryRoute,
   adminStorageHealthRoute,
   userRenderResultDetailRoute,
+  devDiagnosticsHubRoute,
 ])
