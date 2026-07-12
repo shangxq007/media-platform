@@ -11,6 +11,7 @@ import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.*;
+import org.springframework.http.ResponseEntity;
 
 import org.junit.jupiter.api.*;
 
@@ -38,14 +39,16 @@ class RenderControllerContractTest {
 
     private FakeRenderJobService fakeService;
     private FakeOrchestratorPort fakeOrchestrator;
+    private FakeArtifactAccessService fakeArtifactAccess;
     private RenderController controller;
 
     @BeforeEach
     void setUp() {
         fakeService = new FakeRenderJobService();
         fakeOrchestrator = new FakeOrchestratorPort();
+        fakeArtifactAccess = new FakeArtifactAccessService();
         controller = new RenderController(fakeService, fakeOrchestrator,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, fakeArtifactAccess);
     }
 
     @AfterEach
@@ -291,6 +294,100 @@ class RenderControllerContractTest {
         }
     }
 
+    // ========== Artifact access (scoped + legacy) ==========
+
+    @Nested
+    @DisplayName("Tenant-scoped artifact access")
+    class ScopedArtifactAccess {
+
+        @Test
+        @DisplayName("GET tenant-scoped access returns signed URL when authorized")
+        void scopedAccessReturnsSignedUrl() {
+            fakeService.storedJobs.put("rj-1",
+                    new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "COMPLETED"));
+            fakeOrchestrator.artifacts.put("rj-1", List.of(
+                    new ArtifactInfoResponse("art-1", "rj-1", "proj-1", "my-bucket/path/to/output.mp4",
+                            "video/mp4", "1920x1080", 1024L, Instant.now())));
+            fakeArtifactAccess.descriptorToReturn = new com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor(
+                    null, null,
+                    com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.SIGNED_URL,
+                    "GET", "https://signed.example.com/art-1",
+                    Instant.now().plusSeconds(900), 900,
+                    "video/mp4", "output.mp4", 1024L, "READY", null, true);
+
+            ResponseEntity<?> result = controller.getArtifactAccessScoped("t-1", "proj-1", "rj-1", "art-1");
+
+            assertEquals(200, result.getStatusCode().value());
+        }
+
+        @Test
+        @DisplayName("Tenant-scoped access returns 404 when not found in scope")
+        void scopedAccessReturns404WhenNotFound() {
+            // not stored -> getByIdAndProject will throw IllegalArgumentException
+            assertThrows(IllegalArgumentException.class,
+                    () -> controller.getArtifactAccessScoped("t-1", "proj-1", "rj-missing", "art-1"));
+        }
+
+        @Test
+        @DisplayName("Tenant-scoped access returns 404 when artifact not on this render plan")
+        void scopedAccessReturns404WhenArtifactNotOnPlan() {
+            fakeService.storedJobs.put("rj-1",
+                    new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "COMPLETED"));
+            fakeOrchestrator.artifacts.put("rj-1", List.of(
+                    new ArtifactInfoResponse("art-other", "rj-1", "proj-1", "my-bucket/path/to/output.mp4",
+                            "video/mp4", "1920x1080", 1024L, Instant.now())));
+
+            ResponseEntity<?> result = controller.getArtifactAccessScoped("t-1", "proj-1", "rj-1", "art-1");
+
+            assertEquals(404, result.getStatusCode().value());
+        }
+    }
+
+    @Nested
+    @DisplayName("Legacy artifact access with authorization")
+    class LegacyArtifactAccess {
+
+        @Test
+        @DisplayName("Legacy access returns signed URL when authorized")
+        void legacyAccessReturnsSignedUrl() {
+            fakeService.storedJobs.put("rj-1",
+                    new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "COMPLETED"));
+            fakeOrchestrator.artifacts.put("rj-1", List.of(
+                    new ArtifactInfoResponse("art-1", "rj-1", "proj-1", "my-bucket/path/to/output.mp4",
+                            "video/mp4", "1920x1080", 1024L, Instant.now())));
+            fakeArtifactAccess.descriptorToReturn = new com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor(
+                    null, null,
+                    com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.SIGNED_URL,
+                    "GET", "https://signed.example.com/art-1",
+                    Instant.now().plusSeconds(900), 900,
+                    "video/mp4", "output.mp4", 1024L, "READY", null, true);
+
+            ResponseEntity<?> result = controller.getArtifactAccess("rj-1", "art-1");
+
+            assertEquals(200, result.getStatusCode().value());
+        }
+
+        @Test
+        @DisplayName("Legacy access returns 404 when not found")
+        void legacyAccessReturns404WhenNotFound() {
+            // not stored -> getById will throw IllegalArgumentException
+            assertThrows(IllegalArgumentException.class,
+                    () -> controller.getArtifactAccess("rj-missing", "art-1"));
+        }
+
+        @Test
+        @DisplayName("Legacy access never calls presigner before authorization")
+        void legacyAccessNeverCallsPresignerBeforeAuth() {
+            // not stored -> auth fails, presigner must not be called
+            try {
+                controller.getArtifactAccess("rj-missing", "art-1");
+            } catch (IllegalArgumentException ignored) {
+            }
+            assertEquals(0, fakeArtifactAccess.createAccessCalls,
+                    "Presigner must not be called before authorization passes");
+        }
+    }
+
     // ========== No internal leaks ==========
 
     @Nested
@@ -430,8 +527,40 @@ class RenderControllerContractTest {
         }
 
         @Override
+        public byte[] getArtifactContent(String artifactId) {
+            return new byte[0];
+        }
+
+        @Override
         public String loadJobTimelineJson(String tenantId, String jobId) {
             return "{}";
+        }
+    }
+
+    static class FakeArtifactAccessService extends com.example.platform.render.app.access.ArtifactAccessService {
+        int createAccessCalls = 0;
+        com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor descriptorToReturn;
+
+        FakeArtifactAccessService() {
+            super(null, new org.springframework.beans.factory.ObjectProvider<>() {
+                @Override
+                public com.example.platform.storage.infrastructure.S3ObjectMaterializer getObject(Object... args) { return null; }
+                @Override
+                public com.example.platform.storage.infrastructure.S3ObjectMaterializer getIfAvailable() { return null; }
+                @Override
+                public com.example.platform.storage.infrastructure.S3ObjectMaterializer getIfUnique() { return null; }
+                @Override
+                public com.example.platform.storage.infrastructure.S3ObjectMaterializer getObject() { return null; }
+            });
+            descriptorToReturn = com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.notFound("No descriptor configured");
+        }
+
+        @Override
+        public com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor createAccessDescriptor(
+                String providerType, String bucket, String objectKey,
+                String mimeType, String filename, Long sizeBytes) {
+            createAccessCalls++;
+            return descriptorToReturn;
         }
     }
 }

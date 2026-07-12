@@ -475,6 +475,15 @@ public class RenderController {
         }
     }
 
+    private void requireArtifactAccess() {
+        if (artifactAccessService == null) {
+            throw new IllegalStateException("Artifact access service not available");
+        }
+        if (orchestratorPort == null) {
+            throw new IllegalStateException("Render orchestrator not available");
+        }
+    }
+
     private static RenderCachePresignResponseDto toPresignDto(RenderCachePresignService.CachePresignResponse response) {
         List<RenderCacheEntryPresignDto> entries = response.entries().stream()
                 .map(RenderController::toEntryDto)
@@ -596,6 +605,25 @@ public class RenderController {
                 .body(content);
     }
 
+    @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/artifacts/{artifactId}/access")
+    @Operation(summary = "Get artifact access descriptor with signed download URL (tenant-scoped)",
+            description = "Returns an ephemeral access descriptor (signed URL) for downloading the artifact. "
+                    + "Verifies job belongs to the specified tenant and project before generating access. "
+                    + "The signed URL expires after a configured TTL. Does not expose storage internals.")
+    public ResponseEntity<?> getArtifactAccessScoped(
+            @PathVariable String tenantId,
+            @PathVariable String projectId,
+            @PathVariable String jobId,
+            @PathVariable String artifactId) {
+        requireArtifactAccess();
+
+        // Authorization: verify job belongs to tenant/project (throws IllegalArgumentException -> 404)
+        renderJobService.getByIdAndProject(tenantId, projectId, jobId);
+
+        // Verify artifact belongs to job, then build access response (never calls presigner before auth passes)
+        return resolveArtifactAndBuildAccess(jobId, artifactId);
+    }
+
     @GetMapping("/render/jobs/{jobId}/artifacts/{artifactId}/access")
     @Operation(summary = "Get artifact access descriptor with signed download URL",
             description = "Returns an ephemeral access descriptor (signed URL) for downloading the artifact. "
@@ -603,15 +631,20 @@ public class RenderController {
     public ResponseEntity<?> getArtifactAccess(
             @PathVariable String jobId,
             @PathVariable String artifactId) {
-        if (artifactAccessService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("error", "Artifact access service not available"));
-        }
-        if (orchestratorPort == null) {
-            throw new IllegalStateException("Render orchestrator not available");
-        }
+        requireArtifactAccess();
 
-        // Verify artifact belongs to job (same pattern as getArtifactContent)
+        // Authorization: verify job exists and tenant access is valid (throws IllegalArgumentException -> 404)
+        renderJobService.getById(jobId);
+
+        // Verify artifact belongs to job, then build access response (never calls presigner before auth passes)
+        return resolveArtifactAndBuildAccess(jobId, artifactId);
+    }
+
+    /**
+     * Resolves artifact from orchestrator, verifies it belongs to the job, and builds the access response.
+     * Called only after authorization has passed — the presigner is never invoked before auth.
+     */
+    private ResponseEntity<?> resolveArtifactAndBuildAccess(String jobId, String artifactId) {
         List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
         var artifact = artifacts.stream()
                 .filter(a -> a.artifactId().equals(artifactId))
