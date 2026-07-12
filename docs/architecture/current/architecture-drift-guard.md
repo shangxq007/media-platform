@@ -58,3 +58,34 @@ bash scripts/check-architecture-drift.sh
 
 - ARCH-DRIFT-GUARD.0: COMPLETE
 - All checks: PASSED
+
+---
+
+## CI Enforcement
+
+Architecture drift guard runs in CI using:
+```bash
+bash scripts/check-architecture-drift.sh
+```
+
+**Workflow:** `.github/workflows/architecture-drift.yml`
+
+**Triggers:**
+- Pull requests
+- Pushes to main
+
+**What a failure means:**
+A status-critical architecture assertion may have drifted. It does not necessarily mean the change is wrong.
+
+**How to fix intentional changes:**
+1. Update implementation
+2. Update LikeC4
+3. Update architecture assertions
+4. Update drift guard script
+5. Update current-system-state/module-status
+6. Update docs for affected subsystem
+
+**Local reproduction:**
+```bash
+bash scripts/check-architecture-drift.sh
+```

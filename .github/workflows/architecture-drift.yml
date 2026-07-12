@@ -1,0 +1,19 @@
+name: Architecture Drift Guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  architecture-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Script syntax check
+        run: bash -n scripts/check-architecture-drift.sh
+
+      - name: Run architecture drift guard
+        run: bash scripts/check-architecture-drift.sh
