@@ -57,9 +57,10 @@ public class RenderController {
     private final TimelineRevisionService timelineRevisionService;
     private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
     private final com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository;
+    private final com.example.platform.render.app.access.ArtifactAccessService artifactAccessService;
 
     public RenderController(RenderJobService renderJobService) {
-        this(renderJobService, null, null, null, null, null, null, null, null, null, null, null);
+        this(renderJobService, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -74,7 +75,8 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionService timelineRevisionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository) {
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.access.ArtifactAccessService artifactAccessService) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
         this.storageProviders = storageProviders;
@@ -87,6 +89,7 @@ public class RenderController {
         this.timelineRevisionService = timelineRevisionService;
         this.productRuntimeService = productRuntimeService;
         this.storageReferenceRepository = storageReferenceRepository;
+        this.artifactAccessService = artifactAccessService;
     }
 
 
@@ -591,5 +594,71 @@ public class RenderController {
                 .header("Content-Disposition", "inline; filename=output.mp4")
                 .header("Content-Length", String.valueOf(content.length))
                 .body(content);
+    }
+
+    @GetMapping("/render/jobs/{jobId}/artifacts/{artifactId}/access")
+    @Operation(summary = "Get artifact access descriptor with signed download URL",
+            description = "Returns an ephemeral access descriptor (signed URL) for downloading the artifact. "
+                    + "The signed URL expires after a configured TTL. Does not expose storage internals.")
+    public ResponseEntity<?> getArtifactAccess(
+            @PathVariable String jobId,
+            @PathVariable String artifactId) {
+        if (artifactAccessService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Artifact access service not available"));
+        }
+        if (orchestratorPort == null) {
+            throw new IllegalStateException("Render orchestrator not available");
+        }
+
+        // Verify artifact belongs to job (same pattern as getArtifactContent)
+        List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
+        var artifact = artifacts.stream()
+                .filter(a -> a.artifactId().equals(artifactId))
+                .findFirst();
+        if (artifact.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Parse storageUri: "bucket/objectKey" format
+        String storageUri = artifact.get().storageUri();
+        if (storageUri == null || storageUri.isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("status", "NOT_FOUND", "message", "No storage location for artifact"));
+        }
+        String[] parts = storageUri.split("/", 2);
+        if (parts.length < 2) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("status", "ACCESS_FAILED", "message", "Invalid storage reference"));
+        }
+        String bucket = parts[0];
+        String objectKey = parts[1];
+
+        // Derive filename from objectKey (last path segment)
+        String filename = objectKey.contains("/")
+                ? objectKey.substring(objectKey.lastIndexOf('/') + 1)
+                : objectKey;
+
+        // Delegate to ArtifactAccessService (assumes S3/R2 for artifact storage)
+        var descriptor = artifactAccessService.createAccessDescriptor(
+                "S3", bucket, objectKey, null, filename, null);
+
+        // Map descriptor status to HTTP response
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.SIGNED_URL) {
+            return ResponseEntity.ok(descriptor);
+        }
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.NOT_FOUND) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(descriptor);
+        }
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.UNSUPPORTED) {
+            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(descriptor);
+        }
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.ACCESS_FAILED) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(descriptor);
+        }
+        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.NOT_READY) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(descriptor);
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(descriptor);
     }
 }

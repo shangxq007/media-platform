@@ -86,6 +86,47 @@ public class ArtifactAccessService {
         return AccessDescriptor.unsupported("Unsupported provider: " + provider);
     }
 
+    /**
+     * Create access descriptor from raw storage coordinates (no StorageReference lookup).
+     * Used by REST endpoints that already know bucket/objectKey from artifact metadata.
+     *
+     * @param providerType the storage provider type (e.g. "S3", "R2", "LOCAL")
+     * @param bucket       the storage bucket
+     * @param objectKey    the storage object key
+     * @param mimeType     optional MIME type
+     * @param filename     optional filename
+     * @param sizeBytes    optional file size
+     * @return access descriptor
+     */
+    public AccessDescriptor createAccessDescriptor(String providerType, String bucket, String objectKey,
+                                                   String mimeType, String filename, Long sizeBytes) {
+        if (bucket == null || bucket.isBlank() || objectKey == null || objectKey.isBlank()) {
+            return AccessDescriptor.notFound("Invalid storage coordinates");
+        }
+
+        if ("S3".equalsIgnoreCase(providerType) || "R2".equalsIgnoreCase(providerType)) {
+            if (!signedAccessEnabled || s3Materializer == null) {
+                return AccessDescriptor.unsupported("Signed access not enabled");
+            }
+            try {
+                java.time.Duration ttl = java.time.Duration.parse("PT" + signedAccessTtl);
+                String url = s3Materializer.createPresignedGetUrl(bucket, objectKey, ttl);
+                return new AccessDescriptor(null, null, AccessDescriptor.AccessType.SIGNED_URL, "GET", url,
+                        Instant.now().plus(ttl), (int) ttl.getSeconds(),
+                        mimeType, filename, sizeBytes, "READY", null, true);
+            } catch (Exception e) {
+                log.warn("Failed to generate signed URL: {}", e.getMessage());
+                return AccessDescriptor.accessFailed("Access generation failed");
+            }
+        }
+
+        if ("LOCAL".equalsIgnoreCase(providerType)) {
+            return AccessDescriptor.unsupported("Local provider access not supported via signed URL");
+        }
+
+        return AccessDescriptor.unsupported("Unsupported provider: " + providerType);
+    }
+
     public record AccessDescriptor(
             String productId,
             String artifactId,
