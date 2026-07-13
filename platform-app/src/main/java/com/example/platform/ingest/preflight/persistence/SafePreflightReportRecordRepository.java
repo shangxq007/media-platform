@@ -5,6 +5,7 @@ import static org.jooq.impl.DSL.table;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
@@ -97,6 +98,14 @@ public class SafePreflightReportRecordRepository {
         return dsl.selectFrom(table(TABLE))
             .where(field("expires_at").lt(expiresAt))
             .fetch(this::mapRecord);
+    }
+
+    public Optional<SafePreflightReportRecord> findByIdAndTenantProject(Long id, String tenantId, String projectId) {
+        return dsl.selectFrom(table(TABLE))
+            .where(field("id").eq(id))
+            .and(field("tenant_id").eq(tenantId))
+            .and(field("project_id").eq(projectId))
+            .fetchOptional(this::mapRecord);
     }
 
     private SafePreflightReportRecord mapRecord(Record r) {
