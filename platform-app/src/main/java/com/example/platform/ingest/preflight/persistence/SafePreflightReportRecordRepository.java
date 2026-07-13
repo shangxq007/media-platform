@@ -20,6 +20,63 @@ public class SafePreflightReportRecordRepository {
 
     private static final String TABLE = "ingest_preflight_safe_report_records";
 
+    public SafePreflightReportRecord save(SafePreflightReportRecord record) {
+        var result = dsl.insertInto(table(TABLE))
+            .columns(
+                field("tenant_id"), field("project_id"), field("raw_media_product_id"),
+                field("upload_attempt_id"), field("created_at"), field("expires_at"),
+                field("lifecycle_state"), field("persistence_mode"), field("access_scope"),
+                field("retention_days"), field("report_only_mode"), field("fail_open"),
+                field("overall_decision"), field("warning_count"), field("finding_count"),
+                field("reject_candidate_count"), field("declared_mime"), field("detected_mime"),
+                field("mime_mismatch"), field("content_type_confidence"), field("duration_ms"),
+                field("width"), field("height"), field("container_format"),
+                field("video_codec"), field("audio_codec"), field("has_video"),
+                field("has_audio"), field("tika_detector_success"), field("ffprobe_detector_success"),
+                field("detector_warning_codes"), field("policy_profile"), field("policy_mode"),
+                field("policy_decision"), field("policy_finding_count"), field("policy_reject_candidate_count"),
+                field("policy_user_safe_message_codes"), field("policy_finding_codes"),
+                field("upload_continues"), field("blocking"), field("schema_version")
+            )
+            .values(
+                record.tenantId(), record.projectId(), record.rawMediaProductId(),
+                record.uploadAttemptId(), record.createdAt(), record.expiresAt(),
+                record.lifecycleState(), record.persistenceMode(), record.accessScope(),
+                record.retentionDays(), record.reportOnlyMode(), record.failOpen(),
+                record.overallDecision(), record.warningCount(), record.findingCount(),
+                record.rejectCandidateCount(), record.declaredMime(), record.detectedMime(),
+                record.mimeMismatch(), record.contentTypeConfidence(), record.durationMs(),
+                record.width(), record.height(), record.containerFormat(),
+                record.videoCodec(), record.audioCodec(), record.hasVideo(),
+                record.hasAudio(), record.tikaDetectorSuccess(), record.ffprobeDetectorSuccess(),
+                record.detectorWarningCodes(), record.policyProfile(), record.policyMode(),
+                record.policyDecision(), record.policyFindingCount(), record.policyRejectCandidateCount(),
+                record.policyUserSafeMessageCodes(), record.policyFindingCodes(),
+                record.uploadContinues(), record.blocking(), record.schemaVersion()
+            )
+            .returning(field("id"))
+            .fetchOne();
+
+        Long id = result != null ? result.get("id", Long.class) : null;
+        return new SafePreflightReportRecord(
+            id, record.tenantId(), record.projectId(), record.rawMediaProductId(),
+            record.uploadAttemptId(), record.createdAt(), record.expiresAt(),
+            record.lifecycleState(), record.persistenceMode(), record.accessScope(),
+            record.retentionDays(), record.reportOnlyMode(), record.failOpen(),
+            record.overallDecision(), record.warningCount(), record.findingCount(),
+            record.rejectCandidateCount(), record.declaredMime(), record.detectedMime(),
+            record.mimeMismatch(), record.contentTypeConfidence(), record.durationMs(),
+            record.width(), record.height(), record.containerFormat(),
+            record.videoCodec(), record.audioCodec(), record.hasVideo(),
+            record.hasAudio(), record.tikaDetectorSuccess(), record.ffprobeDetectorSuccess(),
+            record.detectorWarningCodes(), record.policyProfile(), record.policyMode(),
+            record.policyDecision(), record.policyFindingCount(), record.policyRejectCandidateCount(),
+            record.policyUserSafeMessageCodes(), record.policyFindingCodes(),
+            record.uploadContinues(), record.blocking(),
+            record.redactedAt(), record.expiredAt(), record.deletedAt(), record.schemaVersion()
+        );
+    }
+
     public List<SafePreflightReportRecord> findByTenantAndProject(String tenantId, String projectId) {
         return dsl.selectFrom(table(TABLE))
             .where(field("tenant_id").eq(tenantId))
