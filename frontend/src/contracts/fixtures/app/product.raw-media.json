@@ -1,0 +1,9 @@
+{
+  "id": "prod-001",
+  "tenantId": "tenant-001",
+  "projectId": "project-001",
+  "type": "RAW_MEDIA",
+  "status": "ACTIVE",
+  "createdAt": "2026-07-13T00:00:00Z",
+  "updatedAt": "2026-07-13T00:00:00Z"
+}

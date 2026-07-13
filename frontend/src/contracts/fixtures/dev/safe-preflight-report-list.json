@@ -1,0 +1,21 @@
+{
+  "tenantId": "tenant-001",
+  "projectId": "project-001",
+  "items": [
+    {
+      "recordId": "record-001",
+      "rawMediaProductId": "prod-001",
+      "uploadAttemptId": "attempt-001",
+      "createdAt": "2026-07-13T00:00:00Z",
+      "expiresAt": "2026-07-20T00:00:00Z",
+      "lifecycleState": "RECORDED",
+      "overallDecision": "ACCEPT",
+      "warningCount": 0,
+      "findingCount": 0,
+      "policyDecision": "ACCEPT",
+      "uploadContinues": true,
+      "blocking": false
+    }
+  ],
+  "totalCount": 1
+}

@@ -1,0 +1,9 @@
+{
+  "job": {
+    "id": "job-001",
+    "status": "COMPLETED",
+    "createdAt": "2026-07-13T00:00:00Z",
+    "completedAt": "2026-07-13T00:01:00Z",
+    "durationMs": 60000
+  }
+}

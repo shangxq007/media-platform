@@ -1,0 +1,7 @@
+{
+  "access": {
+    "artifactId": "artifact-001",
+    "accessUrl": "https://example.com/access/token123",
+    "expiresAt": "2026-07-13T01:00:00Z"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "tenantId": "tenant-001",
+  "projectId": "project-001",
+  "eligibleExpiredCount": 5,
+  "wouldProcessCount": 5,
+  "wouldDeleteCount": 5,
+  "safetyChecksPassed": true,
+  "outcome": "DRY_RUN_COMPLETE"
+}
