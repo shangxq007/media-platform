@@ -89,3 +89,24 @@ A status-critical architecture assertion may have drifted. It does not necessari
 ```bash
 bash scripts/check-architecture-drift.sh
 ```
+
+---
+
+## Safe Preflight Report Persistence Guard
+
+**Checks:**
+- No persistence writer/repository classes
+- No Flyway migration for preflight
+- No JPA entity for preflight/policy
+- Enforce mode not enabled
+- Report-only evaluator does not emit REJECT
+
+**Allowed:**
+- Persistence classes in docs as future-only
+- Enforce mode in enum definitions as future-only
+
+**Forbidden in production:**
+- SafePreflightReportPersistenceWriter
+- PreflightReportRepository
+- V*__*preflight*.sql
+- @Entity on preflight classes

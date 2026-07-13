@@ -98,3 +98,25 @@ To intentionally change an assertion:
 5. Update current-system-state/module-status
 6. Run drift guard
 7. Record commit
+
+---
+
+## Safe Preflight Report Persistence Assertions
+
+| ID | Assertion |
+|----|-----------|
+| PSP-001 | Safe preflight report persistence is NOT_IMPLEMENTED |
+| PSP-002 | Any future persistence must be DEV_PREVIEW_EPHEMERAL_ONLY |
+| PSP-003 | Any future persistence must be DEV_ONLY visible |
+| PSP-004 | Any future persistence must use 7-day retention |
+| PSP-005 | Persistence failure must fail open |
+| PSP-006 | Public upload response must not include preflight fields |
+| PSP-007 | Enforce mode must remain disabled |
+| PSP-008 | Upload rejection must remain NOT_IMPLEMENTED |
+| PSP-009 | Raw FFprobe JSON must not be persisted |
+| PSP-010 | Raw Tika metadata must not be persisted |
+| PSP-011 | Local paths/temp paths must not be persisted |
+| PSP-012 | Storage internals must not be persisted |
+| PSP-013 | Signed URLs must not be persisted |
+| PSP-014 | Credentials must not be persisted |
+| PSP-015 | OCR/extracted text must not be persisted |
