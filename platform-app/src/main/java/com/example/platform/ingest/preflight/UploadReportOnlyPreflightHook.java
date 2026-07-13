@@ -2,8 +2,12 @@ package com.example.platform.ingest.preflight;
 
 import com.example.platform.ingest.contract.*;
 import com.example.platform.ingest.preflight.policy.*;
+import com.example.platform.ingest.preflight.persistence.writer.SafePreflightPersistenceWriteRequest;
+import com.example.platform.ingest.preflight.persistence.writer.SafePreflightReportPersistenceWriter;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -20,6 +24,7 @@ public class UploadReportOnlyPreflightHook {
     private static final Logger log = LoggerFactory.getLogger(UploadReportOnlyPreflightHook.class);
     private final IngestMetadataMerger merger;
     private final ReportOnlyPreflightPolicyEvaluator policyEvaluator;
+    private final SafePreflightReportPersistenceWriter persistenceWriter;
 
     @Value("${ingest.preflight.upload-integration.enabled:false}")
     private boolean integrationEnabled;
@@ -28,9 +33,11 @@ public class UploadReportOnlyPreflightHook {
     private boolean failOpen;
 
     public UploadReportOnlyPreflightHook(ObjectProvider<IngestMetadataMerger> mergerProvider,
-                                          ObjectProvider<ReportOnlyPreflightPolicyEvaluator> evaluatorProvider) {
+                                          ObjectProvider<ReportOnlyPreflightPolicyEvaluator> evaluatorProvider,
+                                          ObjectProvider<SafePreflightReportPersistenceWriter> writerProvider) {
         this.merger = mergerProvider.getIfAvailable();
         this.policyEvaluator = evaluatorProvider.getIfAvailable();
+        this.persistenceWriter = writerProvider.getIfAvailable();
     }
 
     /**
@@ -49,15 +56,36 @@ public class UploadReportOnlyPreflightHook {
                 result.detectorProvenance().stream().map(p -> p.provider().name()).toList());
 
             // Policy evaluation (internal-only, non-blocking)
+            PreflightPolicyEvaluationResult policyResult = null;
             if (policyEvaluator != null) {
                 try {
                     var safeReport = SafePreflightReportMapper.fromPreflightResult(result);
                     var policyInput = PreflightPolicyEvaluationInput.fromSafeReport(safeReport);
-                    var policyResult = policyEvaluator.evaluateReportOnly(policyInput);
+                    policyResult = policyEvaluator.evaluateReportOnly(policyInput);
                     log.info("Preflight policy: decision={} findings={} reportOnly={}",
                         policyResult.decision(), policyResult.findings().size(), policyResult.reportOnly());
                 } catch (Exception e) {
                     log.warn("Preflight policy failed (fail-open): {}", e.getMessage());
+                }
+            }
+
+            // Persistence (config-gated, fail-open, internal-only)
+            if (persistenceWriter != null && policyResult != null) {
+                try {
+                    var safeReport = SafePreflightReportMapper.fromPreflightResult(result);
+                    var writeRequest = new SafePreflightPersistenceWriteRequest(
+                        "default", // tenantId - placeholder
+                        "default", // projectId - placeholder
+                        null, // rawMediaProductId - not available at hook point
+                        UUID.randomUUID().toString(), // uploadAttemptId
+                        Instant.now(),
+                        safeReport,
+                        policyResult
+                    );
+                    var outcome = persistenceWriter.writeReportOnlySafeRecord(writeRequest);
+                    log.debug("Preflight persistence outcome: {}", outcome);
+                } catch (Exception e) {
+                    log.warn("Preflight persistence failed (fail-open): {}", e.getMessage());
                 }
             }
 
