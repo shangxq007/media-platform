@@ -1,0 +1,2 @@
+export const ARTIFACT_ACCESS_STALE_TIME = 60 * 1000
+export const ARTIFACT_ACCESS_CACHE_TIME = 5 * 60 * 1000
