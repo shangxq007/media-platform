@@ -1,0 +1,52 @@
+{
+  "task": "BACKEND-INTEGRITY-RUNTIME-CONTEXT-SCOPE-REVIEW.0",
+  "baseCommit": "4a6550d",
+  "reviewedCommit": "228e5a3",
+  "status": "COMPLETE",
+  "decision": "RUNTIME_CONTEXT_SCOPE_CHANGES_ACCEPTED_WITH_DOCUMENTATION_CORRECTIONS",
+  "h2": {
+    "claim": "H2 runtime removed",
+    "classification": "H2_RUNTIME_REMOVED_TEST_REFERENCES_REMAIN",
+    "dependencyRemaining": false,
+    "referencesRemaining": 2,
+    "referencesType": "string literals in test assertions and historical comments"
+  },
+  "postgresqlTests": {
+    "converted": 2,
+    "mechanism": "TESTCONTAINERS_POSTGRESQL",
+    "realPostgresqlVerified": true,
+    "reproducible": "PARTIAL",
+    "typeMismatchIssue": true
+  },
+  "flyway": {
+    "frozenBaselineChanged": false,
+    "existingMigrationChanged": false,
+    "existingMigrationDeleted": false,
+    "migrationCount": 3,
+    "cleanMigrate": "PASSED",
+    "validate": "PASSED"
+  },
+  "context": {
+    "canonicalApplicationLoaded": true,
+    "realDatabase": true,
+    "placeholderBeansFound": false,
+    "mockedBeans": 0,
+    "scanExpansionAccepted": true,
+    "devControllersExposed": 2
+  },
+  "materialChanges": {
+    "accepted": 5,
+    "acceptedWithFollowup": 2,
+    "requiringRepair": 0,
+    "requiringRevert": 0
+  },
+  "issues": {
+    "P0": [],
+    "P1": [],
+    "P2": ["OIDC test type mismatch (timestamp vs varchar)", "Dev controllers exposed without profile gating"],
+    "P3": ["Previous task status should be PARTIAL", "H2 removal claim should be more precise"]
+  },
+  "previousTaskCorrection": "BACKEND-INTEGRITY-RUNTIME-CONTEXT-VALIDATION.0 remains PARTIAL",
+  "mvcInventoryReadiness": "MVC_ROUTE_INVENTORY_READY_WITH_LIMITS",
+  "recommendedNextTask": "BACKEND-INTEGRITY-MVC-ROUTE-INVENTORY.0"
+}
