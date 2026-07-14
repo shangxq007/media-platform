@@ -48,7 +48,7 @@ export function ArtifactAccessAction({ artifactId, contentType, onAccessRequest 
         case 'open':
           window.open(access.accessUrl, '_blank')
           break
-        case 'download':
+        case 'download': {
           const a = document.createElement('a')
           a.href = access.accessUrl
           a.download = ''
@@ -56,6 +56,7 @@ export function ArtifactAccessAction({ artifactId, contentType, onAccessRequest 
           a.click()
           document.body.removeChild(a)
           break
+        }
       }
 
       // Reset after action

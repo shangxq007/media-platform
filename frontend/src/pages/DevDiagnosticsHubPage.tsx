@@ -152,8 +152,8 @@ export function DevDiagnosticsHubPage() {
       }}>
         <h2 style={{ color: '#bc8cff', marginTop: 0 }}>Architecture References</h2>
         <ul style={{ color: '#8b949e', margin: 0, paddingLeft: '20px' }}>
-          <li><li><a href="/dev/storage-delivery-profiles" style={{ color: "#58a6ff" }}>Storage Delivery Profile Diagnostics</a></li>
-          <li><li><a href="/dev/ingest/preflight-policy" style={{ color: "#58a6ff" }}>Ingest Preflight Policy Diagnostics</a></li>
+          <li><a href="/dev/storage-delivery-profiles" style={{ color: "#58a6ff" }}>Storage Delivery Profile Diagnostics</a></li>
+          <li><a href="/dev/ingest/preflight-policy" style={{ color: "#58a6ff" }}>Ingest Preflight Policy Diagnostics</a></li>
           <li><a href="https://r2.scribe.cc.cd/architecture/maps/latest/" style={{ color: '#58a6ff' }} target="_blank" rel="noopener">LikeC4 Architecture Views</a></li>
           <li><a href="https://github.com/shangxq007/media-platform/blob/main/docs/architecture/current/architecture-assertions.md" style={{ color: '#58a6ff' }} target="_blank" rel="noopener">Architecture Assertions</a></li>
           <li><a href="https://github.com/shangxq007/media-platform/blob/main/docs/architecture/current/architecture-drift-guard.md" style={{ color: '#58a6ff' }} target="_blank" rel="noopener">Architecture Drift Guard</a></li>

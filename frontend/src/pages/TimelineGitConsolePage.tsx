@@ -512,7 +512,7 @@ export default function TimelineGitConsolePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [diffFromId, setDiffFromId] = useState<string | null>(null)
   const [diffToId, setDiffToId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'details' | 'snapshot' | 'diff' | 'render' | 'restore'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'snapshot' | 'diff' | 'render' | 'restore' | 'job-status' | 'worker-health'>('details')
 
   const { data: revisions, isLoading, error } = useRevisions()
   const { data: revisionDetail } = useRevision(selectedId)

@@ -36,3 +36,6 @@ export const RetentionDryRunResponse = z.object({
 export type SafePreflightReportListItem = z.infer<typeof SafePreflightReportListItem>
 export type SafePreflightReportListResponse = z.infer<typeof SafePreflightReportListResponse>
 export type RetentionDryRunResponse = z.infer<typeof RetentionDryRunResponse>
+
+export const SafePreflightReportDetailResponse = SafePreflightReportListItem.extend({})
+export type SafePreflightReportDetailResponse = z.infer<typeof SafePreflightReportDetailResponse>
