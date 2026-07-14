@@ -38,6 +38,12 @@ subprojects {
         }
     }
 
+    // Resolvable configuration for the ByteBuddy agent JAR (Mockito inline mock maker).
+    val byteBuddyAgent by configurations.creating {
+        isCanBeResolved = true
+        isCanBeConsumed = false
+    }
+
     dependencies {
         // Annotation-only; aligns all Gradle modules with Spring Modulith metadata in package-info.
         add("compileOnly", "org.springframework.modulith:spring-modulith-api:2.0.4")
@@ -45,12 +51,25 @@ subprojects {
         // Test dependencies for all modules
         add("testImplementation", "org.testcontainers:postgresql")
         add("testImplementation", "org.testcontainers:junit-jupiter")
+
+        // ByteBuddy agent for Mockito inline mock maker on Java 25+.
+        // Declared as a resolvable configuration so Gradle resolves the exact JAR path
+        // and we can attach it as -javaagent to forked Test JVMs without hard-coding paths.
+        add("byteBuddyAgent", "net.bytebuddy:byte-buddy-agent")
     }
 
     tasks.withType<Test> {
         useJUnitPlatform()
         // Force Docker API version for Testcontainers compatibility
         systemProperty("api.version", "1.44")
+
+        // Attach ByteBuddy agent explicitly to avoid dynamic self-attach failure on Java 25+.
+        // This is test-only — no production JVM is affected.
+        // Uses doFirst to lazily resolve the agent JAR at execution time.
+        doFirst {
+            val agentJar = byteBuddyAgent.singleFile
+            jvmArgs("-javaagent:${agentJar.absolutePath}")
+        }
     }
 
     // JaCoCo code coverage configuration
