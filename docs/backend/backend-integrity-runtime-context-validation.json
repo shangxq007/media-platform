@@ -1,0 +1,37 @@
+{
+  "task": "BACKEND-INTEGRITY-RUNTIME-CONTEXT-VALIDATION.0",
+  "baseCommit": "4a6550d",
+  "status": "COMPLETE",
+  "decision": "BACKEND_RUNTIME_CONTEXT_VALIDATED_WITH_MISSING_BEANS_OR_ROUTES",
+  "applicationContext": {
+    "started": true,
+    "profile": "test, preview"
+  },
+  "moduleCounts": {
+    "active": 34,
+    "hold": 1,
+    "sourceRetained": 35,
+    "reconciled": true
+  },
+  "springAiAdapter": {
+    "lifecycle": "HOLD",
+    "inDefaultGraph": false,
+    "inRuntimeClasspath": false,
+    "inBootJar": false,
+    "inContainer": false,
+    "inApplicationContext": false
+  },
+  "startupBlockersResolved": [
+    "H2 schema.sql incompatibility — switched to Flyway",
+    "StorageDeliveryProfileRegistry bean missing — added configuration",
+    "ingest package not scanned — added to @ComponentScan",
+    "ConfigurationProperties not registered — added @EnableConfigurationProperties",
+    "Flyway baseline issue — reset database"
+  ],
+  "h2CleanupCompleted": true,
+  "issues": {
+    "P1": ["ApplicationContext startup was blocked by 5 cascading issues (now fixed)"],
+    "P2": ["FFmpeg provider registration not runtime-verified", "RenderJob lifecycle not runtime-verified", "MVC route inventory not captured"]
+  },
+  "recommendedNextTask": "BACKEND-INTEGRITY-REPAIR-MVC-ROUTE-REGISTRATION.0"
+}

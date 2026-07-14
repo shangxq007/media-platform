@@ -38,7 +38,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.federation",
     "com.example.platform.secrets",
     "com.example.platform.quota",
-    "com.example.platform.web"
+    "com.example.platform.web",
+    "com.example.platform.ingest"
 })
 @EnableScheduling
 @Import({DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class, FlywayConfiguration.class})

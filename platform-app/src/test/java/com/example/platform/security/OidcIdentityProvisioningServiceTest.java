@@ -1,7 +1,5 @@
 package com.example.platform.security;
 
-import org.junit.jupiter.api.Disabled;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -10,6 +8,7 @@ import com.example.platform.identity.app.UserRepository;
 import com.example.platform.identity.domain.Tenant;
 import com.example.platform.identity.domain.User;
 import com.example.platform.identity.infrastructure.RoleRepository;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.sql.Statement;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -20,8 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-@Disabled("Disabled for CI stabilization - H2 to PostgreSQL migration")
-class OidcIdentityProvisioningServiceTest {
+class OidcIdentityProvisioningServiceTest extends PostgresTestContainerSupport {
 
     private OidcIdentityProvisioningService service;
     private UserRepository userRepository;
@@ -29,14 +27,11 @@ class OidcIdentityProvisioningServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        var conn = java.sql.DriverManager.getConnection(
-                "jdbc:h2:mem:oidcjit" + System.nanoTime() + ";MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
-                "sa",
-                "");
-        DSLContext dsl = DSL.using(conn, org.jooq.SQLDialect.H2);
+        var conn = POSTGRES.createConnection("");
+        DSLContext dsl = DSL.using(conn, org.jooq.SQLDialect.DEFAULT);
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("""
-                    create table tenant (
+                    create table if not exists tenant (
                       id varchar(64) primary key,
                       name varchar(255) not null,
                       status varchar(32) not null,
@@ -44,7 +39,7 @@ class OidcIdentityProvisioningServiceTest {
                     )
                     """);
             stmt.execute("""
-                    create table "user" (
+                    create table if not exists "user" (
                       id varchar(64) primary key,
                       tenant_id varchar(64) not null,
                       username varchar(128) not null,
@@ -55,7 +50,7 @@ class OidcIdentityProvisioningServiceTest {
                     )
                     """);
             stmt.execute("""
-                    create table role (
+                    create table if not exists role (
                       id varchar(64) primary key,
                       role_key varchar(64) not null,
                       name varchar(255) not null,
@@ -65,7 +60,7 @@ class OidcIdentityProvisioningServiceTest {
                     )
                     """);
             stmt.execute("""
-                    create table user_role_assignment (
+                    create table if not exists user_role_assignment (
                       id varchar(64) primary key,
                       tenant_id varchar(64),
                       workspace_id varchar(64) not null,

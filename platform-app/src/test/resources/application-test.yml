@@ -39,11 +39,11 @@ spring:
     password: test
     driver-class-name: org.postgresql.Driver
   flyway:
-    enabled: false
+    enabled: true
+    baseline-on-migrate: true
   sql:
     init:
-      mode: always
-      schema-locations: classpath:schema.sql
+      mode: never
   autoconfigure:
     exclude:
       - org.springframework.boot.graphql.autoconfigure.GraphQlAutoConfiguration
