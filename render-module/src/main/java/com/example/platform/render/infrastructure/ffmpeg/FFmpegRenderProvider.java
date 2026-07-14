@@ -15,12 +15,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.platform.render.infrastructure.RenderPreset;
 import com.example.platform.render.infrastructure.RenderProvider;
+import com.example.platform.render.infrastructure.RenderProviderCapability;
+import com.example.platform.render.infrastructure.ProviderStatus;
+import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -278,6 +282,36 @@ public class FFmpegRenderProvider implements RenderProvider {
     @Override
     public String getPriority() {
         return "P-1";  // Highest priority - primary local provider
+    }
+
+    @Override
+    public RenderProviderCapability getCapability() {
+        return new RenderProviderCapability(
+                "ffmpeg",
+                Set.of("mp4", "webm", "mkv", "mov", "avi"),
+                Set.of("h264", "h265", "vp8", "vp9", "aac", "opus", "mp3"),
+                Set.of("video.fade_in", "video.fade_out", "video.transition",
+                        "text.subtitle_burn_in", "video.watermark", "audio.volume",
+                        "video.thumbnail", "video.probe", "video.concat", "video.transcode"),
+                Set.of("dissolve", "fade", "wipe"),
+                Set.of("burn_in"),
+                "3840x2160",
+                true,   // requiresExternalBinary
+                false,  // requiresGpu
+                false,  // experimental
+                Set.of("social_1080p", "social_720p", "default_1080p", "default_720p",
+                        "broadcast_4k", "proxy_480p"),
+                ProviderStatus.PRODUCTION,
+                "P-1",
+                ProviderType.RENDER,
+                "FFmpeg-based local render provider for video transcoding, encoding, and composition",
+                List.of(
+                        "Requires FFmpeg binary installed on the host system",
+                        "Limited to local file-based rendering",
+                        "No cloud rendering capability"
+                ),
+                true    // autoDispatch
+        );
     }
 
     @Override

@@ -1,0 +1,60 @@
+{
+  "task": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0",
+  "baseCommit": "69fad5c",
+  "status": "COMPLETE",
+  "decision": "PROVIDER_REGISTRATION_VALID_WITH_NONCRITICAL_DEBT",
+  "evidence": {
+    "source": true,
+    "compiled": true,
+    "runtimeClasspath": true,
+    "bootJar": true,
+    "springBean": true,
+    "registryEntry": true,
+    "eligible": true,
+    "selected": true,
+    "executionSucceeded": false
+  },
+  "ffmpeg": {
+    "providerId": "ffmpeg",
+    "module": "render-module",
+    "class": "FFmpegRenderProvider",
+    "type": "RENDER",
+    "status": "PRODUCTION",
+    "priority": "P-1",
+    "condition": "render.providers.ffmpeg.enabled=true",
+    "profile": {
+      "default": "REGISTERED",
+      "test": "REGISTERED",
+      "preview": "REGISTERED",
+      "productionLike": "REGISTERED"
+    },
+    "executableAvailable": true,
+    "executableVersion": "7.1.4",
+    "registryEntries": 1,
+    "healthCheck": "OK",
+    "supportedProfiles": ["social_1080p", "social_720p", "default_1080p", "default_720p", "broadcast_4k", "proxy_480p"]
+  },
+  "registry": {
+    "providerCount": 7,
+    "providerBeans": 8,
+    "duplicateKnownIds": 0,
+    "unknownKeys": 3,
+    "stubSelected": false,
+    "deterministicSelection": true
+  },
+  "correction": {
+    "description": "Added getCapability() override to FFmpegRenderProvider",
+    "productionFiles": 1,
+    "testFiles": 1
+  },
+  "nonCriticalDebt": {
+    "description": "3 Providers (Remote, Mlt, Blender) use default getCapability() with providerKey=unknown",
+    "impact": "Does not affect FFmpeg selection"
+  },
+  "renderJob": {
+    "startReachesSelector": true,
+    "selectedProviderPersisted": "NOT_VERIFIED",
+    "selectingProviderRisk": "NO_STUCK_PATH_FOUND"
+  },
+  "recommendedNextTask": "BACKEND-INTEGRITY-AUTOWIRING-INVENTORY.0"
+}
