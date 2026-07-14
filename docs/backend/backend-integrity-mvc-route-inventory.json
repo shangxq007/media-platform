@@ -1,0 +1,48 @@
+{
+  "task": "BACKEND-INTEGRITY-MVC-ROUTE-INVENTORY.0",
+  "baseCommit": "250c818",
+  "status": "COMPLETE",
+  "decision": "BACKEND_MVC_ROUTE_INVENTORY_VALID_WITH_BOUNDARY_DEBT",
+  "profiles": ["test", "preview"],
+  "counts": {
+    "sourceControllers": 100,
+    "runtimeApplicationMappings": 501,
+    "renderControllerMappings": 29,
+    "productControllerMappings": 6,
+    "artifactControllerMappings": 4,
+    "timelineMappings": 36,
+    "devMappings": 11,
+    "adminMappings": 68,
+    "uploadIngestMappings": 2
+  },
+  "criticalRoutes": {
+    "health": "VERIFIED",
+    "productList": "VERIFIED",
+    "productDetail": "VERIFIED",
+    "timelineRevisionRender": "VERIFIED",
+    "renderJobCreate": "VERIFIED",
+    "renderJobExecute": "VERIFIED",
+    "renderJobStatus": "VERIFIED",
+    "artifactContent": "VERIFIED",
+    "artifactAccess": "VERIFIED",
+    "uploadApi": "NOT_IMPLEMENTED"
+  },
+  "devRouteExposure": {
+    "count": 11,
+    "gatedRoute": false,
+    "classification": "UNSAFE_ENVIRONMENT_EXPOSURE",
+    "severity": "P2"
+  },
+  "compatibilityRoutes": {
+    "legacyRenderJobRoutes": 7,
+    "executeLocal": "ACTIVE_COMPATIBILITY"
+  },
+  "uploadTruth": "UPLOAD_API_NOT_IMPLEMENTED",
+  "issues": {
+    "P0": [],
+    "P1": [],
+    "P2": ["11 dev routes active under ALL profiles", "execute-local deprecated route still active", "Legacy compatibility routes still active"],
+    "P3": ["Legacy route naming inconsistency"]
+  },
+  "recommendedNextTask": "BACKEND-INTEGRITY-REPAIR-DEV-ROUTE-ISOLATION.0"
+}
