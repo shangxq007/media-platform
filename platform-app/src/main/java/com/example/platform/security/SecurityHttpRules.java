@@ -19,6 +19,7 @@ public final class SecurityHttpRules {
                 .requestMatchers("/api/v1/webhooks/**").permitAll()
                 .requestMatchers("/api/v1/mcp/**").authenticated()
                 .requestMatchers("/api/v1/dev/auth/**").permitAll()
+                .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/v1/**").authenticated()
                 .anyRequest().permitAll();
     }

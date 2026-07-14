@@ -154,6 +154,21 @@ if grep -qi "NOT_FOUND\|not.approved\|HOLD" docs/backend/backend-integrity-sprin
 else
     fail "Spring AI mainline approval status unclear"
 fi
+
+# Verify admin routes require ROLE_ADMIN authority
+if grep -q 'hasAuthority("ROLE_ADMIN")' platform-app/src/main/java/com/example/platform/security/SecurityHttpRules.java 2>/dev/null; then
+    pass "Admin routes require ROLE_ADMIN authority"
+else
+    fail "Admin routes missing ROLE_ADMIN authority requirement"
+fi
+
+# Verify SPA fallback only handles /app/**
+if grep -q '@RequestMapping(value = "/app/\*\*")' platform-app/src/main/java/com/example/platform/web/SpaFallbackController.java 2>/dev/null; then
+    pass "SPA fallback restricted to /app/**"
+else
+    fail "SPA fallback scope may be too broad"
+fi
+
 echo "=== Summary ==="
 echo "Checks: $CHECKS"
 echo "Failed: $FAILED"

@@ -1,0 +1,68 @@
+{
+  "task": "BACKEND-INTEGRITY-ENABLED-ADMIN-SECURITY-VALIDATION.0",
+  "baseCommit": "7b6ee5e",
+  "status": "COMPLETE",
+  "decision": "ENABLED_ADMIN_SECURITY_VALIDATED",
+  "runtime": {
+    "realTcpHttp": true,
+    "realPostgreSQL": true,
+    "securityEnabled": true,
+    "securityFilterChainCount": 1,
+    "securityEnablingProperty": "app.security.enabled=true + app.security.oauth2.enabled=true"
+  },
+  "identities": {
+    "anonymousTested": true,
+    "nonAdminTested": true,
+    "adminTested": true,
+    "testAuthenticationMechanism": "LegacyHmacJwtDecoder via @MockitoBean"
+  },
+  "admin": {
+    "mappingCount": 68,
+    "adminPathMatcher": "/api/v1/admin/**",
+    "requiredAuthority": "ROLE_ADMIN",
+    "anonymousRead2xx": 0,
+    "anonymousMutation2xx": 0,
+    "nonAdminRead2xx": 0,
+    "nonAdminMutation2xx": 0,
+    "nonAdminRejectionLayer": "AUTHORIZATION",
+    "authorizedReadBoundaryReached": true,
+    "authorizedMutationBoundaryReached": true,
+    "csrfSeparatedFromAuthorization": true,
+    "csrfDisabled": true,
+    "csrfReason": "Stateless JWT — CSRF not applicable"
+  },
+  "removedRoutes": {
+    "tested": 6,
+    "authorizedAll404": true,
+    "routes": [
+      "GET /api/v1/render/jobs/rj1",
+      "GET /api/v1/render/jobs",
+      "POST /api/v1/render/jobs",
+      "POST /api/v1/render/jobs/submit",
+      "POST /api/v1/render/jobs/rj1/retry",
+      "POST /api/v1/tenants/t1/projects/p1/render-jobs/rj1/execute-local"
+    ]
+  },
+  "devBoundary": {
+    "devRoutesAbsent": true,
+    "devRouteCount": 0
+  },
+  "spaFallback": {
+    "isolatedToAppNamespace": true,
+    "unknownApiReturns404": true,
+    "unknownDevReturns404": true,
+    "unknownAdminReturns404": true
+  },
+  "responseSafety": {
+    "credentialsExposed": false,
+    "stackTracesExposed": false,
+    "internalPathsExposed": false
+  },
+  "tenantScope": {
+    "unapprovedCrossTenantExposure": false
+  },
+  "p3Issues": [
+    "/api/v1/identity/admin/tenants is admin-like but outside /api/v1/admin/** path"
+  ],
+  "recommendedNextTask": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0"
+}

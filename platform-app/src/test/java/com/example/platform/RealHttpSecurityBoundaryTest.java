@@ -1,11 +1,10 @@
 package com.example.platform;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
-import java.util.*;
 import org.junit.jupiter.api.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
@@ -15,6 +14,8 @@ import org.springframework.test.context.TestPropertySource;
  * Real TCP HTTP validation test.
  * Starts a real embedded Tomcat on a random port and sends actual HTTP requests
  * using Java HttpClient (real TCP, not MockMvc).
+ *
+ * Uses Testcontainers PostgreSQL for disposable database.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "preview"})
@@ -24,7 +25,7 @@ import org.springframework.test.context.TestPropertySource;
     "spring.mvc.throw-exception-if-no-handler-found=true",
     "spring.web.resources.add-mappings=false"
 })
-class RealHttpSecurityBoundaryTest {
+class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
 
     @LocalServerPort
     private int port;
@@ -94,6 +95,7 @@ class RealHttpSecurityBoundaryTest {
     @Test
     void canonicalStatus_isRegistered() throws Exception {
         HttpResponse<String> response = httpGetReq("/api/v1/tenants/t1/projects/p1/render-jobs/nonexistent");
+        evidence.append(String.format("CANONICAL_STATUS: %d%n", response.statusCode()));
         // 404 for nonexistent resource is OK — route is registered
     }
 
@@ -113,7 +115,6 @@ class RealHttpSecurityBoundaryTest {
             .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         evidence.append(String.format("CANCEL: %d%n", response.statusCode()));
-        // Route exists; 404 is for nonexistent resource
     }
 
     // ========== Status-history route ==========
@@ -190,6 +191,28 @@ class RealHttpSecurityBoundaryTest {
         evidence.append(String.format("ADMIN_MUTATION_ANON: %d (security-disabled)%n", response.statusCode()));
     }
 
+    // ========== SPA fallback isolation ==========
+
+    @Test
+    void spaFallback_onlyHandlesAppNamespace() throws Exception {
+        // /app/something should get SPA fallback (forward to index.html)
+        // /api/something unknown should get 404
+        HttpResponse<String> apiUnknown = httpGetReq("/api/v1/nonexistent-path");
+        evidence.append(String.format("UNKNOWN_API: %d%n", apiUnknown.statusCode()));
+        Assertions.assertEquals(404, apiUnknown.statusCode(),
+            "Unknown API path should return 404, not SPA HTML");
+
+        HttpResponse<String> devUnknown = httpGetReq("/dev/nonexistent");
+        evidence.append(String.format("UNKNOWN_DEV: %d%n", devUnknown.statusCode()));
+        Assertions.assertEquals(404, devUnknown.statusCode(),
+            "Unknown dev path should return 404, not SPA HTML");
+
+        HttpResponse<String> adminUnknown = httpGetReq("/admin/nonexistent");
+        evidence.append(String.format("UNKNOWN_ADMIN: %d%n", adminUnknown.statusCode()));
+        Assertions.assertEquals(404, adminUnknown.statusCode(),
+            "Unknown admin path should return 404, not SPA HTML");
+    }
+
     // ========== Health ==========
 
     @Test
@@ -221,7 +244,6 @@ class RealHttpSecurityBoundaryTest {
             .uri(URI.create(baseUrl + path))
             .GET()
             .build();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        return response;
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
     }
 }
