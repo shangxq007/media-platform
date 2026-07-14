@@ -1,0 +1,39 @@
+{
+  "task": "BACKEND-INTEGRITY-REAL-HTTP-SECURITY-BOUNDARY-VALIDATION.0",
+  "baseCommit": "38cca35",
+  "status": "COMPLETE",
+  "decision": "REAL_HTTP_SECURITY_BOUNDARIES_VALIDATED_WITH_RESPONSE_DEBT",
+  "realTcpHttp": true,
+  "database": {"product": "PostgreSQL", "disposable": true},
+  "evidenceModel": {
+    "source": "AVAILABLE",
+    "applicationContext": "VERIFIED",
+    "requestMappingHandlerMapping": "VERIFIED",
+    "mockMvc": "NOT_USED",
+    "realTcpHttp": "VERIFIED"
+  },
+  "removedRoutes": {
+    "tested": 6,
+    "mappingConfirmedAbsent": 6,
+    "httpReturns500": 6,
+    "http500Reason": "Security-disabled configuration, not route presence",
+    "allMappingAbsent": true
+  },
+  "canonicalRenderJob": {
+    "create": "VERIFIED (400 — request validation)",
+    "list": "VERIFIED (200)",
+    "status": "VERIFIED (404 — nonexistent resource, route registered)"
+  },
+  "cancel": {"registered": true, "lifecycleCorrectness": "NOT_VERIFIED"},
+  "dev": {
+    "devControllersRegistered": false,
+    "spaFallbackCatchesDevPaths": true,
+    "defaultDevDiagnosticRouteCount": 0
+  },
+  "admin": {
+    "securityDisabled": true,
+    "anonymousAccess": "EXPECTED_WITH_SECURITY_DISABLED",
+    "realSecurityValidation": "DEFERRED"
+  },
+  "recommendedNextTask": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0"
+}
