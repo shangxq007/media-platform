@@ -16,6 +16,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
@@ -40,6 +41,18 @@ public class GlobalExceptionHandler {
             Optional<SentryMonitoringService> sentryMonitoringService) {
         this.errorCodeRegistry = errorCodeRegistry;
         this.sentryMonitoringService = sentryMonitoringService;
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ProblemDetail handleNoHandler(NoHandlerFoundException ex, HttpServletRequest request) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Resource not found");
+        problem.setTitle("Not Found");
+        problem.setType(URI.create("https://example.com/problems/NOT_FOUND"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("errorCode", "NOT_FOUND");
+        problem.setProperty("traceId", MDC.get("traceId"));
+        problem.setProperty("timestamp", OffsetDateTime.now().toString());
+        return problem;
     }
 
     @ExceptionHandler(PlatformException.class)

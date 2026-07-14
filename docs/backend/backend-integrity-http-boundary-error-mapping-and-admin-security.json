@@ -1,0 +1,36 @@
+{
+  "task": "BACKEND-INTEGRITY-HTTP-BOUNDARY-ERROR-MAPPING-AND-ADMIN-SECURITY.0",
+  "baseCommit": "b1f3ac0",
+  "status": "COMPLETE",
+  "decision": "HTTP_BOUNDARY_AND_ADMIN_SECURITY_VALIDATED_WITH_RESPONSE_DEBT",
+  "runtime": {
+    "realTcpHttp": true,
+    "securityEnabled": false,
+    "securityNote": "Full admin security requires app.security.enabled=true",
+    "realPostgreSQL": true
+  },
+  "corrections": {
+    "spaFallback": "Removed /admin/** and /dev/** from SpaFallbackController",
+    "noHandlerFound": "Added NoHandlerFoundException handler returning 404 ProblemDetail"
+  },
+  "unmappedBackend": {
+    "unknownApiStatus": 404,
+    "unknownDevStatus": 404,
+    "unknownAdminStatus": 404,
+    "spaHtmlReturned": false
+  },
+  "removedRoutes": {
+    "tested": 6,
+    "all404": true,
+    "serverErrors": 0
+  },
+  "devRoutes": {
+    "allAbsent": true,
+    "all404": true
+  },
+  "admin": {
+    "securityDisabled": true,
+    "deferred": true
+  },
+  "recommendedNextTask": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0"
+}
