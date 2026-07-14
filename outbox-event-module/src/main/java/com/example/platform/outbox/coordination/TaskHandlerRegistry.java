@@ -27,7 +27,7 @@ public class TaskHandlerRegistry {
     }
 
     @PostConstruct
-    void init() {
+    public void init() {
         for (TaskHandler handler : allHandlers) {
             handlers.put(handler.capability(), handler);
             log.info("Registered task handler: {} → {}", handler.capability(), handler.getClass().getSimpleName());

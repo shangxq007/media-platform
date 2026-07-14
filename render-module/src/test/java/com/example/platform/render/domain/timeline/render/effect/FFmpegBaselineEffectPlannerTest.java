@@ -55,7 +55,7 @@ class FFmpegBaselineEffectPlannerTest {
     @Test @DisplayName("Operation target is semantic only")
     void operationTargetSemantic() {
         FFmpegBaselineEffectOperationTarget target = new FFmpegBaselineEffectOperationTarget(
-                FFmpegBaselineEffectOperationTargetType.CLIP, "clip-1", Map.of());
+                FFmpegBaselineEffectOperationTargetType.CLIP, "clip-1", Map.<String,String>of());
         assertEquals(FFmpegBaselineEffectOperationTargetType.CLIP, target.targetType());
         assertEquals("clip-1", target.targetId());
         assertNotNull(target.safeMetadata());
@@ -64,7 +64,7 @@ class FFmpegBaselineEffectPlannerTest {
     @Test @DisplayName("Operation parameter is typed")
     void operationParameterTyped() {
         FFmpegBaselineEffectOperationParameter param = new FFmpegBaselineEffectOperationParameter(
-                "width", FFmpegBaselineEffectParameterType.PIXEL, 1920, Map.of());
+                "width", FFmpegBaselineEffectParameterType.PIXEL, 1920, Map.<String,String>of());
         assertEquals("width", param.name());
         assertEquals(FFmpegBaselineEffectParameterType.PIXEL, param.type());
         assertEquals(1920, param.value());
@@ -73,7 +73,7 @@ class FFmpegBaselineEffectPlannerTest {
     @Test @DisplayName("Plan summary counts operations")
     void planSummaryCounts() {
         FFmpegBaselineEffectPlanSummary summary = new FFmpegBaselineEffectPlanSummary(
-                5, 3, 2, 1, 0, Map.of());
+                5, 3, 2, 1, 0, Map.<String,String>of());
         assertEquals(5, summary.totalOperations());
         assertEquals(3, summary.baselineOperationCount());
         assertEquals(2, summary.pocOperationCount());
@@ -261,7 +261,7 @@ class FFmpegBaselineEffectPlannerTest {
         TimelineTextOverlay overlay = TimelineTextOverlay.of("cap-1", "Subtitle text", 0, 5);
         TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
                 List.of(TimelineTrack.of("track-1", "Video", TimelineTrack.TrackType.VIDEO)),
-                List.of(overlay), output, 10, Map.of());
+                List.of(overlay), output, 10, Map.<String,String>of());
         FFmpegBaselineEffectPlanningResult result = plan(timeline);
         assertTrue(result.plan().operations().stream()
                 .anyMatch(op -> op.type() == FFmpegBaselineEffectOperationType.TEXT_OVERLAY));
@@ -459,11 +459,11 @@ class FFmpegBaselineEffectPlannerTest {
         TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
         TimelineClipEffect effect = TimelineClipEffect.ofKey(effectKey, params);
         TimelineClip clip = new TimelineClip("clip-1",
-                new TimelineAssetRef("asset-1", "", "mp4", 10000, 1920, 1080, Map.of()),
+                new TimelineAssetRef("asset-1", "", "mp4", 10000, 1920, 1080, Map.<String,String>of(), null),
                 0, 0, 10, 10, List.of(effect));
         TimelineTrack track = new TimelineTrack("track-1", "Video",
                 TimelineTrack.TrackType.VIDEO, 0, List.of(clip), false, false);
         return new TimelineSpec("tl-1", "Test Timeline", null,
-                List.of(track), List.of(), output, 10, Map.of());
+                List.of(track), List.of(), output, 10, Map.<String,String>of());
     }
 }

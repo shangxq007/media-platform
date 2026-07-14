@@ -112,7 +112,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
         RenderArtifactQueryService artifactQueryService = new RenderArtifactQueryService(
-                renderJobRepository, storageCatalogPort);
+                renderJobRepository, storageCatalogPort, List.of());
         RenderJobExecutionService executionService = new RenderJobExecutionService(
                 renderJobRepository, quotaService, null, renderProviderRouter,
                 providerRuntimeEngine,

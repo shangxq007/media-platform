@@ -173,7 +173,7 @@ class RenderCorrelationPropagationTest {
     static class MockLegacyService extends TimelineRevisionRenderService {
         boolean called = false;
         TimelineRevisionRenderService.RevisionRenderResult result;
-        MockLegacyService() { super(null, null, null, null, null, null, null, null, null, null, null); }
+        MockLegacyService() { super(null, null, null, null, null, null, null, null, null, null, null, null); }
         @Override
         public RevisionRenderResult render(String p, String r, String o) { called = true; return result; }
     }

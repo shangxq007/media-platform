@@ -57,6 +57,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  */
 class RenderInputMaterializationSmokeTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     @TempDir
     Path tempDir;
@@ -80,9 +87,9 @@ class RenderInputMaterializationSmokeTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, storageRoot);
+        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, storageRoot, mockProvider(null), mockProvider(null));
         materializationService = new RenderInputMaterializationService(storageRuntime, productRuntime);
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
@@ -151,7 +158,7 @@ class RenderInputMaterializationSmokeTest {
 
         // 5. Create timeline referencing the input asset
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                "ast_r4_001", "asset://ast_r4_001", "mp4", 2, 320, 180, Map.of());
+                "ast_r4_001", "asset://ast_r4_001", "mp4", 2, 320, 180, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("clip_r4_001", assetRef, 0.0, 0.0, 2.0);
         TimelineTrack videoTrack = new TimelineTrack(
                 "trk_r4_v1", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
@@ -216,7 +223,7 @@ class RenderInputMaterializationSmokeTest {
         assertTrue(byProject.stream().anyMatch(p -> p.productId().equals(outputProduct.productId())));
 
         // 13. Verify storage reference
-        assertTrue(storageRuntime.exists(outputProduct.storageReferenceId()));
+        assertTrue(storageRuntime.find(outputProduct.storageReferenceId()).isPresent());
         assertTrue(storageRuntime.verifyChecksum(outputProduct.storageReferenceId()));
 
         // 14. Verify full provenance metadata including input references
@@ -544,7 +551,7 @@ class RenderInputMaterializationSmokeTest {
 
         // 5. Create timeline
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                "ast_r5_001", "asset://ast_r5_001", "mp4", 2, 320, 180, Map.of());
+                "ast_r5_001", "asset://ast_r5_001", "mp4", 2, 320, 180, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("clip_r5_001", assetRef, 0.0, 0.0, 2.0);
         TimelineTrack videoTrack = new TimelineTrack(
                 "trk_r5_v1", "Video 1", TimelineTrack.TrackType.VIDEO, 0,

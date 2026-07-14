@@ -30,6 +30,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Architecture boundaries (no direct filesystem exposure, no signed URLs)
  */
 class RenderOutputRegistrationServiceTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     Path tempDir;
 
@@ -46,9 +53,9 @@ class RenderOutputRegistrationServiceTest {
         storageRepo = new InMemoryStorageReferenceRepository();
         productRepo = new InMemoryProductRepository();
         depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        service = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        service = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
     }
 
     @AfterEach
@@ -79,7 +86,7 @@ class RenderOutputRegistrationServiceTest {
         assertEquals("tenant-1", product.tenantId());
         assertEquals("project-1", product.projectId());
 
-        assertTrue(storageRuntime.exists(product.storageReferenceId()));
+        assertTrue(storageRuntime.find(product.storageReferenceId()).isPresent());
         assertTrue(productRuntime.find(product.productId()).isPresent());
     }
 

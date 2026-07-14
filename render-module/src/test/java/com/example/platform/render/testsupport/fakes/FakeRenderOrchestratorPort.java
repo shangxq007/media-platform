@@ -67,4 +67,10 @@ public class FakeRenderOrchestratorPort implements RenderOrchestratorPort {
     public String loadJobTimelineJson(String tenantId, String jobId) {
         return jobTimelines.getOrDefault(jobId, "{}");
     }
+
+    @Override
+    public byte[] getArtifactContent(String artifactId) {
+        return new byte[0];
+    }
+
 }

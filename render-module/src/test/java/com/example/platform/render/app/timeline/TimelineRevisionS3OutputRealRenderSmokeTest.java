@@ -70,6 +70,13 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * <p>If FFmpeg or S3 endpoint is unavailable, the test is explicitly skipped.</p>
  */
 class TimelineRevisionS3OutputRealRenderSmokeTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     // Dev-only S3 configuration (matches docker-compose.dev.yml)
     private static final String S3_ENDPOINT = "http://localhost:9000";
@@ -142,7 +149,7 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo, s3Materializer);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(s3Materializer));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
 
         // Configure S3 output storage
@@ -153,7 +160,7 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
 
         // Create registration service with S3 output support
         registrationService = new RenderOutputRegistrationService(
-                storageRuntime, productRuntime, tempDir, s3Writer, outputProps);
+                storageRuntime, productRuntime, tempDir, mockProvider(s3Writer), mockProvider(outputProps));
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         parser = new TimelineScriptParser(extensionsReader);
@@ -263,7 +270,7 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
         assertTrue(headResponse.contentLength() > 0, "Object must be non-empty");
 
         // ── Step 8: Verify object can be materialized ──
-        String materializedPath = storageRuntime.materialize(outputProduct.storageReferenceId());
+        String materializedPath = storageRuntime.materialize(outputProduct.storageReferenceId()).get();
         assertNotNull(materializedPath, "Materialized path must not be null");
         assertTrue(Files.exists(Path.of(materializedPath)), "Materialized file must exist");
         assertTrue(Files.size(Path.of(materializedPath)) > 0, "Materialized file must be non-empty");
@@ -385,6 +392,7 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
                 snapshotService,
                 mapper,
                 parser,
+                null,
                 new RenderInputMaterializationService(storageRuntime, productRuntime),
                 registrationService,
                 productRuntime,
@@ -408,7 +416,7 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
         private final InMemoryTimelineRevisionRepository repo;
 
         StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) {
-            super(null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null);
             this.repo = repo;
         }
 

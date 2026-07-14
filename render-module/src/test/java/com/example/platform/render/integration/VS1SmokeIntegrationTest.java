@@ -53,6 +53,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Integration package: com.example.platform.render.integration
  */
 class VS1SmokeIntegrationTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
+
 
     private FakeRenderJobService fakeJobService;
     private FakeProductRepository fakeProductRepo;
@@ -74,11 +82,11 @@ class VS1SmokeIntegrationTest {
         fakeDepRepo = new FakeProductDependencyRepository();
         fakeStorageRepo = new FakeStorageReferenceRepository();
         productRuntimeService = new ProductRuntimeService(fakeProductRepo, fakeDepRepo);
-        storageRuntimeService = new StorageRuntimeService(fakeStorageRepo);
+        storageRuntimeService = new StorageRuntimeService(fakeStorageRepo, mockProvider(null));
 
         fakeOrchestrator = new FakeRenderOrchestratorPort();
-        controller = new RenderController(fakeJobService, fakeOrchestrator,
-                null, null, null, null, null, null, null);
+        controller = new RenderController(fakeJobService, fakeOrchestrator, java.util.List.<com.example.platform.storage.domain.BlobStorage>of(),
+                null, null, null, null, null, null, null, null, null, null);
         stateMachine = new RenderJobStateMachine();
     }
 

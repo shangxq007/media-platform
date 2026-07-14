@@ -48,6 +48,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  */
 class TimelineFfmpegBaselineRenderSmokeTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     @TempDir
     Path tempDir;
@@ -70,9 +77,9 @@ class TimelineFfmpegBaselineRenderSmokeTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extensionsReader);
@@ -98,7 +105,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
 
         // 3. Create timeline referencing real media via asset:// URI
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                "ast_r2_001", "asset://ast_r2_001", "mp4", 2, 320, 180, Map.of());
+                "ast_r2_001", "asset://ast_r2_001", "mp4", 2, 320, 180, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("clip_r2_001", assetRef, 0.0, 0.0, 2.0);
         TimelineTrack videoTrack = new TimelineTrack(
                 "trk_r2_v1", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
@@ -160,7 +167,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
         assertTrue(byProject.stream().anyMatch(p -> p.productId().equals(product.productId())));
 
         // 11. Verify storage reference
-        assertTrue(storageRuntime.exists(product.storageReferenceId()));
+        assertTrue(storageRuntime.find(product.storageReferenceId()).isPresent());
         assertTrue(storageRuntime.verifyChecksum(product.storageReferenceId()));
 
         // 12. Verify full provenance metadata
@@ -209,7 +216,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
 
         // 2. Create timeline (no subtitle) with asset:// URI
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                "ast_r2_002", "asset://ast_r2_002", "mp4", 1, 320, 180, Map.of());
+                "ast_r2_002", "asset://ast_r2_002", "mp4", 1, 320, 180, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("clip_r2_002", assetRef, 0.0, 0.0, 1.0);
         TimelineTrack videoTrack = new TimelineTrack(
                 "trk_r2_v2", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
@@ -255,7 +262,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
 
         // 3. Create timeline with asset:// URI and text overlay for subtitle detection
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                "ast_r2_003", "asset://ast_r2_003", "mp4", 3, 640, 360, Map.of());
+                "ast_r2_003", "asset://ast_r2_003", "mp4", 3, 640, 360, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("clip_r2_003", assetRef, 0.0, 0.0, 3.0);
         TimelineTrack videoTrack = new TimelineTrack(
                 "trk_r2_v3", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
@@ -324,7 +331,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
     void invalidMediaInputFailsBeforeProductReady() {
         // A timeline referencing a non-existent file should fail at render time
         TimelineAssetRef ref = new TimelineAssetRef(
-                "ast_bad", "/nonexistent/path/video.mp4", "mp4", 10, 320, 180, Map.of());
+                "ast_bad", "/nonexistent/path/video.mp4", "mp4", 10, 320, 180, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack(
                 "t1", "V", TimelineTrack.TrackType.VIDEO, 0, List.of(clip), false, false);
@@ -332,7 +339,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
                 "mp4", "320x180", 30, "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
-                List.of(track), List.of(), output, 10.0, Map.of());
+                List.of(track), List.of(), output, 10.0, Map.<String,String>of());
 
         // The mapper should reject absolute paths
         assertThrows(IllegalArgumentException.class,
@@ -441,7 +448,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
     @DisplayName("R3: missing timelineId is rejected before render request")
     void missingTimelineIdIsRejected() {
         TimelineAssetRef ref = new TimelineAssetRef(
-                "ast_bad", "asset://ast_bad", "mp4", 10, 320, 180, Map.of());
+                "ast_bad", "asset://ast_bad", "mp4", 10, 320, 180, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack(
                 "t1", "V", TimelineTrack.TrackType.VIDEO, 0, List.of(clip), false, false);
@@ -449,7 +456,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
                 "mp4", "320x180", 30, "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("", "Bad", null,
-                List.of(track), List.of(), output, 10.0, Map.of());
+                List.of(track), List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_720p"));
@@ -477,7 +484,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
     @DisplayName("R3: unsafe source asset path is rejected")
     void unsafeSourceAssetPathIsRejected() {
         TimelineAssetRef ref = new TimelineAssetRef(
-                "ast_bad", "/etc/passwd", "mp4", 10, 320, 180, Map.of());
+                "ast_bad", "/etc/passwd", "mp4", 10, 320, 180, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack(
                 "t1", "V", TimelineTrack.TrackType.VIDEO, 0, List.of(clip), false, false);
@@ -485,7 +492,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
                 "mp4", "320x180", 30, "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
-                List.of(track), List.of(), output, 10.0, Map.of());
+                List.of(track), List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_720p"));
@@ -501,7 +508,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
 
         // 2. Create timeline
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                "ast_prov", "asset://ast_prov", "mp4", 1, 320, 180, Map.of());
+                "ast_prov", "asset://ast_prov", "mp4", 1, 320, 180, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("clip_prov", assetRef, 0.0, 0.0, 1.0);
         TimelineTrack videoTrack = new TimelineTrack(
                 "trk_prov", "Video 1", TimelineTrack.TrackType.VIDEO, 0,

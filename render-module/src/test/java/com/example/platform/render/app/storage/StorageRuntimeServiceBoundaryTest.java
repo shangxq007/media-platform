@@ -29,6 +29,13 @@ import static org.mockito.Mockito.*;
  * <p>Uses Mockito — no database, no H2, no S3 calls.
  */
 class StorageRuntimeServiceBoundaryTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     private StorageReferenceRepository repo;
     private StorageRuntimeService service;
@@ -36,7 +43,7 @@ class StorageRuntimeServiceBoundaryTest {
     @BeforeEach
     void setUp() {
         repo = Mockito.mock(StorageReferenceRepository.class);
-        service = new StorageRuntimeService(repo);
+        service = new StorageRuntimeService(repo, mockProvider(null));
     }
 
     // ========== Registration ==========
@@ -90,31 +97,31 @@ class StorageRuntimeServiceBoundaryTest {
 
         @Test
         @DisplayName("materialize() throws for missing storage reference")
-        void materializeThrowsWhenNotFound() {
+        void materializeReturnsEmptyWhenNotFound() {
             when(repo.findById("stor-missing")).thenReturn(Optional.empty());
 
-            assertThrows(IllegalArgumentException.class,
-                    () -> service.materialize("stor-missing"));
+            Optional<String> result = service.materialize("stor-missing");
+            assertTrue(result.isEmpty(), "materialize() should return empty for missing reference");
         }
 
         @Test
         @DisplayName("materialize() for LOCAL provider throws when file missing")
-        void materializeLocalThrowsWhenFileMissing() {
+        void materializeLocalReturnsEmptyWhenFileMissing() {
             StorageReference ref = localRef("stor-1", "/nonexistent/path", "missing.mp4");
             when(repo.findById("stor-1")).thenReturn(Optional.of(ref));
 
-            assertThrows(IllegalStateException.class,
-                    () -> service.materialize("stor-1"));
+            Optional<String> result = service.materialize("stor-1");
+            assertTrue(result.isEmpty(), "materialize() should return empty when local file missing");
         }
 
         @Test
         @DisplayName("materialize() for S3 without materializer throws")
-        void materializeS3WithoutMaterializerThrows() {
+        void materializeS3WithoutMaterializerReturnsEmpty() {
             StorageReference ref = s3Ref("stor-2", "bucket", "key.mp4");
             when(repo.findById("stor-2")).thenReturn(Optional.of(ref));
 
-            assertThrows(IllegalStateException.class,
-                    () -> service.materialize("stor-2"));
+            Optional<String> result = service.materialize("stor-2");
+            assertTrue(result.isEmpty(), "materialize() should return empty for S3 without materializer");
         }
     }
 
@@ -197,10 +204,10 @@ class StorageRuntimeServiceBoundaryTest {
             StorageReference ref = s3RefWithProvider("stor-1", "S3", "bucket", "key.mp4");
             when(repo.findById("stor-1")).thenReturn(Optional.of(ref));
 
-            // Will throw because S3ObjectMaterializer not available (null),
+            // Returns empty because S3ObjectMaterializer not available (null),
             // which means it correctly identified as S3-compatible
-            assertThrows(IllegalStateException.class,
-                    () -> service.materialize("stor-1"));
+            Optional<String> result = service.materialize("stor-1");
+            assertTrue(result.isEmpty(), "materialize() should return empty for S3 without materializer");
         }
 
         @Test
@@ -209,8 +216,8 @@ class StorageRuntimeServiceBoundaryTest {
             StorageReference ref = s3RefWithProvider("stor-1", "S3_COMPATIBLE", "bucket", "key.mp4");
             when(repo.findById("stor-1")).thenReturn(Optional.of(ref));
 
-            assertThrows(IllegalStateException.class,
-                    () -> service.materialize("stor-1"));
+            Optional<String> result = service.materialize("stor-1");
+            assertTrue(result.isEmpty(), "materialize() should return empty for S3 without materializer");
         }
 
         @Test
@@ -219,8 +226,8 @@ class StorageRuntimeServiceBoundaryTest {
             StorageReference ref = s3RefWithProvider("stor-1", "OBJECT_STORAGE", "bucket", "key.mp4");
             when(repo.findById("stor-1")).thenReturn(Optional.of(ref));
 
-            assertThrows(IllegalStateException.class,
-                    () -> service.materialize("stor-1"));
+            Optional<String> result = service.materialize("stor-1");
+            assertTrue(result.isEmpty(), "materialize() should return empty for S3 without materializer");
         }
     }
 
@@ -235,7 +242,7 @@ class StorageRuntimeServiceBoundaryTest {
         void existsDelegates() {
             when(repo.exists("stor-1")).thenReturn(true);
 
-            assertTrue(service.exists("stor-1"));
+            assertTrue(service.find("stor-1").isPresent());
         }
 
         @Test

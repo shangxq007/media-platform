@@ -56,7 +56,7 @@ class FFmpegBaselineTransitionPlannerTest {
     void operationTargetSemantic() {
         FFmpegBaselineTransitionOperationTarget target = new FFmpegBaselineTransitionOperationTarget(
                 FFmpegBaselineTransitionOperationTargetType.CLIP_PAIR,
-                "clip-1", "clip-2", "track-1", "tl-1", "tr-1", Map.of());
+                "clip-1", "clip-2", "track-1", "tl-1", "tr-1", Map.<String,String>of());
         assertEquals(FFmpegBaselineTransitionOperationTargetType.CLIP_PAIR, target.targetType());
         assertEquals("clip-1", target.fromClipId());
         assertEquals("clip-2", target.toClipId());
@@ -66,7 +66,7 @@ class FFmpegBaselineTransitionPlannerTest {
     @Test @DisplayName("Operation parameter is typed")
     void operationParameterTyped() {
         FFmpegBaselineTransitionOperationParameter param = new FFmpegBaselineTransitionOperationParameter(
-                "durationMs", FFmpegBaselineTransitionParameterType.DURATION_MS, 500, Map.of());
+                "durationMs", FFmpegBaselineTransitionParameterType.DURATION_MS, 500, Map.<String,String>of());
         assertEquals("durationMs", param.name());
         assertEquals(FFmpegBaselineTransitionParameterType.DURATION_MS, param.type());
         assertEquals(500, param.value());
@@ -75,7 +75,7 @@ class FFmpegBaselineTransitionPlannerTest {
     @Test @DisplayName("Plan summary counts operations")
     void planSummaryCounts() {
         FFmpegBaselineTransitionPlanSummary summary = new FFmpegBaselineTransitionPlanSummary(
-                5, 3, 2, 1, 0, Map.of());
+                5, 3, 2, 1, 0, Map.<String,String>of());
         assertEquals(5, summary.totalOperations());
         assertEquals(3, summary.baselineOperationCount());
         assertEquals(2, summary.pocOperationCount());
@@ -339,15 +339,15 @@ class FFmpegBaselineTransitionPlannerTest {
         TimelineClipEffect effect = TimelineClipEffect.ofKey("FADE",
                 Map.of("durationMs", 500, "filter", "filter_complex:v"));
         TimelineClip clip1 = new TimelineClip("c1",
-                new TimelineAssetRef("a1", "", "mp4", 5000, 1920, 1080, Map.of()),
+                new TimelineAssetRef("a1", "", "mp4", 5000, 1920, 1080, Map.<String,String>of(), null),
                 0, 0, 5, 5, List.of(effect));
         TimelineClip clip2 = new TimelineClip("c2",
-                new TimelineAssetRef("a2", "", "mp4", 5000, 1920, 1080, Map.of()),
+                new TimelineAssetRef("a2", "", "mp4", 5000, 1920, 1080, Map.<String,String>of(), null),
                 5, 0, 5, 5, List.of());
         TimelineTrack track = new TimelineTrack("track-1", "Video",
                 TimelineTrack.TrackType.VIDEO, 0, List.of(clip1, clip2), false, false);
         TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
-                List.of(track), List.of(), output, 10, Map.of());
+                List.of(track), List.of(), output, 10, Map.<String,String>of());
         FFmpegBaselineTransitionPlanningResult result = plan(timeline);
         assertTrue(result.issues().stream().anyMatch(i ->
                 i.code() == FFmpegBaselineTransitionPlanIssueCode.RAW_FILTERGRAPH_FORBIDDEN));
@@ -468,14 +468,14 @@ class FFmpegBaselineTransitionPlannerTest {
             int start = (int) def.get("start");
             int dur = (int) def.get("dur");
             clips.add(new TimelineClip(id,
-                    new TimelineAssetRef("asset-" + id, "", "mp4", dur * 1000L, 1920, 1080, Map.of()),
+                    new TimelineAssetRef("asset-" + id, "", "mp4", dur * 1000L, 1920, 1080, Map.<String,String>of(), null),
                     start, 0, dur, dur, List.of()));
         }
         TimelineTrack track = new TimelineTrack("track-1", "Video",
                 TimelineTrack.TrackType.VIDEO, 0, clips, false, false);
         int totalDur = clips.stream().mapToInt(c -> (int) (c.timelineStart() + c.clipDuration())).max().orElse(0);
         return new TimelineSpec("tl-1", "Test Timeline", null,
-                List.of(track), List.of(), output, totalDur, Map.of());
+                List.of(track), List.of(), output, totalDur, Map.<String,String>of());
     }
 
     private TimelineSpec buildTimelineWithTransition(String transitionKey, long durationMs) {
@@ -483,14 +483,14 @@ class FFmpegBaselineTransitionPlannerTest {
         TimelineClipEffect effect = TimelineClipEffect.ofKey(transitionKey,
                 Map.of("durationMs", durationMs));
         TimelineClip clip1 = new TimelineClip("c1",
-                new TimelineAssetRef("a1", "", "mp4", 5000, 1920, 1080, Map.of()),
+                new TimelineAssetRef("a1", "", "mp4", 5000, 1920, 1080, Map.<String,String>of(), null),
                 0, 0, 5, 5, List.of(effect));
         TimelineClip clip2 = new TimelineClip("c2",
-                new TimelineAssetRef("a2", "", "mp4", 5000, 1920, 1080, Map.of()),
+                new TimelineAssetRef("a2", "", "mp4", 5000, 1920, 1080, Map.<String,String>of(), null),
                 5, 0, 5, 5, List.of());
         TimelineTrack track = new TimelineTrack("track-1", "Video",
                 TimelineTrack.TrackType.VIDEO, 0, List.of(clip1, clip2), false, false);
         return new TimelineSpec("tl-1", "Test Timeline", null,
-                List.of(track), List.of(), output, 10, Map.of());
+                List.of(track), List.of(), output, 10, Map.<String,String>of());
     }
 }

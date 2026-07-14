@@ -37,6 +37,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * Verifies behavioral equivalence for FFmpeg baseline renders.
  */
 class TimelineRevisionRenderModeParityTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     @TempDir Path tempDir;
     private StorageRuntimeService storageRuntime;
@@ -51,7 +58,7 @@ class TimelineRevisionRenderModeParityTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
         auditSink = new InMemoryRenderAuditEventSink();
         auditRecorder = new RenderAuditRecorder(auditSink);
@@ -197,11 +204,11 @@ class TimelineRevisionRenderModeParityTest {
         TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, writer);
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
-        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
         ProcessToolRunner toolRunner = createToolRunner();
         return new TimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo), snapshotService,
-                mapper, parser, matService, regService, productRuntime, storageRuntime,
+                mapper, parser, null, matService, regService, productRuntime, storageRuntime,
                 inputProductResolver, toolRunner, tempDir);
     }
 
@@ -212,7 +219,7 @@ class TimelineRevisionRenderModeParityTest {
         TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, writer);
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
-        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
         ProcessToolRunner toolRunner = createToolRunner();
         RenderToolCapabilityInventory toolInv = new RenderToolCapabilityInventory() {
             @Override public boolean isToolAvailable(String n) { return "ffmpeg".equals(n); }
@@ -302,7 +309,7 @@ class TimelineRevisionRenderModeParityTest {
     }
     static class StubTimelineRevisionService extends TimelineRevisionService {
         private final InMemoryTimelineRevisionRepository repo;
-        StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null, null, null, null); this.repo = repo; }
+        StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null, null, null, null, null); this.repo = repo; }
         @Override public Optional<RevisionInfo> findById(String revisionId) {
             return repo.findById(revisionId).map(row -> new RevisionInfo(
                     row.id(), row.projectId(), row.tenantId(), row.parentRevisionId(),

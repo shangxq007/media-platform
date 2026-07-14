@@ -41,6 +41,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * → ProductDependency lineage → safe result contract.</p>
  */
 class CaptionTemplateRenderE2ESmokeTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     @TempDir Path tempDir;
     private StorageRuntimeService storageRuntime;
@@ -56,10 +63,10 @@ class CaptionTemplateRenderE2ESmokeTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         productRepo = new InMemoryProductRepository();
         depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
         RenderOutputRegistrationService regService =
-                new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+                new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
         RenderInputMaterializationService matService =
                 new RenderInputMaterializationService(storageRuntime, productRuntime);
 

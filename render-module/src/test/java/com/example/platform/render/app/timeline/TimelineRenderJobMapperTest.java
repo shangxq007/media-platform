@@ -114,7 +114,7 @@ class TimelineRenderJobMapperTest {
     void blankTimelineIdThrowsIllegalArgument() {
         TimelineSpec spec = new TimelineSpec("", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -124,7 +124,7 @@ class TimelineRenderJobMapperTest {
     void nullTimelineIdThrowsIllegalArgument() {
         TimelineSpec spec = new TimelineSpec(null, "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -160,7 +160,7 @@ class TimelineRenderJobMapperTest {
     void zeroDurationThrowsIllegalArgument() {
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), TimelineOutputSpec.mp4_1080p30(), 0, Map.of());
+                List.of(), TimelineOutputSpec.mp4_1080p30(), 0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -170,7 +170,7 @@ class TimelineRenderJobMapperTest {
     void negativeDurationThrowsIllegalArgument() {
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), TimelineOutputSpec.mp4_1080p30(), -5.0, Map.of());
+                List.of(), TimelineOutputSpec.mp4_1080p30(), -5.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -180,7 +180,7 @@ class TimelineRenderJobMapperTest {
     void excessiveDurationThrowsIllegalArgument() {
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), TimelineOutputSpec.mp4_1080p30(), 7200.0, Map.of());
+                List.of(), TimelineOutputSpec.mp4_1080p30(), 7200.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -195,7 +195,7 @@ class TimelineRenderJobMapperTest {
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), output, 10.0, Map.of());
+                List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -208,7 +208,7 @@ class TimelineRenderJobMapperTest {
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), output, 10.0, Map.of());
+                List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -221,7 +221,7 @@ class TimelineRenderJobMapperTest {
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), output, 10.0, Map.of());
+                List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -236,7 +236,7 @@ class TimelineRenderJobMapperTest {
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), output, 10.0, Map.of());
+                List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -249,7 +249,7 @@ class TimelineRenderJobMapperTest {
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), output, 10.0, Map.of());
+                List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -262,7 +262,7 @@ class TimelineRenderJobMapperTest {
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), output, 10.0, Map.of());
+                List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -277,7 +277,7 @@ class TimelineRenderJobMapperTest {
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), output, 10.0, Map.of());
+                List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -290,7 +290,7 @@ class TimelineRenderJobMapperTest {
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), output, 10.0, Map.of());
+                List.of(), output, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -300,7 +300,7 @@ class TimelineRenderJobMapperTest {
     void nullOutputSpecThrowsIllegalArgument() {
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
-                List.of(), null, 10.0, Map.of());
+                List.of(), null, 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -311,7 +311,7 @@ class TimelineRenderJobMapperTest {
     @Test
     void emptyTracksThrowsIllegalArgument() {
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -320,7 +320,7 @@ class TimelineRenderJobMapperTest {
     @Test
     void nullTracksThrowsIllegalArgument() {
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                null, List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                null, List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -330,7 +330,7 @@ class TimelineRenderJobMapperTest {
     void noClipsThrowsIllegalArgument() {
         TimelineTrack emptyTrack = TimelineTrack.of("t1", "Empty", TimelineTrack.TrackType.VIDEO);
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(emptyTrack), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(emptyTrack), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -341,12 +341,12 @@ class TimelineRenderJobMapperTest {
     @Test
     void pathTraversalRejects() {
         TimelineAssetRef ref = new TimelineAssetRef("ast_1", "../etc/passwd",
-                "mp4", 10, 1920, 1080, Map.of());
+                "mp4", 10, 1920, 1080, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack("t1", "V", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -356,12 +356,12 @@ class TimelineRenderJobMapperTest {
     @Test
     void homeDirectoryRejects() {
         TimelineAssetRef ref = new TimelineAssetRef("ast_1", "~/media/file.mp4",
-                "mp4", 10, 1920, 1080, Map.of());
+                "mp4", 10, 1920, 1080, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack("t1", "V", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -371,12 +371,12 @@ class TimelineRenderJobMapperTest {
     @Test
     void absolutePathRejects() {
         TimelineAssetRef ref = new TimelineAssetRef("ast_1", "/etc/passwd",
-                "mp4", 10, 1920, 1080, Map.of());
+                "mp4", 10, 1920, 1080, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack("t1", "V", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -386,12 +386,12 @@ class TimelineRenderJobMapperTest {
     @Test
     void fileUriRejects() {
         TimelineAssetRef ref = new TimelineAssetRef("ast_1", "file:///tmp/test.mp4",
-                "mp4", 10, 1920, 1080, Map.of());
+                "mp4", 10, 1920, 1080, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack("t1", "V", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -401,12 +401,12 @@ class TimelineRenderJobMapperTest {
     @Test
     void remoteUrlRejects() {
         TimelineAssetRef ref = new TimelineAssetRef("ast_1", "https://evil.com/media.mp4",
-                "mp4", 10, 1920, 1080, Map.of());
+                "mp4", 10, 1920, 1080, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack("t1", "V", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -416,12 +416,12 @@ class TimelineRenderJobMapperTest {
     @Test
     void httpUrlRejects() {
         TimelineAssetRef ref = new TimelineAssetRef("ast_1", "http://evil.com/media.mp4",
-                "mp4", 10, 1920, 1080, Map.of());
+                "mp4", 10, 1920, 1080, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack("t1", "V", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p"));
@@ -431,12 +431,12 @@ class TimelineRenderJobMapperTest {
     @Test
     void assetSchemeAccepted() {
         TimelineAssetRef ref = new TimelineAssetRef("ast_1", "asset://ast_001",
-                "mp4", 10, 1920, 1080, Map.of());
+                "mp4", 10, 1920, 1080, Map.<String,String>of(), null);
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack("t1", "V", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
-                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
+                List.of(track), List.of(), TimelineOutputSpec.mp4_1080p30(), 10.0, Map.<String,String>of());
 
         var result = mapper.toRenderJobRequest("ten_1", "prj_1", spec, "default_1080p");
         assertNotNull(result.request());

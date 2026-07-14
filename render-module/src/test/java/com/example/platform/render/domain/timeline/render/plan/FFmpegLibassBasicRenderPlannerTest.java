@@ -73,7 +73,7 @@ class FFmpegLibassBasicRenderPlannerTest {
     @Test @DisplayName("Step target is semantic only")
     void stepTargetSemantic() {
         FFmpegLibassBasicRenderStepTarget target = new FFmpegLibassBasicRenderStepTarget(
-                FFmpegLibassBasicRenderStepTargetType.CLIP, "clip-1", Map.of());
+                FFmpegLibassBasicRenderStepTargetType.CLIP, "clip-1", Map.<String,String>of());
         assertEquals(FFmpegLibassBasicRenderStepTargetType.CLIP, target.targetType());
         assertEquals("clip-1", target.targetId());
         assertNotNull(target.safeMetadata());
@@ -82,7 +82,7 @@ class FFmpegLibassBasicRenderPlannerTest {
     @Test @DisplayName("Step parameter is typed")
     void stepParameterTyped() {
         FFmpegLibassBasicRenderStepParameter param = new FFmpegLibassBasicRenderStepParameter(
-                "width", FFmpegLibassBasicRenderStepParameterType.INTEGER, 1920, Map.of());
+                "width", FFmpegLibassBasicRenderStepParameterType.INTEGER, 1920, Map.<String,String>of());
         assertEquals("width", param.name());
         assertEquals(FFmpegLibassBasicRenderStepParameterType.INTEGER, param.type());
         assertEquals(1920, param.value());
@@ -91,7 +91,7 @@ class FFmpegLibassBasicRenderPlannerTest {
     @Test @DisplayName("Plan summary counts stages and steps")
     void planSummaryCounts() {
         FFmpegLibassBasicRenderPlanSummary summary = new FFmpegLibassBasicRenderPlanSummary(
-                10, 20, 1, 2, 3, 4, 5, 6, 7, 8, 9, Map.of());
+                10, 20, 1, 2, 3, 4, 5, 6, 7, 8, 9, Map.<String,String>of());
         assertEquals(10, summary.totalStages());
         assertEquals(20, summary.totalSteps());
     }
@@ -231,7 +231,7 @@ class FFmpegLibassBasicRenderPlannerTest {
     void timelineValidationFailureReturnsFailed() {
         // Timeline with no tracks
         TimelineSpec timeline = new TimelineSpec("tl-1", "Empty", null,
-                List.of(), List.of(), TimelineOutputSpec.mp4_1080p30(), 0, Map.of());
+                List.of(), List.of(), TimelineOutputSpec.mp4_1080p30(), 0, Map.<String,String>of());
         FFmpegLibassBasicRenderPlanningResult result = plan(timeline);
         // Should have issues from validation
         assertFalse(result.issues().isEmpty());
@@ -264,7 +264,7 @@ class FFmpegLibassBasicRenderPlannerTest {
         TimelineTextOverlay overlay = TimelineTextOverlay.of("cap-1", "Hello World", 0, 5);
         TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
                 List.of(TimelineTrack.of("track-1", "Video", TimelineTrack.TrackType.VIDEO)),
-                List.of(overlay), output, 10, Map.of());
+                List.of(overlay), output, 10, Map.<String,String>of());
         FFmpegLibassBasicRenderPlanningResult result = plan(timeline);
         assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.PLANNED, result.status());
         assertTrue(result.plan().stages().stream()
@@ -356,10 +356,10 @@ class FFmpegLibassBasicRenderPlannerTest {
     void captionOverlayRequiresText() {
         TimelineTextOverlay overlay = new TimelineTextOverlay(
                 "cap-1", "", "DejaVu Sans", 24, "#FFFFFF",
-                "center", "bottom", 0, 5, null);
+                "center", "bottom", 0.0, 5.0, null);
         TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
                 List.of(TimelineTrack.of("track-1", "Video", TimelineTrack.TrackType.VIDEO)),
-                List.of(overlay), TimelineOutputSpec.mp4_1080p30(), 10, Map.of());
+                List.of(overlay), TimelineOutputSpec.mp4_1080p30(), 10, Map.<String,String>of());
         FFmpegLibassBasicRenderPlanningResult result = plan(timeline);
         assertTrue(result.issues().stream().anyMatch(i ->
                 i.code() == FFmpegLibassBasicRenderPlanIssueCode.CAPTION_OVERLAY_INVALID));
@@ -369,10 +369,10 @@ class FFmpegLibassBasicRenderPlannerTest {
     void captionOverlayRequiresValidTimeRange() {
         TimelineTextOverlay overlay = new TimelineTextOverlay(
                 "cap-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
-                "center", "bottom", -1, 5, null);
+                "center", "bottom", -1.0, 5.0, null);
         TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
                 List.of(TimelineTrack.of("track-1", "Video", TimelineTrack.TrackType.VIDEO)),
-                List.of(overlay), TimelineOutputSpec.mp4_1080p30(), 10, Map.of());
+                List.of(overlay), TimelineOutputSpec.mp4_1080p30(), 10, Map.<String,String>of());
         FFmpegLibassBasicRenderPlanningResult result = plan(timeline);
         assertTrue(result.issues().stream().anyMatch(i ->
                 i.code() == FFmpegLibassBasicRenderPlanIssueCode.CAPTION_OVERLAY_INVALID));
@@ -469,12 +469,12 @@ class FFmpegLibassBasicRenderPlannerTest {
         TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
         TimelineClipEffect effect = TimelineClipEffect.ofKey(effectKey, params);
         TimelineClip clip = new TimelineClip("clip-1",
-                new TimelineAssetRef("asset-1", "", "mp4", 10000, 1920, 1080, Map.of()),
+                new TimelineAssetRef("asset-1", "", "mp4", 10000, 1920, 1080, Map.<String,String>of(), null),
                 0, 0, 10, 10, List.of(effect));
         TimelineTrack track = new TimelineTrack("track-1", "Video",
                 TimelineTrack.TrackType.VIDEO, 0, List.of(clip), false, false);
         return new TimelineSpec("tl-1", "Test Timeline", null,
-                List.of(track), List.of(), output, 10, Map.of());
+                List.of(track), List.of(), output, 10, Map.<String,String>of());
     }
 
     private TimelineSpec buildTimelineWithTransition(String transitionKey, long durationMs) {
@@ -482,15 +482,15 @@ class FFmpegLibassBasicRenderPlannerTest {
         TimelineClipEffect effect = TimelineClipEffect.ofKey(transitionKey,
                 Map.of("durationMs", durationMs));
         TimelineClip clip1 = new TimelineClip("c1",
-                new TimelineAssetRef("a1", "", "mp4", 5000, 1920, 1080, Map.of()),
+                new TimelineAssetRef("a1", "", "mp4", 5000, 1920, 1080, Map.<String,String>of(), null),
                 0, 0, 5, 5, List.of(effect));
         TimelineClip clip2 = new TimelineClip("c2",
-                new TimelineAssetRef("a2", "", "mp4", 5000, 1920, 1080, Map.of()),
+                new TimelineAssetRef("a2", "", "mp4", 5000, 1920, 1080, Map.<String,String>of(), null),
                 5, 0, 5, 5, List.of());
         TimelineTrack track = new TimelineTrack("track-1", "Video",
                 TimelineTrack.TrackType.VIDEO, 0, List.of(clip1, clip2), false, false);
         return new TimelineSpec("tl-1", "Test Timeline", null,
-                List.of(track), List.of(), output, 10, Map.of());
+                List.of(track), List.of(), output, 10, Map.<String,String>of());
     }
 
     private TimelineSpec buildTimelineWithClips(List<Map<String, Object>> clipDefs) {
@@ -501,13 +501,13 @@ class FFmpegLibassBasicRenderPlannerTest {
             int start = (int) def.get("start");
             int dur = (int) def.get("dur");
             clips.add(new TimelineClip(id,
-                    new TimelineAssetRef("asset-" + id, "", "mp4", dur * 1000L, 1920, 1080, Map.of()),
+                    new TimelineAssetRef("asset-" + id, "", "mp4", dur * 1000L, 1920, 1080, Map.<String,String>of(), null),
                     start, 0, dur, dur, List.of()));
         }
         TimelineTrack track = new TimelineTrack("track-1", "Video",
                 TimelineTrack.TrackType.VIDEO, 0, clips, false, false);
         int totalDur = clips.stream().mapToInt(c -> (int) (c.timelineStart() + c.clipDuration())).max().orElse(0);
         return new TimelineSpec("tl-1", "Test Timeline", null,
-                List.of(track), List.of(), output, totalDur, Map.of());
+                List.of(track), List.of(), output, totalDur, Map.<String,String>of());
     }
 }

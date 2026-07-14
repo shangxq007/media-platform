@@ -242,7 +242,7 @@ class TimelineCompileGoldenFixtureTest {
     }
 
     private TimelineSpec createSpecWithEmptyAsset() {
-        TimelineAssetRef emptyRef = new TimelineAssetRef("", "asset://empty", "mp4", 5, 0, 0, Map.of());
+        TimelineAssetRef emptyRef = new TimelineAssetRef("", "asset://empty", "mp4", 5L, 0, 0, Map.<String,String>of(), null);
         TimelineClip clip = new TimelineClip("clip-1", emptyRef, 0, 0, 5, 5, List.of());
         TimelineTrack track = new TimelineTrack("trk-1", "Video", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);

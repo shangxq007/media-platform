@@ -25,7 +25,7 @@ class RenderArtifactQueryServiceTest {
     void setUp() {
         renderJobRepository = mock(RenderJobRepository.class);
         storageCatalogPort = mock(StorageCatalogPort.class);
-        service = new RenderArtifactQueryService(renderJobRepository, storageCatalogPort);
+        service = new RenderArtifactQueryService(renderJobRepository, storageCatalogPort, List.of());
         TenantContext.clear();
     }
 

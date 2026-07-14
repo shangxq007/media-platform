@@ -39,6 +39,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for graph/plan ID propagation, localExecutionRunId, and outputProductId correlation.
  */
 class RenderCorrelationGraphPlanPropagationTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     @TempDir Path tempDir;
     private StorageRuntimeService storageRuntime;
@@ -53,7 +60,7 @@ class RenderCorrelationGraphPlanPropagationTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
         auditSink = new InMemoryRenderAuditEventSink();
         auditRecorder = new RenderAuditRecorder(auditSink);
@@ -181,7 +188,7 @@ class RenderCorrelationGraphPlanPropagationTest {
         };
 
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
-        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
         TimelineNormalizationService normalizer = new TimelineNormalizationService();
         ArtifactGraphCompiler artifactCompiler = new ArtifactGraphCompiler();
         CapabilityGraphCompiler capCompiler = new CapabilityGraphCompiler();
@@ -220,7 +227,7 @@ class RenderCorrelationGraphPlanPropagationTest {
                                                           com.example.platform.extension.domain.ToolSandboxPolicy p) { return execute(r); }
         };
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
-        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
                 matService, regService, productRuntime, toolInv, toolRunner, auditRecorder);
         return new LocalExecutionPlanRunner(new RenderPlanPolicyGuard(), stepExecutor);
@@ -314,7 +321,7 @@ class RenderCorrelationGraphPlanPropagationTest {
 
     static class StubTimelineRevisionService extends TimelineRevisionService {
         private final InMemoryTimelineRevisionRepository repo;
-        StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null, null, null, null); this.repo = repo; }
+        StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null, null, null, null, null); this.repo = repo; }
         @Override
         public Optional<RevisionInfo> findById(String revisionId) {
             return repo.findById(revisionId).map(row -> new RevisionInfo(

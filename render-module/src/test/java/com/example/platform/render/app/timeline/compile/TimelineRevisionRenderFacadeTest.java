@@ -178,7 +178,7 @@ class TimelineRevisionRenderFacadeTest {
     static class MockLegacyService extends TimelineRevisionRenderService {
         boolean called = false;
         TimelineRevisionRenderService.RevisionRenderResult result;
-        MockLegacyService() { super(null, null, null, null, null, null, null, null, null, null, null); }
+        MockLegacyService() { super(null, null, null, null, null, null, null, null, null, null, null, null); }
         @Override
         public RevisionRenderResult render(String projectId, String revisionId, String outputProfile) {
             called = true; return result;

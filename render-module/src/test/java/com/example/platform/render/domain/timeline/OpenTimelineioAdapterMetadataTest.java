@@ -37,7 +37,7 @@ class OpenTimelineioAdapterMetadataTest {
         refMeta.put(TimelinePlatformMetadata.PLATFORM_ENTITY_REF, "asset://asset_123?v=v7");
 
         TimelineAssetRef assetRef = new TimelineAssetRef("asset_123", "file:///tmp/video.mp4",
-                "mp4", 10, 1920, 1080, refMeta);
+                "mp4", 10, 1920, 1080, refMeta, null);
 
         TimelineClip clip = new TimelineClip("c1", assetRef, 0, 0, 10, 10, List.of());
 
@@ -45,7 +45,7 @@ class OpenTimelineioAdapterMetadataTest {
                 0, List.of(clip), false, false);
 
         TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
-                List.of(track), List.of(), output, 0, Map.of());
+                List.of(track), List.of(), output, 0, Map.<String,String>of());
 
         String otioJson = OpenTimelineioAdapter.toOtioJson(timeline);
 
@@ -64,14 +64,14 @@ class OpenTimelineioAdapterMetadataTest {
         refMeta.put(TimelinePlatformMetadata.PLATFORM_ASSET_VERSION, "v1");
 
         TimelineAssetRef assetRef = new TimelineAssetRef("asset_456", "file:///tmp/video.mp4",
-                "mp4", 5, 1920, 1080, refMeta);
+                "mp4", 5, 1920, 1080, refMeta, null);
 
         TimelineClip clip = new TimelineClip("c1", assetRef, 0, 0, 5, 5, List.of());
         TimelineTrack track = new TimelineTrack("v1", "Video 1", TimelineTrack.TrackType.VIDEO,
                 0, List.of(clip), false, false);
 
         TimelineSpec timeline = new TimelineSpec("tl-roundtrip", "RT", null,
-                List.of(track), List.of(), output, 0, Map.of());
+                List.of(track), List.of(), output, 0, Map.<String,String>of());
 
         String otioJson = OpenTimelineioAdapter.toOtioJson(timeline);
         assertTrue(otioJson.contains("\"platform\""));
@@ -100,7 +100,7 @@ class OpenTimelineioAdapterMetadataTest {
                 0, List.of(clip), false, false);
 
         TimelineSpec timeline = new TimelineSpec("tl-fx", "FX Test", null,
-                List.of(track), List.of(), output, 0, Map.of());
+                List.of(track), List.of(), output, 0, Map.<String,String>of());
 
         String otioJson = OpenTimelineioAdapter.toOtioJson(timeline);
 

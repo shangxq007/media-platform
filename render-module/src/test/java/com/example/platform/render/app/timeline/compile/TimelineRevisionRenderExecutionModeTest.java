@@ -52,6 +52,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  */
 class TimelineRevisionRenderExecutionModeTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     @TempDir
     Path tempDir;
@@ -72,9 +79,9 @@ class TimelineRevisionRenderExecutionModeTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
         materializationService = new RenderInputMaterializationService(storageRuntime, productRuntime);
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
@@ -228,6 +235,7 @@ class TimelineRevisionRenderExecutionModeTest {
         TimelineRevisionRenderService legacyService = new TimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo),
                 snapshotService, mapper, parser,
+                null,
                 materializationService, registrationService,
                 productRuntime, storageRuntime, inputProductResolver,
                 toolRunner, tempDir);
@@ -335,7 +343,7 @@ class TimelineRevisionRenderExecutionModeTest {
         private final InMemoryTimelineRevisionRepository repo;
 
         StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) {
-            super(null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null);
             this.repo = repo;
         }
 

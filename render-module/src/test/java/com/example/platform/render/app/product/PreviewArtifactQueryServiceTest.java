@@ -27,6 +27,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Architecture boundaries (no paths, no signed URLs in response)
  */
 class PreviewArtifactQueryServiceTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     private InMemoryProductRepository productRepo;
     private InMemoryProductDependencyRepository depRepo;
@@ -41,7 +48,7 @@ class PreviewArtifactQueryServiceTest {
         depRepo = new InMemoryProductDependencyRepository();
         storageRepo = new InMemoryStorageReferenceRepository();
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         service = new PreviewArtifactQueryService(productRuntime, storageRuntime);
     }
 

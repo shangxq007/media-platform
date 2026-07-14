@@ -54,6 +54,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  */
 class TimelineCoreRenderableSmokeTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     private Path tempDir;
     private StorageRuntimeService storageRuntime;
@@ -67,9 +74,9 @@ class TimelineCoreRenderableSmokeTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extensionsReader);
@@ -135,7 +142,7 @@ class TimelineCoreRenderableSmokeTest {
         assertEquals(ProductStatus.READY, found.get().status());
 
         // 7. Verify storage reference is valid
-        assertTrue(storageRuntime.exists(product.storageReferenceId()));
+        assertTrue(storageRuntime.find(product.storageReferenceId()).isPresent());
         assertTrue(storageRuntime.verifyChecksum(product.storageReferenceId()));
     }
 
@@ -196,7 +203,7 @@ class TimelineCoreRenderableSmokeTest {
                 "job-stor", "ten_1", "prj_1", "ffmpeg", "artifacts/job-stor/output.mp4");
 
         assertNotNull(product.storageReferenceId());
-        assertTrue(storageRuntime.exists(product.storageReferenceId()));
+        assertTrue(storageRuntime.find(product.storageReferenceId()).isPresent());
     }
 
     @Test

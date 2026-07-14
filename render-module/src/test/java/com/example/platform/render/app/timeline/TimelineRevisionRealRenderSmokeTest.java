@@ -65,6 +65,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  */
 class TimelineRevisionRealRenderSmokeTest {
+    @SuppressWarnings("unchecked")
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> mockProvider(T instance) {
+        org.springframework.beans.factory.ObjectProvider<T> op = org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
+
 
     @TempDir
     Path tempDir;
@@ -85,9 +92,9 @@ class TimelineRevisionRealRenderSmokeTest {
         StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
-        storageRuntime = new StorageRuntimeService(storageRepo);
+        storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir);
+        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         parser = new TimelineScriptParser(extensionsReader);
@@ -144,6 +151,7 @@ class TimelineRevisionRealRenderSmokeTest {
         TimelineRevisionRenderService renderService = new TimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo),
                 snapshotService, mapper, parser,
+                null,
                 new RenderInputMaterializationService(storageRuntime, productRuntime),
                 registrationService, productRuntime, storageRuntime,
                 inputProductResolver, realRunner, tempDir);
@@ -395,7 +403,7 @@ class TimelineRevisionRealRenderSmokeTest {
         private final InMemoryTimelineRevisionRepository repo;
 
         StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) {
-            super(null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null);
             this.repo = repo;
         }
 

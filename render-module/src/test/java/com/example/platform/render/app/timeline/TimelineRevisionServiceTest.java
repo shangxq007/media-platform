@@ -66,7 +66,8 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
                 new TimelinePatchService(
                         new TimelineValidationService(new InternalTimelineValidationService()),
                         TimelineTestSupport.internalTimelineAdapter(),
-                        canonicalizer));
+                        canonicalizer),
+                new TimelineSemanticDiffService(canonicalizer));
     }
 
     @Test

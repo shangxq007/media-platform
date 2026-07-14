@@ -1,6 +1,7 @@
 package com.example.platform.ingest.preflight;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import com.example.platform.ingest.contract.*;
 import com.example.platform.ingest.experimental.tika.TikaDetectorProvider;
@@ -8,11 +9,19 @@ import com.example.platform.ingest.experimental.tika.TikaExperimentalProperties;
 import com.example.platform.ingest.preflight.ffprobe.FFprobeMediaMetadataProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.beans.factory.ObjectProvider;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 class IngestMetadataMergerTest {
+
+    @SuppressWarnings("unchecked")
+    private static <T> ObjectProvider<T> mockProvider(T instance) {
+        ObjectProvider<T> op = mock(ObjectProvider.class);
+        when(op.getIfAvailable()).thenReturn(instance);
+        return op;
+    }
 
     @Test
     void testTikaOnlyMerge() {
@@ -22,7 +31,7 @@ class IngestMetadataMergerTest {
         FFprobeMediaMetadataProvider ffprobeProvider = new FFprobeMediaMetadataProvider();
 
         IngestMetadataMerger merger = new IngestMetadataMerger(
-            () -> tikaProvider, () -> ffprobeProvider);
+            mockProvider(tikaProvider), mockProvider(ffprobeProvider));
 
         byte[] pngBytes = new byte[]{(byte)0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
         var result = merger.evaluate(pngBytes, "image.png", "image/png", null);
@@ -40,7 +49,7 @@ class IngestMetadataMergerTest {
         FFprobeMediaMetadataProvider ffprobeProvider = new FFprobeMediaMetadataProvider();
 
         IngestMetadataMerger merger = new IngestMetadataMerger(
-            () -> tikaProvider, () -> ffprobeProvider);
+            mockProvider(tikaProvider), mockProvider(ffprobeProvider));
 
         byte[] pngBytes = new byte[]{(byte)0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
         var result = merger.evaluate(pngBytes, "image.txt", "text/plain", null);
@@ -75,7 +84,7 @@ class IngestMetadataMergerTest {
         FFprobeMediaMetadataProvider ffprobeProvider = new FFprobeMediaMetadataProvider();
 
         IngestMetadataMerger merger = new IngestMetadataMerger(
-            () -> tikaProvider, () -> ffprobeProvider);
+            mockProvider(tikaProvider), mockProvider(ffprobeProvider));
 
         var result = merger.evaluate(new byte[16], "test.mp4", "video/mp4", testVideo);
 
