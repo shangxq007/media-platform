@@ -8,12 +8,13 @@ import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
 import { DevConsolePage } from '../pages/DevConsolePage.js'
 import TimelineGitConsolePage from '../pages/TimelineGitConsolePage.js'
 import AdminRenderJobsPage from '../pages/AdminRenderJobsPage.js'
-import UserRenderHistoryPage from '../pages/UserRenderHistoryPage.js'
 import AdminStorageHealthPage from '../pages/AdminStorageHealthPage.js'
-import UserRenderResultDetailPage from '../pages/UserRenderResultDetailPage.js'
 import { DevDiagnosticsHubPage } from '../pages/DevDiagnosticsHubPage.js'
 import { DevStorageDeliveryProfileDiagnosticsPage } from '../pages/DevStorageDeliveryProfileDiagnosticsPage.js'
 import { DevIngestPreflightPolicyDiagnosticsPage } from '../pages/DevIngestPreflightPolicyDiagnosticsPage.js'
+// New contract-first components
+import { RenderResultsListPage } from '../routes/app/renders/RenderResultsListPage.js'
+import { RenderResultDetailPage } from '../routes/app/renders/RenderResultDetailPage.js'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -58,7 +59,7 @@ const timelineGitRoute = createRoute({
 const userRenderResultDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/app/renders/$productId',
-  component: UserRenderResultDetailPage,
+  component: RenderResultDetailPage,
 })
 
 const adminStorageHealthRoute = createRoute({
@@ -70,7 +71,7 @@ const adminStorageHealthRoute = createRoute({
 const userRenderHistoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/app/renders',
-  component: UserRenderHistoryPage,
+  component: RenderResultsListPage,
 })
 
 const adminRenderJobsRoute = createRoute({
