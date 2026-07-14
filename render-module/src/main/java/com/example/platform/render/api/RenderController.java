@@ -374,35 +374,8 @@ public class RenderController {
     }
 
     // -------------------------------------------------------------------------
-    // Legacy endpoints (kept for backward compatibility)
+    // User-context endpoints (tenant resolved from JWT or query param)
     // -------------------------------------------------------------------------
-
-    @PostMapping("/render/jobs")
-    public RenderJobResponse create(@Valid @RequestBody CreateRenderJobRequest request) {
-        return renderJobService.create(request);
-    }
-
-    @PostMapping("/render/jobs/submit")
-    @Operation(summary = "提交渲染作业（legacy）", description = "推荐租户路径 incremental/submit")
-    public Map<String, String> submitJob(@Valid @RequestBody SubmitRenderJobRequest request) {
-        if (orchestratorPort != null) {
-            String jobId = orchestratorPort.submitRenderJob(request);
-            return Map.of("jobId", jobId, "status", "QUEUED");
-        }
-        RenderJobResponse response = renderJobService.create(
-                new CreateRenderJobRequest(request.projectId(), "snap_" + System.currentTimeMillis(), request.profileOrDefault()));
-        return Map.of("jobId", response.id(), "status", response.status());
-    }
-
-    @GetMapping("/render/jobs/{jobId}")
-    public RenderJobResponse getJob(@PathVariable String jobId) {
-        return renderJobService.getById(jobId);
-    }
-
-    @GetMapping("/render/jobs")
-    public List<RenderJobResponse> list() {
-        return renderJobService.list();
-    }
 
     @GetMapping("/render/jobs/{jobId}/artifacts")
     public List<ArtifactInfoResponse> getArtifacts(@PathVariable String jobId) {

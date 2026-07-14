@@ -119,12 +119,12 @@ class RenderNativeToolsIT {
 
         String snapshotId = timelineSnapshotService.save(project.id(), tenant.id(), editorJson, "2.0.0");
 
-        RenderJobResponse job = renderController.create(
+        RenderJobResponse job = renderController.createRenderJob(tenant.id(), project.id(), 
                 new CreateRenderJobRequest(project.id(), snapshotId, "default_720p"));
 
         orchestratorService.executeExistingRenderJob(tenant.id(), job.id());
 
-        RenderJobResponse completed = renderController.getJob(job.id());
+        RenderJobResponse completed = renderController.getRenderJob(tenant.id(), project.id(), job.id());
         assertThat(completed.status()).isEqualTo("COMPLETED");
 
         Path output = Path.of(storageRoot, "artifacts", job.id(), "output.mp4");
@@ -164,11 +164,11 @@ class RenderNativeToolsIT {
                 """.formatted(sourcePath);
 
         String snapshotId = timelineSnapshotService.save(project.id(), tenant.id(), editorJson, "2.0.0");
-        RenderJobResponse job = renderController.create(
+        RenderJobResponse job = renderController.createRenderJob(tenant.id(), project.id(), 
                 new CreateRenderJobRequest(project.id(), snapshotId, "default_720p"));
 
         orchestratorService.executeExistingRenderJob(tenant.id(), job.id());
 
-        assertThat(renderController.getJob(job.id()).status()).isEqualTo("COMPLETED");
+        assertThat(renderController.getRenderJob(tenant.id(), project.id(), job.id()).status()).isEqualTo("COMPLETED");
     }
 }

@@ -107,78 +107,9 @@ class RenderControllerContractTest {
         }
     }
 
-    // ========== Legacy endpoints ==========
+    // Legacy endpoint tests removed — routes removed in pre-launch cleanup
 
-    @Nested
-    @DisplayName("Legacy render job endpoints")
-    class LegacyEndpoints {
-
-        @Test
-        @DisplayName("POST /render/jobs creates job via service")
-        void legacyCreateDelegates() {
-            CreateRenderJobRequest req = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
-
-            RenderJobResponse result = controller.create(req);
-
-            assertNotNull(result);
-            assertEquals("QUEUED", result.status());
-            assertEquals(1, fakeService.createCalls);
-        }
-
-        @Test
-        @DisplayName("GET /render/jobs/{jobId} returns job")
-        void legacyGetReturnsJob() {
-            fakeService.storedJobs.put("rj-1",
-                    new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "EXECUTING"));
-
-            RenderJobResponse result = controller.getJob("rj-1");
-
-            assertEquals("EXECUTING", result.status());
-        }
-
-        @Test
-        @DisplayName("GET /render/jobs returns list")
-        void legacyListReturnsList() {
-            fakeService.storedJobs.put("rj-1",
-                    new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED"));
-
-            List<RenderJobResponse> result = controller.list();
-
-            assertEquals(1, result.size());
-        }
-    }
-
-    // ========== Job submission via orchestrator ==========
-
-    @Nested
-    @DisplayName("Job submission via orchestrator")
-    class JobSubmission {
-
-        @Test
-        @DisplayName("Legacy submit delegates to orchestrator when available")
-        void submitDelegatesToOrchestrator() {
-            SubmitRenderJobRequest req = new SubmitRenderJobRequest("t-1", "proj-1", "test prompt", "default_1080p", "snap-1");
-            fakeOrchestrator.submitResult = "rj-submitted";
-
-            Map<String, String> result = controller.submitJob(req);
-
-            assertEquals("rj-submitted", result.get("jobId"));
-            assertEquals("QUEUED", result.get("status"));
-            assertEquals(1, fakeOrchestrator.submitCalls);
-        }
-
-        @Test
-        @DisplayName("Legacy submit falls back to service when orchestrator null")
-        void submitFallsBackToService() {
-            RenderController controllerNoOrch = new RenderController(fakeService);
-            SubmitRenderJobRequest req = new SubmitRenderJobRequest("t-1", "proj-1", "test prompt", "default_1080p", "snap-1");
-
-            Map<String, String> result = controllerNoOrch.submitJob(req);
-
-            assertNotNull(result.get("jobId"));
-            assertEquals("QUEUED", result.get("status"));
-        }
-    }
+    // Job submission tests removed — submitJob route removed in pre-launch cleanup
 
     // ========== Job start ==========
 

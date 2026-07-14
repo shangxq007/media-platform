@@ -1,3 +1,4 @@
+import { getTenantId } from '@/utils/tenant'
 import axios from 'axios'
 import type { Project, RenderJob, UserBehaviorEvent, ErrorResponse, EffectPack } from '@/types'
 import { getErrorMessage } from '@/utils/i18n'
@@ -129,7 +130,8 @@ export const RenderAPI = {
     return data
   },
   async createJob(projectId: string, settings: Record<string, string> & { timelineSnapshotId?: string }): Promise<RenderJob> {
-    const { data } = await api.post('/render/jobs', {
+    const tenantId = getTenantId() || 'default'
+    const { data } = await api.post(`/tenants/${tenantId}/projects/${projectId}/render-jobs`, {
       projectId,
       timelineSnapshotId: settings.timelineSnapshotId,
       profile: settings.profile,

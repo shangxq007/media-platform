@@ -178,7 +178,7 @@ class VS1SmokeIntegrationTest {
             SubmitRenderJobRequest submitReq = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "Create promo video", "default_1080p", "snap-1");
 
-            Map<String, String> result = controller.submitJob(submitReq);
+            Map<String, String> result = controller.submitIncrementalRenderJob("t-1", "proj-1", submitReq);
 
             assertNotNull(result.get("jobId"));
             assertEquals("QUEUED", result.get("status"));
@@ -317,7 +317,7 @@ class VS1SmokeIntegrationTest {
             SubmitRenderJobRequest req = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "test", "default_1080p", "snap-1");
 
-            Map<String, String> result = controllerNoOrch.submitJob(req);
+            Map<String, String> result = controllerNoOrch.submitIncrementalRenderJob("t-1", "proj-1", req);
 
             assertNotNull(result.get("jobId"));
             assertEquals("QUEUED", result.get("status"));

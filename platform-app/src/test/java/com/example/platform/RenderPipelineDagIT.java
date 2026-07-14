@@ -116,11 +116,11 @@ class RenderPipelineDagIT {
                 """.formatted(sourcePath, sourcePath);
 
         String snapshotId = timelineSnapshotService.save(project.id(), tenant.id(), timelineJson, "2.0.0");
-        RenderJobResponse job = renderController.create(
+        RenderJobResponse job = renderController.createRenderJob(tenant.id(), project.id(), 
                 new CreateRenderJobRequest(project.id(), snapshotId, "default_720p"));
         orchestratorService.executeExistingRenderJob(tenant.id(), job.id());
 
-        RenderJobResponse completed = renderController.getJob(job.id());
+        RenderJobResponse completed = renderController.getRenderJob(tenant.id(), project.id(), job.id());
         assertThat(completed.status()).isEqualTo("COMPLETED");
         assertThat(pipelinePlanPersistence.loadPlan(job.id())).isPresent();
         var execution = pipelinePlanPersistence.loadExecutionState(job.id());

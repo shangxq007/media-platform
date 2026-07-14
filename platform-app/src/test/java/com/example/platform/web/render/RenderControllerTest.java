@@ -26,34 +26,34 @@ class RenderControllerTest {
     void shouldCreateJob() {
         CreateRenderJobRequest request = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
         RenderJobResponse expected = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED");
-        when(renderJobService.create(request)).thenReturn(expected);
+        when(renderJobService.createForProject("tenant-1", "proj-1", request)).thenReturn(expected);
 
-        RenderJobResponse response = controller.create(request);
+        RenderJobResponse response = controller.createRenderJob("tenant-1", "proj-1", request);
 
         assertNotNull(response);
         assertEquals("rj-1", response.id());
         assertEquals("QUEUED", response.status());
-        verify(renderJobService).create(request);
+        verify(renderJobService).createForProject("tenant-1", "proj-1", request);
     }
 
     @Test
     void shouldGetJob() {
         RenderJobResponse expected = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "COMPLETED");
-        when(renderJobService.getById("rj-1")).thenReturn(expected);
+        when(renderJobService.getByIdAndProject("tenant-1", "proj-1", "rj-1")).thenReturn(expected);
 
-        RenderJobResponse response = controller.getJob("rj-1");
+        RenderJobResponse response = controller.getRenderJob("tenant-1", "proj-1", "rj-1");
 
         assertNotNull(response);
         assertEquals("COMPLETED", response.status());
-        verify(renderJobService).getById("rj-1");
+        verify(renderJobService).getByIdAndProject("tenant-1", "proj-1", "rj-1");
     }
 
     @Test
     void shouldListJobs() {
-        when(renderJobService.list()).thenReturn(List.of(
+        when(renderJobService.listByProject("tenant-1", "proj-1")).thenReturn(List.of(
                 new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED")));
 
-        List<RenderJobResponse> response = controller.list();
+        List<RenderJobResponse> response = controller.listRenderJobs("tenant-1", "proj-1");
 
         assertEquals(1, response.size());
         assertEquals("rj-1", response.get(0).id());
@@ -81,17 +81,5 @@ class RenderControllerTest {
         assertNotNull(response);
         assertEquals("QUEUED", response.status());
         verify(renderJobService).retry("rj-1", "tenant-1");
-    }
-
-    @Test
-    void shouldCreateJobWithDefaultProfile() {
-        CreateRenderJobRequest request = new CreateRenderJobRequest("proj-1", "snap-1", "");
-        RenderJobResponse expected = new RenderJobResponse("rj-1", "proj-1", "snap-1", "", "QUEUED");
-        when(renderJobService.create(request)).thenReturn(expected);
-
-        RenderJobResponse response = controller.create(request);
-
-        assertNotNull(response);
-        assertEquals("rj-1", response.id());
     }
 }

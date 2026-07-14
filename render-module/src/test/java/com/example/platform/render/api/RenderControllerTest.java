@@ -28,9 +28,9 @@ class RenderControllerTest {
     void createDelegatesToService() {
         CreateRenderJobRequest request = new CreateRenderJobRequest("proj-1", "snap-1", "social_1080p");
         RenderJobResponse expected = new RenderJobResponse("rj_abc", "proj-1", "snap-1", "social_1080p", "QUEUED");
-        when(service.create(request)).thenReturn(expected);
+        when(service.createForProject("tenant-1", "proj-1", request)).thenReturn(expected);
 
-        RenderJobResponse response = controller.create(request);
+        RenderJobResponse response = controller.createRenderJob("tenant-1", "proj-1", request);
 
         assertNotNull(response);
         assertEquals("rj_abc", response.id());
@@ -43,9 +43,9 @@ class RenderControllerTest {
                 new RenderJobResponse("rj_1", "proj-1", "snap-1", "social_1080p", "QUEUED"),
                 new RenderJobResponse("rj_2", "proj-2", "snap-2", "standard", "COMPLETED")
         );
-        when(service.list()).thenReturn(expected);
+        when(service.listByProject("tenant-1", "proj-1")).thenReturn(expected);
 
-        List<RenderJobResponse> response = controller.list();
+        List<RenderJobResponse> response = controller.listRenderJobs("tenant-1", "proj-1");
 
         assertNotNull(response);
         assertEquals(2, response.size());
@@ -55,9 +55,9 @@ class RenderControllerTest {
 
     @Test
     void listReturnsEmptyWhenServiceReturnsEmpty() {
-        when(service.list()).thenReturn(List.of());
+        when(service.listByProject("tenant-1", "proj-1")).thenReturn(List.of());
 
-        List<RenderJobResponse> response = controller.list();
+        List<RenderJobResponse> response = controller.listRenderJobs("tenant-1", "proj-1");
         assertNotNull(response);
         assertTrue(response.isEmpty());
     }

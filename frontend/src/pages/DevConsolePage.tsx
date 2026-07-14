@@ -26,7 +26,7 @@ function useSubmitRender(token: string | undefined) {
   return useMutation({
     mutationFn: () => {
       if (!token) throw new Error('No token')
-      return api.post('/render/jobs/submit', {
+      return api.post(`/tenants/${'ten_307b8956545642a9a45097f2f480a7b4'}/projects/${'prj_6802ca7a12c24aafa31cf77fa63890be'}/render-jobs/incremental/submit`, {
         tenantId: 'ten_307b8956545642a9a45097f2f480a7b4',
         projectId: 'prj_6802ca7a12c24aafa31cf77fa63890be',
         prompt: JSON.stringify({

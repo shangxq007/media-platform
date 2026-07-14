@@ -1,4 +1,5 @@
 import api from './index'
+import { getTenantId } from '@/utils/tenant'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -38,7 +39,8 @@ export const SmokeEditorAPI = {
     })
     const snapshotId = snapResp.data?.snapshotId
 
-    const jobResp = await api.post('/render/jobs', {
+    const tenantId = getTenantId() || 'default'
+    const jobResp = await api.post(`/tenants/${tenantId}/projects/${input.projectId}/render-jobs`, {
       projectId: input.projectId,
       timelineSnapshotId: snapshotId,
       profile: input.profile || 'default_1080p',

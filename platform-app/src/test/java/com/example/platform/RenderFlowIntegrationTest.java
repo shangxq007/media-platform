@@ -44,6 +44,7 @@ class RenderFlowIntegrationTest {
 
     @Autowired
     private MockNotificationProvider mockNotificationProvider;
+    private String currentTenantId;
 
     @BeforeEach
     void setUp() {
@@ -53,6 +54,7 @@ class RenderFlowIntegrationTest {
     private String createTestProject(String name) {
         TenantResponse tenant = tenantProjectController.createTenant(
                 new CreateTenantRequest(name + " Tenant"));
+        this.currentTenantId = tenant.id();
         ProjectResponse project = tenantProjectController.createProject(tenant.id(),
                 new CreateProjectRequest(name, "Test project for " + name));
         return project.id();
@@ -126,7 +128,7 @@ class RenderFlowIntegrationTest {
         String projectId = createTestProject("RenderJob");
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
                 projectId, "snap_default", "default_1080p");
-        var renderJob = renderController.create(renderRequest);
+        var renderJob = renderController.createRenderJob(currentTenantId, projectId, renderRequest);
 
         assertThat(renderJob.id()).isNotBlank();
         assertThat(renderJob.projectId()).isEqualTo(projectId);
@@ -139,8 +141,8 @@ class RenderFlowIntegrationTest {
         String projectId = createTestProject("GetJob");
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
                 projectId, "snap_get", "social_720p");
-        var created = renderController.create(renderRequest);
-        var fetched = renderController.getJob(created.id());
+        var created = renderController.createRenderJob(currentTenantId, projectId, renderRequest);
+        var fetched = renderController.getRenderJob(currentTenantId, projectId, created.id());
 
         assertThat(fetched.id()).isEqualTo(created.id());
         assertThat(fetched.status()).isEqualTo("QUEUED");
@@ -154,10 +156,10 @@ class RenderFlowIntegrationTest {
                 projectId, "snap_list_1", "default_1080p");
         var req2 = new com.example.platform.render.app.dto.CreateRenderJobRequest(
                 projectId, "snap_list_2", "social_720p");
-        renderController.create(req1);
-        renderController.create(req2);
+        renderController.createRenderJob(currentTenantId, projectId, req1);
+        renderController.createRenderJob(currentTenantId, projectId, req2);
 
-        var jobs = renderController.list();
+        var jobs = renderController.listRenderJobs(currentTenantId, projectId);
         assertThat(jobs).hasSizeGreaterThanOrEqualTo(2);
     }
 
@@ -166,9 +168,9 @@ class RenderFlowIntegrationTest {
         String projectId = createTestProject("ExecuteLocal");
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
                 projectId, "snap_exec", "default_1080p");
-        var renderJob = renderController.create(renderRequest);
+        var renderJob = renderController.createRenderJob(currentTenantId, projectId, renderRequest);
 
-        var result = renderController.startRenderJob(projectId, projectId, renderJob.id());
+        var result = renderController.startRenderJob(currentTenantId, projectId, renderJob.id());
         assertThat(result).containsKey("jobId");
         assertThat(result.get("status")).isIn("COMPLETED", "QUEUED");
     }
@@ -193,11 +195,11 @@ class RenderFlowIntegrationTest {
         // Step 4: Create render job
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
                 project.id(), "snap_e2e", "default_1080p");
-        var renderJob = renderController.create(renderRequest);
+        var renderJob = renderController.createRenderJob(currentTenantId, project.id(), renderRequest);
         assertThat(renderJob.status()).isEqualTo("QUEUED");
 
         // Step 5: Query render job
-        var fetched = renderController.getJob(renderJob.id());
+        var fetched = renderController.getRenderJob(currentTenantId, project.id(), renderJob.id());
         assertThat(fetched.id()).isEqualTo(renderJob.id());
 
         // Step 6: Execute local workflow
@@ -205,7 +207,7 @@ class RenderFlowIntegrationTest {
         assertThat(execResult).containsKey("jobId");
 
         // Step 7: Query execution status
-        var execution = renderController.getJob(renderJob.id());
+        var execution = renderController.getRenderJob(currentTenantId, project.id(), renderJob.id());
         assertThat(execution.id()).isEqualTo(renderJob.id());
     }
 }

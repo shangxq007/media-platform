@@ -1,0 +1,27 @@
+{
+  "task": "BACKEND-INTEGRITY-ROUTE-BOUNDARY-REMAINDER.0",
+  "baseCommit": "48c8f2b",
+  "status": "COMPLETE",
+  "decision": "PRELAUNCH_ROUTE_BOUNDARY_REMAINDER_CLOSED_WITH_UNRELATED_TEST_DEBT",
+  "preLaunchNoCompatibilityBaggage": true,
+  "renderJob": {
+    "legacyRoutesRemoved": ["POST /render/jobs", "POST /render/jobs/submit", "GET /render/jobs/{jobId}", "GET /render/jobs"],
+    "legacyRoutesRetained": ["POST /render/jobs/{jobId}/cancel", "POST /render/jobs/{jobId}/retry", "GET /render/jobs/{jobId}/status-history", "GET /render/jobs/{jobId}/artifacts", "GET /render/jobs/{jobId}/artifacts/{artifactId}/content", "GET /render/jobs/{jobId}/artifacts/{artifactId}/access"],
+    "legacyRoutesRetainedReason": "Only implementation of their operations — no canonical tenant-scoped replacement exists",
+    "executeLocalPresent": false,
+    "compatibilityAliases": 0,
+    "frontendCallersMigrated": true
+  },
+  "devRoutes": {
+    "unexplainedMappingsBefore": 2,
+    "unexplainedMappingsAfter": 0,
+    "defaultMappings": 0,
+    "previewMappingsWithoutDiagnostics": 0
+  },
+  "frontend": {
+    "filesChanged": ["frontend/src/api/index.ts", "frontend/src/api/smoke-editor.ts", "frontend/src/pages/DevConsolePage.tsx"],
+    "routeStringCorrections": true,
+    "featureChanges": false
+  },
+  "recommendedNextTask": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0"
+}
