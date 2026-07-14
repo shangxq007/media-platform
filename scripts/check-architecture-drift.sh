@@ -132,6 +132,28 @@ else
 fi
 
 echo ""
+
+# --- HOLD Module Governance ---
+
+if grep -q "includeHoldModules" settings.gradle.kts 2>/dev/null; then
+    pass "spring-ai-adapter is HOLD (excluded from default graph, opt-in via includeHoldModules)"
+else
+    fail "spring-ai-adapter HOLD mechanism not found in settings.gradle.kts"
+fi
+
+# Verify platform-app does not depend on spring-ai-adapter
+if ! grep -q "spring-ai-adapter" platform-app/build.gradle.kts 2>/dev/null; then
+    pass "platform-app does not depend on spring-ai-adapter"
+else
+    fail "platform-app has spring-ai-adapter dependency"
+fi
+
+# Verify Spring AI mainline approval is NOT_FOUND
+if grep -qi "NOT_FOUND\|not.approved\|HOLD" docs/backend/backend-integrity-spring-ai-adapter-triage.json 2>/dev/null; then
+    pass "Spring AI mainline approval remains NOT_FOUND"
+else
+    fail "Spring AI mainline approval status unclear"
+fi
 echo "=== Summary ==="
 echo "Checks: $CHECKS"
 echo "Failed: $FAILED"

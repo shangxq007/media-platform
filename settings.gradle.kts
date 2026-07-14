@@ -10,7 +10,6 @@ include(
     "render-module",
     "notification-module",
     "ai-module",
-    "spring-ai-adapter",
     "config-module",
     "workflow-module",
     "storage-module",
@@ -41,3 +40,16 @@ include(
     "social-publish-module",
     "product-layer-module"
 )
+
+// ── HOLD modules ────────────────────────────────────────────────────────────
+// Excluded from default active mainline build.
+// Source retained for future architecture review.
+// Opt-in: ./gradlew -PincludeHoldModules=true <task>
+// Known compile status: FAILED (cross-module reference design debt)
+val includeHoldModules = providers.gradleProperty("includeHoldModules")
+    .map(String::toBoolean)
+    .getOrElse(false)
+
+if (includeHoldModules) {
+    include("spring-ai-adapter")
+}
