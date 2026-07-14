@@ -373,6 +373,16 @@ public class RenderJobRepository {
     }
 
     /**
+     * Update the selected_provider for a render job (Provider selection persistence).
+     */
+    public void updateSelectedProvider(String jobId, String providerName) {
+        dsl.update(table("render_job"))
+                .set(field("selected_provider"), providerName)
+                .where(field("id").eq(jobId))
+                .execute();
+    }
+
+    /**
      * Check if a job is in a cancelled state.
      */
     public boolean isCancelled(String jobId) {

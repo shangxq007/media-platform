@@ -1,0 +1,53 @@
+{
+  "task": "BACKEND-INTEGRITY-RENDERJOB-SELECTION-TRANSITION-VALIDATION.0",
+  "baseCommit": "7803e93",
+  "status": "COMPLETE",
+  "decision": "RENDERJOB_SELECTION_TRANSITION_VALID_WITH_NONCRITICAL_DEBT",
+  "runtime": {
+    "realTcpHttp": true,
+    "realPostgreSQL": true,
+    "ffmpegProviderReal": true
+  },
+  "renderJobStateModel": [
+    "QUEUED", "SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING",
+    "FALLBACKING", "RETRYING", "COMPLETING",
+    "COMPLETED", "FAILED", "CANCELLED", "REJECTED"
+  ],
+  "selection": {
+    "enteredSelectingProvider": true,
+    "selectedProviderId": "ffmpeg",
+    "selectedProviderPersisted": true,
+    "providerSurvivedReload": true,
+    "leftSelectingProvider": true,
+    "nextState": "PROVIDER_SELECTED"
+  },
+  "selectedProviderPersistence": {
+    "before": "NOT_IMPLEMENTED",
+    "after": "EXPLICIT_FIELD",
+    "field": "render_job.selected_provider",
+    "migration": "V4__add_render_job_selected_provider.sql"
+  },
+  "failurePaths": {
+    "noProviderLeavesSelecting": true,
+    "noProviderFinalState": "FAILED",
+    "selectorExceptionLeavesSelecting": true,
+    "selectorExceptionFinalState": "FAILED"
+  },
+  "startSafety": {
+    "falsePositiveCompleted": false,
+    "startResponse": "START_ACCEPTED",
+    "repeatedStartBehavior": "DUPLICATE_START_IDEMPOTENT"
+  },
+  "stuckRisk": "NO_STUCK_PATH_FOUND",
+  "execution": {
+    "dispatchAttempted": false,
+    "ffmpegExecutionSucceeded": false,
+    "mediaOutputVerified": false
+  },
+  "corrections": [
+    "V4__add_render_job_selected_provider.sql",
+    "RenderJobRepository.updateSelectedProvider()",
+    "RenderJobExecutionService: persist Provider name after selection"
+  ],
+  "recommendedNextTask": "BACKEND-INTEGRITY-AUTOWIRING-INVENTORY.0"
+}

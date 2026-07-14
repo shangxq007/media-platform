@@ -453,8 +453,9 @@ public class RenderJobExecutionService {
                 resolutionResult.traceId(), providerName,
                 resolutionResult.candidateNames(), resolutionResult.resolutionTimeMs());
 
-        // Store trace ID in job for observability
+        // Store trace ID and selected Provider in job for observability
         renderJobRepository.updateTraceId(jobId, resolutionResult.traceId());
+        renderJobRepository.updateSelectedProvider(jobId, providerName);
 
         return provider.render(jobId, aiScript, profile);
     }
