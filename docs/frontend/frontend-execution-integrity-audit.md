@@ -349,3 +349,42 @@ FRONTEND-APP-UPLOAD-SURFACE.0 was not implemented by this audit.
 Its status remains NOT_STARTED.
 
 No /app/uploads route, upload page, file input, upload navigation, or UI integration was added.
+
+---
+
+## Additional Findings from Parallel Subagent Audit
+
+### useMutation Locations (6 total)
+
+| File | Count | Classification |
+|------|-------|---------------|
+| api/render-jobs.ts | 2 | OLD code, render job mutations |
+| pages/DevConsolePage.tsx | 1 | OLD code, dev console |
+| pages/TimelineGitConsolePage.tsx | 2 | OLD code, timeline git |
+| query/app/upload/useUploadRawMediaMutation.ts | 1 | NEW code, upload mutation |
+
+**Assessment:** Only 1 new useMutation (upload). Old code has 5 pre-existing mutations.
+
+### localStorage/sessionStorage (5 total)
+
+| File | Usage | Classification |
+|------|-------|---------------|
+| api/graphqlClient.ts | dev_access_token | OLD, auth |
+| auth/oidcClient.ts | sessionStorage for OIDC | OLD, auth |
+| auth/oidcClient.ts | localStorage for user_id | OLD, auth |
+| auth/oidcClient.ts | localStorage for tenant_id | OLD, auth |
+| utils/tenant.ts | localStorage for tenant_id | OLD, auth |
+
+**Assessment:** All persistence is in OLD auth code. No new File/URL persistence introduced.
+
+### console.log (3 total)
+
+| File | Usage | Classification |
+|------|-------|---------------|
+| timeline/commands/commandEngine.ts | Debug logs | OLD, should be removed |
+
+**Assessment:** Pre-existing debug logs in old timeline code.
+
+### Conclusion
+
+All safety concerns are in OLD pre-existing code, not in the new frontend task chain. The new code correctly avoids storage internals, signed URL persistence, and unauthorized mutations.
