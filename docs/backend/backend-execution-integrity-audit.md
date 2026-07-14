@@ -213,3 +213,38 @@ Frontend feature freeze remains active.
 ## Recommended Next Task
 
 BACKEND-INTEGRITY-REPAIR-TEST-COMPILATION.0
+
+---
+
+## Additional Findings from Parallel Subagent Audit
+
+### Build System Details
+
+| Item | Value |
+|------|-------|
+| Spring Boot | 4.0.4 |
+| Java | 25 |
+| Gradle | 9.1.0 (Kotlin DSL) |
+| Submodules | 37 |
+| Spring Boot apps | 3 |
+| REST controllers | 106 |
+| Dockerfiles | 12 (6 root + 4 infra + 2 worker) |
+
+### Test Compilation Errors (13 total)
+
+| File | Errors | Root Cause |
+|------|--------|-----------|
+| RenderControllerTest.java | 2 | References missing RenderController class |
+| IngestMetadataMergerTest.java | 5 | ObjectProvider constructor mismatch |
+| UploadReportOnlyPreflightHookTest.java | 5 | ObjectProvider constructor mismatch |
+| UploadReportOnlyPreflightHookIntegrationTest.java | 3 | ObjectProvider constructor mismatch |
+
+### Configuration Status
+
+| Config | Value |
+|--------|-------|
+| Dev auth endpoint | DISABLED |
+| Render worker-queue | DISABLED |
+| Sandbox | DISABLED |
+| Natron provider | ENABLED (fallback-to-ffmpeg: true) |
+| VapourSynth provider | DISABLED |
