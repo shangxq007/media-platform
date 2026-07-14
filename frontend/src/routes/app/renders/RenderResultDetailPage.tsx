@@ -1,5 +1,6 @@
 import React from 'react'
 import { useProductDetail } from '../../../query/app/useProducts'
+import { ArtifactAccessAction } from './ArtifactAccessAction'
 
 interface ArtifactMetadata {
   artifactId: string
@@ -10,31 +11,13 @@ interface ArtifactMetadata {
   availability?: string
 }
 
-function RenderStatusBadge({ status }: { status?: string }) {
-  if (!status) return <span style={{ color: '#8b949e' }}>Unknown</span>
-  
-  const colors: Record<string, string> = {
-    QUEUED: '#f0883e',
-    EXECUTING: '#58a6ff',
-    COMPLETED: '#3fb950',
-    FAILED: '#f85149',
-    CANCELED: '#8b949e',
-  }
-  
-  return (
-    <span style={{ 
-      background: colors[status] || '#8b949e', 
-      color: '#fff', 
-      padding: '4px 12px', 
-      borderRadius: '4px', 
-      fontSize: '14px' 
-    }}>
-      {status}
-    </span>
-  )
-}
-
 function ArtifactMetadataItem({ artifact }: { artifact: ArtifactMetadata }) {
+  const handleAccessRequest = async (artifactId: string) => {
+    // Placeholder - would use actual API client
+    // In real implementation: return await artifactsClient.getAccess(scope, jobId, artifactId)
+    return null
+  }
+
   return (
     <div style={{ 
       background: '#21262d', 
@@ -51,15 +34,24 @@ function ArtifactMetadataItem({ artifact }: { artifact: ArtifactMetadata }) {
             {artifact.sizeBytes && ` • ${(artifact.sizeBytes / 1024 / 1024).toFixed(1)} MB`}
           </p>
         </div>
-        <span style={{ 
-          background: artifact.availability === 'available' ? '#238636' : '#8b949e', 
-          color: '#fff', 
-          padding: '2px 8px', 
-          borderRadius: '4px', 
-          fontSize: '12px' 
-        }}>
-          {artifact.availability || 'unknown'}
-        </span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ 
+            background: artifact.availability === 'available' ? '#238636' : '#8b949e', 
+            color: '#fff', 
+            padding: '2px 8px', 
+            borderRadius: '4px', 
+            fontSize: '12px' 
+          }}>
+            {artifact.availability || 'unknown'}
+          </span>
+          {artifact.availability === 'available' && (
+            <ArtifactAccessAction 
+              artifactId={artifact.artifactId}
+              contentType={artifact.contentType}
+              onAccessRequest={handleAccessRequest}
+            />
+          )}
+        </div>
       </div>
     </div>
   )
@@ -136,7 +128,7 @@ export function RenderResultDetailPage() {
       <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '8px', padding: '16px' }}>
         <h3 style={{ color: '#bc8cff', margin: '0 0 12px 0' }}>Artifact Access</h3>
         <p style={{ color: '#8b949e', margin: 0 }}>
-          <em>Artifact access will be requested on demand in a later task. Signed access is short-lived and is not canonical metadata.</em>
+          <em>Artifact access is on-demand. Signed access is short-lived and is not canonical metadata.</em>
         </p>
       </div>
     </div>
