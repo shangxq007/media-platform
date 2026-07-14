@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@org.springframework.context.annotation.Profile("dev")
 @RequestMapping("/dev/tenants/{tenantId}/projects/{projectId}/ingest/preflight/safe-reports")
 public class DevSafePreflightReportReadController {
 

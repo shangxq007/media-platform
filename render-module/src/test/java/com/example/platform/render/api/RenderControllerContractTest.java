@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>Tenant-scoped create / get / list render jobs</li>
  *   <li>Legacy (non-tenant) create / get / list render jobs</li>
  *   <li>Job submission via orchestrator port</li>
- *   <li>Job start / execute-local delegation</li>
+ *   <li>Job start delegation</li>
  *   <li>Job cancel / retry state transitions</li>
  *   <li>Artifact retrieval</li>
  *   <li>Error handling: not found, tenant mismatch, missing service</li>
@@ -180,10 +180,10 @@ class RenderControllerContractTest {
         }
     }
 
-    // ========== Job start / execute-local ==========
+    // ========== Job start ==========
 
     @Nested
-    @DisplayName("Job start and execute-local")
+    @DisplayName("Job start")
     class JobExecution {
 
         @Test
@@ -197,19 +197,6 @@ class RenderControllerContractTest {
 
             assertEquals("rj-1", result.get("jobId"));
             assertEquals("STARTED", result.get("status"));
-        }
-
-        @Test
-        @DisplayName("Execute-local delegates to orchestrator when available")
-        void executeLocalDelegatesToOrchestrator() {
-            fakeService.storedJobs.put("rj-1",
-                    new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED"));
-            fakeOrchestrator.executeResult = "rj-1";
-
-            Map<String, String> result = controller.executeLocal("t-1", "proj-1", "rj-1");
-
-            assertEquals("rj-1", result.get("jobId"));
-            assertEquals("COMPLETED", result.get("status"));
         }
 
         @Test

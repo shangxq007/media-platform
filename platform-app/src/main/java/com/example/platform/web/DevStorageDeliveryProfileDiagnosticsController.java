@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
  * GET only. No mutation. No provider selection. No signed URL generation.
  */
 @RestController
+@org.springframework.context.annotation.Profile("dev")
 @RequestMapping("/dev/storage-delivery-profiles")
 public class DevStorageDeliveryProfileDiagnosticsController {
 

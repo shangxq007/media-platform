@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
  * GET only. No upload execution. No policy evaluation on real media.
  */
 @RestController
+@org.springframework.context.annotation.Profile("dev")
 @RequestMapping("/dev/ingest/preflight-policy")
 public class DevIngestPreflightPolicyDiagnosticsController {
 

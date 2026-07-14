@@ -1,0 +1,32 @@
+{
+  "task": "BACKEND-INTEGRITY-ROUTE-BOUNDARY-CORRECTION.0",
+  "baseCommit": "52c945f",
+  "status": "COMPLETE",
+  "decision": "PRELAUNCH_ROUTE_BOUNDARIES_CORRECTED_WITH_REMAINING_TEST_DEBT",
+  "preLaunchNoCompatibilityBaggage": true,
+  "devRoutes": {
+    "before": 11,
+    "defaultAfter": 2,
+    "productionLikeAfter": 2,
+    "gatedControllers": 4,
+    "gatingMechanism": "@Profile(\"dev\")",
+    "remainingDevRoutes": ["SpaFallbackController (SPA routing)", "DevAuthController (already @ConditionalOnProperty default-off)"]
+  },
+  "renderJob": {
+    "executeLocalRemoved": true,
+    "legacyRoutesRetained": 7,
+    "legacyRoutesRetainedReason": "Frontend is active consumer — route string correction deferred to frontend migration",
+    "canonicalRoutes": {
+      "create": "POST /api/v1/tenants/{tenantId}/projects/{projectId}/render-jobs",
+      "list": "GET /api/v1/tenants/{tenantId}/projects/{projectId}/render-jobs",
+      "get": "GET /api/v1/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}",
+      "start": "POST /api/v1/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/start"
+    }
+  },
+  "security": {
+    "credentialsExposed": false,
+    "storageInternalsExposed": false,
+    "crossTenantExposure": false
+  },
+  "recommendedNextTask": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0"
+}

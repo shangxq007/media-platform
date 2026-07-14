@@ -162,13 +162,13 @@ class RenderFlowIntegrationTest {
     }
 
     @Test
-    void executeLocal_shouldReturnCompleted() {
+    void startRenderJob_shouldReturnStarted() {
         String projectId = createTestProject("ExecuteLocal");
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
                 projectId, "snap_exec", "default_1080p");
         var renderJob = renderController.create(renderRequest);
 
-        var result = renderController.executeLocal(projectId, projectId, renderJob.id());
+        var result = renderController.startRenderJob(projectId, projectId, renderJob.id());
         assertThat(result).containsKey("jobId");
         assertThat(result.get("status")).isIn("COMPLETED", "QUEUED");
     }
@@ -201,7 +201,7 @@ class RenderFlowIntegrationTest {
         assertThat(fetched.id()).isEqualTo(renderJob.id());
 
         // Step 6: Execute local workflow
-        var execResult = renderController.executeLocal(project.id(), project.id(), renderJob.id());
+        var execResult = renderController.startRenderJob(project.id(), project.id(), renderJob.id());
         assertThat(execResult).containsKey("jobId");
 
         // Step 7: Query execution status

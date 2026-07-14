@@ -225,24 +225,6 @@ public class RenderController {
         return Map.of("jobId", jobId, "status", "QUEUED");
     }
 
-    @PostMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/execute-local")
-    public Map<String, String> executeLocal(@PathVariable String tenantId,
-            @PathVariable String projectId,
-            @PathVariable String jobId) {
-        if (orchestratorPort == null) {
-            throw new IllegalStateException("Render orchestrator not available");
-        }
-        renderJobService.getByIdAndProject(tenantId, projectId, jobId);
-        try {
-            orchestratorPort.executeExistingRenderJob(tenantId, jobId);
-        } catch (Exception ex) {
-            log.warn("execute-local failed for job {}: {}", jobId, ex.getMessage());
-        }
-        // Reload actual persisted status
-        RenderJobResponse job = renderJobService.getByIdAndProject(tenantId, projectId, jobId);
-        return Map.of("jobId", jobId, "status", job.status());
-    }
-
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/execution")
     public RenderJobResponse getExecution(@PathVariable String tenantId,
             @PathVariable String projectId,

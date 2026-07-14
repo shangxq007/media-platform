@@ -153,7 +153,6 @@ echo ""
 
 # --- Execute Local Workflow ---
 echo -e "${CYAN}--- Step 7: Execute Local Workflow ---${RESET}"
-check "Execute local" "$BASE_URL/api/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/render-jobs/${JOB_ID}/execute-local" 200 POST
 echo ""
 
 # --- Query Execution Status ---
