@@ -226,14 +226,47 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void authorizedAdmin_mutation_reachesBoundary() throws Exception {
+    void authorizedAdmin_mutation_invalidInput_returns400() throws Exception {
         String admin = jwtHelper.adminToken();
+        // Empty body {} should fail Bean Validation (missing flagKey, flagType)
         HttpResponse<String> response = httpPost("/api/v1/admin/feature-flags", admin, "{}");
         int status = response.statusCode();
-        evidence.append(String.format("ADMIN_MUTATION /admin/feature-flags: %d%n", status));
-        // Should reach handler boundary (400 validation, 404, or 200) — not 401/403
-        Assertions.assertTrue(status != 401 && status != 403,
-            "Authorized admin mutation should reach handler boundary: got " + status);
+        evidence.append(String.format("ADMIN_MUTATION_INVALID /admin/feature-flags: %d%n", status));
+        // Invalid input should return 400 (validation failure), not 500
+        Assertions.assertEquals(400, status,
+            "Authorized admin mutation with invalid input should return 400: got " + status);
+    }
+
+    // ========== Identity admin route ==========
+
+    @Test
+    void identityAdminTenants_anonymous_rejected() throws Exception {
+        HttpResponse<String> response = httpGet("/api/v1/identity/admin/tenants", null);
+        int status = response.statusCode();
+        evidence.append(String.format("IDENTITY_ADMIN_ANON: %d%n", status));
+        Assertions.assertTrue(status == 401 || status == 403,
+            "Anonymous identity/admin should be rejected: got " + status);
+    }
+
+    @Test
+    void identityAdminTenants_nonAdmin_rejected() throws Exception {
+        String nonAdmin = jwtHelper.nonAdminToken();
+        HttpResponse<String> response = httpGet("/api/v1/identity/admin/tenants", nonAdmin);
+        int status = response.statusCode();
+        evidence.append(String.format("IDENTITY_ADMIN_NONADMIN: %d%n", status));
+        Assertions.assertEquals(403, status,
+            "Non-admin identity/admin should be rejected: got " + status);
+    }
+
+    @Test
+    void identityAdminTenants_admin_reachesBoundary() throws Exception {
+        String admin = jwtHelper.adminToken();
+        HttpResponse<String> response = httpGet("/api/v1/identity/admin/tenants", admin);
+        int status = response.statusCode();
+        evidence.append(String.format("IDENTITY_ADMIN_ADMIN: %d%n", status));
+        // Should reach handler (200 or 404), not 401/403
+        Assertions.assertTrue(status == 200 || status == 404,
+            "Admin identity/admin should reach handler: got " + status);
     }
 
     // ========== Dev routes under security ==========

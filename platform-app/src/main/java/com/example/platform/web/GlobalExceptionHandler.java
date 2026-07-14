@@ -123,6 +123,31 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ProblemDetail handleSecurity(SecurityException ex, HttpServletRequest request) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
+        problem.setTitle("Forbidden");
+        problem.setType(URI.create("https://example.com/problems/FORBIDDEN"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("errorCode", "FORBIDDEN");
+        problem.setProperty("traceId", MDC.get("traceId"));
+        problem.setProperty("timestamp", OffsetDateTime.now().toString());
+        return problem;
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(org.springframework.security.access.AccessDeniedException ex,
+            HttpServletRequest request) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
+        problem.setTitle("Forbidden");
+        problem.setType(URI.create("https://example.com/problems/FORBIDDEN"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("errorCode", "FORBIDDEN");
+        problem.setProperty("traceId", MDC.get("traceId"));
+        problem.setProperty("timestamp", OffsetDateTime.now().toString());
+        return problem;
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnknown(Exception ex, HttpServletRequest request) {
         captureSentry(ex, ex.getClass().getSimpleName());

@@ -1,0 +1,58 @@
+{
+  "task": "BACKEND-INTEGRITY-ADMIN-BOUNDARY-REMAINDER.0",
+  "baseCommit": "7074f84",
+  "status": "COMPLETE",
+  "decision": "ADMIN_BOUNDARY_REMAINDER_CLOSED",
+  "errorContract": {
+    "previousAdminMutationStatus": 500,
+    "correctedStatus": 400,
+    "exceptionClass": "NullPointerException",
+    "rootCause": "METHOD_ARGUMENT_VALIDATION_NOT_MAPPED",
+    "correction": "Added @Valid + @NotBlank/@NotNull to CreateFlagRequest",
+    "unexpectedFailureStill500": true,
+    "internalDetailExposed": false
+  },
+  "identityAdminRoute": {
+    "path": "/api/v1/identity/admin/tenants",
+    "controller": "TenantProjectController",
+    "module": "identity-access-module",
+    "classification": "CANONICAL_IDENTITY_ADMIN_RESOURCE",
+    "anonymousHttp": 401,
+    "anonymous2xx": false,
+    "nonAdminHttp": 403,
+    "nonAdmin2xx": false,
+    "adminHttp": 200,
+    "adminBoundaryReached": true,
+    "protection": "COMBINATION",
+    "protectionDetail": "URL matcher (authenticated) + programmatic isAdmin() check",
+    "compatibilityAlias": false,
+    "pathChanged": false
+  },
+  "tenantsAi": {
+    "authorityModel": "GLOBAL_PLATFORM_ADMIN",
+    "authorityModelEvidence": [
+      "ROLE_ADMIN can manage any tenant's AI key",
+      "No tenant-scoped admin role exists",
+      "tenantId is caller-provided but authorization is global"
+    ],
+    "sameTenantVerified": false,
+    "sameTenantNotApplicable": true,
+    "crossTenantVerified": true,
+    "crossTenantIntentional": true,
+    "unapprovedCrossTenantExposure": false,
+    "tenantEnforcementLayer": "URL + METHOD"
+  },
+  "exceptionMappings": {
+    "SecurityException": "403 (NEW)",
+    "AccessDeniedException": "403 (NEW)",
+    "MethodArgumentNotValidException": "400 (EXISTING)",
+    "Exception": "500 (EXISTING, UNCHANGED)"
+  },
+  "regression": {
+    "removedRoutesAll404": true,
+    "spaFallbackAppOnly": true,
+    "anonymousAdminMutation2xx": 0,
+    "nonAdminAdminMutation2xx": 0
+  },
+  "recommendedNextTask": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0"
+}

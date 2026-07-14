@@ -1,9 +1,11 @@
 package com.example.platform.policy.featureflag;
 
 import com.example.platform.policy.featureflag.domain.*;
-import com.example.platform.policy.featureflag.FeatureFlagService;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -30,7 +32,7 @@ public class FeatureFlagController {
     }
 
     @PostMapping("/admin/feature-flags")
-    public ResponseEntity<FeatureFlagDefinition> createFlag(@RequestBody CreateFlagRequest request) {
+    public ResponseEntity<FeatureFlagDefinition> createFlag(@Valid @RequestBody CreateFlagRequest request) {
         checkAdminAccess();
         checkAdminRole();
         FeatureFlagDefinition definition = new FeatureFlagDefinition(
@@ -72,7 +74,7 @@ public class FeatureFlagController {
     @PutMapping("/admin/feature-flags/{flagKey}")
     public ResponseEntity<FeatureFlagDefinition> updateFlag(
             @PathVariable String flagKey,
-            @RequestBody CreateFlagRequest request) {
+            @Valid @RequestBody CreateFlagRequest request) {
         checkAdminAccess();
         checkAdminRole();
         FeatureFlagDefinition existing = featureFlagService.getFlag(flagKey)
@@ -200,10 +202,10 @@ public class FeatureFlagController {
     }
 
     public record CreateFlagRequest(
-            String flagKey,
+            @NotBlank String flagKey,
             String name,
             String description,
-            FeatureFlagType flagType,
+            @NotNull FeatureFlagType flagType,
             Object defaultValue,
             List<FeatureFlagVariant> variants,
             List<FeatureFlagTargetingRule> targetingRules,
