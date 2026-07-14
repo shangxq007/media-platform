@@ -33,9 +33,7 @@ export const RenderAdminAPI = {
   async cancelJob(jobId: string): Promise<void> {
     await api.post(`/render/jobs/${jobId}/cancel`)
   },
-  async retryJob(jobId: string): Promise<void> {
-    await api.post(`/render/jobs/${jobId}/retry`)
-  },
+
   async getStatusHistory(jobId: string): Promise<{ status: string; timestamp: string }[]> {
     const { data } = await api.get(`/render/jobs/${jobId}/status-history`)
     return data

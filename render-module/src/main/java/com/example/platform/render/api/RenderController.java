@@ -394,15 +394,6 @@ public class RenderController {
         return renderJobService.cancel(jobId, tenantId);
     }
 
-    @PostMapping("/render/jobs/{jobId}/retry")
-    public RenderJobResponse retryJob(@PathVariable String jobId, @RequestParam String tenantId) {
-        String contextTenant = com.example.platform.shared.web.TenantContext.get();
-        if (contextTenant != null && !contextTenant.equals(tenantId)) {
-            throw new IllegalArgumentException("Tenant ID does not match authenticated tenant");
-        }
-        return renderJobService.retry(jobId, tenantId);
-    }
-
     @GetMapping("/render/jobs/{jobId}/status-history")
     public List<StatusHistoryResponse> getStatusHistory(@PathVariable String jobId, @RequestParam String tenantId) {
         String contextTenant = com.example.platform.shared.web.TenantContext.get();

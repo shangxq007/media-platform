@@ -1,15 +1,13 @@
 import type { RenderJobSummary } from '../../api/render-jobs'
-import { useRetryRenderJob, useCancelRenderJob } from '../../api/render-jobs'
+import { useCancelRenderJob } from '../../api/render-jobs'
 
 interface Props {
   job: RenderJobSummary
 }
 
 export function JobDetail({ job }: Props) {
-  const retryMutation = useRetryRenderJob()
   const cancelMutation = useCancelRenderJob()
 
-  const canRetry = job.status === 'FAILED' || job.status === 'CANCELLED'
   const canCancel = job.status === 'QUEUED' || job.status === 'PROCESSING'
 
   return (
@@ -26,15 +24,6 @@ export function JobDetail({ job }: Props) {
 
       {/* Actions */}
       <div className="flex gap-2 mt-4">
-        {canRetry && (
-          <button
-            onClick={() => retryMutation.mutate(job.id)}
-            disabled={retryMutation.isPending}
-            className="flex-1 rounded bg-yellow-600 px-3 py-2 text-sm font-medium text-white hover:bg-yellow-500 disabled:opacity-50"
-          >
-            {retryMutation.isPending ? 'Retrying...' : 'Retry'}
-          </button>
-        )}
         {canCancel && (
           <button
             onClick={() => cancelMutation.mutate(job.id)}
@@ -46,9 +35,6 @@ export function JobDetail({ job }: Props) {
         )}
       </div>
 
-      {retryMutation.isError && (
-        <p className="text-xs text-red-400 mt-2">Retry failed: {retryMutation.error?.message}</p>
-      )}
       {cancelMutation.isError && (
         <p className="text-xs text-red-400 mt-2">Cancel failed: {cancelMutation.error?.message}</p>
       )}

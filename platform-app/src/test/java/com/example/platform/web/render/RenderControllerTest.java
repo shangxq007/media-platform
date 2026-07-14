@@ -71,15 +71,4 @@ class RenderControllerTest {
         verify(renderJobService).cancel("rj-1", "tenant-1");
     }
 
-    @Test
-    void shouldRetryJob() {
-        RenderJobResponse expected = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED");
-        when(renderJobService.retry("rj-1", "tenant-1")).thenReturn(expected);
-
-        RenderJobResponse response = controller.retryJob("rj-1", "tenant-1");
-
-        assertNotNull(response);
-        assertEquals("QUEUED", response.status());
-        verify(renderJobService).retry("rj-1", "tenant-1");
-    }
 }

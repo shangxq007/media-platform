@@ -142,10 +142,10 @@ class RenderControllerContractTest {
         }
     }
 
-    // ========== Cancel and retry ==========
+    // ========== Cancel ==========
 
     @Nested
-    @DisplayName("Cancel and retry")
+    @DisplayName("Cancel")
     class CancelAndRetry {
 
         @Test
@@ -158,18 +158,6 @@ class RenderControllerContractTest {
             RenderJobResponse result = controller.cancelJob("rj-1", "t-1");
 
             assertEquals("CANCELLED", result.status());
-        }
-
-        @Test
-        @DisplayName("Retry delegates to service with tenant validation")
-        void retryDelegates() {
-            TenantContext.set("t-1");
-            fakeService.storedJobs.put("rj-1",
-                    new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED"));
-
-            RenderJobResponse result = controller.retryJob("rj-1", "t-1");
-
-            assertEquals("QUEUED", result.status());
         }
 
         @Test

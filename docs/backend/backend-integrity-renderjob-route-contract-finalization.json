@@ -1,0 +1,26 @@
+{
+  "task": "BACKEND-INTEGRITY-RENDERJOB-ROUTE-CONTRACT-FINALIZATION.0",
+  "baseCommit": "42911f3",
+  "status": "COMPLETE",
+  "decision": "RENDERJOB_ROUTE_CONTRACT_FINALIZED_WITH_UNRELATED_TEST_DEBT",
+  "preLaunchNoCompatibilityBaggage": true,
+  "operations": {
+    "create": {"status": "CANONICAL", "route": "POST /api/v1/tenants/{tenantId}/projects/{projectId}/render-jobs"},
+    "start": {"status": "CANONICAL", "route": "POST /api/v1/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/start"},
+    "status": {"status": "CANONICAL", "route": "GET /api/v1/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}"},
+    "list": {"status": "CANONICAL", "route": "GET /api/v1/tenants/{tenantId}/projects/{projectId}/render-jobs"},
+    "cancel": {"status": "CANONICAL", "route": "POST /api/v1/render/jobs/{jobId}/cancel"},
+    "retry": {"status": "REMOVED", "reason": "LIFECYCLE_SEMANTICS_INVALID — reuses same RenderJob, violates one-attempt rule"},
+    "statusHistory": {"status": "CANONICAL", "route": "GET /api/v1/render/jobs/{jobId}/status-history"},
+    "artifacts": {"status": "CANONICAL", "route": "GET /api/v1/render/jobs/{jobId}/artifacts"},
+    "artifactContent": {"status": "CANONICAL", "route": "GET /api/v1/render/jobs/{jobId}/artifacts/{artifactId}/content"},
+    "artifactAccess": {"status": "CANONICAL", "route": "GET /api/v1/render/jobs/{jobId}/artifacts/{artifactId}/access"}
+  },
+  "unresolvedRoutes": 0,
+  "ambiguousLegacyRoutes": 0,
+  "compatibilityAliases": 0,
+  "retryReusesSameJob": false,
+  "retryCreatesNewAttempt": false,
+  "retryDisposition": "REMOVED — no valid new-attempt implementation exists",
+  "recommendedNextTask": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0"
+}

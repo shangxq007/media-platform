@@ -40,11 +40,6 @@ const RenderJobsAPI = {
     return result.success ? result.data : []
   },
 
-  async retry(jobId: string): Promise<{ jobId: string; status: string }> {
-    const { data } = await api.post(`/render/jobs/${jobId}/retry`)
-    return data
-  },
-
   async cancel(jobId: string): Promise<{ jobId: string; status: string }> {
     const { data } = await api.post(`/render/jobs/${jobId}/cancel`)
     return data
@@ -78,16 +73,6 @@ export function useRenderJobArtifacts(jobId: string | null) {
     queryKey: ['render-job-artifacts', jobId],
     queryFn: () => RenderJobsAPI.getArtifacts(jobId!),
     enabled: !!jobId,
-  })
-}
-
-export function useRetryRenderJob() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (jobId: string) => RenderJobsAPI.retry(jobId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['render-jobs'] })
-    },
   })
 }
 
