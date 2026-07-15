@@ -28,7 +28,7 @@ public class ProviderRuntimeEngine {
 
     private static final Logger log = LoggerFactory.getLogger(ProviderRuntimeEngine.class);
 
-    private final Map<String, RenderProvider> providers;
+    private final RenderProviderRegistry registry;
     private final CapabilityNegotiationService capabilityService;
     private final ProviderHealthMonitor healthMonitor;
     private final ProviderFallbackExecutor fallbackExecutor;
@@ -41,14 +41,14 @@ public class ProviderRuntimeEngine {
             ProviderFallbackExecutor fallbackExecutor,
             ProviderTraceEmitter traceEmitter
     ) {
-        this.providers = registry.getProviderMap();
+        this.registry = registry;
         this.capabilityService = capabilityService;
         this.healthMonitor = healthMonitor;
         this.fallbackExecutor = fallbackExecutor;
         this.traceEmitter = traceEmitter;
 
         log.info("ProviderRuntimeEngine initialized with {} providers: {}",
-                providers.size(), providers.keySet());
+                registry.getProviderMap().size(), registry.getProviderMap().keySet());
     }
 
     /**
@@ -117,7 +117,7 @@ public class ProviderRuntimeEngine {
     private List<ProviderCandidate> identifyCandidates(ProviderResolutionRequest request) {
         List<ProviderCandidate> candidates = new ArrayList<>();
 
-        for (Map.Entry<String, RenderProvider> entry : providers.entrySet()) {
+        for (Map.Entry<String, RenderProvider> entry : registry.getProviderMap().entrySet()) {
             RenderProvider provider = entry.getValue();
 
             // Check if provider is enabled

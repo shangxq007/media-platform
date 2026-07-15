@@ -1,0 +1,44 @@
+{
+  "task": "BACKEND-INTEGRITY-MINIMAL-MEDIA-RENDER-BOUNDARY-VALIDATION.0",
+  "baseCommit": "45ead7b",
+  "status": "COMPLETE",
+  "decision": "MINIMAL_MEDIA_RENDER_BOUNDARY_VALIDATED_WITH_NONCRITICAL_DEBT",
+  "providerIdentity": {
+    "canonicalId": "ffmpeg",
+    "implementationClass": "FFmpegRenderProvider",
+    "registryKey": "ffmpeg",
+    "persistedValue": "ffmpeg"
+  },
+  "runtime": {
+    "realTcpHttp": true,
+    "realPostgreSQL": true,
+    "realFfmpegProvider": true,
+    "renderBoundaryReached": true
+  },
+  "evidence": {
+    "canonicalCreate": true,
+    "scriptResolution": true,
+    "selectorInvoked": true,
+    "ffmpegSelected": true,
+    "selectedProviderPersisted": true,
+    "selectedProviderValue": "ffmpeg",
+    "survivedReload": true,
+    "renderBoundaryReached": true,
+    "renderInvocationCount": 1,
+    "successfulExecution": false,
+    "successfulOutput": false
+  },
+  "mediaFixture": {
+    "source": "Generated at test runtime using FFmpeg",
+    "container": "mp4",
+    "codec": "mpeg4",
+    "duration": "1 second",
+    "dimensions": "320x180",
+    "size": "8KB"
+  },
+  "productionFixes": [
+    "ProviderRuntimeEngine: read from Registry dynamically",
+    "RenderProviderRegistry: added getProviderMap()"
+  ],
+  "recommendedNextTask": "BACKEND-INTEGRITY-AUTOWIRING-INVENTORY.0"
+}
