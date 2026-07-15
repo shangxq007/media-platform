@@ -85,7 +85,14 @@ class ReportOnlyPreflightPolicyEvaluatorTest {
 
     @Test
     void testFailOpenOnError() {
-        var result = evaluator.evaluateReportOnly((PreflightPolicyEvaluationInput) null);
+        // Provide valid input with null warningCodes to trigger NPE inside the try block,
+        // which exercises the catch (fail-open) path without passing null for the input itself.
+        var input = new PreflightPolicyEvaluationInput(
+            PreflightPolicyMode.REPORT_ONLY, PreflightPolicyProfile.PREVIEW_SAFE,
+            null, null, List.of(), MediaCategory.VIDEO,
+            null, null, true, true
+        );
+        var result = evaluator.evaluateReportOnly(input);
 
         assertEquals(PreflightPolicyDecision.ERROR_FAIL_OPEN, result.decision());
         assertTrue(result.failOpen());

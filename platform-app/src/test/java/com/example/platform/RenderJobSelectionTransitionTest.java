@@ -6,6 +6,8 @@ import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
 import java.util.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,6 +46,7 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
 
     private HttpClient client;
     private String baseUrl;
+    private final ObjectMapper jsonMapper = new ObjectMapper();
 
     private static final StringBuilder evidence = new StringBuilder();
 
@@ -62,19 +65,26 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
 
     @Test
     void startRoute_registered() throws Exception {
-        // Verify the canonical start route exists (not 404)
+        // Create real tenant, project, and render job to verify the route is registered
+        String tenantId = createTenant("start-route-test");
+        String projectId = createProject(tenantId, "start-route-project");
+        String jobId = createRenderJob(tenantId, projectId);
+
         HttpResponse<String> response = httpPost(
-                "/api/v1/tenants/t1/projects/p1/render-jobs/nonexistent/start", null);
+                "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                        + "/render-jobs/" + jobId + "/start", null);
         evidence.append(String.format("S1_START_ROUTE: %d%n", response.statusCode()));
-        // Should not be 404 (route exists), but may be 400/404 for invalid resource
         Assertions.assertNotEquals(404, response.statusCode(),
                 "Start route should be registered");
     }
 
     @Test
     void createRoute_registered() throws Exception {
+        String tenantId = createTenant("create-route-test");
+        String projectId = createProject(tenantId, "create-route-project");
+
         HttpResponse<String> response = httpPost(
-                "/api/v1/tenants/t1/projects/p1/render-jobs",
+                "/api/v1/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs",
                 "{\"timelineSnapshotId\":\"snap1\",\"profile\":\"default_1080p\"}");
         evidence.append(String.format("S1_CREATE_ROUTE: %d%n", response.statusCode()));
         Assertions.assertNotEquals(404, response.statusCode(),
@@ -138,6 +148,27 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
                 "/api/v1/render/jobs/rj1/retry", null);
         evidence.append(String.format("REMOVED_RETRY: %d%n", response.statusCode()));
         Assertions.assertEquals(404, response.statusCode(), "retry should remain 404");
+    }
+
+    private String createTenant(String name) throws Exception {
+        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
+        HttpResponse<String> resp = httpPost("/api/v1/identity/tenants", body);
+        return jsonMapper.readTree(resp.body()).get("id").asText();
+    }
+
+    private String createProject(String tenantId, String name) throws Exception {
+        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
+        HttpResponse<String> resp = httpPost("/api/v1/identity/tenants/" + tenantId + "/projects", body);
+        return jsonMapper.readTree(resp.body()).get("id").asText();
+    }
+
+    private String createRenderJob(String tenantId, String projectId) throws Exception {
+        String body = String.format(
+                "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
+                projectId);
+        HttpResponse<String> resp = httpPost(
+                "/api/v1/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
+        return jsonMapper.readTree(resp.body()).get("id").asText();
     }
 
     // ========== Helpers ==========

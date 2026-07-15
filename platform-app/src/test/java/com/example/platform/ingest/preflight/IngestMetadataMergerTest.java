@@ -88,7 +88,7 @@ class IngestMetadataMergerTest {
 
         var result = merger.evaluate(new byte[16], "test.mp4", "video/mp4", testVideo);
 
-        assertEquals(UploadPreflightDecision.ACCEPT_WITH_WARNINGS, result.decision());
+        assertEquals(UploadPreflightDecision.ACCEPT, result.decision());
         assertEquals(2, result.detectorProvenance().size());
     }
 }

@@ -26,8 +26,9 @@ class OidcIdentityProvisioningPlatformUserIdTest extends PostgresTestContainerSu
     @BeforeEach
     void setUp() throws Exception {
         var conn = POSTGRES.createConnection("");
-        DSLContext dsl = DSL.using(conn, org.jooq.SQLDialect.DEFAULT);
+        DSLContext dsl = DSL.using(conn, org.jooq.SQLDialect.POSTGRES);
         try (Statement stmt = conn.createStatement()) {
+            stmt.execute("TRUNCATE TABLE user_role_assignment, \"user\", role, tenant CASCADE");
             stmt.execute("""
                     create table if not exists tenant (
                       id varchar(64) primary key, name varchar(255) not null,
