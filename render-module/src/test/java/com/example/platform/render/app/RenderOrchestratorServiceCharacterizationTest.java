@@ -104,6 +104,17 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
 
         providerRuntimeEngine = mock(ProviderRuntimeEngine.class);
         RenderJobRepository renderJobRepository = new RenderJobRepository(dsl);
+        RenderJobClaimService claimService = mock(RenderJobClaimService.class);
+        RenderJobFailureService failureService = mock(RenderJobFailureService.class);
+        when(claimService.claimForSelection(anyString())).thenAnswer(inv -> {
+            String jobId = inv.getArgument(0);
+            // Simulate CAS: QUEUED → SELECTING_PROVIDER
+            int updated = dsl.update(table("render_job"))
+                    .set(field("status"), "SELECTING_PROVIDER")
+                    .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
+                    .execute();
+            return updated > 0;
+        });
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
                 dsl, renderJobRepository, quotaService,
                 null, null,
@@ -124,7 +135,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
                 null, null, null, null,
                 mock(TimelineExtensionsReader.class), null, null, null,
-                mock(RenderJobClaimService.class), mock(RenderJobFailureService.class));
+                claimService, failureService);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
 

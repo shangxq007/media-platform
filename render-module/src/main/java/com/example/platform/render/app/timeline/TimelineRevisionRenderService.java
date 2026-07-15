@@ -132,7 +132,9 @@ public class TimelineRevisionRenderService {
         String timelineJson = payloadOpt.get();
 
         // 4. Parse to TimelineSpec — try internal adapter first, fall back to script parser
-        TimelineSpec spec = internalTimelineAdapter.toSpec(timelineJson).orElse(null);
+        TimelineSpec spec = internalTimelineAdapter != null
+                ? internalTimelineAdapter.toSpec(timelineJson).orElse(null)
+                : null;
         if (spec == null) {
             var specOpt = parser.parse(timelineJson);
             if (specOpt.isEmpty()) {

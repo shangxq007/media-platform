@@ -27,13 +27,15 @@ public final class RenderTestSchemaFixture {
                 profile varchar(100) not null,
                 status varchar(20) not null,
                 created_at timestamp not null,
+                updated_at timestamp not null default now(),
                 ai_script text,
                 artifact_uri text,
                 error_message text,
                 pipeline_plan_json text,
                 pipeline_execution_json text,
                 base_job_id varchar(64),
-                trace_id varchar(64)
+                trace_id varchar(64),
+                selected_provider varchar(100)
             )
         """);
 

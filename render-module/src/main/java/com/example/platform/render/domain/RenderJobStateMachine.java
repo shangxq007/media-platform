@@ -51,16 +51,6 @@ public class RenderJobStateMachine {
                     RenderJobStatus.FAILED,
                     RenderJobStatus.CANCELLED
             )),
-            Map.entry(RenderJobStatus.FALLBACKING, Set.of(
-                    RenderJobStatus.EXECUTING,
-                    RenderJobStatus.FAILED,
-                    RenderJobStatus.CANCELLED
-            )),
-            Map.entry(RenderJobStatus.RETRYING, Set.of(
-                    RenderJobStatus.EXECUTING,
-                    RenderJobStatus.FAILED,
-                    RenderJobStatus.CANCELLED
-            )),
             Map.entry(RenderJobStatus.COMPLETING, Set.of(
                     RenderJobStatus.COMPLETED,
                     RenderJobStatus.FAILED

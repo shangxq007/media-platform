@@ -240,7 +240,8 @@ class StorageRuntimeServiceBoundaryTest {
         @Test
         @DisplayName("exists() delegates to repository")
         void existsDelegates() {
-            when(repo.exists("stor-1")).thenReturn(true);
+            StorageReference ref = localRef("stor-1", "/data", "file.mp4");
+            when(repo.findById("stor-1")).thenReturn(Optional.of(ref));
 
             assertTrue(service.find("stor-1").isPresent());
         }

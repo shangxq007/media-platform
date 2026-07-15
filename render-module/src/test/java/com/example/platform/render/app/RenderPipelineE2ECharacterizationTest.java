@@ -107,6 +107,17 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         // No default mocks here to avoid conflicts with test-specific overrides
 
         renderJobRepository = new RenderJobRepository(dsl);
+        RenderJobClaimService claimService = mock(RenderJobClaimService.class);
+        RenderJobFailureService failureService = mock(RenderJobFailureService.class);
+        // Mock claimForSelection to update DB status (simulates REQUIRES_NEW CAS)
+        when(claimService.claimForSelection(anyString())).thenAnswer(inv -> {
+            String jobId = inv.getArgument(0);
+            int updated = dsl.update(table("render_job"))
+                    .set(field("status"), "SELECTING_PROVIDER")
+                    .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
+                    .execute();
+            return updated > 0;
+        });
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
                 dsl, renderJobRepository, quotaService,
                 null /* billingEnforcementService */, null /* billingDecisionEngine */,
@@ -128,7 +139,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
                 null, null, null, null,
                 mock(TimelineExtensionsReader.class), null, null, null,
-                mock(RenderJobClaimService.class), mock(RenderJobFailureService.class));
+                claimService, failureService);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
 
