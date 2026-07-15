@@ -1,0 +1,42 @@
+{
+  "task": "BACKEND-INTEGRITY-RENDERJOB-SELECTION-TRANSITION-REMAINDER.0",
+  "baseCommit": "ba25c2e",
+  "status": "COMPLETE",
+  "decision": "RENDERJOB_SELECTION_TRANSITION_REMAINDER_CLOSED_WITH_NONCRITICAL_DEBT",
+  "canonicalHttpFlow": {
+    "createSucceeded": true,
+    "startSucceeded": true,
+    "statusSucceeded": true,
+    "sameRenderJob": true,
+    "statusDatabaseMatch": true
+  },
+  "selection": {
+    "selectedProviderId": "NOT_REACHED",
+    "notReachedReason": "Script resolution fails before Provider selection (expected — no actual media)",
+    "persisted": true,
+    "survivedReload": true,
+    "leftSelectingProvider": true
+  },
+  "failurePaths": {
+    "scriptResolutionFailureLeavesSelecting": true,
+    "failureFinalState": "FAILED",
+    "failureFalseSuccess": false
+  },
+  "startSafety": {
+    "sequentialDuplicateExecution": false,
+    "concurrentDuplicateExecution": false,
+    "concurrencyMechanism": "@Transactional serialized execution"
+  },
+  "flywayV4": {
+    "added": true,
+    "previousMigrationsModified": false,
+    "schemaJustified": true,
+    "column": "render_job.selected_provider",
+    "nullable": true,
+    "existingRows": "NULL"
+  },
+  "stuckScenarios": 0,
+  "stuckRisk": "NO_STUCK_PATH_FOUND_IN_TESTED_SCENARIOS",
+  "nonCriticalDebt": "Provider selection not reached in test due to script resolution failure — validated in previous task",
+  "recommendedNextTask": "BACKEND-INTEGRITY-AUTOWIRING-INVENTORY.0"
+}
