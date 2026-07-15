@@ -30,6 +30,8 @@ class OutboxEventDispatcherTest {
         service = mock(OutboxEventService.class);
         publisher = mock(ApplicationEventPublisher.class);
         OutboxEventRouter router = new OutboxEventRouter();
+        // Register the event type used in tests
+        router.register("render.job.created", Object.class);
         dispatcher = new OutboxEventDispatcher(service, publisher, router, 3, new SimpleMeterRegistry());
     }
 
@@ -84,7 +86,7 @@ class OutboxEventDispatcherTest {
         boolean result = dispatcher.processOnce("obx_test3");
 
         assertFalse(result);
-        verify(service, times(1)).markFailedWithDetails(anyString(),
+        verify(service, times(1)).markFailedWithDetails(eq("obx_test3"),
                 eq("DISPATCH_ERROR"), anyString());
         verify(service, never()).markProcessed(anyString());
     }

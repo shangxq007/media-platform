@@ -4,7 +4,10 @@
 
 ```text
 RenderOutputCommit — one record per RenderJob
-UNIQUE(render_job_id, output_type)
+UNIQUE(render_output_commit.render_job_id)
+
+RenderOutputItem — one record per output role per commit
+UNIQUE(render_output_item.output_commit_id, render_output_item.output_role)
 ```
 
 ## Target Sequence
@@ -82,8 +85,11 @@ CREATED → READY (after blob committed)
 ## Target Database Constraints
 
 ```sql
--- One output per RenderJob per type
-UNIQUE(render_job_id, output_type)
+-- One commit per RenderJob
+UNIQUE(render_output_commit.render_job_id)
+
+-- One item per output role per commit
+UNIQUE(render_output_item.output_commit_id, render_output_item.output_role)
 
 -- Billing idempotency
 UNIQUE(reference_type, reference_id) ON billing_ledger_entry

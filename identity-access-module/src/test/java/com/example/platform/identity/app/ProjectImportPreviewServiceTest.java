@@ -105,12 +105,11 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewLinkedAssetsShouldMarkAvailableLinkedWhenUrlPresent() {
-        // Use a URL with a hostname that resolves to a safe public IP
-        // Avoids DNS resolution issues in CI
+        // Use a URL with a direct IP to avoid DNS resolution issues
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
                 1024L, null, 10.0, 1920, 1080, null,
-                "https://example.com/video.mp4?token=abc"); // Has signed URL
+                "https://93.184.216.34/video.mp4?token=abc"); // Has signed URL
         ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
                 "project-export-v1", "linked_assets", List.of(asset), null);
 
