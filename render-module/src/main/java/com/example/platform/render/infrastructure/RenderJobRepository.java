@@ -167,7 +167,7 @@ public class RenderJobRepository {
                 .set(field("error_message"), reason)
                 .set(field("updated_at"), java.time.OffsetDateTime.now())
                 .where(field("id").eq(jobId).and(
-                        field("status").in("SELECTING_PROVIDER", "EXECUTING")))
+                        field("status").in("SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING", "COMPLETING")))
                 .execute();
     }
 

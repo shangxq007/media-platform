@@ -181,20 +181,26 @@ public class RenderJobExecutionService {
             return jobId;
         }
 
-        // Use new state machine for transitions
-        RenderJobStatus currentStatus = RenderJobStatus.valueOf(status);
-
-        // Transition to SELECTING_PROVIDER
-        stateMachine.transition(jobId, currentStatus, RenderJobStatus.SELECTING_PROVIDER,
-                "Starting provider selection", "RenderJobExecutionService");
-        updateStatus(jobId, projectId, currentStatus, RenderJobStatus.SELECTING_PROVIDER, null);
+        // Atomic CAS claim: QUEUED → SELECTING_PROVIDER
+        // Committed in REQUIRES_NEW — survives any later failures
+        if ("QUEUED".equals(status)) {
+            boolean claimed = claimService.claimForSelection(jobId);
+            if (!claimed) {
+                log.info("Render job {} already claimed by another request", jobId);
+                return jobId;
+            }
+            // Reload after claim to avoid stale entity overwrite
+            job = renderJobRepository.requireJobRecord(jobId);
+            status = job.get("status", String.class);
+        } else if (!"SELECTING_PROVIDER".equals(status) && !"EXECUTING".equals(status)) {
+            throw new IllegalStateException("Render job " + jobId + " is in state " + status + ", cannot start");
+        }
 
         String aiScript;
         try {
             aiScript = resolveRenderScript(jobId, snapshotId, null, projectId);
         } catch (Exception e) {
-            failJob(jobId, projectId, RenderJobStatus.SELECTING_PROVIDER, "SCRIPT_RESOLUTION_FAILED",
-                    "Failed to resolve render script: " + e.getMessage());
+            failureService.recordDurableFailure(jobId, "Script resolution failed: " + e.getMessage());
             throw e;
         }
 
@@ -299,9 +305,7 @@ public class RenderJobExecutionService {
             renderResult = executeRenderWithOptionalDag(jobId, projectId, aiScript, profile, tenantId, baseJobId);
         } catch (Exception e) {
             log.error("Render failed for job {}", jobId, e);
-            stateMachine.transition(jobId, RenderJobStatus.EXECUTING, RenderJobStatus.FAILED,
-                    "Render failed: " + e.getMessage(), "RenderJobExecutionService");
-            failJob(jobId, projectId, RenderJobStatus.EXECUTING, "RENDER_FAILED", "Render failed: " + e.getMessage());
+            failureService.recordDurableFailure(jobId, "Render failed: " + e.getMessage());
             throw new IllegalStateException("Render failed", e);
         }
 

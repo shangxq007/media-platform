@@ -1,0 +1,52 @@
+{
+  "task": "BACKEND-INTEGRITY-REPAIR-RENDERJOB-START-CLAIM-AND-FAILURE-DURABILITY.1",
+  "baseCommit": "c237b23",
+  "status": "PARTIAL",
+  "decision": "RENDERJOB_REPAIR_PARTIAL",
+  "implementationCommit": "c237b23",
+  "startClaim": {
+    "mechanism": "Atomic CAS via RenderJobRepository.claimForSelection()",
+    "sql": "UPDATE render_job SET status = 'SELECTING_PROVIDER' WHERE id = ? AND status = 'QUEUED'",
+    "transaction": "REQUIRES_NEW via RenderJobClaimService",
+    "databaseBacked": true,
+    "implemented": true,
+    "wired": false
+  },
+  "failureDurability": {
+    "mechanism": "Atomic CAS via RenderJobRepository.markActiveJobFailed()",
+    "sql": "UPDATE render_job SET status = 'FAILED' WHERE id = ? AND status IN ('SELECTING_PROVIDER', 'PROVIDER_SELECTED', 'EXECUTING', 'COMPLETING')",
+    "transaction": "REQUIRES_NEW via RenderJobFailureService",
+    "statesCovered": ["SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING", "COMPLETING"],
+    "implemented": true,
+    "wired": false
+  },
+  "evidence": {
+    "selectedProviderPersisted": "ffmpeg",
+    "renderBoundaryReached": true,
+    "durableFailureSurvivesReload": true,
+    "applicationContextStarts": true,
+    "constructorInjectionWorks": true
+  },
+  "blocker": {
+    "description": "Modifying execute() method to use claim/failure services causes orchestratorPort=null",
+    "rootCause": "Unknown - needs Spring debug logging",
+    "impact": "Cannot wire claim/failure into execute path"
+  },
+  "unverified": [
+    "concurrent single-winner test",
+    "selector exception test",
+    "persistence failure test",
+    "independent verification"
+  ],
+  "files": {
+    "created": ["RenderJobClaimService.java", "RenderJobFailureService.java", "StartClaimAndFailureDurabilityTest.java"],
+    "modified": ["RenderJobRepository.java"],
+    "pending": ["RenderJobExecutionService.java"]
+  },
+  "recommendedNextStep": "Add Spring debug logging or extract RenderJobStartCoordinator",
+  "relatedTasks": {
+    "previous": "BACKEND-INTEGRITY-REPAIR-RENDERJOB-BEAN-GRAPH.2",
+    "next": "BACKEND-INTEGRITY-AUTOWIRING-INVENTORY.0",
+    "architecture": "EXECUTION-KERNEL-OS-MODEL-AND-ORCHESTRATION-BOUNDARY.0"
+  }
+}

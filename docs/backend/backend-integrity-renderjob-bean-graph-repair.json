@@ -1,0 +1,60 @@
+{
+  "task": "BACKEND-INTEGRITY-REPAIR-RENDERJOB-BEAN-GRAPH.2",
+  "baseCommit": "2fd01ea",
+  "implementationCommit": "c237b23",
+  "status": "COMPLETE",
+  "decision": "RENDERJOB_BEAN_GRAPH_REPAIRED",
+  "rootCause": {
+    "type": "OUTDATED_MANUAL_CONSTRUCTOR_CALL",
+    "description": "Two test files manually constructed RenderJobExecutionService with old constructor signature",
+    "files": [
+      "RenderOrchestratorServiceCharacterizationTest.java",
+      "RenderPipelineE2ECharacterizationTest.java"
+    ],
+    "hypothesis": "26 constructor parameters exceeded Spring limit",
+    "hypothesisResult": "DISPROVEN"
+  },
+  "repair": {
+    "strategy": "CONSTRUCTOR_WIRING_CORRECTION",
+    "changes": [
+      "Added RenderJobClaimService and RenderJobFailureService to constructor",
+      "Updated two test files with mock() params"
+    ]
+  },
+  "verification": {
+    "applicationContextStarts": true,
+    "renderControllerSpringManaged": true,
+    "renderOrchestratorServiceSpringManaged": true,
+    "renderJobExecutionServiceSpringManaged": true,
+    "renderJobClaimServiceSpringManaged": true,
+    "renderJobFailureServiceSpringManaged": true,
+    "canonicalStartReachesExecutionEntry": true,
+    "applicationContextGetBeanUsed": false,
+    "lazyUsed": false,
+    "fieldInjectionAdded": false
+  },
+  "evidence": {
+    "postStatus": "FAILED",
+    "postProvider": "ffmpeg",
+    "durableFailure": true,
+    "reloadStatus": "FAILED"
+  },
+  "files": {
+    "modified": [
+      "RenderJobExecutionService.java",
+      "RenderOrchestratorServiceCharacterizationTest.java",
+      "RenderPipelineE2ECharacterizationTest.java"
+    ],
+    "created": [
+      "RenderJobClaimService.java",
+      "RenderJobFailureService.java",
+      "StartClaimAndFailureDurabilityTest.java"
+    ]
+  },
+  "builds": {
+    "compileJava": "PASSED",
+    "compileTestJava": "PASSED",
+    "bootJar": "PASSED",
+    "architectureGuard": "32/32 PASSED"
+  }
+}
