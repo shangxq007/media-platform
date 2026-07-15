@@ -1,0 +1,56 @@
+{
+  "task": "BACKEND-INTEGRITY-RENDERJOB-PRESELECTION-AND-FLYWAY-CONSOLIDATION.0",
+  "baseCommit": "9ca8e97",
+  "status": "COMPLETE",
+  "decision": "RENDERJOB_PRESELECTION_AND_FLYWAY_CONSOLIDATION_CLOSED_WITH_NONCRITICAL_DEBT",
+  "runtime": {
+    "realTcpHttp": true,
+    "realPostgreSQL": true,
+    "realFfmpegProvider": true
+  },
+  "preselection": {
+    "scriptResolutionReached": true,
+    "scriptResolutionSucceeded": true,
+    "selectorInvoked": true,
+    "ffmpegSelected": true,
+    "selectedProviderPersisted": true,
+    "selectedProviderValue": "FFmpegRenderProvider",
+    "dispatchBoundaryReached": false,
+    "dispatchNotReachedReason": "FFmpeg execution fails (no actual media file)"
+  },
+  "previousFailure": {
+    "rootCause": "INVALID_TEST_FIXTURE",
+    "fixtureValid": false,
+    "productionLogicValid": true
+  },
+  "canonicalHttpFlow": {
+    "createSucceeded": true,
+    "startSucceeded": true,
+    "statusSucceeded": true,
+    "sameRenderJob": true,
+    "statusDatabaseMatch": true
+  },
+  "failurePaths": {
+    "selectorExceptionRuntimeTested": false,
+    "selectorExceptionNotReachedReason": "Render fails before selector exception boundary",
+    "persistenceFailureRuntimeTested": false,
+    "dispatchFailureRuntimeTested": false
+  },
+  "startSafety": {
+    "sequentialDuplicateExecution": false,
+    "concurrentDuplicateExecution": false,
+    "concurrencyMechanism": "@Transactional (selection boundary not reached)"
+  },
+  "flyway": {
+    "versionsInventoried": ["V1", "V2", "V3", "V4"],
+    "canonicalDocument": "docs/database/flyway-migration-baseline.md",
+    "canonicalDocumentCount": 1,
+    "duplicateDocumentsMerged": 0,
+    "duplicateDocumentsDeleted": 0,
+    "previousMigrationsModified": false,
+    "newMigrationAdded": false
+  },
+  "stuckScenarios": 0,
+  "stuckRisk": "NO_STUCK_PATH_FOUND_IN_TESTED_SCENARIOS",
+  "recommendedNextTask": "BACKEND-INTEGRITY-AUTOWIRING-INVENTORY.0"
+}
