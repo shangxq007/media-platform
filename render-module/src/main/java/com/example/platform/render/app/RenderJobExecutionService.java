@@ -358,10 +358,7 @@ public class RenderJobExecutionService {
                     billingEnforcementService.reserveQuota(tenantId, jobId, 0.10); // Default estimate
             if (!reservation.success()) {
                 log.warn("Billing reservation failed for job {}: {}", jobId, reservation.error());
-                stateMachine.transition(jobId, RenderJobStatus.EXECUTING, RenderJobStatus.FAILED,
-                        "Billing reservation failed: " + reservation.error(), "RenderJobExecutionService");
-                failJob(jobId, projectId, RenderJobStatus.EXECUTING, "BILLING_FAILED", 
-                        "Billing reservation failed: " + reservation.error());
+                failureService.recordDurableFailure(jobId, "Billing reservation failed: " + reservation.error());
                 throw new IllegalStateException("Billing reservation failed: " + reservation.error());
             }
             log.info("Reserved quota for job {}: {}", jobId, reservation.reservationId());
@@ -405,9 +402,7 @@ public class RenderJobExecutionService {
             artifactStorageService.uploadJobOutput(jobId, projectId, artifactId, relativePath, contentType);
         } catch (Exception e) {
             log.error("Storage failed for job {}", jobId, e);
-            stateMachine.transition(jobId, RenderJobStatus.COMPLETING, RenderJobStatus.FAILED,
-                    "Storage failed: " + e.getMessage(), "RenderJobExecutionService");
-            failJob(jobId, projectId, RenderJobStatus.COMPLETING, "STORAGE_FAILED", "Storage failed: " + e.getMessage());
+            failureService.recordDurableFailure(jobId, "Storage failed: " + e.getMessage());
             throw new IllegalStateException("Storage failed", e);
         }
 
