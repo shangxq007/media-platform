@@ -234,10 +234,13 @@ Action: Remove field, return explicit unsupported
 ```text
 MINIMUM_V5_REQUIRED
 
-New table: render_output
-New columns: render_job.idempotency_key
+New tables:
+  - render_output_commit (one per RenderJob)
+  - render_output_item (one per output role per commit)
+New columns: render_job.idempotency_key, render_job.updated_at
 New constraints:
-  - UNIQUE(render_job_id, output_type)
+  - UNIQUE(render_output_commit.render_job_id)
+  - UNIQUE(render_output_item.output_commit_id, output_role)
   - UNIQUE(reference_type, reference_id) on billing_ledger_entry
 ```
 
@@ -245,10 +248,13 @@ New constraints:
 
 ```text
 V5 adds:
-1. render_output table
-2. render_job.idempotency_key column
-3. billing_ledger_entry unique constraint
-4. quota_usage unique constraint
+1. render_output_commit table
+2. render_output_item table
+3. render_job.idempotency_key column
+4. render_job.updated_at column
+5. billing_ledger_entry unique constraint
+6. quota_usage unique constraint
+7. product render_job_id unique constraint
 ```
 
 ## Security Implications
