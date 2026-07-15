@@ -13,7 +13,35 @@ COMPLETE
 MINIMAL_MEDIA_RENDER_BOUNDARY_VALIDATED_WITH_NONCRITICAL_DEBT
 ```
 
-Non-critical debt: FFmpeg render fails with exit code 8 (input format issue), but the render boundary was reached and Provider selection/persistence work correctly.
+Non-critical debt:
+1. FFmpeg render fails with exit code 8 (input format issue), but render boundary was reached
+2. **No database-level concurrency control on /start path** — concurrent requests may produce duplicate executions
+3. `failJob()` writes FAILED within same @Transactional — may roll back on exception, leaving job EXECUTING
+
+## Concurrency Finding (Agent C)
+
+The /start path has NO database-level concurrency control:
+- Two concurrent requests both read `status = QUEUED`
+- Both pass in-memory `RenderJobStateMachine` validation
+- Both execute unconditional `UPDATE render_job SET status = ? WHERE id = ?`
+- No `WHERE status = 'QUEUED'` guard
+
+Existing safe mechanisms exist but are NOT wired into /start:
+- `claimJob()` has atomic CAS (`WHERE status = 'QUEUED'`) — unused
+- `render_job_lease` has optimistic locking — used by worker claims only
+- `RenderJobQueue.dequeue()` uses `SELECT FOR UPDATE SKIP LOCKED` — used by queue consumers only
+
+## Failure Path Finding (Agent B)
+
+`failJob()` writes FAILED status within the same `@Transactional` boundary as the render. If the render throws, the transaction rolls back, and the FAILED status is lost. The job may remain in EXECUTING state.
+
+## Concurrency Decision
+
+```text
+CONCURRENT_START_UNSAFE
+```
+
+Recommend: `BACKEND-INTEGRITY-REPAIR-RENDERJOB-CONCURRENT-START.0`
 
 ## Agent Runtime Inventory
 

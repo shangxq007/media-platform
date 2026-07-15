@@ -40,5 +40,16 @@
     "ProviderRuntimeEngine: read from Registry dynamically",
     "RenderProviderRegistry: added getProviderMap()"
   ],
-  "recommendedNextTask": "BACKEND-INTEGRITY-AUTOWIRING-INVENTORY.0"
+  "recommendedNextTask": "BACKEND-INTEGRITY-REPAIR-RENDERJOB-CONCURRENT-START.0",
+  "concurrencyFinding": {
+    "mechanism": "NONE",
+    "detail": "No database-level concurrency control on /start path",
+    "risk": "Concurrent requests may produce duplicate executions",
+    "existingSafeMechanisms": ["claimJob() with CAS", "render_job_lease with optimistic locking", "RenderJobQueue with FOR UPDATE SKIP LOCKED"],
+    "recommendation": "BACKEND-INTEGRITY-REPAIR-RENDERJOB-CONCURRENT-START.0"
+  },
+  "failurePathFinding": {
+    "failJobWithinTransaction": true,
+    "risk": "FAILED status rolls back on exception, job stays EXECUTING"
+  }
 }
