@@ -127,7 +127,8 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 timelineSnapshotService,
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
                 null, null, null, null,
-                mock(TimelineExtensionsReader.class), null, null, null);
+                mock(TimelineExtensionsReader.class), null, null, null,
+                mock(RenderJobClaimService.class), mock(RenderJobFailureService.class));
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
 

@@ -84,6 +84,8 @@ public class RenderJobExecutionService {
     private final EntitlementPort entitlementPort;
     private final RenderCacheHashInvalidationNotifier hashInvalidationNotifier;
     private final AiRenderScriptNormalizer aiRenderScriptNormalizer;
+    private final RenderJobClaimService claimService;
+    private final RenderJobFailureService failureService;
 
     public RenderJobExecutionService(
             RenderJobRepository renderJobRepository,
@@ -120,7 +122,9 @@ public class RenderJobExecutionService {
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             RenderCacheHashInvalidationNotifier hashInvalidationNotifier,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
-            AiRenderScriptNormalizer aiRenderScriptNormalizer) {
+            AiRenderScriptNormalizer aiRenderScriptNormalizer,
+            RenderJobClaimService claimService,
+            RenderJobFailureService failureService) {
         this.renderJobRepository = renderJobRepository;
         this.quotaService = quotaService;
         this.aiGatewayPort = aiGatewayPort;
@@ -147,6 +151,8 @@ public class RenderJobExecutionService {
         this.entitlementPort = entitlementPort;
         this.hashInvalidationNotifier = hashInvalidationNotifier;
         this.aiRenderScriptNormalizer = aiRenderScriptNormalizer;
+        this.claimService = claimService;
+        this.failureService = failureService;
         this.stateMachine = new RenderJobStateMachine();
     }
 

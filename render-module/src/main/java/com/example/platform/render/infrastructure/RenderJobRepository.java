@@ -123,6 +123,18 @@ public class RenderJobRepository {
                 .fetch();
     }
 
+    /**
+     * Atomic CAS claim for /start: QUEUED → SELECTING_PROVIDER.
+     * Returns 1 if this request won the claim, 0 if another request already claimed it.
+     */
+    public int claimForSelection(String jobId) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "SELECTING_PROVIDER")
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
+                .execute();
+    }
+
     public int claimJob(String jobId) {
         return claimJob(jobId, "ffmpeg-worker");
     }
@@ -143,6 +155,20 @@ public class RenderJobRepository {
                 .orderBy(field("updated_at").asc())
                 .limit(limit)
                 .fetch();
+    }
+
+    /**
+     * Durable failure: SELECTING_PROVIDER or EXECUTING → FAILED.
+     * Atomic CAS — only succeeds if job is in one of these active states.
+     */
+    public int markActiveJobFailed(String jobId, String reason) {
+        return dsl.update(table("render_job"))
+                .set(field("status"), "FAILED")
+                .set(field("error_message"), reason)
+                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .where(field("id").eq(jobId).and(
+                        field("status").in("SELECTING_PROVIDER", "EXECUTING")))
+                .execute();
     }
 
     public int markExecutingJobFailed(String jobId, String reason) {
