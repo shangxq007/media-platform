@@ -19,7 +19,8 @@ class RenderControllerTest {
     @BeforeEach
     void setUp() {
         renderJobService = mock(RenderJobService.class);
-        controller = new RenderController(renderJobService);
+        controller = new RenderController(renderJobService, null, java.util.List.of(),
+                null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test

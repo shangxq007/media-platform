@@ -59,10 +59,6 @@ public class RenderController {
     private final com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository;
     private final com.example.platform.render.app.access.ArtifactAccessService artifactAccessService;
 
-    public RenderController(RenderJobService renderJobService) {
-        this(renderJobService, null, null, null, null, null, null, null, null, null, null, null, null);
-    }
-
     @org.springframework.beans.factory.annotation.Autowired
     public RenderController(RenderJobService renderJobService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderOrchestratorPort orchestratorPort,
@@ -213,16 +209,12 @@ public class RenderController {
     public Map<String, String> startRenderJob(@PathVariable String tenantId,
             @PathVariable String projectId,
             @PathVariable String jobId) {
-        if (orchestratorPort != null) {
-            try {
-                renderJobService.getByIdAndProject(tenantId, projectId, jobId);
-                String resultJobId = orchestratorPort.executeExistingRenderJob(tenantId, jobId);
-                return Map.of("jobId", resultJobId, "status", "STARTED");
-            } catch (Exception ex) {
-                return Map.of("jobId", jobId, "status", "QUEUED");
-            }
+        if (orchestratorPort == null) {
+            throw new IllegalStateException("Render orchestrator is not available");
         }
-        return Map.of("jobId", jobId, "status", "QUEUED");
+        renderJobService.getByIdAndProject(tenantId, projectId, jobId);
+        String resultJobId = orchestratorPort.executeExistingRenderJob(tenantId, jobId);
+        return Map.of("jobId", resultJobId, "status", "STARTED");
     }
 
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/execution")

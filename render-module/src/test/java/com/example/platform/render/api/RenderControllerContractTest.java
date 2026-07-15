@@ -131,14 +131,13 @@ class RenderControllerContractTest {
         }
 
         @Test
-        @DisplayName("Start returns QUEUED when orchestrator null")
-        void startReturnsQueuedWhenNoOrchestrator() {
-            RenderController controllerNoOrch = new RenderController(fakeService);
+        @DisplayName("Start throws IllegalStateException when orchestrator null")
+        void startThrowsWhenNoOrchestrator() {
+            RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
+                    null, null, null, null, null, null, null, null, null, null);
 
-            Map<String, String> result = controllerNoOrch.startRenderJob("t-1", "proj-1", "rj-1");
-
-            assertEquals("rj-1", result.get("jobId"));
-            assertEquals("QUEUED", result.get("status"));
+            assertThrows(IllegalStateException.class,
+                    () -> controllerNoOrch.startRenderJob("t-1", "proj-1", "rj-1"));
         }
     }
 
@@ -192,7 +191,8 @@ class RenderControllerContractTest {
         @Test
         @DisplayName("Artifacts return empty when orchestrator null")
         void artifactsReturnEmptyWhenNoOrchestrator() {
-            RenderController controllerNoOrch = new RenderController(fakeService);
+            RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
+                    null, null, null, null, null, null, null, null, null, null);
 
             List<ArtifactInfoResponse> result = controllerNoOrch.getArtifacts("rj-1");
 

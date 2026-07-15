@@ -311,16 +311,15 @@ class VS1SmokeIntegrationTest {
         }
 
         @Test
-        @DisplayName("Missing orchestrator on submit falls back gracefully")
+        @DisplayName("Missing orchestrator on submit throws IllegalStateException")
         void missingOrchestratorFallback() {
-            RenderController controllerNoOrch = new RenderController(fakeJobService);
+            RenderController controllerNoOrch = new RenderController(fakeJobService, null, java.util.List.of(),
+                    null, null, null, null, null, null, null, null, null, null);
             SubmitRenderJobRequest req = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "test", "default_1080p", "snap-1");
 
-            Map<String, String> result = controllerNoOrch.submitIncrementalRenderJob("t-1", "proj-1", req);
-
-            assertNotNull(result.get("jobId"));
-            assertEquals("QUEUED", result.get("status"));
+            assertThrows(IllegalStateException.class,
+                    () -> controllerNoOrch.submitIncrementalRenderJob("t-1", "proj-1", req));
         }
 
         @Test
