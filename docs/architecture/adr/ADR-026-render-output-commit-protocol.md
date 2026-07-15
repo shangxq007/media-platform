@@ -46,7 +46,8 @@ Introduce a first-class `RenderOutputCommit` model as the single canonical autho
 
 ### Why Option B
 
-- DB-enforced `UNIQUE(render_job_id, output_type)` guarantees one output per RenderJob
+- DB-enforced `UNIQUE(render_output_commit.render_job_id)` guarantees one commit per RenderJob
+- Multiple physical outputs modeled as child `RenderOutputItem` records
 - Clear lifecycle: PENDING → COMMITTED (or FAILED)
 - Single authority for publication decisions
 - Future-compatible with Temporal/OpenCue distributed execution
@@ -55,11 +56,30 @@ Introduce a first-class `RenderOutputCommit` model as the single canonical autho
 ## Canonical Authority
 
 ```text
-RenderOutputCommit — one record per RenderJob per output type
-UNIQUE(render_job_id, output_type)
+RenderOutputCommit — one record per RenderJob
+UNIQUE(render_output_commit.render_job_id)
+```
+
+Multiple physical outputs (video, thumbnail, subtitle, etc.) are modeled as child `RenderOutputItem` records:
+
+```text
+RenderOutputItem — one record per output role per commit
+UNIQUE(render_output_item.output_commit_id, output_role)
 ```
 
 No other service may independently mark the complete output as published.
+
+## One-Output Invariant
+
+```text
+For one RenderJob:
+at most one RenderOutputCommit
+ENFORCED BY: UNIQUE(render_output_commit.render_job_id)
+
+For one RenderOutputCommit:
+one RenderOutputItem per output role
+ENFORCED BY: UNIQUE(render_output_item.output_commit_id, output_role)
+```
 
 ## Completion Invariant
 
@@ -86,6 +106,27 @@ THEN:
 - No false COMPLETED state
 ```
 
+## State Set
+
+Canonical target RenderJob states:
+
+```text
+QUEUED
+SELECTING_PROVIDER
+PROVIDER_SELECTED
+EXECUTING
+COMPLETING
+COMPLETED
+FAILED
+CANCELLED
+```
+
+FALLBACKING: EXCLUDED (stale pre-launch baggage)
+RETRYING: EXCLUDED (stale pre-launch baggage)
+Future retry: Creates a new RenderJob
+
+COMPLETING means: Provider succeeded and platform is performing canonical Render Output Commit Protocol.
+
 ## Blob Ownership Protocol
 
 ```text
@@ -97,6 +138,19 @@ Object key: renders/{tenantId}/{jobId}/output.{format}
 - Not user-visible until publication complete
 - Owned by render_output record
 ```
+
+### Deterministic Key Semantics
+
+| Scenario | Behavior |
+|----------|----------|
+| Same RenderJob replay | Same key, idempotent overwrite |
+| Same key + same checksum | Reuse existing object |
+| Same key + different checksum | FAIL with deterministic-output conflict |
+| Silent overwrite | FORBIDDEN |
+| Blob success / DB failure | Object remains uncommitted, not user-visible |
+| Process restart | Resume from durable DB/object facts |
+| New retry attempt | New RenderJob ID, new key namespace |
+| User visibility | RenderOutputCommit COMMITTED AND Product READY
 
 ## Content Checksum
 
