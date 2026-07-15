@@ -81,6 +81,22 @@ model {
       fakeTestLayer = component 'Fake Test Layer' {
         description 'VS.1-TEST.1: Fake implementations for integration testing'
       }
+
+      providerRegistry = component 'Provider Registry' {
+        description 'Canonical Provider ID management. Registry key: ffmpeg (not class name)'
+      }
+
+      renderJobClaimService = component 'RenderJob Claim Service' {
+        description 'Atomic CAS: QUEUED → SELECTING_PROVIDER via REQUIRES_NEW transaction'
+      }
+
+      renderJobFailureService = component 'RenderJob Failure Service' {
+        description 'Durable failure persistence via REQUIRES_NEW transaction. States: SELECTING_PROVIDER, PROVIDER_SELECTED, EXECUTING, COMPLETING'
+      }
+
+      renderJobStateMachine = component 'RenderJob State Machine' {
+        description 'Lifecycle transitions: QUEUED → SELECTING_PROVIDER → PROVIDER_SELECTED → EXECUTING → COMPLETING → COMPLETED'
+      }
     }
 
     storageModule = container 'storage-module' {
@@ -225,6 +241,15 @@ model {
   previewRenderJobService -> productRuntime 'creates product'
   previewArtifactQueryService -> productRuntime 'queries product'
   previewArtifactQueryService -> storageRuntime 'queries storage'
+
+  // RenderJob Claim and Failure relationships
+  previewRenderJobService -> renderJobClaimService 'claims execution'
+  previewRenderJobService -> renderJobFailureService 'records failure'
+  previewRenderJobService -> renderJobStateMachine 'transitions state'
+  renderJobClaimService -> providerRegistry 'verifies provider'
+  providerBinding -> providerRegistry 'resolves by canonical ID'
+  ffmpegBaseline -> providerRegistry 'registers as ffmpeg'
+
   platformApp -> previewRenderJobService 'exposes API'
   platformApp -> previewArtifactQueryService 'exposes API'
 
@@ -378,5 +403,18 @@ views {
       storageModule.s3Materializer,
       storageModule.accessDescriptor,
       storage
+  }
+
+  view renderJobClaimFailureArchitecture of renderModule {
+    title 'RenderJob Claim and Failure Architecture'
+    description 'Atomic CAS claim (QUEUED → SELECTING_PROVIDER) + Durable failure via REQUIRES_NEW transactions'
+    include
+      renderModule.previewRenderJobService,
+      renderModule.renderJobClaimService,
+      renderModule.renderJobFailureService,
+      renderModule.renderJobStateMachine,
+      renderModule.providerRegistry,
+      renderModule.providerBinding,
+      renderModule.ffmpegBaseline
   }
 }

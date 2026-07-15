@@ -60,16 +60,19 @@ subprojects {
 
     tasks.withType<Test> {
         useJUnitPlatform()
+        // Increase test worker heap for platform-app Spring context explosion (16+ contexts)
+        // Using jvmArgs directly because maxHeapSize doesn't reliably override daemon defaults
+        jvmArgs("-Xmx2g", "-XX:+HeapDumpOnOutOfMemoryError")
         // Force Docker API version for Testcontainers compatibility
         systemProperty("api.version", "1.44")
 
         // Attach ByteBuddy agent explicitly to avoid dynamic self-attach failure on Java 25+.
         // This is test-only — no production JVM is affected.
-        // Uses doFirst to lazily resolve the agent JAR at execution time.
-        doFirst {
+        // Uses jvmArgumentProviders for reliable lazy resolution at execution time.
+        jvmArgumentProviders.add(org.gradle.process.CommandLineArgumentProvider {
             val agentJar = byteBuddyAgent.singleFile
-            jvmArgs("-javaagent:${agentJar.absolutePath}")
-        }
+            listOf("-javaagent:${agentJar.absolutePath}")
+        })
     }
 
     // JaCoCo code coverage configuration

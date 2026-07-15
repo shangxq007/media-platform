@@ -16,11 +16,11 @@ class StorageDeliveryProfileDiagnosticsServiceTest {
         var response = service.getDiagnostics();
 
         assertEquals("READ_ONLY", response.diagnosticsMode());
-        assertFalse(response.runtimeSwitchingImplemented());
+        assertTrue(response.runtimeSwitchingImplemented());
         assertFalse(response.artifactAccessUsesRegistry());
         assertFalse(response.providerSelectionUsesRegistry());
         assertFalse(response.remoteCallsPerformed());
-        assertEquals(8, response.profileCount());
+        assertEquals(9, response.profileCount());
         assertEquals(StorageDeliveryProfileId.PREVIEW_R2_SIGNED_URL, response.defaultProfileId());
     }
 

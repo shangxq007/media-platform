@@ -6,25 +6,27 @@ import javax.sql.DataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Base class for integration tests using PostgreSQL Testcontainers.
  *
- * <p>Provides an isolated, disposable PostgreSQL instance for each test class.
- * No hardcoded database host is allowed in CI tests.
+ * <p>Uses a shared singleton PostgreSQL container to avoid resource contention
+ * when multiple test classes run in the same JVM. The container is started once
+ * and reused across all test classes.
  */
-@Testcontainers
 public abstract class PostgresTestContainerSupport {
 
-    @Container
-    protected static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:15-alpine")
-                    .withDatabaseName("media_platform_test")
-                    .withUsername("test")
-                    .withPassword("test")
-                    .withStartupTimeoutSeconds(120);
+    protected static final PostgreSQLContainer<?> POSTGRES;
+
+    static {
+        POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine")
+                .withDatabaseName("media_platform_test")
+                .withUsername("test")
+                .withPassword("test")
+                .withStartupTimeoutSeconds(120)
+                .withReuse(true);
+        POSTGRES.start();
+    }
 
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {

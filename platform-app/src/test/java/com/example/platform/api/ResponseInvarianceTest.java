@@ -48,8 +48,8 @@ class ResponseInvarianceTest {
 
         @Test
         void testForbiddenFieldsListSize() {
-            assertEquals(27, FORBIDDEN_PUBLIC_FIELDS.size(),
-                "Forbidden fields list should contain exactly 27 fields");
+            assertEquals(29, FORBIDDEN_PUBLIC_FIELDS.size(),
+                "Forbidden fields list should contain exactly 29 fields");
         }
     }
 

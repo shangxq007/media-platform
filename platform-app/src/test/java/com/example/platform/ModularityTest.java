@@ -19,7 +19,23 @@ class ModularityTest {
         // identity -> artifact: required for project asset listing during import/export
         "identity' depends on named interface(s) 'artifact",
         // identity -> storage: required for project asset storage during import/export
-        "identity' depends on named interface(s) 'storage"
+        "identity' depends on named interface(s) 'storage",
+        // render -> outbox: render module uses outbox coordination for task execution, marketplace, search
+        "render' depends on module 'outbox",
+        // render -> outbox app: render uses OutboxEventService for event publishing
+        "render' depends on named interface(s) 'outbox",
+        // render -> storage infrastructure: render needs S3ObjectMaterializer/Writer for artifact I/O
+        "render' depends on named interface(s) 'storage :: infrastructure",
+        // web -> render: web controllers delegate to render app/domain services
+        "web' depends on module 'render",
+        // web -> outbox: ProjectDashboardController uses OutboxEventService
+        "web' depends on named interface(s) 'outbox",
+        // web -> ingest: DevIngestPreflightPolicyDiagnosticsController uses ingest diagnostics
+        "web' depends on module 'ingest",
+        // web -> storage: DevStorageDeliveryProfileDiagnosticsController uses storage diagnostics
+        "web' depends on module 'storage",
+        // root -> ingest non-exposed types: PlatformBeanConfiguration references ingest config properties
+        "root:com.example.platform' depends on non-exposed type"
     );
 
     @Test

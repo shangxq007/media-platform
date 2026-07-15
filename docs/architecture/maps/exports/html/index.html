@@ -2,26 +2,62 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Architecture Map - media-platform</title>
+  <title>media-platform Architecture Map</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; background: #0d1117; color: #e6edf3; }
-    h1 { color: #58a6ff; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; background: #0d1117; color: #e6edf3; }
+    h1 { color: #58a6ff; margin-bottom: 10px; }
+    p.subtitle { color: #8b949e; margin-bottom: 30px; }
     .view { margin: 20px 0; padding: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
     .view h2 { color: #bc8cff; margin-top: 0; }
-    likec4-view { width: 100%; min-height: 400px; }
+    .view p { color: #8b949e; font-size: 14px; }
+    likec4-view { width: 100%; min-height: 500px; display: block; }
+    .nav { margin: 20px 0; }
+    .nav a { color: #58a6ff; text-decoration: none; margin-right: 20px; }
+    .nav a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>media-platform Architecture Map</h1>
+  <h1>🏗️ media-platform Architecture Map</h1>
+  <p class="subtitle">LikeC4 architecture diagrams — Last updated: 2026-07-15</p>
   
-  <div class="view"><h2>System Context</h2><likec4-view view-id="systemContext"></likec4-view></div>
-  <div class="view"><h2>Container View</h2><likec4-view view-id="containerDiagram"></likec4-view></div>
-  <div class="view"><h2>Storage Delivery Profile Architecture</h2><likec4-view view-id="storageDeliveryProfileArchitecture"></likec4-view></div>
-  <div class="view"><h2>Ingest Preflight Policy Flow</h2><likec4-view view-id="ingestPreflightPolicyFlow"></likec4-view></div>
-  <div class="view"><h2>R2 Artifact Access Path</h2><likec4-view view-id="r2ArtifactAccessPath"></likec4-view></div>
-  <div class="view"><h2>VS.0 Vertical Slice</h2><likec4-view view-id="vs0VerticalSlice"></likec4-view></div>
-  <div class="view"><h2>VS.1 Preview Render Job API Flow</h2><likec4-view view-id="previewRenderJobApiFlow"></likec4-view></div>
-  
-  <script src="./likec4-views.js?v=20260712"></script>
+  <div class="nav">
+    <a href="#system-context">System Context</a>
+    <a href="#container">Container</a>
+    <a href="#claim-failure">Claim & Failure</a>
+    <a href="#provider">Provider</a>
+    <a href="#render-flow">Render Flow</a>
+  </div>
+
+  <div class="view" id="system-context">
+    <h2>📊 System Context</h2>
+    <p>High-level system overview: users, external services, and main modules</p>
+    <likec4-view view-id="systemContext"></likec4-view>
+  </div>
+
+  <div class="view" id="container">
+    <h2>📦 Container Diagram</h2>
+    <p>Main modules and their relationships</p>
+    <likec4-view view-id="containerDiagram"></likec4-view>
+  </div>
+
+  <div class="view" id="claim-failure">
+    <h2>🔒 Claim and Failure Architecture</h2>
+    <p>Atomic CAS claim (QUEUED → SELECTING_PROVIDER) + Durable failure via REQUIRES_NEW transactions</p>
+    <likec4-view view-id="renderJobClaimFailureArchitecture"></likec4-view>
+  </div>
+
+  <div class="view" id="provider">
+    <h2>⚙️ Provider Execution Boundary</h2>
+    <p>Provider Registry, canonical ID management, and FFmpeg baseline</p>
+    <likec4-view view-id="providerExecutionBoundary"></likec4-view>
+  </div>
+
+  <div class="view" id="render-flow">
+    <h2>🎬 Preview Render Job API Flow</h2>
+    <p>Timeline edit → Caption template → ASS mapping → Provider binding → FFmpeg plan → Product output</p>
+    <likec4-view view-id="previewRenderJobApiFlow"></likec4-view>
+  </div>
+
+  <script src="./likec4-views.js?v=202607151350"></script>
 </body>
 </html>

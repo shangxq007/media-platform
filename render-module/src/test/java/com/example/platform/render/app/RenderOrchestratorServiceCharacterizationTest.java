@@ -106,6 +106,25 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         RenderJobRepository renderJobRepository = new RenderJobRepository(dsl);
         RenderJobClaimService claimService = mock(RenderJobClaimService.class);
         RenderJobFailureService failureService = mock(RenderJobFailureService.class);
+        // Mock recordDurableFailure to update DB status (simulates REQUIRES_NEW durable failure)
+        doAnswer(inv -> {
+            String jobId = inv.getArgument(0);
+            String reason = inv.getArgument(1);
+            int updated = dsl.update(table("render_job"))
+                    .set(field("status"), "FAILED")
+                    .set(field("error_message"), reason)
+                    .set(field("updated_at"), OffsetDateTime.now())
+                    .where(field("id").eq(jobId).and(
+                            field("status").in("SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING", "COMPLETING")))
+                    .execute();
+            if (updated > 0) {
+                dsl.update(table("render_job"))
+                        .set(field("error_message"), reason)
+                        .where(field("id").eq(jobId))
+                        .execute();
+            }
+            return null;
+        }).when(failureService).recordDurableFailure(anyString(), anyString());
         when(claimService.claimForSelection(anyString())).thenAnswer(inv -> {
             String jobId = inv.getArgument(0);
             // Simulate CAS: QUEUED → SELECTING_PROVIDER

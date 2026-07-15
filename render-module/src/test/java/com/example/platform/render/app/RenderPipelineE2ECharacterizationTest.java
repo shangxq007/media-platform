@@ -109,6 +109,19 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         renderJobRepository = new RenderJobRepository(dsl);
         RenderJobClaimService claimService = mock(RenderJobClaimService.class);
         RenderJobFailureService failureService = mock(RenderJobFailureService.class);
+        // Mock recordDurableFailure to update DB status (simulates REQUIRES_NEW durable failure)
+        doAnswer(inv -> {
+            String jobId = inv.getArgument(0);
+            String reason = inv.getArgument(1);
+            dsl.update(table("render_job"))
+                    .set(field("status"), "FAILED")
+                    .set(field("error_message"), reason)
+                    .set(field("updated_at"), OffsetDateTime.now())
+                    .where(field("id").eq(jobId).and(
+                            field("status").in("SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING", "COMPLETING")))
+                    .execute();
+            return null;
+        }).when(failureService).recordDurableFailure(anyString(), anyString());
         // Mock claimForSelection to update DB status (simulates REQUIRES_NEW CAS)
         when(claimService.claimForSelection(anyString())).thenAnswer(inv -> {
             String jobId = inv.getArgument(0);
@@ -116,6 +129,9 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                     .set(field("status"), "SELECTING_PROVIDER")
                     .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
                     .execute();
+            if (updated > 0) {
+                historyRepository.record(jobId, "QUEUED", "SELECTING_PROVIDER", null, null);
+            }
             return updated > 0;
         });
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
@@ -583,10 +599,10 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 .fetch();
 
         assertFalse(history.isEmpty());
-        // Should have QUEUED -> SELECTING_PROVIDER -> EXECUTING -> COMPLETED transitions
+        // Should have SELECTING_PROVIDER -> PROVIDER_SELECTED transition recorded by claim+execution
         assertTrue(history.stream().anyMatch(r ->
-                "QUEUED".equals(r.get(field("from_status"), String.class))
-                        && "SELECTING_PROVIDER".equals(r.get(field("to_status"), String.class))));
+                "SELECTING_PROVIDER".equals(r.get(field("from_status"), String.class))
+                        && "PROVIDER_SELECTED".equals(r.get(field("to_status"), String.class))));
     }
 
     // =========================================================

@@ -367,15 +367,10 @@ class FFmpegLibassBasicRenderPlannerTest {
 
     @Test @DisplayName("Caption overlay requires valid time range")
     void captionOverlayRequiresValidTimeRange() {
-        TimelineTextOverlay overlay = new TimelineTextOverlay(
-                "cap-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
-                "center", "bottom", -1.0, 5.0, null);
-        TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
-                List.of(TimelineTrack.of("track-1", "Video", TimelineTrack.TrackType.VIDEO)),
-                List.of(overlay), TimelineOutputSpec.mp4_1080p30(), 10, Map.<String,String>of());
-        FFmpegLibassBasicRenderPlanningResult result = plan(timeline);
-        assertTrue(result.issues().stream().anyMatch(i ->
-                i.code() == FFmpegLibassBasicRenderPlanIssueCode.CAPTION_OVERLAY_INVALID));
+        assertThrows(IllegalArgumentException.class, () ->
+                new TimelineTextOverlay(
+                        "cap-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
+                        "center", "bottom", -1.0, 5.0, null));
     }
 
     @Test @DisplayName("Watermark opacity must be 0..1")

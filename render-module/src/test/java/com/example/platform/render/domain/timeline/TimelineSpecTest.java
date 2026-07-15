@@ -133,17 +133,9 @@ class TimelineSpecTest {
 
     @Test
     void shouldRejectTextOverlayWithInvalidDuration() {
-        TimelineTextOverlay overlay = new TimelineTextOverlay(
-                "ov-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
-                "center", "bottom", 0.0, -1.0, null);
-        TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
-
-        TimelineSpec timeline = new TimelineSpec(
-                "tl-1", "Test", null, List.of(),
-                List.of(overlay), output, 0, java.util.Map.of());
-
-        TimelineValidationResult result = timeline.validate();
-        assertFalse(result.valid());
-        assertTrue(result.errors().stream().anyMatch(e -> e.contains("invalid duration")));
+        assertThrows(IllegalArgumentException.class, () ->
+                new TimelineTextOverlay(
+                        "ov-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
+                        "center", "bottom", 0.0, -1.0, null));
     }
 }

@@ -170,7 +170,7 @@ class CompileDomainBoundaryTest {
 
             assertEquals(1, plan.materializationSteps().size());
             assertEquals(1, plan.providerExecutionSteps().size());
-            assertEquals(0, plan.finalOutputSteps().size());
+            assertEquals(2, plan.finalOutputSteps().size()); // prepDoc and executeProvider both have FINAL_RENDER node type
             assertEquals(1, plan.finalizationSteps().size());
             assertEquals(5, plan.steps().size());
         }

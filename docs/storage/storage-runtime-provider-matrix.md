@@ -47,7 +47,7 @@
 
 | Capability | Local | R2 | S3-compatible | OpenDAL |
 |------------|-------|-----|---------------|---------|
-| Status | LOCAL_DEV_READY | PREVIEW_READY | DEFERRED | DEFERRED |
+| Status | LOCAL_DEV_READY | PREVIEW_READY | DEFERRED | EVALUATED_GO_WITH_LIMITS |
 | write | ✅ COMPLETE | ✅ COMPLETE | — | — |
 | read | ✅ COMPLETE | ✅ COMPLETE | — | — |
 | materialize | ✅ COMPLETE | ✅ COMPLETE | — | — |
@@ -110,15 +110,23 @@
 
 ---
 
-### OpenDAL Adapter (Future)
+### OpenDAL Adapter
 
-**Readiness:** DEFERRED
+**Readiness:** EVALUATED_GO_WITH_LIMITS (updated 2026-07-15)
 
-**Notes:**
-- Future StorageRuntime provider adapter only
-- Not domain model
-- Not current dependency
-- Not required for MVP/preview
+**Evaluation:** [storage-opendal-evaluation.md](storage-opendal-evaluation.md)
+
+**Facts:**
+- `opendal-java:0.46.4` declared in storage-module/build.gradle.kts
+- `StorageProviderType.OPENDAL` exists in delivery contract enum
+- `LAB_OPENDAL_FS_INTERNAL` delivery profile exists (EXPERIMENTAL, disabled)
+- Current `OpenDalMaterializer` is NIO shim — does NOT use OpenDAL API
+- Zero imports of `org.apache.opendal` in codebase
+- Docker image (glibc/Jammy) compatible with native library
+- Presigned URLs NOT supported by OpenDAL — hybrid approach needed
+
+**Allowed next:** Docker native validation + BlobStorage SPI implementation
+**Forbidden:** R2 replacement, presign via OpenDAL, production activation
 
 ---
 
@@ -152,7 +160,7 @@
 
 - STORAGE-RUNTIME-ORPHAN-CLEANUP.1_LATER
 - STORAGE-RUNTIME-S3-COMPATIBLE.1
-- STORAGE-OPENDAL-ADAPTER.0_LATER
+- STORAGE-OPENDAL-ADAPTER.0_LATER → EVALUATED (see storage-opendal-evaluation.md)
 
 ### Not Now
 
@@ -170,7 +178,7 @@
 |-----------|--------|
 | OpenCue NOT STARTED | ✅ |
 | Artifact DAG POSTPONED | ✅ |
-| OpenDAL DEFERRED | ✅ |
+| OpenDAL EVALUATED_GO_WITH_LIMITS | ✅ |
 | OpenAssetIO DEFERRED | ✅ |
 | Merge MERGE_EXPERIMENTAL | ✅ |
 | Branch/Patch/ANTLR/CRDT NOT INTRODUCED | ✅ |

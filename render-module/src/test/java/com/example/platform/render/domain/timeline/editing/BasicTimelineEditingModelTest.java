@@ -237,14 +237,9 @@ class BasicTimelineEditingModelTest {
 
     @Test @DisplayName("Invalid caption time range rejected")
     void invalidCaptionTimeRangeRejected() {
-        TimelineTextOverlay c = new TimelineTextOverlay("cap-1", "Hello",
-                "DejaVu Sans", 24, "#FFFFFF", "center", "bottom", -1, 0, null);
-        TimelineSpec tl = new TimelineSpec("t1", "Test", null,
-                List.of(TimelineTrack.of("tr1", "V1", TimelineTrack.TrackType.VIDEO)),
-                List.of(c), TimelineOutputSpec.mp4_1080p30(), 0, Map.of());
-        List<TimelineValidationIssue> issues = BasicTimelineValidator.validate(tl);
-        assertTrue(issues.stream().anyMatch(i ->
-                i.code() == TimelineValidationIssueCode.INVALID_CAPTION_TIME_RANGE));
+        assertThrows(IllegalArgumentException.class, () ->
+                new TimelineTextOverlay("cap-1", "Hello",
+                        "DejaVu Sans", 24, "#FFFFFF", "center", "bottom", -1, 0, null));
     }
 
     @Test @DisplayName("Invalid output profile rejected")

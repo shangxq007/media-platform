@@ -16,7 +16,7 @@ class StorageDeliveryProfileTest {
 
     @Test
     void test8CanonicalProfileIds() {
-        assertEquals(8, StorageDeliveryProfileId.class.getDeclaredFields().length - 1); // minus 'value' pattern field
+        assertEquals(9, StorageDeliveryProfileId.class.getDeclaredFields().length - 1); // minus 'value' pattern field
     }
 
     @Test

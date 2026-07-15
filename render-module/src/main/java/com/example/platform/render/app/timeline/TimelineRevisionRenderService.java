@@ -180,26 +180,10 @@ public class TimelineRevisionRenderService {
             materializedInput = materialization.materializedPath();
             mediaResolutionMode = "PRODUCT_BACKED";
         } else {
-            log.info("Product resolution failed, falling back to URI-based media: {}", resolverResult.failureReason());
-            String mediaUri = spec.tracks().stream()
-                    .filter(t -> t.clips() != null)
-                    .flatMap(t -> t.clips().stream())
-                    .filter(c -> c.assetRef() != null && c.assetRef().storageUri() != null && !c.assetRef().storageUri().isBlank())
-                    .map(c -> c.assetRef().storageUri())
-                    .findFirst()
-                    .orElse(null);
-            if (mediaUri == null || mediaUri.isBlank()) {
-                throw new IllegalStateException(
-                        "No renderable media source found for assets: " + mappingResult.sourceAssetIds());
-            }
-            String localPath = mediaUri.startsWith("localFsStorageProvider://")
-                    ? storageRoot.resolve(mediaUri.substring("localFsStorageProvider://".length())).toAbsolutePath().toString()
-                    : mediaUri.startsWith("/") ? mediaUri : null;
-            if (localPath == null || !java.nio.file.Files.exists(Path.of(localPath))) {
-                throw new IllegalStateException("Cannot resolve media URI: " + mediaUri);
-            }
-            materializedInput = Path.of(localPath);
-            mediaResolutionMode = "URI_BACKED_PREVIEW";
+            log.warn("Input product resolution failed, failing closed: {}", resolverResult.failureReason());
+            throw new IllegalStateException(
+                    "Input product resolution failed for assets: " + mappingResult.sourceAssetIds()
+                    + ": " + resolverResult.failureReason());
         }
         log.info("Media resolution: mode={} assetIds={}", mediaResolutionMode, mappingResult.sourceAssetIds());
 

@@ -263,7 +263,7 @@ public class RenderJobExecutionService {
 
         // Same-transaction submit: transition QUEUED → SELECTING_PROVIDER directly
         if ("QUEUED".equals(status)) {
-            renderJobRepository.updateStatus(jobId, RenderJobStatus.SELECTING_PROVIDER.name());
+            updateStatus(jobId, projectId, RenderJobStatus.QUEUED, RenderJobStatus.SELECTING_PROVIDER, null);
             status = RenderJobStatus.SELECTING_PROVIDER.name();
         } else if (!"SELECTING_PROVIDER".equals(status) && !"EXECUTING".equals(status)) {
             throw new IllegalStateException("Render job " + jobId + " is in state " + status + ", cannot start");

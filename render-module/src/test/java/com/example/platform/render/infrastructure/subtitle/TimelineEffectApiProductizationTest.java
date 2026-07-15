@@ -177,16 +177,10 @@ class TimelineEffectApiProductizationTest {
 
     @Test
     void textOverlayWithNegativeDurationRejected() {
-        TimelineTextOverlay overlay = new TimelineTextOverlay(
-                "ov-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
-                "center", "bottom", 0.0, -1.0, null);
-        TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
-
-        TimelineSpec timeline = new TimelineSpec(
-                "tl-1", "Bad Duration", null, List.of(),
-                List.of(overlay), output, 0, Map.of());
-
-        assertFalse(timeline.validate().valid());
+        assertThrows(IllegalArgumentException.class, () ->
+                new TimelineTextOverlay(
+                        "ov-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
+                        "center", "bottom", 0.0, -1.0, null));
     }
 
     // --- Scenario E: Effect parameter validation ---
