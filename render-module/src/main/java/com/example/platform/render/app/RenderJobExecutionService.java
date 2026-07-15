@@ -164,7 +164,6 @@ public class RenderJobExecutionService {
      * @throws IllegalArgumentException if job not found or tenant mismatch
      * @throws IllegalStateException if render fails
      */
-    @Transactional
     public String execute(String tenantId, String jobId) {
         assertTenantAccess(tenantId);
         Record job = renderJobRepository.requireJobRecord(jobId);
@@ -233,6 +232,76 @@ public class RenderJobExecutionService {
 
         if (shouldDeferNatronRender(profile)) {
             log.info("Deferred Natron render job {} to worker queue", jobId);
+            return jobId;
+        }
+
+        return finishRenderPhaseInternal(tenantId, jobId);
+    }
+
+    /**
+     * Execute a just-submitted render job in the same transaction that created it.
+     * Skips the REQUIRES_NEW claim because the row hasn't been committed yet.
+     *
+     * <p>Called only from {@link RenderOrchestratorService#submitRenderJob}.
+     */
+    @Transactional
+    String executeAfterSubmit(String tenantId, String jobId) {
+        assertTenantAccess(tenantId);
+        Record job = renderJobRepository.requireJobRecord(jobId);
+        String projectId = job.get("project_id", String.class);
+        String jobTenantId = job.get("tenant_id", String.class);
+        if (!tenantId.equals(jobTenantId)) {
+            throw new IllegalArgumentException("Render job not found for tenant");
+        }
+        String profile = job.get("profile", String.class);
+        String snapshotId = job.get("timeline_snapshot_id", String.class);
+        String status = job.get("status", String.class);
+
+        if (RenderJobStatus.COMPLETED.name().equals(status)) {
+            return jobId;
+        }
+
+        // Same-transaction submit: transition QUEUED → SELECTING_PROVIDER directly
+        if ("QUEUED".equals(status)) {
+            renderJobRepository.updateStatus(jobId, RenderJobStatus.SELECTING_PROVIDER.name());
+            status = RenderJobStatus.SELECTING_PROVIDER.name();
+        } else if (!"SELECTING_PROVIDER".equals(status) && !"EXECUTING".equals(status)) {
+            throw new IllegalStateException("Render job " + jobId + " is in state " + status + ", cannot start");
+        }
+
+        String aiScript;
+        try {
+            aiScript = resolveRenderScript(jobId, snapshotId, null, projectId);
+        } catch (Exception e) {
+            failureService.recordDurableFailure(jobId, "Script resolution failed: " + e.getMessage());
+            throw e;
+        }
+
+        EffectTimelineInspector.EffectUsage usage = effectTimelineInspector.extractFromScript(aiScript);
+        String resolvedProfile = renderProfileResolver.resolve(profile, usage.effectKeys(), aiScript);
+        if (!resolvedProfile.equals(profile)) {
+            profile = resolvedProfile;
+            renderJobRepository.updateProfile(jobId, profile);
+        }
+        if (effectEntitlementPort != null) {
+            effectEntitlementPort.validateEffectAccess(tenantId, null, usage.effectKeys(), usage.packIds());
+        }
+
+        renderJobRepository.updateAiScript(jobId, aiScript);
+
+        stateMachine.transition(jobId, RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.PROVIDER_SELECTED,
+                "Script resolved, ready for provider selection", "RenderJobExecutionService");
+        updateStatus(jobId, projectId, RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.PROVIDER_SELECTED, null);
+
+        stateMachine.transition(jobId, RenderJobStatus.PROVIDER_SELECTED, RenderJobStatus.EXECUTING,
+                "Starting render execution", "RenderJobExecutionService");
+        updateStatus(jobId, projectId, RenderJobStatus.PROVIDER_SELECTED, RenderJobStatus.EXECUTING, null);
+
+        if (renderWorkerQueueService != null && profile.startsWith("natron_")) {
+            renderWorkerQueueService.enqueueNatron(jobId, tenantId, profile);
+        }
+
+        if (shouldDeferNatronRender(profile)) {
             return jobId;
         }
 
