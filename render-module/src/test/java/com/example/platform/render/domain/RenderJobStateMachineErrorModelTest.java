@@ -73,21 +73,21 @@ class RenderJobStateMachineErrorModelTest {
         }
 
         @Test
-        @DisplayName("EXECUTING → FALLBACKING is valid")
+        @DisplayName("EXECUTING → FALLBACKING is NOT valid (stale baggage)")
         void executingToFallbacking() {
-            assertTrue(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.FALLBACKING));
+            assertFalse(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.FALLBACKING));
         }
 
         @Test
-        @DisplayName("EXECUTING → RETRYING is valid")
+        @DisplayName("EXECUTING → RETRYING is NOT valid (stale baggage)")
         void executingToRetrying() {
-            assertTrue(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.RETRYING));
+            assertFalse(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.RETRYING));
         }
 
         @Test
-        @DisplayName("FALLBACKING → EXECUTING is valid (re-enter execution)")
+        @DisplayName("FALLBACKING → EXECUTING is NOT valid (stale baggage)")
         void fallbackingToExecuting() {
-            assertTrue(stateMachine.canTransition(RenderJobStatus.FALLBACKING, RenderJobStatus.EXECUTING));
+            assertFalse(stateMachine.canTransition(RenderJobStatus.FALLBACKING, RenderJobStatus.EXECUTING));
         }
 
         @Test
