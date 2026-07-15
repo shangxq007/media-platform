@@ -20,7 +20,7 @@ class StorageDeliveryProfileDiagnosticsServiceTest {
         assertFalse(response.artifactAccessUsesRegistry());
         assertFalse(response.providerSelectionUsesRegistry());
         assertFalse(response.remoteCallsPerformed());
-        assertEquals(9, response.profileCount());
+        assertEquals(8, response.profileCount());
         assertEquals(StorageDeliveryProfileId.PREVIEW_R2_SIGNED_URL, response.defaultProfileId());
     }
 
