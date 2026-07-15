@@ -34,6 +34,13 @@ public class RenderProviderRegistry {
         return List.copyOf(providers.values());
     }
 
+    /**
+     * Get all providers with their canonical registry keys.
+     */
+    public Map<String, RenderProvider> getProviderMap() {
+        return Map.copyOf(providers);
+    }
+
     public Optional<RenderProviderCapability> getCapability(String key) {
         return Optional.ofNullable(capabilities.get(key));
     }

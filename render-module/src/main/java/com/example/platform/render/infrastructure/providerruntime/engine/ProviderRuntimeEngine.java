@@ -10,6 +10,7 @@ import com.example.platform.render.infrastructure.providerruntime.health.Provide
 import com.example.platform.render.infrastructure.providerruntime.health.ProviderHealthStatus;
 import com.example.platform.render.infrastructure.providerruntime.trace.ProviderDecisionTraceNode;
 import com.example.platform.render.infrastructure.providerruntime.trace.ProviderTraceEmitter;
+import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -34,18 +35,13 @@ public class ProviderRuntimeEngine {
     private final ProviderTraceEmitter traceEmitter;
 
     public ProviderRuntimeEngine(
-            List<RenderProvider> providerList,
+            RenderProviderRegistry registry,
             CapabilityNegotiationService capabilityService,
             ProviderHealthMonitor healthMonitor,
             ProviderFallbackExecutor fallbackExecutor,
             ProviderTraceEmitter traceEmitter
     ) {
-        this.providers = providerList.stream()
-                .collect(Collectors.toMap(
-                        p -> p.getClass().getSimpleName(),
-                        p -> p,
-                        (a, b) -> a
-                ));
+        this.providers = registry.getProviderMap();
         this.capabilityService = capabilityService;
         this.healthMonitor = healthMonitor;
         this.fallbackExecutor = fallbackExecutor;
