@@ -1,0 +1,37 @@
+{
+  "packet_name": "HERMES-SKILL-BASELINE-CANDIDATE-APPROVAL-PACKET",
+  "version": "2C-E",
+  "created": "2026-07-16T15:17:00+08:00",
+  "status": "PROPOSED_NEW_BASELINE / AWAITING_USER_APPROVAL",
+  "technical_baseline": "fba3c66980345392b8d486b7f343f4e9e38d4d92",
+  "evidence_commit": "962d799e508eb78fb0fd1918097c7d4e7f37404c",
+  "candidates": {
+    "kanban-multi-agent-orchestration": {
+      "file": "kanban-SKILL.md",
+      "sha256": "487977d54c112791ea9f856617d3f34af8aebeda3aa947cda622ba8b6722f03d",
+      "size_bytes": 14264,
+      "lines": 294,
+      "semantic_result": "PASS",
+      "security_result": "SAFE (11 PASS, 2 LOW, 1 MEDIUM)",
+      "agent_g_recommendation": "PENDING",
+      "agent_h_recommendation": "PENDING"
+    },
+    "java-test-repair": {
+      "file": "java-test-repair-SKILL.md",
+      "sha256": "d6c60111883591d441fce00e20a5963268faba8fff041f4eefad9478ffa6caba",
+      "size_bytes": 25210,
+      "lines": 432,
+      "semantic_result": "PASS",
+      "security_result": "SAFE (14/14 PASS)",
+      "agent_g_recommendation": "PENDING",
+      "agent_h_recommendation": "PENDING"
+    }
+  },
+  "reviews": {
+    "agent_g_semantic": {"status": "COMPLETE", "file": "AGENT_G_INDEPENDENT_REVIEW.md"},
+    "agent_h_security": {"status": "COMPLETE", "file": "AGENT_H_INDEPENDENT_REVIEW.md"}
+  },
+  "stability": {"duration_seconds": 967, "result": "PASS"},
+  "curator": "PAUSED",
+  "files": ["kanban-SKILL.md","java-test-repair-SKILL.md","CANDIDATE_APPROVAL_PACKET.md","SKILL_SEMANTIC_AUDIT.md","SKILL_SECURITY_AUDIT.md","AGENT_G_INDEPENDENT_REVIEW.md","AGENT_H_INDEPENDENT_REVIEW.md","DIFF_LIVE_TO_CANDIDATE.md","KNOWN_HISTORICAL_HASHES.md","SHA256SUMS.candidate","SHA256SUMS","MANIFEST.json"]
+}
