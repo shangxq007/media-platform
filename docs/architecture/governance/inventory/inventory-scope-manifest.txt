@@ -1,0 +1,29 @@
+# Inventory Scope Manifest
+
+## Repository Paths Scanned
+
+- ./*.md (root markdown files)
+- docs/architecture/**
+- docs/**/*.md
+- .agent-tasks/**
+- render-module/src/main/java/**
+- render-module/src/test/java/**
+- platform-app/src/main/java/**
+- platform-app/src/test/java/**
+- platform-app/src/main/resources/db/migration/**
+- scripts/**
+- build.gradle, build.gradle.kts, settings.gradle.kts, gradle.properties
+- Dockerfile, docker-compose.yml, .github/**
+
+## External Control-Plane Objects Scanned
+
+- ~/.hermes/skills/software-development/kanban-multi-agent-orchestration/
+- ~/.hermes/skills/software-development/java-test-repair/
+- /var/lib/hermes/approved-skills/
+- /var/lib/hermes/receipts/
+- /etc/systemd/system/hermes-approved-skills.service
+- /etc/systemd/system/hermes-gateway.service
+- /usr/local/libexec/hermes/*.sh
+- ~/.hermes/forensics/
+- ~/.hermes/config.yaml
+- Kanban tasks: t_82581ccd, t_5befaae7, t_e0605003
