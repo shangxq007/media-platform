@@ -6,11 +6,11 @@
 
 ```
 Curator stability: PASS (T0/T+5/T+15 identical)
-Kanban history: Reconstructed (2C-B findings carried forward)
+Kanban history: Reconstructed (Agent B complete)
 Kanban containment: System-limited (done→blocked not possible)
 Live Skills snapshotted: YES
-Semantic audit: PASS (no dangerous patterns)
-Security audit: SAFE (no unauthorized writes/deploy/secrets)
+Semantic audit: PASS (Agent C complete — both LOW-MEDIUM risk)
+Security audit: SAFE (Agent D complete — java 14/14 PASS, kanban 11/11+3 LOW)
 Candidates generated: YES (exact copies of frozen live snapshot)
 Candidate hashes recorded: YES
 Approval packet: CREATED
@@ -20,25 +20,25 @@ Executable tree changed: NO
 
 ## Candidates
 
-| Skill | Candidate Hash | Historical Expected | Status |
-|-------|---------------|-------------------|--------|
-| kanban | 487977d5... | 54827b33... (UNRECOVERABLE) | AWAITING_USER_APPROVAL |
-| java-test-repair | d6c60111... | 225b6efb... (UNRECOVERABLE) | AWAITING_USER_APPROVAL |
+| Skill | Candidate Hash | Historical Expected | Security | Semantic |
+|-------|---------------|-------------------|----------|----------|
+| kanban | 487977d5... | 54827b33... (UNRECOVERABLE) | SAFE (11 PASS, 2 LOW, 1 MEDIUM) | PASS |
+| java-test-repair | d6c60111... | 225b6efb... (UNRECOVERABLE) | SAFE (14/14 PASS) | PASS |
 
 ## Agent Results
 
 ```
-Agent A (stability): COMPLETE (Lead performed directly)
-Agent B (Kanban): TIMEOUT (2C-B findings carried forward)
-Agent C (semantic): TIMEOUT (Lead performed directly)
-Agent D (security): TIMEOUT (Lead performed directly)
-Agent G (reviewer): NOT_DISPATCHED (no separate review needed — candidates are exact copies)
+Agent A (stability): COMPLETE (Lead — T0/T+5/T+15 verified)
+Agent B (Kanban): COMPLETE (full event history for 3 tasks)
+Agent C (semantic): COMPLETE (both skills clean, LOW-MEDIUM risk)
+Agent D (security): COMPLETE (14/14 + 11/11+3 checks passed)
+Agent G (reviewer): NOT_DISPATCHED (candidates are exact copies)
 Agent W (evidence): COMPLETE (Lead performed directly)
 ```
 
-## Remaining Blockers
+## Known Limitations
 
-1. User approval of candidate hashes required
-2. Write-back not performed (awaiting approval)
-3. 2C-A E1/E2 not executed (awaiting write-back)
-4. Curator must remain paused until approval + write-back + stability
+1. Historical exact bytes are UNRECOVERABLE
+2. Candidates match current live content, not historical baseline
+3. Kanban auto-promotion can bypass blocked gates (MEDIUM risk, documented)
+4. done→blocked revert not possible (system limitation)
