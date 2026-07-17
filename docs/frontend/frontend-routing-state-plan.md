@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Status:** Design/contract candidate.
+> Frontend implementation is paused until backend contracts stabilize.
+> This document describes design intent, not implemented capability.
+
 # Frontend Routing & State Plan — media-platform
 
 **Date:** 2026-07-01

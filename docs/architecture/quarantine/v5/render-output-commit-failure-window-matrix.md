@@ -1,3 +1,10 @@
+> [!CAUTION]
+> **Status:** Quarantined and not accepted.
+> This material MUST NOT be used as implementation authority.
+> V5 remains blocked until document governance .1-.7 closes.
+> Current canonical semantics are defined by the render-output contract candidate.
+> See: [Canonical Contracts](../../governance/canonical-contracts/)
+
 # Render Output Commit — Failure Window Matrix
 
 | # | Failure Point | External State | DB State | User-Visible | Replay Behavior | Final Expected State |

@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Status:** Deferred extension design.
+> Artifact DAG is postponed indefinitely and is not a current implementation requirement.
+> This capability is extension-layer design only.
+
 ---
 status: superseded
 superseded_by: ADR-010

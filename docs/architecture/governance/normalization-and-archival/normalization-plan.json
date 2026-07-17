@@ -1,0 +1,13 @@
+{
+  "task": "ARCH-DOC-GOV-NORMALIZATION-AND-ARCHIVAL.4",
+  "base_commit": "d1f85392771272543322738660ae27764c9b051c",
+  "principles": ["Canonical contracts highest authority", "Supporting docs link to contracts", "No semantics changed", "Git history preserved"],
+  "actions": [
+    {"action": "MOVE_TO_QUARANTINE", "count": 8, "target": "docs/architecture/quarantine/v5/"},
+    {"action": "ADD_AUTHORITY_NOTICE", "count": 9, "description": "Architecture supporting docs"},
+    {"action": "ADD_AUTHORITY_NOTICE", "count": 67, "description": "Frontend pause notices"},
+    {"action": "ADD_AUTHORITY_NOTICE", "count": 3, "description": "Artifact DAG deferred notices"},
+    {"action": "ADD_AUTHORITY_NOTICE", "count": 8, "description": "V5 quarantine notices"},
+    {"action": "UPDATE_NAVIGATION", "count": 1, "description": "Architecture README"}
+  ]
+}

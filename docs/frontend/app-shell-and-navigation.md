@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Status:** Design/contract candidate.
+> Frontend implementation is paused until backend contracts stabilize.
+> This document describes design intent, not implemented capability.
+
 # App Shell and Navigation
 
 > **Module:** `frontend/src/components/ui/`, `frontend/src/router/`, `frontend/src/navigation/`

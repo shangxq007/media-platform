@@ -1,3 +1,8 @@
+> [!NOTE]
+> **Status:** Design/contract candidate.
+> Frontend implementation is paused until backend contracts stabilize.
+> This document describes design intent, not implemented capability.
+
 # 协作功能前端组件文档
 
 **最后更新:** 2026-05-19T22:30:00+08:00

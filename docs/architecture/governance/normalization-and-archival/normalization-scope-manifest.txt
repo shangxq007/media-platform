@@ -1,0 +1,54 @@
+# Normalization Scope Manifest
+
+## Governance Inputs Read
+
+- docs/architecture/governance/inventory/repository-artifact-inventory.json
+- docs/architecture/governance/inventory/control-plane-inventory.json
+- docs/architecture/governance/inventory/conflict-register.json
+- docs/architecture/governance/inventory/governance-debt-register.md
+- docs/architecture/governance/source-of-truth/source-of-truth-matrix.json
+- docs/architecture/governance/source-of-truth/authority-precedence.md
+- docs/architecture/governance/source-of-truth/non-authoritative-sources.md
+- docs/architecture/governance/canonical-contracts/canonical-contract-registry.json
+- docs/architecture/governance/canonical-contracts/canonical-to-executable-crosswalk.json
+- docs/architecture/governance/canonical-contracts/normative-rule-registry.json
+- docs/architecture/governance/canonical-contracts/canonical-contract-gap-register.json
+
+## Files Moved
+
+- docs/architecture/target/render-output-commit-*.md → docs/architecture/quarantine/v5/
+- docs/architecture/current/render-output-commit-current-state.md → docs/architecture/quarantine/v5/
+
+## Files Modified In Place
+
+- docs/architecture/README.md (navigation update)
+- docs/architecture/01-system-architecture.md (authority notice)
+- docs/architecture/02-backend-architecture.md (authority notice)
+- docs/architecture/03-module-architecture.md (authority notice)
+- docs/architecture/06-data-architecture.md (authority notice)
+- docs/architecture/execution-job-model.md (authority notice)
+- docs/architecture/execution-lifecycle.md (authority notice)
+- docs/architecture/product-runtime.md (authority notice)
+- docs/architecture/storage-runtime.md (authority notice)
+- docs/architecture/platform-kernel.md (authority notice)
+- docs/architecture/adr/ADR-025-*.md (deferred notice)
+- docs/architecture/adr/ADR-009-*.md (deferred notice)
+- docs/architecture/artifact-runtime.md (deferred notice)
+- docs/frontend/*.md (67 files, pause notice)
+
+## Files Created
+
+- docs/architecture/governance/normalization-and-archival/ARCH-DOC-GOV-NORMALIZATION-AND-ARCHIVAL.4.md
+- docs/architecture/governance/normalization-and-archival/normalization-scope-manifest.txt
+
+## Explicitly Excluded
+
+- Production code
+- Test code
+- Build files
+- Migration files
+- Canonical contracts
+- Source of Truth files
+- Inventory files
+- .agent-tasks/
+- Skill/Memory/Kanban/systemd

@@ -1,3 +1,9 @@
+> [!NOTE]
+> **Authority:** Supporting documentation.
+> Canonical semantics are defined by the contracts in
+> [canonical-contracts/](governance/canonical-contracts/).
+> If this document conflicts with those contracts, the canonical contracts win.
+
 # System Architecture Overview
 
 > **Module:** All

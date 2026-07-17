@@ -1,0 +1,14 @@
+{
+  "moves": [
+    {"original": "docs/architecture/target/render-output-commit-current-state.md", "final": "docs/architecture/quarantine/v5/render-output-commit-current-state.md"},
+    {"original": "docs/architecture/target/render-output-commit-failure-window-matrix.md", "final": "docs/architecture/quarantine/v5/render-output-commit-failure-window-matrix.md"},
+    {"original": "docs/architecture/target/render-output-commit-implementation-roadmap.md", "final": "docs/architecture/quarantine/v5/render-output-commit-implementation-roadmap.md"},
+    {"original": "docs/architecture/target/render-output-commit-protocol-closeout.md", "final": "docs/architecture/quarantine/v5/render-output-commit-protocol-closeout.md"},
+    {"original": "docs/architecture/target/render-output-commit-protocol-errata.md", "final": "docs/architecture/quarantine/v5/render-output-commit-protocol-errata.md"},
+    {"original": "docs/architecture/target/render-output-commit-schema-proposal.md", "final": "docs/architecture/quarantine/v5/render-output-commit-schema-proposal.md"},
+    {"original": "docs/architecture/target/render-output-commit-target-state.md", "final": "docs/architecture/quarantine/v5/render-output-commit-target-state.md"},
+    {"original": "docs/architecture/target/render-output-commit-verification-contract.md", "final": "docs/architecture/quarantine/v5/render-output-commit-verification-contract.md"}
+  ],
+  "total_moved": 8,
+  "total_archived": 0
+}
