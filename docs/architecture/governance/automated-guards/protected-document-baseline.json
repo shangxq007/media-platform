@@ -1,0 +1,168 @@
+{
+  "protected_documents": [
+    {
+      "document_id": "architecture-adr-adr-018-platform-governance",
+      "path": "docs/architecture/adr/ADR-018-platform-governance.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "97d989bcd284e31082438d7bcae15f854bf17c30c02507bb499f450e8cf9994d",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-arch-doc-gov-canonical-contracts.3",
+      "path": "docs/architecture/governance/canonical-contracts/ARCH-DOC-GOV-CANONICAL-CONTRACTS.3.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "d24b89d1315aca0774fc4f97b85433a7e8d46f7c1ad18a58004617f559c58bca",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-api-contract",
+      "path": "docs/architecture/governance/canonical-contracts/api-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "f66f1019d59255741cf20b6b08b9a200bf429d5906b1a4e18433a78bd4ed8728",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-canonical-contract-phase-crosswalk",
+      "path": "docs/architecture/governance/canonical-contracts/canonical-contract-phase-crosswalk.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "b5335d378d428a54a810f9d3e3114999375e1d85e2047fdfe83f236d72455673",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-control-plane-governance-contract",
+      "path": "docs/architecture/governance/canonical-contracts/control-plane-governance-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "094c1c96dc5432e60f915830df8ef46821dd80316cec25505d5d288c48157e37",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-execution-contract",
+      "path": "docs/architecture/governance/canonical-contracts/execution-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "413f7824bc255d2dd9f125dee94626952a2ba03227e24ac636d37be0fa713bfe",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-platform-kernel-contract",
+      "path": "docs/architecture/governance/canonical-contracts/platform-kernel-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "22e3fa82b27d16a841f44b82392e431b0fd6c1d3eacd05f05dc2f372520f9af7",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-product-contract",
+      "path": "docs/architecture/governance/canonical-contracts/product-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "bc953d10a7cfe8678f913c619743ddd32f4169374d2d2099ac404ae3b4a84ba2",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-provider-contract",
+      "path": "docs/architecture/governance/canonical-contracts/provider-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "c23dd62a0be088b205d0a893686fe3edc4bdfae20f61ee7acfb6fe9d171362f7",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-render-job-contract",
+      "path": "docs/architecture/governance/canonical-contracts/render-job-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "3bd0fcb7789111f6b813c26cf539c06caae49f4b8ac595fdee3c7eedd1a5ed58",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-render-output-contract",
+      "path": "docs/architecture/governance/canonical-contracts/render-output-contract.md",
+      "authority_class": "CANONICAL_CANDIDATE",
+      "lifecycle_state": "CANDIDATE",
+      "acceptance_state": "NOT_ACCEPTED",
+      "semantic_body_sha256": "1ae42505d8edde49c8627b0e3062def68b9d3e2e88492c1c8f7cfa1d5a89f2bf",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-schema-intent-contract",
+      "path": "docs/architecture/governance/canonical-contracts/schema-intent-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "278e4fec86d4b915b19c3ac95dfac61c12c02dac101ba54251c90e763eba5d5b",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-storage-contract",
+      "path": "docs/architecture/governance/canonical-contracts/storage-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "78bc517e9fbd619b863df1ee79f7d97b9c9a1f6cb95ad6d3f7874683ba3c4e73",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-canonical-contracts-timeline-contract",
+      "path": "docs/architecture/governance/canonical-contracts/timeline-contract.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "b90b3e2e6d3e8dc0b23dfa1b9e4c7f0964a4035082553817a84501b2c9b54513",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-inventory-arch-doc-gov-inventory-and-classification.1",
+      "path": "docs/architecture/governance/inventory/ARCH-DOC-GOV-INVENTORY-AND-CLASSIFICATION.1.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "98d7acc70b2bee314a7e2d94d038ac85c24d0ee5c04ae50dfa3f273b997ec0b1",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-source-of-truth-arch-doc-gov-source-of-truth-matrix.2",
+      "path": "docs/architecture/governance/source-of-truth/ARCH-DOC-GOV-SOURCE-OF-TRUTH-MATRIX.2.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "6f788274b5fe6fd57310ea106e4e4c3be1ec9b0a6ea8e8f21ae56d94f4f818cf",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-source-of-truth-authority-precedence",
+      "path": "docs/architecture/governance/source-of-truth/authority-precedence.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "9774f761fde80fca1ed9106334e20a6ed2380669b4a68387b3e20f17e096dafc",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    },
+    {
+      "document_id": "architecture-governance-source-of-truth-non-authoritative-sources",
+      "path": "docs/architecture/governance/source-of-truth/non-authoritative-sources.md",
+      "authority_class": "CANONICAL_ACCEPTED",
+      "lifecycle_state": "ACTIVE",
+      "acceptance_state": "NOT_APPLICABLE",
+      "semantic_body_sha256": "1af7df2d6be2e091edd45ef4beb0cef034433dc868105ac0a5e36c28bb1b6854",
+      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+    }
+  ],
+  "total": 18,
+  "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+}

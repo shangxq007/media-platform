@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Governance Receipt",
+  "type": "object",
+  "required": ["task", "receipt_type", "decision"],
+  "properties": {
+    "task": {"type": "string"},
+    "receipt_type": {"type": "string", "enum": ["review", "verification", "link_check", "guard_report", "control_plane"]},
+    "subject_type": {"type": "string"},
+    "subject_identifier": {"type": "string"},
+    "actor_role": {"type": "string"},
+    "run_id": {"type": "string", "minLength": 1},
+    "worktree": {"type": "string", "pattern": "^/"},
+    "started_at": {"type": "string"},
+    "completed_at": {"type": "string"},
+    "decision": {"type": "string", "enum": ["PASS", "FAIL"]},
+    "sha256": {"type": "string"},
+    "supersedes": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": "string"}
+  }
+}

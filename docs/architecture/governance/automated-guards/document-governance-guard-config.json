@@ -1,0 +1,18 @@
+{
+  "guard_config_version": 1,
+  "repo_root": ".",
+  "metadata_registry_path": "docs/architecture/governance/metadata-and-lifecycle/document-metadata-registry.json",
+  "disposition_register_path": "docs/architecture/governance/normalization-and-archival/document-disposition-register.json",
+  "protected_baseline_path": "docs/architecture/governance/automated-guards/protected-document-baseline.json",
+  "link_baseline_path": "docs/architecture/governance/automated-guards/broken-link-debt-baseline.json",
+  "guard_catalog_path": "docs/architecture/governance/automated-guards/document-governance-guard-catalog.json",
+  "archive_manifest_path": "docs/architecture/governance/normalization-and-archival/archive-manifest.json",
+  "architecture_guard_script": "scripts/check-architecture-drift.sh",
+  "expected_metadata_entries": 1117,
+  "expected_tier_1": 62,
+  "expected_tier_2": 1055,
+  "expected_v5_files": 8,
+  "expected_guard_count": 16,
+  "baseline_broken_links": 128,
+  "allowed_broken_link_change": "decrease_only"
+}

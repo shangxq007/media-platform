@@ -1,0 +1,1395 @@
+{
+  "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9",
+  "broken_occurrence_count": 128,
+  "unique_broken_identity_count": 126,
+  "entries": [
+    {
+      "identity_key": "a9b0cbefaecc7f2b",
+      "source_path": "docs/export-validation.md",
+      "raw_target": "../frontend/src/clientExport/clientExportCapabilities.ts",
+      "normalized_target": "../frontend/src/clientExport/clientExportCapabilities.ts",
+      "resolved_target": "frontend/src/clientExport/clientExportCapabilities.ts",
+      "reason": "missing",
+      "occurrences": [
+        "docs/export-validation.md"
+      ]
+    },
+    {
+      "identity_key": "e2844d1a71f05690",
+      "source_path": "docs/module-boundaries.md",
+      "raw_target": ".roo/rules/10-coding-standards.md",
+      "normalized_target": ".roo/rules/10-coding-standards.md",
+      "resolved_target": "docs/.roo/rules/10-coding-standards.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/module-boundaries.md"
+      ]
+    },
+    {
+      "identity_key": "1ebc670f2d44aeeb",
+      "source_path": "docs/modulith-debt-register.md",
+      "raw_target": "../../platform-app/src/test/java/com/example/platform/ModularityTest.java",
+      "normalized_target": "../../platform-app/src/test/java/com/example/platform/ModularityTest.java",
+      "resolved_target": "../platform-app/src/test/java/com/example/platform/ModularityTest.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/modulith-debt-register.md"
+      ]
+    },
+    {
+      "identity_key": "91b8e0f8e4d9e28f",
+      "source_path": "docs/modulith-debt-register.md",
+      "raw_target": "../review/issue-003b-modularity-test-reenable.md",
+      "normalized_target": "../review/issue-003b-modularity-test-reenable.md",
+      "resolved_target": "review/issue-003b-modularity-test-reenable.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/modulith-debt-register.md"
+      ]
+    },
+    {
+      "identity_key": "01cf6ef4f2b672d1",
+      "source_path": "docs/runbook-five-capabilities.md",
+      "raw_target": "../observability-module/src/main/java/com/example/platform/observability/app/TraceCorrelationFilter.java",
+      "normalized_target": "../observability-module/src/main/java/com/example/platform/observability/app/TraceCorrelationFilter.java",
+      "resolved_target": "observability-module/src/main/java/com/example/platform/observability/app/TraceCorrelationFilter.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/runbook-five-capabilities.md"
+      ]
+    },
+    {
+      "identity_key": "a5c79f4bdb541af7",
+      "source_path": "docs/runbook-local-dev.md",
+      "raw_target": "../review/storage-runtime-foundation.md#storagereference-locator-semantics",
+      "normalized_target": "../review/storage-runtime-foundation.md",
+      "resolved_target": "review/storage-runtime-foundation.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/runbook-local-dev.md"
+      ]
+    },
+    {
+      "identity_key": "76215deef7f248e3",
+      "source_path": "docs/architecture/component-descriptor.md",
+      "raw_target": "capability-catalog.md",
+      "normalized_target": "capability-catalog.md",
+      "resolved_target": "docs/architecture/capability-catalog.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/component-descriptor.md"
+      ]
+    },
+    {
+      "identity_key": "377d52a7d6f17ae7",
+      "source_path": "docs/architecture/p4-import-export-architecture.md",
+      "raw_target": "../engineering/ci-test-strategy.md",
+      "normalized_target": "../engineering/ci-test-strategy.md",
+      "resolved_target": "docs/engineering/ci-test-strategy.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/p4-import-export-architecture.md"
+      ]
+    },
+    {
+      "identity_key": "d5c1bff35571aeb7",
+      "source_path": "docs/architecture/runtime-governance.md",
+      "raw_target": "provider-extension-runtime.md",
+      "normalized_target": "provider-extension-runtime.md",
+      "resolved_target": "docs/architecture/provider-extension-runtime.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/runtime-governance.md"
+      ]
+    },
+    {
+      "identity_key": "ab5290822afac41a",
+      "source_path": "docs/architecture/runtime-governance.md",
+      "raw_target": "provider-governance.md",
+      "normalized_target": "provider-governance.md",
+      "resolved_target": "docs/architecture/provider-governance.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/runtime-governance.md"
+      ]
+    },
+    {
+      "identity_key": "c3c7358d0076905d",
+      "source_path": "docs/architecture/runtime-governance.md",
+      "raw_target": "execution-backend-abstraction.md",
+      "normalized_target": "execution-backend-abstraction.md",
+      "resolved_target": "docs/architecture/execution-backend-abstraction.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/runtime-governance.md"
+      ]
+    },
+    {
+      "identity_key": "a48a4a0b36a0e200",
+      "source_path": "docs/architecture/timeline-diff-design-boundaries.md",
+      "raw_target": "../adr/ADR-025-artifact-dag-indefinite-deferral.md",
+      "normalized_target": "../adr/ADR-025-artifact-dag-indefinite-deferral.md",
+      "resolved_target": "docs/adr/ADR-025-artifact-dag-indefinite-deferral.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/timeline-diff-design-boundaries.md"
+      ]
+    },
+    {
+      "identity_key": "8a7aebe209c5289a",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../render/spring-boot-classloader-deep-diagnostic.md",
+      "normalized_target": "../render/spring-boot-classloader-deep-diagnostic.md",
+      "resolved_target": "docs/architecture/render/spring-boot-classloader-deep-diagnostic.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "0e0d9e49d0b47074",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../render/timeline-render-mvp.md",
+      "normalized_target": "../render/timeline-render-mvp.md",
+      "resolved_target": "docs/architecture/render/timeline-render-mvp.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "220855d39bdf48d1",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../render/basic-effects-dsl.md",
+      "normalized_target": "../render/basic-effects-dsl.md",
+      "resolved_target": "docs/architecture/render/basic-effects-dsl.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "9c1ea0c6128d368b",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../render/ffmpeg-filtergraph-compiler.md",
+      "normalized_target": "../render/ffmpeg-filtergraph-compiler.md",
+      "resolved_target": "docs/architecture/render/ffmpeg-filtergraph-compiler.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "d356db4d85e0bc81",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../render/subtitle-dsl-ass.md",
+      "normalized_target": "../render/subtitle-dsl-ass.md",
+      "resolved_target": "docs/architecture/render/subtitle-dsl-ass.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "32b0b2d18e0947ea",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../render/text-overlay-security.md",
+      "normalized_target": "../render/text-overlay-security.md",
+      "resolved_target": "docs/architecture/render/text-overlay-security.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "21de55a40fb95884",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../render/ass-generator-mvp.md",
+      "normalized_target": "../render/ass-generator-mvp.md",
+      "resolved_target": "docs/architecture/render/ass-generator-mvp.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "db7ea2eb7b8ec614",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../render/subtitle-render-smoke.md",
+      "normalized_target": "../render/subtitle-render-smoke.md",
+      "resolved_target": "docs/architecture/render/subtitle-render-smoke.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "3d3684f703b381a7",
+      "source_path": "docs/architecture/current/current-system-state.md",
+      "raw_target": "../timeline/timeline-git-planning.md",
+      "normalized_target": "../timeline/timeline-git-planning.md",
+      "resolved_target": "docs/architecture/timeline/timeline-git-planning.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/architecture/current/current-system-state.md"
+      ]
+    },
+    {
+      "identity_key": "fef5ae01a50df832",
+      "source_path": "docs/archive/README.md",
+      "raw_target": "./ddl-postgresql.sql",
+      "normalized_target": "./ddl-postgresql.sql",
+      "resolved_target": "docs/archive/ddl-postgresql.sql",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/README.md"
+      ]
+    },
+    {
+      "identity_key": "8d80c5d6bfd95828",
+      "source_path": "docs/archive/asdf-vm.md",
+      "raw_target": "../build.gradle.kts",
+      "normalized_target": "../build.gradle.kts",
+      "resolved_target": "docs/build.gradle.kts",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/asdf-vm.md"
+      ]
+    },
+    {
+      "identity_key": "c5613258cfe56778",
+      "source_path": "docs/archive/docker-external-config.md",
+      "raw_target": "../platform-app/src/main/resources/application-prod.yml",
+      "normalized_target": "../platform-app/src/main/resources/application-prod.yml",
+      "resolved_target": "docs/platform-app/src/main/resources/application-prod.yml",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docker-external-config.md"
+      ]
+    },
+    {
+      "identity_key": "a2537ce435156c57",
+      "source_path": "docs/archive/docker-external-config.md",
+      "raw_target": "../docker-compose.yml",
+      "normalized_target": "../docker-compose.yml",
+      "resolved_target": "docs/docker-compose.yml",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docker-external-config.md"
+      ]
+    },
+    {
+      "identity_key": "d7578f37be0eb10f",
+      "source_path": "docs/archive/module-boundaries.md",
+      "raw_target": ".roo/rules/30-module-boundaries.md",
+      "normalized_target": ".roo/rules/30-module-boundaries.md",
+      "resolved_target": "docs/archive/.roo/rules/30-module-boundaries.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/module-boundaries.md"
+      ]
+    },
+    {
+      "identity_key": "1766063091b453b6",
+      "source_path": "docs/archive/module-boundaries.md",
+      "raw_target": ".roo/rules/10-coding-standards.md",
+      "normalized_target": ".roo/rules/10-coding-standards.md",
+      "resolved_target": "docs/archive/.roo/rules/10-coding-standards.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/module-boundaries.md"
+      ]
+    },
+    {
+      "identity_key": "271e4f300c0644ad",
+      "source_path": "docs/archive/nix.md",
+      "raw_target": "../build.gradle.kts",
+      "normalized_target": "../build.gradle.kts",
+      "resolved_target": "docs/build.gradle.kts",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/nix.md"
+      ]
+    },
+    {
+      "identity_key": "f1c6f5dd7be07008",
+      "source_path": "docs/archive/runbook-five-capabilities.md",
+      "raw_target": "../.github/workflows/ci.yml",
+      "normalized_target": "../.github/workflows/ci.yml",
+      "resolved_target": "docs/.github/workflows/ci.yml",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/runbook-five-capabilities.md",
+        "docs/archive/runbook-five-capabilities.md"
+      ]
+    },
+    {
+      "identity_key": "b316b27bc4c25558",
+      "source_path": "docs/archive/runbook-five-capabilities.md",
+      "raw_target": "../shared-kernel/src/main/java/com/example/platform/shared/logging/TraceKeys.java",
+      "normalized_target": "../shared-kernel/src/main/java/com/example/platform/shared/logging/TraceKeys.java",
+      "resolved_target": "docs/shared-kernel/src/main/java/com/example/platform/shared/logging/TraceKeys.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/runbook-five-capabilities.md"
+      ]
+    },
+    {
+      "identity_key": "bca0de1582ba831c",
+      "source_path": "docs/archive/runbook-five-capabilities.md",
+      "raw_target": "../outbox-event-module/src/main/java/com/example/platform/outbox/",
+      "normalized_target": "../outbox-event-module/src/main/java/com/example/platform/outbox/",
+      "resolved_target": "docs/outbox-event-module/src/main/java/com/example/platform/outbox",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/runbook-five-capabilities.md"
+      ]
+    },
+    {
+      "identity_key": "cb735ac834b92639",
+      "source_path": "docs/archive/runbook-five-capabilities.md",
+      "raw_target": "../observability-module/src/main/java/com/example/platform/observability/app/TraceCorrelationFilter.java",
+      "normalized_target": "../observability-module/src/main/java/com/example/platform/observability/app/TraceCorrelationFilter.java",
+      "resolved_target": "docs/observability-module/src/main/java/com/example/platform/observability/app/TraceCorrelationFilter.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/runbook-five-capabilities.md"
+      ]
+    },
+    {
+      "identity_key": "089efb01bbb02908",
+      "source_path": "docs/archive/runbook-five-capabilities.md",
+      "raw_target": "../audit-compliance-module/src/main/java/com/example/platform/audit/",
+      "normalized_target": "../audit-compliance-module/src/main/java/com/example/platform/audit/",
+      "resolved_target": "docs/audit-compliance-module/src/main/java/com/example/platform/audit",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/runbook-five-capabilities.md"
+      ]
+    },
+    {
+      "identity_key": "21b9203f1cd3d8df",
+      "source_path": "docs/archive/runbook-five-capabilities.md",
+      "raw_target": "../identity-access-module/src/main/java/com/example/platform/identity/app/ApiKeyAuthFilter.java",
+      "normalized_target": "../identity-access-module/src/main/java/com/example/platform/identity/app/ApiKeyAuthFilter.java",
+      "resolved_target": "docs/identity-access-module/src/main/java/com/example/platform/identity/app/ApiKeyAuthFilter.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/runbook-five-capabilities.md"
+      ]
+    },
+    {
+      "identity_key": "5c54eef5259a121c",
+      "source_path": "docs/archive/runbook-five-capabilities.md",
+      "raw_target": "../identity-access-module/src/main/java/com/example/platform/identity/app/IdentityProperties.java",
+      "normalized_target": "../identity-access-module/src/main/java/com/example/platform/identity/app/IdentityProperties.java",
+      "resolved_target": "docs/identity-access-module/src/main/java/com/example/platform/identity/app/IdentityProperties.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/runbook-five-capabilities.md"
+      ]
+    },
+    {
+      "identity_key": "9eb5f579661bca27",
+      "source_path": "docs/archive/sdkman.md",
+      "raw_target": "../build.gradle.kts",
+      "normalized_target": "../build.gradle.kts",
+      "resolved_target": "docs/build.gradle.kts",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/sdkman.md"
+      ]
+    },
+    {
+      "identity_key": "6a2f1366ceb10bba",
+      "source_path": "docs/archive/docs-cn/04-frontend/09-collaboration-features.md",
+      "raw_target": "docs/04-frontend/05-user-portal.md",
+      "normalized_target": "docs/04-frontend/05-user-portal.md",
+      "resolved_target": "docs/archive/docs-cn/04-frontend/docs/04-frontend/05-user-portal.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/04-frontend/09-collaboration-features.md"
+      ]
+    },
+    {
+      "identity_key": "dd929f7ada298f01",
+      "source_path": "docs/archive/docs-cn/04-frontend/09-collaboration-features.md",
+      "raw_target": "docs/04-frontend/06-admin-console.md",
+      "normalized_target": "docs/04-frontend/06-admin-console.md",
+      "resolved_target": "docs/archive/docs-cn/04-frontend/docs/04-frontend/06-admin-console.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/04-frontend/09-collaboration-features.md"
+      ]
+    },
+    {
+      "identity_key": "e1b889f23008359d",
+      "source_path": "docs/archive/docs-cn/04-frontend/09-collaboration-features.md",
+      "raw_target": "docs/06-api/01-api-strategy.md",
+      "normalized_target": "docs/06-api/01-api-strategy.md",
+      "resolved_target": "docs/archive/docs-cn/04-frontend/docs/06-api/01-api-strategy.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/04-frontend/09-collaboration-features.md"
+      ]
+    },
+    {
+      "identity_key": "024040fc27785493",
+      "source_path": "docs/archive/docs-cn/04-frontend/09-collaboration-features.md",
+      "raw_target": "docs/06-api/03-graphql.md",
+      "normalized_target": "docs/06-api/03-graphql.md",
+      "resolved_target": "docs/archive/docs-cn/04-frontend/docs/06-api/03-graphql.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/04-frontend/09-collaboration-features.md"
+      ]
+    },
+    {
+      "identity_key": "43995afb100af235",
+      "source_path": "docs/archive/docs-cn/05-access-entitlement-billing/11-multi-user-collaboration.md",
+      "raw_target": "docs/06-api/03-graphql.md",
+      "normalized_target": "docs/06-api/03-graphql.md",
+      "resolved_target": "docs/archive/docs-cn/05-access-entitlement-billing/docs/06-api/03-graphql.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/05-access-entitlement-billing/11-multi-user-collaboration.md"
+      ]
+    },
+    {
+      "identity_key": "bc9eb1264377a535",
+      "source_path": "docs/archive/docs-cn/05-access-entitlement-billing/11-multi-user-collaboration.md",
+      "raw_target": "docs/05-access-entitlement-billing/03-feature-flag-governance.md",
+      "normalized_target": "docs/05-access-entitlement-billing/03-feature-flag-governance.md",
+      "resolved_target": "docs/archive/docs-cn/05-access-entitlement-billing/docs/05-access-entitlement-billing/03-feature-flag-governance.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/05-access-entitlement-billing/11-multi-user-collaboration.md"
+      ]
+    },
+    {
+      "identity_key": "e8b96ec2f136d648",
+      "source_path": "docs/archive/docs-cn/05-access-entitlement-billing/11-multi-user-collaboration.md",
+      "raw_target": "docs/05-access-entitlement-billing/02-access-decision.md",
+      "normalized_target": "docs/05-access-entitlement-billing/02-access-decision.md",
+      "resolved_target": "docs/archive/docs-cn/05-access-entitlement-billing/docs/05-access-entitlement-billing/02-access-decision.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/05-access-entitlement-billing/11-multi-user-collaboration.md"
+      ]
+    },
+    {
+      "identity_key": "ce985dae9998eaa8",
+      "source_path": "docs/archive/docs-cn/05-access-entitlement-billing/11-multi-user-collaboration.md",
+      "raw_target": "docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "normalized_target": "docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "resolved_target": "docs/archive/docs-cn/05-access-entitlement-billing/docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/05-access-entitlement-billing/11-multi-user-collaboration.md"
+      ]
+    },
+    {
+      "identity_key": "4ac2826160a1c479",
+      "source_path": "docs/archive/docs-cn/05-access-entitlement-billing/12-collaboration-apis.md",
+      "raw_target": "docs/06-api/03-graphql.md",
+      "normalized_target": "docs/06-api/03-graphql.md",
+      "resolved_target": "docs/archive/docs-cn/05-access-entitlement-billing/docs/06-api/03-graphql.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/05-access-entitlement-billing/12-collaboration-apis.md"
+      ]
+    },
+    {
+      "identity_key": "8b74b70af2c1168f",
+      "source_path": "docs/archive/docs-cn/05-access-entitlement-billing/12-collaboration-apis.md",
+      "raw_target": "docs/06-api/01-api-strategy.md",
+      "normalized_target": "docs/06-api/01-api-strategy.md",
+      "resolved_target": "docs/archive/docs-cn/05-access-entitlement-billing/docs/06-api/01-api-strategy.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/05-access-entitlement-billing/12-collaboration-apis.md"
+      ]
+    },
+    {
+      "identity_key": "602da2c85aa9990c",
+      "source_path": "docs/archive/docs-cn/05-access-entitlement-billing/12-collaboration-apis.md",
+      "raw_target": "docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "normalized_target": "docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "resolved_target": "docs/archive/docs-cn/05-access-entitlement-billing/docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/05-access-entitlement-billing/12-collaboration-apis.md"
+      ]
+    },
+    {
+      "identity_key": "7adef684e9107f55",
+      "source_path": "docs/archive/docs-cn/05-access-entitlement-billing/12-collaboration-apis.md",
+      "raw_target": "docs/11-development/03-security.md",
+      "normalized_target": "docs/11-development/03-security.md",
+      "resolved_target": "docs/archive/docs-cn/05-access-entitlement-billing/docs/11-development/03-security.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/docs-cn/05-access-entitlement-billing/12-collaboration-apis.md"
+      ]
+    },
+    {
+      "identity_key": "53d25b3511b31c42",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/README.md",
+      "normalized_target": "docs/zh/README.md",
+      "resolved_target": "docs/archive/zh/docs/zh/README.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "80014287015e4f67",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/module-reference.md",
+      "normalized_target": "docs/zh/module-reference.md",
+      "resolved_target": "docs/archive/zh/docs/zh/module-reference.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "94569c8bee0cae13",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/development-guidelines.md",
+      "normalized_target": "docs/zh/development-guidelines.md",
+      "resolved_target": "docs/archive/zh/docs/zh/development-guidelines.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "85c8688f04db79e7",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/usage-guide.md",
+      "normalized_target": "docs/zh/usage-guide.md",
+      "resolved_target": "docs/archive/zh/docs/zh/usage-guide.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "766fa8d2d10a43b3",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/architecture.md",
+      "normalized_target": "docs/zh/architecture.md",
+      "resolved_target": "docs/archive/zh/docs/zh/architecture.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "890f8ba8566a7197",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/prompt-platform.md",
+      "normalized_target": "docs/zh/prompt-platform.md",
+      "resolved_target": "docs/archive/zh/docs/zh/prompt-platform.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "b1b67fb94880ceb3",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/problematic-data.md",
+      "normalized_target": "docs/zh/problematic-data.md",
+      "resolved_target": "docs/archive/zh/docs/zh/problematic-data.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "2547144a1f8c6957",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/dynamic-extension.md",
+      "normalized_target": "docs/zh/dynamic-extension.md",
+      "resolved_target": "docs/archive/zh/docs/zh/dynamic-extension.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "27f471d5498ba57f",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/monitoring-feedback.md",
+      "normalized_target": "docs/zh/monitoring-feedback.md",
+      "resolved_target": "docs/archive/zh/docs/zh/monitoring-feedback.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "b4e3bc256abe9e8b",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/deployment.md",
+      "normalized_target": "docs/zh/deployment.md",
+      "resolved_target": "docs/archive/zh/docs/zh/deployment.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "991c4b83f315abf8",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "docs/zh/faq.md",
+      "normalized_target": "docs/zh/faq.md",
+      "resolved_target": "docs/archive/zh/docs/zh/faq.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "8b1775ac50f6cc6f",
+      "source_path": "docs/archive/zh/README.md",
+      "raw_target": "prompts/MANIFEST.md",
+      "normalized_target": "prompts/MANIFEST.md",
+      "resolved_target": "docs/archive/zh/prompts/MANIFEST.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/archive/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "bd05ceb39f8d98ba",
+      "source_path": "docs/billing-access/11-multi-user-collaboration.md",
+      "raw_target": "docs/06-api/03-graphql.md",
+      "normalized_target": "docs/06-api/03-graphql.md",
+      "resolved_target": "docs/billing-access/docs/06-api/03-graphql.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/billing-access/11-multi-user-collaboration.md"
+      ]
+    },
+    {
+      "identity_key": "7caf5c358cd10218",
+      "source_path": "docs/billing-access/11-multi-user-collaboration.md",
+      "raw_target": "docs/05-access-entitlement-billing/03-feature-flag-governance.md",
+      "normalized_target": "docs/05-access-entitlement-billing/03-feature-flag-governance.md",
+      "resolved_target": "docs/billing-access/docs/05-access-entitlement-billing/03-feature-flag-governance.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/billing-access/11-multi-user-collaboration.md"
+      ]
+    },
+    {
+      "identity_key": "2bca24e57a0da2aa",
+      "source_path": "docs/billing-access/11-multi-user-collaboration.md",
+      "raw_target": "docs/05-access-entitlement-billing/02-access-decision.md",
+      "normalized_target": "docs/05-access-entitlement-billing/02-access-decision.md",
+      "resolved_target": "docs/billing-access/docs/05-access-entitlement-billing/02-access-decision.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/billing-access/11-multi-user-collaboration.md"
+      ]
+    },
+    {
+      "identity_key": "1fd353f7ab1824fb",
+      "source_path": "docs/billing-access/11-multi-user-collaboration.md",
+      "raw_target": "docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "normalized_target": "docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "resolved_target": "docs/billing-access/docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/billing-access/11-multi-user-collaboration.md"
+      ]
+    },
+    {
+      "identity_key": "75257b2b7aeef9b9",
+      "source_path": "docs/billing-access/12-collaboration-apis.md",
+      "raw_target": "docs/06-api/03-graphql.md",
+      "normalized_target": "docs/06-api/03-graphql.md",
+      "resolved_target": "docs/billing-access/docs/06-api/03-graphql.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/billing-access/12-collaboration-apis.md"
+      ]
+    },
+    {
+      "identity_key": "d3258d848735f142",
+      "source_path": "docs/billing-access/12-collaboration-apis.md",
+      "raw_target": "docs/06-api/01-api-strategy.md",
+      "normalized_target": "docs/06-api/01-api-strategy.md",
+      "resolved_target": "docs/billing-access/docs/06-api/01-api-strategy.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/billing-access/12-collaboration-apis.md"
+      ]
+    },
+    {
+      "identity_key": "fbffd62694302441",
+      "source_path": "docs/billing-access/12-collaboration-apis.md",
+      "raw_target": "docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "normalized_target": "docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "resolved_target": "docs/billing-access/docs/05-access-entitlement-billing/10-error-codes-and-audit.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/billing-access/12-collaboration-apis.md"
+      ]
+    },
+    {
+      "identity_key": "2a42eefe42f786a3",
+      "source_path": "docs/billing-access/12-collaboration-apis.md",
+      "raw_target": "docs/11-development/03-security.md",
+      "normalized_target": "docs/11-development/03-security.md",
+      "resolved_target": "docs/billing-access/docs/11-development/03-security.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/billing-access/12-collaboration-apis.md"
+      ]
+    },
+    {
+      "identity_key": "316824da6943dfef",
+      "source_path": "docs/documentation/documentation-index.md",
+      "raw_target": "docs/identity/vision.md",
+      "normalized_target": "docs/identity/vision.md",
+      "resolved_target": "docs/documentation/docs/identity/vision.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/documentation/documentation-index.md"
+      ]
+    },
+    {
+      "identity_key": "b47cbf28da6fa11f",
+      "source_path": "docs/documentation/documentation-index.md",
+      "raw_target": "../identity/philosophy.md",
+      "normalized_target": "../identity/philosophy.md",
+      "resolved_target": "docs/identity/philosophy.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/documentation/documentation-index.md"
+      ]
+    },
+    {
+      "identity_key": "afb0b845e73f66df",
+      "source_path": "docs/documentation/documentation-index.md",
+      "raw_target": "docs/handoff/project-handoff-v1.md",
+      "normalized_target": "docs/handoff/project-handoff-v1.md",
+      "resolved_target": "docs/documentation/docs/handoff/project-handoff-v1.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/documentation/documentation-index.md"
+      ]
+    },
+    {
+      "identity_key": "e0efbf43f804b2a6",
+      "source_path": "docs/documentation/documentation-index.md",
+      "raw_target": "docs/handoff/current-phase.md",
+      "normalized_target": "docs/handoff/current-phase.md",
+      "resolved_target": "docs/documentation/docs/handoff/current-phase.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/documentation/documentation-index.md"
+      ]
+    },
+    {
+      "identity_key": "b98169f9d2553e6d",
+      "source_path": "docs/documentation/documentation-index.md",
+      "raw_target": "docs/handoff/reading-guide.md",
+      "normalized_target": "docs/handoff/reading-guide.md",
+      "resolved_target": "docs/documentation/docs/handoff/reading-guide.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/documentation/documentation-index.md"
+      ]
+    },
+    {
+      "identity_key": "931b391acb6eab1a",
+      "source_path": "docs/documentation/documentation-index.md",
+      "raw_target": "docs/handoff/next-milestones.md",
+      "normalized_target": "docs/handoff/next-milestones.md",
+      "resolved_target": "docs/documentation/docs/handoff/next-milestones.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/documentation/documentation-index.md"
+      ]
+    },
+    {
+      "identity_key": "1a075ed83454991a",
+      "source_path": "docs/documentation/documentation-index.md",
+      "raw_target": "render-module/",
+      "normalized_target": "render-module/",
+      "resolved_target": "docs/documentation/render-module",
+      "reason": "missing",
+      "occurrences": [
+        "docs/documentation/documentation-index.md"
+      ]
+    },
+    {
+      "identity_key": "d4b4926ffb0cb634",
+      "source_path": "docs/frontend/09-collaboration-features.md",
+      "raw_target": "docs/04-frontend/05-user-portal.md",
+      "normalized_target": "docs/04-frontend/05-user-portal.md",
+      "resolved_target": "docs/frontend/docs/04-frontend/05-user-portal.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/frontend/09-collaboration-features.md"
+      ]
+    },
+    {
+      "identity_key": "9c53ae5f48883366",
+      "source_path": "docs/frontend/09-collaboration-features.md",
+      "raw_target": "docs/04-frontend/06-admin-console.md",
+      "normalized_target": "docs/04-frontend/06-admin-console.md",
+      "resolved_target": "docs/frontend/docs/04-frontend/06-admin-console.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/frontend/09-collaboration-features.md"
+      ]
+    },
+    {
+      "identity_key": "a4563cd67f11bcd6",
+      "source_path": "docs/frontend/09-collaboration-features.md",
+      "raw_target": "docs/06-api/01-api-strategy.md",
+      "normalized_target": "docs/06-api/01-api-strategy.md",
+      "resolved_target": "docs/frontend/docs/06-api/01-api-strategy.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/frontend/09-collaboration-features.md"
+      ]
+    },
+    {
+      "identity_key": "bac8c6301d357a36",
+      "source_path": "docs/frontend/09-collaboration-features.md",
+      "raw_target": "docs/06-api/03-graphql.md",
+      "normalized_target": "docs/06-api/03-graphql.md",
+      "resolved_target": "docs/frontend/docs/06-api/03-graphql.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/frontend/09-collaboration-features.md"
+      ]
+    },
+    {
+      "identity_key": "700f6fdcec615607",
+      "source_path": "docs/media-rendering/06-vfx-compositing-ecosystem-selection.md",
+      "raw_target": "../../platform/docs/effect-pack-schema.md",
+      "normalized_target": "../../platform/docs/effect-pack-schema.md",
+      "resolved_target": "platform/docs/effect-pack-schema.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/media-rendering/06-vfx-compositing-ecosystem-selection.md"
+      ]
+    },
+    {
+      "identity_key": "01333f82c0b00e42",
+      "source_path": "docs/media-rendering/13-internal-timeline-schema-v1.md",
+      "raw_target": "c, dependencyGraph",
+      "normalized_target": "c, dependencyGraph",
+      "resolved_target": "docs/media-rendering/c, dependencyGraph",
+      "reason": "missing",
+      "occurrences": [
+        "docs/media-rendering/13-internal-timeline-schema-v1.md"
+      ]
+    },
+    {
+      "identity_key": "8a916d734e021f3a",
+      "source_path": "docs/releases/human-review-execution-2026-06-08.md",
+      "raw_target": "architecture/p4-import-export-architecture.md",
+      "normalized_target": "architecture/p4-import-export-architecture.md",
+      "resolved_target": "docs/releases/architecture/p4-import-export-architecture.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/releases/human-review-execution-2026-06-08.md"
+      ]
+    },
+    {
+      "identity_key": "ef6de3fa5e866bec",
+      "source_path": "docs/releases/human-review-tracker-2026-06-08.md",
+      "raw_target": "architecture/p4-import-export-architecture.md",
+      "normalized_target": "architecture/p4-import-export-architecture.md",
+      "resolved_target": "docs/releases/architecture/p4-import-export-architecture.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/releases/human-review-tracker-2026-06-08.md"
+      ]
+    },
+    {
+      "identity_key": "6dca73d1a6d2f97d",
+      "source_path": "docs/releases/p4-pre-human-review-autocheck-report.md",
+      "raw_target": "./p4-review-evidence-package-2026-06-08.md",
+      "normalized_target": "./p4-review-evidence-package-2026-06-08.md",
+      "resolved_target": "docs/releases/p4-review-evidence-package-2026-06-08.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/releases/p4-pre-human-review-autocheck-report.md"
+      ]
+    },
+    {
+      "identity_key": "3f147c222d466523",
+      "source_path": "docs/releases/staging-readiness-gate-2026-06-08.md",
+      "raw_target": "architecture/p4-import-export-architecture.md",
+      "normalized_target": "architecture/p4-import-export-architecture.md",
+      "resolved_target": "docs/releases/architecture/p4-import-export-architecture.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/releases/staging-readiness-gate-2026-06-08.md"
+      ]
+    },
+    {
+      "identity_key": "baf6a78d9f654230",
+      "source_path": "docs/releases/staging-readiness-gate-2026-06-08.md",
+      "raw_target": "engineering/schema-management-policy.md",
+      "normalized_target": "engineering/schema-management-policy.md",
+      "resolved_target": "docs/releases/engineering/schema-management-policy.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/releases/staging-readiness-gate-2026-06-08.md"
+      ]
+    },
+    {
+      "identity_key": "4009a0cf46b74f01",
+      "source_path": "docs/releases/staging-readiness-gate-2026-06-08.md",
+      "raw_target": "releases/ci-preexisting-failures-2026-06-06.md",
+      "normalized_target": "releases/ci-preexisting-failures-2026-06-06.md",
+      "resolved_target": "docs/releases/releases/ci-preexisting-failures-2026-06-06.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/releases/staging-readiness-gate-2026-06-08.md"
+      ]
+    },
+    {
+      "identity_key": "88d3c4bcbd4a58f5",
+      "source_path": "docs/releases/staging-readiness-gate-2026-06-08.md",
+      "raw_target": "releases/rc-human-signoff-2026-06-06.md",
+      "normalized_target": "releases/rc-human-signoff-2026-06-06.md",
+      "resolved_target": "docs/releases/releases/rc-human-signoff-2026-06-06.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/releases/staging-readiness-gate-2026-06-08.md"
+      ]
+    },
+    {
+      "identity_key": "d9dbe62cf9786a7b",
+      "source_path": "docs/render/otio-as-core-timeline.md",
+      "raw_target": "./otio-metadata-schema.md",
+      "normalized_target": "./otio-metadata-schema.md",
+      "resolved_target": "docs/render/otio-metadata-schema.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/render/otio-as-core-timeline.md"
+      ]
+    },
+    {
+      "identity_key": "6c610f052349a4df",
+      "source_path": "docs/render/otio-as-core-timeline.md",
+      "raw_target": "./rendergraph-compiler.md",
+      "normalized_target": "./rendergraph-compiler.md",
+      "resolved_target": "docs/render/rendergraph-compiler.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/render/otio-as-core-timeline.md"
+      ]
+    },
+    {
+      "identity_key": "6053faab00a68313",
+      "source_path": "docs/render/otio-as-core-timeline.md",
+      "raw_target": "./renderjob-from-otio.md",
+      "normalized_target": "./renderjob-from-otio.md",
+      "resolved_target": "docs/render/renderjob-from-otio.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/render/otio-as-core-timeline.md"
+      ]
+    },
+    {
+      "identity_key": "5f69190cad3627f2",
+      "source_path": "docs/render/otio-as-core-timeline.md",
+      "raw_target": "./asset-registry.md",
+      "normalized_target": "./asset-registry.md",
+      "resolved_target": "docs/render/asset-registry.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/render/otio-as-core-timeline.md"
+      ]
+    },
+    {
+      "identity_key": "a2e03ad9e6bdb4c3",
+      "source_path": "docs/review/05-architecture-evaluation.md",
+      "raw_target": "../00-overview/02-project-status.md",
+      "normalized_target": "../00-overview/02-project-status.md",
+      "resolved_target": "docs/00-overview/02-project-status.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/review/05-architecture-evaluation.md"
+      ]
+    },
+    {
+      "identity_key": "9148972b72aa1b41",
+      "source_path": "docs/review/reference-document-placement-audit.md",
+      "raw_target": "architecture/blueprint/otio-render-platform-blueprint.md",
+      "normalized_target": "architecture/blueprint/otio-render-platform-blueprint.md",
+      "resolved_target": "docs/review/architecture/blueprint/otio-render-platform-blueprint.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/review/reference-document-placement-audit.md"
+      ]
+    },
+    {
+      "identity_key": "b3681c48aecf7d15",
+      "source_path": "docs/roadmap/ai-provider-ecosystem-roadmap.md",
+      "raw_target": "../../spring-ai-adapter/README.md",
+      "normalized_target": "../../spring-ai-adapter/README.md",
+      "resolved_target": "spring-ai-adapter/README.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/roadmap/ai-provider-ecosystem-roadmap.md"
+      ]
+    },
+    {
+      "identity_key": "c8f88c8beb9df0e4",
+      "source_path": "docs/roadmap/ai-provider-ecosystem-roadmap.md",
+      "raw_target": "../../prompt-module/README.md",
+      "normalized_target": "../../prompt-module/README.md",
+      "resolved_target": "prompt-module/README.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/roadmap/ai-provider-ecosystem-roadmap.md"
+      ]
+    },
+    {
+      "identity_key": "a3a9acb382a7828d",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/platform-guide/README.md",
+      "normalized_target": "docs/zh/platform-guide/README.md",
+      "resolved_target": "docs/zh/docs/zh/platform-guide/README.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "a42e8ff9b0e998da",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/platform-guide.md",
+      "normalized_target": "docs/zh/platform-guide.md",
+      "resolved_target": "docs/zh/docs/zh/platform-guide.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "481a2f85fa95b983",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/README.md",
+      "normalized_target": "docs/zh/README.md",
+      "resolved_target": "docs/zh/docs/zh/README.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "5c1cf4add94f523b",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/module-reference.md",
+      "normalized_target": "docs/zh/module-reference.md",
+      "resolved_target": "docs/zh/docs/zh/module-reference.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "1e4fabae9d094055",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/development-guidelines.md",
+      "normalized_target": "docs/zh/development-guidelines.md",
+      "resolved_target": "docs/zh/docs/zh/development-guidelines.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "24035d76631acf52",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/usage-guide.md",
+      "normalized_target": "docs/zh/usage-guide.md",
+      "resolved_target": "docs/zh/docs/zh/usage-guide.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "920f5708b264059e",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/architecture.md",
+      "normalized_target": "docs/zh/architecture.md",
+      "resolved_target": "docs/zh/docs/zh/architecture.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "2e76fbb2722ad1bf",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/prompt-platform.md",
+      "normalized_target": "docs/zh/prompt-platform.md",
+      "resolved_target": "docs/zh/docs/zh/prompt-platform.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "c167944f723506f9",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/problematic-data.md",
+      "normalized_target": "docs/zh/problematic-data.md",
+      "resolved_target": "docs/zh/docs/zh/problematic-data.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "980f76dee732c013",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/dynamic-extension.md",
+      "normalized_target": "docs/zh/dynamic-extension.md",
+      "resolved_target": "docs/zh/docs/zh/dynamic-extension.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "e6e094d8f67aee97",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/monitoring-feedback.md",
+      "normalized_target": "docs/zh/monitoring-feedback.md",
+      "resolved_target": "docs/zh/docs/zh/monitoring-feedback.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "e8b088d2c82ac338",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/deployment.md",
+      "normalized_target": "docs/zh/deployment.md",
+      "resolved_target": "docs/zh/docs/zh/deployment.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "b01967a77545c444",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/faq.md",
+      "normalized_target": "docs/zh/faq.md",
+      "resolved_target": "docs/zh/docs/zh/faq.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "683c613b3cca0e62",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/incremental-rendering.md",
+      "normalized_target": "docs/zh/incremental-rendering.md",
+      "resolved_target": "docs/zh/docs/zh/incremental-rendering.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "b512204aa1c47f5d",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/ai-timeline-editing.md",
+      "normalized_target": "docs/zh/ai-timeline-editing.md",
+      "resolved_target": "docs/zh/docs/zh/ai-timeline-editing.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "2b02bdf546ab69a8",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/timeline-version-control.md",
+      "normalized_target": "docs/zh/timeline-version-control.md",
+      "resolved_target": "docs/zh/docs/zh/timeline-version-control.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "dd632a2604f009b3",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/ai-gateway-architecture.md",
+      "normalized_target": "docs/zh/ai-gateway-architecture.md",
+      "resolved_target": "docs/zh/docs/zh/ai-gateway-architecture.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "f9f7f7b8d9dd1107",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/vault-and-rustfs-setup.md",
+      "normalized_target": "docs/zh/vault-and-rustfs-setup.md",
+      "resolved_target": "docs/zh/docs/zh/vault-and-rustfs-setup.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "faefad88616bb444",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/authentik-oidc-resource-server.md",
+      "normalized_target": "docs/zh/authentik-oidc-resource-server.md",
+      "resolved_target": "docs/zh/docs/zh/authentik-oidc-resource-server.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "a51f0abb35556546",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "docs/zh/authentik-property-mapping-and-migration.md",
+      "normalized_target": "docs/zh/authentik-property-mapping-and-migration.md",
+      "resolved_target": "docs/zh/docs/zh/authentik-property-mapping-and-migration.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "514a318b09296171",
+      "source_path": "docs/zh/README.md",
+      "raw_target": "prompts/MANIFEST.md",
+      "normalized_target": "prompts/MANIFEST.md",
+      "resolved_target": "docs/zh/prompts/MANIFEST.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/README.md"
+      ]
+    },
+    {
+      "identity_key": "3e5f08167f479b4d",
+      "source_path": "docs/zh/ai-gateway-architecture.md",
+      "raw_target": "../../platform/docs/ai-engine-spi.md",
+      "normalized_target": "../../platform/docs/ai-engine-spi.md",
+      "resolved_target": "platform/docs/ai-engine-spi.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/ai-gateway-architecture.md"
+      ]
+    },
+    {
+      "identity_key": "418ee5b214bd75e9",
+      "source_path": "docs/zh/authentik-oidc-resource-server.md",
+      "raw_target": "../../platform/docs/authentik/blueprint-media-platform-claims.yaml",
+      "normalized_target": "../../platform/docs/authentik/blueprint-media-platform-claims.yaml",
+      "resolved_target": "platform/docs/authentik/blueprint-media-platform-claims.yaml",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/authentik-oidc-resource-server.md"
+      ]
+    },
+    {
+      "identity_key": "30d8593c1eb1678e",
+      "source_path": "docs/zh/authentik-property-mapping-and-migration.md",
+      "raw_target": "../../platform/docs/authentik/blueprint-media-platform-claims.yaml",
+      "normalized_target": "../../platform/docs/authentik/blueprint-media-platform-claims.yaml",
+      "resolved_target": "platform/docs/authentik/blueprint-media-platform-claims.yaml",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/authentik-property-mapping-and-migration.md",
+        "docs/zh/authentik-property-mapping-and-migration.md"
+      ]
+    },
+    {
+      "identity_key": "88272bcebc8fdf1f",
+      "source_path": "docs/zh/authentik-property-mapping-and-migration.md",
+      "raw_target": "../../platform/platform-app/src/main/java/com/example/platform/security/OidcRoleMapping.java",
+      "normalized_target": "../../platform/platform-app/src/main/java/com/example/platform/security/OidcRoleMapping.java",
+      "resolved_target": "platform/platform-app/src/main/java/com/example/platform/security/OidcRoleMapping.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/authentik-property-mapping-and-migration.md"
+      ]
+    },
+    {
+      "identity_key": "7150d425a9e80f67",
+      "source_path": "docs/zh/authentik-property-mapping-and-migration.md",
+      "raw_target": "../../platform/platform-app/src/main/java/com/example/platform/security/OidcDevBootstrapRunner.java",
+      "normalized_target": "../../platform/platform-app/src/main/java/com/example/platform/security/OidcDevBootstrapRunner.java",
+      "resolved_target": "platform/platform-app/src/main/java/com/example/platform/security/OidcDevBootstrapRunner.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/authentik-property-mapping-and-migration.md"
+      ]
+    },
+    {
+      "identity_key": "b1fbb12d11f12759",
+      "source_path": "docs/zh/authentik-property-mapping-and-migration.md",
+      "raw_target": "../../platform/identity-access-module/src/main/java/com/example/platform/identity/app/BuiltinDataInitializer.java",
+      "normalized_target": "../../platform/identity-access-module/src/main/java/com/example/platform/identity/app/BuiltinDataInitializer.java",
+      "resolved_target": "platform/identity-access-module/src/main/java/com/example/platform/identity/app/BuiltinDataInitializer.java",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/authentik-property-mapping-and-migration.md"
+      ]
+    },
+    {
+      "identity_key": "a0966b5aa628e925",
+      "source_path": "docs/zh/graceful-shutdown-and-data-consistency.md",
+      "raw_target": "../platform/docs/persistence-restart-semantics.md",
+      "normalized_target": "../platform/docs/persistence-restart-semantics.md",
+      "resolved_target": "docs/platform/docs/persistence-restart-semantics.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/graceful-shutdown-and-data-consistency.md"
+      ]
+    },
+    {
+      "identity_key": "0ec5218e6589df14",
+      "source_path": "docs/zh/platform-guide/10-roadmap.md",
+      "raw_target": "../../platform/docs/production-safety.md",
+      "normalized_target": "../../platform/docs/production-safety.md",
+      "resolved_target": "docs/platform/docs/production-safety.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/platform-guide/10-roadmap.md"
+      ]
+    },
+    {
+      "identity_key": "e55190f4cc6e4aa9",
+      "source_path": "docs/zh/platform-guide/10-roadmap.md",
+      "raw_target": "../../platform/docs/modulith-debt-register.md",
+      "normalized_target": "../../platform/docs/modulith-debt-register.md",
+      "resolved_target": "docs/platform/docs/modulith-debt-register.md",
+      "reason": "missing",
+      "occurrences": [
+        "docs/zh/platform-guide/10-roadmap.md"
+      ]
+    }
+  ]
+}

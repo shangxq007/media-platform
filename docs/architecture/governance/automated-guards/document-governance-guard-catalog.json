@@ -1,0 +1,22 @@
+{
+  "guards": [
+    {"guard_id": "DG-001", "name": "Required Governance Artifacts", "description": "Check .1-.6 required governance artifacts exist", "enabled": true, "required": true},
+    {"guard_id": "DG-002", "name": "JSON and Schema Validity", "description": "Check all governance JSON syntax and schema", "enabled": true, "required": true},
+    {"guard_id": "DG-003", "name": "Registry Coverage and Identity", "description": "1117 entries, unique IDs, unique paths", "enabled": true, "required": true, "implementation": "check_metadata.py"},
+    {"guard_id": "DG-004", "name": "Tier Metadata Integrity", "description": "62/62 Tier 1 inline, 1055 Tier 2 registry-only", "enabled": true, "required": true, "implementation": "check_metadata.py"},
+    {"guard_id": "DG-005", "name": "Ownership Lifecycle Relationships", "description": "owners, states, transitions, supersession", "enabled": true, "required": true},
+    {"guard_id": "DG-006", "name": "Protected Semantic Bodies", "description": "canonical/ADR/Tier 1 body hash unchanged", "enabled": true, "required": true, "implementation": "check_semantic_bodies.py"},
+    {"guard_id": "DG-007", "name": "Render Output Candidate Lock", "description": "prevent silent candidate upgrade", "enabled": true, "required": true, "implementation": "check_governance_boundaries.py"},
+    {"guard_id": "DG-008", "name": "V5 Quarantine Lock", "description": "prevent V5 release or metadata upgrade", "enabled": true, "required": true, "implementation": "check_governance_boundaries.py"},
+    {"guard_id": "DG-009", "name": "Deferred and Paused Boundary", "description": "Artifact DAG deferred, frontend paused", "enabled": true, "required": true, "implementation": "check_governance_boundaries.py"},
+    {"guard_id": "DG-010", "name": "Evidence Non-Authority", "description": ".agent-tasks/Memory/Kanban not authority", "enabled": true, "required": true, "implementation": "check_governance_boundaries.py"},
+    {"guard_id": "DG-011", "name": "Broken-Link Increment Guard", "description": "no new broken links, baseline can shrink", "enabled": true, "required": true, "implementation": "check_markdown_links.py"},
+    {"guard_id": "DG-012", "name": "Receipt Structure Guard", "description": "receipt JSON/SHA/worktree/decision valid", "enabled": true, "required": true, "implementation": "validate_receipts.py"},
+    {"guard_id": "DG-013", "name": "Reviewer/Verifier Ordering", "description": "review receipt before verifier start", "enabled": true, "required": true, "implementation": "validate_receipts.py"},
+    {"guard_id": "DG-014", "name": "Commit Scope and Topology", "description": "expected base, single commit, allowed paths", "enabled": true, "required": true, "implementation": "check_commit_scope.py"},
+    {"guard_id": "DG-015", "name": "Generated-Document Lifecycle", "description": "generated metadata complete, not auto-canonical", "enabled": true, "required": true},
+    {"guard_id": "DG-016", "name": "Existing Architecture Guard", "description": "check-architecture-drift.sh PASS 32/32", "enabled": true, "required": true, "implementation": "check-architecture-drift.sh"}
+  ],
+  "total_guards": 16,
+  "required_guards": 16
+}

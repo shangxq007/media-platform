@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {"test_id": "PASS-001", "guard_id": "DG-003", "type": "positive", "description": "accepted .5 tree passes all current-state guards", "expected_exit_code": 0, "status": "PASS"},
+    {"test_id": "PASS-002", "guard_id": "DG-011", "type": "positive", "description": "one pre-existing broken link resolved, no new link added", "expected_exit_code": 0, "status": "PASS"},
+    {"test_id": "PASS-003", "guard_id": "DG-013", "type": "positive", "description": "valid review receipt followed by valid verifier receipt", "expected_exit_code": 0, "status": "PASS"},
+    {"test_id": "PASS-004", "guard_id": "DG-015", "type": "positive", "description": "generated document with complete lifecycle metadata", "expected_exit_code": 0, "status": "PASS"},
+    {"test_id": "PASS-005", "guard_id": "DG-004", "type": "positive", "description": "registry and Tier 1 front matter agree", "expected_exit_code": 0, "status": "PASS"},
+    {"test_id": "FAIL-001", "guard_id": "DG-004", "type": "negative", "description": "Tier 1 front matter removed", "expected_exit_code": 1, "expected_violation_code": "TIER_1_INLINE_METADATA_MISSING", "status": "PASS"},
+    {"test_id": "FAIL-002", "guard_id": "DG-003", "type": "negative", "description": "duplicate document ID introduced", "expected_exit_code": 1, "expected_violation_code": "DUPLICATE_DOCUMENT_ID", "status": "PASS"},
+    {"test_id": "FAIL-003", "guard_id": "DG-005", "type": "negative", "description": "unknown owner introduced", "expected_exit_code": 1, "expected_violation_code": "UNKNOWN_OWNER", "status": "PASS"},
+    {"test_id": "FAIL-004", "guard_id": "DG-006", "type": "negative", "description": "canonical body changed while registry hash also changed", "expected_exit_code": 1, "expected_violation_code": "PROTECTED_BASELINE_CHANGE", "status": "PASS"},
+    {"test_id": "FAIL-005", "guard_id": "DG-007", "type": "negative", "description": "render-output candidate upgraded to accepted", "expected_exit_code": 1, "expected_violation_code": "RENDER_OUTPUT_CANDIDATE_SILENT_UPGRADE", "status": "PASS"},
+    {"test_id": "FAIL-006", "guard_id": "DG-008", "type": "negative", "description": "V5 document moved out of quarantine", "expected_exit_code": 1, "expected_violation_code": "V5_FILE_LEFT_QUARANTINE", "status": "PASS"},
+    {"test_id": "FAIL-007", "guard_id": "DG-008", "type": "negative", "description": "V5 active duplicate created", "expected_exit_code": 1, "expected_violation_code": "V5_ACTIVE_DUPLICATE", "status": "PASS"},
+    {"test_id": "FAIL-008", "guard_id": "DG-009", "type": "negative", "description": "Artifact DAG reactivated", "expected_exit_code": 1, "expected_violation_code": "ARTIFACT_DAG_REACTIVATED", "status": "PASS"},
+    {"test_id": "FAIL-009", "guard_id": "DG-009", "type": "negative", "description": "frontend pause removed", "expected_exit_code": 1, "expected_violation_code": "FRONTEND_IMPLEMENTATION_UNPAUSED", "status": "PASS"},
+    {"test_id": "FAIL-010", "guard_id": "DG-011", "type": "negative", "description": "new broken link introduced", "expected_exit_code": 1, "expected_violation_code": "INTRODUCED_BROKEN_LINK", "status": "PASS"},
+    {"test_id": "FAIL-011", "guard_id": "DG-011", "type": "negative", "description": "broken-link baseline expanded to hide new link", "expected_exit_code": 1, "expected_violation_code": "BASELINE_EXPANSION", "status": "PASS"},
+    {"test_id": "FAIL-012", "guard_id": "DG-010", "type": "negative", "description": ".agent-tasks entry promoted to canonical authority", "expected_exit_code": 1, "expected_violation_code": "EVIDENCE_PROMOTED_TO_AUTHORITY", "status": "PASS"},
+    {"test_id": "FAIL-013", "guard_id": "DG-012", "type": "negative", "description": "receipt worktree contains wildcard", "expected_exit_code": 1, "expected_violation_code": "WILDCARD_WORKTREE", "status": "PASS"},
+    {"test_id": "FAIL-014", "guard_id": "DG-013", "type": "negative", "description": "verifier starts before review receipt completion", "expected_exit_code": 1, "expected_violation_code": "REVIEW_RECEIPT_CREATED_TOO_LATE", "status": "PASS"},
+    {"test_id": "FAIL-015", "guard_id": "DG-012", "type": "negative", "description": "CONDITIONAL_PASS used as final decision", "expected_exit_code": 1, "expected_violation_code": "INVALID_DECISION", "status": "PASS"},
+    {"test_id": "FAIL-016", "guard_id": "DG-006", "type": "negative", "description": "protected baseline altered", "expected_exit_code": 1, "expected_violation_code": "MANUAL_GOVERNANCE_APPROVAL_REQUIRED", "status": "PASS"},
+    {"test_id": "FAIL-017", "guard_id": "DG-005", "type": "negative", "description": "invalid lifecycle transition", "expected_exit_code": 1, "expected_violation_code": "INVALID_LIFECYCLE_TRANSITION", "status": "PASS"},
+    {"test_id": "FAIL-018", "guard_id": "DG-005", "type": "negative", "description": "non-reciprocal supersession relation", "expected_exit_code": 1, "expected_violation_code": "NON_RECIPROCAL_SUPERSESSION", "status": "PASS"},
+    {"test_id": "FAIL-019", "guard_id": "DG-015", "type": "negative", "description": "generated document promoted to canonical by generated flag", "expected_exit_code": 1, "expected_violation_code": "GENERATED_PROMOTED_TO_CANONICAL", "status": "PASS"},
+    {"test_id": "FAIL-020", "guard_id": "DG-008", "type": "negative", "description": "V5 migration file created", "expected_exit_code": 1, "expected_violation_code": "V5_MIGRATION_CREATED", "status": "PASS"}
+  ],
+  "positive_tests_expected": 5,
+  "positive_tests_passed": 5,
+  "negative_tests_expected": 20,
+  "negative_tests_passed": 20
+}

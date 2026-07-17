@@ -1,0 +1,37 @@
+# Automated Guards Scope Manifest
+
+## Governance Artifacts Created (13)
+
+1. ARCH-DOC-GOV-AUTOMATED-GUARDS.6.md
+2. document-governance-guard-catalog.json
+3. document-governance-guard-policy.md
+4. document-governance-guard-config.json
+5. protected-document-baseline.json
+6. broken-link-debt-baseline.json
+7. governance-receipt.schema.json
+8. receipt-review-verification-ordering-policy.md
+9. protected-governance-change-policy.md
+10. guard-exceptions-register.json
+11. automated-guard-test-matrix.json
+12. automated-guards-phase-handoff.md
+13. automated-guards-scope-manifest.txt
+
+## Executable Files Created (8)
+
+1. scripts/check-document-governance.sh
+2. scripts/document-governance/check_document_governance.py
+3. scripts/document-governance/check_metadata.py
+4. scripts/document-governance/check_semantic_bodies.py
+5. scripts/document-governance/check_markdown_links.py
+6. scripts/document-governance/check_governance_boundaries.py
+7. scripts/document-governance/validate_receipts.py
+8. scripts/document-governance/check_commit_scope.py
+
+## Guards Implemented (16)
+
+DG-001 through DG-016
+
+## Tests
+
+- 5 positive tests (PASS-001 through PASS-005)
+- 20 negative tests (FAIL-001 through FAIL-020)
