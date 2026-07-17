@@ -1,3 +1,29 @@
+---
+metadata_schema_version: 1
+document_id: "architecture-quarantine-v5-render-output-commit-target-state"
+title: ""
+artifact_type: "UNKNOWN"
+domain: ""
+authority_class: "QUARANTINED"
+lifecycle_state: "QUARANTINED"
+acceptance_state: "QUARANTINED_BLOCKED"
+owner: "architecture-governance"
+document_version: null
+created_at: null
+last_reviewed_at: "2026-07-17"
+review_cadence_days: null
+supersedes: []
+superseded_by: []
+canonical_contracts: []
+source_of_truth_domains: []
+retention_class: "LEGAL_OR_AUDIT_HOLD"
+generated: false
+generated_by: null
+do_not_edit: false
+requires_explicit_approval: false
+blocks_v5: false
+---
+
 > [!CAUTION]
 > **Status:** Quarantined and not accepted.
 > This material MUST NOT be used as implementation authority.

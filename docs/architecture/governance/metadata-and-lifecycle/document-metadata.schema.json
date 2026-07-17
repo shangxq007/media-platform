@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Document Metadata",
+  "type": "object",
+  "required": ["document_id", "artifact_type", "authority_class", "lifecycle_state", "acceptance_state", "owner", "retention_class"],
+  "properties": {
+    "metadata_schema_version": {"type": "integer", "const": 1},
+    "document_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "title": {"type": "string"},
+    "artifact_type": {"type": "string", "enum": ["ARCHITECTURE_DOCUMENT", "ADR", "API_CONTRACT", "EXECUTABLE_CONTRACT", "SCHEMA_CONTRACT", "DATABASE_MIGRATION", "ROADMAP", "RUNBOOK", "DEPLOYMENT_DOCUMENT", "SECURITY_POLICY", "TEST_OR_GUARD", "GENERATED_DOCUMENT", "TASK_EVIDENCE", "FORENSIC_EVIDENCE", "SKILL", "MEMORY_STORE", "CONTROL_PLANE_SERVICE", "CONTROL_PLANE_SCRIPT", "RECEIPT", "KANBAN_RECORD", "UNKNOWN"]},
+    "domain": {"type": "string"},
+    "metadata_tier": {"type": "string", "enum": ["TIER_1_INLINE", "TIER_2_REGISTRY_ONLY"]},
+    "authority_class": {"type": "string", "enum": ["CANONICAL_ACCEPTED", "CANONICAL_CANDIDATE", "NORMATIVE_SUPPORTING", "EXECUTABLE_SOURCE", "SCHEMA_SOURCE", "INFORMATIVE", "GENERATED", "EVIDENCE_ONLY", "FORENSIC_ONLY", "HISTORICAL", "QUARANTINED", "REJECTED", "AUTHORITY_UNRESOLVED"]},
+    "lifecycle_state": {"type": "string", "enum": ["ACTIVE", "FROZEN", "CANDIDATE", "SUPERSEDED", "DEPRECATED", "ARCHIVED", "HISTORICAL", "QUARANTINED", "REJECTED", "MISSING", "UNVERIFIED", "UNKNOWN"]},
+    "acceptance_state": {"type": "string", "enum": ["ACCEPTED", "NOT_ACCEPTED", "PARTIALLY_ACCEPTED", "BLOCKED", "QUARANTINED_BLOCKED", "NOT_APPLICABLE", "UNKNOWN"]},
+    "owner": {"type": "string"},
+    "document_version": {"type": ["string", "null"]},
+    "created_at": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "last_reviewed_at": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "review_cadence_days": {"type": ["integer", "null"]},
+    "supersedes": {"type": "array", "items": {"type": "string"}},
+    "superseded_by": {"type": "array", "items": {"type": "string"}},
+    "canonical_contracts": {"type": "array", "items": {"type": "string"}},
+    "source_of_truth_domains": {"type": "array", "items": {"type": "string"}},
+    "retention_class": {"type": "string", "enum": ["PERMANENT", "LONG_TERM", "PROJECT_LIFETIME", "REGENERABLE", "EPHEMERAL", "UNTIL_SUPERSEDED", "UNTIL_CLOSEOUT", "LEGAL_OR_AUDIT_HOLD"]},
+    "generated": {"type": "boolean"},
+    "generated_by": {"type": ["string", "null"]},
+    "do_not_edit": {"type": "boolean"},
+    "requires_explicit_approval": {"type": "boolean"},
+    "blocks_v5": {"type": "boolean"}
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "cadences": [
+    {"authority_class": "CANONICAL_ACCEPTED", "review_cadence_days": 90},
+    {"authority_class": "CANONICAL_CANDIDATE", "review_cadence_days": 30},
+    {"authority_class": "accepted_active_ADR", "review_cadence_days": 180},
+    {"authority_class": "CURRENT_STATE_SUPPORTING", "review_cadence_days": 90},
+    {"authority_class": "ROADMAP_SUPPORTING", "review_cadence_days": 60},
+    {"authority_class": "ACTIVE_SUPPORTING", "review_cadence_days": 180},
+    {"authority_class": "DEFERRED_EXTENSION", "review_cadence_days": 365},
+    {"authority_class": "QUARANTINED", "review_cadence_days": 90},
+    {"authority_class": "HISTORICAL", "review_cadence_days": null},
+    {"authority_class": "GENERATED", "review_cadence_days": null},
+    {"authority_class": "EVIDENCE_ONLY", "review_cadence_days": null}
+  ]
+}

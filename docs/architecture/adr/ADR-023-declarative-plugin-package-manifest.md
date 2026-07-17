@@ -1,3 +1,29 @@
+---
+metadata_schema_version: 1
+document_id: "architecture-adr-adr-023-declarative-plugin-package-manifest"
+title: ""
+artifact_type: "UNKNOWN"
+domain: ""
+authority_class: "INFORMATIVE"
+lifecycle_state: "ACTIVE"
+acceptance_state: "NOT_APPLICABLE"
+owner: "architecture-governance"
+document_version: null
+created_at: null
+last_reviewed_at: "2026-07-17"
+review_cadence_days: null
+supersedes: []
+superseded_by: []
+canonical_contracts: []
+source_of_truth_domains: []
+retention_class: "PROJECT_LIFETIME"
+generated: false
+generated_by: null
+do_not_edit: false
+requires_explicit_approval: false
+blocks_v5: false
+---
+
 # ADR-023: Declarative Plugin Package Manifest and Trust Model
 
 ## Status

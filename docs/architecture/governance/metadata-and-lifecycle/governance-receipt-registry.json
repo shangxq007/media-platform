@@ -1,0 +1,14 @@
+{
+  "receipts": [
+    {"receipt_id": "receipt-2a-d2", "task_id": "ARCH-DOC-GOV-SOURCE-OF-TRUTH-MATRIX-CLOSEOUT.2A", "subject_type": "governance_commit", "subject_identifier": "c14ffcec84978e526ac5de06d1fafb59ef588a16", "reviewer_or_verifier_role": "Agent D2", "decision": "PASS", "sha256": "8da9b39f4e296a8d0582baa75a7e2a990ad01ab8e5e628119eab929df0867319", "storage_class": "DETACHED_EPHEMERAL", "retention_class": "EPHEMERAL", "availability": "UNAVAILABLE_EPHEMERAL", "integrity_reference": "HASH_ONLY"},
+    {"receipt_id": "receipt-2a-v2", "task_id": "ARCH-DOC-GOV-SOURCE-OF-TRUTH-MATRIX-CLOSEOUT.2A", "subject_type": "governance_commit", "subject_identifier": "c14ffcec84978e526ac5de06d1fafb59ef588a16", "reviewer_or_verifier_role": "Agent V2", "decision": "PASS", "sha256": "db02088176561028110530665d0ee5576aed9c81d79f80b41ebb90e886169b5f", "storage_class": "DETACHED_EPHEMERAL", "retention_class": "EPHEMERAL", "availability": "UNAVAILABLE_EPHEMERAL", "integrity_reference": "HASH_ONLY"},
+    {"receipt_id": "receipt-3b-v3", "task_id": "ARCH-DOC-GOV-CANONICAL-CONTRACTS-FINAL-VERIFY.3B", "subject_type": "governance_commit", "subject_identifier": "d1f85392771272543322738660ae27764c9b051c", "reviewer_or_verifier_role": "Agent V3", "decision": "PASS", "sha256": "c7fbddc8db29677c5d225697665950583a0c3cb152542627baaa12d3e6857ddb", "storage_class": "DETACHED_EPHEMERAL", "retention_class": "EPHEMERAL", "availability": "UNAVAILABLE_EPHEMERAL", "integrity_reference": "HASH_ONLY"},
+    {"receipt_id": "receipt-4u-v6", "task_id": "ARCH-DOC-GOV-NORMALIZATION-LINK-FIX-RECONSTRUCTION.4U", "subject_type": "governance_commit", "subject_identifier": "f97c3069ca7989cf73c1407ae52328558698bb00", "reviewer_or_verifier_role": "Agent V6", "decision": "PASS", "sha256": "c21c64ca767395f732d4ef39300a9406486bbc8f2ae83d0995df1787963cc966", "storage_class": "DETACHED_EPHEMERAL", "retention_class": "EPHEMERAL", "availability": "UNAVAILABLE_EPHEMERAL", "integrity_reference": "HASH_ONLY"}
+  ],
+  "root_receipt_gap": {
+    "status": "ROOT_RECEIPT_LIFECYCLE_NOT_IMPLEMENTED",
+    "contract_definition_phase": ".5",
+    "implementation_phase": ".6A",
+    "acceptance_phase": ".7"
+  }
+}

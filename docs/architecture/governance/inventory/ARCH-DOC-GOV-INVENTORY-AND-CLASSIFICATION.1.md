@@ -1,3 +1,29 @@
+---
+metadata_schema_version: 1
+document_id: "architecture-governance-inventory-arch-doc-gov-inventory-and-classification.1"
+title: ""
+artifact_type: "UNKNOWN"
+domain: ""
+authority_class: "CANONICAL_ACCEPTED"
+lifecycle_state: "ACTIVE"
+acceptance_state: "NOT_APPLICABLE"
+owner: "architecture-governance"
+document_version: null
+created_at: null
+last_reviewed_at: "2026-07-17"
+review_cadence_days: null
+supersedes: []
+superseded_by: []
+canonical_contracts: []
+source_of_truth_domains: []
+retention_class: "PERMANENT"
+generated: false
+generated_by: null
+do_not_edit: false
+requires_explicit_approval: false
+blocks_v5: false
+---
+
 # ARCH-DOC-GOV Inventory and Classification — Phase .1
 
 ## Task

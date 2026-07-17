@@ -1,0 +1,17 @@
+{
+  "owners": [
+    {"owner_id": "architecture-governance", "display_name": "Architecture Governance", "scope": ["governance", "canonical-contracts", "source-of-truth"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": [], "escalation_owner": "user"},
+    {"owner_id": "platform-kernel", "display_name": "Platform Kernel", "scope": ["platform-identity", "module-boundaries"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "product-domain", "display_name": "Product Domain", "scope": ["product-model"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "timeline-domain", "display_name": "Timeline Domain", "scope": ["timeline-model"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "render-domain", "display_name": "Render Domain", "scope": ["render-job-model", "render-output-model"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "execution-domain", "display_name": "Execution Domain", "scope": ["execution-model", "provider-model"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "storage-domain", "display_name": "Storage Domain", "scope": ["storage-model"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "api-governance", "display_name": "API Governance", "scope": ["api-contracts"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "database-governance", "display_name": "Database Governance", "scope": ["database-schema"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "frontend-architecture", "display_name": "Frontend Architecture", "scope": ["frontend-architecture"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "platform-operations", "display_name": "Platform Operations", "scope": ["deployment", "infrastructure"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": [], "escalation_owner": "user"},
+    {"owner_id": "security-governance", "display_name": "Security Governance", "scope": ["security"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": ["architecture-governance"], "escalation_owner": "user"},
+    {"owner_id": "system-admin", "display_name": "System Administration", "scope": ["control-plane", "skill-governance"], "can_change_metadata": true, "can_change_semantics": false, "required_co_approvals": [], "escalation_owner": "user"}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "transitions": [
+    {"from": "CANDIDATE", "to": "ACTIVE", "authority": "GOVERNANCE_REVIEW"},
+    {"from": "ACTIVE", "to": "FROZEN", "authority": "USER_EXPLICIT_APPROVAL"},
+    {"from": "ACTIVE", "to": "SUPERSEDED", "authority": "GOVERNANCE_REVIEW"},
+    {"from": "ACTIVE", "to": "DEPRECATED", "authority": "GOVERNANCE_REVIEW"},
+    {"from": "SUPERSEDED", "to": "ARCHIVED", "authority": "GOVERNANCE_REVIEW"},
+    {"from": "DEPRECATED", "to": "ARCHIVED", "authority": "GOVERNANCE_REVIEW"},
+    {"from": "ANY", "to": "QUARANTINED", "authority": "GOVERNANCE_REVIEW"},
+    {"from": "QUARANTINED", "to": "CANDIDATE", "authority": "GOVERNANCE_REVIEW"},
+    {"from": "QUARANTINED", "to": "ACTIVE", "authority": "PROHIBITED"},
+    {"from": "HISTORICAL", "to": "ACTIVE", "authority": "PROHIBITED"}
+  ],
+  "acceptance_transitions": [
+    {"from": "NOT_ACCEPTED", "to": "ACCEPTED", "authority": "PER_CHANGE_AUTHORITY"},
+    {"from": "QUARANTINED_BLOCKED", "to": "ACCEPTED", "authority": "PROHIBITED"}
+  ]
+}

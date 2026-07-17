@@ -1,3 +1,29 @@
+---
+metadata_schema_version: 1
+document_id: "archive-readme"
+title: ""
+artifact_type: "UNKNOWN"
+domain: ""
+authority_class: "HISTORICAL"
+lifecycle_state: "HISTORICAL"
+acceptance_state: "NOT_APPLICABLE"
+owner: "architecture-governance"
+document_version: null
+created_at: null
+last_reviewed_at: "2026-07-17"
+review_cadence_days: null
+supersedes: []
+superseded_by: []
+canonical_contracts: []
+source_of_truth_domains: []
+retention_class: "LONG_TERM"
+generated: false
+generated_by: null
+do_not_edit: false
+requires_explicit_approval: false
+blocks_v5: false
+---
+
 # 文档索引
 
 > **Important:** 存档文档是历史记录，不是当前真相。请使用 [architecture/current](../architecture/current/) 获取当前状态。

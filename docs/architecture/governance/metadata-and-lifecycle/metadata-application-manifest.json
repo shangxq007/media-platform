@@ -1,0 +1,32 @@
+{
+  "tier_1_inline_metadata": {
+    "documents": [
+      "docs/architecture/README.md",
+      "docs/architecture/governance/canonical-contracts/*.md",
+      "docs/architecture/governance/source-of-truth/*.md",
+      "docs/architecture/governance/inventory/ARCH-DOC-GOV-INVENTORY-AND-CLASSIFICATION.1.md",
+      "docs/architecture/governance/normalization-and-archival/ARCH-DOC-GOV-NORMALIZATION-AND-ARCHIVAL.4.md",
+      "docs/architecture/adr/ADR-*.md",
+      "docs/architecture/archive/README.md",
+      "docs/architecture/quarantine/v5/*.md"
+    ],
+    "count": 72,
+    "inline_metadata_added": false,
+    "note": "Tier 1 front matter to be added in governance commit"
+  },
+  "tier_2_registry_only": {
+    "documents": ["active supporting", "current-state", "roadmaps", "frontend", "deferred", "historical", "generated", ".agent-tasks", "forensics", "receipts", "runbooks"],
+    "count": 1045,
+    "inline_metadata_added": false,
+    "note": "Registry only, no inline metadata"
+  },
+  "exceptions": [
+    ".agent-tasks/** not modified",
+    "Tier 2 documents have no inline metadata"
+  ],
+  "semantic_body_hashes": {
+    "tier_1_changes": 0,
+    "adr_decision_body_changes": 0,
+    "canonical_normative_body_changes": 0
+  }
+}

@@ -1,0 +1,48 @@
+# Metadata Lifecycle Scope Manifest
+
+## Governance Inputs Read
+
+- docs/architecture/governance/inventory/**
+- docs/architecture/governance/source-of-truth/**
+- docs/architecture/governance/canonical-contracts/**
+- docs/architecture/governance/normalization-and-archival/**
+- docs/architecture/README.md
+- README.md
+- AGENTS.md
+
+## Files Created
+
+1. ARCH-DOC-GOV-METADATA-AND-LIFECYCLE.5.md
+2. document-metadata.schema.json
+3. document-metadata-registry.json
+4. metadata-application-manifest.json
+5. document-lifecycle-policy.md
+6. lifecycle-transition-matrix.json
+7. document-ownership-registry.json
+8. review-cadence-policy.json
+9. retention-and-archive-policy.md
+10. receipt-lifecycle-policy.md
+11. governance-receipt-registry.json
+12. generated-document-lifecycle-policy.md
+13. metadata-exceptions-register.json
+14. metadata-lifecycle-phase-handoff.md
+15. metadata-lifecycle-scope-manifest.txt
+
+## Tier 1 Documents (Inline Metadata)
+
+- docs/architecture/README.md
+- docs/architecture/governance/canonical-contracts/*.md (11 contracts + overview)
+- docs/architecture/governance/source-of-truth/*.md
+- docs/architecture/governance/inventory/ARCH-DOC-GOV-INVENTORY-AND-CLASSIFICATION.1.md
+- docs/architecture/governance/normalization-and-archival/ARCH-DOC-GOV-NORMALIZATION-AND-ARCHIVAL.4.md
+- docs/architecture/adr/ADR-*.md (active/accepted)
+- docs/architecture/archive/README.md
+- docs/architecture/quarantine/v5/*.md
+
+## Excluded
+
+- Production code
+- Test code
+- Build files
+- Migration files
+- .agent-tasks/** (registry only, no inline metadata)
