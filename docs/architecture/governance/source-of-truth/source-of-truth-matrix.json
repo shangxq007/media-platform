@@ -1,0 +1,1032 @@
+{
+  "task": "ARCH-DOC-GOV-SOURCE-OF-TRUTH-MATRIX.2",
+  "base_commit": "31a82fe98c2b8fcad4351d888c4a6ee11500713e",
+  "authority_layers": {
+    "L0_USER_APPROVAL": "Explicit user message with full hashes; user-accepted frozen rules; user scope/priority/deferral decisions. NOT replaceable by Memory, Kanban, Agent, or automation.",
+    "L1_GOVERNANCE_DECISION": "Accepted ADR, governance register, source-of-truth matrix, canonical contract registry, explicit supersession.",
+    "L2_CANONICAL_CONTRACT": "Canonical architecture/state/domain/API/schema intent/execution semantics contract.",
+    "L3_EXECUTABLE_CONTRACT": "Public interface, DTO/schema, state enum, module boundary, frozen migration, architecture guard, machine-readable config schema.",
+    "L4_RUNTIME_STATE": "Actual DB schema, active systemd unit, live read-only Skill mount, active gateway, deployment diagnostics. Proves 'what is' but cannot override design authority.",
+    "L5_SUPPORTING_DOCUMENTATION": "Guide, runbook, roadmap, explanatory design, operational notes, tutorials.",
+    "L6_EVIDENCE": ".agent-tasks, detached receipts, test reports, verification logs, forensics, incident evidence.",
+    "L7_HISTORICAL_RECORD": "Superseded ADR, rejected proposal, quarantined V5, historical target state, archived plans."
+  },
+  "conflict_resolution_priority": [
+    "L0 explicit user approval",
+    "L1 accepted governance decision",
+    "L2 accepted canonical contract",
+    "L3 executable contract",
+    "L4 current runtime observation",
+    "L5 supporting documentation",
+    "L6 task evidence",
+    "L7 historical material"
+  ],
+  "conflict_resolution_exceptions": [
+    "6.1: Current implementation cannot auto-override accepted contract (implementation=DRIFT)",
+    "6.2: Frozen migration bytes authoritative separately from canonical schema intent",
+    "6.3: API runtime behavior cannot override canonical API intent",
+    "6.4: Evidence has NO design authority"
+  ],
+  "domains": [
+    {
+      "domain_id": "platform-identity",
+      "domain_name": "Platform Identity",
+      "scope": "platform positioning, kernel, SPI, module boundaries, public capability model",
+      "user_approval_authority": [
+        "platform scope decisions"
+      ],
+      "governance_authority": [
+        "ADR-001 through ADR-007"
+      ],
+      "canonical_contract": [
+        "docs/architecture/current/system-architecture.md"
+      ],
+      "executable_contract": [
+        "AGENTS.md (scope)",
+        "module boundaries"
+      ],
+      "runtime_authority": [],
+      "supporting_documents": [
+        "README.md"
+      ],
+      "evidence_sources": [
+        ".agent-tasks/"
+      ],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        ".agent-tasks/*"
+      ],
+      "conflict_resolution_order": [
+        "L0 > L1 > L2 > L3"
+      ],
+      "current_conflicts": [
+        "C-005"
+      ],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_phase": ".3",
+      "guard_phase": ".6"
+    },
+    {
+      "domain_id": "product-model",
+      "domain_name": "Product Model",
+      "scope": "Product canonical semantics, lifecycle, metadata, dependency, storage reference",
+      "user_approval_authority": [
+        "Product = canonical business object"
+      ],
+      "governance_authority": [
+        "frozen rule"
+      ],
+      "canonical_contract": [
+        "docs/architecture/current/product-lifecycle.md"
+      ],
+      "executable_contract": [
+        "Product.java",
+        "ProductDTO"
+      ],
+      "runtime_authority": [
+        "V1-V4 product table"
+      ],
+      "supporting_documents": [],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE",
+        "CODE_REVIEW_AND_TESTS"
+      ]
+    },
+    {
+      "domain_id": "timeline-model",
+      "domain_name": "Timeline Model",
+      "scope": "Timeline, TimelineRevision, immutability, Timeline Git",
+      "user_approval_authority": [
+        "TimelineRevision = immutable snapshot"
+      ],
+      "governance_authority": [
+        "frozen rules"
+      ],
+      "canonical_contract": [
+        "docs/architecture/current/timeline-architecture.md"
+      ],
+      "executable_contract": [
+        "TimelineRevision.java",
+        "V1-V4"
+      ],
+      "runtime_authority": [],
+      "supporting_documents": [],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE"
+      ]
+    },
+    {
+      "domain_id": "render-job-model",
+      "domain_name": "Render Job Model",
+      "scope": "RenderJob identity, attempt, retry, state machine, terminal states",
+      "user_approval_authority": [
+        "RenderJob = one attempt",
+        "retry = new RenderJob",
+        "FALLBACKING/RETRYING excluded"
+      ],
+      "governance_authority": [
+        "ADR-026 (render/adr/ ACCEPTED)",
+        "frozen rules"
+      ],
+      "canonical_contract": [
+        "docs/architecture/current/render-execution.md"
+      ],
+      "executable_contract": [
+        "RenderJob.java",
+        "RenderJobService.java",
+        "V1-V4"
+      ],
+      "runtime_authority": [
+        "V1-V4 migrations",
+        "jOOQ model"
+      ],
+      "supporting_documents": [],
+      "evidence_sources": [
+        ".agent-tasks/BACKEND-INTEGRITY-*"
+      ],
+      "historical_sources": [
+        "stale target-state docs"
+      ],
+      "explicitly_non_authoritative": [
+        "same-row retry implementation (DRIFT)"
+      ],
+      "current_conflicts": [
+        "C-001",
+        "C-010",
+        "C-014"
+      ],
+      "current_authority_status": "RESOLVED_WITH_LAYERED_AUTHORITY",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE",
+        "CODE_REVIEW_AND_TESTS"
+      ],
+      "notes": "retry same-row implementation is DRIFT"
+    },
+    {
+      "domain_id": "execution-model",
+      "domain_name": "Execution Model",
+      "scope": "ExecutionJob, Task, Command, ExecutionEnvironment, ExecutionBackend, OpenCue",
+      "user_approval_authority": [
+        "OpenCue = ExecutionEnvironment",
+        "FFmpeg etc = ExecutionBackend"
+      ],
+      "governance_authority": [
+        "frozen rules",
+        "ADR-005 to ADR-007"
+      ],
+      "canonical_contract": [
+        "docs/architecture/current/execution-architecture.md"
+      ],
+      "executable_contract": [
+        "ExecutionJob.java",
+        "Task.java"
+      ],
+      "runtime_authority": [],
+      "supporting_documents": [
+        "docs/render/ (P2O series)"
+      ],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [],
+      "current_conflicts": [
+        "C-019"
+      ],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE"
+      ]
+    },
+    {
+      "domain_id": "provider-model",
+      "domain_name": "Provider Model",
+      "scope": "provider type, status, registration, selection, STUB/POC/PRODUCTION",
+      "user_approval_authority": [],
+      "governance_authority": [],
+      "canonical_contract": [
+        "docs/architecture/current/provider-architecture.md"
+      ],
+      "executable_contract": [
+        "Provider*.java"
+      ],
+      "runtime_authority": [],
+      "supporting_documents": [],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE"
+      ]
+    },
+    {
+      "domain_id": "storage-model",
+      "domain_name": "Storage Model",
+      "scope": "StorageRuntime, StorageReference, materialization, checksum, R2/OpenDAL",
+      "user_approval_authority": [],
+      "governance_authority": [],
+      "canonical_contract": [
+        "docs/architecture/current/storage-architecture.md"
+      ],
+      "executable_contract": [
+        "Storage*.java"
+      ],
+      "runtime_authority": [],
+      "supporting_documents": [],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE"
+      ]
+    },
+    {
+      "domain_id": "render-output-model",
+      "domain_name": "Render Output Model",
+      "scope": "output identity, idempotency, RenderOutputCommit/Item proposal, V5 blocked",
+      "user_approval_authority": [
+        "V5 blocked until governance closeout"
+      ],
+      "governance_authority": [
+        "ADR-026 (PROPOSED only)",
+        "V5 quarantined"
+      ],
+      "canonical_contract": [
+        "NONE (awaiting governance)"
+      ],
+      "executable_contract": [],
+      "runtime_authority": [],
+      "supporting_documents": [
+        "ADR-026 render-output-commit-protocol.md"
+      ],
+      "evidence_sources": [
+        "60d4ac5 (quarantined)"
+      ],
+      "historical_sources": [
+        "V5 migration (quarantined)"
+      ],
+      "explicitly_non_authoritative": [
+        "60d4ac5",
+        "V5 implementation files"
+      ],
+      "current_conflicts": [
+        "C-001",
+        "C-002",
+        "C-006",
+        "C-009",
+        "C-010",
+        "C-012",
+        "C-015",
+        "C-021"
+      ],
+      "current_authority_status": "QUARANTINED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE",
+        "SCHEMA_MIGRATION_REVIEW"
+      ],
+      "normalization_phase": ".7",
+      "guard_phase": ".6",
+      "notes": "V5 blocked. 60d4ac5 quarantined."
+    },
+    {
+      "domain_id": "database-schema",
+      "domain_name": "Database Schema",
+      "scope": "V1-V4 frozen, runtime schema, canonical target, jOOQ, future V5",
+      "user_approval_authority": [
+        "V1-V4 frozen"
+      ],
+      "governance_authority": [
+        "V1-V4 frozen rule",
+        "V5 blocked rule"
+      ],
+      "canonical_contract": [
+        "canonical target schema (to define in .3)"
+      ],
+      "executable_contract": [
+        "V1-V4 Flyway migrations",
+        "jOOQ model",
+        "ddl-postgresql.sql"
+      ],
+      "runtime_authority": [
+        "deployed schema"
+      ],
+      "supporting_documents": [
+        "data-architecture.md"
+      ],
+      "evidence_sources": [],
+      "historical_sources": [
+        "V5 migration (quarantined)"
+      ],
+      "explicitly_non_authoritative": [
+        "V5 bytes",
+        "render_job.updated_at (not in V1-V4)"
+      ],
+      "current_conflicts": [
+        "C-002",
+        "C-009",
+        "C-015",
+        "C-018"
+      ],
+      "current_authority_status": "PARTIALLY_RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "SCHEMA_MIGRATION_REVIEW",
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_phase": ".3",
+      "notes": "V1-V4 bytes frozen. Target schema separate."
+    },
+    {
+      "domain_id": "api-contracts",
+      "domain_name": "API Contracts",
+      "scope": "OpenAPI, controllers, DTOs, validators, runtime behavior, preview",
+      "user_approval_authority": [],
+      "governance_authority": [],
+      "canonical_contract": [
+        "docs/api/openapi-preview-current.json"
+      ],
+      "executable_contract": [
+        "controllers",
+        "DTOs"
+      ],
+      "runtime_authority": [
+        "endpoint behavior (evidence)"
+      ],
+      "supporting_documents": [
+        "docs/api/"
+      ],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "runtime behavior cannot override canonical intent"
+      ],
+      "current_conflicts": [
+        "C-011"
+      ],
+      "current_authority_status": "PARTIALLY_RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "CODE_REVIEW_AND_TESTS",
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_phase": ".3"
+    },
+    {
+      "domain_id": "ingest-model",
+      "domain_name": "Ingest Model",
+      "scope": "Tika, FFprobe, policy evaluator, report-only, retention",
+      "user_approval_authority": [],
+      "governance_authority": [],
+      "canonical_contract": [
+        "docs/architecture/current/ingest-architecture.md"
+      ],
+      "executable_contract": [
+        "ingest/ Java classes"
+      ],
+      "runtime_authority": [],
+      "supporting_documents": [],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "CODE_REVIEW_AND_TESTS"
+      ]
+    },
+    {
+      "domain_id": "frontend-architecture",
+      "domain_name": "Frontend Architecture",
+      "scope": "React rebuild, contract gate, editor, preview, StyleX, paused",
+      "user_approval_authority": [
+        "Frontend paused until backend stable"
+      ],
+      "governance_authority": [
+        "frozen rule: frontend paused"
+      ],
+      "canonical_contract": [
+        "NONE (design-only)"
+      ],
+      "executable_contract": [],
+      "runtime_authority": [],
+      "supporting_documents": [
+        "frontend-architecture.md"
+      ],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "frontend design docs are NOT implementation authority"
+      ],
+      "current_conflicts": [
+        "C-005"
+      ],
+      "current_authority_status": "BLOCKED_PENDING_CANONICAL_CONTRACT",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_phase": ".3",
+      "notes": "PAUSED. Design only."
+    },
+    {
+      "domain_id": "artifact-dag",
+      "domain_name": "Artifact DAG",
+      "scope": "Extension-layer design, postponed, non-production",
+      "user_approval_authority": [
+        "Postponed indefinitely"
+      ],
+      "governance_authority": [
+        "frozen rule: postponed"
+      ],
+      "canonical_contract": [
+        "NONE (postponed)"
+      ],
+      "executable_contract": [],
+      "runtime_authority": [],
+      "supporting_documents": [],
+      "evidence_sources": [],
+      "historical_sources": [
+        "stale target-state docs"
+      ],
+      "explicitly_non_authoritative": [
+        "target-state as current requirement"
+      ],
+      "current_conflicts": [
+        "C-003",
+        "C-004"
+      ],
+      "current_authority_status": "QUARANTINED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE"
+      ],
+      "notes": "Postponed indefinitely."
+    },
+    {
+      "domain_id": "deployment-infrastructure",
+      "domain_name": "Deployment & Infrastructure",
+      "scope": "PVE, Dokploy, preview, CI/GHCR, OpenCue env",
+      "user_approval_authority": [],
+      "governance_authority": [],
+      "canonical_contract": [],
+      "executable_contract": [
+        "Dockerfile",
+        "docker-compose.yml",
+        ".github/workflows/",
+        "k8s/"
+      ],
+      "runtime_authority": [
+        "actual deployment state"
+      ],
+      "supporting_documents": [
+        "docs/deployment/"
+      ],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "devops",
+      "change_approval_required": [
+        "CODE_REVIEW_AND_TESTS",
+        "OPERATIONS_APPROVAL"
+      ]
+    },
+    {
+      "domain_id": "security",
+      "domain_name": "Security",
+      "scope": "sandbox, SSRF, tenant isolation, rate limiting, audit, secrets",
+      "user_approval_authority": [],
+      "governance_authority": [
+        "docs/security/ policies"
+      ],
+      "canonical_contract": [
+        "docs/security/"
+      ],
+      "executable_contract": [
+        "check-architecture-drift.sh",
+        ".semgrep/ rules"
+      ],
+      "runtime_authority": [],
+      "supporting_documents": [
+        "docs/security/runbooks/"
+      ],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "security-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE",
+        "CODE_REVIEW_AND_TESTS"
+      ]
+    },
+    {
+      "domain_id": "skill-governance",
+      "domain_name": "Skill Governance",
+      "scope": "approved hashes, tree, backing store, mount, lifecycle",
+      "user_approval_authority": [
+        "approved SKILL.md hashes",
+        "approved canonical tree hashes"
+      ],
+      "governance_authority": [
+        "source-of-truth matrix"
+      ],
+      "canonical_contract": [],
+      "executable_contract": [
+        "/usr/local/libexec/hermes/*.sh",
+        "hermes-approved-skills.service"
+      ],
+      "runtime_authority": [
+        "/var/lib/hermes/approved-skills/",
+        "read-only mounts"
+      ],
+      "supporting_documents": [],
+      "evidence_sources": [
+        "forensics",
+        "receipts"
+      ],
+      "historical_sources": [
+        "superseded hashes"
+      ],
+      "explicitly_non_authoritative": [
+        "live path alone",
+        "Memory",
+        "Agent reports"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "user (L0) + root (L4)",
+      "change_approval_required": [
+        "USER_EXPLICIT_APPROVAL",
+        "CONTROL_PLANE_ROOT_CHANGE"
+      ],
+      "guard_phase": ".6A"
+    },
+    {
+      "domain_id": "agent-gateway-control-plane",
+      "domain_name": "Agent & Gateway Control Plane",
+      "scope": "gateway, delegated agents, delegate_task, skill_manage, curator, hooks",
+      "user_approval_authority": [],
+      "governance_authority": [
+        "authority boundary definitions"
+      ],
+      "canonical_contract": [],
+      "executable_contract": [
+        "hermes-gateway.service",
+        "gateway drop-in"
+      ],
+      "runtime_authority": [
+        "gateway PID/UID",
+        "curator PAUSED"
+      ],
+      "supporting_documents": [],
+      "evidence_sources": [
+        "forensics",
+        "receipts"
+      ],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "delegated agent skill_manage calls",
+        "post-task hooks"
+      ],
+      "current_conflicts": [
+        "C-020"
+      ],
+      "current_authority_status": "PARTIALLY_RESOLVED",
+      "owner": "system-admin",
+      "change_approval_required": [
+        "CONTROL_PLANE_ROOT_CHANGE"
+      ],
+      "guard_phase": ".6A",
+      "notes": "DEBT-03/05/06"
+    },
+    {
+      "domain_id": "memory",
+      "domain_name": "Memory",
+      "scope": "Memory, holographic memory, context, audit, approval exclusion",
+      "user_approval_authority": [],
+      "governance_authority": [],
+      "canonical_contract": [],
+      "executable_contract": [],
+      "runtime_authority": [],
+      "supporting_documents": [],
+      "evidence_sources": [
+        "Memory entries (context/audit only)"
+      ],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "Memory as approval authority",
+        "Memory as architecture authority",
+        "holographic memory as approval authority"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "user",
+      "change_approval_required": [],
+      "notes": "CONTEXT_AND_AUDIT_ONLY. NOT_APPROVAL_AUTHORITY."
+    },
+    {
+      "domain_id": "kanban-task-state",
+      "domain_name": "Kanban & Task State",
+      "scope": "system/execution/semantic/acceptance state, task ID, done vs accepted",
+      "user_approval_authority": [],
+      "governance_authority": [],
+      "canonical_contract": [],
+      "executable_contract": [],
+      "runtime_authority": [
+        "Kanban system state (informational)"
+      ],
+      "supporting_documents": [],
+      "evidence_sources": [
+        "Kanban records"
+      ],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "done = accepted",
+        "complete = verified"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "system",
+      "change_approval_required": [],
+      "notes": "done != verified. done != accepted."
+    },
+    {
+      "domain_id": "evidence-forensics",
+      "domain_name": "Evidence & Forensics",
+      "scope": ".agent-tasks, receipts, test reports, forensics, retention",
+      "user_approval_authority": [],
+      "governance_authority": [],
+      "canonical_contract": [],
+      "executable_contract": [],
+      "runtime_authority": [],
+      "supporting_documents": [],
+      "evidence_sources": [
+        ".agent-tasks/**",
+        "/tmp/HERMES-*.json",
+        "forensics/"
+      ],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "evidence as architecture authority",
+        "receipts as design authority"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "system",
+      "change_approval_required": [],
+      "notes": "EVIDENCE_ONLY. NON_CANONICAL."
+    }
+  ],
+  "conflict_adjudications": [
+    {
+      "conflict_id": "C-001",
+      "authority_decision": "Frozen rule wins",
+      "winning_authority": "L1: retry creates new RenderJob",
+      "losing_or_non_authoritative_source": [
+        "same-row retry implementation",
+        "blueprint reset-to-PENDING"
+      ],
+      "resolution_action": "Mark as DRIFT",
+      "resolution_phase": ".3",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-002",
+      "authority_decision": "Frozen V1-V4 wins",
+      "winning_authority": "L3: V1-V4 frozen bytes",
+      "losing_or_non_authoritative_source": [
+        "quarantined V5 updated_at"
+      ],
+      "resolution_action": "Schema gap for future V5",
+      "resolution_phase": ".3",
+      "blocks_phase_3": false,
+      "blocks_v5": true
+    },
+    {
+      "conflict_id": "C-003",
+      "authority_decision": "Frozen rule wins",
+      "winning_authority": "L1: Artifact DAG postponed",
+      "losing_or_non_authoritative_source": [
+        "implementation referencing Artifact DAG"
+      ],
+      "resolution_action": "Extension-layer only",
+      "resolution_phase": ".3",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-004",
+      "authority_decision": "Frozen rule wins",
+      "winning_authority": "L1: Artifact DAG postponed",
+      "losing_or_non_authoritative_source": [
+        "stale target-state docs"
+      ],
+      "resolution_action": "Mark HISTORICAL in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-005",
+      "authority_decision": "Frozen rule wins",
+      "winning_authority": "L1: Frontend paused",
+      "losing_or_non_authoritative_source": [
+        "Vue 3 reference",
+        "React reference"
+      ],
+      "resolution_action": "Resolve in .3",
+      "resolution_phase": ".3",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-006",
+      "authority_decision": "render/adr/ ACCEPTED wins",
+      "winning_authority": "L1: render/adr/ADR-026 ACCEPTED",
+      "losing_or_non_authoritative_source": [
+        "architecture/adr/ADR-026 PROPOSED"
+      ],
+      "resolution_action": "Disambiguate in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-007",
+      "authority_decision": "Single ADR-016 wins",
+      "winning_authority": "L1: ADR-016 original",
+      "losing_or_non_authoritative_source": [
+        "ADR-016b duplicate"
+      ],
+      "resolution_action": "Renumber in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-008",
+      "authority_decision": "architecture/adr/ wins",
+      "winning_authority": "L1: architecture/adr/ADR-001-007",
+      "losing_or_non_authoritative_source": [
+        "render/adr/ADR-001-007"
+      ],
+      "resolution_action": "Consolidate in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-009",
+      "authority_decision": "V5 quarantined",
+      "winning_authority": "L1: V5 blocked",
+      "losing_or_non_authoritative_source": [
+        "three V5 definitions"
+      ],
+      "resolution_action": "All quarantined until .7",
+      "resolution_phase": ".7",
+      "blocks_phase_3": false,
+      "blocks_v5": true
+    },
+    {
+      "conflict_id": "C-010",
+      "authority_decision": "render/adr/ ACCEPTED wins",
+      "winning_authority": "L1: ADR-026 ACCEPTED",
+      "losing_or_non_authoritative_source": [
+        "ADR-026 PROPOSED header"
+      ],
+      "resolution_action": "Fix status in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-011",
+      "authority_decision": "Canonical API intent wins",
+      "winning_authority": "L2: OpenAPI spec",
+      "losing_or_non_authoritative_source": [
+        "runtime endpoint behavior"
+      ],
+      "resolution_action": "Verify in .3",
+      "resolution_phase": ".3",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-012",
+      "authority_decision": "Frozen rules win",
+      "winning_authority": "L1: frozen rules",
+      "losing_or_non_authoritative_source": [
+        "stale target-state ADR-026"
+      ],
+      "resolution_action": "Mark HISTORICAL in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-013",
+      "authority_decision": "Metadata gap",
+      "winning_authority": "N/A",
+      "losing_or_non_authoritative_source": [],
+      "resolution_action": "Add metadata in .5",
+      "resolution_phase": ".5",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-014",
+      "authority_decision": "Frozen retry rule wins",
+      "winning_authority": "L1: retry = new RenderJob",
+      "losing_or_non_authoritative_source": [
+        "canRetry semantics"
+      ],
+      "resolution_action": "Clarify in .3",
+      "resolution_phase": ".3",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-015",
+      "authority_decision": "V1-V4 wins",
+      "winning_authority": "L3: V1-V4 migrations",
+      "losing_or_non_authoritative_source": [
+        "ER diagram with updated_at"
+      ],
+      "resolution_action": "Update in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-016",
+      "authority_decision": "Handoff is L5 only",
+      "winning_authority": "L1: governance decisions",
+      "losing_or_non_authoritative_source": [
+        "handoff/current-phase.md"
+      ],
+      "resolution_action": "Mark L5 in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-017",
+      "authority_decision": "render/adr/ for render ADRs",
+      "winning_authority": "L1: render/adr/ADR-005",
+      "losing_or_non_authoritative_source": [
+        "architecture/adr/ADR-005"
+      ],
+      "resolution_action": "Consolidate in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-018",
+      "authority_decision": "V1-V4 Flyway wins",
+      "winning_authority": "L3: Flyway V1-V4 bytes",
+      "losing_or_non_authoritative_source": [
+        "ddl-postgresql.sql"
+      ],
+      "resolution_action": "Mark DDL as L5 in .4",
+      "resolution_phase": ".4",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-019",
+      "authority_decision": "Canonical contract wins",
+      "winning_authority": "L2: canonical execution contract",
+      "losing_or_non_authoritative_source": [
+        "execution-planner.md"
+      ],
+      "resolution_action": "Clarify in .3",
+      "resolution_phase": ".3",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-020",
+      "authority_decision": "Control-plane gap",
+      "winning_authority": "N/A",
+      "losing_or_non_authoritative_source": [],
+      "resolution_action": "Address in .6A",
+      "resolution_phase": ".6A",
+      "blocks_phase_3": false,
+      "blocks_v5": false
+    },
+    {
+      "conflict_id": "C-021",
+      "authority_decision": "V5 quarantined",
+      "winning_authority": "L1: V5 blocked",
+      "losing_or_non_authoritative_source": [
+        "ADR-026 schema details"
+      ],
+      "resolution_action": "Quarantine until .7",
+      "resolution_phase": ".7",
+      "blocks_phase_3": false,
+      "blocks_v5": true
+    }
+  ],
+  "governance_debt_mappings": [
+    {
+      "debt_id": "DEBT-01",
+      "description": "Root receipt missing",
+      "authority_owner": "system-admin",
+      "target_phase": ".6A",
+      "blocking": false,
+      "required_guard": "root receipt creation",
+      "acceptance_evidence": "receipt at /var/lib/hermes/receipts/ root:root 0444"
+    },
+    {
+      "debt_id": "DEBT-02",
+      "description": "umount failure may be hidden",
+      "authority_owner": "system-admin",
+      "target_phase": ".6A",
+      "blocking": false,
+      "required_guard": "umount error reporting",
+      "acceptance_evidence": "umount reports errors"
+    },
+    {
+      "debt_id": "DEBT-03",
+      "description": "Same UID can start additional gateway",
+      "authority_owner": "system-admin",
+      "target_phase": ".6A",
+      "blocking": false,
+      "required_guard": "documented risk",
+      "acceptance_evidence": "risk documented, mount protection proven"
+    },
+    {
+      "debt_id": "DEBT-04",
+      "description": "Host reboot not verified",
+      "authority_owner": "system-admin",
+      "target_phase": ".6A",
+      "blocking": false,
+      "required_guard": "reboot test",
+      "acceptance_evidence": "service survives reboot"
+    },
+    {
+      "debt_id": "DEBT-05",
+      "description": "Native delegate tool restriction unavailable",
+      "authority_owner": "hermes-platform",
+      "target_phase": ".6A",
+      "blocking": false,
+      "required_guard": "documented limitation",
+      "acceptance_evidence": "limitation documented, mount mitigation active"
+    },
+    {
+      "debt_id": "DEBT-06",
+      "description": "Post-task hooks historically modified Skills",
+      "authority_owner": "hermes-platform",
+      "target_phase": ".6A",
+      "blocking": false,
+      "required_guard": "read-only mount prevents mutation",
+      "acceptance_evidence": "root-owned read-only mount active"
+    }
+  ],
+  "non_authoritative_sources": [
+    ".agent-tasks/** (EVIDENCE_ONLY)",
+    "Memory entries (NOT_APPROVAL_AUTHORITY)",
+    "holographic memory (NOT_APPROVAL_AUTHORITY)",
+    "Kanban done status (NOT acceptance)",
+    "/tmp receipts (ephemeral)",
+    "forensics (incident evidence)",
+    "quarantined V5 (NOT_AUTHORITY)",
+    "superseded ADRs (HISTORICAL)",
+    "stale target-state (HISTORICAL)",
+    "implementation contradicting frozen contract (DRIFT)"
+  ]
+}

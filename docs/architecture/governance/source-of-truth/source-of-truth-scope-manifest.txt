@@ -1,0 +1,50 @@
+# Source of Truth Scope Manifest
+
+## Repository Paths Analyzed
+
+- docs/architecture/**
+- docs/architecture/adr/**
+- docs/render/adr/**
+- docs/api/**
+- docs/security/**
+- docs/deployment/**
+- docs/frontend-architecture.md
+- docs/backend/**
+- docs/ddl-postgresql.sql
+- docs/governance/**
+- docs/handoff/**
+- render-module/src/main/java/**
+- platform-app/src/main/java/**
+- platform-app/src/main/resources/db/migration/**
+- V1-V4 Flyway migrations
+- .agent-tasks/**
+- AGENTS.md
+- README.md
+- scripts/check-architecture-drift.sh
+- .semgrep/**
+
+## External Control-Plane Objects Analyzed
+
+- ~/.hermes/skills/software-development/kanban-multi-agent-orchestration/
+- ~/.hermes/skills/software-development/java-test-repair/
+- /var/lib/hermes/approved-skills/
+- /etc/systemd/system/hermes-approved-skills.service
+- /etc/systemd/system/hermes-gateway.service
+- /usr/local/libexec/hermes/*.sh
+- ~/.hermes/forensics/
+- /tmp/HERMES-*.json receipts
+- Memory stores
+- Holographic memory
+- Kanban tasks: t_82581ccd, t_5befaae7, t_e0605003
+
+## Domains Covered
+
+20 domains (see source-of-truth-matrix.json)
+
+## Conflicts Adjudicated
+
+21/21 (see conflict_adjudications in source-of-truth-matrix.json)
+
+## Governance Debts Mapped
+
+6/6 (see governance_debt_mappings in source-of-truth-matrix.json)

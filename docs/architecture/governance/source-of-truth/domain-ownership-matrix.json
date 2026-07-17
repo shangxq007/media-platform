@@ -1,0 +1,24 @@
+{
+  "domains": [
+    {"domain_id": "platform-identity", "owner": "architecture-team", "change_approval": ["USER_EXPLICIT_APPROVAL", "ADR_ACCEPTANCE"]},
+    {"domain_id": "product-model", "owner": "architecture-team", "change_approval": ["ADR_ACCEPTANCE", "CODE_REVIEW_AND_TESTS"]},
+    {"domain_id": "timeline-model", "owner": "architecture-team", "change_approval": ["ADR_ACCEPTANCE"]},
+    {"domain_id": "render-job-model", "owner": "architecture-team", "change_approval": ["USER_EXPLICIT_APPROVAL", "ADR_ACCEPTANCE", "CODE_REVIEW_AND_TESTS"]},
+    {"domain_id": "execution-model", "owner": "architecture-team", "change_approval": ["ADR_ACCEPTANCE"]},
+    {"domain_id": "provider-model", "owner": "architecture-team", "change_approval": ["ADR_ACCEPTANCE"]},
+    {"domain_id": "storage-model", "owner": "architecture-team", "change_approval": ["ADR_ACCEPTANCE"]},
+    {"domain_id": "render-output-model", "owner": "architecture-team", "change_approval": ["USER_EXPLICIT_APPROVAL", "ADR_ACCEPTANCE", "SCHEMA_MIGRATION_REVIEW"]},
+    {"domain_id": "database-schema", "owner": "architecture-team", "change_approval": ["SCHEMA_MIGRATION_REVIEW", "ADR_ACCEPTANCE"]},
+    {"domain_id": "api-contracts", "owner": "architecture-team", "change_approval": ["CODE_REVIEW_AND_TESTS", "ADR_ACCEPTANCE"]},
+    {"domain_id": "ingest-model", "owner": "architecture-team", "change_approval": ["CODE_REVIEW_AND_TESTS"]},
+    {"domain_id": "frontend-architecture", "owner": "architecture-team", "change_approval": ["USER_EXPLICIT_APPROVAL", "ADR_ACCEPTANCE"]},
+    {"domain_id": "artifact-dag", "owner": "architecture-team", "change_approval": ["USER_EXPLICIT_APPROVAL", "ADR_ACCEPTANCE"]},
+    {"domain_id": "deployment-infrastructure", "owner": "devops", "change_approval": ["CODE_REVIEW_AND_TESTS", "OPERATIONS_APPROVAL"]},
+    {"domain_id": "security", "owner": "security-team", "change_approval": ["ADR_ACCEPTANCE", "CODE_REVIEW_AND_TESTS"]},
+    {"domain_id": "skill-governance", "owner": "user+root", "change_approval": ["USER_EXPLICIT_APPROVAL", "CONTROL_PLANE_ROOT_CHANGE"]},
+    {"domain_id": "agent-gateway-control-plane", "owner": "system-admin", "change_approval": ["CONTROL_PLANE_ROOT_CHANGE"]},
+    {"domain_id": "memory", "owner": "user", "change_approval": []},
+    {"domain_id": "kanban-task-state", "owner": "system", "change_approval": []},
+    {"domain_id": "evidence-forensics", "owner": "system", "change_approval": []}
+  ]
+}
