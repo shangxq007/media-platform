@@ -1,0 +1,39 @@
+{
+  "task": "ARCH-DOC-GOV-CONTROL-PLANE-GUARDS.6A",
+  "verification_matrix": {
+    "PASS-CP-001": {"description": "Legitimate review receipt write", "expected": "SUCCESS"},
+    "PASS-CP-002": {"description": "Verifier receipt after review", "expected": "SUCCESS"},
+    "PASS-CP-003": {"description": "Service restart persistence", "expected": "SUCCESS"},
+    "PASS-CP-004": {"description": "Index rebuildable", "expected": "SUCCESS"},
+    "FAIL-CP-001": {"description": "UID 1000 direct write", "expected": "REJECTED"},
+    "FAIL-CP-002": {"description": "Overwrite existing receipt", "expected": "REJECTED"},
+    "FAIL-CP-003": {"description": "Symlink escape", "expected": "REJECTED"},
+    "FAIL-CP-004": {"description": "Verification without review", "expected": "REJECTED"},
+    "FAIL-CP-005": {"description": "Review hash mismatch", "expected": "REJECTED"},
+    "FAIL-CP-006": {"description": "CONDITIONAL_PASS rejected", "expected": "REJECTED"},
+    "FAIL-CP-007": {"description": "Wildcard worktree rejected", "expected": "REJECTED"},
+    "FAIL-CP-008": {"description": "Empty run ID rejected", "expected": "REJECTED"},
+    "FAIL-CP-009": {"description": "UID 1000 cannot read credential", "expected": "REJECTED"},
+    "FAIL-CP-010": {"description": "Unapproved destination path", "expected": "REJECTED"}
+  },
+  "protected_path_tests": {
+    "skill_write": {"expected": "FAIL"},
+    "memory_write": {"expected": "FAIL (not root-protected, gateway needs rw)"},
+    "governance_write": {"expected": "FAIL"},
+    "receipt_outside": {"expected": "FAIL"},
+    "workflow_readable": {"expected": "PASS"},
+    "gateway_writable": {"expected": "PASS"}
+  },
+  "mount_tests": {
+    "mount_active": {"expected": "PASS"},
+    "options_match": {"expected": "PASS"},
+    "write_attempt": {"expected": "FAIL"},
+    "service_cycle": {"expected": "PASS"}
+  },
+  "same_uid_tests": {
+    "credential_access": {"expected": "REJECTED"},
+    "receipt_submission": {"expected": "REJECTED"},
+    "copied_payload": {"expected": "REJECTED"},
+    "official_service": {"expected": "ACCEPTED"}
+  }
+}

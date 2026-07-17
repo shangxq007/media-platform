@@ -1,0 +1,30 @@
+{
+  "task": "ARCH-DOC-GOV-CONTROL-PLANE-GUARDS.6A",
+  "debts": {
+    "ROOT-RECEIPT-DEBT-001": {
+      "description": "Root-controlled persistent receipt lifecycle",
+      "status": "CLOSED",
+      "evidence": "Receipt store created (root:root 0750), receipt writer daemon with atomic writes, credential protection"
+    },
+    "UMOUNT-DEBT-001": {
+      "description": "Mount/unmount failure visibility",
+      "status": "CLOSED",
+      "evidence": "ExecStartPre verify script fails gateway on missing mounts, umount failure produces non-zero exit"
+    },
+    "SAME-UID-GATEWAY-DEBT-001": {
+      "description": "Same-UID gateway bypass mitigation",
+      "status": "CLOSED",
+      "evidence": "Receipt writer validates SO_PEERCRED, service credential not readable by UID 1000, systemd unit root-owned"
+    },
+    "DELEGATE-TOOL-DEBT-001": {
+      "description": "Delegated-tool containment",
+      "status": "CLOSED_WITH_CONTAINMENT",
+      "evidence": "Native restriction UNAVAILABLE, filesystem containment via ro mounts + root receipt store + credential protection"
+    },
+    "HOST-REBOOT-DEBT-001": {
+      "description": "Host reboot persistence",
+      "status": "IMPLEMENTED_PENDING_7_REBOOT",
+      "evidence": "systemd enabled services persist across reboot, service-cycle verified, full reboot deferred to .7"
+    }
+  }
+}

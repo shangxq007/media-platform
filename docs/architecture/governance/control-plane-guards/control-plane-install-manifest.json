@@ -1,0 +1,45 @@
+{
+  "task": "ARCH-DOC-GOV-CONTROL-PLANE-GUARDS.6A",
+  "base_commit": "417afb83db54f54443e20cd382e753570d64c80e",
+  "components": {
+    "receipt_store": {
+      "path": "/var/lib/hermes/receipts",
+      "owner": "root:root",
+      "dir_mode": "0750",
+      "file_mode": "0640",
+      "subdirs": ["review", "verification", "control-plane", "rejected", "indexes"]
+    },
+    "receipt_writer": {
+      "unit": "hermes-receipt-writer.service",
+      "script": "/usr/local/bin/hermes_receipt_writer.py",
+      "socket": "/var/run/hermes-receipt-writer/receipt-writer.sock",
+      "credential": "/usr/local/libexec/hermes/receipt-writer-credential"
+    },
+    "submit_client": {
+      "script": "/usr/local/bin/submit_governance_receipt.py"
+    },
+    "control_plane_scripts": [
+      "scripts/control-plane/discover-hermes-control-plane.sh",
+      "scripts/control-plane/install-hermes-control-plane.sh",
+      "scripts/control-plane/verify-hermes-control-plane.sh",
+      "scripts/control-plane/rollback-hermes-control-plane.sh",
+      "scripts/control-plane/test-hermes-control-plane.sh",
+      "scripts/control-plane/hermes_receipt_writer.py",
+      "scripts/control-plane/submit_governance_receipt.py"
+    ],
+    "existing_components": {
+      "gateway_service": "hermes-gateway.service",
+      "approved_skills_service": "hermes-approved-skills.service",
+      "mount_scripts": "/usr/local/libexec/hermes/{mount,umount,verify}-*.sh",
+      "backing_store": "/var/lib/hermes/approved-skills/",
+      "skill_mounts": "btrfs ro bind mounts"
+    }
+  },
+  "systemd_hardening": {
+    "receipt_writer": {
+      "applied": ["NoNewPrivileges", "ProtectSystem=strict", "PrivateTmp", "PrivateDevices", "ProtectKernelTunables", "ProtectKernelModules", "ProtectKernelLogs", "ProtectControlGroups", "RestrictNamespaces", "RestrictSUIDSGID", "LockPersonality", "CapabilityBoundingSet=", "SystemCallArchitectures=native", "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6", "UMask=0077"],
+      "not_applicable": ["MemoryDenyWriteExecute (Python runtime)", "ProtectHome (needs /home/user/.hermes read)"]
+    }
+  },
+  "delegated_tool_restriction": "UNAVAILABLE"
+}

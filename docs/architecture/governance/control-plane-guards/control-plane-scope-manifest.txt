@@ -1,0 +1,44 @@
+ARCH-DOC-GOV-CONTROL-PLANE-GUARDS.6A Scope Manifest
+====================================================
+
+Repository Governance Artifacts (14):
+ 1. ARCH-DOC-GOV-CONTROL-PLANE-GUARDS.6A.md
+ 2. control-plane-threat-model.md
+ 3. root-receipt-store-contract.md
+ 4. receipt-writer-security-contract.md
+ 5. service-identity-and-gateway-policy.md
+ 6. systemd-hardening-policy.md
+ 7. protected-path-and-mount-policy.md
+ 8. delegated-tool-containment-policy.md
+ 9. control-plane-install-manifest.json
+10. control-plane-verification-matrix.json
+11. control-plane-debt-closure-register.json
+12. control-plane-rollback-plan.md
+13. control-plane-phase-handoff.md
+14. control-plane-scope-manifest.txt (this file)
+
+Control-Plane Scripts (7):
+ 1. scripts/control-plane/discover-hermes-control-plane.sh
+ 2. scripts/control-plane/install-hermes-control-plane.sh
+ 3. scripts/control-plane/verify-hermes-control-plane.sh
+ 4. scripts/control-plane/rollback-hermes-control-plane.sh
+ 5. scripts/control-plane/test-hermes-control-plane.sh
+ 6. scripts/control-plane/hermes_receipt_writer.py
+ 7. scripts/control-plane/submit_governance_receipt.py
+
+Host Components:
+ - /var/lib/hermes/receipts/ (root:root 0750)
+ - /var/lib/hermes/receipts/{review,verification,control-plane,rejected,indexes}/
+ - /var/run/hermes-receipt-writer/receipt-writer.sock
+ - /etc/systemd/system/hermes-receipt-writer.service
+ - /usr/local/bin/hermes_receipt_writer.py
+ - /usr/local/bin/submit_governance_receipt.py
+ - /usr/local/libexec/hermes/receipt-writer-credential
+
+Out of Scope:
+ - V5 unblock
+ - Frontend unblock
+ - Full host reboot verification
+ - Dedicated service account migration
+ - Production code changes
+ - Database migrations
