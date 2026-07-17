@@ -1,0 +1,147 @@
+{
+  "gaps": [
+    {
+      "gap_id": "GAP-001",
+      "contract_id": "render-output",
+      "description": "RenderOutputCommit/Item not yet approved",
+      "gap_type": "CANONICAL_CONTRACT_MISSING",
+      "blocking": true,
+      "blocks_v5": true,
+      "requires_user_approval": true,
+      "target_phase": ".7",
+      "acceptance_evidence": "User approval of RenderOutputCommit semantics"
+    },
+    {
+      "gap_id": "GAP-002",
+      "contract_id": "render-output",
+      "description": "V5 migration quarantined",
+      "gap_type": "MIGRATION_BLOCKED",
+      "blocking": true,
+      "blocks_v5": true,
+      "requires_user_approval": true,
+      "target_phase": ".7",
+      "acceptance_evidence": "Governance closeout + user approval"
+    },
+    {
+      "gap_id": "GAP-003",
+      "contract_id": "render-job",
+      "description": "retry() implementation drift",
+      "gap_type": "IMPLEMENTATION_DRIFT",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": ".4",
+      "acceptance_evidence": "Code fix with ADR acceptance"
+    },
+    {
+      "gap_id": "GAP-004",
+      "contract_id": "schema-intent",
+      "description": "render_job.updated_at missing from V1-V4",
+      "gap_type": "SCHEMA_GAP",
+      "blocking": false,
+      "blocks_v5": true,
+      "requires_user_approval": false,
+      "target_phase": ".7",
+      "acceptance_evidence": "V5 migration after governance closeout"
+    },
+    {
+      "gap_id": "GAP-005",
+      "contract_id": "api",
+      "description": "Runtime false-positive behavior",
+      "gap_type": "IMPLEMENTATION_DRIFT",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": ".4",
+      "acceptance_evidence": "Endpoint fix with code review"
+    },
+    {
+      "gap_id": "GAP-006",
+      "contract_id": "control-plane-governance",
+      "description": "Root receipt lifecycle gap",
+      "gap_type": "CONTROL_PLANE_GAP",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": ".6A",
+      "acceptance_evidence": "Root receipt created and verified"
+    },
+    {
+      "gap_id": "GAP-007",
+      "contract_id": "control-plane-governance",
+      "description": "umount failure masking",
+      "gap_type": "CONTROL_PLANE_GAP",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": ".6A",
+      "acceptance_evidence": "umount error reporting verified"
+    },
+    {
+      "gap_id": "GAP-008",
+      "contract_id": "control-plane-governance",
+      "description": "Same-UID alternate gateway possibility",
+      "gap_type": "CONTROL_PLANE_GAP",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": ".6A",
+      "acceptance_evidence": "Risk documented, mount protection proven"
+    },
+    {
+      "gap_id": "GAP-009",
+      "contract_id": "control-plane-governance",
+      "description": "Host reboot not verified",
+      "gap_type": "CONTROL_PLANE_GAP",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": ".6A",
+      "acceptance_evidence": "Service survives reboot"
+    },
+    {
+      "gap_id": "GAP-010",
+      "contract_id": "control-plane-governance",
+      "description": "Native delegate tool restriction unavailable",
+      "gap_type": "CONTROL_PLANE_GAP",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": ".6A",
+      "acceptance_evidence": "Limitation documented"
+    },
+    {
+      "gap_id": "GAP-011",
+      "contract_id": "control-plane-governance",
+      "description": "Historical post-task Skill mutation",
+      "gap_type": "CONTROL_PLANE_GAP",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": ".6A",
+      "acceptance_evidence": "Read-only mount prevents future mutation"
+    },
+    {
+      "gap_id": "GAP-012",
+      "contract_id": "render-output",
+      "description": "Artifact DAG postponed — no canonical contract yet",
+      "gap_type": "DEFERRED_EXTENSION",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": false,
+      "target_phase": "POST_GOVERNANCE",
+      "acceptance_evidence": "User decision to resume"
+    },
+    {
+      "gap_id": "GAP-013",
+      "contract_id": "platform-kernel",
+      "description": "Frontend paused — no canonical contract yet",
+      "gap_type": "DEFERRED_GATE",
+      "blocking": false,
+      "blocks_v5": false,
+      "requires_user_approval": true,
+      "target_phase": "POST_BACKEND_STABLE",
+      "acceptance_evidence": "User approval to start frontend"
+    }
+  ]
+}

@@ -1,0 +1,454 @@
+{
+  "contracts": [
+    {
+      "contract_id": "platform-kernel",
+      "title": "Platform Kernel Contract",
+      "path": "platform-kernel-contract.md",
+      "domain": "platform-identity",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "ALIGNED",
+      "normative_rules": [
+        "PK-001",
+        "PK-002",
+        "PK-003",
+        "PK-004",
+        "PK-005"
+      ],
+      "frozen_rule_ids": [],
+      "source_of_truth_domain_ids": [
+        "platform-identity"
+      ],
+      "executable_anchors": [
+        "AGENTS.md"
+      ],
+      "known_drifts": [],
+      "non_goals": [
+        "platform is not merely an editor",
+        "platform is not merely a render farm",
+        "platform is not merely an AI application",
+        "platform is not merely an FFmpeg wrapper"
+      ],
+      "change_authority": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_targets": [],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": true,
+      "notes": "Core platform identity contract"
+    },
+    {
+      "contract_id": "product",
+      "title": "Product Contract",
+      "path": "product-contract.md",
+      "domain": "product-model",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "ALIGNED",
+      "normative_rules": [
+        "PR-001",
+        "PR-002",
+        "PR-003",
+        "PR-004",
+        "PR-005",
+        "PR-006"
+      ],
+      "frozen_rule_ids": [
+        "F-001"
+      ],
+      "source_of_truth_domain_ids": [
+        "product-model"
+      ],
+      "executable_anchors": [
+        "render-module/src/main/java/**/Product.java"
+      ],
+      "known_drifts": [],
+      "non_goals": [
+        "Artifact DAG as prerequisite"
+      ],
+      "change_authority": [
+        "ADR_ACCEPTANCE",
+        "CODE_REVIEW_AND_TESTS"
+      ],
+      "normalization_targets": [],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": false
+    },
+    {
+      "contract_id": "timeline",
+      "title": "Timeline Contract",
+      "path": "timeline-contract.md",
+      "domain": "timeline-model",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "ALIGNED",
+      "normative_rules": [
+        "TL-001",
+        "TL-002",
+        "TL-003",
+        "TL-004",
+        "TL-005"
+      ],
+      "frozen_rule_ids": [
+        "F-002",
+        "F-011"
+      ],
+      "source_of_truth_domain_ids": [
+        "timeline-model"
+      ],
+      "executable_anchors": [
+        "render-module/src/main/java/**/TimelineRevision.java"
+      ],
+      "known_drifts": [],
+      "non_goals": [
+        "Timeline Git as current implementation"
+      ],
+      "change_authority": [
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_targets": [],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": false
+    },
+    {
+      "contract_id": "render-job",
+      "title": "RenderJob Contract",
+      "path": "render-job-contract.md",
+      "domain": "render-job-model",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "KNOWN_IMPLEMENTATION_DRIFT",
+      "normative_rules": [
+        "RJ-001",
+        "RJ-002",
+        "RJ-003",
+        "RJ-004",
+        "RJ-005",
+        "RJ-006",
+        "RJ-007",
+        "RJ-008"
+      ],
+      "frozen_rule_ids": [
+        "F-003",
+        "F-004",
+        "F-005",
+        "F-006"
+      ],
+      "source_of_truth_domain_ids": [
+        "render-job-model"
+      ],
+      "executable_anchors": [
+        "render-module/src/main/java/**/RenderJob.java",
+        "render-module/src/main/java/**/RenderJobService.java",
+        "V1-V4 migrations"
+      ],
+      "known_drifts": [
+        "RenderJobService.retry() may reset same row instead of creating new RenderJob",
+        "canRetry semantics unclear"
+      ],
+      "non_goals": [],
+      "change_authority": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE",
+        "CODE_REVIEW_AND_TESTS"
+      ],
+      "normalization_targets": [
+        ".4"
+      ],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": true
+    },
+    {
+      "contract_id": "execution",
+      "title": "Execution Contract",
+      "path": "execution-contract.md",
+      "domain": "execution-model",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "ALIGNED",
+      "normative_rules": [
+        "EX-001",
+        "EX-002",
+        "EX-003",
+        "EX-004",
+        "EX-005",
+        "EX-006"
+      ],
+      "frozen_rule_ids": [
+        "F-007",
+        "F-008"
+      ],
+      "source_of_truth_domain_ids": [
+        "execution-model"
+      ],
+      "executable_anchors": [
+        "render-module/src/main/java/**/ExecutionJob.java"
+      ],
+      "known_drifts": [],
+      "non_goals": [],
+      "change_authority": [
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_targets": [],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": false
+    },
+    {
+      "contract_id": "provider",
+      "title": "Provider Contract",
+      "path": "provider-contract.md",
+      "domain": "provider-model",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "PARTIALLY_ALIGNED",
+      "normative_rules": [
+        "PV-001",
+        "PV-002",
+        "PV-003",
+        "PV-004",
+        "PV-005",
+        "PV-006"
+      ],
+      "frozen_rule_ids": [],
+      "source_of_truth_domain_ids": [
+        "provider-model"
+      ],
+      "executable_anchors": [
+        "render-module/src/main/java/**/Provider*.java"
+      ],
+      "known_drifts": [
+        "Provider selection behavior not fully aligned"
+      ],
+      "non_goals": [],
+      "change_authority": [
+        "ADR_ACCEPTANCE",
+        "CODE_REVIEW_AND_TESTS"
+      ],
+      "normalization_targets": [],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": false
+    },
+    {
+      "contract_id": "storage",
+      "title": "Storage Contract",
+      "path": "storage-contract.md",
+      "domain": "storage-model",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "ALIGNED",
+      "normative_rules": [
+        "ST-001",
+        "ST-002",
+        "ST-003",
+        "ST-004",
+        "ST-005",
+        "ST-006"
+      ],
+      "frozen_rule_ids": [],
+      "source_of_truth_domain_ids": [
+        "storage-model"
+      ],
+      "executable_anchors": [
+        "render-module/src/main/java/**/Storage*.java"
+      ],
+      "known_drifts": [],
+      "non_goals": [],
+      "change_authority": [
+        "ADR_ACCEPTANCE",
+        "CODE_REVIEW_AND_TESTS"
+      ],
+      "normalization_targets": [],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": false
+    },
+    {
+      "contract_id": "schema-intent",
+      "title": "Schema Intent Contract",
+      "path": "schema-intent-contract.md",
+      "domain": "database-schema",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "KNOWN_IMPLEMENTATION_DRIFT",
+      "normative_rules": [
+        "SI-001",
+        "SI-002",
+        "SI-003",
+        "SI-004",
+        "SI-005"
+      ],
+      "frozen_rule_ids": [
+        "F-012"
+      ],
+      "source_of_truth_domain_ids": [
+        "database-schema"
+      ],
+      "executable_anchors": [
+        "V1-V4 Flyway migrations",
+        "jOOQ generated model"
+      ],
+      "known_drifts": [
+        "render_job.updated_at required by repository/test but missing from V1-V4"
+      ],
+      "non_goals": [
+        "V5 migration creation"
+      ],
+      "change_authority": [
+        "SCHEMA_MIGRATION_REVIEW",
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_targets": [
+        ".4"
+      ],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": true,
+      "requires_explicit_approval": false
+    },
+    {
+      "contract_id": "render-output",
+      "title": "Render Output Contract",
+      "path": "render-output-contract.md",
+      "domain": "render-output-model",
+      "authority_status": "CANONICAL_CANDIDATE_REQUIRING_APPROVAL",
+      "implementation_alignment": "NOT_IMPLEMENTED",
+      "normative_rules": [
+        "RO-001",
+        "RO-002",
+        "RO-003",
+        "RO-004",
+        "RO-005"
+      ],
+      "frozen_rule_ids": [
+        "F-013"
+      ],
+      "source_of_truth_domain_ids": [
+        "render-output-model"
+      ],
+      "executable_anchors": [],
+      "known_drifts": [
+        "Historical V5 implementation quarantined (60d4ac5)"
+      ],
+      "non_goals": [
+        "Accept quarantined V5 as authority"
+      ],
+      "change_authority": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE",
+        "SCHEMA_MIGRATION_REVIEW"
+      ],
+      "normalization_targets": [
+        ".7"
+      ],
+      "guard_targets": [
+        ".6",
+        ".6A"
+      ],
+      "blocks_v5": true,
+      "requires_explicit_approval": true
+    },
+    {
+      "contract_id": "api",
+      "title": "API Contract",
+      "path": "api-contract.md",
+      "domain": "api-contracts",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "PARTIALLY_ALIGNED",
+      "normative_rules": [
+        "AP-001",
+        "AP-002",
+        "AP-003",
+        "AP-004",
+        "AP-005"
+      ],
+      "frozen_rule_ids": [],
+      "source_of_truth_domain_ids": [
+        "api-contracts"
+      ],
+      "executable_anchors": [
+        "docs/api/openapi-preview-current.json",
+        "platform-app/src/main/java/**/controller/",
+        "platform-app/src/main/java/**/dto/"
+      ],
+      "known_drifts": [
+        "Runtime endpoint may return COMPLETED while persisted state is not completed"
+      ],
+      "non_goals": [],
+      "change_authority": [
+        "CODE_REVIEW_AND_TESTS",
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_targets": [
+        ".4"
+      ],
+      "guard_targets": [
+        ".6"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": false
+    },
+    {
+      "contract_id": "control-plane-governance",
+      "title": "Control-Plane Governance Contract",
+      "path": "control-plane-governance-contract.md",
+      "domain": "agent-gateway-control-plane",
+      "authority_status": "GOVERNANCE_CANONICAL",
+      "implementation_alignment": "PARTIALLY_ALIGNED",
+      "normative_rules": [
+        "CP-001",
+        "CP-002",
+        "CP-003",
+        "CP-004",
+        "CP-005",
+        "CP-006",
+        "CP-007",
+        "CP-008"
+      ],
+      "frozen_rule_ids": [],
+      "source_of_truth_domain_ids": [
+        "skill-governance",
+        "agent-gateway-control-plane",
+        "memory",
+        "kanban-task-state",
+        "evidence-forensics"
+      ],
+      "executable_anchors": [
+        "/etc/systemd/system/hermes-approved-skills.service",
+        "/etc/systemd/system/hermes-gateway.service",
+        "/usr/local/libexec/hermes/*.sh"
+      ],
+      "known_drifts": [
+        "Root receipt lifecycle gap",
+        "umount failure masking",
+        "same-UID alternate gateway",
+        "host reboot not verified",
+        "native delegate tool restriction unavailable",
+        "historical post-task Skill mutation"
+      ],
+      "non_goals": [],
+      "change_authority": [
+        "CONTROL_PLANE_ROOT_CHANGE"
+      ],
+      "normalization_targets": [],
+      "guard_targets": [
+        ".6A"
+      ],
+      "blocks_v5": false,
+      "requires_explicit_approval": false
+    }
+  ]
+}

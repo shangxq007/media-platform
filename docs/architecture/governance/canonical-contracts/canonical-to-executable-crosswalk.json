@@ -1,0 +1,74 @@
+{
+  "crosswalk": [
+    {
+      "contract_id": "render-job",
+      "anchor_type": "repository_sql",
+      "path": "render-module/src/main/java/**/RenderJobService.java",
+      "symbol_or_section": "retry()",
+      "alignment": "KNOWN_IMPLEMENTATION_DRIFT",
+      "drift_description": "retry() may reset same row instead of creating new RenderJob",
+      "resolution_phase": ".4",
+      "must_not_fix_in_phase_3": true
+    },
+    {
+      "contract_id": "schema-intent",
+      "anchor_type": "schema",
+      "path": "V1-V4 migrations",
+      "symbol_or_section": "render_job.updated_at",
+      "alignment": "KNOWN_IMPLEMENTATION_DRIFT",
+      "drift_description": "updated_at required by repository/test but missing from frozen V1-V4",
+      "resolution_phase": ".4",
+      "must_not_fix_in_phase_3": true
+    },
+    {
+      "contract_id": "render-output",
+      "anchor_type": "schema",
+      "path": "target-state docs",
+      "symbol_or_section": "UNIQUE(render_job_id, output_type)",
+      "alignment": "KNOWN_IMPLEMENTATION_DRIFT",
+      "drift_description": "Stale target-state constraint inconsistent with accepted output semantics",
+      "resolution_phase": ".4",
+      "must_not_fix_in_phase_3": true
+    },
+    {
+      "contract_id": "api",
+      "anchor_type": "endpoint",
+      "path": "platform-app/src/main/java/**/controller/",
+      "symbol_or_section": "runtime behavior",
+      "alignment": "PARTIALLY_ALIGNED",
+      "drift_description": "Runtime endpoint may return COMPLETED while persisted state is not completed",
+      "resolution_phase": ".4",
+      "must_not_fix_in_phase_3": true
+    },
+    {
+      "contract_id": "provider",
+      "anchor_type": "implementation",
+      "path": "render-module/src/main/java/**/Provider*.java",
+      "symbol_or_section": "selection logic",
+      "alignment": "PARTIALLY_ALIGNED",
+      "drift_description": "Provider selection behavior not fully aligned with contract",
+      "resolution_phase": ".4",
+      "must_not_fix_in_phase_3": true
+    },
+    {
+      "contract_id": "schema-intent",
+      "anchor_type": "migration",
+      "path": "V1-V4 Flyway migrations",
+      "symbol_or_section": "all",
+      "alignment": "HISTORICAL_FROZEN",
+      "drift_description": "",
+      "resolution_phase": "",
+      "must_not_fix_in_phase_3": true
+    },
+    {
+      "contract_id": "platform-kernel",
+      "anchor_type": "guard",
+      "path": "scripts/check-architecture-drift.sh",
+      "symbol_or_section": "32 checks",
+      "alignment": "ALIGNED",
+      "drift_description": "",
+      "resolution_phase": "",
+      "must_not_fix_in_phase_3": false
+    }
+  ]
+}

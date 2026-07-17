@@ -1,0 +1,53 @@
+# Canonical Contract Scope Manifest
+
+## Governance Inputs Read
+
+- docs/architecture/governance/inventory/repository-artifact-inventory.json
+- docs/architecture/governance/inventory/control-plane-inventory.json
+- docs/architecture/governance/inventory/conflict-register.json
+- docs/architecture/governance/inventory/governance-debt-register.md
+- docs/architecture/governance/source-of-truth/source-of-truth-matrix.json
+- docs/architecture/governance/source-of-truth/conflict-adjudication.json
+- docs/architecture/governance/source-of-truth/authority-precedence.md
+- docs/architecture/governance/source-of-truth/non-authoritative-sources.md
+
+## Existing Contract Candidates Read
+
+- docs/architecture/current/*.md
+- docs/architecture/adr/ADR-*.md
+- docs/render/adr/ADR-*.md
+- docs/api/openapi-preview-current.json
+- V1-V4 Flyway migrations
+- scripts/check-architecture-drift.sh
+
+## New Canonical Contract Files Created
+
+1. ARCH-DOC-GOV-CANONICAL-CONTRACTS.3.md
+2. platform-kernel-contract.md
+3. product-contract.md
+4. timeline-contract.md
+5. render-job-contract.md
+6. execution-contract.md
+7. provider-contract.md
+8. storage-contract.md
+9. schema-intent-contract.md
+10. render-output-contract.md
+11. api-contract.md
+12. control-plane-governance-contract.md
+13. canonical-contract-registry.json
+14. canonical-to-executable-crosswalk.json
+15. normative-rule-registry.json
+16. canonical-contract-gap-register.json
+17. canonical-contract-phase-crosswalk.md
+18. canonical-contract-scope-manifest.txt
+
+## Explicitly Excluded
+
+- Production code changes
+- Test code changes
+- Build file changes
+- Migration changes
+- Existing ADR modifications
+- Existing architecture document modifications
+- V5 creation
+- Skill/Memory/Kanban/systemd modifications

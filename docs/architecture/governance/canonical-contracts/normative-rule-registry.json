@@ -1,0 +1,173 @@
+{
+  "rules": [
+    {
+      "rule_id": "F-001",
+      "contract_id": "product",
+      "statement": "Product is the canonical business object.",
+      "keyword": "MUST",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "ALIGNED",
+      "guard_target": ".6"
+    },
+    {
+      "rule_id": "F-002",
+      "contract_id": "timeline",
+      "statement": "TimelineRevision is an immutable canonical snapshot.",
+      "keyword": "MUST",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "ALIGNED",
+      "guard_target": ".6"
+    },
+    {
+      "rule_id": "F-003",
+      "contract_id": "render-job",
+      "statement": "RenderJob represents one immutable execution attempt.",
+      "keyword": "MUST",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "KNOWN_IMPLEMENTATION_DRIFT",
+      "guard_target": ".6"
+    },
+    {
+      "rule_id": "F-004",
+      "contract_id": "render-job",
+      "statement": "Retry creates a new RenderJob.",
+      "keyword": "MUST",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "KNOWN_IMPLEMENTATION_DRIFT",
+      "guard_target": ".6"
+    },
+    {
+      "rule_id": "F-005",
+      "contract_id": "render-job",
+      "statement": "FALLBACKING is not part of the canonical RenderJob state model.",
+      "keyword": "MUST NOT",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "ALIGNED",
+      "guard_target": ".6"
+    },
+    {
+      "rule_id": "F-006",
+      "contract_id": "render-job",
+      "statement": "RETRYING is not part of the canonical RenderJob state model.",
+      "keyword": "MUST NOT",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "ALIGNED",
+      "guard_target": ".6"
+    },
+    {
+      "rule_id": "F-007",
+      "contract_id": "execution",
+      "statement": "OpenCue is an ExecutionEnvironment.",
+      "keyword": "MUST",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "ALIGNED",
+      "guard_target": ""
+    },
+    {
+      "rule_id": "F-008",
+      "contract_id": "execution",
+      "statement": "FFmpeg, Remotion, GPAC and Blender are ExecutionBackends.",
+      "keyword": "MUST",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "ALIGNED",
+      "guard_target": ""
+    },
+    {
+      "rule_id": "F-009",
+      "contract_id": "render-output",
+      "statement": "Artifact DAG is postponed indefinitely.",
+      "keyword": "MUST NOT",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "NOT_APPLICABLE",
+      "guard_target": ""
+    },
+    {
+      "rule_id": "F-010",
+      "contract_id": "render-output",
+      "statement": "Artifact DAG remains extension-layer design only.",
+      "keyword": "MUST NOT",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "NOT_APPLICABLE",
+      "guard_target": ""
+    },
+    {
+      "rule_id": "F-011",
+      "contract_id": "timeline",
+      "statement": "Timeline Git has priority over Artifact DAG caching.",
+      "keyword": "MUST",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "NOT_APPLICABLE",
+      "guard_target": ""
+    },
+    {
+      "rule_id": "F-012",
+      "contract_id": "schema-intent",
+      "statement": "Flyway V1-V4 migration bytes are frozen.",
+      "keyword": "MUST NOT",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "ALIGNED",
+      "guard_target": ".6"
+    },
+    {
+      "rule_id": "F-013",
+      "contract_id": "render-output",
+      "statement": "V5 remains blocked until document governance .1-.7 closes.",
+      "keyword": "MUST NOT",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "NOT_APPLICABLE",
+      "guard_target": ".7"
+    },
+    {
+      "rule_id": "FP-001",
+      "contract_id": "platform-kernel",
+      "statement": "Frontend implementation is paused until backend contracts stabilize.",
+      "keyword": "SHOULD",
+      "authority_status": "FROZEN_ACCEPTED",
+      "provenance": [
+        "governance-debt-register.md"
+      ],
+      "implementation_alignment": "NOT_IMPLEMENTED",
+      "guard_target": "",
+      "notes": "Execution gate, not permanent architecture rule"
+    }
+  ]
+}
