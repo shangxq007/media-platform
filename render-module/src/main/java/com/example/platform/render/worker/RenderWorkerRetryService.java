@@ -26,10 +26,11 @@ public class RenderWorkerRetryService {
     }
 
     /**
-     * Requeue retry-eligible FAILED jobs.
-     * 
-     * @param limit max jobs to requeue per call
-     * @return number of jobs requeued
+     * Create new RenderJobs for retry-eligible FAILED jobs.
+     * Old jobs remain FAILED. New jobs reference old jobs via base_job_id.
+     *
+     * @param limit max jobs to retry per call
+     * @return number of new retry jobs created
      */
     public int requeueRetryEligibleJobs(int limit) {
         List<Record> jobs = renderJobRepository.findRetryEligibleFailedJobs(Instant.now(), limit);
@@ -39,19 +40,24 @@ public class RenderWorkerRetryService {
         }
 
         log.info("Found {} retry-eligible FAILED jobs", jobs.size());
-        int requeued = 0;
+        int retried = 0;
 
         for (Record job : jobs) {
-            String jobId = job.get("id", String.class);
-            int updated = renderJobRepository.requeueFailedJob(jobId);
-            if (updated > 0) {
-                log.info("Requeued retry-eligible job: {}", jobId);
-                requeued++;
-            }
+            String failedJobId = job.get("id", String.class);
+            String projectId = job.get("project_id", String.class);
+            String tenantId = job.get("tenant_id", String.class);
+            String timelineSnapshotId = job.get("timeline_snapshot_id", String.class);
+            String profile = job.get("profile", String.class);
+
+            String newJobId = com.example.platform.shared.Ids.newId("rj");
+            renderJobRepository.createRetryJob(newJobId, failedJobId, projectId,
+                    tenantId, timelineSnapshotId, profile);
+            log.info("Created retry job {} for failed job {}", newJobId, failedJobId);
+            retried++;
         }
 
-        log.info("Requeued {} retry-eligible jobs", requeued);
-        return requeued;
+        log.info("Created {} retry jobs", retried);
+        return retried;
     }
 
     /**

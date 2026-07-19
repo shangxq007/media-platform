@@ -10,6 +10,8 @@ import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.notification.NotificationEventPublisher;
 import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.web.CommonErrorCode;
+import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -110,11 +112,19 @@ public class RenderJobService {
         assertTenantAccess(tenantId);
         RenderJobResponse job = getById(jobId);
         RenderJobStatus currentStatus = RenderJobStatus.valueOf(job.status());
-        stateMachine.validateTransition(currentStatus, RenderJobStatus.QUEUED);
 
-        renderJobRepository.updateStatusAndClearError(jobId, RenderJobStatus.QUEUED.name());
-        historyRepository.record(jobId, job.status(), RenderJobStatus.QUEUED.name(), "User retry", null);
-        return getById(jobId);
+        // Retry creates a new RenderJob — old job remains in its terminal state
+        if (!currentStatus.isTerminal()) {
+            throw new PlatformException(CommonErrorCode.CONFLICT,
+                    "Cannot retry non-terminal job: " + currentStatus);
+        }
+
+        var newId = Ids.newId("rj");
+        renderJobRepository.createRetryJob(newId, jobId, job.projectId(),
+                tenantId, job.timelineSnapshotId(), job.profile());
+        historyRepository.record(newId, null, "QUEUED",
+                "Retry of failed job " + jobId, null);
+        return getById(newId);
     }
 
     public List<StatusHistoryResponse> getStatusHistory(String jobId, String tenantId) {

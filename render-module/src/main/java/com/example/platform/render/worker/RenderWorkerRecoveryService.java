@@ -50,21 +50,27 @@ public class RenderWorkerRecoveryService {
             String jobId = job.get("id", String.class);
             String reason = "Stale worker recovery: EXECUTING since before " + cutoff;
 
-            int updated;
             if ("REQUEUE".equalsIgnoreCase(action)) {
-                updated = renderJobRepository.requeueExecutingJob(jobId, reason);
-                if (updated > 0) {
-                    log.info("Requeued stale job: {}", jobId);
+                // First mark the old job as FAILED, then create a new retry job
+                int marked = renderJobRepository.markExecutingJobFailed(jobId, reason);
+                if (marked > 0) {
+                    String projectId = job.get("project_id", String.class);
+                    String tenantId = job.get("tenant_id", String.class);
+                    String timelineSnapshotId = job.get("timeline_snapshot_id", String.class);
+                    String profile = job.get("profile", String.class);
+
+                    String newJobId = com.example.platform.shared.Ids.newId("rj");
+                    renderJobRepository.createRetryJob(newJobId, jobId, projectId,
+                            tenantId, timelineSnapshotId, profile);
+                    log.info("Created retry job {} for stale job {}", newJobId, jobId);
+                    recovered++;
                 }
             } else {
-                updated = renderJobRepository.markExecutingJobFailed(jobId, reason);
+                int updated = renderJobRepository.markExecutingJobFailed(jobId, reason);
                 if (updated > 0) {
                     log.info("Marked stale job FAILED: {}", jobId);
+                    recovered++;
                 }
-            }
-
-            if (updated > 0) {
-                recovered++;
             }
         }
 

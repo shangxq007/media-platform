@@ -180,6 +180,11 @@ public class RenderJobRepository {
                 .execute();
     }
 
+    /**
+     * @deprecated In-place retry is replaced by creating a new RenderJob.
+     * Use {@link #createRetryJob} after marking the old job FAILED.
+     */
+    @Deprecated(since = "execution-stack-simplification")
     public int requeueExecutingJob(String jobId, String reason) {
         return dsl.update(table("render_job"))
                 .set(field("status"), "QUEUED")
@@ -453,11 +458,39 @@ public class RenderJobRepository {
                 .fetch();
     }
 
+    /**
+     * @deprecated In-place retry is replaced by creating a new RenderJob.
+     * Use {@link #createRetryJob(String, String, String, String, String)} instead.
+     */
+    @Deprecated(since = "execution-stack-simplification")
     public int requeueFailedJob(String jobId) {
         return dsl.update(table("render_job"))
                 .set(field("status"), "QUEUED")
                 .set(field("updated_at"), java.time.OffsetDateTime.now())
                 .where(field("id").eq(jobId).and(field("status").eq("FAILED")))
+                .execute();
+    }
+
+    /**
+     * Create a new RenderJob as a retry of a failed job.
+     * The old job remains unchanged (FAILED). The new job references it via base_job_id.
+     *
+     * @param newId              new RenderJob ID
+     * @param failedJobId        the failed RenderJob ID (becomes base_job_id)
+     * @param projectId          project ID (copied from old job)
+     * @param tenantId           tenant ID (copied from old job)
+     * @param timelineSnapshotId timeline snapshot ID (copied from old job)
+     * @param profile            profile (copied from old job)
+     */
+    public void createRetryJob(String newId, String failedJobId, String projectId,
+            String tenantId, String timelineSnapshotId, String profile) {
+        dsl.insertInto(table("render_job"))
+                .columns(field("id"), field("project_id"), field("tenant_id"),
+                        field("timeline_snapshot_id"), field("profile"),
+                        field("status"), field("base_job_id"), field("created_at"))
+                .values(newId, projectId, tenantId,
+                        timelineSnapshotId, profile,
+                        "QUEUED", failedJobId, java.time.OffsetDateTime.now())
                 .execute();
     }
 

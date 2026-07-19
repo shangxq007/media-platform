@@ -56,7 +56,7 @@ public class RenderJobStateMachine {
                     RenderJobStatus.FAILED
             )),
             Map.entry(RenderJobStatus.COMPLETED, Collections.emptySet()),
-            Map.entry(RenderJobStatus.FAILED, Set.of(RenderJobStatus.QUEUED)),
+            Map.entry(RenderJobStatus.FAILED, Collections.emptySet()),
             Map.entry(RenderJobStatus.CANCELLED, Collections.emptySet()),
             Map.entry(RenderJobStatus.REJECTED, Collections.emptySet())
     );

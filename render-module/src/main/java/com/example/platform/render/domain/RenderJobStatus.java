@@ -47,14 +47,22 @@ public enum RenderJobStatus {
 
     /**
      * Primary provider failed, attempting fallback provider.
-     * Transitions back to EXECUTING if fallback succeeds.
+     *
+     * @deprecated Retry and fallback now create a new RenderJob instead of
+     * reusing the old one. This status is retained only for reading legacy data.
+     * New code must not persist this status.
      */
+    @Deprecated(since = "execution-stack-simplification", forRemoval = false)
     FALLBACKING(false, false),
 
     /**
      * Retrying after transient failure.
-     * Transitions back to EXECUTING.
+     *
+     * @deprecated Retry now creates a new RenderJob instead of reusing the old one.
+     * This status is retained only for reading legacy data.
+     * New code must not persist this status.
      */
+    @Deprecated(since = "execution-stack-simplification", forRemoval = false)
     RETRYING(false, false),
 
     /**

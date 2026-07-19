@@ -235,16 +235,19 @@ class RenderJobServiceTest {
         }
 
         @Test
-        @DisplayName("retry() transitions FAILED → QUEUED")
-        void retryTransitionsToQueued() {
+        @DisplayName("retry() creates new RenderJob for FAILED job")
+        void retryCreatesNewJob() {
             fakeRepo.storedJobs.put("rj-1",
                     new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "FAILED"));
             fakeRepo.tenants.put("rj-1", "t-1");
 
             RenderJobResponse result = service.retry("rj-1", "t-1");
 
+            // New job created with QUEUED status
             assertEquals("QUEUED", result.status());
-            assertEquals("QUEUED", fakeRepo.lastUpdatedStatus);
+            assertNotEquals("rj-1", result.id(), "Retry must create a new RenderJob");
+            // Old job remains FAILED
+            assertEquals("FAILED", fakeRepo.storedJobs.get("rj-1").status());
         }
 
         @Test
@@ -360,6 +363,14 @@ class RenderJobServiceTest {
         @Override
         public Optional<String> findProjectTenantId(String projectId) {
             return Optional.ofNullable(projectTenants.get(projectId));
+        }
+
+        @Override
+        public void createRetryJob(String newId, String failedJobId, String projectId,
+                String tenantId, String timelineSnapshotId, String profile) {
+            createCalls.add(new String[]{newId, projectId, tenantId});
+            storedJobs.put(newId, new RenderJobResponse(newId, projectId, timelineSnapshotId, profile, "QUEUED"));
+            tenants.put(newId, tenantId);
         }
     }
 

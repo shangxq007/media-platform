@@ -103,9 +103,9 @@ class RenderJobStateMachineErrorModelTest {
         }
 
         @Test
-        @DisplayName("FAILED → QUEUED is valid (retry)")
+        @DisplayName("FAILED → QUEUED is invalid (retry creates new job)")
         void failedToQueued() {
-            assertTrue(stateMachine.canTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
+            assertFalse(stateMachine.canTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
         }
     }
 
@@ -287,7 +287,7 @@ class RenderJobStateMachineErrorModelTest {
             assertFalse(RenderJobStatus.CANCELLED.isCanRetry());
             assertFalse(RenderJobStatus.REJECTED.isCanRetry());
             assertFalse(RenderJobStatus.EXECUTING.isCanRetry());
-            assertFalse(RenderJobStatus.FAILED.isCanRetry(), "canRetry is false but FAILED→QUEUED is a valid transition");
+            assertFalse(RenderJobStatus.FAILED.isCanRetry(), "canRetry is false — retry creates a new RenderJob");
         }
     }
 

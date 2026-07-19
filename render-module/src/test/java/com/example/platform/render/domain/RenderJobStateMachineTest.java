@@ -87,9 +87,11 @@ class RenderJobStateMachineTest {
     }
 
     @Test
-    void failedToQueuedIsValidForRetry() {
-        assertTrue(stateMachine.canTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
+    void failedToQueuedIsInvalidRetryCreatesNewJob() {
+        // Retry now creates a new RenderJob instead of reusing the old one
+        assertFalse(stateMachine.canTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
+        assertThrows(PlatformException.class,
+                () -> stateMachine.validateTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
     }
 
     // --- Invalid transitions ---
@@ -166,7 +168,10 @@ class RenderJobStateMachineTest {
 
     @Test
     void fullRetryPathIsValid() {
-        assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
+        // Retry now creates a new RenderJob, so FAILED is terminal.
+        // New job starts at QUEUED and follows the normal path.
+        assertThrows(PlatformException.class,
+                () -> stateMachine.validateTransition(RenderJobStatus.FAILED, RenderJobStatus.QUEUED));
         assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.QUEUED, RenderJobStatus.SELECTING_PROVIDER));
         assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.SELECTING_PROVIDER, RenderJobStatus.PROVIDER_SELECTED));
         assertDoesNotThrow(() -> stateMachine.validateTransition(RenderJobStatus.PROVIDER_SELECTED, RenderJobStatus.EXECUTING));
