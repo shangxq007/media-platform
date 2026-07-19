@@ -206,7 +206,7 @@ public class DeliveryController {
             @PathVariable String jobId,
             @PathVariable String deliveryJobId) {
         boolean ok = deliveryJobService.retryDelivery(tenantId, projectId, jobId, deliveryJobId);
-        return Map.of("deliveryJobId", deliveryJobId, "status", ok ? "COMPLETED" : "RETRYING");
+        return Map.of("deliveryJobId", deliveryJobId, "status", ok ? "COMPLETED" : "PENDING_RETRY");
     }
 
     @PostMapping("/projects/{projectId}/render-jobs/{jobId}/deliver")

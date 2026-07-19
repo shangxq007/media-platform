@@ -73,24 +73,6 @@ class RenderJobStateMachineErrorModelTest {
         }
 
         @Test
-        @DisplayName("EXECUTING → FALLBACKING is NOT valid (stale baggage)")
-        void executingToFallbacking() {
-            assertFalse(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.FALLBACKING));
-        }
-
-        @Test
-        @DisplayName("EXECUTING → RETRYING is NOT valid (stale baggage)")
-        void executingToRetrying() {
-            assertFalse(stateMachine.canTransition(RenderJobStatus.EXECUTING, RenderJobStatus.RETRYING));
-        }
-
-        @Test
-        @DisplayName("FALLBACKING → EXECUTING is NOT valid (stale baggage)")
-        void fallbackingToExecuting() {
-            assertFalse(stateMachine.canTransition(RenderJobStatus.FALLBACKING, RenderJobStatus.EXECUTING));
-        }
-
-        @Test
         @DisplayName("COMPLETING → COMPLETED is valid")
         void completingToCompleted() {
             assertTrue(stateMachine.canTransition(RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED));
@@ -259,8 +241,6 @@ class RenderJobStateMachineErrorModelTest {
             assertTrue(RenderJobStatus.SELECTING_PROVIDER.isActive());
             assertTrue(RenderJobStatus.PROVIDER_SELECTED.isActive());
             assertTrue(RenderJobStatus.EXECUTING.isActive());
-            assertTrue(RenderJobStatus.FALLBACKING.isActive());
-            assertTrue(RenderJobStatus.RETRYING.isActive());
             assertTrue(RenderJobStatus.COMPLETING.isActive());
             assertFalse(RenderJobStatus.COMPLETED.isActive(), "COMPLETED is not active");
             assertFalse(RenderJobStatus.FAILED.isActive(), "FAILED is not active");
@@ -272,8 +252,6 @@ class RenderJobStateMachineErrorModelTest {
         void providerStates() {
             assertTrue(RenderJobStatus.SELECTING_PROVIDER.isProviderState());
             assertTrue(RenderJobStatus.PROVIDER_SELECTED.isProviderState());
-            assertTrue(RenderJobStatus.FALLBACKING.isProviderState());
-            assertTrue(RenderJobStatus.RETRYING.isProviderState());
             assertFalse(RenderJobStatus.QUEUED.isProviderState());
             assertFalse(RenderJobStatus.EXECUTING.isProviderState());
             assertFalse(RenderJobStatus.COMPLETED.isProviderState());

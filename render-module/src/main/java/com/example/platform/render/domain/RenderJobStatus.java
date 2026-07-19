@@ -12,82 +12,25 @@ package com.example.platform.render.domain;
  *   <li>{@link #SELECTING_PROVIDER} - Provider runtime is resolving the best provider</li>
  *   <li>{@link #PROVIDER_SELECTED} - Provider selected, preparing for execution</li>
  *   <li>{@link #EXECUTING} - Provider is actively rendering</li>
- *   <li>{@link #FALLBACKING} - Primary provider failed, trying fallback</li>
- *   <li>{@link #RETRYING} - Retrying after transient failure</li>
  *   <li>{@link #COMPLETING} - Render complete, finalizing artifacts</li>
  *   <li>{@link #COMPLETED} - Job successfully completed</li>
  *   <li>{@link #FAILED} - Job failed (terminal state)</li>
  *   <li>{@link #CANCELLED} - Job cancelled by user (terminal state)</li>
  *   <li>{@link #REJECTED} - Job rejected by policy/quota (terminal state)</li>
  * </ul>
+ *
+ * <p>Retry and Fallback create new RenderJob attempts — they do not reuse the old one.
  */
 public enum RenderJobStatus {
 
-    /**
-     * Job created, waiting for execution.
-     */
     QUEUED(false, false),
-
-    /**
-     * Provider runtime is resolving the best provider.
-     * Triggered when ProviderRuntimeEngine.resolveProvider() is called.
-     */
     SELECTING_PROVIDER(false, false),
-
-    /**
-     * Provider selected, preparing for execution.
-     * Provider has been chosen but render not yet started.
-     */
     PROVIDER_SELECTED(false, false),
-
-    /**
-     * Provider is actively rendering the job.
-     */
     EXECUTING(false, false),
-
-    /**
-     * Primary provider failed, attempting fallback provider.
-     *
-     * @deprecated Retry and fallback now create a new RenderJob instead of
-     * reusing the old one. This status is retained only for reading legacy data.
-     * New code must not persist this status.
-     */
-    @Deprecated(since = "execution-stack-simplification", forRemoval = false)
-    FALLBACKING(false, false),
-
-    /**
-     * Retrying after transient failure.
-     *
-     * @deprecated Retry now creates a new RenderJob instead of reusing the old one.
-     * This status is retained only for reading legacy data.
-     * New code must not persist this status.
-     */
-    @Deprecated(since = "execution-stack-simplification", forRemoval = false)
-    RETRYING(false, false),
-
-    /**
-     * Render complete, finalizing artifacts (upload, metadata).
-     */
     COMPLETING(false, false),
-
-    /**
-     * Job successfully completed (terminal state).
-     */
     COMPLETED(true, false),
-
-    /**
-     * Job failed (terminal state).
-     */
     FAILED(true, false),
-
-    /**
-     * Job cancelled by user (terminal state).
-     */
     CANCELLED(true, false),
-
-    /**
-     * Job rejected by policy/quota (terminal state).
-     */
     REJECTED(true, false);
 
     private final boolean terminal;
@@ -98,32 +41,19 @@ public enum RenderJobStatus {
         this.canRetry = canRetry;
     }
 
-    /**
-     * Returns true if this is a terminal state (no further transitions).
-     */
     public boolean isTerminal() {
         return terminal;
     }
 
-    /**
-     * Returns true if the job can be retried from this state.
-     */
     public boolean isCanRetry() {
         return canRetry;
     }
 
-    /**
-     * Returns true if the job is in an active execution state.
-     */
     public boolean isActive() {
         return !terminal && this != QUEUED;
     }
 
-    /**
-     * Returns true if the job is in a provider-related state.
-     */
     public boolean isProviderState() {
-        return this == SELECTING_PROVIDER || this == PROVIDER_SELECTED
-                || this == FALLBACKING || this == RETRYING;
+        return this == SELECTING_PROVIDER || this == PROVIDER_SELECTED;
     }
 }
