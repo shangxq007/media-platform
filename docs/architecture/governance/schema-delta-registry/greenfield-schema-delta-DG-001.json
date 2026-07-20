@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.1",
+  "authorization_task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-DELTA-DECISION.2A-DECISION.1",
+  "authorization_result": "GREENFIELD_BASELINE_SCHEMA_DELTA_AUTHORIZED",
+  "authorization_basis": "Production runtime read/write dependency and approved target-domain behavior",
+  "authorization_commit": "866ca920d9937d9a5e0994f4286d029f6c97de3f",
+  "authorization_date": "2026-07-20",
+  "delta_id": "GREENFIELD-SCHEMA-DELTA-DG-001",
+  "status": "APPROVED",
+  "schema": "public",
+  "object_type": "COLUMN",
+  "table": "render_job",
+  "column": "updated_at",
+  "legacy_present": false,
+  "target_present": true,
+  "postgres_type": "TIMESTAMP WITHOUT TIME ZONE",
+  "pg_type_sql": "TIMESTAMP",
+  "nullable": true,
+  "default_expression": null,
+  "creation_value": null,
+  "creation_rule": "INSERT does not set updated_at; column remains NULL until first legitimate business state UPDATE",
+  "update_owner": "APPLICATION",
+  "update_mechanism": "SET updated_at = OffsetDateTime.now() in jOOQ UPDATE statements",
+  "business_semantics": "LAST_PERSISTED_STATE_CHANGE_TIME",
+  "business_semantics_definition": "render_job.updated_at represents the time at which the RenderJob's persistent business state was last successfully written to the database by the application. At record creation, updated_at is NULL. Any subsequent update that changes externally observable execution status, progress, result, error, or assignment must set updated_at to the current application time. Pure reads, lock contention failures, or uncommitted transactions must not alter this field.",
+  "null_semantics": {
+    "description": "IS NULL means the RenderJob has not undergone any contract-defined business state change since creation.",
+    "is_not_unknown_error": true,
+    "is_not_current_time": true,
+    "is_not_created_at_alias": true,
+    "is_not_creation_failure": true,
+    "meaning": "No contract-defined successful business state change has been persisted since the record was created."
+  },
+  "java_write_type": "OffsetDateTime",
+  "java_read_cutoff_type": "Instant",
+  "timezone_contract": {
+    "pg_type": "TIMESTAMP WITHOUT TIME ZONE",
+    "convention_source": "Project-wide: 244 TIMESTAMP WITHOUT TIME ZONE columns vs 1 TIMESTAMPTZ (outbox_events.locked_at only)",
+    "conversion_rule": "Application writes via OffsetDateTime.now() which preserves the system JVM timezone. PostgreSQL TIMESTAMP WITHOUT TIME ZONE stores the local time component without timezone offset. All comparisons (WHERE, ORDER BY, MIN) operate on the stored timestamp values as opaque ordered values. No explicit UTC enforcement exists in DB or application code.",
+    "deterministic": true,
+    "deterministic_note": "The rule is deterministic within a single-deployment greenfield project: all application servers must use the same JVM timezone. The column stores local time components; comparisons are correct as long as the writing JVM timezone is consistent."
+  },
+  "approved_update_methods": [
+    {
+      "class": "RenderJobRepository",
+      "method": "claimForSelection",
+      "package": "com.example.platform.render.infrastructure",
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
+      "business_transition": "QUEUED -> SELECTING_PROVIDER",
+      "writes_updated_at": true
+    },
+    {
+      "class": "RenderJobRepository",
+      "method": "claimJob(String, String)",
+      "package": "com.example.platform.render.infrastructure",
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
+      "business_transition": "QUEUED -> EXECUTING",
+      "writes_updated_at": true
+    },
+    {
+      "class": "RenderJobRepository",
+      "method": "markActiveJobFailed",
+      "package": "com.example.platform.render.infrastructure",
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
+      "business_transition": "SELECTING_PROVIDER|PROVIDER_SELECTED|EXECUTING|COMPLETING -> FAILED",
+      "writes_updated_at": true
+    },
+    {
+      "class": "RenderJobRepository",
+      "method": "markExecutingJobFailed",
+      "package": "com.example.platform.render.infrastructure",
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
+      "business_transition": "EXECUTING -> FAILED",
+      "writes_updated_at": true
+    },
+    {
+      "class": "RenderJobRepository",
+      "method": "requeueExecutingJob",
+      "package": "com.example.platform.render.infrastructure",
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
+      "business_transition": "EXECUTING -> QUEUED",
+      "writes_updated_at": true,
+      "deprecated": true,
+      "deprecated_reason": "In-place retry is replaced by creating a new RenderJob"
+    },
+    {
+      "class": "RenderJobRepository",
+      "method": "requeueFailedJob",
+      "package": "com.example.platform.render.infrastructure",
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
+      "business_transition": "FAILED -> QUEUED",
+      "writes_updated_at": true,
+      "deprecated": true,
+      "deprecated_reason": "In-place retry is replaced by creating a new RenderJob"
+    }
+  ],
+  "approved_read_operations": [
+    {
+      "class": "RenderJobRepository",
+      "method": "findStaleExecutingJobs",
+      "sql_pattern": "WHERE updated_at < cutoff ORDER BY updated_at ASC",
+      "purpose": "Detect jobs stuck in EXECUTING state beyond timeout threshold",
+      "importance": "CRITICAL"
+    },
+    {
+      "class": "RenderJobRepository",
+      "method": "countStaleExecuting",
+      "sql_pattern": "WHERE updated_at < cutoff",
+      "purpose": "Count stale jobs for operational metrics",
+      "importance": "HIGH"
+    },
+    {
+      "class": "RenderJobRepository",
+      "method": "oldestExecutingUpdatedAt",
+      "sql_pattern": "SELECT MIN(updated_at)",
+      "purpose": "Find oldest unrefreshed executing job",
+      "importance": "HIGH"
+    }
+  ],
+  "null_handling_in_queries": {
+    "comparison_updated_at_lt_cutoff": "NULL does not match (NULL < cutoff evaluates to UNKNOWN, row excluded)",
+    "order_by_updated_at_asc": "NULL ordering is not explicitly specified with NULLS FIRST/LAST; current SQL relies on PostgreSQL default (NULLS LAST when ASC). Contract does not invent business meaning beyond current SQL behavior.",
+    "min_updated_at": "MIN() automatically ignores NULL values"
+  },
+  "insert_methods": [
+    {
+      "class": "RenderJobRepository",
+      "method": "create",
+      "sets_updated_at": false,
+      "note": "INSERT does not include updated_at; column is NULL after creation"
+    },
+    {
+      "class": "RenderJobRepository",
+      "method": "createRejected",
+      "sets_updated_at": false,
+      "note": "INSERT does not include updated_at; column is NULL after creation"
+    }
+  ],
+  "unstable_line_number_references_remaining": 0,
+  "retry_contract_changed": false,
+  "retry_contract_note": "Authorization of updated_at does not allow Retry to reuse or overwrite old RenderJobs. Retry must continue to create new RenderJob execution attempts. The old RenderJob and its updated_at continue to be preserved as historical fact.",
+  "fallback_contract_changed": false,
+  "fallback_contract_note": "No Fallback implementation exists in the current codebase. DG-001 does not authorize implicit Fallback, state overwrite, or switching Backends within the same RenderJob. Future Fallback must still create a new RenderJob.",
+  "immutable_execution_attempt_contract": "RenderJob identity and execution-attempt facts are immutable. Authorization of updated_at does not expand to: modifying RenderJob identity, overwriting historical execution facts, changing Retry lineage, or modifying Revision identity. Within the same execution attempt, updating status, progress, error, result, and updated_at is permitted.",
+  "index_recommendation": "None currently. If stale job query performance degrades, consider index on (status, updated_at).",
+  "requires_v1_normalization": false,
+  "current_v1_definition_matches_approved": true
+}

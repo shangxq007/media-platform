@@ -13,12 +13,14 @@
     {
       "contract_id": "schema-intent",
       "anchor_type": "schema",
-      "path": "V1-V4 migrations",
+      "path": "V1-V4 migrations + GREENFIELD-SCHEMA-DELTA-DG-001",
       "symbol_or_section": "render_job.updated_at",
-      "alignment": "KNOWN_IMPLEMENTATION_DRIFT",
-      "drift_description": "updated_at required by repository/test but missing from frozen V1-V4",
-      "resolution_phase": ".4",
-      "must_not_fix_in_phase_3": true
+      "alignment": "APPROVED_DELTA_REGISTERED",
+      "drift_description": "updated_at is approved via DG-001: Legacy V1-V4 + DG-001 = Greenfield V1 Target Schema",
+      "resolution_phase": "CONTRACT_AMENDED",
+      "must_not_fix_in_phase_3": false,
+      "delta_id": "GREENFIELD-SCHEMA-DELTA-DG-001",
+      "authorization_commit": "866ca920d9937d9a5e0994f4286d029f6c97de3f"
     },
     {
       "contract_id": "render-output",

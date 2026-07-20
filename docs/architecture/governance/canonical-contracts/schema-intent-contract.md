@@ -28,7 +28,7 @@ blocks_v5: false
 
 **Contract ID:** schema-intent
 **Authority Status:** GOVERNANCE_CANONICAL
-**Implementation Alignment:** KNOWN_IMPLEMENTATION_DRIFT
+**Implementation Alignment:** APPROVED_DELTA_REGISTERED
 **Frozen Rule:** F-012
 
 ## SI-001: Three-Layer Schema Model
@@ -42,11 +42,17 @@ Flyway V1-V4 migration bytes **MUST NOT** be modified (F-012).
 ## SI-003: Future Schema Correction
 Schema corrections **MUST** use V5 or later, only after governance closeout.
 
-## SI-004: render_job.updated_at
-- Required by repository/test assumptions
-- Missing from frozen V1-V4
-- Future migration required
-- Classification: SCHEMA_GAP
+## SI-004: render_job.updated_at (AMENDED)
+- Required by repository/test assumptions and production runtime (9 references: 6 writes, 3 reads)
+- Present in Greenfield V1 Candidate (866ca920d9937d9a5e0994f4286d029f6c97de3f)
+- Absent from Legacy V1-V4 frozen bytes (096e8ce3a6e1880b7facec3593a4402ff8a92645)
+- **Status: APPROVED via GREENFIELD-SCHEMA-DELTA-DG-001**
+- Authorization task: ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-DELTA-DECISION.2A-DECISION.1
+- Authorization commit: 866ca920d9937d9a5e0994f4286d029f6c97de3f
+- Classification: APPROVED_SCHEMA_DELTA (was: SCHEMA_GAP)
+- **Target equation:** Legacy V1-V4 + DG-001 = Greenfield V1 Target Schema
+- Full specification: `../greenfield-baseline/greenfield-baseline-specification.md`
+- Delta registry: `../schema-delta-registry/greenfield-schema-delta-DG-001.json`
 
 ## SI-005: Stale Target-State Constraints
 UNIQUE(render_job_id, output_type) may be inconsistent with accepted output semantics. Classification: STALE_TARGET_STATE.

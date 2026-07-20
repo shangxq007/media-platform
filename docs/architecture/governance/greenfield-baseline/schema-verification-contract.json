@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.1",
+  "effective_date": "2026-07-20",
+  "verification_rule": "Build Legacy V1-V4 Final Schema, build Candidate V1 Final Schema, compare across all 22 schema categories, match exactly one approved delta (DG-001) from the difference set, require DG-001 definition to match approved contract exactly, fail on any other semantic difference.",
+  "strict_schema_equivalence_expected": false,
+  "strict_difference_count_expected": 1,
+  "approved_delta_count_expected": 1,
+  "unapproved_difference_count_expected": 0,
+  "unexplained_difference_count_expected": 0,
+  "approved_delta_match_required": true,
+  "target_schema_equivalence_expected": true,
+  "required_categories": 22,
+  "allowed_differences": [
+    {
+      "delta_id": "GREENFIELD-SCHEMA-DELTA-DG-001",
+      "object_type": "COLUMN",
+      "schema": "public",
+      "table": "render_job",
+      "column": "updated_at",
+      "candidate_only": true,
+      "postgres_type": "TIMESTAMP WITHOUT TIME ZONE",
+      "nullable": true,
+      "default_expression": null,
+      "trigger": "NONE",
+      "update_owner": "APPLICATION"
+    }
+  ],
+  "allowed_differences_exhaustive": "The above list is the complete and exhaustive set of allowed differences. No other differences are permitted.",
+  "dg_001_mismatch_conditions": [
+    "Type changes to TIMESTAMPTZ",
+    "Type changes to DATE or other type",
+    "Column changes to NOT NULL",
+    "Default value added",
+    "Database trigger added",
+    "Column moved to different schema or table",
+    "Second unapproved difference appears"
+  ],
+  "verification_output_fields": {
+    "raw_semantic_differences": "Count of all semantic differences found",
+    "approved_differences": "Count of differences matching approved deltas exactly",
+    "unapproved_differences": "Count of differences NOT matching any approved delta",
+    "unexplained_differences": "Count of differences with no governance explanation",
+    "strict_schema_equivalence": "FAIL (expected: at least 1 difference from DG-001)",
+    "approved_delta_match": "PASS (expected: DG-001 matches exactly)",
+    "target_schema_equivalence": "PASS (expected: all differences accounted for by approved deltas)"
+  },
+  "deprecated_output_pattern": "The old pattern of reporting 'semantic differences: 1' alongside 'schema equivalence: PASS' without explaining the approved delta handling is deprecated. Reports must distinguish strict vs approved-target equivalence.",
+  "v1_sql_unchanged": true,
+  "production_code_unchanged": true,
+  "test_implementation_unchanged": true
+}

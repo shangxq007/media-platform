@@ -1,0 +1,196 @@
+---
+metadata_schema_version: 1
+document_id: "architecture-governance-greenfield-baseline-specification"
+title: "Greenfield Baseline Schema Specification"
+artifact_type: "ARCHITECTURE_CONTRACT"
+domain: "schema-governance"
+authority_class: "CANONICAL_ACCEPTED"
+lifecycle_state: "ACTIVE"
+acceptance_state: "ACCEPTED_WITH_TAG_FINALIZATION_REQUIRED"
+owner: "architecture-governance"
+document_version: "2.0"
+created_at: "2026-07-20"
+last_reviewed_at: "2026-07-20"
+review_cadence_days: null
+supersedes: []
+superseded_by: []
+canonical_contracts: ["schema-intent", "flyway-migration-baseline"]
+source_of_truth_domains: ["database-schema"]
+retention_class: "PERMANENT"
+generated: false
+generated_by: null
+do_not_edit: false
+requires_explicit_approval: true
+blocks_v5: false
+---
+
+# Greenfield Baseline Schema Specification
+
+**Contract ID:** greenfield-baseline-specification
+**Authority Status:** GOVERNANCE_CANONICAL
+**Effective Date:** 2026-07-20
+**Authorization Commit:** 866ca920d9937d9a5e0994f4286d029f6c97de3f
+
+## GB-001: Target Schema Equation
+
+The Greenfield V1 Target Schema is defined as:
+
+```text
+Legacy V1-V4 Final Schema
++
+GREENFIELD-SCHEMA-DELTA-DG-001
+=
+Greenfield V1 Target Schema
+```
+
+Where:
+- **Legacy reference:** 096e8ce3a6e1880b7facec3593a4402ff8a92645
+- **Candidate reference at authorization time:** 866ca920d9937d9a5e0994f4286d029f6c97de3f
+- **Legacy V1-V4 Final Schema:** The frozen Flyway migration bytes from V1 through V4, applied to a clean database.
+- **GREENFIELD-SCHEMA-DELTA-DG-001:** The single approved schema delta, documented in `schema-delta-registry/greenfield-schema-delta-DG-001.json`.
+
+### Supersession
+
+The previous equation (strict Legacy V1-V4 = Greenfield consolidated V1) is **SUPERSEDED** by this specification. The previous equation did not account for the approved delta DG-001.
+
+**Old equation (pre-amendment):**
+```text
+Legacy V1-V4 Final Schema = Greenfield consolidated V1
+```
+
+**New equation (this amendment):**
+```text
+Legacy V1-V4 Final Schema + GREENFIELD-SCHEMA-DELTA-DG-001 = Greenfield V1 Target Schema
+```
+
+## GB-002: Approved Delta Scope
+
+GREENFIELD-SCHEMA-DELTA-DG-001 is the **only** explicitly approved schema delta.
+
+DG-001 is:
+- A single-column addition: `public.render_job.updated_at`
+- An explicitly authorized governance exception for exactly one schema object
+- NOT a general compatibility exception
+- NOT permission for arbitrary additive differences
+- NOT permission for unrecorded schema deltas
+
+Outside DG-001, **all** schema objects continue to require strict semantic equivalence between Legacy V1-V4 and Greenfield V1.
+
+## GB-003: DG-001 Definition Summary
+
+| Property | Value |
+|----------|-------|
+| Delta ID | GREENFIELD-SCHEMA-DELTA-DG-001 |
+| Status | APPROVED |
+| Object type | COLUMN |
+| Schema | public |
+| Table | render_job |
+| Column | updated_at |
+| Legacy state | ABSENT |
+| Target state | PRESENT |
+| PostgreSQL type | TIMESTAMP WITHOUT TIME ZONE |
+| Nullable | YES |
+| Default | NONE |
+| Creation value | NULL |
+| Update owner | APPLICATION |
+| Business semantics | LAST_PERSISTED_STATE_CHANGE_TIME |
+
+Full definition: `schema-delta-registry/greenfield-schema-delta-DG-001.json`
+
+## GB-004: Null Semantics
+
+`updated_at IS NULL` means:
+
+> The RenderJob has not undergone any contract-defined business state change since creation.
+
+Specifically:
+- NULL is **NOT** an unknown database error
+- NULL is **NOT** the current time
+- NULL is **NOT** an alias for created_at
+- NULL does **NOT** mean the job was not created
+- NULL **ONLY** means no contract-defined successful business state change has been persisted since record creation
+
+## GB-005: Business Semantics
+
+`public.render_job.updated_at` represents the time at which the same RenderJob execution attempt's externally observable persistent business state was last successfully written to the database by the application.
+
+- At record creation, the column is NULL.
+- Only after a successful transaction commit does the value represent a persisted state change.
+- Failed, rolled back, or unexecuted write operations must not be treated as update time changes.
+
+## GB-006: Update Responsibility
+
+Update ownership is **APPLICATION_MANAGED**.
+
+- No database trigger maintains this field.
+- No database default value exists.
+- The application Repository or persistence layer is responsible for explicitly setting the value during approved state change operations.
+- All approved updates must use the project's unified time contract (see GB-007).
+
+## GB-007: Time Convention
+
+`render_job.updated_at` follows the project-wide time convention:
+
+- **PostgreSQL type:** TIMESTAMP WITHOUT TIME ZONE (project has 244 such columns vs 1 TIMESTAMPTZ)
+- **Java write type:** `OffsetDateTime.now()` (preserves system JVM timezone)
+- **Java read cutoff type:** `Instant`
+- **Storage:** PostgreSQL stores the local time component without timezone offset
+- **Comparisons:** WHERE, ORDER BY, MIN operate on stored timestamp values as opaque ordered values
+- **Deterministic:** YES — within a single-deployment greenfield project where all application servers use the same JVM timezone
+
+Source: `schema-delta-registry/greenfield-schema-delta-DG-001.json` timezone_contract section.
+
+## GB-008: Retry Contract
+
+**Retry contract changed:** NO
+
+Authorization of `updated_at` does NOT allow Retry to reuse or overwrite old RenderJobs.
+
+- Retry must continue to create new RenderJob execution attempts.
+- The old RenderJob and its `updated_at` continue as historical fact.
+- `updated_at` tracks changes within a single execution attempt only.
+
+## GB-009: Fallback Contract
+
+**Fallback contract changed:** NO
+
+- No Fallback implementation currently exists.
+- DG-001 does NOT authorize implicit Fallback, state overwrite, or Backend switching within the same RenderJob.
+- Future Fallback must still create a new RenderJob.
+
+## GB-010: Immutable Execution Attempt Contract
+
+RenderJob identity and execution-attempt facts are **immutable**.
+
+Authorization of `updated_at` does NOT expand to:
+- Modifying RenderJob identity
+- Overwriting historical execution facts
+- Changing Retry lineage
+- Modifying Revision identity
+
+Within the same execution attempt, updating status, progress, error, result, and `updated_at` **is** permitted.
+
+## GB-011: Verification Requirements
+
+See `schema-verification-contract.json` for the complete verification contract.
+
+Key points:
+- 22 schema categories must continue to be checked
+- Only one difference allowed: DG-001 (public.render_job.updated_at)
+- Reference Data must be actually scanned and verified
+- Reports must distinguish strict equivalence from approved-target equivalence
+
+## GB-012: Tag Finalization Gate
+
+This specification does **NOT** authorize Tag Finalization.
+
+Only the following task sequence can authorize Tag Finalization:
+1. `ARCH-CODE-GOV-GREENFIELD-BASELINE-CONSOLIDATION.2A-REVERIFICATION.6` → obtain `GREENFIELD_BASELINE_CONSOLIDATION_ACCEPTED_WITH_TAG_FINALIZATION_REQUIRED`
+2. `ARCH-CODE-GOV-GREENFIELD-BASELINE-TAG-FINALIZATION.2A-TAG.1` → execute Tag Finalization
+3. `ARCH-CODE-GOV-GRADLE-QUALITY-TASKS.2B` → execute Gradle quality tasks
+
+## GB-013: Change Authority
+
+- SCHEMA_MIGRATION_REVIEW
+- ADR_ACCEPTANCE
+- Explicit user approval required for any modification to this specification

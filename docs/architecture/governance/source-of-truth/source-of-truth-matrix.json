@@ -345,7 +345,8 @@
       ],
       "explicitly_non_authoritative": [
         "V5 bytes",
-        "render_job.updated_at (not in V1-V4)"
+        "render_job.updated_at (not in V1-V4)",
+        "render_job.updated_at — SUPERSEDED by GREENFIELD-SCHEMA-DELTA-DG-001 (see greenfield-baseline-specification.md)"
       ],
       "current_conflicts": [
         "C-002",
@@ -725,15 +726,22 @@
     },
     {
       "conflict_id": "C-002",
-      "authority_decision": "Frozen V1-V4 wins",
-      "winning_authority": "L3: V1-V4 frozen bytes",
+      "authority_decision": "Frozen V1-V4 wins (pre-amendment); DG-001 authorized (post-amendment)",
+      "winning_authority": "L3: V1-V4 frozen bytes + GREENFIELD-SCHEMA-DELTA-DG-001",
       "losing_or_non_authoritative_source": [
         "quarantined V5 updated_at"
       ],
-      "resolution_action": "Schema gap for future V5",
-      "resolution_phase": ".3",
+      "resolution_action": "Schema gap resolved via authorized delta DG-001 (2026-07-20). Legacy V1-V4 + DG-001 = Greenfield V1 Target Schema.",
+      "resolution_phase": ".3 (original), CONTRACT_AMENDED (current)",
       "blocks_phase_3": false,
-      "blocks_v5": true
+      "blocks_v5": true,
+      "amendment": {
+        "date": "2026-07-20",
+        "task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.1",
+        "delta_id": "GREENFIELD-SCHEMA-DELTA-DG-001",
+        "authorization_commit": "866ca920d9937d9a5e0994f4286d029f6c97de3f",
+        "note": "The original resolution was based on V1-V4 strict equivalence. The greenfield baseline now includes approved delta DG-001."
+      }
     },
     {
       "conflict_id": "C-003",
