@@ -161,10 +161,10 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
     @Test
     void flywayMigrations_allApplied() {
         List<Map<String, Object>> migrations = jdbc.queryForList(
-                "SELECT version, description FROM flyway_schema_history ORDER BY installed_rank");
+                "SELECT version, description, script FROM flyway_schema_history ORDER BY installed_rank");
         evidence.append(String.format("FLYWAY_COUNT: %d%n", migrations.size()));
         for (Map<String, Object> m : migrations) {
-            evidence.append(String.format("FLYWAY: V%s - %s%n", m.get("version"), m.get("description")));
+            evidence.append(String.format("FLYWAY: V%s - %s [%s]%n", m.get("version"), m.get("description"), m.get("script")));
         }
         // Greenfield baseline: exactly one V1 migration before first release
         Assertions.assertEquals(1, migrations.size(),
@@ -172,9 +172,8 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
         Map<String, Object> singleMigration = migrations.get(0);
         Assertions.assertEquals("1", String.valueOf(singleMigration.get("version")),
                 "Only V1 may be active before first release");
-        Assertions.assertTrue(
-                String.valueOf(singleMigration.get("description")).contains("initial"),
-                "V1 description must indicate initial schema");
+        Assertions.assertEquals("V1__initial_schema.sql", String.valueOf(singleMigration.get("script")),
+                "Greenfield baseline must use exactly V1__initial_schema.sql");
     }
 
     // ========== Removed routes ==========
