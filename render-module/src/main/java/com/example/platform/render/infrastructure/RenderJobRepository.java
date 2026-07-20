@@ -130,7 +130,7 @@ public class RenderJobRepository {
     public int claimForSelection(String jobId) {
         return dsl.update(table("render_job"))
                 .set(field("status"), "SELECTING_PROVIDER")
-                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .set(field("updated_at"), java.time.Instant.now())
                 .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
                 .execute();
     }
@@ -142,7 +142,7 @@ public class RenderJobRepository {
     public int claimJob(String jobId, String workerId) {
         return dsl.update(table("render_job"))
                 .set(field("status"), "EXECUTING")
-                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .set(field("updated_at"), java.time.Instant.now())
                 .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
                 .execute();
     }
@@ -151,7 +151,7 @@ public class RenderJobRepository {
         return dsl.select()
                 .from(table("render_job"))
                 .where(field("status").eq("EXECUTING")
-                        .and(field("updated_at").lessThan(java.sql.Timestamp.from(cutoff))))
+                        .and(field("updated_at").lessThan(cutoff)))
                 .orderBy(field("updated_at").asc())
                 .limit(limit)
                 .fetch();
@@ -165,7 +165,7 @@ public class RenderJobRepository {
         return dsl.update(table("render_job"))
                 .set(field("status"), "FAILED")
                 .set(field("error_message"), reason)
-                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .set(field("updated_at"), java.time.Instant.now())
                 .where(field("id").eq(jobId).and(
                         field("status").in("SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING", "COMPLETING")))
                 .execute();
@@ -175,7 +175,7 @@ public class RenderJobRepository {
         return dsl.update(table("render_job"))
                 .set(field("status"), "FAILED")
                 .set(field("error_message"), reason)
-                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .set(field("updated_at"), java.time.Instant.now())
                 .where(field("id").eq(jobId).and(field("status").eq("EXECUTING")))
                 .execute();
     }
@@ -189,7 +189,7 @@ public class RenderJobRepository {
         return dsl.update(table("render_job"))
                 .set(field("status"), "QUEUED")
                 .set(field("error_message"), reason)
-                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .set(field("updated_at"), java.time.Instant.now())
                 .where(field("id").eq(jobId).and(field("status").eq("EXECUTING")))
                 .execute();
     }
@@ -466,7 +466,7 @@ public class RenderJobRepository {
     public int requeueFailedJob(String jobId) {
         return dsl.update(table("render_job"))
                 .set(field("status"), "QUEUED")
-                .set(field("updated_at"), java.time.OffsetDateTime.now())
+                .set(field("updated_at"), java.time.Instant.now())
                 .where(field("id").eq(jobId).and(field("status").eq("FAILED")))
                 .execute();
     }
@@ -514,7 +514,7 @@ public class RenderJobRepository {
         return dsl.fetchCount(table("render_job"),
                 field("project_id").eq(projectId)
                         .and(field("status").eq("EXECUTING"))
-                        .and(field("updated_at").lessThan(java.sql.Timestamp.from(cutoff))));
+                        .and(field("updated_at").lessThan(cutoff)));
     }
 
     public int countRetryEligibleFailed(String projectId) {

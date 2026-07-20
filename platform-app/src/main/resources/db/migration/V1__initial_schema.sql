@@ -2724,4 +2724,4 @@ CREATE INDEX idx_preflight_safe_overall_decision ON ingest_preflight_safe_report
 ALTER TABLE render_job ADD COLUMN selected_provider VARCHAR(128);
 
 -- V4: Add updated_at to render_job
-ALTER TABLE render_job ADD COLUMN updated_at TIMESTAMP;
+ALTER TABLE render_job ADD COLUMN updated_at TIMESTAMPTZ;
