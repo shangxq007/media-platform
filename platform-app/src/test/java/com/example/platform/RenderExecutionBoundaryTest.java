@@ -149,10 +149,10 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
     // ========== Flyway ==========
 
     @Test
-    void flywayV4_columnExists() {
+    void flyway_selectedProviderColumnExists() {
         try {
             jdbc.execute("SELECT selected_provider FROM render_job LIMIT 0");
-            evidence.append("V4_COLUMN: EXISTS\n");
+            evidence.append("SELECTED_PROVIDER_COLUMN: EXISTS\n");
         } catch (Exception e) {
             Assertions.fail("selected_provider column should exist");
         }
@@ -166,7 +166,15 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
         for (Map<String, Object> m : migrations) {
             evidence.append(String.format("FLYWAY: V%s - %s%n", m.get("version"), m.get("description")));
         }
-        Assertions.assertTrue(migrations.size() >= 4, "Should have at least V1-V4");
+        // Greenfield baseline: exactly one V1 migration before first release
+        Assertions.assertEquals(1, migrations.size(),
+                "Greenfield baseline must contain exactly one V1 migration");
+        Map<String, Object> singleMigration = migrations.get(0);
+        Assertions.assertEquals("1", String.valueOf(singleMigration.get("version")),
+                "Only V1 may be active before first release");
+        Assertions.assertTrue(
+                String.valueOf(singleMigration.get("description")).contains("initial"),
+                "V1 description must indicate initial schema");
     }
 
     // ========== Removed routes ==========
