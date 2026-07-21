@@ -346,7 +346,7 @@
       ],
       "explicitly_non_authoritative": [
         "V5 bytes",
-        "render_job.updated_at (not in V1-V4) — resolved via GREENFIELD-SCHEMA-DELTA-DG-001, aligned after Contract.2"
+        "render_job.updated_at (not in V1-V4) \u2014 resolved via GREENFIELD-SCHEMA-DELTA-DG-001, aligned after Contract.2"
       ],
       "current_conflicts": [
         "C-002",
@@ -759,11 +759,14 @@
         "tag_finalization_governance_acceptance": "QUALITY_PASSING_LOCAL_TAG_FINALIZATION_GOVERNANCE_ACCEPTED",
         "local_tag_finalization": "GOVERNANCE_ACCEPTED",
         "remote_publication": "NOT_AUTHORIZED",
-        "mainline_readiness": "NOT_YET_ASSESSED",
+        "mainline_readiness": "GOVERNANCE_DECISION_ACCEPTED",
         "credential_residual_risk": "PRESENT",
-        "closure_record": "this commit"
+        "closure_record": "this commit",
+        "mainline_readiness_decision_commit": "PENDING_RESULT_COMMIT",
+        "mainline_blockers": 0,
+        "remove_before_mainline": 4
       },
-      "notes": "Quality baseline closed locally. Remote publication NOT authorized. Mainline readiness NOT yet assessed. Credential exception ACTIVE_TEMPORARY_EXCEPTION until 2026-08-04."
+      "notes": "Quality baseline closed locally. Remote publication NOT authorized. Mainline readiness NOT yet assessed. Credential exception ACTIVE_TEMPORARY_EXCEPTION until 2026-08-04. Mainline readiness authority decision: GOVERNANCE_ACCEPTED. BLOCKER=0."
     },
     {
       "domain_id": "tag-release",
@@ -803,6 +806,59 @@
         "USER_EXPLICIT_APPROVAL"
       ],
       "notes": "Tag naming authority: tag-release-governance-contract.md. Tag registry authority: governance-tag-registry.json. Quality-passing tag authorized via ARCH-CODE-GOV-GREENFIELD-BASELINE-QUALITY-PASSING-TAG-GOVERNANCE-CONTRACT.1."
+    },
+    {
+      "domain_id": "mainline-readiness-decision",
+      "domain_name": "Mainline Readiness Batch Authority Decision",
+      "scope": "debt classification, remediation batch authorization, retirement decisions, mainline blocker determination",
+      "user_approval_authority": [],
+      "governance_authority": [
+        "docs/architecture/governance/mainline-readiness/mainline-readiness-authority-decision.md"
+      ],
+      "canonical_contract": [
+        "docs/architecture/governance/mainline-readiness/mainline-readiness-authority-decision.md"
+      ],
+      "executable_contract": [],
+      "runtime_authority": [],
+      "supporting_documents": [],
+      "evidence_sources": [
+        "/tmp/ARCH_CODE_GOV_MAINLINE_READINESS_BATCH_AUTHORITY_DECISION_1_EVIDENCE/"
+      ],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "authority decision as implementation commit",
+        "authority decision as remote publication authorization"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "GOVERNANCE_ACCEPTED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE",
+        "USER_EXPLICIT_APPROVAL"
+      ],
+      "mainline_readiness_decision": {
+        "status": "GOVERNANCE_ACCEPTED",
+        "decision_commit": "PENDING_RESULT_COMMIT",
+        "decision_task": "ARCH-CODE-GOV-MAINLINE-READINESS-BATCH-AUTHORITY-AND-RETIREMENT-DECISION.1",
+        "base_commit": "aac6fbad7914505d96b8564065ba7c6428f400bb",
+        "total_decision_items": 37,
+        "classified_items": 37,
+        "unclassified_items": 0,
+        "blockers": 0,
+        "remove_before_mainline": 4,
+        "deprecate_with_deadline": 7,
+        "quarantine": 1,
+        "keep": 25,
+        "authorized_batches": [
+          "BATCH-B-TEST-BUILD-HYGIENE",
+          "BATCH-C-DEAD-COMPATIBILITY"
+        ],
+        "mainline_readiness_verification": "NOT_YET_EXECUTED",
+        "opencue_implementation": "NOT_AUTHORIZED",
+        "remote_publication": "NOT_AUTHORIZED",
+        "credential_residual_risk": "PRESENT"
+      },
+      "notes": "Mainline readiness authority decision created. BLOCKER=0. BATCH-B required before Mainline verification. BATCH-C is post-Mainline."
     }
   ],
   "conflict_adjudications": [
