@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.0.0",
+  "authority": "docs/architecture/governance/tag-release/tag-release-governance-contract.md",
+  "tag_contract": {
+    "namespace": "governance/",
+    "name_pattern": "governance/<subject>-<decision-state>",
+    "rules": {
+      "case": "lowercase",
+      "style": "kebab-case",
+      "character_set": "ASCII",
+      "task_numbers_prohibited": true,
+      "agent_names_prohibited": true,
+      "auto_conversion_from_task_name_prohibited": true,
+      "process_only_suffix_prohibited": true,
+      "tag_finalization_as_decision_state_prohibited": true
+    },
+    "type": {
+      "required": "annotated",
+      "signed": "NOT_REQUIRED",
+      "lightweight": "PROHIBITED"
+    },
+    "immutability": {
+      "accepted_tags_immutable": true,
+      "force_update_prohibited": true,
+      "delete_and_recreate_prohibited": true,
+      "message_modification_prohibited": true,
+      "peeled_commit_change_prohibited": true
+    },
+    "remote": {
+      "local_creation_not_equal_to_publication": true,
+      "push_requires_independent_authorization": true,
+      "pre_push_verification_required": [
+        "exact_tag_name",
+        "tag_object_type_annotated",
+        "message_match",
+        "peeled_commit_match",
+        "no_remote_conflict",
+        "governance_acceptance_confirmed"
+      ],
+      "prohibited": [
+        "tag_agent_self_push",
+        "git_push_tags_batch",
+        "force_push"
+      ]
+    }
+  },
+  "entries": [
+    {
+      "tag_name": "governance/execution-stack-simplification-accepted",
+      "subject": "execution-stack-simplification",
+      "decision_state": "accepted",
+      "tag_type": "annotated",
+      "signature_requirement": "NOT_REQUIRED",
+      "target_commit": "096e8ce3a6e1880b7facec3593a4402ff8a92645",
+      "message": "ARCH-CODE-GOV-EXECUTION-STACK-SIMPLIFICATION.2 ACCEPTED\n\nCommit: 096e8ce3a6e1880b7facec3593a4402ff8a92645\nDate: 2026-07-20\nKey decisions:\n- RenderJob = immutable execution attempt\n- Retry creates new RenderJob\n- FAILED is terminal\n- OpenCue = ExecutionEnvironment\n- ffmpeg = canonical backend ID",
+      "status": "LEGACY_GOVERNANCE_TAG",
+      "remote_status": "LOCAL_ONLY",
+      "immutability": "IMMUTABLE",
+      "authorization_source": "pre-contract creation (2026-07-20)",
+      "notes": "Created before tag-release governance contract. Preserved as-is."
+    },
+    {
+      "tag_name": "governance/greenfield-baseline-consolidated",
+      "subject": "greenfield-baseline",
+      "decision_state": "consolidated",
+      "tag_type": "annotated",
+      "signature_requirement": "NOT_REQUIRED",
+      "target_commit": "ed90e5bbf155ca86ccfa531f75f25397dc9be7a9",
+      "message": "ARCH-CODE-GOV-GREENFIELD-BASELINE-CONSOLIDATION.2A ACCEPTED\n\nCommit: ed90e5bbf155ca86ccfa531f75f25397dc9be7a9\nDate: 2026-07-20\nKey decisions:\n- Single V1__initial_schema.sql baseline\n- RETRYING/FALLBACKING removed\n- Greenfield pre-release contract reset",
+      "status": "LEGACY_GOVERNANCE_TAG",
+      "remote_status": "LOCAL_ONLY",
+      "immutability": "IMMUTABLE",
+      "authorization_source": "pre-contract creation (2026-07-20)",
+      "notes": "Created before tag-release governance contract. Preserved as-is."
+    },
+    {
+      "tag_name": "governance/greenfield-baseline-accepted",
+      "subject": "greenfield-baseline",
+      "decision_state": "accepted",
+      "tag_type": "annotated",
+      "signature_requirement": "NOT_REQUIRED",
+      "target_commit": "673e180a3236d747b4fd2aaaa5ca7a11a0cf830d",
+      "message": "GREENFIELD BASELINE ACCEPTED\n\nTarget: 673e180a3236d747b4fd2aaaa5ca7a11a0cf830d\nDecision: GREENFIELD_BASELINE_REVERIFICATION_6_PASSED\nContract: ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.2\nVerification: ARCH-CODE-GOV-GREENFIELD-BASELINE-REVERIFICATION.6\nDecision-Date: 2026-07-21",
+      "status": "AUTHORIZED",
+      "remote_status": "PENDING_CREATION",
+      "immutability": "IMMUTABLE_AFTER_CREATION",
+      "authorization_source": "ARCH-CODE-GOV-TAG-RELEASE-GOVERNANCE-CONTRACT.1 (this contract)",
+      "notes": "Authorized replacement for the provisional tag. Tag creation requires separate execution task."
+    }
+  ],
+  "provisional_tags": [
+    {
+      "tag_name": "governance/greenfield-baseline-tag-finalization",
+      "subject": "greenfield-baseline-tag-finalization",
+      "decision_state": "tag-finalization",
+      "tag_type": "annotated",
+      "signature_requirement": "NOT_REQUIRED",
+      "target_commit": "673e180a3236d747b4fd2aaaa5ca7a11a0cf830d",
+      "message": "ARCH-CODE-GOV-GREENFIELD-BASELINE-TAG-FINALIZATION.1 ACCEPTED\n\nCommit: 673e180a3236d747b4fd2aaaa5ca7a11a0cf830d\nDate: 2026-07-21\nKey decisions:\n- CONTRACT.2 commit finalized as greenfield baseline\n- DG-001 governance contract aligned with timestamptz implementation\n- RenderJob.updated_at normalized to TIMESTAMPTZ",
+      "status": "UNACCEPTED_LOCAL_PROVISIONAL_TAG",
+      "remote_status": "LOCAL_ONLY",
+      "immutability": "MUTABLE_BY_CORRECTION_TASK_ONLY",
+      "authorization_source": "NONE (pre-contract, derived from task name)",
+      "classification_rationale": [
+        "Name not authorized by registry",
+        "Name derived from task name",
+        "Message not defined by governance contract",
+        "Never pushed to remote"
+      ],
+      "constraints": [
+        "NOT an accepted governance tag",
+        "MUST NOT be pushed",
+        "MUST NOT be treated as release or baseline identifier",
+        "MUST NOT be deleted/moved/overwritten by contract task",
+        "Only dedicated TAG CORRECTION TASK may handle deletion and replacement"
+      ],
+      "correction_procedure": [
+        "1. Verify remote does not contain this tag",
+        "2. Delete provisional local tag",
+        "3. Create authorized replacement: governance/greenfield-baseline-accepted"
+      ]
+    }
+  ]
+}

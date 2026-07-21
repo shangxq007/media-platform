@@ -346,7 +346,7 @@
       ],
       "explicitly_non_authoritative": [
         "V5 bytes",
-        "render_job.updated_at (not in V1-V4) \u2014 resolved via GREENFIELD-SCHEMA-DELTA-DG-001, aligned after Contract.2"
+        "render_job.updated_at (not in V1-V4) — resolved via GREENFIELD-SCHEMA-DELTA-DG-001, aligned after Contract.2"
       ],
       "current_conflicts": [
         "C-002",
@@ -708,6 +708,44 @@
       "owner": "system",
       "change_approval_required": [],
       "notes": "EVIDENCE_ONLY. NON_CANONICAL."
+    },
+    {
+      "domain_id": "tag-release",
+      "domain_name": "Tag and Release Governance",
+      "scope": "tag naming, tag type, tag message, tag registry, tag immutability, remote publication boundary",
+      "user_approval_authority": [],
+      "governance_authority": [
+        "docs/architecture/governance/tag-release/tag-release-governance-contract.md",
+        "docs/architecture/governance/tag-release/governance-tag-registry.json"
+      ],
+      "canonical_contract": [
+        "docs/architecture/governance/tag-release/tag-release-governance-contract.md"
+      ],
+      "executable_contract": [
+        "docs/architecture/governance/tag-release/governance-tag-registry.json"
+      ],
+      "runtime_authority": [
+        "git tag -l 'governance/*'"
+      ],
+      "supporting_documents": [],
+      "evidence_sources": [],
+      "historical_sources": [
+        "pre-contract governance tags (LEGACY_GOVERNANCE_TAG)"
+      ],
+      "explicitly_non_authoritative": [
+        "ADR decisions about tag names",
+        "task prompts defining tag names",
+        "agent reports claiming tag status",
+        "historical tags as naming precedent"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE",
+        "USER_EXPLICIT_APPROVAL"
+      ],
+      "notes": "Tag naming authority: tag-release-governance-contract.md. Tag registry authority: governance-tag-registry.json."
     }
   ],
   "conflict_adjudications": [
