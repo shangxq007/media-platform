@@ -99,13 +99,16 @@ public final class SafeDownloadUrlValidator {
             return "localhost is not allowed";
         }
 
-        // Always check if host is a literal IP address
-        try {
-            InetAddress addr = InetAddress.getByName(host);
-            String ipCheck = validateInetAddress(addr);
-            if (ipCheck != null) return ipCheck;
-        } catch (UnknownHostException e) {
-            // Not a literal IP, that's OK — will be resolved below
+        // Check if host is a literal IP address (without DNS resolution)
+        if (isIpLiteral(host)) {
+            try {
+                InetAddress addr = InetAddress.getByName(host);
+                String ipCheck = validateInetAddress(addr);
+                if (ipCheck != null) return ipCheck;
+            } catch (UnknownHostException e) {
+                // Invalid IP literal
+                return "Invalid IP address: " + host;
+            }
         }
 
         // DNS resolution — fail closed
@@ -132,6 +135,27 @@ public final class SafeDownloadUrlValidator {
      */
     public static boolean isSafe(String url) {
         return validate(url) == null;
+    }
+
+    /**
+     * Checks if a host string is an IP literal (IPv4 or IPv6) without DNS resolution.
+     * This prevents hostname strings from being resolved via system DNS in the
+     * literal IP validation path.
+     */
+    private static boolean isIpLiteral(String host) {
+        if (host == null || host.isEmpty()) return false;
+        // IPv6 literal (contains colons)
+        if (host.contains(":")) return true;
+        // IPv4 literal: must be N.N.N.N where each N is a decimal number
+        String[] parts = host.split("\\.");
+        if (parts.length != 4) return false;
+        for (String part : parts) {
+            if (part.isEmpty()) return false;
+            for (int i = 0; i < part.length(); i++) {
+                if (!Character.isDigit(part.charAt(i))) return false;
+            }
+        }
+        return true;
     }
 
     private static String validateInetAddress(InetAddress addr) {
