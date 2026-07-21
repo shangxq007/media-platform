@@ -8,11 +8,11 @@ authority_class: "CANONICAL_ACCEPTED"
 lifecycle_state: "ACTIVE"
 acceptance_state: "ACCEPTED_WITH_TAG_FINALIZATION_REQUIRED"
 owner: "architecture-governance"
-document_version: "2.0"
+document_version: "3.0"
 created_at: "2026-07-20"
-last_reviewed_at: "2026-07-20"
+last_reviewed_at: "2026-07-21"
 review_cadence_days: null
-supersedes: []
+supersedes: ["2.0 (Contract.1, b509be5)"]
 superseded_by: []
 canonical_contracts: ["schema-intent", "flyway-migration-baseline"]
 source_of_truth_domains: ["database-schema"]
@@ -28,8 +28,10 @@ blocks_v5: false
 
 **Contract ID:** greenfield-baseline-specification
 **Authority Status:** GOVERNANCE_CANONICAL
-**Effective Date:** 2026-07-20
+**Effective Date:** 2026-07-21
 **Authorization Commit:** 866ca920d9937d9a5e0994f4286d029f6c97de3f
+**Normalization Commit:** b1f974ed694203998d49d8d555e30bd85a7940b7
+**Contract Amendment:** Contract.2 (this document) supersedes Contract.1 (b509be5) for time-type fields
 
 ## GB-001: Target Schema Equation
 
@@ -45,7 +47,7 @@ Greenfield V1 Target Schema
 
 Where:
 - **Legacy reference:** 096e8ce3a6e1880b7facec3593a4402ff8a92645
-- **Candidate reference at authorization time:** 866ca920d9937d9a5e0994f4286d029f6c97de3f
+- **Normalization commit:** b1f974ed694203998d49d8d555e30bd85a7940b7
 - **Legacy V1-V4 Final Schema:** The frozen Flyway migration bytes from V1 through V4, applied to a clean database.
 - **GREENFIELD-SCHEMA-DELTA-DG-001:** The single approved schema delta, documented in `schema-delta-registry/greenfield-schema-delta-DG-001.json`.
 
@@ -62,6 +64,12 @@ Legacy V1-V4 Final Schema = Greenfield consolidated V1
 ```text
 Legacy V1-V4 Final Schema + GREENFIELD-SCHEMA-DELTA-DG-001 = Greenfield V1 Target Schema
 ```
+
+### Equations Not Permitted
+
+- DG-001 is a single precisely approved delta; it does NOT authorize general additive differences
+- Unrecorded Candidate-only objects are NOT permitted
+- Outside DG-001, strict semantic equivalence continues to be required
 
 ## GB-002: Approved Delta Scope
 
@@ -81,21 +89,31 @@ Outside DG-001, **all** schema objects continue to require strict semantic equiv
 | Property | Value |
 |----------|-------|
 | Delta ID | GREENFIELD-SCHEMA-DELTA-DG-001 |
-| Status | APPROVED |
+| Status | APPROVED_IMPLEMENTED_AND_REVERIFIED |
 | Object type | COLUMN |
 | Schema | public |
 | Table | render_job |
 | Column | updated_at |
 | Legacy state | ABSENT |
 | Target state | PRESENT |
-| PostgreSQL type | TIMESTAMP WITHOUT TIME ZONE |
+| PostgreSQL type | TIMESTAMP WITH TIME ZONE |
+| PostgreSQL alias | TIMESTAMPTZ |
+| PostgreSQL UDT | timestamptz |
 | Nullable | YES |
 | Default | NONE |
 | Creation value | NULL |
+| Database trigger | ABSENT |
 | Update owner | APPLICATION |
+| Java persistence type | java.time.Instant |
+| Java cutoff type | java.time.Instant |
+| Temporal semantics | ABSOLUTE_INSTANT |
 | Business semantics | LAST_PERSISTED_STATE_CHANGE_TIME |
 
 Full definition: `schema-delta-registry/greenfield-schema-delta-DG-001.json`
+
+### Historical Note
+
+Contract.1 (b509be5) originally defined DG-001 as TIMESTAMP WITHOUT TIME ZONE with OffsetDateTime persistence. The normalization commit (b1f974ed) changed the implementation to TIMESTAMPTZ + Instant. Contract.2 aligns the governance contract with the verified implementation.
 
 ## GB-004: Null Semantics
 
@@ -105,14 +123,17 @@ Full definition: `schema-delta-registry/greenfield-schema-delta-DG-001.json`
 
 Specifically:
 - NULL is **NOT** an unknown database error
+- NULL is **NOT** an unknown timezone
 - NULL is **NOT** the current time
 - NULL is **NOT** an alias for created_at
 - NULL does **NOT** mean the job was not created
+- NULL is **NOT** produced by a database default value
+- NULL is **NOT** produced by a database trigger
 - NULL **ONLY** means no contract-defined successful business state change has been persisted since record creation
 
 ## GB-005: Business Semantics
 
-`public.render_job.updated_at` represents the time at which the same RenderJob execution attempt's externally observable persistent business state was last successfully written to the database by the application.
+`public.render_job.updated_at` represents an absolute time point indicating when the same RenderJob execution attempt's externally observable persistent business state was last successfully written to the database by the application.
 
 - At record creation, the column is NULL.
 - Only after a successful transaction commit does the value represent a persisted state change.
@@ -125,18 +146,28 @@ Update ownership is **APPLICATION_MANAGED**.
 - No database trigger maintains this field.
 - No database default value exists.
 - The application Repository or persistence layer is responsible for explicitly setting the value during approved state change operations.
-- All approved updates must use the project's unified time contract (see GB-007).
+- All approved updates must use `java.time.Instant` (see GB-007).
 
 ## GB-007: Time Convention
 
-`render_job.updated_at` follows the project-wide time convention:
+`render_job.updated_at` uses absolute time semantics:
 
-- **PostgreSQL type:** TIMESTAMP WITHOUT TIME ZONE (project has 244 such columns vs 1 TIMESTAMPTZ)
-- **Java write type:** `OffsetDateTime.now()` (preserves system JVM timezone)
-- **Java read cutoff type:** `Instant`
-- **Storage:** PostgreSQL stores the local time component without timezone offset
-- **Comparisons:** WHERE, ORDER BY, MIN operate on stored timestamp values as opaque ordered values
-- **Deterministic:** YES — within a single-deployment greenfield project where all application servers use the same JVM timezone
+- **PostgreSQL type:** TIMESTAMP WITH TIME ZONE (alias TIMESTAMPTZ, UDT timestamptz)
+- **Java write type:** `java.time.Instant`
+- **Java read cutoff type:** `java.time.Instant`
+- **Temporal semantics:** ABSOLUTE_INSTANT
+- **Storage:** TIMESTAMPTZ stores and compares absolute time points
+- **Database Session timezone:** Affects text display only; does not change the represented absolute instant
+- **JVM default timezone:** Does not affect persistence results
+- **OS timezone:** Does not affect persistence results
+- **Container timezone:** Does not affect persistence results
+- **Comparisons:** WHERE, ORDER BY, MIN operate on absolute time semantics
+- **Precision:** PostgreSQL stores microseconds; Java Instant nanoseconds are truncated to microsecond precision
+- **Deterministic:** YES — across all deployment environments, timezone configuration does not affect absolute time semantics
+
+### Historical Note (Contract.1 Superseded)
+
+Contract.1 (b509be5) defined this as TIMESTAMP WITHOUT TIME ZONE with OffsetDateTime.now() preserving JVM timezone and opaque local timestamp ordering. That definition is **SUPERSEDED** by this contract. The normalization commit (b1f974ed) implemented TIMESTAMPTZ + Instant, independently verified by Normalization Reverification.1.
 
 Source: `schema-delta-registry/greenfield-schema-delta-DG-001.json` timezone_contract section.
 
@@ -148,6 +179,7 @@ Authorization of `updated_at` does NOT allow Retry to reuse or overwrite old Ren
 
 - Retry must continue to create new RenderJob execution attempts.
 - The old RenderJob and its `updated_at` continue as historical fact.
+- TIMESTAMPTZ does not authorize reusing or overwriting old RenderJobs.
 - `updated_at` tracks changes within a single execution attempt only.
 
 ## GB-009: Fallback Contract
@@ -166,7 +198,9 @@ Authorization of `updated_at` does NOT expand to:
 - Modifying RenderJob identity
 - Overwriting historical execution facts
 - Changing Retry lineage
-- Modifying Revision identity
+- Modifying TimelineRevision identity
+- Modifying Backend identity
+- Reusing completed RenderJobs
 
 Within the same execution attempt, updating status, progress, error, result, and `updated_at` **is** permitted.
 
@@ -177,8 +211,10 @@ See `schema-verification-contract.json` for the complete verification contract.
 Key points:
 - 22 schema categories must continue to be checked
 - Only one difference allowed: DG-001 (public.render_job.updated_at)
+- DG-001 must match exactly: TIMESTAMPTZ, UDT timestamptz, nullable, no default, no trigger
 - Reference Data must be actually scanned and verified
 - Reports must distinguish strict equivalence from approved-target equivalence
+- Reports must separately report raw/approved/unapproved/unexplained difference counts
 
 ## GB-012: Tag Finalization Gate
 

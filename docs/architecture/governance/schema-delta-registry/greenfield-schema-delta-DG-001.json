@@ -1,45 +1,84 @@
 {
-  "schema_version": 1,
-  "task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.1",
+  "schema_version": 2,
+  "task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.2",
+  "previous_contract_task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.1",
   "authorization_task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-DELTA-DECISION.2A-DECISION.1",
   "authorization_result": "GREENFIELD_BASELINE_SCHEMA_DELTA_AUTHORIZED",
   "authorization_basis": "Production runtime read/write dependency and approved target-domain behavior",
   "authorization_commit": "866ca920d9937d9a5e0994f4286d029f6c97de3f",
   "authorization_date": "2026-07-20",
+  "normalization_commit": "b1f974ed694203998d49d8d555e30bd85a7940b7",
+  "normalization_date": "2026-07-21",
+  "normalization_reverification": "PASS",
+  "normalization_reverification_task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-DELTA-NORMALIZATION.2A-REVERIFICATION.1",
+  "normalization_reverification_decision": "GREENFIELD_BASELINE_SCHEMA_DELTA_NORMALIZATION_REVERIFIED_FOR_CONTRACT_AMENDMENT",
+  "contract_amendment_1_commit": "b509be5f7ed4d34f4b0bfb86cdb8a8aca26a1f9b",
+  "contract_amendment_1_superseded_fields": [
+    "postgres_type",
+    "pg_type_sql",
+    "java_write_type",
+    "timezone_contract",
+    "update_mechanism"
+  ],
+  "contract_amendment_1_supersession_reason": "Contract.1 chose TIMESTAMP WITHOUT TIME ZONE + OffsetDateTime based on project-wide convention. Normalization Repair.1 changed the implementation to TIMESTAMPTZ + Instant per independent verification. Contract.2 aligns the governance contract with the verified implementation.",
   "delta_id": "GREENFIELD-SCHEMA-DELTA-DG-001",
-  "status": "APPROVED",
+  "status": "APPROVED_IMPLEMENTED_AND_REVERIFIED",
   "schema": "public",
   "object_type": "COLUMN",
   "table": "render_job",
   "column": "updated_at",
   "legacy_present": false,
   "target_present": true,
-  "postgres_type": "TIMESTAMP WITHOUT TIME ZONE",
-  "pg_type_sql": "TIMESTAMP",
+  "postgres_type": "TIMESTAMP WITH TIME ZONE",
+  "postgres_alias": "TIMESTAMPTZ",
+  "postgres_udt": "timestamptz",
+  "pg_type_sql": "TIMESTAMPTZ",
   "nullable": true,
   "default_expression": null,
   "creation_value": null,
   "creation_rule": "INSERT does not set updated_at; column remains NULL until first legitimate business state UPDATE",
+  "database_trigger_present": false,
   "update_owner": "APPLICATION",
-  "update_mechanism": "SET updated_at = OffsetDateTime.now() in jOOQ UPDATE statements",
+  "update_mechanism": "SET updated_at = Instant.now() in jOOQ UPDATE statements",
   "business_semantics": "LAST_PERSISTED_STATE_CHANGE_TIME",
-  "business_semantics_definition": "render_job.updated_at represents the time at which the RenderJob's persistent business state was last successfully written to the database by the application. At record creation, updated_at is NULL. Any subsequent update that changes externally observable execution status, progress, result, error, or assignment must set updated_at to the current application time. Pure reads, lock contention failures, or uncommitted transactions must not alter this field.",
+  "business_semantics_definition": "render_job.updated_at represents an absolute time point indicating when the same RenderJob execution attempt's externally observable persistent business state was last successfully written to the database by the application. At record creation, updated_at is NULL. Any subsequent update that changes externally observable execution status, progress, result, error, or assignment must set updated_at to the current absolute instant. Pure reads, lock contention failures, or uncommitted transactions must not alter this field.",
+  "temporal_semantics": "ABSOLUTE_INSTANT",
   "null_semantics": {
     "description": "IS NULL means the RenderJob has not undergone any contract-defined business state change since creation.",
     "is_not_unknown_error": true,
+    "is_not_unknown_timezone": true,
     "is_not_current_time": true,
     "is_not_created_at_alias": true,
     "is_not_creation_failure": true,
+    "not_produced_by_database_default": true,
+    "not_produced_by_trigger": true,
     "meaning": "No contract-defined successful business state change has been persisted since the record was created."
   },
-  "java_write_type": "OffsetDateTime",
-  "java_read_cutoff_type": "Instant",
+  "java_write_type": "java.time.Instant",
+  "java_cutoff_type": "java.time.Instant",
+  "java_aggregation_result_type": "java.time.Instant or an explicitly equivalent absolute-time type",
+  "java_api_boundary_type": "OffsetDateTime may be used only when an external offset representation is required",
   "timezone_contract": {
-    "pg_type": "TIMESTAMP WITHOUT TIME ZONE",
-    "convention_source": "Project-wide: 244 TIMESTAMP WITHOUT TIME ZONE columns vs 1 TIMESTAMPTZ (outbox_events.locked_at only)",
-    "conversion_rule": "Application writes via OffsetDateTime.now() which preserves the system JVM timezone. PostgreSQL TIMESTAMP WITHOUT TIME ZONE stores the local time component without timezone offset. All comparisons (WHERE, ORDER BY, MIN) operate on the stored timestamp values as opaque ordered values. No explicit UTC enforcement exists in DB or application code.",
+    "postgres_type": "TIMESTAMP WITH TIME ZONE",
+    "postgres_alias": "TIMESTAMPTZ",
+    "postgres_udt": "timestamptz",
+    "temporal_semantics": "ABSOLUTE_INSTANT",
+    "storage_rule": "TIMESTAMPTZ stores and compares absolute time points. The database Session timezone affects text display only and does not change the represented absolute instant.",
+    "jvm_default_timezone_dependency": false,
+    "operating_system_timezone_dependency": false,
+    "container_timezone_dependency": false,
+    "database_session_timezone_changes_display_only": true,
+    "database_session_timezone_changes_absolute_instant": false,
     "deterministic": true,
-    "deterministic_note": "The rule is deterministic within a single-deployment greenfield project: all application servers must use the same JVM timezone. The column stores local time components; comparisons are correct as long as the writing JVM timezone is consistent."
+    "deterministic_note": "The rule is deterministic across all deployment environments: JVM timezone, OS timezone, container timezone, and database Session timezone do not change the represented absolute instant. Comparisons, ordering, and aggregation operate on absolute time semantics.",
+    "superseded_rule": "Contract.1 stored TIMESTAMP WITHOUT TIME ZONE via OffsetDateTime.now() preserving JVM timezone, with opaque local timestamp ordering. This rule is SUPERSEDED by the normalization commit b1f974ed which uses TIMESTAMPTZ + Instant.",
+    "superseded_rule_source": "Contract.1 (b509be5) timezone_contract section"
+  },
+  "precision_contract": {
+    "postgres_storage_precision": "MICROSECONDS",
+    "java_input_precision": "Instant may contain nanoseconds",
+    "normalization_behavior": "values are normalized to PostgreSQL-supported precision (microseconds)",
+    "test_implication": "Test and equality comparisons should account for PostgreSQL microsecond precision, not Java nanosecond precision"
   },
   "approved_update_methods": [
     {
@@ -48,7 +87,8 @@
       "package": "com.example.platform.render.infrastructure",
       "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "QUEUED -> SELECTING_PROVIDER",
-      "writes_updated_at": true
+      "writes_updated_at": true,
+      "write_type": "java.time.Instant"
     },
     {
       "class": "RenderJobRepository",
@@ -56,7 +96,8 @@
       "package": "com.example.platform.render.infrastructure",
       "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "QUEUED -> EXECUTING",
-      "writes_updated_at": true
+      "writes_updated_at": true,
+      "write_type": "java.time.Instant"
     },
     {
       "class": "RenderJobRepository",
@@ -64,7 +105,8 @@
       "package": "com.example.platform.render.infrastructure",
       "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "SELECTING_PROVIDER|PROVIDER_SELECTED|EXECUTING|COMPLETING -> FAILED",
-      "writes_updated_at": true
+      "writes_updated_at": true,
+      "write_type": "java.time.Instant"
     },
     {
       "class": "RenderJobRepository",
@@ -72,7 +114,8 @@
       "package": "com.example.platform.render.infrastructure",
       "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "EXECUTING -> FAILED",
-      "writes_updated_at": true
+      "writes_updated_at": true,
+      "write_type": "java.time.Instant"
     },
     {
       "class": "RenderJobRepository",
@@ -81,6 +124,7 @@
       "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "EXECUTING -> QUEUED",
       "writes_updated_at": true,
+      "write_type": "java.time.Instant",
       "deprecated": true,
       "deprecated_reason": "In-place retry is replaced by creating a new RenderJob"
     },
@@ -91,37 +135,46 @@
       "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "FAILED -> QUEUED",
       "writes_updated_at": true,
+      "write_type": "java.time.Instant",
       "deprecated": true,
       "deprecated_reason": "In-place retry is replaced by creating a new RenderJob"
     }
   ],
+  "normative_update_rule": "Any new RenderJob persistence write path that changes externally observable business state must also update updated_at. The current method list is NOT a permanent closed list — it is an inventory snapshot as of the normalization date.",
   "approved_read_operations": [
     {
       "class": "RenderJobRepository",
       "method": "findStaleExecutingJobs",
       "sql_pattern": "WHERE updated_at < cutoff ORDER BY updated_at ASC",
       "purpose": "Detect jobs stuck in EXECUTING state beyond timeout threshold",
-      "importance": "CRITICAL"
+      "importance": "CRITICAL",
+      "cutoff_type": "java.time.Instant",
+      "comparison": "TIMESTAMPTZ against Instant (strict less-than)",
+      "equality_behavior": "updated_at == cutoff does NOT match stale query (strict less-than)"
     },
     {
       "class": "RenderJobRepository",
       "method": "countStaleExecuting",
       "sql_pattern": "WHERE updated_at < cutoff",
       "purpose": "Count stale jobs for operational metrics",
-      "importance": "HIGH"
+      "importance": "HIGH",
+      "cutoff_type": "java.time.Instant",
+      "comparison": "TIMESTAMPTZ against Instant (strict less-than)"
     },
     {
       "class": "RenderJobRepository",
-      "method": "oldestExecutingUpdatedAt",
+      "method": "minUpdatedAt",
       "sql_pattern": "SELECT MIN(updated_at)",
       "purpose": "Find oldest unrefreshed executing job",
-      "importance": "HIGH"
+      "importance": "HIGH",
+      "result_type": "TIMESTAMPTZ absolute (maps to Instant)",
+      "null_behavior": "MIN ignores NULL values; returns NULL when all values are NULL"
     }
   ],
   "null_handling_in_queries": {
     "comparison_updated_at_lt_cutoff": "NULL does not match (NULL < cutoff evaluates to UNKNOWN, row excluded)",
-    "order_by_updated_at_asc": "NULL ordering is not explicitly specified with NULLS FIRST/LAST; current SQL relies on PostgreSQL default (NULLS LAST when ASC). Contract does not invent business meaning beyond current SQL behavior.",
-    "min_updated_at": "MIN() automatically ignores NULL values"
+    "order_by_updated_at_asc": "NULLS LAST in ASC ordering (verified by normalization reverification)",
+    "min_updated_at": "MIN() automatically ignores NULL values; all-NULL returns NULL"
   },
   "insert_methods": [
     {
@@ -139,10 +192,10 @@
   ],
   "unstable_line_number_references_remaining": 0,
   "retry_contract_changed": false,
-  "retry_contract_note": "Authorization of updated_at does not allow Retry to reuse or overwrite old RenderJobs. Retry must continue to create new RenderJob execution attempts. The old RenderJob and its updated_at continue to be preserved as historical fact.",
+  "retry_contract_note": "Authorization of updated_at does not allow Retry to reuse or overwrite old RenderJobs. Retry must continue to create new RenderJob execution attempts. The old RenderJob and its updated_at continue to be preserved as historical fact. TIMESTAMPTZ does not authorize reusing or overwriting old RenderJobs.",
   "fallback_contract_changed": false,
   "fallback_contract_note": "No Fallback implementation exists in the current codebase. DG-001 does not authorize implicit Fallback, state overwrite, or switching Backends within the same RenderJob. Future Fallback must still create a new RenderJob.",
-  "immutable_execution_attempt_contract": "RenderJob identity and execution-attempt facts are immutable. Authorization of updated_at does not expand to: modifying RenderJob identity, overwriting historical execution facts, changing Retry lineage, or modifying Revision identity. Within the same execution attempt, updating status, progress, error, result, and updated_at is permitted.",
+  "immutable_execution_attempt_contract": "RenderJob identity and execution-attempt facts are immutable. Authorization of updated_at does not expand to: modifying RenderJob identity, overwriting historical execution facts, changing Retry lineage, modifying TimelineRevision identity, modifying Backend identity, or reusing completed RenderJobs. Within the same execution attempt, updating status, progress, error, result, and updated_at is permitted.",
   "index_recommendation": "None currently. If stale job query performance degrades, consider index on (status, updated_at).",
   "requires_v1_normalization": false,
   "current_v1_definition_matches_approved": true

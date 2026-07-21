@@ -15,12 +15,20 @@
       "anchor_type": "schema",
       "path": "V1-V4 migrations + GREENFIELD-SCHEMA-DELTA-DG-001",
       "symbol_or_section": "render_job.updated_at",
-      "alignment": "APPROVED_DELTA_REGISTERED",
-      "drift_description": "updated_at is approved via DG-001: Legacy V1-V4 + DG-001 = Greenfield V1 Target Schema",
+      "alignment": "ALIGNED_AFTER_CONTRACT_2",
+      "drift_description": "",
       "resolution_phase": "CONTRACT_AMENDED",
       "must_not_fix_in_phase_3": false,
       "delta_id": "GREENFIELD-SCHEMA-DELTA-DG-001",
-      "authorization_commit": "866ca920d9937d9a5e0994f4286d029f6c97de3f"
+      "authorization_commit": "866ca920d9937d9a5e0994f4286d029f6c97de3f",
+      "normalization_commit": "b1f974ed694203998d49d8d555e30bd85a7940b7",
+      "canonical_type": "TIMESTAMP WITH TIME ZONE",
+      "canonical_alias": "TIMESTAMPTZ",
+      "canonical_java_type": "java.time.Instant",
+      "temporal_semantics": "ABSOLUTE_INSTANT",
+      "executable_type": "V1 TIMESTAMPTZ",
+      "executable_java": "RenderJobRepository Instant writes",
+      "verification": "Normalization Reverification.1 PASS"
     },
     {
       "contract_id": "render-output",

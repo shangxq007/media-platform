@@ -1,37 +1,48 @@
 {
-  "schema_version": 1,
-  "task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.1",
-  "effective_date": "2026-07-20",
+  "schema_version": 2,
+  "task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.2",
+  "previous_contract_task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-SCHEMA-CONTRACT-AMENDMENT.2A-CONTRACT.1",
+  "effective_date": "2026-07-21",
   "target_column": "public.render_job.updated_at",
+  "target_column_type": "TIMESTAMP WITH TIME ZONE",
+  "target_column_alias": "TIMESTAMPTZ",
+  "target_column_udt": "timestamptz",
+  "java_write_type": "java.time.Instant",
+  "temporal_semantics": "ABSOLUTE_INSTANT",
   "normative_semantic_rule": "All successful write operations that change the RenderJob's externally observable persistent business state must update updated_at. This rule applies to all current and future methods that perform such state changes.",
+  "normative_update_type_rule": "All updated_at writes must use java.time.Instant. The application must not use OffsetDateTime, LocalDateTime, or any other temporal type for persistence writes to this column.",
   "current_implementation_inventory": [
     {
       "class": "RenderJobRepository",
       "method": "claimForSelection",
       "file": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "QUEUED -> SELECTING_PROVIDER",
-      "writes_updated_at": true
+      "writes_updated_at": true,
+      "write_type": "java.time.Instant"
     },
     {
       "class": "RenderJobRepository",
       "method": "claimJob(String, String)",
       "file": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "QUEUED -> EXECUTING",
-      "writes_updated_at": true
+      "writes_updated_at": true,
+      "write_type": "java.time.Instant"
     },
     {
       "class": "RenderJobRepository",
       "method": "markActiveJobFailed",
       "file": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "SELECTING_PROVIDER|PROVIDER_SELECTED|EXECUTING|COMPLETING -> FAILED",
-      "writes_updated_at": true
+      "writes_updated_at": true,
+      "write_type": "java.time.Instant"
     },
     {
       "class": "RenderJobRepository",
       "method": "markExecutingJobFailed",
       "file": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "EXECUTING -> FAILED",
-      "writes_updated_at": true
+      "writes_updated_at": true,
+      "write_type": "java.time.Instant"
     },
     {
       "class": "RenderJobRepository",
@@ -39,6 +50,7 @@
       "file": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "EXECUTING -> QUEUED",
       "writes_updated_at": true,
+      "write_type": "java.time.Instant",
       "deprecated": true
     },
     {
@@ -47,6 +59,7 @@
       "file": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java",
       "business_transition": "FAILED -> QUEUED",
       "writes_updated_at": true,
+      "write_type": "java.time.Instant",
       "deprecated": true
     }
   ],
@@ -73,7 +86,7 @@
       "note": "Same consideration as updateStatus"
     }
   ],
-  "future_method_requirements": "Any new Repository method that changes RenderJob external business state must include SET updated_at = OffsetDateTime.now() in its UPDATE statement. The current method list is NOT a permanent closed list — it is an inventory snapshot as of the amendment date.",
+  "future_method_requirements": "Any new Repository method that changes RenderJob external business state must include SET updated_at = Instant.now() in its UPDATE statement. The current method list is NOT a permanent closed list — it is an inventory snapshot as of the normalization date.",
   "missing_update_detection": "Omission of updated_at write in a state-changing method can be detected by: (1) code review against the normative semantic rule, (2) comparing the set of UPDATE methods that change status with the set that write updated_at, (3) integration tests that verify updated_at changes on state transitions.",
   "test_requirements_for_new_write_paths": "Any new method that writes updated_at must include a test verifying the column is updated after the state transition. Any existing method that is retrofitted to write updated_at must similarly have its test updated."
 }
