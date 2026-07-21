@@ -421,3 +421,142 @@ This contract DOES NOT authorize:
 - Remote publication
 - Modifying the candidate commit
 - Modifying Git history
+
+---
+
+## 14. Quality Tag Finalization Record
+
+### 14.1 Finalization Status
+
+| Property | Value |
+|----------|-------|
+| **Tag name** | `governance/greenfield-quality-passed` |
+| **Tag object** | `69ee67a40900217db8245a216a7a95f3f4678f72` |
+| **Tag target** | `55f234afbb328c24c15400a745fdc99c7ceafae9` |
+| **Tag type** | `annotated` |
+| **Signature** | ABSENT |
+| **Tag message SHA-256** | `b457b3e8e126931a9e67261d1238b5ad5b4500a55dbc44ce4bb89350d1563302` |
+
+### 14.2 Finalization Acceptance Chain
+
+| Step | Status |
+|------|--------|
+| Tag Finalization independent acceptance | `QUALITY_PASSING_LOCAL_TAG_FINALIZATION_ACCEPTANCE_REVERIFIED` |
+| Tag Finalization governance acceptance | `QUALITY_PASSING_LOCAL_TAG_FINALIZATION_GOVERNANCE_ACCEPTED` |
+| Tag object fixed | YES |
+| Tag target fixed | YES |
+| Quality Tag immutable | YES |
+
+### 14.3 Quality Baseline Closure
+
+The Greenfield Quality Baseline is now:
+
+```
+GREENFIELD_QUALITY_BASELINE_CLOSED_LOCALLY
+```
+
+This closure signifies:
+
+1. Quality implementation commit `55f234af...` has been governance-accepted.
+2. Full Gradle Quality Tasks.2B has passed and been governance-accepted.
+3. Local annotated Quality Tag has been created.
+4. Quality Tag has completed independent reverification.
+5. Quality Tag Finalization has received governance acceptance.
+6. Local quality baseline can serve as input for subsequent Mainline Readiness Governance.
+
+### 14.4 Closure Does NOT Authorize
+
+This closure:
+
+- **DOES NOT** authorize remote tag publication
+- **DOES NOT** authorize GitHub Release creation
+- **DOES NOT** close the Credential Risk Exception
+- **DOES NOT** represent that credential exposure is fully resolved
+- **DOES NOT** declare the project Mainline Ready
+- **DOES NOT** authorize Mainline Readiness work to begin without independent governance
+- **DOES NOT** authorize OpenCue implementation
+- **DOES NOT** authorize Artifact DAG work
+- **DOES NOT** authorize Frontend restoration
+
+### 14.5 Credential Exception Continuity
+
+| Property | Value |
+|----------|-------|
+| **Exception ID** | `ARCH-CODE-GOV-EXCEPTION-INJECTION-4-PAT-EXPOSURE.1` |
+| **Status** | `ACTIVE_TEMPORARY_EXCEPTION` |
+| **Start date** | 2026-07-21 |
+| **Review/expiry date** | 2026-08-04 |
+| **Token rotated** | NOT ROTATED |
+| **Residual risk** | PRESENT |
+
+The Quality Baseline Closure does NOT close the Credential Risk Exception.
+
+The Quality Baseline Closure does NOT represent that the exposure is fully resolved.
+
+The risk exception must still be reviewed or the token rotated before 2026-08-04.
+
+The risk exception does NOT authorize Remote Push.
+
+The risk exception does NOT authorize GitHub Release.
+
+Token type: UNKNOWN. Repository scope: UNKNOWN. Permissions: UNKNOWN. Expiration: UNKNOWN. Production access: UNKNOWN (owner asserted NO, not independently verified). Organization administration: UNKNOWN (owner asserted NONE, not independently verified).
+
+Do NOT infer actual token permissions from Remote URL.
+
+### 14.6 Remote Publication Boundary
+
+| Property | Value |
+|----------|-------|
+| Local quality Tag | FINALIZED |
+| Remote quality Tag | NOT PUBLISHED |
+| Remote publication | NOT AUTHORIZED |
+| GitHub Release | NOT CREATED |
+| Branch Push | NOT AUTHORIZED |
+
+Future Remote Publication must go through an independent task and independent authorization.
+
+Closure cannot imply remote publication permission.
+
+### 14.7 Mainline Readiness Boundary
+
+Closure only allows subsequent entry to:
+
+```
+MAINLINE READINESS GOVERNANCE
+```
+
+Closure must NOT be written as Mainline Ready.
+
+Post-closure steps still required:
+
+1. jOOQ hard-coding/codegen inventory
+2. stale/compatibility code inventory
+3. debt authority and retirement decisions
+4. BLOCKER remediation
+5. Mainline Readiness independent verification
+6. OpenCue mainline implementation authorization
+
+Debt classification categories:
+
+```
+BLOCKER
+REMOVE_BEFORE_MAINLINE
+DEPRECATE_WITH_DEADLINE
+QUARANTINE
+KEEP
+```
+
+### 14.8 Immutability
+
+The Quality Tag `governance/greenfield-quality-passed` with object `69ee67a40900217db8245a216a7a95f3f4678f72` pointing to target `55f234afbb328c24c15400a745fdc99c7ceafae9` is now **immutable**.
+
+- MUST NOT be moved
+- MUST NOT be deleted
+- MUST NOT be overwritten
+- MUST NOT be recreated
+- MUST NOT have its peeled commit changed
+- MUST NOT have its annotated message modified
+
+The existing baseline Tag `governance/greenfield-baseline-accepted` with object `36b56168623abdcdff56d5da1cff7a23baf4741d` pointing to target `673e180a3236d747b4fd2aaaa5ca7a11a0cf830d` remains unchanged and independent.
+
+The two tags represent different governance milestones and must NOT be deleted, overwritten, moved, replaced, or have their semantics merged.

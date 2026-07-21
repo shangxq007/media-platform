@@ -710,6 +710,62 @@
       "notes": "EVIDENCE_ONLY. NON_CANONICAL."
     },
     {
+      "domain_id": "greenfield-quality-baseline",
+      "domain_name": "Greenfield Quality Baseline",
+      "scope": "quality implementation, quality verification, quality tag, quality baseline closure, credential exception boundary, remote publication boundary, mainline readiness boundary",
+      "user_approval_authority": [],
+      "governance_authority": [
+        "docs/architecture/governance/tag-release/tag-release-governance-contract.md",
+        "docs/architecture/governance/tag-release/governance-tag-registry.json",
+        "GREENFIELD_QUALITY_BASELINE_CLOSED_LOCALLY"
+      ],
+      "canonical_contract": [
+        "docs/architecture/governance/source-of-truth/source-of-truth-matrix.json"
+      ],
+      "executable_contract": [],
+      "runtime_authority": [
+        "git tag -l 'governance/greenfield-quality-passed'",
+        "git tag -l 'governance/greenfield-baseline-accepted'"
+      ],
+      "supporting_documents": [],
+      "evidence_sources": [],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "closure commit as quality implementation",
+        "closure commit as tag target",
+        "closure as mainline readiness decision",
+        "closure as remote publication authorization",
+        "closure as credential exception closure"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "GREENFIELD_QUALITY_BASELINE_CLOSED_LOCALLY",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE",
+        "USER_EXPLICIT_APPROVAL"
+      ],
+      "quality_baseline": {
+        "status": "GREENFIELD_QUALITY_BASELINE_CLOSED_LOCALLY",
+        "quality_implementation": "55f234afbb328c24c15400a745fdc99c7ceafae9",
+        "quality_implementation_parent": "73aedb8f9fc503b5e3d450b01425b735abfb3a48",
+        "quality_verification_task": "ARCH-CODE-GOV-GREENFIELD-BASELINE-GRADLE-QUALITY-TASKS.2B-RE-RUN.1",
+        "quality_verification_result": "GRADLE_QUALITY_TASKS_2B_RE_RUN_PASSED",
+        "quality_governance_acceptance": "GRADLE_QUALITY_TASKS_2B_RE_RUN_GOVERNANCE_ACCEPTED",
+        "tag_governance_contract": "2146d00b7fc9f7faa8508e209ec26244b06cf599",
+        "quality_tag": "governance/greenfield-quality-passed",
+        "quality_tag_object": "69ee67a40900217db8245a216a7a95f3f4678f72",
+        "quality_tag_target": "55f234afbb328c24c15400a745fdc99c7ceafae9",
+        "tag_finalization_acceptance": "QUALITY_PASSING_LOCAL_TAG_FINALIZATION_ACCEPTANCE_REVERIFIED",
+        "tag_finalization_governance_acceptance": "QUALITY_PASSING_LOCAL_TAG_FINALIZATION_GOVERNANCE_ACCEPTED",
+        "local_tag_finalization": "GOVERNANCE_ACCEPTED",
+        "remote_publication": "NOT_AUTHORIZED",
+        "mainline_readiness": "NOT_YET_ASSESSED",
+        "credential_residual_risk": "PRESENT",
+        "closure_record": "this commit"
+      },
+      "notes": "Quality baseline closed locally. Remote publication NOT authorized. Mainline readiness NOT yet assessed. Credential exception ACTIVE_TEMPORARY_EXCEPTION until 2026-08-04."
+    },
+    {
       "domain_id": "tag-release",
       "domain_name": "Tag and Release Governance",
       "scope": "tag naming, tag type, tag message, tag registry, tag immutability, remote publication boundary",
