@@ -3,6 +3,7 @@ package com.example.platform.shared.security;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -15,6 +16,10 @@ import java.util.Set;
  *   <li>Resolved IPs must not be loopback, link-local, private, or multicast</li>
  *   <li>URL length must not exceed 8192 characters</li>
  * </ul>
+ *
+ * <p><b>Instance isolation:</b> Each validator holds its own immutable {@link DnsResolver}.
+ * Tests inject a fake resolver via the constructor; production uses the default system DNS.
+ * There is no global mutable resolver state.
  *
  * <p><b>Known limitation:</b> DNS rebinding / TOCTOU attacks cannot be fully prevented by
  * pre-resolution validation alone. The DNS resolution and the actual HTTP connection are
@@ -31,42 +36,76 @@ public final class SafeDownloadUrlValidator {
     private static final int MAX_URL_LENGTH = 8192;
     private static final Set<String> ALLOWED_SCHEMES = Set.of("http", "https");
 
-    private static volatile DnsResolver dnsResolver = InetAddress::getAllByName;
-
-    private SafeDownloadUrlValidator() {}
+    /**
+     * Stateless, immutable system DNS resolver shared across default instances.
+     * Not runtime-replaceable — there is no setter.
+     */
+    private static final DnsResolver SYSTEM_RESOLVER = InetAddress::getAllByName;
 
     /**
-     * Configure the DNS resolver used for URL validation.
-     * The default resolver uses {@link InetAddress#getAllByName(String)}.
+     * Immutable default instance using system DNS. Used by the static facade methods
+     * to preserve backward compatibility for existing callers.
+     */
+    private static final SafeDownloadUrlValidator DEFAULT = new SafeDownloadUrlValidator(SYSTEM_RESOLVER);
+
+    /** This instance's DNS resolver — final, immutable after construction. */
+    private final DnsResolver resolver;
+
+    /**
+     * Create a validator using the system DNS resolver.
+     */
+    public SafeDownloadUrlValidator() {
+        this(SYSTEM_RESOLVER);
+    }
+
+    /**
+     * Create a validator with a specific DNS resolver.
      *
      * @param resolver the resolver to use (must not be null)
      */
-    public static void setDnsResolver(DnsResolver resolver) {
-        if (resolver == null) throw new IllegalArgumentException("DnsResolver must not be null");
-        dnsResolver = resolver;
+    public SafeDownloadUrlValidator(DnsResolver resolver) {
+        this.resolver = Objects.requireNonNull(resolver, "DnsResolver must not be null");
     }
 
     /**
-     * Reset to the default system DNS resolver.
-     */
-    public static void resetDnsResolver() {
-        dnsResolver = InetAddress::getAllByName;
-    }
-
-    /**
-     * Validate a download URL for safety. Returns null if safe, error message if unsafe.
+     * Validate a download URL for safety using this instance's resolver.
+     * Returns null if safe, error message if unsafe.
      *
      * <p>When DNS resolution fails, the URL is rejected (fail-closed).
      */
-    public static String validate(String url) {
-        return validate(url, dnsResolver);
+    public String validateUrl(String url) {
+        return doValidate(url, this.resolver);
     }
 
     /**
-     * Validate a download URL with an explicit DNS resolver.
-     * This overload is intended for testing.
+     * Returns true if the URL is safe to download from.
      */
-    static String validate(String url, DnsResolver resolver) {
+    public boolean isSafeUrl(String url) {
+        return validateUrl(url) == null;
+    }
+
+    // ---- Static backward-compatible facade ----
+    // These delegate to an immutable DEFAULT instance. There is no mutable global state.
+
+    /**
+     * Validate a download URL for safety using the system DNS resolver.
+     * Static convenience method for backward compatibility.
+     */
+    public static String validate(String url) {
+        return DEFAULT.validateUrl(url);
+    }
+
+    /**
+     * Returns true if the URL is safe to download from (system DNS).
+     * Static convenience method for backward compatibility.
+     */
+    public static boolean isSafe(String url) {
+        return validate(url) == null;
+    }
+
+    // ---- Core validation logic ----
+
+    private static String doValidate(String url, DnsResolver resolver) {
         if (url == null || url.isBlank()) {
             return "URL is null or blank";
         }
@@ -111,7 +150,7 @@ public final class SafeDownloadUrlValidator {
             }
         }
 
-        // DNS resolution — fail closed
+        // DNS resolution via this instance's resolver — fail closed
         try {
             InetAddress[] addrs = resolver.resolve(host);
             if (addrs == null || addrs.length == 0) {
@@ -128,13 +167,6 @@ public final class SafeDownloadUrlValidator {
         }
 
         return null; // Safe
-    }
-
-    /**
-     * Returns true if the URL is safe to download from.
-     */
-    public static boolean isSafe(String url) {
-        return validate(url) == null;
     }
 
     /**
