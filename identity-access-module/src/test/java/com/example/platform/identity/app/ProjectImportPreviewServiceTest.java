@@ -3,16 +3,17 @@ package com.example.platform.identity.app;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.security.SafeDownloadUrlValidator;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -23,37 +24,58 @@ class ProjectImportPreviewServiceTest {
     @Mock
     private AuditPort auditPort;
 
-    private ProjectImportPreviewService previewService;
-
-    @BeforeEach
-    void setUp() {
-        previewService = new ProjectImportPreviewService();
-        previewService.setAuditPort(auditPort);
-
-        // Use a fake DNS resolver that always resolves to a safe public IP
-        // This prevents tests from depending on real DNS resolution
-        SafeDownloadUrlValidator.setDnsResolver(host -> {
-            if (host == null || host.isBlank()) {
-                throw new java.net.UnknownHostException("No host");
-            }
-            // Return a safe public IP for all hosts in tests
-            // Use a well-known public IP that passes all validation checks
-            try {
-                return new InetAddress[]{java.net.InetAddress.getByName("93.184.216.34")};
-            } catch (Exception e) {
-                throw new java.net.UnknownHostException("Failed to resolve: " + host);
-            }
-        });
+    /**
+     * Create a resolver that maps any host to a safe public IP (93.184.216.34).
+     * Uses explicit byte construction to avoid DNS dependency.
+     */
+    private static SafeDownloadUrlValidator.DnsResolver publicResolver() {
+        return host -> new InetAddress[]{
+                InetAddress.getByAddress(new byte[]{93, (byte) 184, (byte) 216, 34})
+        };
     }
 
-    @AfterEach
-    void tearDown() {
-        // Reset DNS resolver to default
-        SafeDownloadUrlValidator.resetDnsResolver();
+    /**
+     * Create a resolver that maps any host to a private IP (10.0.0.1).
+     */
+    private static SafeDownloadUrlValidator.DnsResolver privateResolver() {
+        return host -> new InetAddress[]{
+                InetAddress.getByAddress(new byte[]{10, 0, 0, 1})
+        };
     }
+
+    /**
+     * Create a resolver that returns an empty array (no addresses).
+     */
+    private static SafeDownloadUrlValidator.DnsResolver emptyResolver() {
+        return host -> new InetAddress[0];
+    }
+
+    /**
+     * Create a resolver that throws UnknownHostException.
+     */
+    private static SafeDownloadUrlValidator.DnsResolver failingResolver() {
+        return host -> {
+            throw new UnknownHostException("DNS failure for: " + host);
+        };
+    }
+
+    /**
+     * Create a service instance with a public resolver.
+     */
+    private ProjectImportPreviewService createServiceWithPublicResolver() {
+        ProjectImportPreviewService service =
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()));
+        service.setAuditPort(auditPort);
+        return service;
+    }
+
+    // =====================================================================
+    // Original test intents preserved
+    // =====================================================================
 
     @Test
     void previewMetadataOnlyExportShouldBeCompatible() {
+        ProjectImportPreviewService previewService = createServiceWithPublicResolver();
         ProjectImportPreviewRequest request = createMetadataOnlyRequest();
         ProjectImportPreviewResponse response = previewService.previewImport("tenant-1", request);
 
@@ -66,6 +88,7 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewShouldRejectUnsupportedSchemaVersion() {
+        ProjectImportPreviewService previewService = createServiceWithPublicResolver();
         ProjectExportPackageDto exportPkg = new ProjectExportPackageDto(
                 "unsupported-version", "metadata_only",
                 null, new ProjectExportProjectDto("prj-1", "tenant-1", "Test", "Desc",
@@ -82,6 +105,7 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewShouldReportAssetsNeedUpload() {
+        ProjectImportPreviewService previewService = createServiceWithPublicResolver();
         ProjectExportAssetDto asset1 = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
                 1024L, null, 10.0, 1920, 1080, null, null); // No downloadUrl
@@ -105,11 +129,12 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewLinkedAssetsShouldMarkAvailableLinkedWhenUrlPresent() {
-        // Use a URL with a direct IP to avoid DNS resolution issues
+        // Use hostname URL (not literal IP) with injected public resolver
+        ProjectImportPreviewService previewService = createServiceWithPublicResolver();
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
                 1024L, null, 10.0, 1920, 1080, null,
-                "https://93.184.216.34/video.mp4?token=abc"); // Has signed URL
+                "https://signed.example.test/video.mp4?token=abc"); // hostname URL
         ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
                 "project-export-v1", "linked_assets", List.of(asset), null);
 
@@ -133,6 +158,7 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewShouldWarnForUnsupportedEffects() {
+        ProjectImportPreviewService previewService = createServiceWithPublicResolver();
         // Create render plan with unknown effect key
         Map<String, Object> renderPlan = Map.of(
                 "operations", List.of(
@@ -164,6 +190,7 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewShouldValidateSpatialPpmCoordinates() {
+        ProjectImportPreviewService previewService = createServiceWithPublicResolver();
         // Create spatial plan with invalid ppm coordinate
         Map<String, Object> spatialPlan = Map.of(
                 "operations", List.of(
@@ -191,6 +218,7 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewShouldNotPersistProject() {
+        ProjectImportPreviewService previewService = createServiceWithPublicResolver();
         ProjectImportPreviewRequest request = createMetadataOnlyRequest();
         previewService.previewImport("tenant-1", request);
 
@@ -201,6 +229,8 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewShouldRecordAuditWithoutUrls() {
+        // Must use hostname URL with token to prove audit does not leak signed URL
+        ProjectImportPreviewService previewService = createServiceWithPublicResolver();
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
                 1024L, null, 10.0, 1920, 1080, null,
@@ -226,6 +256,8 @@ class ProjectImportPreviewServiceTest {
 
     @Test
     void previewShouldWorkWithoutAuditPort() {
+        // Service created with default constructor (no audit port set)
+        // Uses system DNS but this test has no hostname assets
         ProjectImportPreviewService serviceWithoutAudit = new ProjectImportPreviewService();
         // auditPort is null
 
@@ -234,6 +266,231 @@ class ProjectImportPreviewServiceTest {
 
         assertNotNull(response);
         assertTrue(response.compatible());
+    }
+
+    // =====================================================================
+    // Instance injection scenarios (Section 9 requirements)
+    // =====================================================================
+
+    @Test
+    void publicResolverShouldAcceptHostnameUrl() {
+        // signed.example.test → public IP → URL accepted
+        ProjectImportPreviewService service = createServiceWithPublicResolver();
+        ProjectExportAssetDto asset = new ProjectExportAssetDto(
+                "art-1", "video.mp4", "video", "video/mp4",
+                1024L, null, 10.0, 1920, 1080, null,
+                "https://signed.example.test/video.mp4?token=secret123");
+        ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
+                "project-export-v1", "linked_assets", List.of(asset), null);
+        ProjectExportPackageDto exportPkg = new ProjectExportPackageDto(
+                "project-export-v1", "linked_assets",
+                null, new ProjectExportProjectDto("prj-1", "tenant-1", "Test", "Desc",
+                        null, null, "ACTIVE"),
+                assets, null, null);
+        ProjectImportPreviewRequest request = new ProjectImportPreviewRequest(exportPkg);
+
+        ProjectImportPreviewResponse response = service.previewImport("tenant-1", request);
+
+        assertTrue(response.compatible(), "Public resolver should accept hostname URL");
+        assertEquals(0, response.errors().size(), "Expected no errors for public resolver");
+    }
+
+    @Test
+    void privateResolverShouldRejectHostnameUrl() {
+        // signed.example.test → 10.0.0.1 → UNSAFE_DOWNLOAD_URL
+        ProjectImportPreviewService service =
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()));
+        service.setAuditPort(auditPort);
+
+        ProjectExportAssetDto asset = new ProjectExportAssetDto(
+                "art-1", "video.mp4", "video", "video/mp4",
+                1024L, null, 10.0, 1920, 1080, null,
+                "https://signed.example.test/video.mp4?token=secret123");
+        ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
+                "project-export-v1", "linked_assets", List.of(asset), null);
+        ProjectExportPackageDto exportPkg = new ProjectExportPackageDto(
+                "project-export-v1", "linked_assets",
+                null, new ProjectExportProjectDto("prj-1", "tenant-1", "Test", "Desc",
+                        null, null, "ACTIVE"),
+                assets, null, null);
+        ProjectImportPreviewRequest request = new ProjectImportPreviewRequest(exportPkg);
+
+        ProjectImportPreviewResponse response = service.previewImport("tenant-1", request);
+
+        assertFalse(response.compatible(), "Private resolver should reject hostname URL");
+        assertTrue(response.errors().stream()
+                .anyMatch(e -> "UNSAFE_DOWNLOAD_URL".equals(e.code())),
+                "Expected UNSAFE_DOWNLOAD_URL error for private resolver");
+    }
+
+    @Test
+    void emptyResolverShouldRejectHostnameUrl() {
+        // signed.example.test → empty result → rejected
+        ProjectImportPreviewService service =
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(emptyResolver()));
+        service.setAuditPort(auditPort);
+
+        ProjectExportAssetDto asset = new ProjectExportAssetDto(
+                "art-1", "video.mp4", "video", "video/mp4",
+                1024L, null, 10.0, 1920, 1080, null,
+                "https://signed.example.test/video.mp4?token=secret123");
+        ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
+                "project-export-v1", "linked_assets", List.of(asset), null);
+        ProjectExportPackageDto exportPkg = new ProjectExportPackageDto(
+                "project-export-v1", "linked_assets",
+                null, new ProjectExportProjectDto("prj-1", "tenant-1", "Test", "Desc",
+                        null, null, "ACTIVE"),
+                assets, null, null);
+        ProjectImportPreviewRequest request = new ProjectImportPreviewRequest(exportPkg);
+
+        ProjectImportPreviewResponse response = service.previewImport("tenant-1", request);
+
+        assertFalse(response.compatible(), "Empty resolver should reject hostname URL");
+        assertTrue(response.errors().stream()
+                .anyMatch(e -> "UNSAFE_DOWNLOAD_URL".equals(e.code())),
+                "Expected UNSAFE_DOWNLOAD_URL error for empty resolver");
+    }
+
+    @Test
+    void exceptionResolverShouldRejectHostnameUrl() {
+        // signed.example.test → UnknownHostException → rejected
+        ProjectImportPreviewService service =
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(failingResolver()));
+        service.setAuditPort(auditPort);
+
+        ProjectExportAssetDto asset = new ProjectExportAssetDto(
+                "art-1", "video.mp4", "video", "video/mp4",
+                1024L, null, 10.0, 1920, 1080, null,
+                "https://signed.example.test/video.mp4?token=secret123");
+        ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
+                "project-export-v1", "linked_assets", List.of(asset), null);
+        ProjectExportPackageDto exportPkg = new ProjectExportPackageDto(
+                "project-export-v1", "linked_assets",
+                null, new ProjectExportProjectDto("prj-1", "tenant-1", "Test", "Desc",
+                        null, null, "ACTIVE"),
+                assets, null, null);
+        ProjectImportPreviewRequest request = new ProjectImportPreviewRequest(exportPkg);
+
+        ProjectImportPreviewResponse response = service.previewImport("tenant-1", request);
+
+        assertFalse(response.compatible(), "Exception resolver should reject hostname URL");
+        assertTrue(response.errors().stream()
+                .anyMatch(e -> "UNSAFE_DOWNLOAD_URL".equals(e.code())),
+                "Expected UNSAFE_DOWNLOAD_URL error for exception resolver");
+    }
+
+    @Test
+    void instanceIsolationBetweenPublicAndPrivateResolvers() {
+        // Two service instances with different resolvers
+        // Same hostname must: A accepts, B rejects
+        // Create order and alternating calls must not change results
+        ProjectImportPreviewService serviceA =
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()));
+        ProjectImportPreviewService serviceB =
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()));
+
+        ProjectImportPreviewRequest request = createHostnameAssetRequest("signed.example.test");
+
+        // Alternating calls 100 times
+        for (int i = 0; i < 100; i++) {
+            ProjectImportPreviewResponse responseA = serviceA.previewImport("tenant-1", request);
+            ProjectImportPreviewResponse responseB = serviceB.previewImport("tenant-1", request);
+
+            assertTrue(responseA.compatible(),
+                    "Iteration " + i + ": serviceA (public) should accept");
+            assertFalse(responseB.compatible(),
+                    "Iteration " + i + ": serviceB (private) should reject");
+        }
+    }
+
+    @Test
+    void concurrentInstanceIsolationShouldHaveNoCrossPollution() throws InterruptedException {
+        // Two threads calling different service instances
+        // Each thread at least 250 calls
+        ProjectImportPreviewService serviceA =
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()));
+        ProjectImportPreviewService serviceB =
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()));
+
+        ProjectImportPreviewRequest request = createHostnameAssetRequest("signed.example.test");
+
+        int callsPerThread = 250;
+        AtomicInteger errors = new AtomicInteger(0);
+        AtomicInteger crossPollution = new AtomicInteger(0);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(2);
+
+        // Thread A: public resolver — should always accept
+        Thread threadA = new Thread(() -> {
+            try {
+                startLatch.await();
+                for (int i = 0; i < callsPerThread; i++) {
+                    ProjectImportPreviewResponse response =
+                            serviceA.previewImport("tenant-1", request);
+                    if (!response.compatible()) {
+                        errors.incrementAndGet();
+                        // Check if the error came from private resolver (cross-pollution)
+                        if (response.errors().stream()
+                                .anyMatch(e -> e.message() != null &&
+                                        e.message().contains("private network"))) {
+                            crossPollution.incrementAndGet();
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                errors.incrementAndGet();
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        // Thread B: private resolver — should always reject
+        Thread threadB = new Thread(() -> {
+            try {
+                startLatch.await();
+                for (int i = 0; i < callsPerThread; i++) {
+                    ProjectImportPreviewResponse response =
+                            serviceB.previewImport("tenant-1", request);
+                    if (response.compatible()) {
+                        errors.incrementAndGet();
+                        crossPollution.incrementAndGet();
+                    }
+                }
+            } catch (Exception e) {
+                errors.incrementAndGet();
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        threadA.start();
+        threadB.start();
+        startLatch.countDown(); // Release both threads simultaneously
+        doneLatch.await();
+
+        assertEquals(0, errors.get(),
+                "Expected 0 errors across " + (callsPerThread * 2) + " calls, got " + errors.get());
+        assertEquals(0, crossPollution.get(),
+                "Expected 0 cross-instance pollution, got " + crossPollution.get());
+    }
+
+    // =====================================================================
+    // Helper methods
+    // =====================================================================
+
+    private ProjectImportPreviewRequest createHostnameAssetRequest(String hostname) {
+        ProjectExportAssetDto asset = new ProjectExportAssetDto(
+                "art-1", "video.mp4", "video", "video/mp4",
+                1024L, null, 10.0, 1920, 1080, null,
+                "https://" + hostname + "/video.mp4?token=secret123");
+        ProjectExportAssetsDto assets = new ProjectExportAssetsDto(
+                "project-export-v1", "linked_assets", List.of(asset), null);
+        ProjectExportPackageDto exportPkg = new ProjectExportPackageDto(
+                "project-export-v1", "linked_assets",
+                null, new ProjectExportProjectDto("prj-1", "tenant-1", "Test", "Desc",
+                        null, null, "ACTIVE"),
+                assets, null, null);
+        return new ProjectImportPreviewRequest(exportPkg);
     }
 
     private ProjectImportPreviewRequest createMetadataOnlyRequest() {

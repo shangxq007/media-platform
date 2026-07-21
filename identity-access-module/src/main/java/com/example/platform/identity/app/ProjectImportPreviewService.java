@@ -43,7 +43,28 @@ public class ProjectImportPreviewService {
             "video.remotion_template", "video.blender_scene"
     );
 
+    private final SafeDownloadUrlValidator safeDownloadUrlValidator;
+
     private AuditPort auditPort;
+
+    /**
+     * Create a service with the default system DNS validator.
+     * Used by Spring for production instantiation.
+     */
+    public ProjectImportPreviewService() {
+        this(new SafeDownloadUrlValidator());
+    }
+
+    /**
+     * Create a service with a specific validator.
+     * Package-private to allow test injection without exposing a public API.
+     *
+     * @param validator the URL validator to use (must not be null)
+     */
+    ProjectImportPreviewService(SafeDownloadUrlValidator validator) {
+        this.safeDownloadUrlValidator =
+                Objects.requireNonNull(validator, "validator must not be null");
+    }
 
     @Autowired(required = false)
     public void setAuditPort(AuditPort auditPort) {
@@ -131,8 +152,8 @@ public class ProjectImportPreviewService {
 
         for (ProjectExportAssetDto asset : assets) {
             if (asset.downloadUrl() != null && !asset.downloadUrl().isBlank()) {
-                // Validate URL safety
-                String urlError = SafeDownloadUrlValidator.validate(asset.downloadUrl());
+                // Validate URL safety using instance validator
+                String urlError = safeDownloadUrlValidator.validateUrl(asset.downloadUrl());
                 if (urlError != null) {
                     errors.add(new ImportPreviewIssueDto(
                             "UNSAFE_DOWNLOAD_URL", "error",
