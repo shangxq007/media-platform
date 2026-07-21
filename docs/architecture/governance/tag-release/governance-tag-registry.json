@@ -86,6 +86,50 @@
       "immutability": "IMMUTABLE_AFTER_CREATION",
       "authorization_source": "ARCH-CODE-GOV-TAG-RELEASE-GOVERNANCE-CONTRACT.1 (this contract)",
       "notes": "Authorized replacement for the provisional tag. Tag creation requires separate execution task."
+    },
+    {
+      "tag_name": "governance/greenfield-quality-passed",
+      "subject": "greenfield-quality-passed",
+      "decision_state": "passed",
+      "tag_type": "annotated",
+      "signature_requirement": "NOT_REQUIRED",
+      "target_commit": "55f234afbb328c24c15400a745fdc99c7ceafae9",
+      "message": "MEDIA CAPABILITY PLATFORM\nGREENFIELD QUALITY BASELINE PASSED\n\nCandidate: 55f234afbb328c24c15400a745fdc99c7ceafae9\nQuality task: ARCH-CODE-GOV-GREENFIELD-BASELINE-GRADLE-QUALITY-TASKS.2B-RE-RUN.1\nQuality result: GRADLE_QUALITY_TASKS_2B_RE_RUN_PASSED\nTests: 5730\nFailures: 0\nErrors: 0\nSkipped: 41\nUnexpected new skips: 0\nUnexplained skips: 0\nSchema categories: 22/22\nDG-001: PASS\nArchitecture invariants: 12/12\nJaCoCo tasks: 64/64\nCredential exception: ARCH-CODE-GOV-EXCEPTION-INJECTION-4-PAT-EXPOSURE.1\nCredential residual risk: PRESENT\nRemote publication: NOT AUTHORIZED",
+      "status": "AUTHORIZED",
+      "remote_status": "PENDING_CREATION",
+      "immutability": "IMMUTABLE_AFTER_CREATION",
+      "authorization_source": "ARCH-CODE-GOV-GREENFIELD-BASELINE-QUALITY-PASSING-TAG-GOVERNANCE-CONTRACT.1",
+      "notes": "Quality-passing tag for greenfield baseline. Local creation only after contract acceptance. Remote publication requires separate authorization. Credential exception gate: 2026-08-04.",
+      "quality_metrics": {
+        "tests": 5730,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 41,
+        "unexpected_new_skips": 0,
+        "unexplained_skips": 0,
+        "schema_categories": "22/22",
+        "dg_001": "PASS",
+        "architecture_invariants": "12/12",
+        "jacoco_tasks": "64/64",
+        "jacoco_failures": 0
+      },
+      "credential_exception": {
+        "id": "ARCH-CODE-GOV-EXCEPTION-INJECTION-4-PAT-EXPOSURE.1",
+        "status": "ACTIVE_TEMPORARY_EXCEPTION",
+        "review_expiry": "2026-08-04",
+        "token_rotated": false,
+        "residual_risk": "PRESENT"
+      },
+      "authorization_boundary": {
+        "local_creation": "AUTHORIZED_ONLY_AFTER_CONTRACT_ACCEPTANCE",
+        "remote_publication": "NOT_AUTHORIZED",
+        "signature_required": false,
+        "lightweight_tag": "PROHIBITED",
+        "overwrite_existing": "PROHIBITED",
+        "delete": "PROHIBITED",
+        "force_create": "PROHIBITED",
+        "move": "PROHIBITED"
+      }
     }
   ],
   "provisional_tags": [

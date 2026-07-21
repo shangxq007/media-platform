@@ -716,7 +716,8 @@
       "user_approval_authority": [],
       "governance_authority": [
         "docs/architecture/governance/tag-release/tag-release-governance-contract.md",
-        "docs/architecture/governance/tag-release/governance-tag-registry.json"
+        "docs/architecture/governance/tag-release/governance-tag-registry.json",
+        "ARCH-CODE-GOV-GREENFIELD-BASELINE-QUALITY-PASSING-TAG-GOVERNANCE-CONTRACT.1 (quality-passed tag authorization)"
       ],
       "canonical_contract": [
         "docs/architecture/governance/tag-release/tag-release-governance-contract.md"
@@ -745,7 +746,7 @@
         "ADR_ACCEPTANCE",
         "USER_EXPLICIT_APPROVAL"
       ],
-      "notes": "Tag naming authority: tag-release-governance-contract.md. Tag registry authority: governance-tag-registry.json."
+      "notes": "Tag naming authority: tag-release-governance-contract.md. Tag registry authority: governance-tag-registry.json. Quality-passing tag authorized via ARCH-CODE-GOV-GREENFIELD-BASELINE-QUALITY-PASSING-TAG-GOVERNANCE-CONTRACT.1."
     }
   ],
   "conflict_adjudications": [

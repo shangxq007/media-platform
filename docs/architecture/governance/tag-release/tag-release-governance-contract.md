@@ -281,3 +281,143 @@ Changes to this contract require:
 | Exact governance tag registry | `governance-tag-registry.json` |
 
 ADR decisions, task prompts, historical tags, and agent reports are NOT the final authority source for tag governance.
+
+---
+
+## 13. Quality-Passing Tag Authorization
+
+### 13.1 Authorized Tag
+
+| Property | Value |
+|----------|-------|
+| **Tag name** | `governance/greenfield-quality-passed` |
+| **Subject** | `greenfield-quality-passed` |
+| **Decision state** | `passed` |
+| **Target commit** | `55f234afbb328c24c15400a745fdc99c7ceafae9` |
+| **Tag type** | `annotated` |
+| **Signature** | NOT REQUIRED |
+
+### 13.2 Authorized Message
+
+```
+MEDIA CAPABILITY PLATFORM
+GREENFIELD QUALITY BASELINE PASSED
+
+Candidate: 55f234afbb328c24c15400a745fdc99c7ceafae9
+Quality task: ARCH-CODE-GOV-GREENFIELD-BASELINE-GRADLE-QUALITY-TASKS.2B-RE-RUN.1
+Quality result: GRADLE_QUALITY_TASKS_2B_RE_RUN_PASSED
+Tests: 5730
+Failures: 0
+Errors: 0
+Skipped: 41
+Unexpected new skips: 0
+Unexplained skips: 0
+Schema categories: 22/22
+DG-001: PASS
+Architecture invariants: 12/12
+JaCoCo tasks: 64/64
+Credential exception: ARCH-CODE-GOV-EXCEPTION-INJECTION-4-PAT-EXPOSURE.1
+Credential residual risk: PRESENT
+Remote publication: NOT AUTHORIZED
+```
+
+### 13.3 Decision Meaning
+
+This tag signifies:
+
+> The greenfield quality baseline (Quality Tasks.2B) has passed and received governance acceptance. The candidate commit `55f234af...` has met all quality gates including test counts, schema validation, architecture invariants, and JaCoCo coverage.
+
+### 13.4 Quality Metrics (Binding)
+
+| Metric | Value |
+|--------|-------|
+| Tests | 5730 |
+| Failures | 0 |
+| Errors | 0 |
+| Skipped | 41 |
+| Unexpected new skips | 0 |
+| Unexplained skips | 0 |
+| Schema categories | 22/22 |
+| DG-001 | PASS |
+| Architecture invariants | 12/12 |
+| JaCoCo tasks | 64/64 |
+| JaCoCo failures | 0 |
+
+### 13.5 Target Commit Relationship
+
+The authorized quality-passing tag target is `55f234afbb328c24c15400a745fdc99c7ceafae9`.
+
+This contract commit is a subsequent governance control-plane document and does NOT alter the already-verified quality payload.
+
+This contract's creation:
+
+- MUST NOT reopen quality verification
+- MUST NOT alter quality task result
+- MUST NOT require re-running quality tasks
+- MUST NOT be used as a tag target
+
+### 13.6 Credential Exception Gate
+
+| Property | Value |
+|----------|-------|
+| **Exception ID** | `ARCH-CODE-GOV-EXCEPTION-INJECTION-4-PAT-EXPOSURE.1` |
+| **Status** | `ACTIVE_TEMPORARY_EXCEPTION` |
+| **Review/expiry date** | `2026-08-04` |
+| **Token rotated** | NOT ROTATED |
+| **Residual risk** | PRESENT |
+
+If Tag Finalization execution time is **earlier than** 2026-08-04:
+- Local tag creation MAY proceed after other governance conditions are met.
+
+If Tag Finalization execution time **reaches or exceeds** 2026-08-04:
+- AND no new risk review acceptance record exists
+- Tag Finalization MUST stop.
+
+The credential exception:
+- DOES NOT authorize remote push
+- DOES NOT represent that credential leakage is fully resolved
+- Is a time-limited governance exception only
+
+### 13.7 Independence Requirements
+
+The following are independent governance operations:
+
+1. **Contract acceptance** — independent verification that this contract is correct
+2. **Tag finalization** — independent execution of the tag creation authorized by this contract
+3. **Tag finalization acceptance** — independent verification that the created tag is correct
+4. **Remote publication** — separate authorization not covered by this contract
+
+Each requires its own governance task.
+
+### 13.8 Conflict Handling
+
+If `governance/greenfield-quality-passed` already exists:
+- MUST NOT overwrite
+- MUST NOT delete
+- MUST NOT force-create
+- MUST stop and report conflict
+
+Only after confirming the tag does not exist locally and remotely (via credential-free, secure authentication) may Tag Finalization proceed.
+
+### 13.9 Contract Authorization Boundary
+
+This contract authorizes ONLY:
+- Creation of one new local annotated tag
+- Tag name: `governance/greenfield-quality-passed`
+- Tag target: `55f234afbb328c24c15400a745fdc99c7ceafae9`
+- Tag message: exact message in §13.2
+- Signature: not required
+- Post-creation: independent Tag Finalization Acceptance Reverification
+
+This contract DOES NOT authorize:
+- Moving existing tags
+- Overwriting same-name tags
+- Deleting any tags
+- Creating lightweight tags
+- Signing releases
+- Creating GitHub releases
+- Pushing branches
+- Pushing tags
+- Remote publication
+- Modifying the candidate commit
+- Modifying Git history
