@@ -926,7 +926,7 @@
         "docs/architecture/governance/jooq/jooq-typed-schema-authority-decision.md"
       ],
       "canonical_contract": [
-        "platform-app/src/main/resources/db/migration/V1__init_full_schema.sql"
+        "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
       ],
       "executable_contract": [
         "typed-schema-module/src/main/java/com/example/platform/jooq/generated/",
