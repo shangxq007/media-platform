@@ -346,7 +346,7 @@
       ],
       "explicitly_non_authoritative": [
         "V5 bytes",
-        "render_job.updated_at (not in V1-V4) \u2014 resolved via GREENFIELD-SCHEMA-DELTA-DG-001, aligned after Contract.2"
+        "render_job.updated_at (not in V1-V4) — resolved via GREENFIELD-SCHEMA-DELTA-DG-001, aligned after Contract.2"
       ],
       "current_conflicts": [
         "C-002",
@@ -1190,5 +1190,49 @@
     "superseded ADRs (HISTORICAL)",
     "stale target-state (HISTORICAL)",
     "implementation contradicting frozen contract (DRIFT)"
-  ]
+  ],
+  "prc012_identity_reconciliation": {
+    "reconciliation_task": "ARCH-CODE-GOV-MAINLINE-READINESS-BATCH-AUTHORITY-DECISION.1-PRC-012-EVIDENCE-RECONCILIATION.1",
+    "classification": "DECISION_CANDIDATE_REDEFINED_PRC_012",
+    "original_finding": "Three dynamic identifier sites from jOOQ inventory (HC-DYNAMIC-IDENTIFIER)",
+    "original_locations": [
+      "MarketplaceListingRepository dynamic WHERE",
+      "MarketplaceListingRepository ORDER BY selection",
+      "QueryExecutionService NLQ SQL execution"
+    ],
+    "remapping": {
+      "MarketplaceListingRepository_dynamic_WHERE": {
+        "target_prc": "PRC-011",
+        "target_di": "DI-011",
+        "disposition": "KEEP"
+      },
+      "MarketplaceListingRepository_ORDER_BY": {
+        "target_prc": "PRC-011",
+        "target_di": "DI-011",
+        "disposition": "KEEP"
+      },
+      "QueryExecutionService_NLQ": {
+        "target_prc": "PRC-003",
+        "target_di": "DI-003",
+        "disposition": "QUARANTINE"
+      }
+    },
+    "di012_identity": "Separate canonical decision item covering constant-based identifier construction in RenderJobLifecycleEventRepository, StorageRuntimeOrphanReportService, TimelineRevisionRepository",
+    "di012_disposition": "KEEP",
+    "note": "DI-012 was incorrectly labeled as original PRC-012 in first Decision Candidate. Original PRC-012 occurrences remapped to DI-011 and DI-003. No duplicate counting. 37-item total unchanged."
+  },
+  "authority_decision_repair": {
+    "task": "ARCH-CODE-GOV-MAINLINE-READINESS-BATCH-AUTHORITY-DECISION.1-PRC-012-GOVERNANCE-REPAIR.1",
+    "status": "REPAIR_CANDIDATE_CREATED",
+    "parent_commit": "c7fd7111e522de99a5a8cfc9b0a3fe532c116ce0",
+    "changes": [
+      "PRC-012 identity reconciliation section added",
+      "Disposition summary arithmetic corrected (DEPRECATE=7, KEEP=25)",
+      "DI-012 identity note added"
+    ],
+    "authority_decision_acceptance": "PENDING",
+    "direct_mainline_verification": "NOT_AUTHORIZED",
+    "opencue_implementation": "NOT_AUTHORIZED",
+    "remote_publication": "NOT_AUTHORIZED"
+  }
 }

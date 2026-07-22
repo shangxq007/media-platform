@@ -67,9 +67,9 @@ This is a governance decision document only. No implementation, migration, test,
 | PRC findings decided | 12 (PRC-001 through PRC-012) |
 | Confirmed Mainline blockers | 0 |
 | Items requiring pre-Mainline remediation | 4 |
-| Items with deprecation deadlines | 6 |
+| Items with deprecation deadlines | 7 |
 | Items quarantined | 1 |
-| Items kept with conditions | 26 |
+| Items kept with conditions | 25 |
 
 ---
 
@@ -123,9 +123,9 @@ This is a governance decision document only. No implementation, migration, test,
 |-------------|-------|-----|
 | BLOCKER | 0 | — |
 | REMOVE_BEFORE_MAINLINE | 4 | DI-001, DI-002, DI-007, DI-008 |
-| DEPRECATE_WITH_DEADLINE | 6 | DI-005, DI-006, DI-009, DI-013, DI-014, DI-017, DI-018 |
+| DEPRECATE_WITH_DEADLINE | 7 | DI-005, DI-006, DI-009, DI-013, DI-014, DI-017, DI-018 |
 | QUARANTINE | 1 | DI-003 |
-| KEEP | 26 | DI-004, DI-010, DI-011, DI-012, DI-015, DI-016, DI-019–DI-037 |
+| KEEP | 25 | DI-004, DI-010, DI-011, DI-012, DI-015, DI-016, DI-019–DI-037 |
 
 ---
 
@@ -345,19 +345,21 @@ See dedicated NLQ Authority Decision section below.
 
 ---
 
-### DI-012: Dynamic Identifiers (PRC-012)
+### DI-012: Constant-Based Identifier Construction (PRC-012)
 
 **Disposition:** KEEP
 
 **Facts:**
-- Three locations use dynamic identifiers:
-  1. `RenderJobLifecycleEventRepository` - table/field names from constants
-  2. `StorageRuntimeOrphanReportService` - table/field names from constants
-  3. `TimelineRevisionRepository` - table/field names from constants
-- All identifier values come from compile-time constants or validated inputs
-- No user-supplied dynamic identifiers
+- Three locations use constant-based jOOQ DSL identifiers:
+  1. `RenderJobLifecycleEventRepository` - `DSL.table()` and `DSL.field()` with compile-time string constants
+  2. `StorageRuntimeOrphanReportService` - `DSL.table()` and `DSL.field()` with compile-time string constants
+  3. `TimelineRevisionRepository` - `table()` and `field()` (static import) with compile-time string constants
+- All identifier values are compile-time string literals
+- No user-supplied or runtime-derived identifiers
 
-**Rationale:** Dynamic identifiers are controlled and sourced from constants. No injection risk.
+**Rationale:** All jOOQ DSL identifiers in these three locations are compile-time string constants. No injection risk.
+
+**Identity Note:** DI-012 is a separate canonical decision item that was incorrectly labeled as the original PRC-012 in the first Decision Candidate. The original PRC-012 (from the jOOQ inventory) covered three different locations that have been remapped to PRC-011/DI-011 and PRC-003/DI-003. See the PRC-012 Identity Reconciliation section below.
 
 **Owner:** architecture-team
 **Verification:** Code review confirms all identifiers from trusted sources
@@ -522,7 +524,66 @@ These are NOT dead code. They are architectural extension points.
 | PRC-009 | Case naming inconsistency | DEPRECATE_WITH_DEADLINE | Migrate to codegen by 2026-10-01 |
 | PRC-010 | Test DDL fixtures | KEEP | Intentional minimal fixtures |
 | PRC-011 | Dynamic WHERE patterns | KEEP | Controlled Condition API usage |
-| PRC-012 | Dynamic identifiers | KEEP | Three locations, all from constants |
+| PRC-012 | Constant-based identifier construction (DI-012) | KEEP | Three repositories/services, all identifiers from compile-time constants |
+
+**Note:** DI-012 is a separate canonical decision item covering constant-based identifier construction. The original PRC-012 finding from the jOOQ inventory (three dynamic identifier sites) has been remapped: see PRC-012 Identity Reconciliation below.
+
+---
+
+### PRC-012 Identity Reconciliation
+
+**Reconciliation Task:** ARCH-CODE-GOV-MAINLINE-READINESS-BATCH-AUTHORITY-DECISION.1-PRC-012-EVIDENCE-RECONCILIATION.1
+**Classification:** DECISION_CANDIDATE_REDEFINED_PRC_012
+
+#### First Authoritative Source
+
+- **Task:** ARCH-CODE-GOV-MAINLINE-READINESS-JOOQ-HARD-CODING-CODEGEN-INVENTORY.1
+- **Evidence:** `24-dynamic-identifier-inventory.tsv`
+- **Finding:** HC-DYNAMIC-IDENTIFIER
+- **Original description:** Three dynamic identifier sites
+
+#### Original Three Locations
+
+1. `MarketplaceListingRepository` dynamic WHERE (lines 66-80) — conditional WHERE construction from service-layer parameters
+2. `MarketplaceListingRepository` ORDER BY selection (line 88) — ternary between two hardcoded ORDER BY strings
+3. `QueryExecutionService` NLQ SQL execution (line 84) — user/AI-generated SQL via JdbcTemplate
+
+#### Authority-Stage Remapping
+
+The Authority Decision stage remapped the original PRC-012 occurrences by risk dimension:
+
+| Original Location | Target PRC | Target DI | Disposition | Rationale |
+|---|---|---|---|---|
+| MarketplaceListingRepository dynamic WHERE | PRC-011 | DI-011 | KEEP | Controlled Condition API, validated inputs |
+| MarketplaceListingRepository ORDER BY selection | PRC-011 | DI-011 | KEEP | Hardcoded ternary, no injection risk |
+| QueryExecutionService NLQ SQL execution | PRC-003 | DI-003 | QUARANTINE | Full SQL execution capability, requires security controls |
+
+**This remapping is a normalization at the Authority Decision stage. It does not delete the original finding. It does not create three new Decision Items. It does not change the 37-item total.**
+
+#### Relationship to PRC-011 / DI-011
+
+PRC-011 (DI-011) covers validated MarketplaceListingRepository dynamic identifier behavior. The two MarketplaceListingRepository occurrences from the original PRC-012 are subsumed under PRC-011 because they share the same risk dimension: controlled dynamic WHERE/ORDER BY construction with validated inputs.
+
+#### Relationship to PRC-003 / DI-003
+
+PRC-003 (DI-003) covers the NLQ QueryExecutionService security boundary. The QueryExecutionService occurrence from the original PRC-012 is remapped to PRC-003 because it represents full SQL execution capability risk, which is a different (and higher) risk dimension than identifier construction. PRC-003 remains QUARANTINE.
+
+#### DI-012 Separate Canonical Identity
+
+DI-012 is a separate canonical decision item covering constant-based identifier construction in three repositories/services. It was incorrectly labeled as the original PRC-012 in the first Decision Candidate. DI-012 covers:
+
+1. `RenderJobLifecycleEventRepository` — `DSL.table()` / `DSL.field()` with compile-time string constants
+2. `StorageRuntimeOrphanReportService` — `DSL.table()` / `DSL.field()` with compile-time string constants
+3. `TimelineRevisionRepository` — `table()` / `field()` with compile-time string constants
+
+DI-012's KEEP disposition is factually supported: all identifiers are compile-time string constants with no injection risk.
+
+#### Impact on Decision Matrix
+
+- **No duplicate decision counting:** DI-003, DI-011, and DI-012 are each counted once
+- **No change to 37-item total:** The original PRC-012 occurrences are remapped, not added
+- **No new PRC numbering:** PRC-013 is not created
+- **Disposition totals unchanged:** 0/4/7/1/25
 
 ---
 
@@ -656,9 +717,9 @@ After archival, maintain an index file listing:
 |----------|-------|-----|
 | BLOCKER | 0 | — |
 | REMOVE_BEFORE_MAINLINE | 4 | DI-001, DI-002, DI-007, DI-008 |
-| DEPRECATE_WITH_DEADLINE | 6 | DI-005, DI-006, DI-009, DI-013, DI-014, DI-017, DI-018 |
+| DEPRECATE_WITH_DEADLINE | 7 | DI-005, DI-006, DI-009, DI-013, DI-014, DI-017, DI-018 |
 | QUARANTINE | 1 | DI-003 |
-| KEEP | 26 | DI-004, DI-010, DI-011, DI-012, DI-015, DI-016, DI-019–DI-037 |
+| KEEP | 25 | DI-004, DI-010, DI-011, DI-012, DI-015, DI-016, DI-019–DI-037 |
 
 **OpenCueExecutionBackend:** FUTURE_FEATURE_NOT_STALE_DEBT
 
