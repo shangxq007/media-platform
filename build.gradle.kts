@@ -5,7 +5,6 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 plugins {
     id("io.spring.dependency-management") version "1.1.7" apply false
     id("org.springframework.boot") version "4.0.4" apply false
-    id("org.jooq.jooq-codegen-gradle") version "3.19.18" apply false
 }
 
 group = "com.example.platform"

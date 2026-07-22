@@ -27,7 +27,7 @@ public final class RenderTestSchemaFixture {
                 profile varchar(100) not null,
                 status varchar(20) not null,
                 created_at timestamp not null,
-                updated_at timestamp not null default now(),
+                updated_at timestamp with time zone,
                 ai_script text,
                 artifact_uri text,
                 error_message text,

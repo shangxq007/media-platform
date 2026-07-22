@@ -16,7 +16,9 @@ public final class StorageTestSchemaFixture {
                 format varchar(32),
                 resolution varchar(32),
                 duration bigint,
-                created_at timestamp not null
+                created_at timestamp not null,
+                status varchar(32) not null default 'ACTIVE',
+                tombstoned_at timestamp
             )
         """);
     }
