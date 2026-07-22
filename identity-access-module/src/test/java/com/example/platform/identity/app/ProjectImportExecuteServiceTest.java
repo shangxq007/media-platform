@@ -44,8 +44,7 @@ class ProjectImportExecuteServiceTest {
     @BeforeEach
     void setUp() {
         service = new ProjectImportExecuteService(tenantProjectService, projectRepository,
-                metadataRepository, metadataScrubber);
-        service.setAuditPort(auditPort);
+                metadataRepository, metadataScrubber, auditPort);
         TenantContext.set("tenant-1");
     }
 

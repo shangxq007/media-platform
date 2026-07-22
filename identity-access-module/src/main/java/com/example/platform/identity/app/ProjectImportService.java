@@ -50,28 +50,19 @@ public class ProjectImportService {
 
     private final TenantProjectService tenantProjectService;
     private final ArtifactCatalogService artifactCatalogService;
-    private AuditPort auditPort;
-    private ImportAssetDownloader assetDownloader;
-    private BlobStorage blobStorage;
+    private final AuditPort auditPort;
+    private final ImportAssetDownloader assetDownloader;
+    private final BlobStorage blobStorage;
 
     public ProjectImportService(TenantProjectService tenantProjectService,
-                                 ArtifactCatalogService artifactCatalogService) {
+                                 ArtifactCatalogService artifactCatalogService,
+                                 @Autowired(required = false) AuditPort auditPort,
+                                 @Autowired(required = false) ImportAssetDownloader assetDownloader,
+                                 @Autowired(required = false) BlobStorage blobStorage) {
         this.tenantProjectService = tenantProjectService;
         this.artifactCatalogService = artifactCatalogService;
-    }
-
-    @Autowired(required = false)
-    public void setAuditPort(AuditPort auditPort) {
         this.auditPort = auditPort;
-    }
-
-    @Autowired(required = false)
-    public void setAssetDownloader(ImportAssetDownloader assetDownloader) {
         this.assetDownloader = assetDownloader;
-    }
-
-    @Autowired(required = false)
-    public void setBlobStorage(BlobStorage blobStorage) {
         this.blobStorage = blobStorage;
     }
 

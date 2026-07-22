@@ -44,15 +44,14 @@ public class ProjectImportPreviewService {
     );
 
     private final SafeDownloadUrlValidator safeDownloadUrlValidator;
-
-    private AuditPort auditPort;
+    private final AuditPort auditPort;
 
     /**
      * Create a service with the default system DNS validator.
      * Used by Spring for production instantiation.
      */
-    public ProjectImportPreviewService() {
-        this(new SafeDownloadUrlValidator());
+    public ProjectImportPreviewService(@Autowired(required = false) AuditPort auditPort) {
+        this(new SafeDownloadUrlValidator(), auditPort);
     }
 
     /**
@@ -61,13 +60,10 @@ public class ProjectImportPreviewService {
      *
      * @param validator the URL validator to use (must not be null)
      */
-    ProjectImportPreviewService(SafeDownloadUrlValidator validator) {
+    ProjectImportPreviewService(SafeDownloadUrlValidator validator,
+                                @Autowired(required = false) AuditPort auditPort) {
         this.safeDownloadUrlValidator =
                 Objects.requireNonNull(validator, "validator must not be null");
-    }
-
-    @Autowired(required = false)
-    public void setAuditPort(AuditPort auditPort) {
         this.auditPort = auditPort;
     }
 

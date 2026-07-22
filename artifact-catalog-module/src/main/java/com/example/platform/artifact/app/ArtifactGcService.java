@@ -31,21 +31,18 @@ public class ArtifactGcService {
     private final ArtifactLifecycleService lifecycleService;
     private final Optional<BlobStorage> blobStorage;
     private final ArtifactGcProperties properties;
-    private AuditPort auditPort;
+    private final AuditPort auditPort;
 
     public ArtifactGcService(
             @Autowired(required = false) ArtifactCatalogRepository artifactRepository,
             ArtifactLifecycleService lifecycleService,
             @Autowired(required = false) BlobStorage blobStorage,
-            ArtifactGcProperties properties) {
+            ArtifactGcProperties properties,
+            @Autowired(required = false) AuditPort auditPort) {
         this.artifactRepository = artifactRepository;
         this.lifecycleService = lifecycleService;
         this.blobStorage = Optional.ofNullable(blobStorage);
         this.properties = properties;
-    }
-
-    @Autowired(required = false)
-    public void setAuditPort(AuditPort auditPort) {
         this.auditPort = auditPort;
     }
 

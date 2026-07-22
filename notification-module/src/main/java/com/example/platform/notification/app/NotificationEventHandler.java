@@ -41,17 +41,14 @@ public class NotificationEventHandler {
     private final DSLContext dsl;
     private final List<NotificationProvider> providers;
     private final NotificationRenderingService renderingService;
-    private MockNotificationProvider mockProvider;
+    private final MockNotificationProvider mockProvider;
 
     public NotificationEventHandler(DSLContext dsl, List<NotificationProvider> providers,
-            NotificationRenderingService renderingService) {
+            NotificationRenderingService renderingService,
+            @Autowired(required = false) MockNotificationProvider mockProvider) {
         this.dsl = dsl;
         this.providers = providers;
         this.renderingService = renderingService;
-    }
-
-    @Autowired(required = false)
-    public void setMockNotificationProvider(MockNotificationProvider mockProvider) {
         this.mockProvider = mockProvider;
     }
 

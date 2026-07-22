@@ -87,8 +87,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
         ArtifactGcProperties props = new ArtifactGcProperties();
         props.setRetentionDays(1);
         props.setBatchSize(10);
-        gcService = new ArtifactGcService(repository, lifecycle, blobStorage, props);
-        gcService.setAuditPort(auditPort);
+        gcService = new ArtifactGcService(repository, lifecycle, blobStorage, props, auditPort);
     }
 
     @Test

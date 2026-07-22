@@ -35,18 +35,18 @@ public class PromptTemplateService {
     private final AtomicLong versionSeq = new AtomicLong(0);
     private final AtomicLong executionSeq = new AtomicLong(0);
     private final Optional<PromptJdbcRepository> jdbcRepository;
-    private AuditPort auditPort;
+    private final AuditPort auditPort;
 
-    public PromptTemplateService() {
-        this(Optional.empty());
+    public PromptTemplateService(@Autowired(required = false) AuditPort auditPort) {
+        this(Optional.empty(), auditPort);
     }
 
     @Autowired
-    public PromptTemplateService(Optional<PromptJdbcRepository> jdbcRepository) {
+    public PromptTemplateService(Optional<PromptJdbcRepository> jdbcRepository,
+                                 @Autowired(required = false) AuditPort auditPort) {
         this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+        this.auditPort = auditPort;
     }
-
-    public void setAuditPort(AuditPort port) { this.auditPort = port; }
 
     /** Restores state from JDBC on application startup. */
     public void hydrateTemplate(PromptTemplate template) {

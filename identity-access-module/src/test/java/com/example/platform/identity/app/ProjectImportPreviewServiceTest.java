@@ -64,8 +64,7 @@ class ProjectImportPreviewServiceTest {
      */
     private ProjectImportPreviewService createServiceWithPublicResolver() {
         ProjectImportPreviewService service =
-                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()));
-        service.setAuditPort(auditPort);
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()), auditPort);
         return service;
     }
 
@@ -258,7 +257,7 @@ class ProjectImportPreviewServiceTest {
     void previewShouldWorkWithoutAuditPort() {
         // Service created with default constructor (no audit port set)
         // Uses system DNS but this test has no hostname assets
-        ProjectImportPreviewService serviceWithoutAudit = new ProjectImportPreviewService();
+        ProjectImportPreviewService serviceWithoutAudit = new ProjectImportPreviewService(null);
         // auditPort is null
 
         ProjectImportPreviewRequest request = createMetadataOnlyRequest();
@@ -299,8 +298,7 @@ class ProjectImportPreviewServiceTest {
     void privateResolverShouldRejectHostnameUrl() {
         // signed.example.test → 10.0.0.1 → UNSAFE_DOWNLOAD_URL
         ProjectImportPreviewService service =
-                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()));
-        service.setAuditPort(auditPort);
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()), auditPort);
 
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
@@ -327,8 +325,7 @@ class ProjectImportPreviewServiceTest {
     void emptyResolverShouldRejectHostnameUrl() {
         // signed.example.test → empty result → rejected
         ProjectImportPreviewService service =
-                new ProjectImportPreviewService(new SafeDownloadUrlValidator(emptyResolver()));
-        service.setAuditPort(auditPort);
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(emptyResolver()), auditPort);
 
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
@@ -355,8 +352,7 @@ class ProjectImportPreviewServiceTest {
     void exceptionResolverShouldRejectHostnameUrl() {
         // signed.example.test → UnknownHostException → rejected
         ProjectImportPreviewService service =
-                new ProjectImportPreviewService(new SafeDownloadUrlValidator(failingResolver()));
-        service.setAuditPort(auditPort);
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(failingResolver()), auditPort);
 
         ProjectExportAssetDto asset = new ProjectExportAssetDto(
                 "art-1", "video.mp4", "video", "video/mp4",
@@ -385,9 +381,9 @@ class ProjectImportPreviewServiceTest {
         // Same hostname must: A accepts, B rejects
         // Create order and alternating calls must not change results
         ProjectImportPreviewService serviceA =
-                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()));
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()), auditPort);
         ProjectImportPreviewService serviceB =
-                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()));
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()), auditPort);
 
         ProjectImportPreviewRequest request = createHostnameAssetRequest("signed.example.test");
 
@@ -408,9 +404,9 @@ class ProjectImportPreviewServiceTest {
         // Two threads calling different service instances
         // Each thread at least 250 calls
         ProjectImportPreviewService serviceA =
-                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()));
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(publicResolver()), auditPort);
         ProjectImportPreviewService serviceB =
-                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()));
+                new ProjectImportPreviewService(new SafeDownloadUrlValidator(privateResolver()), auditPort);
 
         ProjectImportPreviewRequest request = createHostnameAssetRequest("signed.example.test");
 

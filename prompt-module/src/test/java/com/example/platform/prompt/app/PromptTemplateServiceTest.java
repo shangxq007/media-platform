@@ -15,7 +15,7 @@ class PromptTemplateServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PromptTemplateService();
+        service = new PromptTemplateService(null);
     }
 
     @Test

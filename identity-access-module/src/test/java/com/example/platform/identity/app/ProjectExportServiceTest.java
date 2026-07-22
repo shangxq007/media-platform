@@ -41,10 +41,7 @@ class ProjectExportServiceTest {
 
     @BeforeEach
     void setUp() {
-        projectExportService = new ProjectExportService(tenantProjectService);
-        projectExportService.setAuditPort(auditPort);
-        projectExportService.setProjectAssetListingPort(projectAssetListingPort);
-        projectExportService.setAssetDownloadUrlPort(assetDownloadUrlPort);
+        projectExportService = new ProjectExportService(tenantProjectService, auditPort, projectAssetListingPort, assetDownloadUrlPort);
     }
 
     @AfterEach
@@ -242,8 +239,7 @@ class ProjectExportServiceTest {
 
     @Test
     void linkedAssetsExportShouldRejectWhenPortMissing() {
-        ProjectExportService serviceWithoutPort = new ProjectExportService(tenantProjectService);
-        serviceWithoutPort.setAuditPort(auditPort);
+        ProjectExportService serviceWithoutPort = new ProjectExportService(tenantProjectService, auditPort, null, null);
         // projectAssetListingPort is null
 
         TenantContext.set("tenant-1");
@@ -258,9 +254,7 @@ class ProjectExportServiceTest {
 
     @Test
     void linkedAssetsExportShouldRejectWhenDownloadPortMissing() {
-        ProjectExportService serviceWithoutDownloadPort = new ProjectExportService(tenantProjectService);
-        serviceWithoutDownloadPort.setAuditPort(auditPort);
-        serviceWithoutDownloadPort.setProjectAssetListingPort(projectAssetListingPort);
+        ProjectExportService serviceWithoutDownloadPort = new ProjectExportService(tenantProjectService, auditPort, projectAssetListingPort, null);
         // assetDownloadUrlPort is null
 
         TenantContext.set("tenant-1");

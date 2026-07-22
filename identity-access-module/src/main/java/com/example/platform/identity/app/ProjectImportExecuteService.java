@@ -42,20 +42,17 @@ public class ProjectImportExecuteService {
     private final ProjectRepository projectRepository;
     private final ProjectImportMetadataRepository metadataRepository;
     private final MetadataScrubber metadataScrubber;
-    private AuditPort auditPort;
+    private final AuditPort auditPort;
 
     public ProjectImportExecuteService(TenantProjectService tenantProjectService,
                                        ProjectRepository projectRepository,
                                        ProjectImportMetadataRepository metadataRepository,
-                                       MetadataScrubber metadataScrubber) {
+                                       MetadataScrubber metadataScrubber,
+                                       @Autowired(required = false) AuditPort auditPort) {
         this.tenantProjectService = tenantProjectService;
         this.projectRepository = projectRepository;
         this.metadataRepository = metadataRepository;
         this.metadataScrubber = metadataScrubber;
-    }
-
-    @Autowired(required = false)
-    public void setAuditPort(AuditPort auditPort) {
         this.auditPort = auditPort;
     }
 

@@ -31,26 +31,17 @@ public class ProjectExportService {
     private static final Duration MAX_SIGNED_URL_TTL = Duration.ofHours(24);
 
     private final TenantProjectService tenantProjectService;
-    private AuditPort auditPort;
-    private ProjectAssetListingPort projectAssetListingPort;
-    private AssetDownloadUrlPort assetDownloadUrlPort;
+    private final AuditPort auditPort;
+    private final ProjectAssetListingPort projectAssetListingPort;
+    private final AssetDownloadUrlPort assetDownloadUrlPort;
 
-    public ProjectExportService(TenantProjectService tenantProjectService) {
+    public ProjectExportService(TenantProjectService tenantProjectService,
+                                @Autowired(required = false) AuditPort auditPort,
+                                @Autowired(required = false) ProjectAssetListingPort projectAssetListingPort,
+                                @Autowired(required = false) AssetDownloadUrlPort assetDownloadUrlPort) {
         this.tenantProjectService = tenantProjectService;
-    }
-
-    @Autowired(required = false)
-    public void setAuditPort(AuditPort auditPort) {
         this.auditPort = auditPort;
-    }
-
-    @Autowired(required = false)
-    public void setProjectAssetListingPort(ProjectAssetListingPort projectAssetListingPort) {
         this.projectAssetListingPort = projectAssetListingPort;
-    }
-
-    @Autowired(required = false)
-    public void setAssetDownloadUrlPort(AssetDownloadUrlPort assetDownloadUrlPort) {
         this.assetDownloadUrlPort = assetDownloadUrlPort;
     }
 

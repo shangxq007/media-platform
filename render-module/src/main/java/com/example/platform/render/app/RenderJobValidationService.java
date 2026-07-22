@@ -27,34 +27,22 @@ public class RenderJobValidationService {
 
     private static final Logger log = LoggerFactory.getLogger(RenderJobValidationService.class);
 
-    private EntitlementPort entitlementPort;
-    private CostEstimationPort costEstimationPort;
-    private BudgetGuardPort budgetGuardPort;
-    private CostReservationPort costReservationPort;
+    private final EntitlementPort entitlementPort;
+    private final CostEstimationPort costEstimationPort;
+    private final BudgetGuardPort budgetGuardPort;
+    private final CostReservationPort costReservationPort;
     private final RenderProviderRouter providerRouter;
 
-    public RenderJobValidationService(RenderProviderRouter providerRouter) {
+    public RenderJobValidationService(RenderProviderRouter providerRouter,
+                                      @Autowired(required = false) EntitlementPort entitlementPort,
+                                      @Autowired(required = false) CostEstimationPort costEstimationPort,
+                                      @Autowired(required = false) BudgetGuardPort budgetGuardPort,
+                                      @Autowired(required = false) CostReservationPort costReservationPort) {
         this.providerRouter = providerRouter;
-    }
-
-    @Autowired(required = false)
-    public void setEntitlementPort(EntitlementPort port) {
-        this.entitlementPort = port;
-    }
-
-    @Autowired(required = false)
-    public void setCostEstimationPort(CostEstimationPort port) {
-        this.costEstimationPort = port;
-    }
-
-    @Autowired(required = false)
-    public void setBudgetGuardPort(BudgetGuardPort port) {
-        this.budgetGuardPort = port;
-    }
-
-    @Autowired(required = false)
-    public void setCostReservationPort(CostReservationPort port) {
-        this.costReservationPort = port;
+        this.entitlementPort = entitlementPort;
+        this.costEstimationPort = costEstimationPort;
+        this.budgetGuardPort = budgetGuardPort;
+        this.costReservationPort = costReservationPort;
     }
 
     /**
