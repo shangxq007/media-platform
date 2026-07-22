@@ -2,23 +2,22 @@ package com.example.platform.workflow.adapter;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderJobSubmitContinuation;
-import com.example.platform.render.api.port.RenderOrchestratorPort;
+import com.example.platform.render.api.port.RenderWorkflowResumePort;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnProperty(prefix = "render.execution", name = "mode", havingValue = "local", matchIfMissing = true)
 public class LocalRenderSubmitContinuation implements RenderJobSubmitContinuation {
 
-    private final RenderOrchestratorPort orchestratorPort;
+    private final RenderWorkflowResumePort workflowResumePort;
 
-    public LocalRenderSubmitContinuation(@Lazy RenderOrchestratorPort orchestratorPort) {
-        this.orchestratorPort = orchestratorPort;
+    public LocalRenderSubmitContinuation(RenderWorkflowResumePort workflowResumePort) {
+        this.workflowResumePort = workflowResumePort;
     }
 
     @Override
     public String continueAfterSubmit(String tenantId, String jobId, SubmitRenderJobRequest request) {
-        return orchestratorPort.executeExistingRenderJob(tenantId, jobId);
+        return workflowResumePort.executeExistingRenderJob(tenantId, jobId);
     }
 }

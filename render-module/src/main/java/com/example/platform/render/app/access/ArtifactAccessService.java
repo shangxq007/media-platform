@@ -31,7 +31,6 @@ public class ArtifactAccessService {
     @Value("${storage.s3.signed-access.ttl:15m}")
     private String signedAccessTtl;
 
-    @Autowired
     public ArtifactAccessService(StorageReferenceRepository storageRefRepo,
                                   org.springframework.beans.factory.ObjectProvider<S3ObjectMaterializer> s3Provider) {
         this.storageRefRepo = storageRefRepo;

@@ -34,7 +34,6 @@ public class StorageRuntimeService {
     private final StorageReferenceRepository repo;
     private final S3ObjectMaterializer s3Materializer;
 
-    @Autowired
     public StorageRuntimeService(StorageReferenceRepository repo,
                                   ObjectProvider<S3ObjectMaterializer> s3MaterializerProvider) {
         this.repo = repo;

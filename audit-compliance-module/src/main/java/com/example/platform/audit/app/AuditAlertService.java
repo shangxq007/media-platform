@@ -20,7 +20,6 @@ public class AuditAlertService {
     private final Clock clock;
     private final ConcurrentHashMap<String, Object> state = new ConcurrentHashMap<>();
 
-    @Autowired(required = false)
     public AuditAlertService(@Autowired(required = false) AuditAlertProperties properties,
                              @Autowired(required = false) SecurityAlertPort alertPublisher) {
         this.properties = properties;
