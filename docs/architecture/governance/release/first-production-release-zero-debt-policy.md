@@ -86,12 +86,12 @@ FIRST_PRODUCTION_RELEASE = PROHIBITED
 |--------|-------|--------|
 | Production string DSL identifiers | 653+ | Original governance spec (DI-005) — line-level count |
 | Test string identifiers | 307 | Original governance spec (DI-006) — line-level count |
-| Production raw occurrences (canonical) | 3092 | Independent grep, table+field combined (see Authority Decision v3) |
+| Production raw occurrences (canonical) | 3112 | Per-module sum verified (see Authority Decision v3 arithmetic repair) |
 | Test raw occurrences (canonical) | 259 | Independent grep, table+field combined (see Authority Decision v3) |
 | jOOQ codegen tasks | 0 | — |
 | Generated jOOQ source | 0 | — |
 
-**Note:** The 653+ and 307 values are historical line-level counts from the original governance spec. The canonical raw occurrence counts (3092/259) use the independent reverification methodology and are the authoritative numbers for ZD-A2/ZD-A3 scope planning.
+**Note:** The 653+ and 307 values are historical line-level counts from the original governance spec. The canonical raw occurrence counts (3112/259) use per-module summation and are the authoritative numbers for ZD-A2/ZD-A3 scope planning. The previous value of 3092 was an arithmetic error (per-module sum was miscounted).
 
 ### Required Release State
 

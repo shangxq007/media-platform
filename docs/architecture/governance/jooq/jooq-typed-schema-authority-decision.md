@@ -20,7 +20,7 @@ This Version 3 repairs the following reverification failures from Version 2:
 | Failure | Description | Resolution |
 |---------|-------------|------------|
 | F-01 | Table count 145 incorrect | Corrected to 147 (verified via PostgreSQL 16 ephemeral probe) |
-| F-02 | Production raw 407 not reproducible | Corrected to 3092 (independent grep, table+field combined) |
+| F-02 | Production raw 407 not reproducible | Corrected to 3092 (independent grep, table+field combined) [SUPERSEDED: corrected total is 3112 — see arithmetic repair] |
 | F-03 | Module model claims 7 production modules | Corrected to 15 production modules with untyped calls |
 | F-04 | extension-module classified as phantom | Corrected: extension-module has 25 test table() calls |
 | F-05 | JSONB columns claimed 0 | Corrected: 3 JSONB columns in ingest_preflight_safe_report_records |
@@ -134,7 +134,7 @@ This Version 3 repairs the following reverification failures from Version 2:
 | storage-module | 4 | 16 | 20 |
 | secrets-config-module | 2 | 6 | 8 |
 | config-module | 3 | 5 | 8 |
-| **Total** | **500** | **2592** | **3092** |
+| **Total** | **500** | **2612** | **3112** |
 
 ### Test Inventory
 
@@ -162,7 +162,8 @@ This Version 3 repairs the following reverification failures from Version 2:
 | 282 | Repair Version 2 | Test raw occurrences | INCORRECT — narrow methodology, not reproducible |
 | 97 | Repair Version 2 | Production tuple-deduplicated | INCORRECT — based on wrong raw count |
 | 111 | Repair Version 2 | Test tuple-deduplicated | INCORRECT — based on wrong raw count |
-| **3092** | **This repair (Version 3)** | **Production raw occurrences** | **Canonical: independent grep, table+field combined lines** |
+| **3092** | **This repair (Version 3)** | **Production raw occurrences** | **SUPERSEDED — arithmetic correction: per-module sum = 3112, not 3092** |
+| **3112** | **Arithmetic repair (Version 3.1)** | **Production raw occurrences** | **Canonical: per-module sum verified (see 05-production-module-source-rows.tsv)** |
 | **259** | **This repair (Version 3)** | **Test raw occurrences** | **Canonical: independent grep, table+field combined lines** |
 
 **Reconciliation conclusion:** All historical values represent the same codebase measured at different granularities and with different grep patterns. The canonical values in this repair use the independent reverification methodology: grep for `table("` and `field("` combined, counting each matching line as one occurrence. The Version 2 values of 407/282 were not reproducible and are marked as INCORRECT.
@@ -847,7 +848,7 @@ Each allowlist entry uses a **Stable Site ID** as the primary key, NOT file:line
 **Item IDs:** DI-005 (production), DI-PRC011-01, DI-PRC011-02, DI-012-01, DI-012-02, DI-012-03
 **Modules (15 with untyped calls):** render-module, entitlement-module, notification-module, outbox-event-module, delivery-module, identity-access-module, commerce-module, platform-app, artifact-catalog-module, billing-module, audit-compliance-module, payment-module, storage-module, secrets-config-module, config-module
 **Modules (4 with jOOQ dependency but no calls):** datasource-module, product-layer-module, remote-render-worker, shared-kernel — must be verified clean
-**Identifier reduction:** 3092 raw occurrences → 0
+**Identifier reduction:** 3112 raw occurrences → 0
 **Spring JDBC sites:** All 16 NOT_PLAIN_SQL sites migrated to jOOQ typed DSL
 **Allowed files:** Production Java source files in affected modules
 **Forbidden scope:** Test files, migration files, Gradle files, CI files
