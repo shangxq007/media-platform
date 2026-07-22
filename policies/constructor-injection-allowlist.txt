@@ -1,0 +1,104 @@
+# Constructor Injection Policy Allowlist
+# Format: stable_site_id|classification|reason
+# Classifications:
+#   OPTIONAL_CONSTRUCTOR_OR_PARAMETER - @Autowired(required=false) on constructor parameter
+#   MULTI_CONSTRUCTOR_SELECTOR - @Autowired on constructor to disambiguate multiple constructors
+#   FRAMEWORK_SPECIAL_CASE - Field/setter injection required by framework (jOOQ, etc.)
+#   TEST_FIELD_INJECTION - Test-only field injection
+#   OTHER - Other justified retention
+
+# ── OPTIONAL_CONSTRUCTOR_OR_PARAMETER ──────────────────────────────────────────
+artifact-catalog-module.ArtifactCatalogService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-catalog-module.ArtifactCatalogService.relationRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactRelationRepository may not be configured
+artifact-catalog-module.ArtifactGcService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-catalog-module.ArtifactGcService.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
+artifact-catalog-module.ArtifactGcService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
+artifact-catalog-module.ArtifactLifecycleService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-catalog-module.ArtifactLifecycleService.dsl|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DSLContext may not be configured
+artifact-catalog-module.ArtifactLifecycleService.referenceContributors|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: List<StorageUriReferenceContributor> may be empty
+artifact-catalog-module.ArtifactStorageIntegrityScanner.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-catalog-module.ArtifactStorageIntegrityScanner.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
+artifact-catalog-module.AssetIntegrityMetrics.meterRegistry|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: MeterRegistry may not be configured
+audit-compliance-module.AuditAlertService.properties|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditAlertProperties may not be configured
+audit-compliance-module.AuditAlertService.alertPublisher|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: SecurityAlertPort may not be configured
+audit-compliance-module.AuditService.alertService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditAlertService may not be configured
+billing-module.BillingProjectionService.subscriptionContractRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: SubscriptionContractRepository may not be configured
+billing-module.BillingProjectionService.billingInvoiceRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BillingInvoiceRepository may not be configured
+commerce-module.CheckoutOrchestrator.checkoutSessionRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: CheckoutSessionRepository may not be configured
+commerce-module.CheckoutOrchestrator.purchaseOrderRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: PurchaseOrderRepository may not be configured
+commerce-module.CheckoutOrchestrator.fulfillmentPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: PurchaseFulfillmentPort may not be configured
+commerce-module.CheckoutOrchestrator.checkoutPaymentPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: CheckoutPaymentPort may not be configured
+commerce-module.CommerceCartService.cartRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: CommerceCartRepository may not be configured
+entitlement-module.EntitlementBundleService.bundleRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: EntitlementBundleRepository may not be configured
+entitlement-module.EntitlementOverrideService.overrideRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: EntitlementOverrideRepository may not be configured
+entitlement-module.QuotaProfileService.quotaProfileRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: QuotaProfileRepository may not be configured
+entitlement-module.WorkspaceEntitlementPoolService.poolRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: WorkspaceEntitlementPoolRepository may not be configured
+entitlement-module.WorkspaceEntitlementPoolService.memberGrantRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: WorkspaceMemberEntitlementGrantRepository may not be configured
+entitlement-module.WorkspaceQuotaAllocationService.allocationRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: WorkspaceQuotaAllocationRepository may not be configured
+identity-access-module.ProjectExportService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
+identity-access-module.ProjectExportService.projectAssetListingPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ProjectAssetListingPort may not be configured
+identity-access-module.ProjectExportService.assetDownloadUrlPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AssetDownloadUrlPort may not be configured
+identity-access-module.ProjectImportExecuteService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
+identity-access-module.ProjectImportPreviewService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
+identity-access-module.ProjectImportService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
+identity-access-module.ProjectImportService.assetDownloader|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ImportAssetDownloader may not be configured
+identity-access-module.ProjectImportService.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
+notification-module.NotificationController.novuProvider|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: NovuNotificationProvider may not be configured
+notification-module.NotificationEventHandler.mockProvider|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: MockNotificationProvider may not be configured
+notification-module.NotificationProviderRouter.novuProvider|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: NovuNotificationProvider may not be configured
+payment-module.PaymentGatewayService.paymentAttemptRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: PaymentAttemptRepository may not be configured
+payment-module.PaymentGatewayService.webhookEventRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ProviderWebhookEventRepository may not be configured
+platform-app.PlatformGracefulShutdownCoordinator.outboxDispatcher|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: OutboxEventDispatcher may not be configured
+platform-app.PlatformGracefulShutdownCoordinator.sandboxExecutionService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: SandboxExecutionService may not be configured
+platform-app.PlatformGracefulShutdownCoordinator.sandboxRuntimeService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: SandboxRuntimeService may not be configured
+platform-app.PlatformDeploymentReadinessController.temporalProperties|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AppTemporalProperties may not be configured
+platform-app.KnownStorageUriIndexService.dsl|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DSLContext may not be configured
+platform-app.KnownStorageUriIndexService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+platform-app.KnownStorageUriIndexService.destinationUriIndex|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DeliveryDestinationUriIndexService may not be configured
+platform-app.TimelineRevisionController.renderService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: TimelineRevisionRenderService may not be configured
+platform-app.TimelineRevisionController.renderJobStatusService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: RenderJobStatusService may not be configured
+platform-app.AssetGovernanceController.entitlementService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: may not be configured
+policy-governance-module.LocalFeatureFlagProvider.jdbcStore|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: FeatureFlagJdbcStore may not be configured
+prompt-module.PromptTemplateService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
+render-module.ClientExportService.artifactPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ClientExportArtifactPort may not be configured
+render-module.RenderJobValidationService.entitlementPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: EntitlementPort may not be configured
+render-module.RenderJobValidationService.costEstimationPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: CostEstimationPort may not be configured
+render-module.RenderJobValidationService.budgetGuardPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BudgetGuardPort may not be configured
+render-module.RenderJobValidationService.costReservationPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: CostReservationPort may not be configured
+render-module.RenderProfileResolver.natronProperties|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: NatronRenderProviderProperties may not be configured
+render-module.TimelineAssetGcService.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
+render-module.TimelineAssetLifecycleService.|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean
+render-module.RenderOrchestratorService.submitContinuation|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: RenderJobSubmitContinuation may not be configured
+render-module.RenderJobExecutionService.artifactGraphRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactGraphRepository may not be configured
+render-module.RenderJobExecutionService.billingEnforcementService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BillingEnforcementService may not be configured
+render-module.RenderJobExecutionService.effectEntitlementPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: EffectEntitlementPort may not be configured
+render-module.RenderJobExecutionService.renderWorkerQueueService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: RenderWorkerQueueService may not be configured
+render-module.RenderJobExecutionService.renderWorkerQueueProperties|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: RenderWorkerQueueProperties may not be configured
+render-module.RenderJobExecutionService.pipelineDagExecutorService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: PipelineDagExecutorService may not be configured
+render-module.RenderJobExecutionService.entitlementPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: EntitlementPort may not be configured
+render-module.RenderJobExecutionService.hashInvalidationNotifier|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: RenderCacheHashInvalidationNotifier may not be configured
+render-module.RenderJobExecutionService.aiRenderScriptNormalizer|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AiRenderScriptNormalizer may not be configured
+render-module.RenderJobSubmissionService.|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional constructor parameters
+render-module.RenderController.|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional constructor parameters on multi-param controller
+secrets-config-module.SecretsVaultController.vaultProvider|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: VaultKv2SecretProvider may not be configured
+workflow-module.RenderActivitiesImpl.orchestratorPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: RenderOrchestratorPort may not be configured
+workflow-module.RenderActivitiesImpl.deliveryAfterRenderPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DeliveryAfterRenderPort may not be configured
+workflow-module.TemporalWorkerStartupVerifier.workerFactory|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: WorkerFactory may not be configured
+
+# ── MULTI_CONSTRUCTOR_SELECTOR ────────────────────────────────────────────────
+billing-module.BillingLedgerService|MULTI_CONSTRUCTOR_SELECTOR|Has no-arg + @Autowired constructors; @Autowired selects DI constructor
+billing-module.CreditWalletService|MULTI_CONSTRUCTOR_SELECTOR|Has no-arg + @Autowired constructors; @Autowired selects DI constructor
+billing-module.SubscriptionBillingService|MULTI_CONSTRUCTOR_SELECTOR|Has no-arg + @Autowired constructors; @Autowired selects DI constructor
+commerce-module.CommerceCartService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
+entitlement-module.AccessDecisionService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
+federation-query-module.QueryHistoryService|MULTI_CONSTRUCTOR_SELECTOR|Has no-arg + @Autowired constructors; @Autowired selects DI constructor
+federation-query-module.ReportDefinitionService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
+federation-query-module.ReportExecutionService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
+platform-app.NavigationDecisionService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
+prompt-module.PromptTemplateService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
+render-module.PlanBasedTimelineRevisionRenderService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
+
+# ── FRAMEWORK_SPECIAL_CASE ───────────────────────────────────────────────────
+render-module.ProductDependencyRepository|FRAMEWORK_SPECIAL_CASE|jOOQ repository field injection via @Autowired on DSLContext
+render-module.ProductRepository|FRAMEWORK_SPECIAL_CASE|jOOQ repository field injection via @Autowired on DSLContext
+render-module.StorageReferenceRepository|FRAMEWORK_SPECIAL_CASE|jOOQ repository field injection via @Autowired on DSLContext

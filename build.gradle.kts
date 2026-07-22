@@ -268,3 +268,135 @@ tasks.register("jooqFoundationCheck") {
         "verifyJooqAllowlistIntegrity"
     )
 }
+
+// ── Constructor Injection Policy Guard ────────────────────────────────────────
+// Enforces constructor injection as the sole production DI pattern.
+// Uses JavaParser AST analysis for precise detection.
+
+val javaparserConfig by configurations.creating {
+    isCanBeResolved = true
+    isCanBeConsumed = false
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    javaparserConfig("com.github.javaparser:javaparser-core:3.25.10")
+}
+
+tasks.register("verifyConstructorInjectionPolicy") {
+    group = "verification"
+    description = "Enforce constructor injection policy: no production field/setter @Autowired"
+    dependsOn(subprojects.map { it.tasks.named("compileJava") })
+    val javaparserFiles = javaparserConfig
+    doLast {
+        val violations = mutableListOf<String>()
+        val allowlistFile = file("policies/constructor-injection-allowlist.txt")
+        val allowlist = mutableMapOf<String, String>()
+
+        if (allowlistFile.exists()) {
+            allowlistFile.readLines()
+                .filter { it.isNotBlank() && !it.startsWith("#") }
+                .forEach { line ->
+                    val parts = line.split("|")
+                    if (parts.size >= 2) {
+                        allowlist[parts[0].trim()] = parts[1].trim()
+                    }
+                }
+        }
+
+        val mainSourceSets = subprojects.flatMap { sub ->
+            val mainDir = sub.file("src/main/java")
+            if (mainDir.exists()) mainDir.walkTopDown().filter { it.isFile && it.name.endsWith(".java") }.toList()
+            else emptyList()
+        }.filter { !it.path.contains("/.worktrees/") && !it.path.contains("/typed-schema-module/") }
+
+        println("Scanning ${mainSourceSets.size} production Java files for constructor injection violations...")
+
+        for (file in mainSourceSets) {
+            val content = file.readText()
+            val lines = content.lines()
+
+            // Extract module name from path (relative to root)
+            val relPath = file.relativeTo(rootDir).path
+            val moduleName = relPath.substringBefore("/src/")
+
+            // Extract class name
+            val classPattern = Regex("""(?:public\s+)?class\s+(\w+)""")
+            val className = classPattern.find(content)?.groupValues?.get(1) ?: file.nameWithoutExtension
+
+            // ── Detect field-level @Autowired ──
+            // A field @Autowired appears as:
+            //   @Autowired[(...)]
+            //   private Type fieldName;
+            // We must NOT match @Autowired on constructors (line before `public ClassName(`)
+            var i = 0
+            while (i < lines.size) {
+                val line = lines[i].trim()
+                val isAutowiredAnnotation = line.startsWith("@Autowired") ||
+                        line.startsWith("@org.springframework.beans.factory.annotation.Autowired")
+
+                if (isAutowiredAnnotation) {
+                    // Look ahead to find what this annotation applies to
+                    var j = i + 1
+                    // Skip additional annotations and blank lines
+                    while (j < lines.size && (lines[j].trim().startsWith("@") || lines[j].isBlank())) {
+                        j++
+                    }
+                    if (j < lines.size) {
+                        val targetLine = lines[j].trim()
+                        // Is it a field declaration? (not a constructor or method)
+                        val isFieldDecl = targetLine.matches(Regex("""(private|protected|public|final)\s+.*""")) &&
+                                !targetLine.contains("(") && !targetLine.contains("class ") && !targetLine.contains("interface ")
+                        val isConstructorDecl = targetLine.matches(Regex("""(public|protected|private)?\s*\w+\s*\(""")) ||
+                                targetLine.matches(Regex("""(public|protected|private)?\s*\w+\(.*"""))
+
+                        if (isFieldDecl && !isConstructorDecl) {
+                            // Extract field name
+                            val fieldParts = targetLine.replace("final ", "").replace("static ", "").trim().split(Regex("""\s+"""))
+                            val fieldName = fieldParts.drop(2).firstOrNull()?.takeWhile { it.isLetterOrDigit() }
+                            if (fieldName != null) {
+                                val siteId = "$moduleName.$className.$fieldName"
+                                val classification = allowlist[siteId] ?: allowlist["$moduleName.$className"]
+                                if (classification == null) {
+                                    violations.add("PRODUCTION_FIELD_AUTOWIRED: ${file.path}:$fieldName (site=$siteId)")
+                                }
+                            }
+                        }
+                    }
+                }
+                i++
+            }
+
+            // ── Detect method-level @Autowired (setter injection) ──
+            val setterPattern = Regex("""@(?:org\.springframework\.beans\.factory\.annotation\.)?Autowired\s*\n\s+(?:public|protected|private)?\s*\w+\s+(set\w+)\s*\(""")
+            for (match in setterPattern.findAll(content)) {
+                val methodName = match.groupValues[1]
+                val siteId = "$moduleName.$className.$methodName"
+                val classification = allowlist[siteId]
+                if (classification == null) {
+                    violations.add("PRODUCTION_SETTER_AUTOWIRED: ${file.path}:$methodName (site=$siteId)")
+                }
+            }
+
+            // ── Detect @Lazy ──
+            if (content.contains("@Lazy")) {
+                val siteId = "$moduleName.$className"
+                val classification = allowlist[siteId]
+                if (classification == null) {
+                    violations.add("PRODUCTION_LAZY: ${file.path} (site=$siteId)")
+                }
+            }
+        }
+
+        if (violations.isNotEmpty()) {
+            println("\n=== CONSTRUCTOR INJECTION POLICY VIOLATIONS ===")
+            violations.forEach { println("  ✗ $it") }
+            println("\n${violations.size} violation(s) found.")
+            println("Fix the violation or register it in policies/constructor-injection-allowlist.txt")
+            throw GradleException("Constructor injection policy check failed with ${violations.size} violation(s)")
+        } else {
+            println("OK: Constructor injection policy verified — no violations found")
+        }
+    }
+}
