@@ -913,6 +913,53 @@
         "first_release_verification": "NOT_YET_EXECUTED"
       },
       "notes": "Zero-debt first production release policy. 7 items reclassified from DEPRECATE to REMOVE. DI-003 quarantine must close. 126 broken links must reach 0. Credential exception must close before release."
+    },
+    {
+      "domain_id": "jooq-typed-schema",
+      "domain_name": "jOOQ Typed Schema",
+      "scope": "jOOQ code generation, generated types, identifier type safety, schema-to-code generation chain",
+      "user_approval_authority": [
+        "jOOQ architecture selection",
+        "Generated source ownership policy"
+      ],
+      "governance_authority": [
+        "docs/architecture/governance/jooq/jooq-typed-schema-authority-decision.md"
+      ],
+      "canonical_contract": [
+        "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+      ],
+      "executable_contract": [
+        "shared-kernel/src/main/java/com/example/platform/jooq/generated/",
+        "build.gradle.kts (jOOQ codegen configuration)"
+      ],
+      "runtime_authority": [],
+      "supporting_documents": [
+        "docs/jooq-workflow.md"
+      ],
+      "evidence_sources": [
+        ".agent-tasks/"
+      ],
+      "historical_sources": [
+        "docs/archive/jooq-workflow.md",
+        "scripts/generate-jooq.sh (H2-based, superseded)"
+      ],
+      "explicitly_non_authoritative": [
+        "H2 database state",
+        "Developer local database state",
+        "Generated sources (derived from V1, not authoritative)"
+      ],
+      "conflict_resolution_order": [
+        "L0 > L1 > L3 > L4"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "RESOLVED",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "USER_EXPLICIT_APPROVAL",
+        "ADR_ACCEPTANCE"
+      ],
+      "normalization_phase": ".1",
+      "guard_phase": ".6"
     }
   ],
   "conflict_adjudications": [
