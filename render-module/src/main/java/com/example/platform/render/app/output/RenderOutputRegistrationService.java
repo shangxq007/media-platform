@@ -56,6 +56,7 @@ public class RenderOutputRegistrationService {
     private final S3ObjectWriter s3Writer;
     private final RenderOutputStorageProperties outputStorageProperties;
 
+    @Autowired
     public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
                                             ProductRuntimeService productRuntime,
                                             Path storageRoot,

@@ -50,6 +50,7 @@ public class ProjectImportPreviewService {
      * Create a service with the default system DNS validator.
      * Used by Spring for production instantiation.
      */
+    @Autowired
     public ProjectImportPreviewService(@Autowired(required = false) AuditPort auditPort) {
         this(new SafeDownloadUrlValidator(), auditPort);
     }

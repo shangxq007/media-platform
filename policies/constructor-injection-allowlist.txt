@@ -97,6 +97,11 @@ federation-query-module.ReportExecutionService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 
 platform-app.NavigationDecisionService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
 prompt-module.PromptTemplateService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
 render-module.PlanBasedTimelineRevisionRenderService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors; @Autowired selects DI constructor
+render-module.RenderOutputRegistrationService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors (public ObjectProvider + private legacy); @Autowired selects DI constructor
+
+# ── MULTI_CONSTRUCTOR_SELECTOR (with required=false) ────────────────────────
+audit-compliance-module.AuditAlertService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors (public + package-private test); @Autowired(required=false) selects DI constructor
+identity-access-module.ProjectImportPreviewService|MULTI_CONSTRUCTOR_SELECTOR|Has 2 constructors (public + package-private test); @Autowired selects DI constructor
 
 # ── FRAMEWORK_SPECIAL_CASE ───────────────────────────────────────────────────
 render-module.ProductDependencyRepository|FRAMEWORK_SPECIAL_CASE|jOOQ repository field injection via @Autowired on DSLContext
