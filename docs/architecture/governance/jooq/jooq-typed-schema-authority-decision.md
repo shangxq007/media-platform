@@ -396,7 +396,7 @@ Files affected: marketplace_listing.search_vector, search_projection.search_vect
 | UUID mapping | N/A — V1 has no UUID columns |
 | Arrays/enums/domains | N/A — V1 has no arrays, enums, or domains |
 | Keys and foreign keys | PASS — 147 primary keys, 39 unique constraints, 38 foreign keys generated |
-| 147-table coverage | PASS — 140 table classes + 147 record classes generated (7 tables named *_record have class name collision) |
+| 147-table coverage | PASS — 147 table classes + 147 record classes generated (7 tables named *_record have Record class suffix appended: e.g., NotificationDeliveryRecord → NotificationDeliveryRecordRecord) |
 | Two-run determinism | PASS — `diff -r` shows zero differences between two runs |
 | Production database dependency | NONE — ephemeral container only |
 | V1 modification required | NO |
@@ -452,23 +452,23 @@ Consolidated V1 (platform-app/src/main/resources/db/migration/V1__initial_schema
 | V1 CREATE TABLE statements | 147 | Exact count from V1__initial_schema.sql |
 | Post-migration public business tables | 147 | Verified via PostgreSQL 16 ephemeral probe |
 | Flyway schema history table | 0 | Not applicable — direct SQL execution |
-| jOOQ generated table classes | 140 | 7 tables named *_record have PascalCase collision with Record classes |
+| jOOQ generated table classes | 147 | All 147 tables generate distinct Table classes; *_record tables get Record suffix appended to avoid collision |
 | jOOQ generated record classes | 147 | All 147 tables have Record classes |
 | Generated infrastructure files | 4 | DefaultCatalog, Indexes, Keys, Public |
 
-### Tables with *_record Naming Collision
+### Tables with *_record Naming Convention
 
-These 7 tables have their PascalCase names colliding with the Record class naming convention:
+jOOQ 3.19.30 generates a separate Table class for every table, including those with `_record` suffix. For these 7 tables, the Record class gets an extra "Record" suffix appended (e.g., `notification_record` → Table class: `NotificationRecord`, Record class: `NotificationRecordRecord`):
 
-1. notification_delivery_record → NotificationDeliveryRecord
-2. notification_record → NotificationRecord
-3. problematic_data_record → ProblematicDataRecord
-4. rated_usage_record → RatedUsageRecord
-5. render_billing_record → RenderBillingRecord
-6. render_usage_record → RenderUsageRecord
-7. usage_record → UsageRecord
+1. notification_delivery_record → Table: NotificationDeliveryRecord, Record: NotificationDeliveryRecordRecord
+2. notification_record → Table: NotificationRecord, Record: NotificationRecordRecord
+3. problematic_data_record → Table: ProblematicDataRecord, Record: ProblematicDataRecordRecord
+4. rated_usage_record → Table: RatedUsageRecord, Record: RatedUsageRecordRecord
+5. render_billing_record → Table: RenderBillingRecord, Record: RenderBillingRecordRecord
+6. render_usage_record → Table: RenderUsageRecord, Record: RenderUsageRecordRecord
+7. usage_record → Table: UsageRecord, Record: UsageRecordRecord
 
-These tables still have Record classes (147 total) but the table definition is embedded within the Record class or handled differently by jOOQ's code generator.
+All 7 tables generate both a Table class and a Record class (147 + 147 = 294 table/record classes, plus 5 infrastructure files = 299 total Java files).
 
 ### Table Registry
 
@@ -477,8 +477,8 @@ These tables still have Record classes (147 total) but the table definition is e
 | Business CREATE TABLE statements | 147 | All tables in V1__initial_schema.sql |
 | Flyway history table | 0 | Not applicable |
 | Post-migration public tables | 147 | All 147 tables created successfully |
-| jOOQ-generated table definitions | 140 | 7 *_record naming collisions |
-| Generated Java table classes | 140 | Same as above |
+| jOOQ-generated table definitions | 147 | All 147 tables have distinct Table classes |
+| Generated Java table classes | 147 | All 147 tables have distinct Table classes |
 | Generated Java record classes | 147 | All 147 tables have records |
 | Excluded non-business/system objects | 0 | No system tables in V1 |
 | Unmapped V1 tables | 0 | All 147 tables accounted for |
@@ -830,7 +830,7 @@ Each allowlist entry uses a **Stable Site ID** as the primary key, NOT file:line
 **Independent verification:** YES
 **Exit criteria:**
 - typed-schema-module created with correct dependencies (jOOQ only, no PostgreSQL driver at runtime)
-- 140 table classes + 147 record classes generated from ephemeral PostgreSQL
+- 147 table classes + 147 record classes generated from ephemeral PostgreSQL
 - Generated sources committed
 - TSVECTOR binding contract defined
 - JSONB type contract verified (org.jooq.JSONB)
