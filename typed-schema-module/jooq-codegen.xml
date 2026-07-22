@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.19.0.xsd">
+  <jdbc>
+    <driver>org.postgresql.Driver</driver>
+    <url>jdbc:postgresql://localhost:15432/jooq_codegen</url>
+    <user>codegen</user>
+    <password>codegen</password>
+  </jdbc>
+  <generator>
+    <name>org.jooq.codegen.JavaGenerator</name>
+    <database>
+      <name>org.jooq.meta.postgres.PostgresDatabase</name>
+      <includes>.*</includes>
+      <excludes></excludes>
+      <inputSchema>public</inputSchema>
+      <forcedTypes>
+        <!-- TIMESTAMPTZ → Instant via InstantConverter -->
+        <forcedType>
+          <userType>java.time.Instant</userType>
+          <converter>com.example.platform.typedschema.contract.InstantConverter</converter>
+          <includeTypes>.*TIMESTAMPTZ.*</includeTypes>
+        </forcedType>
+        <!-- TSVECTOR → TsvectorValue via TsvectorBinding -->
+        <forcedType>
+          <userType>com.example.platform.typedschema.contract.TsvectorValue</userType>
+          <binding>com.example.platform.typedschema.contract.TsvectorBinding</binding>
+          <includeTypes>.*tsvector.*</includeTypes>
+        </forcedType>
+      </forcedTypes>
+    </database>
+    <target>
+      <packageName>com.example.platform.typedschema.jooq.generated</packageName>
+      <directory>src/main/java</directory>
+    </target>
+  </generator>
+</configuration>

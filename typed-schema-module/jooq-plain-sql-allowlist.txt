@@ -1,0 +1,3 @@
+# Plain SQL allowlist
+# Format: stable_site_id|file_path|count
+# Approved plain SQL call sites (reviewed and accepted as debt)

@@ -38,7 +38,8 @@ include(
     "compatibility-migration-module",
     "remote-render-worker",
     "social-publish-module",
-    "product-layer-module"
+    "product-layer-module",
+    "typed-schema-module"
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────
