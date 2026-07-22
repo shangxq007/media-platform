@@ -926,11 +926,11 @@
         "docs/architecture/governance/jooq/jooq-typed-schema-authority-decision.md"
       ],
       "canonical_contract": [
-        "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+        "platform-app/src/main/resources/db/migration/V1__init_full_schema.sql"
       ],
       "executable_contract": [
-        "shared-kernel/src/main/java/com/example/platform/jooq/generated/",
-        "build.gradle.kts (jOOQ codegen configuration)"
+        "typed-schema-module/src/main/java/com/example/platform/jooq/generated/",
+        "build.gradle.kts (jOOQ codegen configuration, version authority)"
       ],
       "runtime_authority": [],
       "supporting_documents": [
@@ -944,8 +944,9 @@
         "scripts/generate-jooq.sh (H2-based, superseded)"
       ],
       "explicitly_non_authoritative": [
-        "H2 database state",
+        "H2 database state (DDLDatabase rejected)",
         "Developer local database state",
+        "Ephemeral PostgreSQL state (generation-time only, not authoritative)",
         "Generated sources (derived from V1, not authoritative)"
       ],
       "conflict_resolution_order": [

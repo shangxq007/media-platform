@@ -310,7 +310,7 @@ Before this governance rebaseline is accepted:
 **Verification:** Independent verification of zero untyped identifiers, compile-time failure on schema change, CI-executable generation
 
 **Authority Decision:** docs/architecture/governance/jooq/jooq-typed-schema-authority-decision.md
-**Selected Architecture:** JOOQ_CODE_GENERATION_DDL_DATABASE_OFFLINE
+**Selected Architecture:** JOOQ_CODE_GENERATION_EPHEMERAL_POSTGRESQL
 **Implementation Slices:** ZD-A1 (Foundation), ZD-A2 (Production Migration), ZD-A3 (Test Migration), ZD-A4 (Zero-Debt Closure)
 
 ---
