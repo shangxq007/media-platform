@@ -843,3 +843,58 @@ This decision does NOT close or extend this exception.
 **Remote Push:** NOT AUTHORIZED
 **GitHub Release:** NOT AUTHORIZED
 **OpenCue Implementation:** NOT AUTHORIZED
+
+---
+
+## First Production Release Zero-Debt Rebaseline
+
+**Rebaseline Task:** ARCH-CODE-GOV-ZERO-DEBT-FIRST-PRODUCTION-RELEASE-REBASELINE.1
+**Rebaseline Date:** 2026-07-22
+**Rebaseline Status:** CANDIDATE
+
+### Gate Separation
+
+This document establishes Mainline Readiness. Mainline Readiness is accepted.
+
+First Production Release Readiness is a separate, higher gate. Mainline Readiness does not satisfy First Production Release requirements.
+
+```
+Mainline Readiness: GOVERNANCE_ACCEPTED
+First Production Release Readiness: NOT_ACCEPTED
+Known technical debt: PRESENT
+```
+
+### Reclassified Items
+
+The following items are reclassified from `DEPRECATE_WITH_DEADLINE` to `REMOVE_BEFORE_FIRST_PRODUCTION_RELEASE`:
+
+| ID | Module | Description |
+|----|--------|-------------|
+| DI-005 | all modules | Production string DSL identifiers (653+) |
+| DI-006 | all test modules | Test string identifiers (307) |
+| DI-009 | identity-access-module | Mixed identifier naming conventions |
+| DI-013 | identity-access-module | Deprecated compatibility API |
+| DI-014 | render-module | Deprecated compatibility API |
+| DI-017 | platform-app/security | Deprecated security boundary |
+| DI-018 | compatibility-migration-module | Compatibility migration module |
+
+Gate enforcement: `FIRST_PRODUCTION_RELEASE = PROHIBITED` when any item is not closed.
+
+### Additional Release Gate Requirements
+
+| Condition | Required Value |
+|-----------|---------------|
+| DI-003 Quarantine | SECURE_AND_ENABLE or REMOVE_FROM_FIRST_RELEASE |
+| jOOQ untyped identifiers | 0 |
+| Broken-link identities | 0 |
+| .agent-tasks unindexed evidence | 0 |
+| Credential exceptions | 0 |
+| OpenCue production enablement | PROHIBITED |
+
+### Authority
+
+The full zero-debt policy, implementation batches, and gate matrix are defined in:
+`docs/architecture/governance/release/first-production-release-zero-debt-policy.md`
+
+That document is the single authority for First Production Release gate decisions.
+

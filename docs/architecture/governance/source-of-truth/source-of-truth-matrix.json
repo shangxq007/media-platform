@@ -859,6 +859,60 @@
         "credential_residual_risk": "PRESENT"
       },
       "notes": "Mainline readiness authority decision created. BLOCKER=0. BATCH-B required before Mainline verification. BATCH-C is post-Mainline."
+    },
+    {
+      "domain_id": "first-production-release-policy",
+      "domain_name": "First Production Release Zero-Debt Policy",
+      "scope": "zero-debt gate, reclassified items, jOOQ typed schema, NLQ closure, deprecated removal, broken-link zero, evidence hygiene, credential exception closure, OpenCue boundary",
+      "user_approval_authority": [
+        "FIRST_PRODUCTION_RELEASE_ZERO_KNOWN_TECH_DEBT principle"
+      ],
+      "governance_authority": [
+        "docs/architecture/governance/release/first-production-release-zero-debt-policy.md"
+      ],
+      "canonical_contract": [
+        "docs/architecture/governance/release/first-production-release-zero-debt-policy.md"
+      ],
+      "executable_contract": [],
+      "runtime_authority": [],
+      "supporting_documents": [
+        "docs/architecture/governance/mainline-readiness/mainline-readiness-authority-decision.md"
+      ],
+      "evidence_sources": [
+        "/tmp/ARCH_CODE_GOV_ZERO_DEBT_FIRST_PRODUCTION_RELEASE_REBASELINE_1_EVIDENCE/"
+      ],
+      "historical_sources": [],
+      "explicitly_non_authoritative": [
+        "Mainline Readiness as First Production Release acceptance",
+        "DEPRECATE_WITH_DEADLINE as release-eligible status",
+        "QUARANTINE as acceptable first-release status",
+        "historical broken-link baseline as current acceptable value"
+      ],
+      "current_conflicts": [],
+      "current_authority_status": "CANDIDATE",
+      "owner": "architecture-team",
+      "change_approval_required": [
+        "ADR_ACCEPTANCE",
+        "USER_EXPLICIT_APPROVAL"
+      ],
+      "first_release_gate": {
+        "status": "NOT_ACCEPTED",
+        "policy_task": "ARCH-CODE-GOV-ZERO-DEBT-FIRST-PRODUCTION-RELEASE-REBASELINE.1",
+        "base_commit": "8916f9cb9d45e39c4e28eb6e15fdd5e56d32ee45",
+        "reclassified_items": 7,
+        "quarantine_items": 1,
+        "broken_link_identities": 126,
+        "credential_exceptions": 1,
+        "implementation_batches": [
+          "BATCH-ZD-A-JOOQ-TYPED-SCHEMA",
+          "BATCH-ZD-B-DEPRECATED-COMPATIBILITY-REMOVAL",
+          "BATCH-ZD-C-NLQ-SECURITY-CLOSURE",
+          "BATCH-ZD-D-DOCUMENTATION-EVIDENCE-HYGIENE"
+        ],
+        "opencue_production_enablement": "PROHIBITED",
+        "first_release_verification": "NOT_YET_EXECUTED"
+      },
+      "notes": "Zero-debt first production release policy. 7 items reclassified from DEPRECATE to REMOVE. DI-003 quarantine must close. 126 broken links must reach 0. Credential exception must close before release."
     }
   ],
   "conflict_adjudications": [
