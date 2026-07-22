@@ -897,4 +897,3 @@ The full zero-debt policy, implementation batches, and gate matrix are defined i
 `docs/architecture/governance/release/first-production-release-zero-debt-policy.md`
 
 That document is the single authority for First Production Release gate decisions.
-
