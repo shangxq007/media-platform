@@ -2,6 +2,7 @@ plugins { id("java-library") }
 
 dependencies {
     api(project(":shared-kernel"))
+    implementation(project(":typed-schema-module"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
