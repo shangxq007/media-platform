@@ -1,12 +1,11 @@
 package com.example.platform.audit.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.example.platform.typedschema.jooq.generated.tables.AuditRecords.AUDIT_RECORDS;
 
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.Jsons;
 import com.example.platform.shared.web.TenantContext;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,11 +34,11 @@ public class AuditService {
         Integer total;
         if (currentTenant != null) {
             total = dsl.selectCount()
-                    .from(table("audit_records"))
-                    .where(field("actor_id").eq(currentTenant))
+                    .from(AUDIT_RECORDS)
+                    .where(AUDIT_RECORDS.ACTOR_ID.eq(currentTenant))
                     .fetchOne(0, Integer.class);
         } else {
-            total = dsl.fetchCount(table("audit_records"));
+            total = dsl.fetchCount(AUDIT_RECORDS);
         }
         return Map.of(
                 "module", "audit-compliance-module",
@@ -58,17 +57,17 @@ public class AuditService {
             String resourceType, String resourceId, Object payload, AuditCategory category) {
         String id = Ids.newId("aud");
         String categoryName = category == null ? AuditCategory.UNKNOWN.name() : category.name();
-        dsl.insertInto(table("audit_records"))
+        dsl.insertInto(AUDIT_RECORDS)
                 .columns(
-                        field("id"),
-                        field("actor_type"),
-                        field("actor_id"),
-                        field("action"),
-                        field("resource_type"),
-                        field("resource_id"),
-                        field("payload"),
-                        field("category"),
-                        field("created_at")
+                        AUDIT_RECORDS.ID,
+                        AUDIT_RECORDS.ACTOR_TYPE,
+                        AUDIT_RECORDS.ACTOR_ID,
+                        AUDIT_RECORDS.ACTION,
+                        AUDIT_RECORDS.RESOURCE_TYPE,
+                        AUDIT_RECORDS.RESOURCE_ID,
+                        AUDIT_RECORDS.PAYLOAD,
+                        AUDIT_RECORDS.CATEGORY,
+                        AUDIT_RECORDS.CREATED_AT
                 )
                 .values(
                         id,
@@ -79,7 +78,7 @@ public class AuditService {
                         resourceId,
                         payload == null ? null : Jsons.toJson(payload),
                         categoryName,
-                        OffsetDateTime.now()
+                        LocalDateTime.now()
                 )
                 .execute();
 
@@ -100,14 +99,14 @@ public class AuditService {
     public List<Map<String, Object>> recent(int limit) {
         String currentTenant = TenantContext.get();
         if (currentTenant != null) {
-            return dsl.select().from(table("audit_records"))
-                    .where(field("actor_id").eq(currentTenant))
-                    .orderBy(field("created_at").desc())
+            return dsl.select().from(AUDIT_RECORDS)
+                    .where(AUDIT_RECORDS.ACTOR_ID.eq(currentTenant))
+                    .orderBy(AUDIT_RECORDS.CREATED_AT.desc())
                     .limit(limit)
                     .fetchMaps();
         }
-        return dsl.select().from(table("audit_records"))
-                .orderBy(field("created_at").desc())
+        return dsl.select().from(AUDIT_RECORDS)
+                .orderBy(AUDIT_RECORDS.CREATED_AT.desc())
                 .limit(limit)
                 .fetchMaps();
     }
@@ -115,16 +114,16 @@ public class AuditService {
     public List<Map<String, Object>> findByCategory(AuditCategory category, int limit) {
         String currentTenant = TenantContext.get();
         if (currentTenant != null) {
-            return dsl.select().from(table("audit_records"))
-                    .where(field("category").eq(category.name()))
-                    .and(field("actor_id").eq(currentTenant))
-                    .orderBy(field("created_at").desc())
+            return dsl.select().from(AUDIT_RECORDS)
+                    .where(AUDIT_RECORDS.CATEGORY.eq(category.name()))
+                    .and(AUDIT_RECORDS.ACTOR_ID.eq(currentTenant))
+                    .orderBy(AUDIT_RECORDS.CREATED_AT.desc())
                     .limit(limit)
                     .fetchMaps();
         }
-        return dsl.select().from(table("audit_records"))
-                .where(field("category").eq(category.name()))
-                .orderBy(field("created_at").desc())
+        return dsl.select().from(AUDIT_RECORDS)
+                .where(AUDIT_RECORDS.CATEGORY.eq(category.name()))
+                .orderBy(AUDIT_RECORDS.CREATED_AT.desc())
                 .limit(limit)
                 .fetchMaps();
     }
@@ -132,17 +131,17 @@ public class AuditService {
     public List<Map<String, Object>> findByResource(String resourceType, String resourceId) {
         String currentTenant = TenantContext.get();
         if (currentTenant != null) {
-            return dsl.select().from(table("audit_records"))
-                    .where(field("resource_type").eq(resourceType))
-                    .and(field("resource_id").eq(resourceId))
-                    .and(field("actor_id").eq(currentTenant))
-                    .orderBy(field("created_at").desc())
+            return dsl.select().from(AUDIT_RECORDS)
+                    .where(AUDIT_RECORDS.RESOURCE_TYPE.eq(resourceType))
+                    .and(AUDIT_RECORDS.RESOURCE_ID.eq(resourceId))
+                    .and(AUDIT_RECORDS.ACTOR_ID.eq(currentTenant))
+                    .orderBy(AUDIT_RECORDS.CREATED_AT.desc())
                     .fetchMaps();
         }
-        return dsl.select().from(table("audit_records"))
-                .where(field("resource_type").eq(resourceType))
-                .and(field("resource_id").eq(resourceId))
-                .orderBy(field("created_at").desc())
+        return dsl.select().from(AUDIT_RECORDS)
+                .where(AUDIT_RECORDS.RESOURCE_TYPE.eq(resourceType))
+                .and(AUDIT_RECORDS.RESOURCE_ID.eq(resourceId))
+                .orderBy(AUDIT_RECORDS.CREATED_AT.desc())
                 .fetchMaps();
     }
 

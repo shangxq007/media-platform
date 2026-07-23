@@ -1,5 +1,6 @@
 dependencies {
     implementation(project(":shared-kernel"))
+    implementation(project(":typed-schema-module"))
     implementation("software.amazon.awssdk:s3:2.29.45")
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
