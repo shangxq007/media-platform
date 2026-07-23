@@ -38,7 +38,7 @@ public final class BaselineRegistry {
             }
         }
         return new Baseline(
-            Integer.parseInt(props.getProperty("production.raw", "3112")),
+            Integer.parseInt(props.getProperty("production.raw", "3042")),
             Integer.parseInt(props.getProperty("test.raw", "259"))
         );
     }

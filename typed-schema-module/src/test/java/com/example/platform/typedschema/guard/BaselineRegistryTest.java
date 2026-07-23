@@ -23,7 +23,7 @@ class BaselineRegistryTest {
     void loadReturnsDefaultsWhenFileMissing() throws IOException {
         Path missing = tempDir.resolve("nonexistent.properties");
         BaselineRegistry.Baseline baseline = BaselineRegistry.load(missing);
-        assertThat(baseline.productionRaw()).isEqualTo(3112);
+        assertThat(baseline.productionRaw()).isEqualTo(3042);
         assertThat(baseline.testRaw()).isEqualTo(259);
     }
 
