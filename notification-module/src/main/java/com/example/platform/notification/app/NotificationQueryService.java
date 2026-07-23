@@ -1,7 +1,6 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationDelivery.NOTIFICATION_DELIVERY;
 
 import java.util.List;
 import java.util.Map;
@@ -14,6 +13,6 @@ public class NotificationQueryService {
     public NotificationQueryService(DSLContext dsl) { this.dsl = dsl; }
 
     public List<Map<String, Object>> listDeliveries() {
-        return dsl.select().from(table("notification_delivery")).orderBy(field("created_at").desc()).fetchMaps();
+        return dsl.select().from(NOTIFICATION_DELIVERY).orderBy(NOTIFICATION_DELIVERY.CREATED_AT.desc()).fetchMaps();
     }
 }

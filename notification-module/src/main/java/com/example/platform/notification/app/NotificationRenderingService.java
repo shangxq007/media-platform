@@ -1,7 +1,6 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationTemplate.NOTIFICATION_TEMPLATE;
 
 import com.example.platform.notification.domain.NotificationTemplateCode;
 import com.example.platform.notification.domain.NotificationTemplatePayload;
@@ -16,15 +15,15 @@ public class NotificationRenderingService {
     public NotificationRenderingService(DSLContext dsl) { this.dsl = dsl; }
 
     public NotificationTemplatePayload render(NotificationTemplateCode code, String eventType, String subjectId, Map<String,Object> payload) {
-        var rec = dsl.select(field("subject_template", String.class), field("body_template", String.class))
-                .from(table("notification_template"))
-                .where(field("template_code").eq(code.name()))
-                .and(field("channel").eq("WEBHOOK"))
-                .and(field("locale").eq("en"))
+        var rec = dsl.select(NOTIFICATION_TEMPLATE.SUBJECT_TEMPLATE, NOTIFICATION_TEMPLATE.BODY_TEMPLATE)
+                .from(NOTIFICATION_TEMPLATE)
+                .where(NOTIFICATION_TEMPLATE.TEMPLATE_CODE.eq(code.name()))
+                .and(NOTIFICATION_TEMPLATE.CHANNEL.eq("WEBHOOK"))
+                .and(NOTIFICATION_TEMPLATE.LOCALE.eq("en"))
                 .limit(1)
                 .fetchOne();
-        String subject = rec != null ? rec.get(field("subject_template", String.class)) : eventType;
-        String body = rec != null ? rec.get(field("body_template", String.class)) : Jsons.toJson(payload);
+        String subject = rec != null ? rec.get(NOTIFICATION_TEMPLATE.SUBJECT_TEMPLATE) : eventType;
+        String body = rec != null ? rec.get(NOTIFICATION_TEMPLATE.BODY_TEMPLATE) : Jsons.toJson(payload);
         body = body.replace("{{eventType}}", eventType).replace("{{subjectId}}", subjectId).replace("{{payloadJson}}", Jsons.toJson(payload));
         return new NotificationTemplatePayload(subject, body);
     }

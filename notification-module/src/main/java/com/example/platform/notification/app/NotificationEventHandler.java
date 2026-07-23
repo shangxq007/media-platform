@@ -1,7 +1,7 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationDelivery.NOTIFICATION_DELIVERY;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT;
 
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
@@ -24,7 +24,8 @@ import com.example.platform.shared.events.AssetArchivedEvent;
 import com.example.platform.shared.events.AssetEnrichedEvent;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.Jsons;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.jooq.DSLContext;
@@ -144,9 +145,9 @@ public class NotificationEventHandler {
     @EventListener
     public void handle(NotificationInboundEvent event) {
         var eventId = Ids.newId("nev");
-        dsl.insertInto(table("notification_event"))
-                .columns(field("id"), field("event_type"), field("subject_id"), field("payload"), field("created_at"))
-                .values(eventId, event.eventType(), event.subjectId(), Jsons.toJson(event.payload()), OffsetDateTime.now())
+        dsl.insertInto(NOTIFICATION_EVENT)
+                .columns(NOTIFICATION_EVENT.ID, NOTIFICATION_EVENT.EVENT_TYPE, NOTIFICATION_EVENT.SUBJECT_ID, NOTIFICATION_EVENT.PAYLOAD, NOTIFICATION_EVENT.CREATED_AT)
+                .values(eventId, event.eventType(), event.subjectId(), Jsons.toJson(event.payload()), LocalDateTime.now(ZoneOffset.UTC))
                 .execute();
 
         var templateCode = NotificationTemplateCode.fromEventType(event.eventType());
@@ -154,9 +155,9 @@ public class NotificationEventHandler {
 
         for (var provider : providers) {
             var result = provider.send(new DeliveryCommand(eventId, provider.channel(), rendered.subject(), rendered.body(), Map.of("subjectId", event.subjectId())));
-            dsl.insertInto(table("notification_delivery"))
-                    .columns(field("id"), field("event_id"), field("channel"), field("provider_code"), field("status"), field("request_payload"), field("response_payload"), field("attempt_count"), field("created_at"))
-                    .values(Ids.newId("ndl"), eventId, provider.channel(), provider.providerCode(), result.status(), rendered.body(), result.responsePayload(), 1, OffsetDateTime.now())
+            dsl.insertInto(NOTIFICATION_DELIVERY)
+                    .columns(NOTIFICATION_DELIVERY.ID, NOTIFICATION_DELIVERY.EVENT_ID, NOTIFICATION_DELIVERY.CHANNEL, NOTIFICATION_DELIVERY.PROVIDER_CODE, NOTIFICATION_DELIVERY.STATUS, NOTIFICATION_DELIVERY.REQUEST_PAYLOAD, NOTIFICATION_DELIVERY.RESPONSE_PAYLOAD, NOTIFICATION_DELIVERY.ATTEMPT_COUNT, NOTIFICATION_DELIVERY.CREATED_AT)
+                    .values(Ids.newId("ndl"), eventId, provider.channel(), provider.providerCode(), result.status(), rendered.body(), result.responsePayload(), 1, LocalDateTime.now(ZoneOffset.UTC))
                     .execute();
         }
     }
