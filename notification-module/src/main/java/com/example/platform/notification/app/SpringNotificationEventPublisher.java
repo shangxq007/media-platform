@@ -1,7 +1,7 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord.NOTIFICATION_DELIVERY_RECORD;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT;
 
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.infrastructure.NotificationProviderRouter;
@@ -9,7 +9,7 @@ import com.example.platform.shared.Ids;
 import com.example.platform.shared.Jsons;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.notification.NotificationEventPublisher;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.jooq.DSLContext;
@@ -102,10 +102,10 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
 
         String eventId = Ids.newId("nev");
         String tenantId = com.example.platform.shared.web.TenantContext.get();
-        OffsetDateTime now = OffsetDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
-        dsl.insertInto(table("notification_event"))
-                .columns(field("id"), field("event_type"), field("subject_id"), field("payload"), field("created_at"))
+        dsl.insertInto(NOTIFICATION_EVENT)
+                .columns(NOTIFICATION_EVENT.ID, NOTIFICATION_EVENT.EVENT_TYPE, NOTIFICATION_EVENT.SUBJECT_ID, NOTIFICATION_EVENT.PAYLOAD, NOTIFICATION_EVENT.CREATED_AT)
                 .values(eventId, eventKey, userId, Jsons.toJson(payload), now)
                 .execute();
 
@@ -130,12 +130,12 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
     private void deliver(String eventId, String eventKey, String tenantId, String userId,
             String channel, String subject, String body, Map<String, Object> payload) {
         String deliveryId = Ids.newId("ndr");
-        OffsetDateTime now = OffsetDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
-        dsl.insertInto(table("notification_delivery_record"))
-                .columns(field("id"), field("event_key"), field("tenant_id"), field("user_id"),
-                        field("channel_type"), field("status"), field("attempts"),
-                        field("payload_redacted"), field("created_at"))
+        dsl.insertInto(NOTIFICATION_DELIVERY_RECORD)
+                .columns(NOTIFICATION_DELIVERY_RECORD.ID, NOTIFICATION_DELIVERY_RECORD.EVENT_KEY, NOTIFICATION_DELIVERY_RECORD.TENANT_ID, NOTIFICATION_DELIVERY_RECORD.USER_ID,
+                        NOTIFICATION_DELIVERY_RECORD.CHANNEL_TYPE, NOTIFICATION_DELIVERY_RECORD.STATUS, NOTIFICATION_DELIVERY_RECORD.ATTEMPTS,
+                        NOTIFICATION_DELIVERY_RECORD.PAYLOAD_REDACTED, NOTIFICATION_DELIVERY_RECORD.CREATED_AT)
                 .values(deliveryId, eventKey, tenantId, userId,
                         channel, "PENDING", 0,
                         body != null && body.length() > 200 ? body.substring(0, 200) : body,
@@ -147,35 +147,38 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
                 Map.of("eventKey", eventKey, "userId", userId, "channel", channel));
 
         try {
+            String novuWfId = catalogService.findByKey(eventKey)
+                    .map(NotificationEventDefinition::novuWorkflowId).orElse(null);
+            java.util.Map<String, Object> meta = new java.util.HashMap<>();
+            meta.put("subjectId", userId);
+            meta.put("novuWorkflowId", novuWfId);
+            meta.put("subscriberId", userId);
             DeliveryCommand command = new DeliveryCommand(eventId, channel,
                     subject != null ? subject : eventKey,
                     body != null ? body : Jsons.toJson(payload),
-                    Map.of("subjectId", userId, "novuWorkflowId",
-                            catalogService.findByKey(eventKey)
-                                    .map(NotificationEventDefinition::novuWorkflowId).orElse(null),
-                            "subscriberId", userId));
+                    meta);
 
             DeliveryResult result = providerRouter.route(command, channel);
 
             if ("SENT".equals(result.status())) {
-                dsl.update(table("notification_delivery_record"))
-                        .set(field("status"), "SENT")
-                        .set(field("attempts"), 1)
-                        .set(field("sent_at"), OffsetDateTime.now())
-                        .set(field("provider_message_id"), extractMessageId(result.responsePayload()))
-                        .where(field("id").eq(deliveryId))
+                dsl.update(NOTIFICATION_DELIVERY_RECORD)
+                        .set(NOTIFICATION_DELIVERY_RECORD.STATUS, "SENT")
+                        .set(NOTIFICATION_DELIVERY_RECORD.ATTEMPTS, 1)
+                        .set(NOTIFICATION_DELIVERY_RECORD.SENT_AT, LocalDateTime.now())
+                        .set(NOTIFICATION_DELIVERY_RECORD.PROVIDER_MESSAGE_ID, extractMessageId(result.responsePayload()))
+                        .where(NOTIFICATION_DELIVERY_RECORD.ID.eq(deliveryId))
                         .execute();
 
                 audit.record("SYSTEM", "NOTIFICATION_DELIVERY_SENT", "NOTIFICATION",
                         "DELIVERY_RECORD", deliveryId,
                         Map.of("eventKey", eventKey, "userId", userId, "channel", channel));
             } else {
-                dsl.update(table("notification_delivery_record"))
-                        .set(field("status"), "FAILED")
-                        .set(field("attempts"), 1)
-                        .set(field("failed_at"), OffsetDateTime.now())
-                        .set(field("error_code"), "NOTIFICATION_DELIVERY_FAILED")
-                        .where(field("id").eq(deliveryId))
+                dsl.update(NOTIFICATION_DELIVERY_RECORD)
+                        .set(NOTIFICATION_DELIVERY_RECORD.STATUS, "FAILED")
+                        .set(NOTIFICATION_DELIVERY_RECORD.ATTEMPTS, 1)
+                        .set(NOTIFICATION_DELIVERY_RECORD.FAILED_AT, LocalDateTime.now())
+                        .set(NOTIFICATION_DELIVERY_RECORD.ERROR_CODE, "NOTIFICATION_DELIVERY_FAILED")
+                        .where(NOTIFICATION_DELIVERY_RECORD.ID.eq(deliveryId))
                         .execute();
 
                 audit.record("SYSTEM", "NOTIFICATION_DELIVERY_FAILED", "NOTIFICATION",
@@ -185,18 +188,18 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
             }
         } catch (Exception e) {
             log.error("SpringNotificationEventPublisher: delivery failed for deliveryId={}, error={}", deliveryId, e.getMessage());
-            dsl.update(table("notification_delivery_record"))
-                    .set(field("status"), "FAILED")
-                    .set(field("attempts"), 1)
-                    .set(field("failed_at"), OffsetDateTime.now())
-                    .set(field("error_code"), "NOTIFICATION_DELIVERY_FAILED")
-                    .where(field("id").eq(deliveryId))
+            dsl.update(NOTIFICATION_DELIVERY_RECORD)
+                    .set(NOTIFICATION_DELIVERY_RECORD.STATUS, "FAILED")
+                    .set(NOTIFICATION_DELIVERY_RECORD.ATTEMPTS, 1)
+                    .set(NOTIFICATION_DELIVERY_RECORD.FAILED_AT, LocalDateTime.now())
+                    .set(NOTIFICATION_DELIVERY_RECORD.ERROR_CODE, "NOTIFICATION_DELIVERY_FAILED")
+                    .where(NOTIFICATION_DELIVERY_RECORD.ID.eq(deliveryId))
                     .execute();
 
             audit.record("SYSTEM", "NOTIFICATION_DELIVERY_FAILED", "NOTIFICATION",
                     "DELIVERY_RECORD", deliveryId,
                     Map.of("eventKey", eventKey, "userId", userId, "channel", channel,
-                            "error", e.getMessage()));
+                            "error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
         }
     }
 
