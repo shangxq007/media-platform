@@ -1,10 +1,10 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationRecord.NOTIFICATION_RECORD;
 
 import com.example.platform.notification.infrastructure.MockNotificationProvider.SentNotification;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.jooq.DSLContext;
 import org.jooq.Record;
@@ -21,34 +21,34 @@ public class NotificationDeliveryRepository {
 
     public String recordDelivery(SentNotification sent) {
         String id = com.example.platform.shared.Ids.newId("ndr");
-        dsl.insertInto(table("notification_record"))
-                .columns(field("id"), field("event_id"), field("channel"),
-                        field("provider_code"), field("status"), field("subject"),
-                        field("body"), field("metadata_json"), field("attempt_count"),
-                        field("created_at"))
+        dsl.insertInto(NOTIFICATION_RECORD)
+                .columns(NOTIFICATION_RECORD.ID, NOTIFICATION_RECORD.EVENT_ID, NOTIFICATION_RECORD.CHANNEL,
+                        NOTIFICATION_RECORD.PROVIDER_CODE, NOTIFICATION_RECORD.STATUS, NOTIFICATION_RECORD.SUBJECT,
+                        NOTIFICATION_RECORD.BODY, NOTIFICATION_RECORD.METADATA_JSON, NOTIFICATION_RECORD.ATTEMPT_COUNT,
+                        NOTIFICATION_RECORD.CREATED_AT)
                 .values(id, sent.eventId(), sent.channel(),
                         "mock-notification", "SENT", sent.subject(),
                         sent.body(), null, 1,
-                        OffsetDateTime.now())
+                        LocalDateTime.now(ZoneOffset.UTC))
                 .execute();
         return id;
     }
 
     public List<SentNotification> recentDeliveries(int limit) {
         return dsl.select()
-                .from(table("notification_record"))
-                .orderBy(field("created_at").desc())
+                .from(NOTIFICATION_RECORD)
+                .orderBy(NOTIFICATION_RECORD.CREATED_AT.desc())
                 .limit(limit)
                 .fetch(this::mapRecord);
     }
 
     private SentNotification mapRecord(Record record) {
         return new SentNotification(
-                record.get(field("event_id"), String.class),
-                record.get(field("channel"), String.class),
-                record.get(field("subject"), String.class),
-                record.get(field("body"), String.class),
-                record.get(field("created_at"), OffsetDateTime.class).toInstant()
+                record.get(NOTIFICATION_RECORD.EVENT_ID),
+                record.get(NOTIFICATION_RECORD.CHANNEL),
+                record.get(NOTIFICATION_RECORD.SUBJECT),
+                record.get(NOTIFICATION_RECORD.BODY),
+                record.get(NOTIFICATION_RECORD.CREATED_AT).toInstant(ZoneOffset.UTC)
         );
     }
 }

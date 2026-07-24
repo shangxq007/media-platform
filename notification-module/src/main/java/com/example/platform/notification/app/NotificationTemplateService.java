@@ -1,7 +1,6 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationTemplate.NOTIFICATION_TEMPLATE;
 
 import com.example.platform.notification.domain.NotificationTemplate;
 import org.jooq.DSLContext;
@@ -14,15 +13,15 @@ public class NotificationTemplateService {
 
     public void ensureTemplate(NotificationTemplate template) {
         boolean exists = dsl.fetchExists(
-                dsl.selectOne().from(table("notification_template"))
-                        .where(field("template_code").eq(template.templateCode().name()))
-                        .and(field("channel").eq(template.channel().name()))
-                        .and(field("locale").eq(template.locale()))
-                        .and(field("version").eq(template.version()))
+                dsl.selectOne().from(NOTIFICATION_TEMPLATE)
+                        .where(NOTIFICATION_TEMPLATE.TEMPLATE_CODE.eq(template.templateCode().name()))
+                        .and(NOTIFICATION_TEMPLATE.CHANNEL.eq(template.channel().name()))
+                        .and(NOTIFICATION_TEMPLATE.LOCALE.eq(template.locale()))
+                        .and(NOTIFICATION_TEMPLATE.VERSION.eq(template.version()))
         );
         if (!exists) {
-            dsl.insertInto(table("notification_template"))
-                    .columns(field("template_code"), field("channel"), field("locale"), field("version"), field("subject_template"), field("body_template"))
+            dsl.insertInto(NOTIFICATION_TEMPLATE)
+                    .columns(NOTIFICATION_TEMPLATE.TEMPLATE_CODE, NOTIFICATION_TEMPLATE.CHANNEL, NOTIFICATION_TEMPLATE.LOCALE, NOTIFICATION_TEMPLATE.VERSION, NOTIFICATION_TEMPLATE.SUBJECT_TEMPLATE, NOTIFICATION_TEMPLATE.BODY_TEMPLATE)
                     .values(template.templateCode().name(), template.channel().name(), template.locale(), template.version(), template.subjectTemplate(), template.bodyTemplate())
                     .execute();
         }
