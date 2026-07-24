@@ -136,14 +136,20 @@ public final class NotificationTestSchemaFixture {
         dsl.execute("""
             CREATE TABLE IF NOT EXISTS notification_preference (
                 id varchar(64) primary key,
-                tenant_id varchar(64),
+                tenant_id varchar(64) not null,
                 user_id varchar(64) not null,
-                event_key varchar(100) not null,
-                enabled boolean not null default true,
-                channels text,
+                global_enabled boolean not null default true,
+                channel_enabled text not null default '{}',
+                event_enabled text not null default '{}',
+                quiet_hours_start varchar(10),
+                quiet_hours_end varchar(10),
+                quiet_hours_timezone varchar(50),
+                digest_mode varchar(30) not null default 'IMMEDIATE',
+                critical_override boolean not null default true,
                 created_at timestamp not null,
                 updated_at timestamp not null,
-                unique(tenant_id, user_id, event_key)
+                unique(tenant_id, user_id),
+                check (digest_mode in ('IMMEDIATE', 'HOURLY', 'DAILY'))
             )
         """);
 

@@ -63,73 +63,145 @@ public class NotificationPreferenceRecord extends UpdatableRecordImpl<Notificati
     }
 
     /**
-     * Setter for <code>public.notification_preference.event_key</code>.
+     * Setter for <code>public.notification_preference.global_enabled</code>.
      */
-    public void setEventKey(String value) {
+    public void setGlobalEnabled(Boolean value) {
         set(3, value);
     }
 
     /**
-     * Getter for <code>public.notification_preference.event_key</code>.
+     * Getter for <code>public.notification_preference.global_enabled</code>.
      */
-    public String getEventKey() {
-        return (String) get(3);
+    public Boolean getGlobalEnabled() {
+        return (Boolean) get(3);
     }
 
     /**
-     * Setter for <code>public.notification_preference.enabled</code>.
+     * Setter for <code>public.notification_preference.channel_enabled</code>.
      */
-    public void setEnabled(Boolean value) {
+    public void setChannelEnabled(String value) {
         set(4, value);
     }
 
     /**
-     * Getter for <code>public.notification_preference.enabled</code>.
+     * Getter for <code>public.notification_preference.channel_enabled</code>.
      */
-    public Boolean getEnabled() {
-        return (Boolean) get(4);
+    public String getChannelEnabled() {
+        return (String) get(4);
     }
 
     /**
-     * Setter for <code>public.notification_preference.channels</code>.
+     * Setter for <code>public.notification_preference.event_enabled</code>.
      */
-    public void setChannels(String value) {
+    public void setEventEnabled(String value) {
         set(5, value);
     }
 
     /**
-     * Getter for <code>public.notification_preference.channels</code>.
+     * Getter for <code>public.notification_preference.event_enabled</code>.
      */
-    public String getChannels() {
+    public String getEventEnabled() {
         return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>public.notification_preference.quiet_hours_start</code>.
+     */
+    public void setQuietHoursStart(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.notification_preference.quiet_hours_start</code>.
+     */
+    public String getQuietHoursStart() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.notification_preference.quiet_hours_end</code>.
+     */
+    public void setQuietHoursEnd(String value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.notification_preference.quiet_hours_end</code>.
+     */
+    public String getQuietHoursEnd() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>public.notification_preference.quiet_hours_timezone</code>.
+     */
+    public void setQuietHoursTimezone(String value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.notification_preference.quiet_hours_timezone</code>.
+     */
+    public String getQuietHoursTimezone() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for <code>public.notification_preference.digest_mode</code>.
+     */
+    public void setDigestMode(String value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.notification_preference.digest_mode</code>.
+     */
+    public String getDigestMode() {
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for <code>public.notification_preference.critical_override</code>.
+     */
+    public void setCriticalOverride(Boolean value) {
+        set(10, value);
+    }
+
+    /**
+     * Getter for <code>public.notification_preference.critical_override</code>.
+     */
+    public Boolean getCriticalOverride() {
+        return (Boolean) get(10);
     }
 
     /**
      * Setter for <code>public.notification_preference.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(6, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.notification_preference.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(11);
     }
 
     /**
      * Setter for <code>public.notification_preference.updated_at</code>.
      */
     public void setUpdatedAt(LocalDateTime value) {
-        set(7, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.notification_preference.updated_at</code>.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -155,15 +227,20 @@ public class NotificationPreferenceRecord extends UpdatableRecordImpl<Notificati
     /**
      * Create a detached, initialised NotificationPreferenceRecord
      */
-    public NotificationPreferenceRecord(String id, String tenantId, String userId, String eventKey, Boolean enabled, String channels, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public NotificationPreferenceRecord(String id, String tenantId, String userId, Boolean globalEnabled, String channelEnabled, String eventEnabled, String quietHoursStart, String quietHoursEnd, String quietHoursTimezone, String digestMode, Boolean criticalOverride, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(NotificationPreference.NOTIFICATION_PREFERENCE);
 
         setId(id);
         setTenantId(tenantId);
         setUserId(userId);
-        setEventKey(eventKey);
-        setEnabled(enabled);
-        setChannels(channels);
+        setGlobalEnabled(globalEnabled);
+        setChannelEnabled(channelEnabled);
+        setEventEnabled(eventEnabled);
+        setQuietHoursStart(quietHoursStart);
+        setQuietHoursEnd(quietHoursEnd);
+        setQuietHoursTimezone(quietHoursTimezone);
+        setDigestMode(digestMode);
+        setCriticalOverride(criticalOverride);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         resetChangedOnNotNull();

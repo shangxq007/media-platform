@@ -6,7 +6,6 @@ import java.util.Map;
 public record NotificationPreference(
         String preferenceId,
         String tenantId,
-        String workspaceId,
         String userId,
         boolean globalEnabled,
         Map<String, Boolean> channelEnabled,

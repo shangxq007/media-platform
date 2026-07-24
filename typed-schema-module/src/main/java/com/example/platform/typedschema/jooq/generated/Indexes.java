@@ -56,6 +56,7 @@ import com.example.platform.typedschema.jooq.generated.tables.NotificationChanne
 import com.example.platform.typedschema.jooq.generated.tables.NotificationDelivery;
 import com.example.platform.typedschema.jooq.generated.tables.NotificationDeliveryRecord;
 import com.example.platform.typedschema.jooq.generated.tables.NotificationEvent;
+import com.example.platform.typedschema.jooq.generated.tables.NotificationPreference;
 import com.example.platform.typedschema.jooq.generated.tables.NotificationRecord;
 import com.example.platform.typedschema.jooq.generated.tables.NotificationSubscription;
 import com.example.platform.typedschema.jooq.generated.tables.NotificationUserInbox;
@@ -298,6 +299,7 @@ public class Indexes {
     public static final Index IX_NOTIFICATION_DELIVERY_STATUS = Internal.createIndex(DSL.name("ix_notification_delivery_status"), NotificationDelivery.NOTIFICATION_DELIVERY, new OrderField[] { NotificationDelivery.NOTIFICATION_DELIVERY.STATUS }, false);
     public static final Index IX_NOTIFICATION_EVENT_CREATED_AT = Internal.createIndex(DSL.name("ix_notification_event_created_at"), NotificationEvent.NOTIFICATION_EVENT, new OrderField[] { NotificationEvent.NOTIFICATION_EVENT.CREATED_AT }, false);
     public static final Index IX_NOTIFICATION_EVENT_EVENT_TYPE = Internal.createIndex(DSL.name("ix_notification_event_event_type"), NotificationEvent.NOTIFICATION_EVENT, new OrderField[] { NotificationEvent.NOTIFICATION_EVENT.EVENT_TYPE }, false);
+    public static final Index IX_NOTIFICATION_PREFERENCE_USER = Internal.createIndex(DSL.name("ix_notification_preference_user"), NotificationPreference.NOTIFICATION_PREFERENCE, new OrderField[] { NotificationPreference.NOTIFICATION_PREFERENCE.USER_ID }, false);
     public static final Index IX_NOTIFICATION_RECORD_EVENT_ID = Internal.createIndex(DSL.name("ix_notification_record_event_id"), NotificationRecord.NOTIFICATION_RECORD, new OrderField[] { NotificationRecord.NOTIFICATION_RECORD.EVENT_ID }, false);
     public static final Index IX_NOTIFICATION_RECORD_STATUS = Internal.createIndex(DSL.name("ix_notification_record_status"), NotificationRecord.NOTIFICATION_RECORD, new OrderField[] { NotificationRecord.NOTIFICATION_RECORD.STATUS }, false);
     public static final Index IX_NOTIFICATION_SUBSCRIPTION_USER = Internal.createIndex(DSL.name("ix_notification_subscription_user"), NotificationSubscription.NOTIFICATION_SUBSCRIPTION, new OrderField[] { NotificationSubscription.NOTIFICATION_SUBSCRIPTION.USER_ID }, false);

@@ -4,6 +4,7 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.NotificationPreferenceRecord;
@@ -13,8 +14,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
@@ -27,6 +30,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -60,7 +64,7 @@ public class NotificationPreference extends TableImpl<NotificationPreferenceReco
     /**
      * The column <code>public.notification_preference.tenant_id</code>.
      */
-    public final TableField<NotificationPreferenceRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<NotificationPreferenceRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.notification_preference.user_id</code>.
@@ -68,19 +72,45 @@ public class NotificationPreference extends TableImpl<NotificationPreferenceReco
     public final TableField<NotificationPreferenceRecord, String> USER_ID = createField(DSL.name("user_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column <code>public.notification_preference.event_key</code>.
+     * The column <code>public.notification_preference.global_enabled</code>.
      */
-    public final TableField<NotificationPreferenceRecord, String> EVENT_KEY = createField(DSL.name("event_key"), SQLDataType.VARCHAR(100).nullable(false), this, "");
+    public final TableField<NotificationPreferenceRecord, Boolean> GLOBAL_ENABLED = createField(DSL.name("global_enabled"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("true"), SQLDataType.BOOLEAN)), this, "");
 
     /**
-     * The column <code>public.notification_preference.enabled</code>.
+     * The column <code>public.notification_preference.channel_enabled</code>.
      */
-    public final TableField<NotificationPreferenceRecord, Boolean> ENABLED = createField(DSL.name("enabled"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("true"), SQLDataType.BOOLEAN)), this, "");
+    public final TableField<NotificationPreferenceRecord, String> CHANNEL_ENABLED = createField(DSL.name("channel_enabled"), SQLDataType.CLOB.nullable(false).defaultValue(DSL.field(DSL.raw("'{}'::text"), SQLDataType.CLOB)), this, "");
 
     /**
-     * The column <code>public.notification_preference.channels</code>.
+     * The column <code>public.notification_preference.event_enabled</code>.
      */
-    public final TableField<NotificationPreferenceRecord, String> CHANNELS = createField(DSL.name("channels"), SQLDataType.CLOB, this, "");
+    public final TableField<NotificationPreferenceRecord, String> EVENT_ENABLED = createField(DSL.name("event_enabled"), SQLDataType.CLOB.nullable(false).defaultValue(DSL.field(DSL.raw("'{}'::text"), SQLDataType.CLOB)), this, "");
+
+    /**
+     * The column <code>public.notification_preference.quiet_hours_start</code>.
+     */
+    public final TableField<NotificationPreferenceRecord, String> QUIET_HOURS_START = createField(DSL.name("quiet_hours_start"), SQLDataType.VARCHAR(10), this, "");
+
+    /**
+     * The column <code>public.notification_preference.quiet_hours_end</code>.
+     */
+    public final TableField<NotificationPreferenceRecord, String> QUIET_HOURS_END = createField(DSL.name("quiet_hours_end"), SQLDataType.VARCHAR(10), this, "");
+
+    /**
+     * The column
+     * <code>public.notification_preference.quiet_hours_timezone</code>.
+     */
+    public final TableField<NotificationPreferenceRecord, String> QUIET_HOURS_TIMEZONE = createField(DSL.name("quiet_hours_timezone"), SQLDataType.VARCHAR(50), this, "");
+
+    /**
+     * The column <code>public.notification_preference.digest_mode</code>.
+     */
+    public final TableField<NotificationPreferenceRecord, String> DIGEST_MODE = createField(DSL.name("digest_mode"), SQLDataType.VARCHAR(30).nullable(false).defaultValue(DSL.field(DSL.raw("'IMMEDIATE'::character varying"), SQLDataType.VARCHAR)), this, "");
+
+    /**
+     * The column <code>public.notification_preference.critical_override</code>.
+     */
+    public final TableField<NotificationPreferenceRecord, Boolean> CRITICAL_OVERRIDE = createField(DSL.name("critical_override"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("true"), SQLDataType.BOOLEAN)), this, "");
 
     /**
      * The column <code>public.notification_preference.created_at</code>.
@@ -129,13 +159,25 @@ public class NotificationPreference extends TableImpl<NotificationPreferenceReco
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.IX_NOTIFICATION_PREFERENCE_USER);
+    }
+
+    @Override
     public UniqueKey<NotificationPreferenceRecord> getPrimaryKey() {
         return Keys.NOTIFICATION_PREFERENCE_PKEY;
     }
 
     @Override
     public List<UniqueKey<NotificationPreferenceRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.NOTIFICATION_PREFERENCE_TENANT_ID_USER_ID_EVENT_KEY_KEY);
+        return Arrays.asList(Keys.NOTIFICATION_PREFERENCE_TENANT_ID_USER_ID_KEY);
+    }
+
+    @Override
+    public List<Check<NotificationPreferenceRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("notification_preference_digest_mode_check"), "(((digest_mode)::text = ANY ((ARRAY['IMMEDIATE'::character varying, 'HOURLY'::character varying, 'DAILY'::character varying])::text[])))", true)
+        );
     }
 
     @Override
