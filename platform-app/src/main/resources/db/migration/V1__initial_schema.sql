@@ -1727,6 +1727,9 @@ create table notification_channel_binding (
     enabled boolean not null default true,
     failure_count int not null default 0,
     last_failure_at timestamp,
+    last_verified_at timestamp with time zone,
+    provider varchar(64),
+    disabled_reason text,
     created_at timestamp not null,
     updated_at timestamp not null
 );

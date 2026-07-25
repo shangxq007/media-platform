@@ -6,6 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.NotificationChannelBinding;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import org.jooq.Record1;
@@ -199,31 +200,77 @@ public class NotificationChannelBindingRecord extends UpdatableRecordImpl<Notifi
     }
 
     /**
+     * Setter for
+     * <code>public.notification_channel_binding.last_verified_at</code>.
+     */
+    public void setLastVerifiedAt(Instant value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.notification_channel_binding.last_verified_at</code>.
+     */
+    public Instant getLastVerifiedAt() {
+        return (Instant) get(12);
+    }
+
+    /**
+     * Setter for <code>public.notification_channel_binding.provider</code>.
+     */
+    public void setProvider(String value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for <code>public.notification_channel_binding.provider</code>.
+     */
+    public String getProvider() {
+        return (String) get(13);
+    }
+
+    /**
+     * Setter for
+     * <code>public.notification_channel_binding.disabled_reason</code>.
+     */
+    public void setDisabledReason(String value) {
+        set(14, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.notification_channel_binding.disabled_reason</code>.
+     */
+    public String getDisabledReason() {
+        return (String) get(14);
+    }
+
+    /**
      * Setter for <code>public.notification_channel_binding.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(12, value);
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.notification_channel_binding.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(12);
+        return (LocalDateTime) get(15);
     }
 
     /**
      * Setter for <code>public.notification_channel_binding.updated_at</code>.
      */
     public void setUpdatedAt(LocalDateTime value) {
-        set(13, value);
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.notification_channel_binding.updated_at</code>.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -249,7 +296,7 @@ public class NotificationChannelBindingRecord extends UpdatableRecordImpl<Notifi
     /**
      * Create a detached, initialised NotificationChannelBindingRecord
      */
-    public NotificationChannelBindingRecord(String id, String tenantId, String workspaceId, String userId, String channelType, String destinationMasked, String destinationEncrypted, Boolean verified, String verificationStatus, Boolean enabled, Integer failureCount, LocalDateTime lastFailureAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public NotificationChannelBindingRecord(String id, String tenantId, String workspaceId, String userId, String channelType, String destinationMasked, String destinationEncrypted, Boolean verified, String verificationStatus, Boolean enabled, Integer failureCount, LocalDateTime lastFailureAt, Instant lastVerifiedAt, String provider, String disabledReason, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(NotificationChannelBinding.NOTIFICATION_CHANNEL_BINDING);
 
         setId(id);
@@ -264,6 +311,9 @@ public class NotificationChannelBindingRecord extends UpdatableRecordImpl<Notifi
         setEnabled(enabled);
         setFailureCount(failureCount);
         setLastFailureAt(lastFailureAt);
+        setLastVerifiedAt(lastVerifiedAt);
+        setProvider(provider);
+        setDisabledReason(disabledReason);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         resetChangedOnNotNull();

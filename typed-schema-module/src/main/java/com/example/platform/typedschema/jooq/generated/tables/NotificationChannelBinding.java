@@ -4,11 +4,13 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.NotificationChannelBindingRecord;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
@@ -119,6 +121,23 @@ public class NotificationChannelBinding extends TableImpl<NotificationChannelBin
      * <code>public.notification_channel_binding.last_failure_at</code>.
      */
     public final TableField<NotificationChannelBindingRecord, LocalDateTime> LAST_FAILURE_AT = createField(DSL.name("last_failure_at"), SQLDataType.LOCALDATETIME(6), this, "");
+
+    /**
+     * The column
+     * <code>public.notification_channel_binding.last_verified_at</code>.
+     */
+    public final TableField<NotificationChannelBindingRecord, Instant> LAST_VERIFIED_AT = createField(DSL.name("last_verified_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.notification_channel_binding.provider</code>.
+     */
+    public final TableField<NotificationChannelBindingRecord, String> PROVIDER = createField(DSL.name("provider"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column
+     * <code>public.notification_channel_binding.disabled_reason</code>.
+     */
+    public final TableField<NotificationChannelBindingRecord, String> DISABLED_REASON = createField(DSL.name("disabled_reason"), SQLDataType.CLOB, this, "");
 
     /**
      * The column <code>public.notification_channel_binding.created_at</code>.

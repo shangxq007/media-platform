@@ -1,7 +1,6 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationChannelBinding.NOTIFICATION_CHANNEL_BINDING;
 
 import com.example.platform.notification.domain.NotificationChannelBinding;
 import com.example.platform.notification.infrastructure.WebhookUrlValidator;
@@ -11,7 +10,10 @@ import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,18 +43,18 @@ public class NotificationChannelBindingService {
 
     public List<NotificationChannelBinding> listUserBindings(String userId) {
         return dsl.select()
-                .from(table("notification_channel_binding"))
-                .where(field("user_id").eq(userId))
-                .and(field("enabled").eq(true))
-                .orderBy(field("created_at").desc())
+                .from(NOTIFICATION_CHANNEL_BINDING)
+                .where(NOTIFICATION_CHANNEL_BINDING.USER_ID.eq(userId))
+                .and(NOTIFICATION_CHANNEL_BINDING.ENABLED.eq(true))
+                .orderBy(NOTIFICATION_CHANNEL_BINDING.CREATED_AT.desc())
                 .fetch(this::mapRecord);
     }
 
     public Optional<NotificationChannelBinding> findBinding(String bindingId, String userId) {
         var rec = dsl.select()
-                .from(table("notification_channel_binding"))
-                .where(field("id").eq(bindingId))
-                .and(field("user_id").eq(userId))
+                .from(NOTIFICATION_CHANNEL_BINDING)
+                .where(NOTIFICATION_CHANNEL_BINDING.ID.eq(bindingId))
+                .and(NOTIFICATION_CHANNEL_BINDING.USER_ID.eq(userId))
                 .fetchOne();
         return Optional.ofNullable(rec).map(this::mapRecord);
     }
@@ -71,15 +73,15 @@ public class NotificationChannelBindingService {
 
         String bindingId = Ids.newId("ncb");
         String tenantId = TenantContext.get();
-        OffsetDateTime now = OffsetDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         String masked = maskDestination(channelType, destination);
 
-        dsl.insertInto(table("notification_channel_binding"))
-                .columns(field("id"), field("tenant_id"), field("user_id"),
-                        field("channel_type"), field("destination_masked"),
-                        field("destination_encrypted"), field("verified"),
-                        field("verification_status"), field("enabled"),
-                        field("failure_count"), field("created_at"), field("updated_at"))
+        dsl.insertInto(NOTIFICATION_CHANNEL_BINDING)
+                .columns(NOTIFICATION_CHANNEL_BINDING.ID, NOTIFICATION_CHANNEL_BINDING.TENANT_ID, NOTIFICATION_CHANNEL_BINDING.USER_ID,
+                        NOTIFICATION_CHANNEL_BINDING.CHANNEL_TYPE, NOTIFICATION_CHANNEL_BINDING.DESTINATION_MASKED,
+                        NOTIFICATION_CHANNEL_BINDING.DESTINATION_ENCRYPTED, NOTIFICATION_CHANNEL_BINDING.VERIFIED,
+                        NOTIFICATION_CHANNEL_BINDING.VERIFICATION_STATUS, NOTIFICATION_CHANNEL_BINDING.ENABLED,
+                        NOTIFICATION_CHANNEL_BINDING.FAILURE_COUNT, NOTIFICATION_CHANNEL_BINDING.CREATED_AT, NOTIFICATION_CHANNEL_BINDING.UPDATED_AT)
                 .values(bindingId, tenantId, userId,
                         channelType, masked,
                         destination, false,
@@ -93,7 +95,7 @@ public class NotificationChannelBindingService {
 
         log.info("NotificationChannelBindingService: created binding={} for user={}, channel={}", bindingId, userId, channelType);
         return new NotificationChannelBinding(bindingId, tenantId, null, userId, channelType,
-                masked, destination, false, "PENDING", true, null, 0, null, now, now, null);
+                masked, destination, false, "PENDING", true, null, 0, null, now.atOffset(ZoneOffset.UTC), now.atOffset(ZoneOffset.UTC), null);
     }
 
     public NotificationChannelBinding updateBinding(String bindingId, String userId, String destination) {
@@ -108,13 +110,13 @@ public class NotificationChannelBindingService {
                         getErrorCode("NOTIFICATION_WEBHOOK_PRIVATE_IP_BLOCKED"));
             }
             String masked = maskDestination(existing.channelType(), destination);
-            dsl.update(table("notification_channel_binding"))
-                    .set(field("destination_masked"), masked)
-                    .set(field("destination_encrypted"), destination)
-                    .set(field("verified"), false)
-                    .set(field("verification_status"), "PENDING")
-                    .set(field("updated_at"), OffsetDateTime.now())
-                    .where(field("id").eq(bindingId))
+            dsl.update(NOTIFICATION_CHANNEL_BINDING)
+                    .set(NOTIFICATION_CHANNEL_BINDING.DESTINATION_MASKED, masked)
+                    .set(NOTIFICATION_CHANNEL_BINDING.DESTINATION_ENCRYPTED, destination)
+                    .set(NOTIFICATION_CHANNEL_BINDING.VERIFIED, false)
+                    .set(NOTIFICATION_CHANNEL_BINDING.VERIFICATION_STATUS, "PENDING")
+                    .set(NOTIFICATION_CHANNEL_BINDING.UPDATED_AT, LocalDateTime.now())
+                    .where(NOTIFICATION_CHANNEL_BINDING.ID.eq(bindingId))
                     .execute();
 
             audit.record("USER", "NOTIFICATION_CHANNEL_BOUND", "NOTIFICATION",
@@ -130,12 +132,12 @@ public class NotificationChannelBindingService {
                 .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"),
                         "Channel binding not found: " + bindingId));
 
-        dsl.update(table("notification_channel_binding"))
-                .set(field("verified"), true)
-                .set(field("verification_status"), "VERIFIED")
-                .set(field("last_verified_at"), OffsetDateTime.now())
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(bindingId))
+        dsl.update(NOTIFICATION_CHANNEL_BINDING)
+                .set(NOTIFICATION_CHANNEL_BINDING.VERIFIED, true)
+                .set(NOTIFICATION_CHANNEL_BINDING.VERIFICATION_STATUS, "VERIFIED")
+                .set(NOTIFICATION_CHANNEL_BINDING.LAST_VERIFIED_AT, Instant.now())
+                .set(NOTIFICATION_CHANNEL_BINDING.UPDATED_AT, LocalDateTime.now())
+                .where(NOTIFICATION_CHANNEL_BINDING.ID.eq(bindingId))
                 .execute();
 
         audit.record("USER", "NOTIFICATION_CHANNEL_VERIFIED", "NOTIFICATION",
@@ -147,7 +149,7 @@ public class NotificationChannelBindingService {
                 existing.destinationMasked(), existing.destinationEncrypted(),
                 true, "VERIFIED", existing.enabled(), existing.provider(),
                 existing.failureCount(), existing.disabledReason(),
-                existing.createdAt(), OffsetDateTime.now(), OffsetDateTime.now());
+                existing.createdAt(), OffsetDateTime.now(), existing.lastVerifiedAt());
     }
 
     public NotificationChannelBinding testBinding(String bindingId, String userId) {
@@ -172,11 +174,11 @@ public class NotificationChannelBindingService {
                 .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"),
                         "Channel binding not found: " + bindingId));
 
-        dsl.update(table("notification_channel_binding"))
-                .set(field("enabled"), false)
-                .set(field("disabled_reason"), reason)
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(bindingId))
+        dsl.update(NOTIFICATION_CHANNEL_BINDING)
+                .set(NOTIFICATION_CHANNEL_BINDING.ENABLED, false)
+                .set(NOTIFICATION_CHANNEL_BINDING.DISABLED_REASON, reason)
+                .set(NOTIFICATION_CHANNEL_BINDING.UPDATED_AT, LocalDateTime.now())
+                .where(NOTIFICATION_CHANNEL_BINDING.ID.eq(bindingId))
                 .execute();
 
         audit.record("USER", "NOTIFICATION_CHANNEL_DISABLED", "NOTIFICATION",
@@ -196,8 +198,8 @@ public class NotificationChannelBindingService {
                 .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"),
                         "Channel binding not found: " + bindingId));
 
-        dsl.deleteFrom(table("notification_channel_binding"))
-                .where(field("id").eq(bindingId))
+        dsl.deleteFrom(NOTIFICATION_CHANNEL_BINDING)
+                .where(NOTIFICATION_CHANNEL_BINDING.ID.eq(bindingId))
                 .execute();
 
         audit.record("USER", "NOTIFICATION_CHANNEL_DELETED", "NOTIFICATION",
@@ -223,22 +225,22 @@ public class NotificationChannelBindingService {
 
     private NotificationChannelBinding mapRecord(org.jooq.Record rec) {
         return new NotificationChannelBinding(
-                rec.get(field("id"), String.class),
-                rec.get(field("tenant_id"), String.class),
-                rec.get(field("workspace_id"), String.class),
-                rec.get(field("user_id"), String.class),
-                rec.get(field("channel_type"), String.class),
-                rec.get(field("destination_masked"), String.class),
-                rec.get(field("destination_encrypted"), String.class),
-                Boolean.TRUE.equals(rec.get(field("verified"), Boolean.class)),
-                rec.get(field("verification_status"), String.class),
-                Boolean.TRUE.equals(rec.get(field("enabled"), Boolean.class)),
-                rec.get(field("provider"), String.class),
-                rec.get(field("failure_count"), Integer.class) != null ? rec.get(field("failure_count"), Integer.class) : 0,
-                rec.get(field("disabled_reason"), String.class),
-                rec.get(field("created_at"), OffsetDateTime.class),
-                rec.get(field("updated_at"), OffsetDateTime.class),
-                rec.get(field("last_verified_at"), OffsetDateTime.class)
+                rec.get(NOTIFICATION_CHANNEL_BINDING.ID, String.class),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.TENANT_ID, String.class),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.WORKSPACE_ID, String.class),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.USER_ID, String.class),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.CHANNEL_TYPE, String.class),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.DESTINATION_MASKED, String.class),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.DESTINATION_ENCRYPTED, String.class),
+                Boolean.TRUE.equals(rec.get(NOTIFICATION_CHANNEL_BINDING.VERIFIED, Boolean.class)),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.VERIFICATION_STATUS, String.class),
+                Boolean.TRUE.equals(rec.get(NOTIFICATION_CHANNEL_BINDING.ENABLED, Boolean.class)),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.PROVIDER, String.class),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.FAILURE_COUNT, Integer.class) != null ? rec.get(NOTIFICATION_CHANNEL_BINDING.FAILURE_COUNT, Integer.class) : 0,
+                rec.get(NOTIFICATION_CHANNEL_BINDING.DISABLED_REASON, String.class),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.CREATED_AT, LocalDateTime.class).atOffset(ZoneOffset.UTC),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.UPDATED_AT, LocalDateTime.class).atOffset(ZoneOffset.UTC),
+                rec.get(NOTIFICATION_CHANNEL_BINDING.LAST_VERIFIED_AT, Instant.class) != null ? rec.get(NOTIFICATION_CHANNEL_BINDING.LAST_VERIFIED_AT, Instant.class).atOffset(ZoneOffset.UTC) : null
         );
     }
 
