@@ -1,18 +1,19 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.notification.domain.NotificationInboxItem;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationUserInbox.NOTIFICATION_USER_INBOX;
+
 
 @Service
 public class NotificationInboxService {
@@ -29,14 +30,14 @@ public class NotificationInboxService {
             String resourceType, String resourceId) {
         String id = Ids.newId("ninb");
         String tenantId = TenantContext.get();
-        OffsetDateTime now = OffsetDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
-        dsl.insertInto(table("notification_user_inbox"))
-                .columns(field("id"), field("tenant_id"), field("user_id"),
-                        field("event_key"), field("type"), field("title"),
-                        field("message"), field("read"), field("link"),
-                        field("actor_id"), field("resource_type"), field("resource_id"),
-                        field("created_at"))
+        dsl.insertInto(NOTIFICATION_USER_INBOX)
+                .columns(NOTIFICATION_USER_INBOX.ID, NOTIFICATION_USER_INBOX.TENANT_ID, NOTIFICATION_USER_INBOX.USER_ID,
+                        NOTIFICATION_USER_INBOX.EVENT_KEY, NOTIFICATION_USER_INBOX.TYPE, NOTIFICATION_USER_INBOX.TITLE,
+                        NOTIFICATION_USER_INBOX.MESSAGE, NOTIFICATION_USER_INBOX.READ, NOTIFICATION_USER_INBOX.LINK,
+                        NOTIFICATION_USER_INBOX.ACTOR_ID, NOTIFICATION_USER_INBOX.RESOURCE_TYPE, NOTIFICATION_USER_INBOX.RESOURCE_ID,
+                        NOTIFICATION_USER_INBOX.CREATED_AT)
                 .values(id, tenantId, userId,
                         eventKey, type != null ? type : "INFO", title,
                         message, false, link,
@@ -46,51 +47,51 @@ public class NotificationInboxService {
 
         log.info("NotificationInboxService: created inbox item={} for user={}, event={}", id, userId, eventKey);
         return new NotificationInboxItem(id, tenantId, null, userId, eventKey,
-                type, title, message, false, link, actorId, resourceType, resourceId, now, null);
+                type, title, message, false, link, actorId, resourceType, resourceId, now.atOffset(ZoneOffset.UTC), null);
     }
 
     public List<NotificationInboxItem> listUserInbox(String userId, int limit) {
         return dsl.select()
-                .from(table("notification_user_inbox"))
-                .where(field("user_id").eq(userId))
-                .orderBy(field("created_at").desc())
+                .from(NOTIFICATION_USER_INBOX)
+                .where(NOTIFICATION_USER_INBOX.USER_ID.eq(userId))
+                .orderBy(NOTIFICATION_USER_INBOX.CREATED_AT.desc())
                 .limit(limit > 0 ? limit : 50)
                 .fetch(this::mapRecord);
     }
 
     public List<NotificationInboxItem> listUnread(String userId, int limit) {
         return dsl.select()
-                .from(table("notification_user_inbox"))
-                .where(field("user_id").eq(userId))
-                .and(field("read").eq(false))
-                .orderBy(field("created_at").desc())
+                .from(NOTIFICATION_USER_INBOX)
+                .where(NOTIFICATION_USER_INBOX.USER_ID.eq(userId))
+                .and(NOTIFICATION_USER_INBOX.READ.eq(false))
+                .orderBy(NOTIFICATION_USER_INBOX.CREATED_AT.desc())
                 .limit(limit > 0 ? limit : 50)
                 .fetch(this::mapRecord);
     }
 
     public long getUnreadCount(String userId) {
         return dsl.selectCount()
-                .from(table("notification_user_inbox"))
-                .where(field("user_id").eq(userId))
-                .and(field("read").eq(false))
+                .from(NOTIFICATION_USER_INBOX)
+                .where(NOTIFICATION_USER_INBOX.USER_ID.eq(userId))
+                .and(NOTIFICATION_USER_INBOX.READ.eq(false))
                 .fetchOne(0, Long.class);
     }
 
     public Optional<NotificationInboxItem> markAsRead(String id, String userId) {
         var rec = dsl.select()
-                .from(table("notification_user_inbox"))
-                .where(field("id").eq(id))
-                .and(field("user_id").eq(userId))
+                .from(NOTIFICATION_USER_INBOX)
+                .where(NOTIFICATION_USER_INBOX.ID.eq(id))
+                .and(NOTIFICATION_USER_INBOX.USER_ID.eq(userId))
                 .fetchOne();
 
         if (rec == null) return Optional.empty();
 
-        boolean alreadyRead = Boolean.TRUE.equals(rec.get(field("read"), Boolean.class));
+        boolean alreadyRead = Boolean.TRUE.equals(rec.get(NOTIFICATION_USER_INBOX.READ, Boolean.class));
         if (!alreadyRead) {
-            dsl.update(table("notification_user_inbox"))
-                    .set(field("read"), true)
-                    .set(field("read_at"), OffsetDateTime.now())
-                    .where(field("id").eq(id))
+            dsl.update(NOTIFICATION_USER_INBOX)
+                    .set(NOTIFICATION_USER_INBOX.READ, true)
+                    .set(NOTIFICATION_USER_INBOX.READ_AT, LocalDateTime.now())
+                    .where(NOTIFICATION_USER_INBOX.ID.eq(id))
                     .execute();
         }
 
@@ -99,35 +100,39 @@ public class NotificationInboxService {
                 item.id(), item.tenantId(), item.workspaceId(), item.userId(),
                 item.eventKey(), item.type(), item.title(), item.message(),
                 true, item.link(), item.actorId(), item.resourceType(), item.resourceId(),
-                item.createdAt(), alreadyRead ? item.readAt() : OffsetDateTime.now()));
+                item.createdAt(), alreadyRead ? item.readAt() : LocalDateTime.now().atOffset(ZoneOffset.UTC)));
     }
 
     public void markAllAsRead(String userId) {
-        dsl.update(table("notification_user_inbox"))
-                .set(field("read"), true)
-                .set(field("read_at"), OffsetDateTime.now())
-                .where(field("user_id").eq(userId))
-                .and(field("read").eq(false))
+        dsl.update(NOTIFICATION_USER_INBOX)
+                .set(NOTIFICATION_USER_INBOX.READ, true)
+                .set(NOTIFICATION_USER_INBOX.READ_AT, LocalDateTime.now())
+                .where(NOTIFICATION_USER_INBOX.USER_ID.eq(userId))
+                .and(NOTIFICATION_USER_INBOX.READ.eq(false))
                 .execute();
     }
 
     private NotificationInboxItem mapRecord(org.jooq.Record rec) {
         return new NotificationInboxItem(
-                rec.get(field("id"), String.class),
-                rec.get(field("tenant_id"), String.class),
-                rec.get(field("workspace_id"), String.class),
-                rec.get(field("user_id"), String.class),
-                rec.get(field("event_key"), String.class),
-                rec.get(field("type"), String.class),
-                rec.get(field("title"), String.class),
-                rec.get(field("message"), String.class),
-                Boolean.TRUE.equals(rec.get(field("read"), Boolean.class)),
-                rec.get(field("link"), String.class),
-                rec.get(field("actor_id"), String.class),
-                rec.get(field("resource_type"), String.class),
-                rec.get(field("resource_id"), String.class),
-                rec.get(field("created_at"), OffsetDateTime.class),
-                rec.get(field("read_at"), OffsetDateTime.class)
+                rec.get(NOTIFICATION_USER_INBOX.ID, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.TENANT_ID, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.WORKSPACE_ID, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.USER_ID, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.EVENT_KEY, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.TYPE, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.TITLE, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.MESSAGE, String.class),
+                Boolean.TRUE.equals(rec.get(NOTIFICATION_USER_INBOX.READ, Boolean.class)),
+                rec.get(NOTIFICATION_USER_INBOX.LINK, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.ACTOR_ID, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.RESOURCE_TYPE, String.class),
+                rec.get(NOTIFICATION_USER_INBOX.RESOURCE_ID, String.class),
+                toOffset(rec.get(NOTIFICATION_USER_INBOX.CREATED_AT, LocalDateTime.class)),
+                toOffset(rec.get(NOTIFICATION_USER_INBOX.READ_AT, LocalDateTime.class))
         );
+    }
+
+    private OffsetDateTime toOffset(LocalDateTime ldt) {
+        return ldt != null ? ldt.atOffset(ZoneOffset.UTC) : null;
     }
 }

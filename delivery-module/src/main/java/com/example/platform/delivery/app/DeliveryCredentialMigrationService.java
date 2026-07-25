@@ -1,8 +1,5 @@
 package com.example.platform.delivery.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.secrets.api.port.SecretRefRegistryPort;
 import com.example.platform.secrets.api.port.SecretResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination.DELIVERY_DESTINATION;
+
 
 /**
  * Migrates legacy {@code credential_json} on delivery destinations into Vault {@code credential_ref}.
@@ -45,17 +44,17 @@ public class DeliveryCredentialMigrationService {
             throw new IllegalStateException("Vault must be enabled for credential migration");
         }
         List<Record> rows = dsl.select()
-                .from(table("delivery_destination"))
-                .where(field("tenant_id").eq(tenantId))
-                .and(field("credential_json").isNotNull())
-                .and(field("credential_ref").isNull())
+                .from(DELIVERY_DESTINATION)
+                .where(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
+                .and(DELIVERY_DESTINATION.CREDENTIAL_JSON.isNotNull())
+                .and(DELIVERY_DESTINATION.CREDENTIAL_REF.isNull())
                 .fetch();
         List<String> migrated = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
         List<String> failed = new ArrayList<>();
         for (Record row : rows) {
-            String destinationId = row.get(field("id", String.class));
-            String json = row.get(field("credential_json", String.class));
+            String destinationId = row.get(DELIVERY_DESTINATION.ID);
+            String json = row.get(DELIVERY_DESTINATION.CREDENTIAL_JSON);
             try {
                 Map<String, String> creds = parseJson(json);
                 if (creds.isEmpty()) {
@@ -65,10 +64,10 @@ public class DeliveryCredentialMigrationService {
                 if (!dryRun) {
                     String logicalKey = "tenants/" + tenantId + "/destinations/" + destinationId;
                     String ref = secretResolver.storeCredentialMap("delivery", logicalKey, creds);
-                    dsl.update(table("delivery_destination"))
-                            .set(field("credential_ref"), ref)
-                            .set(field("credential_json"), (String) null)
-                            .where(field("id").eq(destinationId))
+                    dsl.update(DELIVERY_DESTINATION)
+                            .set(DELIVERY_DESTINATION.CREDENTIAL_REF, ref)
+                            .set(DELIVERY_DESTINATION.CREDENTIAL_JSON, (String) null)
+                            .where(DELIVERY_DESTINATION.ID.eq(destinationId))
                             .execute();
                     secretRefRegistry.register("delivery", destinationId, "vault", ref);
                 }

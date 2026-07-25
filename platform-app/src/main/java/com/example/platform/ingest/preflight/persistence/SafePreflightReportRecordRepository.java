@@ -1,14 +1,15 @@
 package com.example.platform.ingest.preflight.persistence;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords.INGEST_PREFLIGHT_SAFE_REPORT_RECORDS;
+
 
 @Repository
 public class SafePreflightReportRecordRepository {
@@ -22,22 +23,22 @@ public class SafePreflightReportRecordRepository {
     private static final String TABLE = "ingest_preflight_safe_report_records";
 
     public SafePreflightReportRecord save(SafePreflightReportRecord record) {
-        var result = dsl.insertInto(table(TABLE))
+        var result = dsl.insertInto(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS)
             .columns(
-                field("tenant_id"), field("project_id"), field("raw_media_product_id"),
-                field("upload_attempt_id"), field("created_at"), field("expires_at"),
-                field("lifecycle_state"), field("persistence_mode"), field("access_scope"),
-                field("retention_days"), field("report_only_mode"), field("fail_open"),
-                field("overall_decision"), field("warning_count"), field("finding_count"),
-                field("reject_candidate_count"), field("declared_mime"), field("detected_mime"),
-                field("mime_mismatch"), field("content_type_confidence"), field("duration_ms"),
-                field("width"), field("height"), field("container_format"),
-                field("video_codec"), field("audio_codec"), field("has_video"),
-                field("has_audio"), field("tika_detector_success"), field("ffprobe_detector_success"),
-                field("detector_warning_codes"), field("policy_profile"), field("policy_mode"),
-                field("policy_decision"), field("policy_finding_count"), field("policy_reject_candidate_count"),
-                field("policy_user_safe_message_codes"), field("policy_finding_codes"),
-                field("upload_continues"), field("blocking"), field("schema_version")
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.TENANT_ID, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.PROJECT_ID, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.RAW_MEDIA_PRODUCT_ID,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.UPLOAD_ATTEMPT_ID, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.CREATED_AT, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.EXPIRES_AT,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.LIFECYCLE_STATE, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.PERSISTENCE_MODE, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.ACCESS_SCOPE,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.RETENTION_DAYS, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.REPORT_ONLY_MODE, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.FAIL_OPEN,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.OVERALL_DECISION, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.WARNING_COUNT, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.FINDING_COUNT,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.REJECT_CANDIDATE_COUNT, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.DECLARED_MIME, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.DETECTED_MIME,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.MIME_MISMATCH, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.CONTENT_TYPE_CONFIDENCE, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.DURATION_MS,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.WIDTH, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.HEIGHT, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.CONTAINER_FORMAT,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.VIDEO_CODEC, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.AUDIO_CODEC, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.HAS_VIDEO,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.HAS_AUDIO, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.TIKA_DETECTOR_SUCCESS, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.FFPROBE_DETECTOR_SUCCESS,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.DETECTOR_WARNING_CODES, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.POLICY_PROFILE, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.POLICY_MODE,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.POLICY_DECISION, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.POLICY_FINDING_COUNT, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.POLICY_REJECT_CANDIDATE_COUNT,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.POLICY_USER_SAFE_MESSAGE_CODES, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.POLICY_FINDING_CODES,
+                INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.UPLOAD_CONTINUES, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.BLOCKING, INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.SCHEMA_VERSION
             )
             .values(
                 record.tenantId(), record.projectId(), record.rawMediaProductId(),
@@ -55,7 +56,7 @@ public class SafePreflightReportRecordRepository {
                 record.policyUserSafeMessageCodes(), record.policyFindingCodes(),
                 record.uploadContinues(), record.blocking(), record.schemaVersion()
             )
-            .returning(field("id"))
+            .returning(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.ID)
             .fetchOne();
 
         Long id = result != null ? result.get("id", Long.class) : null;
@@ -79,32 +80,32 @@ public class SafePreflightReportRecordRepository {
     }
 
     public List<SafePreflightReportRecord> findByTenantAndProject(String tenantId, String projectId) {
-        return dsl.selectFrom(table(TABLE))
-            .where(field("tenant_id").eq(tenantId))
-            .and(field("project_id").eq(projectId))
-            .orderBy(field("created_at").desc())
+        return dsl.selectFrom(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS)
+            .where(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.TENANT_ID.eq(tenantId))
+            .and(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.PROJECT_ID.eq(projectId))
+            .orderBy(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.CREATED_AT.desc())
             .fetch(this::mapRecord);
     }
 
     public List<SafePreflightReportRecord> findByTenantProjectAndProduct(String tenantId, String projectId, String rawMediaProductId) {
-        return dsl.selectFrom(table(TABLE))
-            .where(field("tenant_id").eq(tenantId))
-            .and(field("project_id").eq(projectId))
-            .and(field("raw_media_product_id").eq(rawMediaProductId))
+        return dsl.selectFrom(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS)
+            .where(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.TENANT_ID.eq(tenantId))
+            .and(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.PROJECT_ID.eq(projectId))
+            .and(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.RAW_MEDIA_PRODUCT_ID.eq(rawMediaProductId))
             .fetch(this::mapRecord);
     }
 
     public List<SafePreflightReportRecord> findExpired(Instant expiresAt) {
-        return dsl.selectFrom(table(TABLE))
-            .where(field("expires_at").lt(expiresAt))
+        return dsl.selectFrom(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS)
+            .where(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.EXPIRES_AT.lt(LocalDateTime.ofInstant(expiresAt, ZoneOffset.UTC)))
             .fetch(this::mapRecord);
     }
 
     public Optional<SafePreflightReportRecord> findByIdAndTenantProject(Long id, String tenantId, String projectId) {
-        return dsl.selectFrom(table(TABLE))
-            .where(field("id").eq(id))
-            .and(field("tenant_id").eq(tenantId))
-            .and(field("project_id").eq(projectId))
+        return dsl.selectFrom(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS)
+            .where(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.ID.eq(id))
+            .and(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.TENANT_ID.eq(tenantId))
+            .and(INGEST_PREFLIGHT_SAFE_REPORT_RECORDS.PROJECT_ID.eq(projectId))
             .fetchOptional(this::mapRecord);
     }
 

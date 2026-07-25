@@ -1,16 +1,18 @@
 package com.example.platform.identity.infrastructure;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.identity.domain.Workspace;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.Workspace.WORKSPACE;
+
 
 @Repository
 
@@ -23,58 +25,60 @@ public class WorkspaceRepository {
     }
 
     public Workspace save(Workspace workspace) {
-        dsl.insertInto(table("workspace"))
-                .columns(field("id"), field("tenant_id"), field("name"),
-                        field("description"), field("plan_tier"), field("status"),
-                        field("created_at"), field("updated_at"))
+        dsl.insertInto(WORKSPACE)
+                .columns(WORKSPACE.ID, WORKSPACE.TENANT_ID, WORKSPACE.NAME,
+                        WORKSPACE.DESCRIPTION, WORKSPACE.PLAN_TIER, WORKSPACE.STATUS,
+                        WORKSPACE.CREATED_AT, WORKSPACE.UPDATED_AT)
                 .values(workspace.id(), workspace.tenantId(), workspace.name(),
                         workspace.description(), workspace.planTier(),
-                        workspace.status().name(), workspace.createdAt(), workspace.updatedAt())
+                        workspace.status().name(),
+                        LocalDateTime.ofInstant(workspace.createdAt(), ZoneOffset.UTC),
+                        LocalDateTime.ofInstant(workspace.updatedAt(), ZoneOffset.UTC))
                 .execute();
         return workspace;
     }
 
     public Optional<Workspace> findById(String id) {
         Record record = dsl.select()
-                .from(table("workspace"))
-                .where(field("id").eq(id))
+                .from(WORKSPACE)
+                .where(WORKSPACE.ID.eq(id))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public List<Workspace> findByTenantId(String tenantId) {
         return dsl.select()
-                .from(table("workspace"))
-                .where(field("tenant_id").eq(tenantId))
-                .orderBy(field("created_at").desc())
+                .from(WORKSPACE)
+                .where(WORKSPACE.TENANT_ID.eq(tenantId))
+                .orderBy(WORKSPACE.CREATED_AT.desc())
                 .fetch(this::mapRecord);
     }
 
     public List<Workspace> findAll() {
         return dsl.select()
-                .from(table("workspace"))
-                .orderBy(field("created_at").desc())
+                .from(WORKSPACE)
+                .orderBy(WORKSPACE.CREATED_AT.desc())
                 .fetch(this::mapRecord);
     }
 
     public void updateStatus(String id, Workspace.WorkspaceStatus status, OffsetDateTime updatedAt) {
-        dsl.update(table("workspace"))
-                .set(field("status"), status.name())
-                .set(field("updated_at"), updatedAt)
-                .where(field("id").eq(id))
+        dsl.update(WORKSPACE)
+                .set(WORKSPACE.STATUS, status.name())
+                .set(WORKSPACE.UPDATED_AT, updatedAt.toLocalDateTime())
+                .where(WORKSPACE.ID.eq(id))
                 .execute();
     }
 
     private Workspace mapRecord(Record record) {
         return new Workspace(
-                record.get(field("id"), String.class),
-                record.get(field("tenant_id"), String.class),
-                record.get(field("name"), String.class),
-                record.get(field("description"), String.class),
-                record.get(field("plan_tier"), String.class),
-                Workspace.WorkspaceStatus.valueOf(record.get(field("status"), String.class)),
-                record.get(field("created_at"), OffsetDateTime.class).toInstant(),
-                record.get(field("updated_at"), OffsetDateTime.class).toInstant()
+                record.get(WORKSPACE.ID, String.class),
+                record.get(WORKSPACE.TENANT_ID, String.class),
+                record.get(WORKSPACE.NAME, String.class),
+                record.get(WORKSPACE.DESCRIPTION, String.class),
+                record.get(WORKSPACE.PLAN_TIER, String.class),
+                Workspace.WorkspaceStatus.valueOf(record.get(WORKSPACE.STATUS, String.class)),
+                record.get(WORKSPACE.CREATED_AT, LocalDateTime.class).toInstant(ZoneOffset.UTC),
+                record.get(WORKSPACE.UPDATED_AT, LocalDateTime.class).toInstant(ZoneOffset.UTC)
         );
     }
 }

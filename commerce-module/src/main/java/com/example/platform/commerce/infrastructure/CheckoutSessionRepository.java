@@ -1,12 +1,9 @@
 package com.example.platform.commerce.infrastructure;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.commerce.domain.CheckoutSession;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.shared.web.TenantGuard;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +12,8 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.CheckoutSession.CHECKOUT_SESSION;
+
 
 @Repository
 
@@ -28,20 +27,20 @@ public class CheckoutSessionRepository {
 
     public CheckoutSession save(CheckoutSession session, String userId, String cartId) {
         TenantGuard.assertSameTenantIfContextPresent(session.tenantId());
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        dsl.insertInto(table("checkout_session"))
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        dsl.insertInto(CHECKOUT_SESSION)
                 .columns(
-                        field("id"),
-                        field("checkout_session_code"),
-                        field("tenant_id"),
-                        field("product_id"),
-                        field("provider_code"),
-                        field("session_status"),
-                        field("success_url"),
-                        field("cancel_url"),
-                        field("user_id"),
-                        field("cart_id"),
-                        field("created_at"))
+                        CHECKOUT_SESSION.ID,
+                        CHECKOUT_SESSION.CHECKOUT_SESSION_CODE,
+                        CHECKOUT_SESSION.TENANT_ID,
+                        CHECKOUT_SESSION.PRODUCT_ID,
+                        CHECKOUT_SESSION.PROVIDER_CODE,
+                        CHECKOUT_SESSION.SESSION_STATUS,
+                        CHECKOUT_SESSION.SUCCESS_URL,
+                        CHECKOUT_SESSION.CANCEL_URL,
+                        CHECKOUT_SESSION.USER_ID,
+                        CHECKOUT_SESSION.CART_ID,
+                        CHECKOUT_SESSION.CREATED_AT)
                 .values(
                         session.checkoutSessionId(),
                         session.checkoutSessionId(),
@@ -60,8 +59,8 @@ public class CheckoutSessionRepository {
 
     public Optional<CheckoutSession> findById(String id) {
         Record record = dsl.select()
-                .from(table("checkout_session"))
-                .where(field("id").eq(id))
+                .from(CHECKOUT_SESSION)
+                .where(CHECKOUT_SESSION.ID.eq(id))
                 .and(tenantPredicate())
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
@@ -70,13 +69,13 @@ public class CheckoutSessionRepository {
     /** Loads by id; enforces tenant match when {@link com.example.platform.shared.web.TenantContext} is set. */
     public Optional<CheckoutSession> findByIdUnchecked(String id) {
         Record record = dsl.select()
-                .from(table("checkout_session"))
-                .where(field("id").eq(id))
+                .from(CHECKOUT_SESSION)
+                .where(CHECKOUT_SESSION.ID.eq(id))
                 .fetchOne();
         if (record == null) {
             return Optional.empty();
         }
-        String resourceTenant = record.get(field("tenant_id"), String.class);
+        String resourceTenant = record.get(CHECKOUT_SESSION.TENANT_ID, String.class);
         String currentTenant = TenantContext.get();
         if (currentTenant != null && !currentTenant.isBlank()) {
             TenantGuard.assertSameTenant(resourceTenant);
@@ -87,32 +86,32 @@ public class CheckoutSessionRepository {
     public Optional<CheckoutSession> findByIdForTenant(String id, String tenantId) {
         String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
         Record record = dsl.select()
-                .from(table("checkout_session"))
-                .where(field("id").eq(id))
-                .and(field("tenant_id").eq(effectiveTenant))
+                .from(CHECKOUT_SESSION)
+                .where(CHECKOUT_SESSION.ID.eq(id))
+                .and(CHECKOUT_SESSION.TENANT_ID.eq(effectiveTenant))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public Optional<SessionMetadata> findMetadata(String id) {
-        Record record = dsl.select(field("user_id"), field("cart_id"), field("tenant_id"))
-                .from(table("checkout_session"))
-                .where(field("id").eq(id))
+        Record record = dsl.select(CHECKOUT_SESSION.USER_ID, CHECKOUT_SESSION.CART_ID, CHECKOUT_SESSION.TENANT_ID)
+                .from(CHECKOUT_SESSION)
+                .where(CHECKOUT_SESSION.ID.eq(id))
                 .and(tenantPredicate())
                 .fetchOne();
         if (record == null) {
             return Optional.empty();
         }
         return Optional.of(new SessionMetadata(
-                record.get(field("user_id"), String.class),
-                record.get(field("cart_id"), String.class),
-                record.get(field("tenant_id"), String.class)));
+                record.get(CHECKOUT_SESSION.USER_ID, String.class),
+                record.get(CHECKOUT_SESSION.CART_ID, String.class),
+                record.get(CHECKOUT_SESSION.TENANT_ID, String.class)));
     }
 
     public void updateStatus(String id, String status) {
-        dsl.update(table("checkout_session"))
-                .set(field("session_status"), status)
-                .where(field("id").eq(id))
+        dsl.update(CHECKOUT_SESSION)
+                .set(CHECKOUT_SESSION.SESSION_STATUS, status)
+                .where(CHECKOUT_SESSION.ID.eq(id))
                 .and(tenantPredicate())
                 .execute();
     }
@@ -120,31 +119,31 @@ public class CheckoutSessionRepository {
     public long countActiveForTenant(String tenantId) {
         String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
         return dsl.fetchCount(
-                dsl.selectFrom(table("checkout_session"))
-                        .where(field("tenant_id").eq(effectiveTenant))
-                        .and(field("session_status").eq("PENDING")));
+                dsl.selectFrom(CHECKOUT_SESSION)
+                        .where(CHECKOUT_SESSION.TENANT_ID.eq(effectiveTenant))
+                        .and(CHECKOUT_SESSION.SESSION_STATUS.eq("PENDING")));
     }
 
     public List<String> listActiveSessionIds(String tenantId) {
         String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
-        return dsl.select(field("id"))
-                .from(table("checkout_session"))
-                .where(field("tenant_id").eq(effectiveTenant))
-                .and(field("session_status").eq("PENDING"))
-                .fetch(field("id", String.class));
+        return dsl.select(CHECKOUT_SESSION.ID)
+                .from(CHECKOUT_SESSION)
+                .where(CHECKOUT_SESSION.TENANT_ID.eq(effectiveTenant))
+                .and(CHECKOUT_SESSION.SESSION_STATUS.eq("PENDING"))
+                .fetch(CHECKOUT_SESSION.ID);
     }
 
     private CheckoutSession mapRecord(Record record) {
         return new CheckoutSession(
-                record.get(field("id"), String.class),
-                record.get(field("tenant_id"), String.class),
-                record.get(field("product_id"), String.class),
-                record.get(field("success_url"), String.class),
-                record.get(field("provider_code"), String.class));
+                record.get(CHECKOUT_SESSION.ID, String.class),
+                record.get(CHECKOUT_SESSION.TENANT_ID, String.class),
+                record.get(CHECKOUT_SESSION.PRODUCT_ID, String.class),
+                record.get(CHECKOUT_SESSION.SUCCESS_URL, String.class),
+                record.get(CHECKOUT_SESSION.PROVIDER_CODE, String.class));
     }
 
     private static Condition tenantPredicate() {
-        return field("tenant_id").eq(TenantGuard.requireTenantId());
+        return CHECKOUT_SESSION.TENANT_ID.eq(TenantGuard.requireTenantId());
     }
 
     public record SessionMetadata(String userId, String cartId, String tenantId) {}

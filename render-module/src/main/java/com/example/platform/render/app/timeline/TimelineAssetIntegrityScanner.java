@@ -5,9 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Detects dangling timeline clip {@code assetId} references and tombstoned assets still referenced by clips.
@@ -23,15 +22,15 @@ public class TimelineAssetIntegrityScanner {
 
     public ScanResult scanProject(String projectId) {
         List<Finding> findings = new ArrayList<>();
-        var rows = dsl.select(field("id", String.class), field("payload_json", String.class))
-                .from(table("timeline_snapshot"))
-                .where(field("project_id").eq(projectId))
-                .orderBy(field("created_at").desc())
+        var rows = dsl.select(TIMELINE_SNAPSHOT.ID, TIMELINE_SNAPSHOT.PAYLOAD_JSON)
+                .from(TIMELINE_SNAPSHOT)
+                .where(TIMELINE_SNAPSHOT.PROJECT_ID.eq(projectId))
+                .orderBy(TIMELINE_SNAPSHOT.CREATED_AT.desc())
                 .limit(100)
                 .fetch();
         for (var row : rows) {
-            String snapshotId = row.get(field("id", String.class));
-            String payload = row.get(field("payload_json", String.class));
+            String snapshotId = row.get(TIMELINE_SNAPSHOT.ID);
+            String payload = row.get(TIMELINE_SNAPSHOT.PAYLOAD_JSON);
             if (payload == null || payload.isBlank()) {
                 continue;
             }

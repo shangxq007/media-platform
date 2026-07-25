@@ -1,13 +1,11 @@
 package com.example.platform.render.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+
 
 /**
  * Marks stuck {@code render_job} rows as {@link RenderJobStatus#FAILED} (scheduled or post-restart).
@@ -50,13 +50,13 @@ public class StaleRenderJobCompensationService {
             activeStatuses.add(RenderJobStatus.QUEUED.name());
         }
 
-        Condition condition = field("status").in(activeStatuses);
+        Condition condition = RENDER_JOB.STATUS.in(activeStatuses);
         if (request.cutoff() != null) {
-            condition = condition.and(field("created_at").lessThan(request.cutoff()));
+            condition = condition.and(RENDER_JOB.CREATED_AT.lessThan(request.cutoff().toLocalDateTime()));
         }
 
-        var staleJobs = dsl.select(field("id"), field("project_id"), field("status"))
-                .from(table("render_job"))
+        var staleJobs = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.STATUS)
+                .from(RENDER_JOB)
                 .where(condition)
                 .fetch();
 
@@ -65,16 +65,16 @@ public class StaleRenderJobCompensationService {
         String reason = request.reasonCode();
 
         for (Record job : staleJobs) {
-            String jobId = job.get(field("id"), String.class);
-            String projectId = job.get(field("project_id"), String.class);
-            String statusStr = job.get(field("status"), String.class);
+            String jobId = job.get(RENDER_JOB.ID, String.class);
+            String projectId = job.get(RENDER_JOB.PROJECT_ID, String.class);
+            String statusStr = job.get(RENDER_JOB.STATUS, String.class);
             RenderJobStatus currentStatus = RenderJobStatus.valueOf(statusStr);
             try {
                 stateMachine.validateTransition(currentStatus, RenderJobStatus.FAILED);
-                dsl.update(table("render_job"))
-                        .set(field("status"), RenderJobStatus.FAILED.name())
-                        .set(field("error_message"), request.errorMessage())
-                        .where(field("id").eq(jobId))
+                dsl.update(RENDER_JOB)
+                        .set(RENDER_JOB.STATUS, RenderJobStatus.FAILED.name())
+                        .set(RENDER_JOB.ERROR_MESSAGE, request.errorMessage())
+                        .where(RENDER_JOB.ID.eq(jobId))
                         .execute();
                 historyRepository.record(
                         jobId, statusStr, RenderJobStatus.FAILED.name(), reason, "STALE_TIMEOUT");

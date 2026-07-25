@@ -20,9 +20,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Tombstone and reference checks for media assets in Internal Timeline {@code assetRegistry}.
@@ -149,14 +148,14 @@ public class TimelineAssetLifecycleService {
 
     private List<SnapshotRow> listSnapshotsForProject(String projectId) {
         return dsl.select(
-                        field("id", String.class),
-                        field("payload_json", String.class))
-                .from(table("timeline_snapshot"))
-                .where(field("project_id").eq(projectId))
-                .orderBy(field("created_at").desc())
+                        TIMELINE_SNAPSHOT.ID,
+                        TIMELINE_SNAPSHOT.PAYLOAD_JSON)
+                .from(TIMELINE_SNAPSHOT)
+                .where(TIMELINE_SNAPSHOT.PROJECT_ID.eq(projectId))
+                .orderBy(TIMELINE_SNAPSHOT.CREATED_AT.desc())
                 .fetch(r -> new SnapshotRow(
-                        r.get(field("id", String.class)),
-                        r.get(field("payload_json", String.class))));
+                        r.get(TIMELINE_SNAPSHOT.ID),
+                        r.get(TIMELINE_SNAPSHOT.PAYLOAD_JSON)));
     }
 
     public record DeleteCheckResult(

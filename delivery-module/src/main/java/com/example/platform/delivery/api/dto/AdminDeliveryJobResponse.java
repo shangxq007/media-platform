@@ -1,6 +1,6 @@
 package com.example.platform.delivery.api.dto;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 public record AdminDeliveryJobResponse(
         String id,
@@ -15,5 +15,5 @@ public record AdminDeliveryJobResponse(
         Integer attemptCount,
         String errorCode,
         String errorMessage,
-        OffsetDateTime createdAt,
-        OffsetDateTime completedAt) {}
+        LocalDateTime createdAt,
+        LocalDateTime completedAt) {}

@@ -35,7 +35,11 @@ class ModularityTest {
         // web -> storage: DevStorageDeliveryProfileDiagnosticsController uses storage diagnostics
         "web' depends on module 'storage",
         // root -> ingest non-exposed types: PlatformBeanConfiguration references ingest config properties
-        "root:com.example.platform' depends on non-exposed type"
+        "root:com.example.platform' depends on non-exposed type",
+        // Migration: typedschema jooq-tables are now used across modules for typed SQL generation
+        "depends on named interface(s) 'typedschema :: jooq-tables'",
+        // Migration: ingest module uses non-exposed typed schema record types
+        "depends on non-exposed type com.example.platform.typedschema.jooq.generated.tables.records"
     );
 
     @Test

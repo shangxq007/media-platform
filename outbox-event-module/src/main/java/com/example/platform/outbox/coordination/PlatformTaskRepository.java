@@ -1,18 +1,17 @@
 package com.example.platform.outbox.coordination;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.outbox.coordination.*;
 import com.example.platform.shared.Ids;
 import java.time.Instant;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.PlatformTask.PLATFORM_TASK;
+
 
 @Repository
 public class PlatformTaskRepository {
@@ -26,99 +25,99 @@ public class PlatformTaskRepository {
     public PlatformTask create(String jobId, String taskType, TaskCapability capability,
                                  String provider, int bitPosition) {
         String id = Ids.newId("ptsk");
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(table("platform_task"))
-                .columns(field("id"), field("job_id"), field("task_type"),
-                        field("capability"), field("provider"), field("status"),
-                        field("attempt_count"), field("max_attempts"),
-                        field("bit_position"), field("created_at"), field("updated_at"))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.insertInto(PLATFORM_TASK)
+                .columns(PLATFORM_TASK.ID, PLATFORM_TASK.JOB_ID, PLATFORM_TASK.TASK_TYPE,
+                        PLATFORM_TASK.CAPABILITY, PLATFORM_TASK.PROVIDER, PLATFORM_TASK.STATUS,
+                        PLATFORM_TASK.ATTEMPT_COUNT, PLATFORM_TASK.MAX_ATTEMPTS,
+                        PLATFORM_TASK.BIT_POSITION, PLATFORM_TASK.CREATED_AT, PLATFORM_TASK.UPDATED_AT)
                 .values(id, jobId, taskType, capability.name(), provider, "PENDING",
                         0, 3, bitPosition, now, now)
                 .execute();
         return new PlatformTask(id, jobId, taskType, capability, provider, TaskStatus.PENDING,
                 0, 3, null, null, null, bitPosition, null, null,
-                now.toInstant(), now.toInstant());
+                now.toInstant(java.time.ZoneOffset.UTC), now.toInstant(java.time.ZoneOffset.UTC));
     }
 
     public Optional<PlatformTask> findById(String taskId) {
-        Record r = dsl.select().from(table("platform_task")).where(field("id").eq(taskId)).fetchOne();
+        Record r = dsl.select().from(PLATFORM_TASK).where(PLATFORM_TASK.ID.eq(taskId)).fetchOne();
         return r == null ? Optional.empty() : Optional.of(mapTask(r));
     }
 
     public List<PlatformTask> listByJob(String jobId) {
-        return dsl.select().from(table("platform_task"))
-                .where(field("job_id").eq(jobId))
-                .orderBy(field("bit_position").asc())
+        return dsl.select().from(PLATFORM_TASK)
+                .where(PLATFORM_TASK.JOB_ID.eq(jobId))
+                .orderBy(PLATFORM_TASK.BIT_POSITION.asc())
                 .fetch().map(PlatformTaskRepository::mapTask);
     }
 
     public boolean lease(String taskId) {
-        return dsl.update(table("platform_task"))
-                .set(field("status"), "LEASED")
-                .set(field("started_at"), OffsetDateTime.now())
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(taskId).and(field("status").eq("PENDING")))
+        return dsl.update(PLATFORM_TASK)
+                .set(PLATFORM_TASK.STATUS, "LEASED")
+                .set(PLATFORM_TASK.STARTED_AT, LocalDateTime.now())
+                .set(PLATFORM_TASK.UPDATED_AT, LocalDateTime.now())
+                .where(PLATFORM_TASK.ID.eq(taskId).and(PLATFORM_TASK.STATUS.eq("PENDING")))
                 .execute() > 0;
     }
 
     public void complete(String taskId, String resultRef) {
-        dsl.update(table("platform_task"))
-                .set(field("status"), "COMPLETED")
-                .set(field("result_ref"), resultRef)
-                .set(field("completed_at"), OffsetDateTime.now())
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(taskId)).execute();
+        dsl.update(PLATFORM_TASK)
+                .set(PLATFORM_TASK.STATUS, "COMPLETED")
+                .set(PLATFORM_TASK.RESULT_REF, resultRef)
+                .set(PLATFORM_TASK.COMPLETED_AT, LocalDateTime.now())
+                .set(PLATFORM_TASK.UPDATED_AT, LocalDateTime.now())
+                .where(PLATFORM_TASK.ID.eq(taskId)).execute();
     }
 
     public void fail(String taskId, String errorMessage) {
-        dsl.update(table("platform_task"))
-                .set(field("status"), "FAILED")
-                .set(field("error_message"), errorMessage)
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(taskId)).execute();
+        dsl.update(PLATFORM_TASK)
+                .set(PLATFORM_TASK.STATUS, "FAILED")
+                .set(PLATFORM_TASK.ERROR_MESSAGE, errorMessage)
+                .set(PLATFORM_TASK.UPDATED_AT, LocalDateTime.now())
+                .where(PLATFORM_TASK.ID.eq(taskId)).execute();
     }
 
     public List<PlatformTask> listPendingByCapability(TaskCapability capability, int limit) {
-        return dsl.select().from(table("platform_task"))
-                .where(field("capability").eq(capability.name())
-                        .and(field("status").eq("PENDING")))
-                .orderBy(field("created_at").asc())
+        return dsl.select().from(PLATFORM_TASK)
+                .where(PLATFORM_TASK.CAPABILITY.eq(capability.name())
+                        .and(PLATFORM_TASK.STATUS.eq("PENDING")))
+                .orderBy(PLATFORM_TASK.CREATED_AT.asc())
                 .limit(limit)
                 .fetch().map(PlatformTaskRepository::mapTask);
     }
 
     public int resetStaleLeases(int leaseTimeoutMinutes) {
-        Condition stale = field("status").eq("LEASED")
-                .and(field("started_at").lt(OffsetDateTime.now().minusMinutes(leaseTimeoutMinutes)));
-        return dsl.update(table("platform_task"))
-                .set(field("status"), "PENDING")
-                .set(field("started_at"), (OffsetDateTime) null)
-                .set(field("updated_at"), OffsetDateTime.now())
+        Condition stale = PLATFORM_TASK.STATUS.eq("LEASED")
+                .and(PLATFORM_TASK.STARTED_AT.lt(LocalDateTime.now().minusMinutes(leaseTimeoutMinutes)));
+        return dsl.update(PLATFORM_TASK)
+                .set(PLATFORM_TASK.STATUS, "PENDING")
+                .set(PLATFORM_TASK.STARTED_AT, (LocalDateTime) null)
+                .set(PLATFORM_TASK.UPDATED_AT, LocalDateTime.now())
                 .where(stale)
                 .execute();
     }
 
     private static PlatformTask mapTask(Record r) {
         return new PlatformTask(
-                r.get(field("id", String.class)),
-                r.get(field("job_id", String.class)),
-                r.get(field("task_type", String.class)),
-                tryParse(TaskCapability.class, r.get(field("capability", String.class))),
-                r.get(field("provider", String.class)),
-                tryParse(TaskStatus.class, r.get(field("status", String.class))),
-                r.get(field("attempt_count", Integer.class)),
-                r.get(field("max_attempts", Integer.class)),
-                r.get(field("result_ref", String.class)),
-                r.get(field("result_json", String.class)),
-                r.get(field("error_message", String.class)),
-                r.get(field("bit_position", Integer.class)),
-                toInstant(r.get(field("started_at", OffsetDateTime.class))),
-                toInstant(r.get(field("completed_at", OffsetDateTime.class))),
-                toInstant(r.get(field("created_at", OffsetDateTime.class))),
-                toInstant(r.get(field("updated_at", OffsetDateTime.class))));
+                r.get(PLATFORM_TASK.ID),
+                r.get(PLATFORM_TASK.JOB_ID),
+                r.get(PLATFORM_TASK.TASK_TYPE),
+                tryParse(TaskCapability.class, r.get(PLATFORM_TASK.CAPABILITY)),
+                r.get(PLATFORM_TASK.PROVIDER),
+                tryParse(TaskStatus.class, r.get(PLATFORM_TASK.STATUS)),
+                r.get(PLATFORM_TASK.ATTEMPT_COUNT),
+                r.get(PLATFORM_TASK.MAX_ATTEMPTS),
+                r.get(PLATFORM_TASK.RESULT_REF),
+                r.get(PLATFORM_TASK.RESULT_JSON),
+                r.get(PLATFORM_TASK.ERROR_MESSAGE),
+                r.get(PLATFORM_TASK.BIT_POSITION),
+                toInstant(r.get(PLATFORM_TASK.STARTED_AT)),
+                toInstant(r.get(PLATFORM_TASK.COMPLETED_AT)),
+                toInstant(r.get(PLATFORM_TASK.CREATED_AT)),
+                toInstant(r.get(PLATFORM_TASK.UPDATED_AT)));
     }
 
-    private static Instant toInstant(OffsetDateTime odt) { return odt != null ? odt.toInstant() : null; }
+    private static Instant toInstant(LocalDateTime ldt) { return ldt != null ? ldt.toInstant(java.time.ZoneOffset.UTC) : null; }
     private static <E extends Enum<E>> E tryParse(Class<E> type, String value) {
         try { return Enum.valueOf(type, value); } catch (Exception e) { return null; }
     }

@@ -1,16 +1,18 @@
 package com.example.platform.identity.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.identity.domain.Project;
 import com.example.platform.identity.infrastructure.JooqRecords;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.Project.PROJECT;
+
 
 @Repository
 public class ProjectRepository {
@@ -22,34 +24,34 @@ public class ProjectRepository {
     }
 
     public Project save(Project project) {
-        dsl.insertInto(table("project"))
-                .columns(field("id"), field("tenant_id"), field("name"),
-                        field("description"), field("status"), field("created_at"))
+        dsl.insertInto(PROJECT)
+                .columns(PROJECT.ID, PROJECT.TENANT_ID, PROJECT.NAME,
+                        PROJECT.DESCRIPTION, PROJECT.STATUS, PROJECT.CREATED_AT)
                 .values(project.id(), project.tenantId(), project.name(),
-                        project.description(), project.status().name(), project.createdAt())
+                        project.description(), project.status().name(), LocalDateTime.ofInstant(project.createdAt(), ZoneOffset.UTC))
                 .execute();
         return project;
     }
 
     public Optional<Project> findById(String id) {
         Record record = dsl.select()
-                .from(table("project"))
-                .where(field("id").eq(id))
+                .from(PROJECT)
+                .where(PROJECT.ID.eq(id))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public List<Project> findByTenantId(String tenantId) {
         return dsl.select()
-                .from(table("project"))
-                .where(field("tenant_id").eq(tenantId))
-                .orderBy(field("created_at").desc())
+                .from(PROJECT)
+                .where(PROJECT.TENANT_ID.eq(tenantId))
+                .orderBy(PROJECT.CREATED_AT.desc())
                 .fetch(this::mapRecord);
     }
 
     public void deleteById(String id) {
-        dsl.deleteFrom(table("project"))
-                .where(field("id").eq(id))
+        dsl.deleteFrom(PROJECT)
+                .where(PROJECT.ID.eq(id))
                 .execute();
     }
 

@@ -1,14 +1,14 @@
 package com.example.platform.render.infrastructure.asset;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.render.domain.asset.search.SearchProjection;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.*;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.SearchProjection.SEARCH_PROJECTION;
+
 
 @Repository
 public class SearchProjectionRepository {
@@ -20,7 +20,7 @@ public class SearchProjectionRepository {
     }
 
     public void upsert(SearchProjection proj) {
-        OffsetDateTime now = OffsetDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         String searchText = proj.searchText() != null ? proj.searchText() : "";
         dsl.execute(
                 "INSERT INTO search_projection (asset_id, tenant_id, project_id, filename, asset_type, "
@@ -45,8 +45,8 @@ public class SearchProjectionRepository {
     }
 
     public Optional<SearchProjection> findByAssetId(String assetId) {
-        Record r = dsl.select().from(table("search_projection"))
-                .where(field("asset_id").eq(assetId)).fetchOne();
+        Record r = dsl.select().from(SEARCH_PROJECTION)
+                .where(SEARCH_PROJECTION.ASSET_ID.eq(assetId)).fetchOne();
         return r == null ? Optional.empty() : Optional.of(map(r));
     }
 
@@ -76,34 +76,34 @@ public class SearchProjectionRepository {
     }
 
     public List<SearchProjection> listByProject(String projectId, int limit) {
-        return dsl.select().from(table("search_projection"))
-                .where(field("project_id").eq(projectId))
-                .orderBy(field("updated_at").desc())
+        return dsl.select().from(SEARCH_PROJECTION)
+                .where(SEARCH_PROJECTION.PROJECT_ID.eq(projectId))
+                .orderBy(SEARCH_PROJECTION.UPDATED_AT.desc())
                 .limit(limit)
                 .fetch().map(SearchProjectionRepository::map);
     }
 
     public void delete(String assetId) {
-        dsl.deleteFrom(table("search_projection"))
-                .where(field("asset_id").eq(assetId)).execute();
+        dsl.deleteFrom(SEARCH_PROJECTION)
+                .where(SEARCH_PROJECTION.ASSET_ID.eq(assetId)).execute();
     }
 
     private static SearchProjection map(Record r) {
         return new SearchProjection(
-                r.get(field("asset_id", String.class)),
-                r.get(field("tenant_id", String.class)),
-                r.get(field("project_id", String.class)),
-                r.get(field("filename", String.class)),
-                r.get(field("asset_type", String.class)),
-                r.get(field("transcript_text", String.class)),
-                parseList(r.get(field("scene_labels", String.class))),
-                parseList(r.get(field("objects", String.class))),
-                parseList(r.get(field("brands", String.class))),
-                parseList(r.get(field("people", String.class))),
-                r.get(field("classification", String.class)),
-                r.get(field("license", String.class)),
-                r.get(field("publish_status", String.class)),
-                r.get(field("search_text", String.class)), 0);
+                r.get(SEARCH_PROJECTION.ASSET_ID),
+                r.get(SEARCH_PROJECTION.TENANT_ID),
+                r.get(SEARCH_PROJECTION.PROJECT_ID),
+                r.get(SEARCH_PROJECTION.FILENAME),
+                r.get(SEARCH_PROJECTION.ASSET_TYPE),
+                r.get(SEARCH_PROJECTION.TRANSCRIPT_TEXT),
+                parseList(r.get(SEARCH_PROJECTION.SCENE_LABELS)),
+                parseList(r.get(SEARCH_PROJECTION.OBJECTS)),
+                parseList(r.get(SEARCH_PROJECTION.BRANDS)),
+                parseList(r.get(SEARCH_PROJECTION.PEOPLE)),
+                r.get(SEARCH_PROJECTION.CLASSIFICATION),
+                r.get(SEARCH_PROJECTION.LICENSE),
+                r.get(SEARCH_PROJECTION.PUBLISH_STATUS),
+                r.get(SEARCH_PROJECTION.SEARCH_TEXT), 0);
     }
 
     private static String toString(List<String> list) {

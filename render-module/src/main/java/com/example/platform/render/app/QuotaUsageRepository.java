@@ -1,15 +1,15 @@
 package com.example.platform.render.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.shared.Ids;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.QuotaUsage.QUOTA_USAGE;
+
 
 @Repository
 public class QuotaUsageRepository {
@@ -24,18 +24,18 @@ public class QuotaUsageRepository {
         Optional<QuotaUsageRecord> existing = findByTenantAndFeature(tenantId, featureCode);
         if (existing.isPresent()) {
             int newValue = existing.get().usageValue() + amount;
-            dsl.update(table("quota_usage"))
-                    .set(field("usage_value"), newValue)
-                    .set(field("updated_at"), OffsetDateTime.now())
-                    .where(field("id").eq(existing.get().id()))
+            dsl.update(QUOTA_USAGE)
+                    .set(QUOTA_USAGE.USAGE_VALUE, newValue)
+                    .set(QUOTA_USAGE.UPDATED_AT, LocalDateTime.now())
+                    .where(QUOTA_USAGE.ID.eq(existing.get().id()))
                     .execute();
             return newValue;
         } else {
             String id = Ids.newId("qtu");
-            dsl.insertInto(table("quota_usage"))
-                    .columns(field("id"), field("tenant_id"), field("feature_code"),
-                            field("usage_value"), field("created_at"), field("updated_at"))
-                    .values(id, tenantId, featureCode, amount, OffsetDateTime.now(), OffsetDateTime.now())
+            dsl.insertInto(QUOTA_USAGE)
+                    .columns(QUOTA_USAGE.ID, QUOTA_USAGE.TENANT_ID, QUOTA_USAGE.FEATURE_CODE,
+                            QUOTA_USAGE.USAGE_VALUE, QUOTA_USAGE.CREATED_AT, QUOTA_USAGE.UPDATED_AT)
+                    .values(id, tenantId, featureCode, amount, LocalDateTime.now(), LocalDateTime.now())
                     .execute();
             return amount;
         }
@@ -43,9 +43,9 @@ public class QuotaUsageRepository {
 
     public Optional<QuotaUsageRecord> findByTenantAndFeature(String tenantId, String featureCode) {
         Record record = dsl.select()
-                .from(table("quota_usage"))
-                .where(field("tenant_id").eq(tenantId))
-                .and(field("feature_code").eq(featureCode))
+                .from(QUOTA_USAGE)
+                .where(QUOTA_USAGE.TENANT_ID.eq(tenantId))
+                .and(QUOTA_USAGE.FEATURE_CODE.eq(featureCode))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
@@ -57,23 +57,23 @@ public class QuotaUsageRepository {
     }
 
     public Map<String, Integer> getUsageByTenant(String tenantId) {
-        return dsl.select(field("feature_code"), field("usage_value"))
-                .from(table("quota_usage"))
-                .where(field("tenant_id").eq(tenantId))
+        return dsl.select(QUOTA_USAGE.FEATURE_CODE, QUOTA_USAGE.USAGE_VALUE)
+                .from(QUOTA_USAGE)
+                .where(QUOTA_USAGE.TENANT_ID.eq(tenantId))
                 .fetchMap(
-                        r -> r.get(field("feature_code"), String.class),
-                        r -> r.get(field("usage_value"), Integer.class)
+                        r -> r.get(QUOTA_USAGE.FEATURE_CODE, String.class),
+                        r -> r.get(QUOTA_USAGE.USAGE_VALUE, Integer.class)
                 );
     }
 
     private QuotaUsageRecord mapRecord(Record record) {
         return new QuotaUsageRecord(
-                record.get(field("id"), String.class),
-                record.get(field("tenant_id"), String.class),
-                record.get(field("feature_code"), String.class),
-                record.get(field("usage_value"), Integer.class),
-                record.get(field("created_at"), OffsetDateTime.class),
-                record.get(field("updated_at"), OffsetDateTime.class)
+                record.get(QUOTA_USAGE.ID, String.class),
+                record.get(QUOTA_USAGE.TENANT_ID, String.class),
+                record.get(QUOTA_USAGE.FEATURE_CODE, String.class),
+                record.get(QUOTA_USAGE.USAGE_VALUE, Integer.class),
+                record.get(QUOTA_USAGE.CREATED_AT, OffsetDateTime.class),
+                record.get(QUOTA_USAGE.UPDATED_AT, OffsetDateTime.class)
         );
     }
 

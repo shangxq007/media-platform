@@ -7,12 +7,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJobQueue.RENDER_JOB_QUEUE;
+import org.jooq.impl.DSL;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Minimal job queue backed by database.
@@ -35,22 +36,22 @@ public class RenderJobQueue {
      * Enqueue a job for execution.
      */
     public void enqueue(String jobId, String tenantId, int priority) {
-        dsl.insertInto(table("render_job_queue"))
+        dsl.insertInto(RENDER_JOB_QUEUE)
                 .columns(
-                        field("job_id"),
-                        field("tenant_id"),
-                        field("status"),
-                        field("priority"),
-                        field("created_at"),
-                        field("updated_at")
+                        RENDER_JOB_QUEUE.JOB_ID,
+                        RENDER_JOB_QUEUE.TENANT_ID,
+                        RENDER_JOB_QUEUE.STATUS,
+                        RENDER_JOB_QUEUE.PRIORITY,
+                        RENDER_JOB_QUEUE.CREATED_AT,
+                        RENDER_JOB_QUEUE.UPDATED_AT
                 )
                 .values(
                         jobId,
                         tenantId,
                         "QUEUED",
                         priority,
-                        OffsetDateTime.now(),
-                        OffsetDateTime.now()
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
                 )
                 .execute();
 
@@ -63,14 +64,14 @@ public class RenderJobQueue {
      */
     public Optional<QueuedJob> dequeue() {
         Record record = dsl.select(
-                        field("job_id"),
-                        field("tenant_id"),
-                        field("priority"),
-                        field("created_at")
+                        RENDER_JOB_QUEUE.JOB_ID,
+                        RENDER_JOB_QUEUE.TENANT_ID,
+                        RENDER_JOB_QUEUE.PRIORITY,
+                        RENDER_JOB_QUEUE.CREATED_AT
                 )
-                .from(table("render_job_queue"))
-                .where(field("status").eq("QUEUED"))
-                .orderBy(field("priority").desc(), field("created_at").asc())
+                .from(RENDER_JOB_QUEUE)
+                .where(RENDER_JOB_QUEUE.STATUS.eq("QUEUED"))
+                .orderBy(RENDER_JOB_QUEUE.PRIORITY.desc(), RENDER_JOB_QUEUE.CREATED_AT.asc())
                 .limit(1)
                 .forUpdate()
                 .skipLocked()
@@ -80,15 +81,15 @@ public class RenderJobQueue {
             return Optional.empty();
         }
 
-        String jobId = record.get(field("job_id", String.class));
-        String tenantId = record.get(field("tenant_id", String.class));
-        int priority = record.get(field("priority", Integer.class));
+        String jobId = record.get(RENDER_JOB_QUEUE.JOB_ID);
+        String tenantId = record.get(RENDER_JOB_QUEUE.TENANT_ID);
+        int priority = record.get(RENDER_JOB_QUEUE.PRIORITY);
 
         // Mark as dequeued
-        dsl.update(table("render_job_queue"))
-                .set(field("status"), "DEQUEUED")
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("job_id").eq(jobId))
+        dsl.update(RENDER_JOB_QUEUE)
+                .set(RENDER_JOB_QUEUE.STATUS, "DEQUEUED")
+                .set(RENDER_JOB_QUEUE.UPDATED_AT, LocalDateTime.now())
+                .where(RENDER_JOB_QUEUE.JOB_ID.eq(jobId))
                 .execute();
 
         log.info("Dequeued job {}", jobId);
@@ -99,10 +100,10 @@ public class RenderJobQueue {
      * Mark a job as completed.
      */
     public void complete(String jobId) {
-        dsl.update(table("render_job_queue"))
-                .set(field("status"), "COMPLETED")
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("job_id").eq(jobId))
+        dsl.update(RENDER_JOB_QUEUE)
+                .set(RENDER_JOB_QUEUE.STATUS, "COMPLETED")
+                .set(RENDER_JOB_QUEUE.UPDATED_AT, LocalDateTime.now())
+                .where(RENDER_JOB_QUEUE.JOB_ID.eq(jobId))
                 .execute();
 
         log.info("Completed job {}", jobId);
@@ -113,17 +114,17 @@ public class RenderJobQueue {
      */
     public void fail(String jobId, boolean requeue) {
         if (requeue) {
-            dsl.update(table("render_job_queue"))
-                    .set(field("status"), "QUEUED")
-                    .set(field("updated_at"), OffsetDateTime.now())
-                    .where(field("job_id").eq(jobId))
+            dsl.update(RENDER_JOB_QUEUE)
+                    .set(RENDER_JOB_QUEUE.STATUS, "QUEUED")
+                    .set(RENDER_JOB_QUEUE.UPDATED_AT, LocalDateTime.now())
+                    .where(RENDER_JOB_QUEUE.JOB_ID.eq(jobId))
                     .execute();
             log.info("Requeued failed job {}", jobId);
         } else {
-            dsl.update(table("render_job_queue"))
-                    .set(field("status"), "FAILED")
-                    .set(field("updated_at"), OffsetDateTime.now())
-                    .where(field("job_id").eq(jobId))
+            dsl.update(RENDER_JOB_QUEUE)
+                    .set(RENDER_JOB_QUEUE.STATUS, "FAILED")
+                    .set(RENDER_JOB_QUEUE.UPDATED_AT, LocalDateTime.now())
+                    .where(RENDER_JOB_QUEUE.JOB_ID.eq(jobId))
                     .execute();
             log.info("Failed job {} (no requeue)", jobId);
         }
@@ -133,20 +134,24 @@ public class RenderJobQueue {
      * Get queue statistics.
      */
     public QueueStats getStats() {
+        var queuedField = DSL.field(DSL.raw("count(*) filter (where status = 'QUEUED')"), Integer.class).as("queued");
+        var processingField = DSL.field(DSL.raw("count(*) filter (where status = 'DEQUEUED')"), Integer.class).as("processing");
+        var completedField = DSL.field(DSL.raw("count(*) filter (where status = 'COMPLETED')"), Integer.class).as("completed");
+        var failedField = DSL.field(DSL.raw("count(*) filter (where status = 'FAILED')"), Integer.class).as("failed");
         Record record = dsl.select(
-                        field("count(*) filter (where status = 'QUEUED')").as("queued"),
-                        field("count(*) filter (where status = 'DEQUEUED')").as("processing"),
-                        field("count(*) filter (where status = 'COMPLETED')").as("completed"),
-                        field("count(*) filter (where status = 'FAILED')").as("failed")
+                        queuedField,
+                        processingField,
+                        completedField,
+                        failedField
                 )
-                .from(table("render_job_queue"))
+                .from(RENDER_JOB_QUEUE)
                 .fetchOne();
 
         return new QueueStats(
-                record.get(field("queued", Integer.class)),
-                record.get(field("processing", Integer.class)),
-                record.get(field("completed", Integer.class)),
-                record.get(field("failed", Integer.class))
+                record.get(queuedField),
+                record.get(processingField),
+                record.get(completedField),
+                record.get(failedField)
         );
     }
 
@@ -155,14 +160,14 @@ public class RenderJobQueue {
      */
     public Optional<QueuedJob> getQueuedJob(String jobId) {
         Record record = dsl.select(
-                        field("job_id"),
-                        field("tenant_id"),
-                        field("priority"),
-                        field("status"),
-                        field("created_at")
+                        RENDER_JOB_QUEUE.JOB_ID,
+                        RENDER_JOB_QUEUE.TENANT_ID,
+                        RENDER_JOB_QUEUE.PRIORITY,
+                        RENDER_JOB_QUEUE.STATUS,
+                        RENDER_JOB_QUEUE.CREATED_AT
                 )
-                .from(table("render_job_queue"))
-                .where(field("job_id").eq(jobId))
+                .from(RENDER_JOB_QUEUE)
+                .where(RENDER_JOB_QUEUE.JOB_ID.eq(jobId))
                 .fetchOne();
 
         if (record == null) {
@@ -170,9 +175,9 @@ public class RenderJobQueue {
         }
 
         return Optional.of(new QueuedJob(
-                record.get(field("job_id", String.class)),
-                record.get(field("tenant_id", String.class)),
-                record.get(field("priority", Integer.class))
+                record.get(RENDER_JOB_QUEUE.JOB_ID),
+                record.get(RENDER_JOB_QUEUE.TENANT_ID),
+                record.get(RENDER_JOB_QUEUE.PRIORITY)
         ));
     }
 
@@ -181,17 +186,17 @@ public class RenderJobQueue {
      */
     public List<QueuedJob> listQueued() {
         return dsl.select(
-                        field("job_id"),
-                        field("tenant_id"),
-                        field("priority")
+                        RENDER_JOB_QUEUE.JOB_ID,
+                        RENDER_JOB_QUEUE.TENANT_ID,
+                        RENDER_JOB_QUEUE.PRIORITY
                 )
-                .from(table("render_job_queue"))
-                .where(field("status").eq("QUEUED"))
-                .orderBy(field("priority").desc(), field("created_at").asc())
+                .from(RENDER_JOB_QUEUE)
+                .where(RENDER_JOB_QUEUE.STATUS.eq("QUEUED"))
+                .orderBy(RENDER_JOB_QUEUE.PRIORITY.desc(), RENDER_JOB_QUEUE.CREATED_AT.asc())
                 .fetch(record -> new QueuedJob(
-                        record.get(field("job_id", String.class)),
-                        record.get(field("tenant_id", String.class)),
-                        record.get(field("priority", Integer.class))
+                        record.get(RENDER_JOB_QUEUE.JOB_ID),
+                        record.get(RENDER_JOB_QUEUE.TENANT_ID),
+                        record.get(RENDER_JOB_QUEUE.PRIORITY)
                 ));
     }
 

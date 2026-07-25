@@ -1,9 +1,7 @@
 package com.example.platform.render.infrastructure.asset;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.render.domain.asset.marketplace.*;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.*;
 import org.jooq.DSLContext;
@@ -11,6 +9,8 @@ import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing.MARKETPLACE_LISTING;
+
 
 @Repository
 public class MarketplaceListingRepository {
@@ -23,7 +23,7 @@ public class MarketplaceListingRepository {
     }
 
     public void upsert(MarketplaceListing listing) {
-        OffsetDateTime now = OffsetDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         String searchText = listing.title() != null ? listing.title() : "";
         if (listing.summary() != null) searchText += " " + listing.summary();
         dsl.execute(
@@ -48,16 +48,16 @@ public class MarketplaceListingRepository {
     }
 
     public Optional<MarketplaceListing> findByAssetId(String assetId, String tenantId) {
-        var cond = field("asset_id").eq(assetId);
-        if (tenantId != null) cond = cond.and(field("tenant_id").eq(tenantId));
-        Record r = dsl.select().from(table("marketplace_listing")).where(cond).fetchOne();
+        var cond = MARKETPLACE_LISTING.ASSET_ID.eq(assetId);
+        if (tenantId != null) cond = cond.and(MARKETPLACE_LISTING.TENANT_ID.eq(tenantId));
+        Record r = dsl.select().from(MARKETPLACE_LISTING).where(cond).fetchOne();
         return r == null ? Optional.empty() : Optional.of(map(r));
     }
 
     public void updateStatus(String listingId, String status) {
-        dsl.update(table("marketplace_listing"))
-                .set(field("status"), status).set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(listingId)).execute();
+        dsl.update(MARKETPLACE_LISTING)
+                .set(MARKETPLACE_LISTING.STATUS, status).set(MARKETPLACE_LISTING.UPDATED_AT, LocalDateTime.now())
+                .where(MARKETPLACE_LISTING.ID.eq(listingId)).execute();
     }
 
     public SearchResult search(String query, String status, String listingType,
@@ -108,25 +108,25 @@ public class MarketplaceListingRepository {
     }
 
     public List<MarketplaceListing> listByStatus(String status, int limit) {
-        return dsl.select().from(table("marketplace_listing"))
-                .where(field("status").eq(status))
-                .orderBy(field("updated_at").desc()).limit(limit)
+        return dsl.select().from(MARKETPLACE_LISTING)
+                .where(MARKETPLACE_LISTING.STATUS.eq(status))
+                .orderBy(MARKETPLACE_LISTING.UPDATED_AT.desc()).limit(limit)
                 .fetch().map(MarketplaceListingRepository::map);
     }
 
     private static MarketplaceListing map(Record r) {
         return new MarketplaceListing(
-                r.get(field("id", String.class)), r.get(field("asset_id", String.class)),
-                r.get(field("tenant_id", String.class)), r.get(field("project_id", String.class)),
-                tryEnum(MarketplaceListingType.class, r.get(field("listing_type", String.class))),
-                r.get(field("title", String.class)), r.get(field("summary", String.class)),
-                r.get(field("description", String.class)),
-                r.get(field("preview_url", String.class)), r.get(field("cover_url", String.class)),
-                r.get(field("version", String.class)),
-                tryEnum(MarketplaceListingStatus.class, r.get(field("status", String.class))),
-                r.get(field("review_id", String.class)),
-                toInstant(r.get(field("created_at", OffsetDateTime.class))),
-                toInstant(r.get(field("updated_at", OffsetDateTime.class))));
+                r.get(MARKETPLACE_LISTING.ID), r.get(MARKETPLACE_LISTING.ASSET_ID),
+                r.get(MARKETPLACE_LISTING.TENANT_ID), r.get(MARKETPLACE_LISTING.PROJECT_ID),
+                tryEnum(MarketplaceListingType.class, r.get(MARKETPLACE_LISTING.LISTING_TYPE)),
+                r.get(MARKETPLACE_LISTING.TITLE), r.get(MARKETPLACE_LISTING.SUMMARY),
+                r.get(MARKETPLACE_LISTING.DESCRIPTION),
+                r.get(MARKETPLACE_LISTING.PREVIEW_URL), r.get(MARKETPLACE_LISTING.COVER_URL),
+                r.get(MARKETPLACE_LISTING.VERSION),
+                tryEnum(MarketplaceListingStatus.class, r.get(MARKETPLACE_LISTING.STATUS)),
+                r.get(MARKETPLACE_LISTING.REVIEW_ID),
+                toInstant(r.get(MARKETPLACE_LISTING.CREATED_AT)),
+                toInstant(r.get(MARKETPLACE_LISTING.UPDATED_AT)));
     }
 
     public record SearchResult(int total, int offset, int limit, List<MarketplaceListing> results) {}
@@ -134,8 +134,8 @@ public class MarketplaceListingRepository {
     private static OffsetDateTime toOdt(java.time.Instant i) {
         return i != null ? OffsetDateTime.ofInstant(i, java.time.ZoneOffset.UTC) : null;
     }
-    private static java.time.Instant toInstant(OffsetDateTime odt) {
-        return odt != null ? odt.toInstant() : null;
+    private static java.time.Instant toInstant(LocalDateTime ldt) {
+        return ldt != null ? ldt.toInstant(java.time.ZoneOffset.UTC) : null;
     }
     private static <E extends Enum<E>> E tryEnum(Class<E> type, String value) {
         try { return Enum.valueOf(type, value); } catch (Exception e) { return null; }

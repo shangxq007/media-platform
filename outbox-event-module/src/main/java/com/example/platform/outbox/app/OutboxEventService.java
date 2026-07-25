@@ -1,11 +1,9 @@
 package com.example.platform.outbox.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.Jsons;
-import java.time.OffsetDateTime;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.jooq.DSLContext;
@@ -14,6 +12,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static com.example.platform.typedschema.jooq.generated.tables.OutboxEvents.OUTBOX_EVENTS;
+import org.jooq.impl.DSL;
+
 
 @Service
 public class OutboxEventService {
@@ -49,19 +50,19 @@ public class OutboxEventService {
 
     public Map<String, Object> overview() {
         Integer pending = dsl.fetchCount(
-                dsl.selectOne().from(table("outbox_events")).where(field("status").eq(STATUS_PENDING))
+                dsl.selectOne().from(OUTBOX_EVENTS).where(OUTBOX_EVENTS.STATUS.eq(STATUS_PENDING))
         );
         Integer processing = dsl.fetchCount(
-                dsl.selectOne().from(table("outbox_events")).where(field("status").eq(STATUS_PROCESSING))
+                dsl.selectOne().from(OUTBOX_EVENTS).where(OUTBOX_EVENTS.STATUS.eq(STATUS_PROCESSING))
         );
         Integer processed = dsl.fetchCount(
-                dsl.selectOne().from(table("outbox_events")).where(field("status").eq(STATUS_PROCESSED))
+                dsl.selectOne().from(OUTBOX_EVENTS).where(OUTBOX_EVENTS.STATUS.eq(STATUS_PROCESSED))
         );
         Integer failed = dsl.fetchCount(
-                dsl.selectOne().from(table("outbox_events")).where(field("status").eq(STATUS_FAILED))
+                dsl.selectOne().from(OUTBOX_EVENTS).where(OUTBOX_EVENTS.STATUS.eq(STATUS_FAILED))
         );
         Integer deadLetter = dsl.fetchCount(
-                dsl.selectOne().from(table("outbox_events")).where(field("status").eq(STATUS_DEAD_LETTER))
+                dsl.selectOne().from(OUTBOX_EVENTS).where(OUTBOX_EVENTS.STATUS.eq(STATUS_DEAD_LETTER))
         );
         return Map.of(
                 "module", "outbox-event-module",
@@ -77,65 +78,65 @@ public class OutboxEventService {
 
     public List<Map<String, Object>> recent(int limit) {
         return dsl.select(
-                        field("id"),
-                        field("aggregate_type"),
-                        field("aggregate_id"),
-                        field("event_type"),
-                        field("event_version"),
-                        field("status"),
-                        field("retry_count"),
-                        field("max_retries"),
-                        field("last_error_code"),
-                        field("last_error_message"),
-                        field("next_attempt_at"),
-                        field("locked_at"),
-                        field("locked_by"),
-                        field("created_at"),
-                        field("published_at")
+                        OUTBOX_EVENTS.ID,
+                        OUTBOX_EVENTS.AGGREGATE_TYPE,
+                        OUTBOX_EVENTS.AGGREGATE_ID,
+                        OUTBOX_EVENTS.EVENT_TYPE,
+                        OUTBOX_EVENTS.EVENT_VERSION,
+                        OUTBOX_EVENTS.STATUS,
+                        OUTBOX_EVENTS.RETRY_COUNT,
+                        OUTBOX_EVENTS.MAX_RETRIES,
+                        DSL.field(DSL.name("last_error_code")),
+                        DSL.field(DSL.name("last_error_message")),
+                        OUTBOX_EVENTS.NEXT_ATTEMPT_AT,
+                        OUTBOX_EVENTS.LOCKED_AT,
+                        OUTBOX_EVENTS.LOCKED_BY,
+                        OUTBOX_EVENTS.CREATED_AT,
+                        OUTBOX_EVENTS.PUBLISHED_AT
                 )
-                .from(table("outbox_events"))
-                .orderBy(field("created_at").desc())
+                .from(OUTBOX_EVENTS)
+                .orderBy(OUTBOX_EVENTS.CREATED_AT.desc())
                 .limit(limit)
                 .fetchMaps();
     }
 
     public List<Map<String, Object>> deadLetterEvents(int limit) {
         return dsl.select(
-                        field("id"),
-                        field("aggregate_type"),
-                        field("aggregate_id"),
-                        field("event_type"),
-                        field("status"),
-                        field("retry_count"),
-                        field("last_error_code"),
-                        field("last_error_message"),
-                        field("created_at")
+                        OUTBOX_EVENTS.ID,
+                        OUTBOX_EVENTS.AGGREGATE_TYPE,
+                        OUTBOX_EVENTS.AGGREGATE_ID,
+                        OUTBOX_EVENTS.EVENT_TYPE,
+                        OUTBOX_EVENTS.STATUS,
+                        OUTBOX_EVENTS.RETRY_COUNT,
+                        DSL.field(DSL.name("last_error_code")),
+                        DSL.field(DSL.name("last_error_message")),
+                        OUTBOX_EVENTS.CREATED_AT
                 )
-                .from(table("outbox_events"))
-                .where(field("status").eq(STATUS_DEAD_LETTER))
-                .orderBy(field("created_at").desc())
+                .from(OUTBOX_EVENTS)
+                .where(OUTBOX_EVENTS.STATUS.eq(STATUS_DEAD_LETTER))
+                .orderBy(OUTBOX_EVENTS.CREATED_AT.desc())
                 .limit(limit)
                 .fetchMaps();
     }
 
     public List<Map<String, Object>> failedEvents(int limit) {
         return dsl.select(
-                        field("id"),
-                        field("aggregate_type"),
-                        field("aggregate_id"),
-                        field("event_type"),
-                        field("event_version"),
-                        field("status"),
-                        field("retry_count"),
-                        field("max_retries"),
-                        field("last_error_code"),
-                        field("last_error_message"),
-                        field("next_attempt_at"),
-                        field("created_at")
+                        OUTBOX_EVENTS.ID,
+                        OUTBOX_EVENTS.AGGREGATE_TYPE,
+                        OUTBOX_EVENTS.AGGREGATE_ID,
+                        OUTBOX_EVENTS.EVENT_TYPE,
+                        OUTBOX_EVENTS.EVENT_VERSION,
+                        OUTBOX_EVENTS.STATUS,
+                        OUTBOX_EVENTS.RETRY_COUNT,
+                        OUTBOX_EVENTS.MAX_RETRIES,
+                        DSL.field(DSL.name("last_error_code")),
+                        DSL.field(DSL.name("last_error_message")),
+                        OUTBOX_EVENTS.NEXT_ATTEMPT_AT,
+                        OUTBOX_EVENTS.CREATED_AT
                 )
-                .from(table("outbox_events"))
-                .where(field("status").eq(STATUS_FAILED))
-                .orderBy(field("next_attempt_at").asc())
+                .from(OUTBOX_EVENTS)
+                .where(OUTBOX_EVENTS.STATUS.eq(STATUS_FAILED))
+                .orderBy(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.asc())
                 .limit(limit)
                 .fetchMaps();
     }
@@ -145,31 +146,31 @@ public class OutboxEventService {
      * or FAILED with next_attempt_at <= now and retry_count < max_retries.
      */
     public List<Map<String, Object>> pendingForDispatch(int limit) {
-        OffsetDateTime now = OffsetDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         return dsl.select(
-                        field("id"),
-                        field("aggregate_type"),
-                        field("aggregate_id"),
-                        field("event_type"),
-                        field("event_version"),
-                        field("payload"),
-                        field("retry_count"),
-                        field("max_retries"),
-                        field("idempotency_key"),
-                        field("created_at")
+                        OUTBOX_EVENTS.ID,
+                        OUTBOX_EVENTS.AGGREGATE_TYPE,
+                        OUTBOX_EVENTS.AGGREGATE_ID,
+                        OUTBOX_EVENTS.EVENT_TYPE,
+                        OUTBOX_EVENTS.EVENT_VERSION,
+                        OUTBOX_EVENTS.PAYLOAD,
+                        OUTBOX_EVENTS.RETRY_COUNT,
+                        OUTBOX_EVENTS.MAX_RETRIES,
+                        OUTBOX_EVENTS.IDEMPOTENCY_KEY,
+                        OUTBOX_EVENTS.CREATED_AT
                 )
-                .from(table("outbox_events"))
+                .from(OUTBOX_EVENTS)
                 .where(
-                        field("status").eq(STATUS_PENDING)
-                                .and(field("next_attempt_at").isNull()
-                                        .or(field("next_attempt_at").le(now)))
+                        OUTBOX_EVENTS.STATUS.eq(STATUS_PENDING)
+                                .and(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.isNull()
+                                        .or(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.le(now)))
                                 .or(
-                                        field("status").eq(STATUS_FAILED)
-                                                .and(field("next_attempt_at").le(now))
-                                                .and(field("retry_count").lt(field("max_retries", Integer.class)))
+                                        OUTBOX_EVENTS.STATUS.eq(STATUS_FAILED)
+                                                .and(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.le(now))
+                                                .and(OUTBOX_EVENTS.RETRY_COUNT.lt(OUTBOX_EVENTS.MAX_RETRIES))
                                 )
                 )
-                .orderBy(field("created_at").asc())
+                .orderBy(OUTBOX_EVENTS.CREATED_AT.asc())
                 .limit(limit)
                 .fetchMaps();
     }
@@ -179,20 +180,20 @@ public class OutboxEventService {
      */
     public Map<String, Object> readEvent(String outboxId) {
         return dsl.select(
-                        field("id"),
-                        field("aggregate_type"),
-                        field("aggregate_id"),
-                        field("event_type"),
-                        field("event_version"),
-                        field("payload"),
-                        field("retry_count"),
-                        field("max_retries"),
-                        field("idempotency_key"),
-                        field("status"),
-                        field("created_at")
+                        OUTBOX_EVENTS.ID,
+                        OUTBOX_EVENTS.AGGREGATE_TYPE,
+                        OUTBOX_EVENTS.AGGREGATE_ID,
+                        OUTBOX_EVENTS.EVENT_TYPE,
+                        OUTBOX_EVENTS.EVENT_VERSION,
+                        OUTBOX_EVENTS.PAYLOAD,
+                        OUTBOX_EVENTS.RETRY_COUNT,
+                        OUTBOX_EVENTS.MAX_RETRIES,
+                        OUTBOX_EVENTS.IDEMPOTENCY_KEY,
+                        OUTBOX_EVENTS.STATUS,
+                        OUTBOX_EVENTS.CREATED_AT
                 )
-                .from(table("outbox_events"))
-                .where(field("id").eq(outboxId))
+                .from(OUTBOX_EVENTS)
+                .where(OUTBOX_EVENTS.ID.eq(outboxId))
                 .fetchOneMap();
     }
 
@@ -211,9 +212,9 @@ public class OutboxEventService {
             int eventVersion, Object payload, String idempotencyKey) {
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             List<Map<String, Object>> existing = dsl.select(
-                            field("id"), field("status"))
-                    .from(table("outbox_events"))
-                    .where(field("idempotency_key").eq(idempotencyKey))
+                            OUTBOX_EVENTS.ID, OUTBOX_EVENTS.STATUS)
+                    .from(OUTBOX_EVENTS)
+                    .where(OUTBOX_EVENTS.IDEMPOTENCY_KEY.eq(idempotencyKey))
                     .fetchMaps();
             if (!existing.isEmpty()) {
                 String existingStatus = String.valueOf(existing.get(0).get("status"));
@@ -224,16 +225,16 @@ public class OutboxEventService {
                 }
                 // If PENDING or FAILED, update payload and reset to PENDING
                 if (STATUS_PENDING.equals(existingStatus) || STATUS_FAILED.equals(existingStatus)) {
-                    dsl.update(table("outbox_events"))
-                            .set(field("payload"), Jsons.toJson(payload))
-                            .set(field("status"), STATUS_PENDING)
-                            .set(field("retry_count"), 0)
-                            .set(field("next_attempt_at"), (OffsetDateTime) null)
-                            .set(field("last_error_code"), (String) null)
-                            .set(field("last_error_message"), (String) null)
-                            .set(field("locked_at"), (OffsetDateTime) null)
-                            .set(field("locked_by"), (String) null)
-                            .where(field("id").eq(existingId))
+                    dsl.update(OUTBOX_EVENTS)
+                            .set(OUTBOX_EVENTS.PAYLOAD, Jsons.toJson(payload))
+                            .set(OUTBOX_EVENTS.STATUS, STATUS_PENDING)
+                            .set(OUTBOX_EVENTS.RETRY_COUNT, 0)
+                            .set(OUTBOX_EVENTS.NEXT_ATTEMPT_AT, (LocalDateTime) null)
+                            .set(DSL.field(DSL.name("last_error_code")), (String) null)
+                            .set(DSL.field(DSL.name("last_error_message")), (String) null)
+                            .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
+                            .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
+                            .where(OUTBOX_EVENTS.ID.eq(existingId))
                             .execute();
                     return existingId;
                 }
@@ -244,21 +245,21 @@ public class OutboxEventService {
 
         String id = Ids.newId("obx");
         try {
-            dsl.insertInto(table("outbox_events"))
+            dsl.insertInto(OUTBOX_EVENTS)
                     .columns(
-                            field("id"),
-                            field("aggregate_type"),
-                            field("aggregate_id"),
-                            field("event_type"),
-                            field("event_version"),
-                            field("payload"),
-                            field("status"),
-                            field("retry_count"),
-                            field("max_retries"),
-                            field("next_attempt_at"),
-                            field("idempotency_key"),
-                            field("created_at"),
-                            field("published_at")
+                            OUTBOX_EVENTS.ID,
+                            OUTBOX_EVENTS.AGGREGATE_TYPE,
+                            OUTBOX_EVENTS.AGGREGATE_ID,
+                            OUTBOX_EVENTS.EVENT_TYPE,
+                            OUTBOX_EVENTS.EVENT_VERSION,
+                            OUTBOX_EVENTS.PAYLOAD,
+                            OUTBOX_EVENTS.STATUS,
+                            OUTBOX_EVENTS.RETRY_COUNT,
+                            OUTBOX_EVENTS.MAX_RETRIES,
+                            OUTBOX_EVENTS.NEXT_ATTEMPT_AT,
+                            OUTBOX_EVENTS.IDEMPOTENCY_KEY,
+                            OUTBOX_EVENTS.CREATED_AT,
+                            OUTBOX_EVENTS.PUBLISHED_AT
                     )
                     .values(
                             id,
@@ -270,29 +271,29 @@ public class OutboxEventService {
                             STATUS_PENDING,
                             0,
                             maxRetries,
-                            (OffsetDateTime) null,
+                            (LocalDateTime) null,
                             idempotencyKey,
-                            OffsetDateTime.now(),
+                            LocalDateTime.now(),
                             null
                     )
                     .execute();
         } catch (Exception ex) {
             // Fallback: insert without max_retries column (for compatibility with older schema)
             log.warn("Outbox insert with max_retries failed, retrying without: {}", ex.getMessage());
-            dsl.insertInto(table("outbox_events"))
+            dsl.insertInto(OUTBOX_EVENTS)
                     .columns(
-                            field("id"),
-                            field("aggregate_type"),
-                            field("aggregate_id"),
-                            field("event_type"),
-                            field("event_version"),
-                            field("payload"),
-                            field("status"),
-                            field("retry_count"),
-                            field("next_attempt_at"),
-                            field("idempotency_key"),
-                            field("created_at"),
-                            field("published_at")
+                            OUTBOX_EVENTS.ID,
+                            OUTBOX_EVENTS.AGGREGATE_TYPE,
+                            OUTBOX_EVENTS.AGGREGATE_ID,
+                            OUTBOX_EVENTS.EVENT_TYPE,
+                            OUTBOX_EVENTS.EVENT_VERSION,
+                            OUTBOX_EVENTS.PAYLOAD,
+                            OUTBOX_EVENTS.STATUS,
+                            OUTBOX_EVENTS.RETRY_COUNT,
+                            OUTBOX_EVENTS.NEXT_ATTEMPT_AT,
+                            OUTBOX_EVENTS.IDEMPOTENCY_KEY,
+                            OUTBOX_EVENTS.CREATED_AT,
+                            OUTBOX_EVENTS.PUBLISHED_AT
                     )
                     .values(
                             id,
@@ -303,9 +304,9 @@ public class OutboxEventService {
                             Jsons.toJson(payload),
                             STATUS_PENDING,
                             0,
-                            (OffsetDateTime) null,
+                            (LocalDateTime) null,
                             idempotencyKey,
-                            OffsetDateTime.now(),
+                            LocalDateTime.now(),
                             null
                     )
                     .execute();
@@ -326,16 +327,16 @@ public class OutboxEventService {
      */
     @Transactional
     public boolean lockForProcessing(String outboxId, String processorId) {
-        OffsetDateTime now = OffsetDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
         // Lock the row with SELECT FOR UPDATE
         Map<String, Object> row = dsl.select(
-                        field("id"),
-                        field("status"),
-                        field("next_attempt_at")
+                        OUTBOX_EVENTS.ID,
+                        OUTBOX_EVENTS.STATUS,
+                        OUTBOX_EVENTS.NEXT_ATTEMPT_AT
                 )
-                .from(table("outbox_events"))
-                .where(field("id").eq(outboxId))
+                .from(OUTBOX_EVENTS)
+                .where(OUTBOX_EVENTS.ID.eq(outboxId))
                 .forUpdate()
                 .fetchOneMap();
 
@@ -348,18 +349,18 @@ public class OutboxEventService {
         // Only process PENDING or FAILED (with expired backoff) events
         boolean isProcessable = STATUS_PENDING.equals(status) ||
                 (STATUS_FAILED.equals(status) && row.get("next_attempt_at") != null
-                        && !parseOffsetDateTime(row.get("next_attempt_at")).isAfter(now));
+                        && !parseLocalDateTime(row.get("next_attempt_at")).isAfter(now));
 
         if (!isProcessable) {
             return false;
         }
 
         // Set to PROCESSING
-        dsl.update(table("outbox_events"))
-                .set(field("status"), STATUS_PROCESSING)
-                .set(field("locked_at"), now)
-                .set(field("locked_by"), processorId)
-                .where(field("id").eq(outboxId))
+        dsl.update(OUTBOX_EVENTS)
+                .set(OUTBOX_EVENTS.STATUS, STATUS_PROCESSING)
+                .set(OUTBOX_EVENTS.LOCKED_AT, java.time.Instant.now())
+                .set(OUTBOX_EVENTS.LOCKED_BY, processorId)
+                .where(OUTBOX_EVENTS.ID.eq(outboxId))
                 .execute();
 
         return true;
@@ -374,14 +375,14 @@ public class OutboxEventService {
      */
     @Transactional
     public void markProcessed(String outboxId) {
-        dsl.update(table("outbox_events"))
-                .set(field("status"), STATUS_PROCESSED)
-                .set(field("published_at"), OffsetDateTime.now())
-                .set(field("locked_at"), (OffsetDateTime) null)
-                .set(field("locked_by"), (String) null)
-                .set(field("last_error_code"), (String) null)
-                .set(field("last_error_message"), (String) null)
-                .where(field("id").eq(outboxId))
+        dsl.update(OUTBOX_EVENTS)
+                .set(OUTBOX_EVENTS.STATUS, STATUS_PROCESSED)
+                .set(OUTBOX_EVENTS.PUBLISHED_AT, LocalDateTime.now())
+                .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
+                .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
+                .set(DSL.field(DSL.name("last_error_code")), (String) null)
+                .set(DSL.field(DSL.name("last_error_message")), (String) null)
+                .where(OUTBOX_EVENTS.ID.eq(outboxId))
                 .execute();
     }
 
@@ -392,19 +393,19 @@ public class OutboxEventService {
     @Transactional
     public void markFailedWithDetails(String outboxId, String errorCode, String errorMessage) {
         // Increment retry count and record error
-        dsl.update(table("outbox_events"))
-                .set(field("retry_count"), field("retry_count", Integer.class).plus(1))
-                .set(field("last_error_code"), errorCode)
-                .set(field("last_error_message"), errorMessage)
-                .where(field("id").eq(outboxId))
+        dsl.update(OUTBOX_EVENTS)
+                .set(OUTBOX_EVENTS.RETRY_COUNT, OUTBOX_EVENTS.RETRY_COUNT.plus(1))
+                .set(DSL.field(DSL.name("last_error_code")), errorCode)
+                .set(DSL.field(DSL.name("last_error_message")), errorMessage)
+                .where(OUTBOX_EVENTS.ID.eq(outboxId))
                 .execute();
 
         // Read updated retry count and max_retries
         Map<String, Object> row = dsl.select(
-                        field("retry_count", Integer.class),
-                        field("max_retries", Integer.class))
-                .from(table("outbox_events"))
-                .where(field("id").eq(outboxId))
+                        OUTBOX_EVENTS.RETRY_COUNT,
+                        OUTBOX_EVENTS.MAX_RETRIES)
+                .from(OUTBOX_EVENTS)
+                .where(OUTBOX_EVENTS.ID.eq(outboxId))
                 .fetchOneMap();
 
         if (row == null) {
@@ -416,22 +417,22 @@ public class OutboxEventService {
 
         if (retryCount >= rowMaxRetries) {
             // Exceeded max retries → DEAD_LETTER
-            dsl.update(table("outbox_events"))
-                    .set(field("status"), STATUS_DEAD_LETTER)
-                    .set(field("locked_at"), (OffsetDateTime) null)
-                    .set(field("locked_by"), (String) null)
-                    .where(field("id").eq(outboxId))
+            dsl.update(OUTBOX_EVENTS)
+                    .set(OUTBOX_EVENTS.STATUS, STATUS_DEAD_LETTER)
+                    .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
+                    .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
+                    .where(OUTBOX_EVENTS.ID.eq(outboxId))
                     .execute();
         } else {
             // Exponential backoff: nextAttemptAt = now + (baseDelay * 2^retryCount)
             long backoffMs = BASE_BACKOFF_MS * (1L << retryCount);
-            OffsetDateTime nextAttempt = OffsetDateTime.now().plusNanos(backoffMs * 1_000_000L);
-            dsl.update(table("outbox_events"))
-                    .set(field("status"), STATUS_FAILED)
-                    .set(field("next_attempt_at"), nextAttempt)
-                    .set(field("locked_at"), (OffsetDateTime) null)
-                    .set(field("locked_by"), (String) null)
-                    .where(field("id").eq(outboxId))
+            LocalDateTime nextAttempt = LocalDateTime.now().plusNanos(backoffMs * 1_000_000L);
+            dsl.update(OUTBOX_EVENTS)
+                    .set(OUTBOX_EVENTS.STATUS, STATUS_FAILED)
+                    .set(OUTBOX_EVENTS.NEXT_ATTEMPT_AT, nextAttempt)
+                    .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
+                    .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
+                    .where(OUTBOX_EVENTS.ID.eq(outboxId))
                     .execute();
         }
     }
@@ -443,14 +444,14 @@ public class OutboxEventService {
      */
     @Transactional
     public int resetDueFailedEvents() {
-        OffsetDateTime now = OffsetDateTime.now();
-        return dsl.update(table("outbox_events"))
-                .set(field("status"), STATUS_PENDING)
-                .set(field("next_attempt_at"), (OffsetDateTime) null)
-                .set(field("locked_at"), (OffsetDateTime) null)
-                .set(field("locked_by"), (String) null)
-                .where(field("status").eq(STATUS_FAILED))
-                .and(field("next_attempt_at").le(now))
+        LocalDateTime now = LocalDateTime.now();
+        return dsl.update(OUTBOX_EVENTS)
+                .set(OUTBOX_EVENTS.STATUS, STATUS_PENDING)
+                .set(OUTBOX_EVENTS.NEXT_ATTEMPT_AT, (LocalDateTime) null)
+                .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
+                .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
+                .where(OUTBOX_EVENTS.STATUS.eq(STATUS_FAILED))
+                .and(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.le(now))
                 .execute();
     }
 
@@ -459,14 +460,14 @@ public class OutboxEventService {
      */
     @Transactional
     public void markDeadLetter(String outboxId, String reason) {
-        dsl.update(table("outbox_events"))
-                .set(field("status"), STATUS_DEAD_LETTER)
-                .set(field("last_error_code"), "MANUAL")
-                .set(field("last_error_message"), reason)
-                .set(field("locked_at"), (OffsetDateTime) null)
-                .set(field("locked_by"), (String) null)
-                .where(field("id").eq(outboxId))
-                .and(field("status").ne(STATUS_PROCESSED))
+        dsl.update(OUTBOX_EVENTS)
+                .set(OUTBOX_EVENTS.STATUS, STATUS_DEAD_LETTER)
+                .set(DSL.field(DSL.name("last_error_code")), "MANUAL")
+                .set(DSL.field(DSL.name("last_error_message")), reason)
+                .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
+                .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
+                .where(OUTBOX_EVENTS.ID.eq(outboxId))
+                .and(OUTBOX_EVENTS.STATUS.ne(STATUS_PROCESSED))
                 .execute();
     }
 
@@ -474,10 +475,10 @@ public class OutboxEventService {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static OffsetDateTime parseOffsetDateTime(Object value) {
-        if (value instanceof OffsetDateTime odt) {
-            return odt;
+    private static LocalDateTime parseLocalDateTime(Object value) {
+        if (value instanceof LocalDateTime ldt) {
+            return ldt;
         }
-        return OffsetDateTime.parse(String.valueOf(value));
+        return LocalDateTime.parse(String.valueOf(value));
     }
 }

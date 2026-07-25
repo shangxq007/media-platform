@@ -2,16 +2,17 @@ package com.example.platform.render.infrastructure;
 import org.jooq.impl.DSL;
 import java.util.Map;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.render.app.dto.RenderJobResponse;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.Project.PROJECT;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+
 
 /**
  * Repository for the {@code render_job} table.
@@ -33,12 +34,12 @@ public class RenderJobRepository {
      */
     public void create(String id, String projectId, String tenantId,
             String timelineSnapshotId, String profile, String status, OffsetDateTime createdAt) {
-        dsl.insertInto(table("render_job"))
-                .columns(field("id"), field("project_id"), field("tenant_id"),
-                        field("timeline_snapshot_id"), field("profile"),
-                        field("status"), field("created_at"))
+        dsl.insertInto(RENDER_JOB)
+                .columns(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
+                        RENDER_JOB.STATUS, RENDER_JOB.CREATED_AT)
                 .values(id, projectId, tenantId,
-                        timelineSnapshotId, profile, status, createdAt)
+                        timelineSnapshotId, profile, status, createdAt.toLocalDateTime())
                 .execute();
     }
 
@@ -46,12 +47,12 @@ public class RenderJobRepository {
      * Find a render job by ID. Returns empty if not found.
      */
     public Optional<RenderJobResponse> findById(String jobId) {
-        Record record = dsl.select(field("id", String.class), field("project_id", String.class),
-                        field("tenant_id", String.class),
-                        field("timeline_snapshot_id", String.class), field("profile", String.class),
-                        field("status", String.class))
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
+        Record record = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID,
+                        RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
+                        RENDER_JOB.STATUS)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .fetchOne();
         if (record == null) return Optional.empty();
         return Optional.of(mapToResponse(record));
@@ -62,14 +63,14 @@ public class RenderJobRepository {
      * Returns empty if not found or tenant/project mismatch.
      */
     public Optional<RenderJobResponse> findByIdAndProjectAndTenant(String jobId, String projectId, String tenantId) {
-        Record record = dsl.select(field("id", String.class), field("project_id", String.class),
-                        field("tenant_id", String.class),
-                        field("timeline_snapshot_id", String.class), field("profile", String.class),
-                        field("status", String.class))
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
-                .and(field("project_id").eq(projectId))
-                .and(field("tenant_id").eq(tenantId))
+        Record record = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID,
+                        RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
+                        RENDER_JOB.STATUS)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
+                .and(RENDER_JOB.PROJECT_ID.eq(projectId))
+                .and(RENDER_JOB.TENANT_ID.eq(tenantId))
                 .fetchOne();
         if (record == null) return Optional.empty();
         return Optional.of(mapToResponse(record));
@@ -79,11 +80,11 @@ public class RenderJobRepository {
      * List all render jobs for a tenant.
      */
     public List<RenderJobResponse> listByTenant(String tenantId) {
-        return dsl.select(field("id", String.class), field("project_id", String.class),
-                        field("timeline_snapshot_id", String.class), field("profile", String.class),
-                        field("status", String.class))
-                .from(table("render_job"))
-                .where(field("tenant_id").eq(tenantId))
+        return dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
+                        RENDER_JOB.STATUS)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.TENANT_ID.eq(tenantId))
                 .fetch(r -> mapToResponse(r));
     }
 
@@ -91,12 +92,12 @@ public class RenderJobRepository {
      * List all render jobs for a project within a tenant.
      */
     public List<RenderJobResponse> listByProjectAndTenant(String projectId, String tenantId) {
-        return dsl.select(field("id", String.class), field("project_id", String.class),
-                        field("timeline_snapshot_id", String.class), field("profile", String.class),
-                        field("status", String.class))
-                .from(table("render_job"))
-                .where(field("tenant_id").eq(tenantId))
-                .and(field("project_id").eq(projectId))
+        return dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
+                        RENDER_JOB.STATUS)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.TENANT_ID.eq(tenantId))
+                .and(RENDER_JOB.PROJECT_ID.eq(projectId))
                 .fetch(r -> mapToResponse(r));
     }
 
@@ -104,10 +105,10 @@ public class RenderJobRepository {
      * List all render jobs (no tenant filter — use with caution, preferably only for admin).
      */
     public List<RenderJobResponse> listAll() {
-        return dsl.select(field("id", String.class), field("project_id", String.class),
-                        field("timeline_snapshot_id", String.class), field("profile", String.class),
-                        field("status", String.class))
-                .from(table("render_job"))
+        return dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
+                        RENDER_JOB.STATUS)
+                .from(RENDER_JOB)
                 .fetch(r -> mapToResponse(r));
     }
 
@@ -116,9 +117,9 @@ public class RenderJobRepository {
      */
     public List<Record> findQueuedJobs(int limit) {
         return dsl.select()
-                .from(table("render_job"))
-                .where(field("status").eq("QUEUED"))
-                .orderBy(field("created_at").asc())
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.STATUS.eq("QUEUED"))
+                .orderBy(RENDER_JOB.CREATED_AT.asc())
                 .limit(limit)
                 .fetch();
     }
@@ -128,10 +129,10 @@ public class RenderJobRepository {
      * Returns 1 if this request won the claim, 0 if another request already claimed it.
      */
     public int claimForSelection(String jobId) {
-        return dsl.update(table("render_job"))
-                .set(field("status"), "SELECTING_PROVIDER")
-                .set(field("updated_at"), java.time.Instant.now())
-                .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
+        return dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, "SELECTING_PROVIDER")
+                .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
+                .where(RENDER_JOB.ID.eq(jobId).and(RENDER_JOB.STATUS.eq("QUEUED")))
                 .execute();
     }
 
@@ -140,19 +141,19 @@ public class RenderJobRepository {
     }
 
     public int claimJob(String jobId, String workerId) {
-        return dsl.update(table("render_job"))
-                .set(field("status"), "EXECUTING")
-                .set(field("updated_at"), java.time.Instant.now())
-                .where(field("id").eq(jobId).and(field("status").eq("QUEUED")))
+        return dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, "EXECUTING")
+                .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
+                .where(RENDER_JOB.ID.eq(jobId).and(RENDER_JOB.STATUS.eq("QUEUED")))
                 .execute();
     }
 
     public List<Record> findStaleExecutingJobs(java.time.Instant cutoff, int limit) {
         return dsl.select()
-                .from(table("render_job"))
-                .where(field("status").eq("EXECUTING")
-                        .and(field("updated_at").lessThan(cutoff)))
-                .orderBy(field("updated_at").asc())
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.STATUS.eq("EXECUTING")
+                        .and(RENDER_JOB.UPDATED_AT.lessThan(cutoff)))
+                .orderBy(RENDER_JOB.UPDATED_AT.asc())
                 .limit(limit)
                 .fetch();
     }
@@ -162,21 +163,21 @@ public class RenderJobRepository {
      * Atomic CAS — only succeeds if job is in one of these active states.
      */
     public int markActiveJobFailed(String jobId, String reason) {
-        return dsl.update(table("render_job"))
-                .set(field("status"), "FAILED")
-                .set(field("error_message"), reason)
-                .set(field("updated_at"), java.time.Instant.now())
-                .where(field("id").eq(jobId).and(
-                        field("status").in("SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING", "COMPLETING")))
+        return dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, "FAILED")
+                .set(RENDER_JOB.ERROR_MESSAGE, reason)
+                .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
+                .where(RENDER_JOB.ID.eq(jobId).and(
+                        RENDER_JOB.STATUS.in("SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING", "COMPLETING")))
                 .execute();
     }
 
     public int markExecutingJobFailed(String jobId, String reason) {
-        return dsl.update(table("render_job"))
-                .set(field("status"), "FAILED")
-                .set(field("error_message"), reason)
-                .set(field("updated_at"), java.time.Instant.now())
-                .where(field("id").eq(jobId).and(field("status").eq("EXECUTING")))
+        return dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, "FAILED")
+                .set(RENDER_JOB.ERROR_MESSAGE, reason)
+                .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
+                .where(RENDER_JOB.ID.eq(jobId).and(RENDER_JOB.STATUS.eq("EXECUTING")))
                 .execute();
     }
 
@@ -186,18 +187,18 @@ public class RenderJobRepository {
      */
     @Deprecated(since = "execution-stack-simplification")
     public int requeueExecutingJob(String jobId, String reason) {
-        return dsl.update(table("render_job"))
-                .set(field("status"), "QUEUED")
-                .set(field("error_message"), reason)
-                .set(field("updated_at"), java.time.Instant.now())
-                .where(field("id").eq(jobId).and(field("status").eq("EXECUTING")))
+        return dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, "QUEUED")
+                .set(RENDER_JOB.ERROR_MESSAGE, reason)
+                .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
+                .where(RENDER_JOB.ID.eq(jobId).and(RENDER_JOB.STATUS.eq("EXECUTING")))
                 .execute();
     }
 
     public void updateStatus(String jobId, String newStatus) {
-        dsl.update(table("render_job"))
-                .set(field("status"), newStatus)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, newStatus)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -205,10 +206,10 @@ public class RenderJobRepository {
      * Update status and clear error message (e.g., for retry).
      */
     public void updateStatusAndClearError(String jobId, String newStatus) {
-        dsl.update(table("render_job"))
-                .set(field("status"), newStatus)
-                .set(field("error_message"), (String) null)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, newStatus)
+                .set(RENDER_JOB.ERROR_MESSAGE, (String) null)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -216,10 +217,10 @@ public class RenderJobRepository {
      * Update status and set error message (e.g., for failure).
      */
     public void updateStatusWithError(String jobId, String newStatus, String errorMessage) {
-        dsl.update(table("render_job"))
-                .set(field("status"), newStatus)
-                .set(field("error_message"), errorMessage)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, newStatus)
+                .set(RENDER_JOB.ERROR_MESSAGE, errorMessage)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -227,9 +228,9 @@ public class RenderJobRepository {
      * Update the artifact URI for a completed render job.
      */
     public void updateArtifactUri(String jobId, String artifactUri) {
-        dsl.update(table("render_job"))
-                .set(field("artifact_uri"), artifactUri)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.ARTIFACT_URI, artifactUri)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -237,9 +238,9 @@ public class RenderJobRepository {
      * Update pipeline plan JSON.
      */
     public void updatePipelinePlan(String jobId, String pipelinePlanJson) {
-        dsl.update(table("render_job"))
-                .set(field("pipeline_plan_json"), pipelinePlanJson)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.PIPELINE_PLAN_JSON, pipelinePlanJson)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -247,9 +248,9 @@ public class RenderJobRepository {
      * Update pipeline execution JSON.
      */
     public void updatePipelineExecution(String jobId, String pipelineExecutionJson) {
-        dsl.update(table("render_job"))
-                .set(field("pipeline_execution_json"), pipelineExecutionJson)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.PIPELINE_EXECUTION_JSON, pipelineExecutionJson)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -257,9 +258,9 @@ public class RenderJobRepository {
      * Update AI script.
      */
     public void updateAiScript(String jobId, String aiScript) {
-        dsl.update(table("render_job"))
-                .set(field("ai_script"), aiScript)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.AI_SCRIPT, aiScript)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -268,9 +269,9 @@ public class RenderJobRepository {
      */
     public boolean existsByIdAndTenant(String jobId, String tenantId) {
         return dsl.selectOne()
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
-                .and(field("tenant_id").eq(tenantId))
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
+                .and(RENDER_JOB.TENANT_ID.eq(tenantId))
                 .fetchOne() != null;
     }
 
@@ -278,12 +279,12 @@ public class RenderJobRepository {
      * Get the tenant_id for a render job. Returns empty if not found.
      */
     public Optional<String> findTenantIdById(String jobId) {
-        Record record = dsl.select(field("tenant_id", String.class))
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
+        Record record = dsl.select(RENDER_JOB.TENANT_ID)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .fetchOne();
         if (record == null) return Optional.empty();
-        return Optional.ofNullable(record.get(field("tenant_id", String.class)));
+        return Optional.ofNullable(record.get(RENDER_JOB.TENANT_ID));
     }
 
     /**
@@ -292,12 +293,12 @@ public class RenderJobRepository {
      * since RenderJobService needs it for tenant resolution during job creation.
      */
     public Optional<String> findProjectTenantId(String projectId) {
-        Record record = dsl.select(field("tenant_id", String.class))
-                .from(table("project"))
-                .where(field("id").eq(projectId))
+        Record record = dsl.select(PROJECT.TENANT_ID)
+                .from(PROJECT)
+                .where(PROJECT.ID.eq(projectId))
                 .fetchOne();
         if (record == null) return Optional.empty();
-        return Optional.ofNullable(record.get(field("tenant_id", String.class)));
+        return Optional.ofNullable(record.get(PROJECT.TENANT_ID));
     }
 
     /**
@@ -305,12 +306,12 @@ public class RenderJobRepository {
      */
     public void createRejected(String id, String projectId, String tenantId,
             String snapshotId, String profile, String errorMessage, OffsetDateTime createdAt) {
-        dsl.insertInto(table("render_job"))
-                .columns(field("id"), field("project_id"), field("tenant_id"),
-                        field("timeline_snapshot_id"),
-                        field("profile"), field("status"), field("created_at"), field("error_message"))
+        dsl.insertInto(RENDER_JOB)
+                .columns(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID,
+                        RENDER_JOB.PROFILE, RENDER_JOB.STATUS, RENDER_JOB.CREATED_AT, RENDER_JOB.ERROR_MESSAGE)
                 .values(id, projectId, tenantId, snapshotId, profile,
-                        "REJECTED", createdAt, errorMessage)
+                        "REJECTED", createdAt.toLocalDateTime(), errorMessage)
                 .execute();
     }
 
@@ -318,12 +319,12 @@ public class RenderJobRepository {
      * Get the ai_script for a render job. Returns empty if not found or null.
      */
     public Optional<String> findAiScriptById(String jobId) {
-        Record record = dsl.select(field("ai_script", String.class))
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
+        Record record = dsl.select(RENDER_JOB.AI_SCRIPT)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .fetchOne();
         if (record == null) return Optional.empty();
-        return Optional.ofNullable(record.get(field("ai_script", String.class)));
+        return Optional.ofNullable(record.get(RENDER_JOB.AI_SCRIPT));
     }
 
     /**
@@ -334,17 +335,17 @@ public class RenderJobRepository {
 
     public Optional<TimelineData> findTimelineDataById(String jobId) {
         Record record = dsl.select(
-                        field("tenant_id", String.class),
-                        field("ai_script", String.class),
-                        field("timeline_snapshot_id", String.class))
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
+                        RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.AI_SCRIPT,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .fetchOne();
         if (record == null) return Optional.empty();
         return Optional.of(new TimelineData(
-                record.get(field("tenant_id", String.class)),
-                record.get(field("ai_script", String.class)),
-                record.get(field("timeline_snapshot_id", String.class))));
+                record.get(RENDER_JOB.TENANT_ID),
+                record.get(RENDER_JOB.AI_SCRIPT),
+                record.get(RENDER_JOB.TIMELINE_SNAPSHOT_ID)));
     }
 
     /**
@@ -361,11 +362,11 @@ public class RenderJobRepository {
      * Returns the raw Record for flexible access by execution service.
      */
     public Record requireJobRecord(String jobId) {
-        Record job = dsl.select(field("id"), field("project_id"), field("tenant_id"),
-                        field("profile"), field("timeline_snapshot_id"), field("base_job_id"),
-                        field("status"), field("ai_script"), field("artifact_uri"), field("error_message"))
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
+        Record job = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.PROFILE, RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.BASE_JOB_ID,
+                        RENDER_JOB.STATUS, RENDER_JOB.AI_SCRIPT, RENDER_JOB.ARTIFACT_URI, RENDER_JOB.ERROR_MESSAGE)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .fetchOne();
         if (job == null) {
             throw new IllegalArgumentException("Render job not found: " + jobId);
@@ -377,9 +378,9 @@ public class RenderJobRepository {
      * Update the profile for a render job.
      */
     public void updateProfile(String jobId, String profile) {
-        dsl.update(table("render_job"))
-                .set(field("profile"), profile)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.PROFILE, profile)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -387,9 +388,9 @@ public class RenderJobRepository {
      * Update the trace_id for a render job (provider runtime observability).
      */
     public void updateTraceId(String jobId, String traceId) {
-        dsl.update(table("render_job"))
-                .set(field("trace_id"), traceId)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.TRACE_ID, traceId)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -397,9 +398,9 @@ public class RenderJobRepository {
      * Update the error_message for a render job.
      */
     public void updateErrorMessage(String jobId, String errorMessage) {
-        dsl.update(table("render_job"))
-                .set(field("error_message"), errorMessage)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.ERROR_MESSAGE, errorMessage)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -407,9 +408,9 @@ public class RenderJobRepository {
      * Update the selected_provider for a render job (Provider selection persistence).
      */
     public void updateSelectedProvider(String jobId, String providerName) {
-        dsl.update(table("render_job"))
-                .set(field("selected_provider"), providerName)
-                .where(field("id").eq(jobId))
+        dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.SELECTED_PROVIDER, providerName)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .execute();
     }
 
@@ -417,11 +418,11 @@ public class RenderJobRepository {
      * Check if a job is in a cancelled state.
      */
     public boolean isCancelled(String jobId) {
-        Record record = dsl.select(field("status", String.class))
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
+        Record record = dsl.select(RENDER_JOB.STATUS)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .fetchOne();
-        return record != null && "CANCELLED".equals(record.get(field("status"), String.class));
+        return record != null && "CANCELLED".equals(record.get(RENDER_JOB.STATUS, String.class));
     }
 
     /**
@@ -429,31 +430,31 @@ public class RenderJobRepository {
      * Returns empty if no queued jobs exist.
      */
     public Optional<String> findNextQueuedJobId() {
-        Record record = dsl.select(field("id", String.class))
-                .from(table("render_job"))
-                .where(field("status").eq("QUEUED"))
-                .orderBy(field("created_at").asc())
+        Record record = dsl.select(RENDER_JOB.ID)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.STATUS.eq("QUEUED"))
+                .orderBy(RENDER_JOB.CREATED_AT.asc())
                 .limit(1)
                 .fetchOne();
-        return Optional.ofNullable(record).map(r -> r.get(field("id"), String.class));
+        return Optional.ofNullable(record).map(r -> r.get(RENDER_JOB.ID, String.class));
     }
 
     private RenderJobResponse mapToResponse(Record record) {
         return new RenderJobResponse(
-                record.get(field("id", String.class)),
-                record.get(field("project_id", String.class)),
-                record.get(field("timeline_snapshot_id", String.class)),
-                record.get(field("profile", String.class)),
-                record.get(field("status", String.class))
+                record.get(RENDER_JOB.ID),
+                record.get(RENDER_JOB.PROJECT_ID),
+                record.get(RENDER_JOB.TIMELINE_SNAPSHOT_ID),
+                record.get(RENDER_JOB.PROFILE),
+                record.get(RENDER_JOB.STATUS)
         );
     }
 
     public List<Record> findRetryEligibleFailedJobs(java.time.Instant now, int limit) {
         return dsl.select()
-                .from(table("render_job"))
-                .where(field("status").eq("FAILED")
-                        .and(field("error_message").like("%RETRYABLE%")))
-                .orderBy(field("created_at").asc())
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.STATUS.eq("FAILED")
+                        .and(RENDER_JOB.ERROR_MESSAGE.like("%RETRYABLE%")))
+                .orderBy(RENDER_JOB.CREATED_AT.asc())
                 .limit(limit)
                 .fetch();
     }
@@ -464,10 +465,10 @@ public class RenderJobRepository {
      */
     @Deprecated(since = "execution-stack-simplification")
     public int requeueFailedJob(String jobId) {
-        return dsl.update(table("render_job"))
-                .set(field("status"), "QUEUED")
-                .set(field("updated_at"), java.time.Instant.now())
-                .where(field("id").eq(jobId).and(field("status").eq("FAILED")))
+        return dsl.update(RENDER_JOB)
+                .set(RENDER_JOB.STATUS, "QUEUED")
+                .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
+                .where(RENDER_JOB.ID.eq(jobId).and(RENDER_JOB.STATUS.eq("FAILED")))
                 .execute();
     }
 
@@ -484,13 +485,13 @@ public class RenderJobRepository {
      */
     public void createRetryJob(String newId, String failedJobId, String projectId,
             String tenantId, String timelineSnapshotId, String profile) {
-        dsl.insertInto(table("render_job"))
-                .columns(field("id"), field("project_id"), field("tenant_id"),
-                        field("timeline_snapshot_id"), field("profile"),
-                        field("status"), field("base_job_id"), field("created_at"))
+        dsl.insertInto(RENDER_JOB)
+                .columns(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
+                        RENDER_JOB.STATUS, RENDER_JOB.BASE_JOB_ID, RENDER_JOB.CREATED_AT)
                 .values(newId, projectId, tenantId,
                         timelineSnapshotId, profile,
-                        "QUEUED", failedJobId, java.time.OffsetDateTime.now())
+                        "QUEUED", failedJobId, java.time.LocalDateTime.now())
                 .execute();
     }
 
@@ -499,10 +500,10 @@ public class RenderJobRepository {
 
     public Map<String, Integer> countByStatus(String projectId) {
         Map<String, Integer> counts = new java.util.HashMap<>();
-        var results = dsl.select(field("status"), DSL.count().as("cnt"))
-                .from(table("render_job"))
-                .where(field("project_id").eq(projectId))
-                .groupBy(field("status"))
+        var results = dsl.select(RENDER_JOB.STATUS, DSL.count().as("cnt"))
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.PROJECT_ID.eq(projectId))
+                .groupBy(RENDER_JOB.STATUS)
                 .fetch();
         for (var row : results) {
             counts.put(row.get("status", String.class), row.get("cnt", Integer.class));
@@ -511,38 +512,38 @@ public class RenderJobRepository {
     }
 
     public int countStaleExecuting(String projectId, java.time.Instant cutoff) {
-        return dsl.fetchCount(table("render_job"),
-                field("project_id").eq(projectId)
-                        .and(field("status").eq("EXECUTING"))
-                        .and(field("updated_at").lessThan(cutoff)));
+        return dsl.fetchCount(RENDER_JOB,
+                RENDER_JOB.PROJECT_ID.eq(projectId)
+                        .and(RENDER_JOB.STATUS.eq("EXECUTING"))
+                        .and(RENDER_JOB.UPDATED_AT.lessThan(cutoff)));
     }
 
     public int countRetryEligibleFailed(String projectId) {
-        return dsl.fetchCount(table("render_job"),
-                field("project_id").eq(projectId)
-                        .and(field("status").eq("FAILED"))
-                        .and(field("error_message").like("%RETRYABLE%")));
+        return dsl.fetchCount(RENDER_JOB,
+                RENDER_JOB.PROJECT_ID.eq(projectId)
+                        .and(RENDER_JOB.STATUS.eq("FAILED"))
+                        .and(RENDER_JOB.ERROR_MESSAGE.like("%RETRYABLE%")));
     }
 
     public int countRetryExhausted(String projectId) {
-        return dsl.fetchCount(table("render_job"),
-                field("project_id").eq(projectId)
-                        .and(field("status").eq("FAILED"))
-                        .and(field("error_message").like("%RETRY_EXHAUSTED%")));
+        return dsl.fetchCount(RENDER_JOB,
+                RENDER_JOB.PROJECT_ID.eq(projectId)
+                        .and(RENDER_JOB.STATUS.eq("FAILED"))
+                        .and(RENDER_JOB.ERROR_MESSAGE.like("%RETRY_EXHAUSTED%")));
     }
 
     public java.time.Instant oldestQueuedCreatedAt(String projectId) {
-        return dsl.select(DSL.min(field("created_at")))
-                .from(table("render_job"))
-                .where(field("project_id").eq(projectId).and(field("status").eq("QUEUED")))
+        return dsl.select(DSL.min(RENDER_JOB.CREATED_AT))
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.PROJECT_ID.eq(projectId).and(RENDER_JOB.STATUS.eq("QUEUED")))
                 .fetchOneInto(java.sql.Timestamp.class)
                 .toInstant();
     }
 
     public java.time.Instant oldestExecutingUpdatedAt(String projectId) {
-        return dsl.select(DSL.min(field("updated_at")))
-                .from(table("render_job"))
-                .where(field("project_id").eq(projectId).and(field("status").eq("EXECUTING")))
+        return dsl.select(DSL.min(RENDER_JOB.UPDATED_AT))
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.PROJECT_ID.eq(projectId).and(RENDER_JOB.STATUS.eq("EXECUTING")))
                 .fetchOneInto(java.sql.Timestamp.class)
                 .toInstant();
     }

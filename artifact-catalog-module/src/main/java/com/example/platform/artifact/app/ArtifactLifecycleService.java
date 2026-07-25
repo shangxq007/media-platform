@@ -22,9 +22,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Tombstone and delete-reference checks for catalog {@link Artifact} rows.
@@ -118,17 +117,17 @@ public class ArtifactLifecycleService {
         if (uri == null || uri.isBlank()) {
             return refs;
         }
-        var rows = dsl.get().select(field("id", String.class), field("artifact_uri", String.class))
-                .from(table("render_job"))
-                .where(field("artifact_uri").eq(uri))
+        var rows = dsl.get().select(RENDER_JOB.ID, RENDER_JOB.ARTIFACT_URI)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ARTIFACT_URI.eq(uri))
                 .limit(50)
                 .fetch();
         for (Record row : rows) {
-            String jobUri = row.get(field("artifact_uri", String.class));
+            String jobUri = row.get(RENDER_JOB.ARTIFACT_URI);
             if (uri.equals(jobUri)) {
                 refs.add(Map.of(
                         "kind", "render_job_output",
-                        "renderJobId", row.get(field("id", String.class)),
+                        "renderJobId", row.get(RENDER_JOB.ID),
                         "storageUri", uri));
             }
         }

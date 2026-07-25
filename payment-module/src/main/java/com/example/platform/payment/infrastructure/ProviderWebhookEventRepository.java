@@ -1,14 +1,14 @@
 package com.example.platform.payment.infrastructure;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.ProviderWebhookEvent.PROVIDER_WEBHOOK_EVENT;
+
 
 /**
  * Persistence repository for provider webhook events.
@@ -30,11 +30,11 @@ public class ProviderWebhookEventRepository {
 
     public void save(String providerCode, String webhookEventKey, String webhookEventType,
                      int webhookEventVersion, boolean signatureValid, String payload) {
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(table("PROVIDER_WEBHOOK_EVENT"))
-                .columns(field("ID"), field("PROVIDER_CODE"), field("WEBHOOK_EVENT_KEY"),
-                        field("WEBHOOK_EVENT_TYPE"), field("WEBHOOK_EVENT_VERSION"),
-                        field("SIGNATURE_VALID"), field("PAYLOAD"), field("CREATED_AT"))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.insertInto(PROVIDER_WEBHOOK_EVENT)
+                .columns(PROVIDER_WEBHOOK_EVENT.ID, PROVIDER_WEBHOOK_EVENT.PROVIDER_CODE, PROVIDER_WEBHOOK_EVENT.WEBHOOK_EVENT_KEY,
+                        PROVIDER_WEBHOOK_EVENT.WEBHOOK_EVENT_TYPE, PROVIDER_WEBHOOK_EVENT.WEBHOOK_EVENT_VERSION,
+                        PROVIDER_WEBHOOK_EVENT.SIGNATURE_VALID, PROVIDER_WEBHOOK_EVENT.PAYLOAD, PROVIDER_WEBHOOK_EVENT.CREATED_AT)
                 .values(webhookEventKey, providerCode, webhookEventKey, webhookEventType,
                         webhookEventVersion, signatureValid, payload, now)
                 .execute();
@@ -42,25 +42,25 @@ public class ProviderWebhookEventRepository {
 
     public boolean existsByKey(String webhookEventKey) {
         Integer count = dsl.selectCount()
-                .from(table("PROVIDER_WEBHOOK_EVENT"))
-                .where(field("WEBHOOK_EVENT_KEY").eq(webhookEventKey))
+                .from(PROVIDER_WEBHOOK_EVENT)
+                .where(PROVIDER_WEBHOOK_EVENT.WEBHOOK_EVENT_KEY.eq(webhookEventKey))
                 .fetchOne(0, Integer.class);
         return count != null && count > 0;
     }
 
     public Optional<WebhookEventRecord> findByKey(String webhookEventKey) {
         Record record = dsl.select()
-                .from(table("PROVIDER_WEBHOOK_EVENT"))
-                .where(field("WEBHOOK_EVENT_KEY").eq(webhookEventKey))
+                .from(PROVIDER_WEBHOOK_EVENT)
+                .where(PROVIDER_WEBHOOK_EVENT.WEBHOOK_EVENT_KEY.eq(webhookEventKey))
                 .fetchOne();
         return Optional.ofNullable(record).map(r -> new WebhookEventRecord(
-                r.get(field("ID"), String.class),
-                r.get(field("PROVIDER_CODE"), String.class),
-                r.get(field("WEBHOOK_EVENT_KEY"), String.class),
-                r.get(field("WEBHOOK_EVENT_TYPE"), String.class),
-                r.get(field("WEBHOOK_EVENT_VERSION"), Integer.class),
-                r.get(field("SIGNATURE_VALID"), Boolean.class),
-                r.get(field("PAYLOAD"), String.class)
+                r.get(PROVIDER_WEBHOOK_EVENT.ID, String.class),
+                r.get(PROVIDER_WEBHOOK_EVENT.PROVIDER_CODE, String.class),
+                r.get(PROVIDER_WEBHOOK_EVENT.WEBHOOK_EVENT_KEY, String.class),
+                r.get(PROVIDER_WEBHOOK_EVENT.WEBHOOK_EVENT_TYPE, String.class),
+                r.get(PROVIDER_WEBHOOK_EVENT.WEBHOOK_EVENT_VERSION, Integer.class),
+                r.get(PROVIDER_WEBHOOK_EVENT.SIGNATURE_VALID, Boolean.class),
+                r.get(PROVIDER_WEBHOOK_EVENT.PAYLOAD, String.class)
         ));
     }
 

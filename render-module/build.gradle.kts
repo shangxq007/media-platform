@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":typed-schema-module"))
     api(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))
     api(project(":ai-module"))

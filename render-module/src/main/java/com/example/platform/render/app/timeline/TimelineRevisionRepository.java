@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import com.example.platform.shared.web.TenantGuard;
@@ -9,9 +10,9 @@ import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import org.jooq.impl.DSL;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 @Repository
 public class TimelineRevisionRepository {
@@ -24,8 +25,8 @@ public class TimelineRevisionRepository {
 
     public Optional<RevisionRow> findById(String revisionId) {
         Record row = dsl.select()
-                .from(table("timeline_revision"))
-                .where(field("id").eq(revisionId))
+                .from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.ID.eq(revisionId))
                 .and(tenantCondition())
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(map(row));
@@ -33,9 +34,9 @@ public class TimelineRevisionRepository {
 
     public Optional<RevisionRow> findHeadByProject(String projectId) {
         Record row = dsl.select()
-                .from(table("timeline_revision"))
+                .from(TIMELINE_REVISION)
                 .where(projectScope(projectId))
-                .orderBy(field("revision_number").desc())
+                .orderBy(TIMELINE_REVISION.REVISION_NUMBER.desc())
                 .limit(1)
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(map(row));
@@ -52,119 +53,122 @@ public class TimelineRevisionRepository {
     public List<RevisionRow> listByProject(
             String projectId, String editSessionId, String authorUserId, String source, int limit) {
         var query = dsl.select()
-                .from(table("timeline_revision"))
+                .from(TIMELINE_REVISION)
                 .where(projectScope(projectId));
         if (editSessionId != null && !editSessionId.isBlank()) {
-            query = query.and(field("edit_session_id").eq(editSessionId));
+            query = query.and(TIMELINE_REVISION.EDIT_SESSION_ID.eq(editSessionId));
         }
         if (authorUserId != null && !authorUserId.isBlank()) {
-            query = query.and(field("author_user_id").eq(authorUserId));
+            query = query.and(TIMELINE_REVISION.AUTHOR_USER_ID.eq(authorUserId));
         }
         if (source != null && !source.isBlank()) {
-            query = query.and(field("source").eq(source));
+            query = query.and(TIMELINE_REVISION.SOURCE.eq(source));
         }
         return query
-                .orderBy(field("revision_number").desc())
+                .orderBy(TIMELINE_REVISION.REVISION_NUMBER.desc())
                 .limit(Math.max(1, Math.min(limit, 200)))
                 .fetch()
                 .map(TimelineRevisionRepository::map);
     }
 
     public boolean updateAnnotation(String revisionId, String projectId, String message, String labelsJson) {
-        int updated = dsl.update(table("timeline_revision"))
-                .set(field("message"), message)
-                .set(field("labels_json"), labelsJson)
-                .where(field("id").eq(revisionId))
+        int updated = dsl.update(TIMELINE_REVISION)
+                .set(TIMELINE_REVISION.MESSAGE, message)
+                .set(TIMELINE_REVISION.LABELS_JSON, labelsJson)
+                .where(TIMELINE_REVISION.ID.eq(revisionId))
                 .and(projectScope(projectId))
                 .execute();
         return updated > 0;
     }
 
     public List<String> listDistinctSources(String projectId) {
-        return dsl.selectDistinct(field("source", String.class))
-                .from(table("timeline_revision"))
+        return dsl.selectDistinct(TIMELINE_REVISION.SOURCE)
+                .from(TIMELINE_REVISION)
                 .where(projectScope(projectId))
-                .orderBy(field("source").asc())
-                .fetch(field("source", String.class));
+                .orderBy(TIMELINE_REVISION.SOURCE.asc())
+                .fetch(TIMELINE_REVISION.SOURCE);
     }
 
     public List<AuthorFacetRow> listAuthorFacets(String projectId, int limit) {
         int cap = Math.max(1, Math.min(limit, 50));
+        var revisionCountField = DSL.count().as("revision_count");
         return dsl.select(
-                        field("author_user_id", String.class),
-                        org.jooq.impl.DSL.count().as("revision_count"))
-                .from(table("timeline_revision"))
+                        TIMELINE_REVISION.AUTHOR_USER_ID,
+                        revisionCountField)
+                .from(TIMELINE_REVISION)
                 .where(projectScope(projectId))
-                .and(field("author_user_id").isNotNull())
-                .groupBy(field("author_user_id"))
-                .orderBy(org.jooq.impl.DSL.count().desc())
+                .and(TIMELINE_REVISION.AUTHOR_USER_ID.isNotNull())
+                .groupBy(TIMELINE_REVISION.AUTHOR_USER_ID)
+                .orderBy(revisionCountField.desc())
                 .limit(cap)
                 .fetch()
                 .map(r -> new AuthorFacetRow(
-                        r.get(field("author_user_id", String.class)),
-                        r.get(org.jooq.impl.DSL.field("revision_count", Integer.class))));
+                        r.get(TIMELINE_REVISION.AUTHOR_USER_ID),
+                        r.get(revisionCountField, Integer.class)));
     }
 
     public List<EditSessionRow> listEditSessions(String projectId, int limit) {
         int cap = Math.max(1, Math.min(limit, 100));
+        var revisionCountField = DSL.count().as("revision_count");
+        var maxCreatedAtField = DSL.max(TIMELINE_REVISION.CREATED_AT).as("last_at");
         return dsl.select(
-                        field("edit_session_id", String.class),
-                        org.jooq.impl.DSL.max(field("created_at")).as("last_at"),
-                        org.jooq.impl.DSL.count().as("revision_count"))
-                .from(table("timeline_revision"))
+                        TIMELINE_REVISION.EDIT_SESSION_ID,
+                        maxCreatedAtField,
+                        revisionCountField)
+                .from(TIMELINE_REVISION)
                 .where(projectScope(projectId))
-                .and(field("edit_session_id").isNotNull())
-                .groupBy(field("edit_session_id"))
-                .orderBy(org.jooq.impl.DSL.max(field("created_at")).desc())
+                .and(TIMELINE_REVISION.EDIT_SESSION_ID.isNotNull())
+                .groupBy(TIMELINE_REVISION.EDIT_SESSION_ID)
+                .orderBy(maxCreatedAtField.desc())
                 .limit(cap)
                 .fetch()
                 .map(r -> new EditSessionRow(
-                        r.get(field("edit_session_id", String.class)),
-                        toOffsetDateTime(r.get("last_at")),
-                        r.get(org.jooq.impl.DSL.field("revision_count", Integer.class))));
+                        r.get(TIMELINE_REVISION.EDIT_SESSION_ID),
+                        toOffsetDateTime(r.get(maxCreatedAtField)),
+                        r.get(revisionCountField, Integer.class)));
     }
 
     private static Condition tenantCondition() {
-        return field("tenant_id").eq(TenantGuard.requireTenantId());
+        return TIMELINE_REVISION.TENANT_ID.eq(TenantGuard.requireTenantId());
     }
 
     private static Condition projectScope(String projectId) {
-        return field("project_id").eq(projectId).and(tenantCondition());
+        return TIMELINE_REVISION.PROJECT_ID.eq(projectId).and(tenantCondition());
     }
 
     public int nextRevisionNumber(String projectId) {
-        Integer max = dsl.select(field("revision_number", Integer.class))
-                .from(table("timeline_revision"))
+        Integer max = dsl.select(TIMELINE_REVISION.REVISION_NUMBER)
+                .from(TIMELINE_REVISION)
                 .where(projectScope(projectId))
-                .orderBy(field("revision_number").desc())
+                .orderBy(TIMELINE_REVISION.REVISION_NUMBER.desc())
                 .limit(1)
-                .fetchOne(field("revision_number", Integer.class));
+                .fetchOne(TIMELINE_REVISION.REVISION_NUMBER);
         return max == null ? 1 : max + 1;
     }
 
     public void insert(RevisionRow row) {
-        dsl.insertInto(table("timeline_revision"))
+        dsl.insertInto(TIMELINE_REVISION)
                 .columns(
-                        field("id"),
-                        field("project_id"),
-                        field("tenant_id"),
-                        field("parent_revision_id"),
-                        field("revision_number"),
-                        field("snapshot_id"),
-                        field("internal_revision"),
-                        field("content_hash"),
-                        field("schema_version"),
-                        field("source"),
-                        field("author_user_id"),
-                        field("edit_session_id"),
-                        field("message"),
-                        field("change_summary_json"),
-                        field("patch_ops_json"),
-                        field("labels_json"),
-                        field("is_merge"),
-                        field("merge_parent_revision_ids"),
-                        field("merge_base_revision_id"),
-                        field("created_at"))
+                        TIMELINE_REVISION.ID,
+                        TIMELINE_REVISION.PROJECT_ID,
+                        TIMELINE_REVISION.TENANT_ID,
+                        TIMELINE_REVISION.PARENT_REVISION_ID,
+                        TIMELINE_REVISION.REVISION_NUMBER,
+                        TIMELINE_REVISION.SNAPSHOT_ID,
+                        TIMELINE_REVISION.INTERNAL_REVISION,
+                        TIMELINE_REVISION.CONTENT_HASH,
+                        TIMELINE_REVISION.SCHEMA_VERSION,
+                        TIMELINE_REVISION.SOURCE,
+                        TIMELINE_REVISION.AUTHOR_USER_ID,
+                        TIMELINE_REVISION.EDIT_SESSION_ID,
+                        TIMELINE_REVISION.MESSAGE,
+                        TIMELINE_REVISION.CHANGE_SUMMARY_JSON,
+                        TIMELINE_REVISION.PATCH_OPS_JSON,
+                        TIMELINE_REVISION.LABELS_JSON,
+                        TIMELINE_REVISION.IS_MERGE,
+                        TIMELINE_REVISION.MERGE_PARENT_REVISION_IDS,
+                        TIMELINE_REVISION.MERGE_BASE_REVISION_ID,
+                        TIMELINE_REVISION.CREATED_AT)
                 .values(
                         row.id(),
                         row.projectId(),
@@ -185,43 +189,46 @@ public class TimelineRevisionRepository {
                         row.isMerge(),
                         row.mergeParentRevisionIds(),
                         row.mergeBaseRevisionId(),
-                        row.createdAt())
+                        row.createdAt().toLocalDateTime())
                 .execute();
     }
 
     private static RevisionRow map(Record row) {
         return new RevisionRow(
-                row.get(field("id", String.class)),
-                row.get(field("project_id", String.class)),
-                row.get(field("tenant_id", String.class)),
-                row.get(field("parent_revision_id", String.class)),
-                row.get(field("revision_number", Integer.class)),
-                row.get(field("snapshot_id", String.class)),
-                row.get(field("internal_revision", Integer.class)),
-                row.get(field("content_hash", String.class)),
-                row.get(field("schema_version", String.class)),
-                row.get(field("source", String.class)),
-                row.get(field("author_user_id", String.class)),
-                row.get(field("edit_session_id", String.class)),
-                row.get(field("message", String.class)),
-                row.get(field("change_summary_json", String.class)),
-                row.get(field("patch_ops_json", String.class)),
-                row.get(field("labels_json", String.class)),
+                row.get(TIMELINE_REVISION.ID),
+                row.get(TIMELINE_REVISION.PROJECT_ID),
+                row.get(TIMELINE_REVISION.TENANT_ID),
+                row.get(TIMELINE_REVISION.PARENT_REVISION_ID),
+                row.get(TIMELINE_REVISION.REVISION_NUMBER),
+                row.get(TIMELINE_REVISION.SNAPSHOT_ID),
+                row.get(TIMELINE_REVISION.INTERNAL_REVISION),
+                row.get(TIMELINE_REVISION.CONTENT_HASH),
+                row.get(TIMELINE_REVISION.SCHEMA_VERSION),
+                row.get(TIMELINE_REVISION.SOURCE),
+                row.get(TIMELINE_REVISION.AUTHOR_USER_ID),
+                row.get(TIMELINE_REVISION.EDIT_SESSION_ID),
+                row.get(TIMELINE_REVISION.MESSAGE),
+                row.get(TIMELINE_REVISION.CHANGE_SUMMARY_JSON),
+                row.get(TIMELINE_REVISION.PATCH_OPS_JSON),
+                row.get(TIMELINE_REVISION.LABELS_JSON),
                 Boolean.TRUE.equals(row.get("is_merge", Boolean.class)),
-                row.get(field("merge_parent_revision_ids", String.class)),
-                row.get(field("merge_base_revision_id", String.class)),
-                toOffsetDateTime(row.get(field("created_at"))));
+                row.get(TIMELINE_REVISION.MERGE_PARENT_REVISION_IDS),
+                row.get(TIMELINE_REVISION.MERGE_BASE_REVISION_ID),
+                toOffsetDateTime(row.get(TIMELINE_REVISION.CREATED_AT)));
     }
 
     private static OffsetDateTime toOffsetDateTime(Object value) {
         if (value == null) {
-            return OffsetDateTime.now();
+            return LocalDateTime.now().atOffset(ZoneOffset.UTC);
         }
         if (value instanceof OffsetDateTime odt) {
             return odt;
         }
         if (value instanceof java.time.Instant instant) {
             return instant.atOffset(ZoneOffset.UTC);
+        }
+        if (value instanceof java.time.LocalDateTime ldt) {
+            return ldt.atOffset(ZoneOffset.UTC);
         }
         if (value instanceof java.sql.Timestamp ts) {
             return ts.toInstant().atOffset(ZoneOffset.UTC);

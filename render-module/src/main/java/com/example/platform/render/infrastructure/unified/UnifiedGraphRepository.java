@@ -7,11 +7,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
+import static com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphEdge.UNIFIED_GRAPH_EDGE;
+import static com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphNode.UNIFIED_GRAPH_NODE;
+import static com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Repository for persisting UnifiedRequestGraph.
@@ -32,17 +35,17 @@ public class UnifiedGraphRepository {
      */
     public void save(UnifiedRequestGraph graph) {
         // Save graph metadata
-        dsl.insertInto(table("unified_request_graph"))
+        dsl.insertInto(UNIFIED_REQUEST_GRAPH)
                 .columns(
-                        field("graph_id"),
-                        field("request_id"),
-                        field("tenant_id"),
-                        field("workspace_id"),
-                        field("job_id"),
-                        field("root_node_id"),
-                        field("status"),
-                        field("created_at"),
-                        field("completed_at")
+                        UNIFIED_REQUEST_GRAPH.GRAPH_ID,
+                        UNIFIED_REQUEST_GRAPH.REQUEST_ID,
+                        UNIFIED_REQUEST_GRAPH.TENANT_ID,
+                        UNIFIED_REQUEST_GRAPH.WORKSPACE_ID,
+                        UNIFIED_REQUEST_GRAPH.JOB_ID,
+                        UNIFIED_REQUEST_GRAPH.ROOT_NODE_ID,
+                        UNIFIED_REQUEST_GRAPH.STATUS,
+                        UNIFIED_REQUEST_GRAPH.CREATED_AT,
+                        UNIFIED_REQUEST_GRAPH.COMPLETED_AT
                 )
                 .values(
                         graph.graphId(),
@@ -52,15 +55,15 @@ public class UnifiedGraphRepository {
                         graph.jobId(),
                         graph.rootNodeId(),
                         graph.status().name(),
-                        graph.createdAt().atOffset(java.time.ZoneOffset.UTC),
-                        graph.completedAt() != null ? graph.completedAt().atOffset(java.time.ZoneOffset.UTC) : null
+                        graph.createdAt() != null ? graph.createdAt().atOffset(ZoneOffset.UTC).toLocalDateTime() : null,
+                        graph.completedAt() != null ? graph.completedAt().atOffset(ZoneOffset.UTC).toLocalDateTime() : null
                 )
-                .onConflict(field("graph_id"))
+                .onConflict(UNIFIED_REQUEST_GRAPH.GRAPH_ID)
                 .doUpdate()
-                .set(field("job_id"), graph.jobId())
-                .set(field("root_node_id"), graph.rootNodeId())
-                .set(field("status"), graph.status().name())
-                .set(field("completed_at"), graph.completedAt() != null ? graph.completedAt().atOffset(java.time.ZoneOffset.UTC) : null)
+                .set(UNIFIED_REQUEST_GRAPH.JOB_ID, graph.jobId())
+                .set(UNIFIED_REQUEST_GRAPH.ROOT_NODE_ID, graph.rootNodeId())
+                .set(UNIFIED_REQUEST_GRAPH.STATUS, graph.status().name())
+                .set(UNIFIED_REQUEST_GRAPH.COMPLETED_AT, graph.completedAt() != null ? graph.completedAt().atOffset(ZoneOffset.UTC).toLocalDateTime() : null)
                 .execute();
 
         // Save nodes
@@ -81,16 +84,16 @@ public class UnifiedGraphRepository {
      * Save a graph node.
      */
     private void saveNode(String graphId, GraphNode node) {
-        dsl.insertInto(table("unified_graph_node"))
+        dsl.insertInto(UNIFIED_GRAPH_NODE)
                 .columns(
-                        field("node_id"),
-                        field("graph_id"),
-                        field("type"),
-                        field("subsystem"),
-                        field("action"),
-                        field("status"),
-                        field("data"),
-                        field("timestamp")
+                        UNIFIED_GRAPH_NODE.NODE_ID,
+                        UNIFIED_GRAPH_NODE.GRAPH_ID,
+                        UNIFIED_GRAPH_NODE.TYPE,
+                        UNIFIED_GRAPH_NODE.SUBSYSTEM,
+                        UNIFIED_GRAPH_NODE.ACTION,
+                        UNIFIED_GRAPH_NODE.STATUS,
+                        UNIFIED_GRAPH_NODE.DATA,
+                        UNIFIED_GRAPH_NODE.TIMESTAMP
                 )
                 .values(
                         node.nodeId(),
@@ -100,12 +103,12 @@ public class UnifiedGraphRepository {
                         node.action(),
                         node.status(),
                         serializeMap(node.data()),
-                        node.timestamp().atOffset(java.time.ZoneOffset.UTC)
+                        node.timestamp().atOffset(ZoneOffset.UTC).toLocalDateTime()
                 )
-                .onConflict(field("node_id"))
+                .onConflict(UNIFIED_GRAPH_NODE.NODE_ID)
                 .doUpdate()
-                .set(field("status"), node.status())
-                .set(field("data"), serializeMap(node.data()))
+                .set(UNIFIED_GRAPH_NODE.STATUS, node.status())
+                .set(UNIFIED_GRAPH_NODE.DATA, serializeMap(node.data()))
                 .execute();
     }
 
@@ -113,14 +116,14 @@ public class UnifiedGraphRepository {
      * Save a graph edge.
      */
     private void saveEdge(String graphId, GraphEdge edge) {
-        dsl.insertInto(table("unified_graph_edge"))
+        dsl.insertInto(UNIFIED_GRAPH_EDGE)
                 .columns(
-                        field("edge_id"),
-                        field("graph_id"),
-                        field("source_node_id"),
-                        field("target_node_id"),
-                        field("edge_type"),
-                        field("timestamp")
+                        UNIFIED_GRAPH_EDGE.EDGE_ID,
+                        UNIFIED_GRAPH_EDGE.GRAPH_ID,
+                        UNIFIED_GRAPH_EDGE.SOURCE_NODE_ID,
+                        UNIFIED_GRAPH_EDGE.TARGET_NODE_ID,
+                        UNIFIED_GRAPH_EDGE.EDGE_TYPE,
+                        UNIFIED_GRAPH_EDGE.TIMESTAMP
                 )
                 .values(
                         edge.edgeId(),
@@ -128,9 +131,9 @@ public class UnifiedGraphRepository {
                         edge.sourceNodeId(),
                         edge.targetNodeId(),
                         edge.edgeType(),
-                        edge.timestamp().atOffset(java.time.ZoneOffset.UTC)
+                        edge.timestamp().atOffset(ZoneOffset.UTC).toLocalDateTime()
                 )
-                .onConflict(field("edge_id"))
+                .onConflict(UNIFIED_GRAPH_EDGE.EDGE_ID)
                 .doNothing()
                 .execute();
     }
@@ -140,18 +143,18 @@ public class UnifiedGraphRepository {
      */
     public Optional<UnifiedRequestGraph> loadByRequestId(String requestId) {
         Record graphRecord = dsl.select(
-                        field("graph_id"),
-                        field("request_id"),
-                        field("tenant_id"),
-                        field("workspace_id"),
-                        field("job_id"),
-                        field("root_node_id"),
-                        field("status"),
-                        field("created_at"),
-                        field("completed_at")
+                        UNIFIED_REQUEST_GRAPH.GRAPH_ID,
+                        UNIFIED_REQUEST_GRAPH.REQUEST_ID,
+                        UNIFIED_REQUEST_GRAPH.TENANT_ID,
+                        UNIFIED_REQUEST_GRAPH.WORKSPACE_ID,
+                        UNIFIED_REQUEST_GRAPH.JOB_ID,
+                        UNIFIED_REQUEST_GRAPH.ROOT_NODE_ID,
+                        UNIFIED_REQUEST_GRAPH.STATUS,
+                        UNIFIED_REQUEST_GRAPH.CREATED_AT,
+                        UNIFIED_REQUEST_GRAPH.COMPLETED_AT
                 )
-                .from(table("unified_request_graph"))
-                .where(field("request_id").eq(requestId))
+                .from(UNIFIED_REQUEST_GRAPH)
+                .where(UNIFIED_REQUEST_GRAPH.REQUEST_ID.eq(requestId))
                 .fetchOne();
 
         if (graphRecord == null) {
@@ -166,18 +169,18 @@ public class UnifiedGraphRepository {
      */
     public Optional<UnifiedRequestGraph> loadByJobId(String jobId) {
         Record graphRecord = dsl.select(
-                        field("graph_id"),
-                        field("request_id"),
-                        field("tenant_id"),
-                        field("workspace_id"),
-                        field("job_id"),
-                        field("root_node_id"),
-                        field("status"),
-                        field("created_at"),
-                        field("completed_at")
+                        UNIFIED_REQUEST_GRAPH.GRAPH_ID,
+                        UNIFIED_REQUEST_GRAPH.REQUEST_ID,
+                        UNIFIED_REQUEST_GRAPH.TENANT_ID,
+                        UNIFIED_REQUEST_GRAPH.WORKSPACE_ID,
+                        UNIFIED_REQUEST_GRAPH.JOB_ID,
+                        UNIFIED_REQUEST_GRAPH.ROOT_NODE_ID,
+                        UNIFIED_REQUEST_GRAPH.STATUS,
+                        UNIFIED_REQUEST_GRAPH.CREATED_AT,
+                        UNIFIED_REQUEST_GRAPH.COMPLETED_AT
                 )
-                .from(table("unified_request_graph"))
-                .where(field("job_id").eq(jobId))
+                .from(UNIFIED_REQUEST_GRAPH)
+                .where(UNIFIED_REQUEST_GRAPH.JOB_ID.eq(jobId))
                 .fetchOne();
 
         if (graphRecord == null) {
@@ -193,16 +196,16 @@ public class UnifiedGraphRepository {
     private Map<String, GraphNode> loadNodes(String graphId) {
         Map<String, GraphNode> nodes = new LinkedHashMap<>();
         dsl.select(
-                        field("node_id"),
-                        field("type"),
-                        field("subsystem"),
-                        field("action"),
-                        field("status"),
-                        field("data"),
-                        field("timestamp")
+                        UNIFIED_GRAPH_NODE.NODE_ID,
+                        UNIFIED_GRAPH_NODE.TYPE,
+                        UNIFIED_GRAPH_NODE.SUBSYSTEM,
+                        UNIFIED_GRAPH_NODE.ACTION,
+                        UNIFIED_GRAPH_NODE.STATUS,
+                        UNIFIED_GRAPH_NODE.DATA,
+                        UNIFIED_GRAPH_NODE.TIMESTAMP
                 )
-                .from(table("unified_graph_node"))
-                .where(field("graph_id").eq(graphId))
+                .from(UNIFIED_GRAPH_NODE)
+                .where(UNIFIED_GRAPH_NODE.GRAPH_ID.eq(graphId))
                 .fetch()
                 .forEach(record -> {
                     GraphNode node = mapToNode(record);
@@ -216,14 +219,14 @@ public class UnifiedGraphRepository {
      */
     private List<GraphEdge> loadEdges(String graphId) {
         return dsl.select(
-                        field("edge_id"),
-                        field("source_node_id"),
-                        field("target_node_id"),
-                        field("edge_type"),
-                        field("timestamp")
+                        UNIFIED_GRAPH_EDGE.EDGE_ID,
+                        UNIFIED_GRAPH_EDGE.SOURCE_NODE_ID,
+                        UNIFIED_GRAPH_EDGE.TARGET_NODE_ID,
+                        UNIFIED_GRAPH_EDGE.EDGE_TYPE,
+                        UNIFIED_GRAPH_EDGE.TIMESTAMP
                 )
-                .from(table("unified_graph_edge"))
-                .where(field("graph_id").eq(graphId))
+                .from(UNIFIED_GRAPH_EDGE)
+                .where(UNIFIED_GRAPH_EDGE.GRAPH_ID.eq(graphId))
                 .fetch(this::mapToEdge);
     }
 
@@ -232,23 +235,24 @@ public class UnifiedGraphRepository {
     // ---------------------------------------------------------------------------
 
     private UnifiedRequestGraph mapToGraph(Record record) {
-        String graphId = record.get(field("graph_id", String.class));
+        String graphId = record.get(UNIFIED_REQUEST_GRAPH.GRAPH_ID);
         Map<String, GraphNode> nodes = loadNodes(graphId);
         List<GraphEdge> edges = loadEdges(graphId);
 
-        OffsetDateTime completedAt = record.get(field("completed_at"), OffsetDateTime.class);
+        LocalDateTime completedAtLdt = record.get(UNIFIED_REQUEST_GRAPH.COMPLETED_AT);
+        OffsetDateTime completedAt = completedAtLdt != null ? completedAtLdt.atOffset(ZoneOffset.UTC) : null;
 
         return new UnifiedRequestGraph(
                 graphId,
-                record.get(field("request_id", String.class)),
-                record.get(field("tenant_id", String.class)),
-                record.get(field("workspace_id", String.class)),
-                record.get(field("job_id", String.class)),
+                record.get(UNIFIED_REQUEST_GRAPH.REQUEST_ID),
+                record.get(UNIFIED_REQUEST_GRAPH.TENANT_ID),
+                record.get(UNIFIED_REQUEST_GRAPH.WORKSPACE_ID),
+                record.get(UNIFIED_REQUEST_GRAPH.JOB_ID),
                 nodes,
                 edges,
-                record.get(field("root_node_id", String.class)),
-                UnifiedRequestGraph.GraphStatus.valueOf(record.get(field("status", String.class))),
-                record.get(field("created_at", OffsetDateTime.class)).toInstant(),
+                record.get(UNIFIED_REQUEST_GRAPH.ROOT_NODE_ID),
+                UnifiedRequestGraph.GraphStatus.valueOf(record.get(UNIFIED_REQUEST_GRAPH.STATUS)),
+                record.get(UNIFIED_REQUEST_GRAPH.CREATED_AT).atOffset(ZoneOffset.UTC).toInstant(),
                 completedAt != null ? completedAt.toInstant() : null,
                 Map.of()
         );
@@ -256,24 +260,24 @@ public class UnifiedGraphRepository {
 
     private GraphNode mapToNode(Record record) {
         return new GraphNode(
-                record.get(field("node_id", String.class)),
-                UnifiedRequestGraph.NodeType.valueOf(record.get(field("type", String.class))),
-                record.get(field("subsystem", String.class)),
-                record.get(field("action", String.class)),
-                record.get(field("status", String.class)),
-                deserializeMap(record.get(field("data", String.class))),
-                record.get(field("timestamp", OffsetDateTime.class)).toInstant(),
+                record.get(UNIFIED_GRAPH_NODE.NODE_ID),
+                UnifiedRequestGraph.NodeType.valueOf(record.get(UNIFIED_GRAPH_NODE.TYPE)),
+                record.get(UNIFIED_GRAPH_NODE.SUBSYSTEM),
+                record.get(UNIFIED_GRAPH_NODE.ACTION),
+                record.get(UNIFIED_GRAPH_NODE.STATUS),
+                deserializeMap(record.get(UNIFIED_GRAPH_NODE.DATA)),
+                record.get(UNIFIED_GRAPH_NODE.TIMESTAMP).atOffset(ZoneOffset.UTC).toInstant(),
                 Map.of()
         );
     }
 
     private GraphEdge mapToEdge(Record record) {
         return new GraphEdge(
-                record.get(field("edge_id", String.class)),
-                record.get(field("source_node_id", String.class)),
-                record.get(field("target_node_id", String.class)),
-                record.get(field("edge_type", String.class)),
-                record.get(field("timestamp", OffsetDateTime.class)).toInstant(),
+                record.get(UNIFIED_GRAPH_EDGE.EDGE_ID),
+                record.get(UNIFIED_GRAPH_EDGE.SOURCE_NODE_ID),
+                record.get(UNIFIED_GRAPH_EDGE.TARGET_NODE_ID),
+                record.get(UNIFIED_GRAPH_EDGE.EDGE_TYPE),
+                record.get(UNIFIED_GRAPH_EDGE.TIMESTAMP).atOffset(ZoneOffset.UTC).toInstant(),
                 null
         );
     }

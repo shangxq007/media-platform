@@ -1,14 +1,14 @@
 package com.example.platform.payment.infrastructure;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.PaymentAttempt.PAYMENT_ATTEMPT;
+
 
 /**
  * Persistence repository for payment attempts.
@@ -30,13 +30,13 @@ public class PaymentAttemptRepository {
                      String providerReference, String attemptStatus,
                      Long amountMinor, String currencyCode,
                      String requestPayload, String responsePayload) {
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(table("PAYMENT_ATTEMPT"))
-                .columns(field("ID"), field("PURCHASE_ORDER_ID"), field("PROVIDER_CODE"),
-                        field("PROVIDER_REFERENCE"), field("ATTEMPT_STATUS"),
-                        field("AMOUNT_MINOR"), field("CURRENCY_CODE"),
-                        field("REQUEST_PAYLOAD"), field("RESPONSE_PAYLOAD"),
-                        field("CREATED_AT"))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.insertInto(PAYMENT_ATTEMPT)
+                .columns(PAYMENT_ATTEMPT.ID, PAYMENT_ATTEMPT.PURCHASE_ORDER_ID, PAYMENT_ATTEMPT.PROVIDER_CODE,
+                        PAYMENT_ATTEMPT.PROVIDER_REFERENCE, PAYMENT_ATTEMPT.ATTEMPT_STATUS,
+                        PAYMENT_ATTEMPT.AMOUNT_MINOR, PAYMENT_ATTEMPT.CURRENCY_CODE,
+                        PAYMENT_ATTEMPT.REQUEST_PAYLOAD, PAYMENT_ATTEMPT.RESPONSE_PAYLOAD,
+                        PAYMENT_ATTEMPT.CREATED_AT)
                 .values(id, purchaseOrderId, providerCode, providerReference, attemptStatus,
                         amountMinor, currencyCode, requestPayload, responsePayload, now)
                 .execute();
@@ -44,29 +44,29 @@ public class PaymentAttemptRepository {
 
     public Optional<PaymentAttemptRecord> findById(String id) {
         Record record = dsl.select()
-                .from(table("PAYMENT_ATTEMPT"))
-                .where(field("ID").eq(id))
+                .from(PAYMENT_ATTEMPT)
+                .where(PAYMENT_ATTEMPT.ID.eq(id))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public Optional<PaymentAttemptRecord> findByProviderReference(String providerReference) {
         Record record = dsl.select()
-                .from(table("PAYMENT_ATTEMPT"))
-                .where(field("PROVIDER_REFERENCE").eq(providerReference))
+                .from(PAYMENT_ATTEMPT)
+                .where(PAYMENT_ATTEMPT.PROVIDER_REFERENCE.eq(providerReference))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     private PaymentAttemptRecord mapRecord(Record r) {
         return new PaymentAttemptRecord(
-                r.get(field("ID"), String.class),
-                r.get(field("PURCHASE_ORDER_ID"), String.class),
-                r.get(field("PROVIDER_CODE"), String.class),
-                r.get(field("PROVIDER_REFERENCE"), String.class),
-                r.get(field("ATTEMPT_STATUS"), String.class),
-                r.get(field("AMOUNT_MINOR"), Long.class),
-                r.get(field("CURRENCY_CODE"), String.class)
+                r.get(PAYMENT_ATTEMPT.ID, String.class),
+                r.get(PAYMENT_ATTEMPT.PURCHASE_ORDER_ID, String.class),
+                r.get(PAYMENT_ATTEMPT.PROVIDER_CODE, String.class),
+                r.get(PAYMENT_ATTEMPT.PROVIDER_REFERENCE, String.class),
+                r.get(PAYMENT_ATTEMPT.ATTEMPT_STATUS, String.class),
+                r.get(PAYMENT_ATTEMPT.AMOUNT_MINOR, Long.class),
+                r.get(PAYMENT_ATTEMPT.CURRENCY_CODE, String.class)
         );
     }
 

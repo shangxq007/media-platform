@@ -13,9 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.stereotype.Component;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryJob.DELIVERY_JOB;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 @Component
 
@@ -41,34 +40,34 @@ public class DeliveryStorageUriReferenceContributor implements StorageUriReferen
             return hits;
         }
         try {
-            var condition = field("source_uri").eq(storageUri).or(field("remote_uri").eq(storageUri));
+            var condition = DELIVERY_JOB.SOURCE_URI.eq(storageUri).or(DELIVERY_JOB.REMOTE_URI.eq(storageUri));
             if (projectId != null && !projectId.isBlank()) {
-                condition = condition.and(field("project_id").eq(projectId));
+                condition = condition.and(DELIVERY_JOB.PROJECT_ID.eq(projectId));
             }
             var rows = dsl.select(
-                            field("id", String.class),
-                            field("project_id", String.class),
-                            field("render_job_id", String.class),
-                            field("status", String.class),
-                            field("source_uri", String.class),
-                            field("remote_uri", String.class))
-                    .from(table("delivery_job"))
+                            DELIVERY_JOB.ID,
+                            DELIVERY_JOB.PROJECT_ID,
+                            DELIVERY_JOB.RENDER_JOB_ID,
+                            DELIVERY_JOB.STATUS,
+                            DELIVERY_JOB.SOURCE_URI,
+                            DELIVERY_JOB.REMOTE_URI)
+                    .from(DELIVERY_JOB)
                     .where(condition)
                     .limit(50)
                     .fetch();
             for (Record row : rows) {
                 Map<String, String> details = new LinkedHashMap<>();
-                details.put("projectId", row.get(field("project_id", String.class)));
-                details.put("renderJobId", row.get(field("render_job_id", String.class)));
-                details.put("status", row.get(field("status", String.class)));
-                details.put("sourceUri", row.get(field("source_uri", String.class)));
-                String remote = row.get(field("remote_uri", String.class));
+                details.put("projectId", row.get(DELIVERY_JOB.PROJECT_ID));
+                details.put("renderJobId", row.get(DELIVERY_JOB.RENDER_JOB_ID));
+                details.put("status", row.get(DELIVERY_JOB.STATUS));
+                details.put("sourceUri", row.get(DELIVERY_JOB.SOURCE_URI));
+                String remote = row.get(DELIVERY_JOB.REMOTE_URI);
                 if (remote != null) {
                     details.put("remoteUri", remote);
                 }
                 hits.add(new StorageUriReferenceHit(
                         "delivery_job",
-                        row.get(field("id", String.class)),
+                        row.get(DELIVERY_JOB.ID),
                         "Delivery job references storage URI",
                         details));
             }

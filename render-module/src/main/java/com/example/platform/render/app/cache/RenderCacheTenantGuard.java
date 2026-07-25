@@ -11,9 +11,8 @@ import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Tenant isolation for render jobs and remote cache object keys.
@@ -35,7 +34,7 @@ public class RenderCacheTenantGuard {
         requireJobTenant(tenantId, jobId);
         if (projectId != null && !projectId.isBlank()) {
             Record record = loadJobRecord(jobId);
-            String jobProject = record.get(field("project_id", String.class));
+            String jobProject = record.get(RENDER_JOB.PROJECT_ID);
             if (!projectId.equals(jobProject)) {
                 auditDeny("PROJECT_MISMATCH", tenantId, jobId, projectId, jobProject);
                 throw new IllegalArgumentException("Render job not found: " + jobId);
@@ -44,8 +43,8 @@ public class RenderCacheTenantGuard {
         Record record = loadJobRecord(jobId);
         return new JobTenantContext(
                 jobId,
-                record.get(field("tenant_id", String.class)),
-                record.get(field("project_id", String.class)));
+                record.get(RENDER_JOB.TENANT_ID),
+                record.get(RENDER_JOB.PROJECT_ID));
     }
 
     public void requireJobTenant(String tenantId, String jobId) {
@@ -59,7 +58,7 @@ public class RenderCacheTenantGuard {
         if (record == null) {
             throw new IllegalArgumentException("Render job not found: " + jobId);
         }
-        String jobTenant = record.get(field("tenant_id", String.class));
+        String jobTenant = record.get(RENDER_JOB.TENANT_ID);
         if (!tenantId.equals(jobTenant)) {
             auditDeny("TENANT_MISMATCH", tenantId, jobId, null, jobTenant);
             throw new IllegalArgumentException("Render job not found: " + jobId);
@@ -118,11 +117,11 @@ public class RenderCacheTenantGuard {
 
     private Record loadJobRecord(String jobId) {
         Record record = dsl.select(
-                        field("id", String.class),
-                        field("tenant_id", String.class),
-                        field("project_id", String.class))
-                .from(table("render_job"))
-                .where(field("id").eq(jobId))
+                        RENDER_JOB.ID,
+                        RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.PROJECT_ID)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
                 .fetchOne();
         if (record == null) {
             throw new IllegalArgumentException("Render job not found: " + jobId);

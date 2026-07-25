@@ -1,12 +1,11 @@
 package com.example.platform.notification.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.Jsons;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,6 +16,8 @@ import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.NotificationEventDefinition.NOTIFICATION_EVENT_DEFINITION;
+
 
 @Service
 public class NotificationEventCatalogService {
@@ -52,37 +53,37 @@ public class NotificationEventCatalogService {
     public List<NotificationEventDefinition> listAllEvents() {
         ensureSeeded();
         return dsl.select()
-                .from(table("notification_event_definition"))
-                .where(field("archived").eq(false))
-                .orderBy(field("category"), field("name"))
+                .from(NOTIFICATION_EVENT_DEFINITION)
+                .where(NOTIFICATION_EVENT_DEFINITION.ARCHIVED.eq(false))
+                .orderBy(NOTIFICATION_EVENT_DEFINITION.CATEGORY, NOTIFICATION_EVENT_DEFINITION.NAME)
                 .fetch(this::mapRecord);
     }
 
     public List<NotificationEventDefinition> listUserConfigurableEvents() {
         ensureSeeded();
         return dsl.select()
-                .from(table("notification_event_definition"))
-                .where(field("archived").eq(false))
-                .and(field("user_configurable").eq(true))
-                .orderBy(field("category"), field("name"))
+                .from(NOTIFICATION_EVENT_DEFINITION)
+                .where(NOTIFICATION_EVENT_DEFINITION.ARCHIVED.eq(false))
+                .and(NOTIFICATION_EVENT_DEFINITION.USER_CONFIGURABLE.eq(true))
+                .orderBy(NOTIFICATION_EVENT_DEFINITION.CATEGORY, NOTIFICATION_EVENT_DEFINITION.NAME)
                 .fetch(this::mapRecord);
     }
 
     public List<NotificationEventDefinition> listEventsByCategory(String category) {
         ensureSeeded();
         return dsl.select()
-                .from(table("notification_event_definition"))
-                .where(field("archived").eq(false))
-                .and(field("category").eq(category))
-                .orderBy(field("name"))
+                .from(NOTIFICATION_EVENT_DEFINITION)
+                .where(NOTIFICATION_EVENT_DEFINITION.ARCHIVED.eq(false))
+                .and(NOTIFICATION_EVENT_DEFINITION.CATEGORY.eq(category))
+                .orderBy(NOTIFICATION_EVENT_DEFINITION.NAME)
                 .fetch(this::mapRecord);
     }
 
     public Optional<NotificationEventDefinition> findByKey(String eventKey) {
         ensureSeeded();
         var rec = dsl.select()
-                .from(table("notification_event_definition"))
-                .where(field("event_key").eq(eventKey))
+                .from(NOTIFICATION_EVENT_DEFINITION)
+                .where(NOTIFICATION_EVENT_DEFINITION.EVENT_KEY.eq(eventKey))
                 .fetchOne();
         return Optional.ofNullable(rec).map(this::mapRecord);
     }
@@ -94,15 +95,15 @@ public class NotificationEventCatalogService {
 
     public NotificationEventDefinition create(NotificationEventDefinition definition) {
         String id = Ids.newId("nevdef");
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(table("notification_event_definition"))
-                .columns(field("id"), field("event_key"), field("name"), field("description"),
-                        field("category"), field("severity"), field("visibility"),
-                        field("user_configurable"), field("critical"), field("default_enabled"),
-                        field("supported_channels"), field("required_permissions"),
-                        field("required_entitlements"), field("feature_flag_key"),
-                        field("novu_workflow_id"), field("local_template_key"),
-                        field("archived"), field("created_at"), field("updated_at"))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.insertInto(NOTIFICATION_EVENT_DEFINITION)
+                .columns(NOTIFICATION_EVENT_DEFINITION.ID, NOTIFICATION_EVENT_DEFINITION.EVENT_KEY, NOTIFICATION_EVENT_DEFINITION.NAME, NOTIFICATION_EVENT_DEFINITION.DESCRIPTION,
+                        NOTIFICATION_EVENT_DEFINITION.CATEGORY, NOTIFICATION_EVENT_DEFINITION.SEVERITY, NOTIFICATION_EVENT_DEFINITION.VISIBILITY,
+                        NOTIFICATION_EVENT_DEFINITION.USER_CONFIGURABLE, NOTIFICATION_EVENT_DEFINITION.CRITICAL, NOTIFICATION_EVENT_DEFINITION.DEFAULT_ENABLED,
+                        NOTIFICATION_EVENT_DEFINITION.SUPPORTED_CHANNELS, NOTIFICATION_EVENT_DEFINITION.REQUIRED_PERMISSIONS,
+                        NOTIFICATION_EVENT_DEFINITION.REQUIRED_ENTITLEMENTS, NOTIFICATION_EVENT_DEFINITION.FEATURE_FLAG_KEY,
+                        NOTIFICATION_EVENT_DEFINITION.NOVU_WORKFLOW_ID, NOTIFICATION_EVENT_DEFINITION.LOCAL_TEMPLATE_KEY,
+                        NOTIFICATION_EVENT_DEFINITION.ARCHIVED, NOTIFICATION_EVENT_DEFINITION.CREATED_AT, NOTIFICATION_EVENT_DEFINITION.UPDATED_AT)
                 .values(id, definition.eventKey(), definition.name(), definition.description(),
                         definition.category(), definition.severity(), definition.visibility(),
                         definition.userConfigurable(), definition.critical(), definition.defaultEnabled(),
@@ -118,30 +119,30 @@ public class NotificationEventCatalogService {
                 definition.supportedChannels(), definition.requiredPermissions(),
                 definition.requiredEntitlements(), definition.featureFlagKey(),
                 definition.novuWorkflowId(), definition.localTemplateKey(),
-                false, now, now);
+                false, now.atOffset(ZoneOffset.UTC), now.atOffset(ZoneOffset.UTC));
         eventCache.put(definition.eventKey(), saved);
         return saved;
     }
 
     public NotificationEventDefinition update(String eventKey, NotificationEventDefinition definition) {
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.update(table("notification_event_definition"))
-                .set(field("name"), definition.name())
-                .set(field("description"), definition.description())
-                .set(field("category"), definition.category())
-                .set(field("severity"), definition.severity())
-                .set(field("visibility"), definition.visibility())
-                .set(field("user_configurable"), definition.userConfigurable())
-                .set(field("critical"), definition.critical())
-                .set(field("default_enabled"), definition.defaultEnabled())
-                .set(field("supported_channels"), Jsons.toJson(definition.supportedChannels()))
-                .set(field("required_permissions"), Jsons.toJson(definition.requiredPermissions()))
-                .set(field("required_entitlements"), Jsons.toJson(definition.requiredEntitlements()))
-                .set(field("feature_flag_key"), definition.featureFlagKey())
-                .set(field("novu_workflow_id"), definition.novuWorkflowId())
-                .set(field("local_template_key"), definition.localTemplateKey())
-                .set(field("updated_at"), now)
-                .where(field("event_key").eq(eventKey))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.update(NOTIFICATION_EVENT_DEFINITION)
+                .set(NOTIFICATION_EVENT_DEFINITION.NAME, definition.name())
+                .set(NOTIFICATION_EVENT_DEFINITION.DESCRIPTION, definition.description())
+                .set(NOTIFICATION_EVENT_DEFINITION.CATEGORY, definition.category())
+                .set(NOTIFICATION_EVENT_DEFINITION.SEVERITY, definition.severity())
+                .set(NOTIFICATION_EVENT_DEFINITION.VISIBILITY, definition.visibility())
+                .set(NOTIFICATION_EVENT_DEFINITION.USER_CONFIGURABLE, definition.userConfigurable())
+                .set(NOTIFICATION_EVENT_DEFINITION.CRITICAL, definition.critical())
+                .set(NOTIFICATION_EVENT_DEFINITION.DEFAULT_ENABLED, definition.defaultEnabled())
+                .set(NOTIFICATION_EVENT_DEFINITION.SUPPORTED_CHANNELS, Jsons.toJson(definition.supportedChannels()))
+                .set(NOTIFICATION_EVENT_DEFINITION.REQUIRED_PERMISSIONS, Jsons.toJson(definition.requiredPermissions()))
+                .set(NOTIFICATION_EVENT_DEFINITION.REQUIRED_ENTITLEMENTS, Jsons.toJson(definition.requiredEntitlements()))
+                .set(NOTIFICATION_EVENT_DEFINITION.FEATURE_FLAG_KEY, definition.featureFlagKey())
+                .set(NOTIFICATION_EVENT_DEFINITION.NOVU_WORKFLOW_ID, definition.novuWorkflowId())
+                .set(NOTIFICATION_EVENT_DEFINITION.LOCAL_TEMPLATE_KEY, definition.localTemplateKey())
+                .set(NOTIFICATION_EVENT_DEFINITION.UPDATED_AT, now)
+                .where(NOTIFICATION_EVENT_DEFINITION.EVENT_KEY.eq(eventKey))
                 .execute();
         NotificationEventDefinition updated = new NotificationEventDefinition(
                 definition.eventKey(), definition.name(), definition.description(),
@@ -150,16 +151,17 @@ public class NotificationEventCatalogService {
                 definition.supportedChannels(), definition.requiredPermissions(),
                 definition.requiredEntitlements(), definition.featureFlagKey(),
                 definition.novuWorkflowId(), definition.localTemplateKey(),
-                definition.archived(), definition.createdAt(), now);
+                definition.archived(), definition.createdAt(), now.atOffset(ZoneOffset.UTC));
         eventCache.put(eventKey, updated);
         return updated;
     }
 
     public void archive(String eventKey) {
-        dsl.update(table("notification_event_definition"))
-                .set(field("archived"), true)
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("event_key").eq(eventKey))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.update(NOTIFICATION_EVENT_DEFINITION)
+                .set(NOTIFICATION_EVENT_DEFINITION.ARCHIVED, true)
+                .set(NOTIFICATION_EVENT_DEFINITION.UPDATED_AT, now)
+                .where(NOTIFICATION_EVENT_DEFINITION.EVENT_KEY.eq(eventKey))
                 .execute();
         NotificationEventDefinition existing = eventCache.get(eventKey);
         if (existing != null) {
@@ -170,7 +172,7 @@ public class NotificationEventCatalogService {
                     existing.supportedChannels(), existing.requiredPermissions(),
                     existing.requiredEntitlements(), existing.featureFlagKey(),
                     existing.novuWorkflowId(), existing.localTemplateKey(),
-                    true, existing.createdAt(), OffsetDateTime.now()));
+                    true, existing.createdAt(), now.atOffset(ZoneOffset.UTC)));
         }
     }
 
@@ -264,8 +266,8 @@ public class NotificationEventCatalogService {
 
         for (NotificationEventDefinition event : builtInEvents) {
             boolean exists = dsl.fetchExists(
-                    dsl.selectOne().from(table("notification_event_definition"))
-                            .where(field("event_key").eq(event.eventKey()))
+                    dsl.selectOne().from(NOTIFICATION_EVENT_DEFINITION)
+                            .where(NOTIFICATION_EVENT_DEFINITION.EVENT_KEY.eq(event.eventKey()))
             );
             if (!exists) {
                 create(event);
@@ -279,47 +281,52 @@ public class NotificationEventCatalogService {
     private static NotificationEventDefinition builtin(String key, String name, String description,
             String category, String severity, String visibility,
             boolean userConfigurable, boolean critical, boolean defaultEnabled) {
+        OffsetDateTime now = OffsetDateTime.now();
         return new NotificationEventDefinition(
                 key, name, description, category, severity, visibility,
                 userConfigurable, critical, defaultEnabled,
                 ALL_CHANNELS, List.of(), List.of(),
-                null, null, null, false, OffsetDateTime.now(), OffsetDateTime.now()
+                null, null, null, false, now, now
         );
     }
 
     @SuppressWarnings("unchecked")
     private NotificationEventDefinition mapRecord(org.jooq.Record rec) {
-        String supportedChannelsRaw = rec.get(field("supported_channels"), String.class);
+        String supportedChannelsRaw = rec.get(NOTIFICATION_EVENT_DEFINITION.SUPPORTED_CHANNELS, String.class);
         List<String> supportedChannels = supportedChannelsRaw != null && !supportedChannelsRaw.isBlank()
                 ? Jsons.fromJson(supportedChannelsRaw, List.class) : ALL_CHANNELS;
 
-        String requiredPermsRaw = rec.get(field("required_permissions"), String.class);
+        String requiredPermsRaw = rec.get(NOTIFICATION_EVENT_DEFINITION.REQUIRED_PERMISSIONS, String.class);
         List<String> requiredPerms = requiredPermsRaw != null && !requiredPermsRaw.isBlank()
                 ? Jsons.fromJson(requiredPermsRaw, List.class) : List.of();
 
-        String requiredEntitlementsRaw = rec.get(field("required_entitlements"), String.class);
+        String requiredEntitlementsRaw = rec.get(NOTIFICATION_EVENT_DEFINITION.REQUIRED_ENTITLEMENTS, String.class);
         List<String> requiredEntitlements = requiredEntitlementsRaw != null && !requiredEntitlementsRaw.isBlank()
                 ? Jsons.fromJson(requiredEntitlementsRaw, List.class) : List.of();
 
         return new NotificationEventDefinition(
-                rec.get(field("event_key"), String.class),
-                rec.get(field("name"), String.class),
-                rec.get(field("description"), String.class),
-                rec.get(field("category"), String.class),
-                rec.get(field("severity"), String.class),
-                rec.get(field("visibility"), String.class),
-                Boolean.TRUE.equals(rec.get(field("user_configurable"), Boolean.class)),
-                Boolean.TRUE.equals(rec.get(field("critical"), Boolean.class)),
-                Boolean.TRUE.equals(rec.get(field("default_enabled"), Boolean.class)),
+                rec.get(NOTIFICATION_EVENT_DEFINITION.EVENT_KEY, String.class),
+                rec.get(NOTIFICATION_EVENT_DEFINITION.NAME, String.class),
+                rec.get(NOTIFICATION_EVENT_DEFINITION.DESCRIPTION, String.class),
+                rec.get(NOTIFICATION_EVENT_DEFINITION.CATEGORY, String.class),
+                rec.get(NOTIFICATION_EVENT_DEFINITION.SEVERITY, String.class),
+                rec.get(NOTIFICATION_EVENT_DEFINITION.VISIBILITY, String.class),
+                Boolean.TRUE.equals(rec.get(NOTIFICATION_EVENT_DEFINITION.USER_CONFIGURABLE, Boolean.class)),
+                Boolean.TRUE.equals(rec.get(NOTIFICATION_EVENT_DEFINITION.CRITICAL, Boolean.class)),
+                Boolean.TRUE.equals(rec.get(NOTIFICATION_EVENT_DEFINITION.DEFAULT_ENABLED, Boolean.class)),
                 supportedChannels,
                 requiredPerms,
                 requiredEntitlements,
-                rec.get(field("feature_flag_key"), String.class),
-                rec.get(field("novu_workflow_id"), String.class),
-                rec.get(field("local_template_key"), String.class),
-                Boolean.TRUE.equals(rec.get(field("archived"), Boolean.class)),
-                rec.get(field("created_at"), OffsetDateTime.class),
-                rec.get(field("updated_at"), OffsetDateTime.class)
+                rec.get(NOTIFICATION_EVENT_DEFINITION.FEATURE_FLAG_KEY, String.class),
+                rec.get(NOTIFICATION_EVENT_DEFINITION.NOVU_WORKFLOW_ID, String.class),
+                rec.get(NOTIFICATION_EVENT_DEFINITION.LOCAL_TEMPLATE_KEY, String.class),
+                Boolean.TRUE.equals(rec.get(NOTIFICATION_EVENT_DEFINITION.ARCHIVED, Boolean.class)),
+                toOffset(rec.get(NOTIFICATION_EVENT_DEFINITION.CREATED_AT, LocalDateTime.class)),
+                toOffset(rec.get(NOTIFICATION_EVENT_DEFINITION.UPDATED_AT, LocalDateTime.class))
         );
+    }
+
+    private OffsetDateTime toOffset(LocalDateTime ldt) {
+        return ldt != null ? ldt.atOffset(ZoneOffset.UTC) : null;
     }
 }

@@ -1,19 +1,24 @@
 package com.example.platform.render.infrastructure;
+
 import java.nio.file.Path;
 import java.nio.file.Files;
 
 import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.*;
+import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS;
+import static com.example.platform.typedschema.jooq.generated.tables.StorageReference.STORAGE_REFERENCE;
+
 
 /**
  * Report-only service for StorageRuntime/Product/Artifact/RenderJob consistency.
- * 
+ *
  * NEVER deletes anything. NEVER mutates state.
  * Only reports inconsistencies for operational visibility.
  */
@@ -58,14 +63,15 @@ public class StorageRuntimeOrphanReportService {
     private void checkProductStorageReferences(List<Map<String, Object>> issues, int limit) {
         try {
             // Find Products with storageReferenceId but no matching StorageReference
+            var p = PRODUCT.as("p");
             var results = dsl.select(
-                    DSL.field("p.id"),
-                    DSL.field("p.status"),
-                    DSL.field("p.storage_reference_id"))
-                .from(DSL.table("product").as("p"))
-                .where(DSL.field("p.storage_reference_id").isNotNull())
-                .and(DSL.field("p.storage_reference_id").notIn(
-                    dsl.select(DSL.field("id")).from(DSL.table("storage_reference"))))
+                    p.PRODUCT_ID,
+                    p.STATUS,
+                    p.STORAGE_REFERENCE_ID)
+                .from(p)
+                .where(p.STORAGE_REFERENCE_ID.isNotNull())
+                .and(p.STORAGE_REFERENCE_ID.notIn(
+                    dsl.select(STORAGE_REFERENCE.STORAGE_REFERENCE_ID).from(STORAGE_REFERENCE)))
                 .limit(limit)
                 .fetch();
 
@@ -74,8 +80,8 @@ public class StorageRuntimeOrphanReportService {
                 issue.put("issueType", "PRODUCT_STORAGE_REFERENCE_MISSING");
                 issue.put("severity", "HIGH");
                 issue.put("entityType", "Product");
-                issue.put("entityId", row.get("id"));
-                issue.put("status", row.get("status"));
+                issue.put("entityId", row.get(p.PRODUCT_ID));
+                issue.put("status", row.get(p.STATUS));
                 issue.put("message", "Product references missing StorageReference");
                 issue.put("recommendedAction", "Investigate Product/StorageReference relationship");
                 issue.put("safeToAutoDelete", false);
@@ -88,10 +94,14 @@ public class StorageRuntimeOrphanReportService {
 
     private void checkCompletedRenderJobsWithoutOutput(List<Map<String, Object>> issues, int limit) {
         try {
-            var results = dsl.select(DSL.field("id"))
-                .from(DSL.table("render_job"))
-                .where(DSL.field("status").eq("COMPLETED"))
-                .and(DSL.field("output_product_id").isNull())
+            // COMPLETED RenderJobs where no lifecycle event has a non-null output_product_id
+            var results = dsl.select(RENDER_JOB.ID)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.STATUS.eq("COMPLETED"))
+                .and(RENDER_JOB.ID.notIn(
+                    dsl.select(RENDER_JOB_LIFECYCLE_EVENTS.RENDER_JOB_ID)
+                        .from(RENDER_JOB_LIFECYCLE_EVENTS)
+                        .where(RENDER_JOB_LIFECYCLE_EVENTS.OUTPUT_PRODUCT_ID.isNotNull())))
                 .limit(limit)
                 .fetch();
 
@@ -100,7 +110,7 @@ public class StorageRuntimeOrphanReportService {
                 issue.put("issueType", "COMPLETED_RENDER_JOB_WITHOUT_OUTPUT_PRODUCT");
                 issue.put("severity", "MEDIUM");
                 issue.put("entityType", "RenderJob");
-                issue.put("entityId", row.get("id"));
+                issue.put("entityId", row.get(RENDER_JOB.ID));
                 issue.put("message", "COMPLETED RenderJob has no outputProductId");
                 issue.put("recommendedAction", "Verify if output was created correctly");
                 issue.put("safeToAutoDelete", false);
@@ -113,13 +123,15 @@ public class StorageRuntimeOrphanReportService {
 
     private void checkRenderJobOutputProducts(List<Map<String, Object>> issues, int limit) {
         try {
+            // RenderJobs where outputProductId points to a non-existent Product
             var results = dsl.select(
-                    DSL.field("rj.id"),
-                    DSL.field("rj.output_product_id"))
-                .from(DSL.table("render_job").as("rj"))
-                .where(DSL.field("rj.output_product_id").isNotNull())
-                .and(DSL.field("rj.output_product_id").notIn(
-                    dsl.select(DSL.field("id")).from(DSL.table("product"))))
+                    RENDER_JOB.ID,
+                    RENDER_JOB_LIFECYCLE_EVENTS.OUTPUT_PRODUCT_ID)
+                .from(RENDER_JOB)
+                .join(RENDER_JOB_LIFECYCLE_EVENTS).on(RENDER_JOB.ID.eq(RENDER_JOB_LIFECYCLE_EVENTS.RENDER_JOB_ID))
+                .where(RENDER_JOB_LIFECYCLE_EVENTS.OUTPUT_PRODUCT_ID.isNotNull())
+                .and(RENDER_JOB_LIFECYCLE_EVENTS.OUTPUT_PRODUCT_ID.notIn(
+                    dsl.select(PRODUCT.PRODUCT_ID).from(PRODUCT)))
                 .limit(limit)
                 .fetch();
 
@@ -128,7 +140,7 @@ public class StorageRuntimeOrphanReportService {
                 issue.put("issueType", "RENDER_JOB_OUTPUT_PRODUCT_MISSING");
                 issue.put("severity", "HIGH");
                 issue.put("entityType", "RenderJob");
-                issue.put("entityId", row.get("id"));
+                issue.put("entityId", row.get(RENDER_JOB.ID));
                 issue.put("message", "RenderJob outputProductId points to missing Product");
                 issue.put("recommendedAction", "Investigate Product deletion or RenderJob corruption");
                 issue.put("safeToAutoDelete", false);
@@ -153,19 +165,21 @@ public class StorageRuntimeOrphanReportService {
 
         // Get StorageReference IDs from Products
         try {
+            var sr = STORAGE_REFERENCE.as("sr");
+            var p = PRODUCT.as("p");
             var refs = dsl.select(
-                    DSL.field("sr.id"),
-                    DSL.field("sr.storage_path"))
-                .from(DSL.table("storage_reference").as("sr"))
-                .join(DSL.table("product").as("p"))
-                .on(DSL.field("p.storage_reference_id").eq(DSL.field("sr.id")))
+                    sr.STORAGE_REFERENCE_ID,
+                    sr.RELATIVE_PATH)
+                .from(sr)
+                .join(p)
+                .on(p.STORAGE_REFERENCE_ID.eq(sr.STORAGE_REFERENCE_ID))
                 .limit(limit)
                 .fetch();
 
             for (var row : refs) {
                 checked++;
-                String refId = row.get("id", String.class);
-                String storagePath = row.get("storage_path", String.class);
+                String refId = row.get(sr.STORAGE_REFERENCE_ID);
+                String storagePath = row.get(sr.RELATIVE_PATH);
 
                 if (storagePath != null) {
                     Path filePath = storageRoot.resolve(storagePath);

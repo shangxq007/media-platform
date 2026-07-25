@@ -6,12 +6,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
+import static com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalEdge.SYSTEM_CANONICAL_EDGE;
+import static com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalEvent.SYSTEM_CANONICAL_EVENT;
+import static com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalGraph.SYSTEM_CANONICAL_GRAPH;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Repository for persisting SystemCanonicalGraph.
@@ -32,15 +34,15 @@ public class SystemCanonicalRepository {
      */
     public void save(SystemCanonicalGraph graph) {
         // Save graph metadata
-        dsl.insertInto(table("system_canonical_graph"))
+        dsl.insertInto(SYSTEM_CANONICAL_GRAPH)
                 .columns(
-                        field("graph_id"),
-                        field("job_id"),
-                        field("tenant_id"),
-                        field("workspace_id"),
-                        field("status"),
-                        field("created_at"),
-                        field("completed_at")
+                        SYSTEM_CANONICAL_GRAPH.GRAPH_ID,
+                        SYSTEM_CANONICAL_GRAPH.JOB_ID,
+                        SYSTEM_CANONICAL_GRAPH.TENANT_ID,
+                        SYSTEM_CANONICAL_GRAPH.WORKSPACE_ID,
+                        SYSTEM_CANONICAL_GRAPH.STATUS,
+                        SYSTEM_CANONICAL_GRAPH.CREATED_AT,
+                        SYSTEM_CANONICAL_GRAPH.COMPLETED_AT
                 )
                 .values(
                         graph.graphId(),
@@ -48,13 +50,13 @@ public class SystemCanonicalRepository {
                         graph.tenantId(),
                         graph.workspaceId(),
                         graph.status().name(),
-                        graph.createdAt().atOffset(java.time.ZoneOffset.UTC),
-                        graph.completedAt() != null ? graph.completedAt().atOffset(java.time.ZoneOffset.UTC) : null
+                        graph.createdAt() != null ? LocalDateTime.ofInstant(graph.createdAt(), ZoneOffset.UTC) : null,
+                        graph.completedAt() != null ? LocalDateTime.ofInstant(graph.completedAt(), ZoneOffset.UTC) : null
                 )
-                .onConflict(field("graph_id"))
+                .onConflict(SYSTEM_CANONICAL_GRAPH.GRAPH_ID)
                 .doUpdate()
-                .set(field("status"), graph.status().name())
-                .set(field("completed_at"), graph.completedAt() != null ? graph.completedAt().atOffset(java.time.ZoneOffset.UTC) : null)
+                .set(SYSTEM_CANONICAL_GRAPH.STATUS, graph.status().name())
+                .set(SYSTEM_CANONICAL_GRAPH.COMPLETED_AT, graph.completedAt() != null ? LocalDateTime.ofInstant(graph.completedAt(), ZoneOffset.UTC) : null)
                 .execute();
 
         // Save events
@@ -74,24 +76,24 @@ public class SystemCanonicalRepository {
      * Save a canonical event.
      */
     private void saveEvent(String graphId, SystemCanonicalEvent event) {
-        dsl.insertInto(table("system_canonical_event"))
+        dsl.insertInto(SYSTEM_CANONICAL_EVENT)
                 .columns(
-                        field("event_id"),
-                        field("graph_id"),
-                        field("event_type"),
-                        field("timestamp"),
-                        field("tenant_id"),
-                        field("workspace_id"),
-                        field("job_id"),
-                        field("source_system"),
-                        field("sequence_number"),
-                        field("payload")
+                        SYSTEM_CANONICAL_EVENT.EVENT_ID,
+                        SYSTEM_CANONICAL_EVENT.GRAPH_ID,
+                        SYSTEM_CANONICAL_EVENT.EVENT_TYPE,
+                        SYSTEM_CANONICAL_EVENT.TIMESTAMP,
+                        SYSTEM_CANONICAL_EVENT.TENANT_ID,
+                        SYSTEM_CANONICAL_EVENT.WORKSPACE_ID,
+                        SYSTEM_CANONICAL_EVENT.JOB_ID,
+                        SYSTEM_CANONICAL_EVENT.SOURCE_SYSTEM,
+                        SYSTEM_CANONICAL_EVENT.SEQUENCE_NUMBER,
+                        SYSTEM_CANONICAL_EVENT.PAYLOAD
                 )
                 .values(
                         event.eventId(),
                         graphId,
                         event.eventType(),
-                        event.timestamp().atOffset(java.time.ZoneOffset.UTC),
+                        LocalDateTime.ofInstant(event.timestamp(), ZoneOffset.UTC),
                         event.tenantId(),
                         event.workspaceId(),
                         event.jobId(),
@@ -99,7 +101,7 @@ public class SystemCanonicalRepository {
                         event.sequenceNumber(),
                         serializeMap(event.payload())
                 )
-                .onConflict(field("event_id"))
+                .onConflict(SYSTEM_CANONICAL_EVENT.EVENT_ID)
                 .doNothing()
                 .execute();
     }
@@ -108,14 +110,14 @@ public class SystemCanonicalRepository {
      * Save a causal edge.
      */
     private void saveEdge(String graphId, SystemCanonicalGraph.CausalEdge edge) {
-        dsl.insertInto(table("system_canonical_edge"))
+        dsl.insertInto(SYSTEM_CANONICAL_EDGE)
                 .columns(
-                        field("edge_id"),
-                        field("graph_id"),
-                        field("source_event_id"),
-                        field("target_event_id"),
-                        field("edge_type"),
-                        field("timestamp")
+                        SYSTEM_CANONICAL_EDGE.EDGE_ID,
+                        SYSTEM_CANONICAL_EDGE.GRAPH_ID,
+                        SYSTEM_CANONICAL_EDGE.SOURCE_EVENT_ID,
+                        SYSTEM_CANONICAL_EDGE.TARGET_EVENT_ID,
+                        SYSTEM_CANONICAL_EDGE.EDGE_TYPE,
+                        SYSTEM_CANONICAL_EDGE.TIMESTAMP
                 )
                 .values(
                         edge.edgeId(),
@@ -123,9 +125,9 @@ public class SystemCanonicalRepository {
                         edge.sourceEventId(),
                         edge.targetEventId(),
                         edge.edgeType(),
-                        edge.timestamp().atOffset(java.time.ZoneOffset.UTC)
+                        LocalDateTime.ofInstant(edge.timestamp(), ZoneOffset.UTC)
                 )
-                .onConflict(field("edge_id"))
+                .onConflict(SYSTEM_CANONICAL_EDGE.EDGE_ID)
                 .doNothing()
                 .execute();
     }
@@ -135,16 +137,16 @@ public class SystemCanonicalRepository {
      */
     public Optional<SystemCanonicalGraph> loadByJobId(String jobId) {
         Record graphRecord = dsl.select(
-                        field("graph_id"),
-                        field("job_id"),
-                        field("tenant_id"),
-                        field("workspace_id"),
-                        field("status"),
-                        field("created_at"),
-                        field("completed_at")
+                        SYSTEM_CANONICAL_GRAPH.GRAPH_ID,
+                        SYSTEM_CANONICAL_GRAPH.JOB_ID,
+                        SYSTEM_CANONICAL_GRAPH.TENANT_ID,
+                        SYSTEM_CANONICAL_GRAPH.WORKSPACE_ID,
+                        SYSTEM_CANONICAL_GRAPH.STATUS,
+                        SYSTEM_CANONICAL_GRAPH.CREATED_AT,
+                        SYSTEM_CANONICAL_GRAPH.COMPLETED_AT
                 )
-                .from(table("system_canonical_graph"))
-                .where(field("job_id").eq(jobId))
+                .from(SYSTEM_CANONICAL_GRAPH)
+                .where(SYSTEM_CANONICAL_GRAPH.JOB_ID.eq(jobId))
                 .fetchOne();
 
         if (graphRecord == null) {
@@ -159,19 +161,19 @@ public class SystemCanonicalRepository {
      */
     private List<SystemCanonicalEvent> loadEvents(String graphId) {
         return dsl.select(
-                        field("event_id"),
-                        field("event_type"),
-                        field("timestamp"),
-                        field("tenant_id"),
-                        field("workspace_id"),
-                        field("job_id"),
-                        field("source_system"),
-                        field("sequence_number"),
-                        field("payload")
+                        SYSTEM_CANONICAL_EVENT.EVENT_ID,
+                        SYSTEM_CANONICAL_EVENT.EVENT_TYPE,
+                        SYSTEM_CANONICAL_EVENT.TIMESTAMP,
+                        SYSTEM_CANONICAL_EVENT.TENANT_ID,
+                        SYSTEM_CANONICAL_EVENT.WORKSPACE_ID,
+                        SYSTEM_CANONICAL_EVENT.JOB_ID,
+                        SYSTEM_CANONICAL_EVENT.SOURCE_SYSTEM,
+                        SYSTEM_CANONICAL_EVENT.SEQUENCE_NUMBER,
+                        SYSTEM_CANONICAL_EVENT.PAYLOAD
                 )
-                .from(table("system_canonical_event"))
-                .where(field("graph_id").eq(graphId))
-                .orderBy(field("sequence_number").asc())
+                .from(SYSTEM_CANONICAL_EVENT)
+                .where(SYSTEM_CANONICAL_EVENT.GRAPH_ID.eq(graphId))
+                .orderBy(SYSTEM_CANONICAL_EVENT.SEQUENCE_NUMBER.asc())
                 .fetch(this::mapToEvent);
     }
 
@@ -180,14 +182,14 @@ public class SystemCanonicalRepository {
      */
     private List<SystemCanonicalGraph.CausalEdge> loadEdges(String graphId) {
         return dsl.select(
-                        field("edge_id"),
-                        field("source_event_id"),
-                        field("target_event_id"),
-                        field("edge_type"),
-                        field("timestamp")
+                        SYSTEM_CANONICAL_EDGE.EDGE_ID,
+                        SYSTEM_CANONICAL_EDGE.SOURCE_EVENT_ID,
+                        SYSTEM_CANONICAL_EDGE.TARGET_EVENT_ID,
+                        SYSTEM_CANONICAL_EDGE.EDGE_TYPE,
+                        SYSTEM_CANONICAL_EDGE.TIMESTAMP
                 )
-                .from(table("system_canonical_edge"))
-                .where(field("graph_id").eq(graphId))
+                .from(SYSTEM_CANONICAL_EDGE)
+                .where(SYSTEM_CANONICAL_EDGE.GRAPH_ID.eq(graphId))
                 .fetch(this::mapToEdge);
     }
 
@@ -196,21 +198,22 @@ public class SystemCanonicalRepository {
     // ---------------------------------------------------------------------------
 
     private SystemCanonicalGraph mapToGraph(Record record) {
-        String graphId = record.get(field("graph_id", String.class));
+        String graphId = record.get(SYSTEM_CANONICAL_GRAPH.GRAPH_ID);
         List<SystemCanonicalEvent> events = loadEvents(graphId);
         List<SystemCanonicalGraph.CausalEdge> edges = loadEdges(graphId);
 
-        OffsetDateTime completedAt = record.get(field("completed_at"), OffsetDateTime.class);
+        LocalDateTime completedAtLdt = record.get(SYSTEM_CANONICAL_GRAPH.COMPLETED_AT);
+        OffsetDateTime completedAt = completedAtLdt != null ? completedAtLdt.atOffset(ZoneOffset.UTC) : null;
 
         return new SystemCanonicalGraph(
                 graphId,
-                record.get(field("job_id", String.class)),
-                record.get(field("tenant_id", String.class)),
-                record.get(field("workspace_id", String.class)),
+                record.get(SYSTEM_CANONICAL_GRAPH.JOB_ID),
+                record.get(SYSTEM_CANONICAL_GRAPH.TENANT_ID),
+                record.get(SYSTEM_CANONICAL_GRAPH.WORKSPACE_ID),
                 events,
                 edges,
-                SystemCanonicalGraph.GraphStatus.valueOf(record.get(field("status", String.class))),
-                record.get(field("created_at", OffsetDateTime.class)).toInstant(),
+                SystemCanonicalGraph.GraphStatus.valueOf(record.get(SYSTEM_CANONICAL_GRAPH.STATUS)),
+                record.get(SYSTEM_CANONICAL_GRAPH.CREATED_AT).atOffset(ZoneOffset.UTC).toInstant(),
                 completedAt != null ? completedAt.toInstant() : null,
                 Map.of()
         );
@@ -218,26 +221,26 @@ public class SystemCanonicalRepository {
 
     private SystemCanonicalEvent mapToEvent(Record record) {
         return new SystemCanonicalEvent(
-                record.get(field("event_id", String.class)),
-                record.get(field("event_type", String.class)),
-                record.get(field("timestamp", OffsetDateTime.class)).toInstant(),
-                record.get(field("tenant_id", String.class)),
-                record.get(field("workspace_id", String.class)),
-                record.get(field("job_id", String.class)),
-                record.get(field("source_system", String.class)),
-                record.get(field("sequence_number", Integer.class)),
-                deserializeMap(record.get(field("payload", String.class))),
+                record.get(SYSTEM_CANONICAL_EVENT.EVENT_ID),
+                record.get(SYSTEM_CANONICAL_EVENT.EVENT_TYPE),
+                record.get(SYSTEM_CANONICAL_EVENT.TIMESTAMP).atOffset(ZoneOffset.UTC).toInstant(),
+                record.get(SYSTEM_CANONICAL_EVENT.TENANT_ID),
+                record.get(SYSTEM_CANONICAL_EVENT.WORKSPACE_ID),
+                record.get(SYSTEM_CANONICAL_EVENT.JOB_ID),
+                record.get(SYSTEM_CANONICAL_EVENT.SOURCE_SYSTEM),
+                record.get(SYSTEM_CANONICAL_EVENT.SEQUENCE_NUMBER),
+                deserializeMap(record.get(SYSTEM_CANONICAL_EVENT.PAYLOAD)),
                 Map.of()
         );
     }
 
     private SystemCanonicalGraph.CausalEdge mapToEdge(Record record) {
         return new SystemCanonicalGraph.CausalEdge(
-                record.get(field("edge_id", String.class)),
-                record.get(field("source_event_id", String.class)),
-                record.get(field("target_event_id", String.class)),
-                record.get(field("edge_type", String.class)),
-                record.get(field("timestamp", OffsetDateTime.class)).toInstant()
+                record.get(SYSTEM_CANONICAL_EDGE.EDGE_ID),
+                record.get(SYSTEM_CANONICAL_EDGE.SOURCE_EVENT_ID),
+                record.get(SYSTEM_CANONICAL_EDGE.TARGET_EVENT_ID),
+                record.get(SYSTEM_CANONICAL_EDGE.EDGE_TYPE),
+                record.get(SYSTEM_CANONICAL_EDGE.TIMESTAMP).atOffset(ZoneOffset.UTC).toInstant()
         );
     }
 

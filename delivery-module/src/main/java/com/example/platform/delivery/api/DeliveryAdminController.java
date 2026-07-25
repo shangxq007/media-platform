@@ -1,9 +1,6 @@
 package com.example.platform.delivery.api;
 
-import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.noCondition;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.delivery.api.dto.AdminDeliveryJobResponse;
 import com.example.platform.delivery.api.dto.DeliveryDestinationResponse;
 import com.example.platform.delivery.app.DeliveryCredentialMigrationService;
@@ -27,6 +24,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination.DELIVERY_DESTINATION;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryJob.DELIVERY_JOB;
+import org.jooq.impl.DSL;
+
 
 @RestController
 @RequestMapping("/api/v1/admin/delivery")
@@ -98,15 +99,15 @@ public class DeliveryAdminController {
         int offset = Math.max(page, 0) * limit;
         var condition = noCondition();
         if (tenantId != null && !tenantId.isBlank()) {
-            condition = condition.and(field("tenant_id").eq(tenantId));
+            condition = condition.and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId));
         }
         if (status != null && !status.isBlank()) {
-            condition = condition.and(field("status").eq(status));
+            condition = condition.and(DELIVERY_JOB.STATUS.eq(status));
         }
         return dsl.select()
-                .from(table("delivery_job"))
+                .from(DELIVERY_JOB)
                 .where(condition)
-                .orderBy(field("created_at").desc())
+                .orderBy(DELIVERY_JOB.CREATED_AT.desc())
                 .limit(limit)
                 .offset(offset)
                 .fetch(this::mapAdminJob);
@@ -123,22 +124,22 @@ public class DeliveryAdminController {
                 "ADMIN_DELIVERY_LIST_DESTINATIONS", "delivery_destination", null, tenantId, "SUCCESS");
         var destCondition = noCondition();
         if (tenantId != null && !tenantId.isBlank()) {
-            destCondition = destCondition.and(field("tenant_id").eq(tenantId));
+            destCondition = destCondition.and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId));
         }
         return dsl.select()
-                .from(table("delivery_destination"))
+                .from(DELIVERY_DESTINATION)
                 .where(destCondition)
-                .orderBy(field("created_at").desc())
+                .orderBy(DELIVERY_DESTINATION.CREATED_AT.desc())
                 .fetch(r -> new DeliveryDestinationResponse(
-                        r.get(field("id", String.class)),
-                        r.get(field("tenant_id", String.class)),
-                        r.get(field("name", String.class)),
-                        r.get(field("protocol", String.class)),
-                        Boolean.TRUE.equals(r.get(field("enabled", Boolean.class))),
-                        r.get(field("credential_ref", String.class)),
+                        r.get(DELIVERY_DESTINATION.ID),
+                        r.get(DELIVERY_DESTINATION.TENANT_ID),
+                        r.get(DELIVERY_DESTINATION.NAME),
+                        r.get(DELIVERY_DESTINATION.PROTOCOL),
+                        Boolean.TRUE.equals(r.get(DELIVERY_DESTINATION.ENABLED)),
+                        r.get(DELIVERY_DESTINATION.CREDENTIAL_REF),
                         credentialBundlePort.hasCredentials(
-                                r.get(field("credential_ref", String.class)),
-                                r.get(field("credential_json", String.class)))));
+                                r.get(DELIVERY_DESTINATION.CREDENTIAL_REF),
+                                r.get(DELIVERY_DESTINATION.CREDENTIAL_JSON))));
     }
 
     @PostMapping("/credentials/migrate")
@@ -164,20 +165,20 @@ public class DeliveryAdminController {
                 extractActor(request), extractRoles(request),
                 "ADMIN_DELIVERY_RETRY_JOB", "delivery_job", deliveryJobId, null, "SUCCESS");
         Record row = dsl.select()
-                .from(table("delivery_job"))
-                .where(field("id").eq(deliveryJobId))
+                .from(DELIVERY_JOB)
+                .where(DELIVERY_JOB.ID.eq(deliveryJobId))
                 .fetchOne();
         if (row == null) {
             throw new IllegalArgumentException("Delivery job not found");
         }
         deliveryJobService.retryDelivery(
-                row.get(field("tenant_id", String.class)),
-                row.get(field("project_id", String.class)),
-                row.get(field("render_job_id", String.class)),
+                row.get(DELIVERY_JOB.TENANT_ID),
+                row.get(DELIVERY_JOB.PROJECT_ID),
+                row.get(DELIVERY_JOB.RENDER_JOB_ID),
                 deliveryJobId);
         Record updated = dsl.select()
-                .from(table("delivery_job"))
-                .where(field("id").eq(deliveryJobId))
+                .from(DELIVERY_JOB)
+                .where(DELIVERY_JOB.ID.eq(deliveryJobId))
                 .fetchOne();
         return mapAdminJob(updated);
     }
@@ -230,19 +231,19 @@ public class DeliveryAdminController {
 
     private AdminDeliveryJobResponse mapAdminJob(Record r) {
         return new AdminDeliveryJobResponse(
-                r.get(field("id", String.class)),
-                r.get(field("tenant_id", String.class)),
-                r.get(field("project_id", String.class)),
-                r.get(field("render_job_id", String.class)),
-                r.get(field("destination_id", String.class)),
-                r.get(field("status", String.class)),
-                r.get(field("source_uri", String.class)),
-                r.get(field("remote_uri", String.class)),
-                r.get(field("bytes_transferred", Long.class)),
-                r.get(field("attempt_count", Integer.class)),
-                r.get(field("error_code", String.class)),
-                r.get(field("error_message", String.class)),
-                r.get(field("created_at", OffsetDateTime.class)),
-                r.get(field("completed_at", OffsetDateTime.class)));
+                r.get(DELIVERY_JOB.ID),
+                r.get(DELIVERY_JOB.TENANT_ID),
+                r.get(DELIVERY_JOB.PROJECT_ID),
+                r.get(DELIVERY_JOB.RENDER_JOB_ID),
+                r.get(DELIVERY_JOB.DESTINATION_ID),
+                r.get(DELIVERY_JOB.STATUS),
+                r.get(DELIVERY_JOB.SOURCE_URI),
+                r.get(DELIVERY_JOB.REMOTE_URI),
+                r.get(DELIVERY_JOB.BYTES_TRANSFERRED),
+                r.get(DELIVERY_JOB.ATTEMPT_COUNT),
+                r.get(DELIVERY_JOB.ERROR_CODE),
+                r.get(DELIVERY_JOB.ERROR_MESSAGE),
+                r.get(DELIVERY_DESTINATION.CREATED_AT),
+                r.get(DELIVERY_JOB.COMPLETED_AT));
     }
 }

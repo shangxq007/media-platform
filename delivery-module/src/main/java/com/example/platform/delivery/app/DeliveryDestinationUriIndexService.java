@@ -10,9 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination.DELIVERY_DESTINATION;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Indexes URI prefixes from {@code delivery_destination.config_json} (base URL, bucket, prefix) for orphan scans.
@@ -35,10 +34,10 @@ public class DeliveryDestinationUriIndexService {
     public Set<String> collectDestinationUriPrefixes() {
         Set<String> prefixes = new HashSet<>();
         try {
-            var rows = dsl.select(field("config_json", String.class))
-                    .from(table("delivery_destination"))
-                    .where(field("enabled").isNull().or(field("enabled").eq(true)))
-                    .fetch(field("config_json", String.class));
+            var rows = dsl.select(DELIVERY_DESTINATION.CONFIG_JSON)
+                    .from(DELIVERY_DESTINATION)
+                    .where(DELIVERY_DESTINATION.ENABLED.isNull().or(DELIVERY_DESTINATION.ENABLED.eq(true)))
+                    .fetch(DELIVERY_DESTINATION.CONFIG_JSON);
             for (String json : rows) {
                 indexConfig(prefixes, json);
             }

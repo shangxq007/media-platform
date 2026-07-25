@@ -9,9 +9,8 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.Asset.ASSET;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Repository for project assets.
@@ -39,31 +38,31 @@ public class AssetRepository {
         String id = Ids.newId("asset");
         Instant now = Instant.now();
 
-        dsl.insertInto(table("asset"))
+        dsl.insertInto(ASSET)
                 .columns(
-                        field("id"),
-                        field("tenant_id"),
-                        field("project_id"),
-                        field("storage_key"),
-                        field("media_type"),
-                        field("filename"),
-                        field("size_bytes"),
-                        field("checksum"),
-                        field("duration_ms"),
-                        field("width"),
-                        field("height"),
-                        field("asset_version"),
-                        field("owner_id"),
-                        field("entity_ref"),
-                        field("classification"),
-                        field("license"),
-                        field("retention_policy"),
-                        field("security_level"),
-                        field("contains_pii"),
-                        field("ai_generated"),
-                        field("created_at"),
-                        field("updated_at"),
-                        field("publish_status")
+                        ASSET.ID,
+                        ASSET.TENANT_ID,
+                        ASSET.PROJECT_ID,
+                        ASSET.STORAGE_KEY,
+                        ASSET.MEDIA_TYPE,
+                        ASSET.FILENAME,
+                        ASSET.SIZE_BYTES,
+                        ASSET.CHECKSUM,
+                        ASSET.DURATION_MS,
+                        ASSET.WIDTH,
+                        ASSET.HEIGHT,
+                        ASSET.ASSET_VERSION,
+                        ASSET.OWNER_ID,
+                        ASSET.ENTITY_REF,
+                        ASSET.CLASSIFICATION,
+                        ASSET.LICENSE,
+                        ASSET.RETENTION_POLICY,
+                        ASSET.SECURITY_LEVEL,
+                        ASSET.CONTAINS_PII,
+                        ASSET.AI_GENERATED,
+                        ASSET.CREATED_AT,
+                        ASSET.UPDATED_AT,
+                        ASSET.PUBLISH_STATUS
                 )
                 .values(
                         id,
@@ -101,9 +100,9 @@ public class AssetRepository {
      * Find an asset by ID, scoped to tenant.
      */
     public Optional<Asset> findById(String tenantId, String assetId) {
-        Record r = dsl.selectFrom(table("asset"))
-                .where(field("id").eq(assetId))
-                .and(field("tenant_id").eq(tenantId))
+        Record r = dsl.selectFrom(ASSET)
+                .where(ASSET.ID.eq(assetId))
+                .and(ASSET.TENANT_ID.eq(tenantId))
                 .fetchOne();
         return Optional.ofNullable(r).map(this::mapAsset);
     }
@@ -112,10 +111,10 @@ public class AssetRepository {
      * List all assets for a project, scoped to tenant.
      */
     public List<Asset> listByProject(String tenantId, String projectId) {
-        return dsl.selectFrom(table("asset"))
-                .where(field("tenant_id").eq(tenantId))
-                .and(field("project_id").eq(projectId))
-                .orderBy(field("created_at").desc())
+        return dsl.selectFrom(ASSET)
+                .where(ASSET.TENANT_ID.eq(tenantId))
+                .and(ASSET.PROJECT_ID.eq(projectId))
+                .orderBy(ASSET.CREATED_AT.desc())
                 .fetch(this::mapAsset);
     }
 
@@ -123,15 +122,15 @@ public class AssetRepository {
      * Delete an asset by ID, scoped to tenant.
      */
     public boolean delete(String tenantId, String assetId) {
-        return dsl.deleteFrom(table("asset"))
-                .where(field("id").eq(assetId).and(field("tenant_id").eq(tenantId)))
+        return dsl.deleteFrom(ASSET)
+                .where(ASSET.ID.eq(assetId).and(ASSET.TENANT_ID.eq(tenantId)))
                 .execute() > 0;
     }
 
     public void updatePublishStatus(String tenantId, String assetId, String publishStatus) {
-        dsl.update(table("asset"))
-                .set(field("publish_status"), publishStatus)
-                .where(field("id").eq(assetId).and(field("tenant_id").eq(tenantId)))
+        dsl.update(ASSET)
+                .set(ASSET.PUBLISH_STATUS, publishStatus)
+                .where(ASSET.ID.eq(assetId).and(ASSET.TENANT_ID.eq(tenantId)))
                 .execute();
     }
 
@@ -139,29 +138,29 @@ public class AssetRepository {
         Boolean cp = r.get("contains_pii", Boolean.class);
         Boolean ag = r.get("ai_generated", Boolean.class);
         return new Asset(
-                r.get(field("id"), String.class),
-                r.get(field("tenant_id"), String.class),
-                r.get(field("project_id"), String.class),
-                r.get(field("storage_key"), String.class),
-                r.get(field("media_type"), String.class),
-                r.get(field("filename"), String.class),
-                r.get(field("size_bytes"), Long.class),
-                r.get(field("checksum"), String.class),
-                r.get(field("duration_ms"), Long.class),
-                r.get(field("width"), Integer.class),
-                r.get(field("height"), Integer.class),
-                r.get(field("asset_version"), String.class),
-                r.get(field("owner_id"), String.class),
-                r.get(field("entity_ref"), String.class),
-                r.get(field("classification"), String.class),
-                r.get(field("license"), String.class),
-                r.get(field("retention_policy"), String.class),
-                r.get(field("security_level"), String.class),
+                r.get(ASSET.ID, String.class),
+                r.get(ASSET.TENANT_ID, String.class),
+                r.get(ASSET.PROJECT_ID, String.class),
+                r.get(ASSET.STORAGE_KEY, String.class),
+                r.get(ASSET.MEDIA_TYPE, String.class),
+                r.get(ASSET.FILENAME, String.class),
+                r.get(ASSET.SIZE_BYTES, Long.class),
+                r.get(ASSET.CHECKSUM, String.class),
+                r.get(ASSET.DURATION_MS, Long.class),
+                r.get(ASSET.WIDTH, Integer.class),
+                r.get(ASSET.HEIGHT, Integer.class),
+                r.get(ASSET.ASSET_VERSION, String.class),
+                r.get(ASSET.OWNER_ID, String.class),
+                r.get(ASSET.ENTITY_REF, String.class),
+                r.get(ASSET.CLASSIFICATION, String.class),
+                r.get(ASSET.LICENSE, String.class),
+                r.get(ASSET.RETENTION_POLICY, String.class),
+                r.get(ASSET.SECURITY_LEVEL, String.class),
                 Boolean.TRUE.equals(cp),
                 Boolean.TRUE.equals(ag),
-                r.get(field("publish_status"), String.class),
-                r.get(field("created_at"), java.time.Instant.class),
-                r.get(field("updated_at"), java.time.Instant.class)
+                r.get(ASSET.PUBLISH_STATUS, String.class),
+                r.get(ASSET.CREATED_AT, java.time.Instant.class),
+                r.get(ASSET.UPDATED_AT, java.time.Instant.class)
         );
     }
 }

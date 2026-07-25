@@ -1,8 +1,5 @@
 package com.example.platform.delivery.api;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.delivery.api.dto.CreateDeliveryDestinationRequest;
 import com.example.platform.delivery.api.dto.CreateDeliveryPolicyRequest;
 import com.example.platform.delivery.api.dto.DeliveryDestinationResponse;
@@ -18,12 +15,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.web.bind.annotation.*;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination.DELIVERY_DESTINATION;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryJob.DELIVERY_JOB;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryPolicy.DELIVERY_POLICY;
+
 
 @RestController
 @RequestMapping("/api/v1/tenants/{tenantId}")
@@ -57,13 +59,13 @@ public class DeliveryController {
         String configJson = toJson(request.config());
         var stored = destinationCredentialService.persist(
                 tenantId, id, request.credentialRef(), request.credentials());
-        dsl.insertInto(table("delivery_destination"))
-                .columns(field("id"), field("tenant_id"), field("name"), field("protocol"),
-                        field("config_json"), field("credential_ref"), field("credential_json"),
-                        field("enabled"), field("created_at"))
+        dsl.insertInto(DELIVERY_DESTINATION)
+                .columns(DELIVERY_DESTINATION.ID, DELIVERY_DESTINATION.TENANT_ID, DELIVERY_DESTINATION.NAME, DELIVERY_DESTINATION.PROTOCOL,
+                        DELIVERY_DESTINATION.CONFIG_JSON, DELIVERY_DESTINATION.CREDENTIAL_REF, DELIVERY_DESTINATION.CREDENTIAL_JSON,
+                        DELIVERY_DESTINATION.ENABLED, DELIVERY_DESTINATION.CREATED_AT)
                 .values(id, tenantId, request.name(), request.protocol(), configJson,
                         stored.credentialRef(), stored.credentialJson(),
-                        request.enabled() != null ? request.enabled() : true, OffsetDateTime.now())
+                        request.enabled() != null ? request.enabled() : true, LocalDateTime.now())
                 .execute();
         return toDestinationResponse(id, tenantId, request.name(), request.protocol(),
                 request.enabled() != null ? request.enabled() : true,
@@ -89,16 +91,16 @@ public class DeliveryController {
         if (request.credentialRef() != null || (request.credentials() != null && !request.credentials().isEmpty())) {
             var stored = destinationCredentialService.persist(
                     tenantId, destinationId, request.credentialRef(), request.credentials());
-            dsl.update(table("delivery_destination"))
-                    .set(field("credential_ref"), stored.credentialRef())
-                    .set(field("credential_json"), stored.credentialJson())
-                    .where(field("id").eq(destinationId))
+            dsl.update(DELIVERY_DESTINATION)
+                    .set(DELIVERY_DESTINATION.CREDENTIAL_REF, stored.credentialRef())
+                    .set(DELIVERY_DESTINATION.CREDENTIAL_JSON, stored.credentialJson())
+                    .where(DELIVERY_DESTINATION.ID.eq(destinationId))
                     .execute();
         }
         Record row = dsl.select()
-                .from(table("delivery_destination"))
-                .where(field("id").eq(destinationId))
-                .and(field("tenant_id").eq(tenantId))
+                .from(DELIVERY_DESTINATION)
+                .where(DELIVERY_DESTINATION.ID.eq(destinationId))
+                .and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
                 .fetchOne();
         if (row == null) {
             throw new IllegalArgumentException("Destination not found");
@@ -118,8 +120,8 @@ public class DeliveryController {
     @GetMapping("/delivery/destinations")
     public List<DeliveryDestinationResponse> listDestinations(@PathVariable String tenantId) {
         return dsl.select()
-                .from(table("delivery_destination"))
-                .where(field("tenant_id").eq(tenantId))
+                .from(DELIVERY_DESTINATION)
+                .where(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
                 .fetch(r -> mapDestinationRow(tenantId, r));
     }
 
@@ -129,18 +131,18 @@ public class DeliveryController {
             @PathVariable String tenantId,
             @PathVariable String projectId) {
         return dsl.select()
-                .from(table("delivery_policy"))
-                .where(field("tenant_id").eq(tenantId))
-                .and(field("project_id").eq(projectId))
+                .from(DELIVERY_POLICY)
+                .where(DELIVERY_POLICY.TENANT_ID.eq(tenantId))
+                .and(DELIVERY_POLICY.PROJECT_ID.eq(projectId))
                 .fetch(r -> new DeliveryPolicyResponse(
-                        r.get(field("id", String.class)),
+                        r.get(DELIVERY_POLICY.ID),
                         tenantId,
                         projectId,
-                        r.get(field("destination_id", String.class)),
-                        r.get(field("artifact_selector", String.class)),
-                        r.get(field("path_template", String.class)),
-                        r.get(field("trigger_mode", String.class)),
-                        Boolean.TRUE.equals(r.get(field("enabled", Boolean.class)))));
+                        r.get(DELIVERY_POLICY.DESTINATION_ID),
+                        r.get(DELIVERY_POLICY.ARTIFACT_SELECTOR),
+                        r.get(DELIVERY_POLICY.PATH_TEMPLATE),
+                        r.get(DELIVERY_POLICY.TRIGGER_MODE),
+                        Boolean.TRUE.equals(r.get(DELIVERY_DESTINATION.ENABLED))));
     }
 
     @PostMapping("/projects/{projectId}/delivery/policies")
@@ -150,13 +152,13 @@ public class DeliveryController {
             @PathVariable String projectId,
             @Valid @RequestBody CreateDeliveryPolicyRequest request) {
         String id = Ids.newId("dlp");
-        dsl.insertInto(table("delivery_policy"))
-                .columns(field("id"), field("tenant_id"), field("project_id"), field("destination_id"),
-                        field("artifact_selector"), field("path_template"), field("trigger_mode"),
-                        field("enabled"), field("created_at"))
+        dsl.insertInto(DELIVERY_POLICY)
+                .columns(DELIVERY_POLICY.ID, DELIVERY_POLICY.TENANT_ID, DELIVERY_POLICY.PROJECT_ID, DELIVERY_POLICY.DESTINATION_ID,
+                        DELIVERY_POLICY.ARTIFACT_SELECTOR, DELIVERY_POLICY.PATH_TEMPLATE, DELIVERY_POLICY.TRIGGER_MODE,
+                        DELIVERY_POLICY.ENABLED, DELIVERY_POLICY.CREATED_AT)
                 .values(id, tenantId, projectId, request.destinationId(),
                         request.artifactSelectorOrDefault(), request.pathTemplateOrDefault(),
-                        request.triggerModeOrDefault(), true, OffsetDateTime.now())
+                        request.triggerModeOrDefault(), true, LocalDateTime.now())
                 .execute();
         return Map.of("policyId", id);
     }
@@ -191,10 +193,10 @@ public class DeliveryController {
             @PathVariable String projectId,
             @PathVariable String jobId) {
         return dsl.select()
-                .from(table("delivery_job"))
-                .where(field("tenant_id").eq(tenantId))
-                .and(field("project_id").eq(projectId))
-                .and(field("render_job_id").eq(jobId))
+                .from(DELIVERY_JOB)
+                .where(DELIVERY_JOB.TENANT_ID.eq(tenantId))
+                .and(DELIVERY_JOB.PROJECT_ID.eq(projectId))
+                .and(DELIVERY_JOB.RENDER_JOB_ID.eq(jobId))
                 .fetch(this::mapJob);
     }
 
@@ -223,25 +225,25 @@ public class DeliveryController {
 
     private DeliveryJobResponse mapJob(Record r) {
         return new DeliveryJobResponse(
-                r.get(field("id", String.class)),
-                r.get(field("render_job_id", String.class)),
-                r.get(field("destination_id", String.class)),
-                r.get(field("status", String.class)),
-                r.get(field("source_uri", String.class)),
-                r.get(field("remote_uri", String.class)),
-                r.get(field("bytes_transferred", Long.class)),
-                r.get(field("error_message", String.class)));
+                r.get(DELIVERY_JOB.ID),
+                r.get(DELIVERY_JOB.RENDER_JOB_ID),
+                r.get(DELIVERY_JOB.DESTINATION_ID),
+                r.get(DELIVERY_JOB.STATUS),
+                r.get(DELIVERY_JOB.SOURCE_URI),
+                r.get(DELIVERY_JOB.REMOTE_URI),
+                r.get(DELIVERY_JOB.BYTES_TRANSFERRED),
+                r.get(DELIVERY_JOB.ERROR_MESSAGE));
     }
 
     private DeliveryDestinationResponse mapDestinationRow(String tenantId, Record r) {
-        String credRef = r.get(field("credential_ref", String.class));
-        String credJson = r.get(field("credential_json", String.class));
+        String credRef = r.get(DELIVERY_DESTINATION.CREDENTIAL_REF);
+        String credJson = r.get(DELIVERY_DESTINATION.CREDENTIAL_JSON);
         return toDestinationResponse(
-                r.get(field("id", String.class)),
+                r.get(DELIVERY_DESTINATION.ID),
                 tenantId,
-                r.get(field("name", String.class)),
-                r.get(field("protocol", String.class)),
-                Boolean.TRUE.equals(r.get(field("enabled", Boolean.class))),
+                r.get(DELIVERY_DESTINATION.NAME),
+                r.get(DELIVERY_DESTINATION.PROTOCOL),
+                Boolean.TRUE.equals(r.get(DELIVERY_DESTINATION.ENABLED)),
                 credRef,
                 credJson);
     }

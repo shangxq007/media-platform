@@ -1,10 +1,7 @@
 package com.example.platform.artifact.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.artifact.domain.ArtifactRelation;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +10,8 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ARTIFACT_RELATION;
+
 
 @Repository
 
@@ -25,20 +24,20 @@ public class ArtifactRelationRepository {
     }
 
     public ArtifactRelation save(ArtifactRelation relation) {
-        dsl.insertInto(table("artifact_relation"))
-                .columns(field("id"), field("source_artifact_id"), field("target_artifact_id"),
-                        field("relation_type"), field("created_at"))
+        dsl.insertInto(ARTIFACT_RELATION)
+                .columns(ARTIFACT_RELATION.ID, ARTIFACT_RELATION.SOURCE_ARTIFACT_ID, ARTIFACT_RELATION.TARGET_ARTIFACT_ID,
+                        ARTIFACT_RELATION.RELATION_TYPE, ARTIFACT_RELATION.CREATED_AT)
                 .values(relation.id(), relation.sourceId(), relation.targetId(),
-                        relation.relationType(), OffsetDateTime.now(ZoneOffset.UTC))
+                        relation.relationType(), LocalDateTime.now(ZoneOffset.UTC))
                 .execute();
         return relation;
     }
 
     public List<ArtifactRelation> findByArtifactId(String artifactId) {
         return dsl.select()
-                .from(table("artifact_relation"))
-                .where(field("source_artifact_id").eq(artifactId)
-                        .or(field("target_artifact_id").eq(artifactId)))
+                .from(ARTIFACT_RELATION)
+                .where(ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(artifactId)
+                        .or(ARTIFACT_RELATION.TARGET_ARTIFACT_ID.eq(artifactId)))
                 .fetch(this::mapRecord);
     }
 
@@ -67,9 +66,9 @@ public class ArtifactRelationRepository {
 
     private ArtifactRelation mapRecord(Record record) {
         return new ArtifactRelation(
-                record.get(field("id"), String.class),
-                record.get(field("source_artifact_id"), String.class),
-                record.get(field("target_artifact_id"), String.class),
-                record.get(field("relation_type"), String.class));
+                record.get(ARTIFACT_RELATION.ID, String.class),
+                record.get(ARTIFACT_RELATION.SOURCE_ARTIFACT_ID, String.class),
+                record.get(ARTIFACT_RELATION.TARGET_ARTIFACT_ID, String.class),
+                record.get(ARTIFACT_RELATION.RELATION_TYPE, String.class));
     }
 }

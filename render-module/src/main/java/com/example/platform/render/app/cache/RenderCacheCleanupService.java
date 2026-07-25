@@ -3,6 +3,7 @@ package com.example.platform.render.app.cache;
 import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
 import com.example.platform.render.infrastructure.RenderCacheProperties;
 import com.example.platform.storage.domain.BlobStorage;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,9 +17,8 @@ import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Removes remote render-cache blobs for jobs older than {@link RenderCacheProperties#getRetentionDays()}.
@@ -53,30 +53,30 @@ public class RenderCacheCleanupService {
             return new CleanupResult(0, 0, 0);
         }
         int retentionDays = Math.max(1, cacheProperties.getRetentionDays());
-        OffsetDateTime cutoff = OffsetDateTime.now().minusDays(retentionDays);
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
 
-        Condition condition = field("status").eq("COMPLETED")
-                .and(field("created_at").lessThan(cutoff));
+        Condition condition = RENDER_JOB.STATUS.eq("COMPLETED")
+                .and(RENDER_JOB.CREATED_AT.lessThan(cutoff));
         if (tenantId != null && !tenantId.isBlank()) {
-            condition = condition.and(field("tenant_id").eq(tenantId));
+            condition = condition.and(RENDER_JOB.TENANT_ID.eq(tenantId));
         }
         if (projectId != null && !projectId.isBlank()) {
-            condition = condition.and(field("project_id").eq(projectId));
+            condition = condition.and(RENDER_JOB.PROJECT_ID.eq(projectId));
         }
 
         var jobs = dsl.select(
-                        field("id", String.class),
-                        field("tenant_id", String.class),
-                        field("project_id", String.class))
-                .from(table("render_job"))
+                        RENDER_JOB.ID,
+                        RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.PROJECT_ID)
+                .from(RENDER_JOB)
                 .where(condition)
                 .limit(500)
                 .fetch();
         int deletedObjects = 0;
         int updatedJobs = 0;
         for (Record job : jobs) {
-            String jobId = job.get(field("id", String.class));
-            String jobTenant = job.get(field("tenant_id", String.class));
+            String jobId = job.get(RENDER_JOB.ID);
+            String jobTenant = job.get(RENDER_JOB.TENANT_ID);
             try {
                 int removed = cleanupJob(jobId, jobTenant);
                 if (removed > 0) {
@@ -113,7 +113,7 @@ public class RenderCacheCleanupService {
         Map<String, Object> stripped = new LinkedHashMap<>(state);
         stripped.remove("segmentCacheIndex");
         stripped.remove("mezzanineCacheIndex");
-        stripped.put("cacheCleanedAt", OffsetDateTime.now().toString());
+        stripped.put("cacheCleanedAt", LocalDateTime.now().toString());
         stripped.put("cacheObjectsRemoved", deleted);
         planPersistence.saveExecutionState(jobId, stripped);
         return deleted;

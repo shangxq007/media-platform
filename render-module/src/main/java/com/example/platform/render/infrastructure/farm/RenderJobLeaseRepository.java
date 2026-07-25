@@ -1,8 +1,5 @@
 package com.example.platform.render.infrastructure.farm;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -10,6 +7,8 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLease.RENDER_JOB_LEASE;
+
 
 /**
  * Repository for the {@code render_job_lease} table.
@@ -30,13 +29,13 @@ public class RenderJobLeaseRepository {
      * Create a new lease record.
      */
     public void create(RenderJobLeaseRecord lease) {
-        dsl.insertInto(table("render_job_lease"))
-                .columns(field("id"), field("lease_id"), field("job_id"), field("tenant_id"),
-                        field("worker_id"), field("provider_id"), field("status"),
-                        field("lease_version"), field("claimed_at"), field("lease_until"),
-                        field("attempt"), field("max_attempts"),
-                        field("heartbeat_token_hash"), field("created_by_scheduler"),
-                        field("created_at"), field("updated_at"))
+        dsl.insertInto(RENDER_JOB_LEASE)
+                .columns(RENDER_JOB_LEASE.ID, RENDER_JOB_LEASE.LEASE_ID, RENDER_JOB_LEASE.JOB_ID, RENDER_JOB_LEASE.TENANT_ID,
+                        RENDER_JOB_LEASE.WORKER_ID, RENDER_JOB_LEASE.PROVIDER_ID, RENDER_JOB_LEASE.STATUS,
+                        RENDER_JOB_LEASE.LEASE_VERSION, RENDER_JOB_LEASE.CLAIMED_AT, RENDER_JOB_LEASE.LEASE_UNTIL,
+                        RENDER_JOB_LEASE.ATTEMPT, RENDER_JOB_LEASE.MAX_ATTEMPTS,
+                        RENDER_JOB_LEASE.HEARTBEAT_TOKEN_HASH, RENDER_JOB_LEASE.CREATED_BY_SCHEDULER,
+                        RENDER_JOB_LEASE.CREATED_AT, RENDER_JOB_LEASE.UPDATED_AT)
                 .values(lease.id(), lease.leaseId(), lease.jobId(), lease.tenantId(),
                         lease.workerId(), lease.providerId(), lease.status().name(),
                         lease.leaseVersion(), toTs(lease.claimedAt()), toTs(lease.leaseUntil()),
@@ -51,9 +50,9 @@ public class RenderJobLeaseRepository {
      */
     public Optional<RenderJobLeaseRecord> findActiveLeaseByJobId(String jobId) {
         Record r = dsl.select()
-                .from(table("render_job_lease"))
-                .where(field("job_id").eq(jobId))
-                .and(field("status").in(
+                .from(RENDER_JOB_LEASE)
+                .where(RENDER_JOB_LEASE.JOB_ID.eq(jobId))
+                .and(RENDER_JOB_LEASE.STATUS.in(
                         RenderJobLeaseStatus.CLAIMED.name(),
                         RenderJobLeaseStatus.RUNNING.name(),
                         RenderJobLeaseStatus.RENEWED.name()))
@@ -66,8 +65,8 @@ public class RenderJobLeaseRepository {
      */
     public Optional<RenderJobLeaseRecord> findByLeaseId(String leaseId) {
         Record r = dsl.select()
-                .from(table("render_job_lease"))
-                .where(field("lease_id").eq(leaseId))
+                .from(RENDER_JOB_LEASE)
+                .where(RENDER_JOB_LEASE.LEASE_ID.eq(leaseId))
                 .fetchOne();
         return Optional.ofNullable(r).map(this::mapRecord);
     }
@@ -77,8 +76,8 @@ public class RenderJobLeaseRepository {
      */
     public List<RenderJobLeaseRecord> findByWorkerId(String workerId) {
         return dsl.select()
-                .from(table("render_job_lease"))
-                .where(field("worker_id").eq(workerId))
+                .from(RENDER_JOB_LEASE)
+                .where(RENDER_JOB_LEASE.WORKER_ID.eq(workerId))
                 .fetch(this::mapRecord);
     }
 
@@ -87,8 +86,8 @@ public class RenderJobLeaseRepository {
      */
     public List<RenderJobLeaseRecord> findActiveLeases() {
         return dsl.select()
-                .from(table("render_job_lease"))
-                .where(field("status").in(
+                .from(RENDER_JOB_LEASE)
+                .where(RENDER_JOB_LEASE.STATUS.in(
                         RenderJobLeaseStatus.CLAIMED.name(),
                         RenderJobLeaseStatus.RUNNING.name(),
                         RenderJobLeaseStatus.RENEWED.name()))
@@ -102,16 +101,16 @@ public class RenderJobLeaseRepository {
      * @return true if the lease was renewed
      */
     public boolean renew(String leaseId, String workerId, long expectedVersion, Instant newLeaseUntil, Instant now) {
-        int rows = dsl.update(table("render_job_lease"))
-                .set(field("status"), RenderJobLeaseStatus.RENEWED.name())
-                .set(field("lease_until"), toTs(newLeaseUntil))
-                .set(field("renewed_at"), toTs(now))
-                .set(field("lease_version"), expectedVersion + 1)
-                .set(field("updated_at"), toTs(now))
-                .where(field("lease_id").eq(leaseId))
-                .and(field("worker_id").eq(workerId))
-                .and(field("lease_version").eq(expectedVersion))
-                .and(field("status").in(
+        int rows = dsl.update(RENDER_JOB_LEASE)
+                .set(RENDER_JOB_LEASE.STATUS, RenderJobLeaseStatus.RENEWED.name())
+                .set(RENDER_JOB_LEASE.LEASE_UNTIL, toTs(newLeaseUntil))
+                .set(RENDER_JOB_LEASE.RENEWED_AT, toTs(now))
+                .set(RENDER_JOB_LEASE.LEASE_VERSION, expectedVersion + 1)
+                .set(RENDER_JOB_LEASE.UPDATED_AT, toTs(now))
+                .where(RENDER_JOB_LEASE.LEASE_ID.eq(leaseId))
+                .and(RENDER_JOB_LEASE.WORKER_ID.eq(workerId))
+                .and(RENDER_JOB_LEASE.LEASE_VERSION.eq(expectedVersion))
+                .and(RENDER_JOB_LEASE.STATUS.in(
                         RenderJobLeaseStatus.CLAIMED.name(),
                         RenderJobLeaseStatus.RUNNING.name(),
                         RenderJobLeaseStatus.RENEWED.name()))
@@ -125,15 +124,15 @@ public class RenderJobLeaseRepository {
      * @return true if the lease was released
      */
     public boolean release(String leaseId, String workerId, long expectedVersion, Instant now) {
-        int rows = dsl.update(table("render_job_lease"))
-                .set(field("status"), RenderJobLeaseStatus.RELEASED.name())
-                .set(field("released_at"), toTs(now))
-                .set(field("lease_version"), expectedVersion + 1)
-                .set(field("updated_at"), toTs(now))
-                .where(field("lease_id").eq(leaseId))
-                .and(field("worker_id").eq(workerId))
-                .and(field("lease_version").eq(expectedVersion))
-                .and(field("status").in(
+        int rows = dsl.update(RENDER_JOB_LEASE)
+                .set(RENDER_JOB_LEASE.STATUS, RenderJobLeaseStatus.RELEASED.name())
+                .set(RENDER_JOB_LEASE.RELEASED_AT, toTs(now))
+                .set(RENDER_JOB_LEASE.LEASE_VERSION, expectedVersion + 1)
+                .set(RENDER_JOB_LEASE.UPDATED_AT, toTs(now))
+                .where(RENDER_JOB_LEASE.LEASE_ID.eq(leaseId))
+                .and(RENDER_JOB_LEASE.WORKER_ID.eq(workerId))
+                .and(RENDER_JOB_LEASE.LEASE_VERSION.eq(expectedVersion))
+                .and(RENDER_JOB_LEASE.STATUS.in(
                         RenderJobLeaseStatus.CLAIMED.name(),
                         RenderJobLeaseStatus.RUNNING.name(),
                         RenderJobLeaseStatus.RENEWED.name()))
@@ -148,17 +147,17 @@ public class RenderJobLeaseRepository {
      */
     public boolean fail(String leaseId, String workerId, long expectedVersion,
             String failureReason, String failureErrorCode, Instant now) {
-        int rows = dsl.update(table("render_job_lease"))
-                .set(field("status"), RenderJobLeaseStatus.FAILED.name())
-                .set(field("failure_reason"), failureReason)
-                .set(field("failure_error_code"), failureErrorCode)
-                .set(field("released_at"), toTs(now))
-                .set(field("lease_version"), expectedVersion + 1)
-                .set(field("updated_at"), toTs(now))
-                .where(field("lease_id").eq(leaseId))
-                .and(field("worker_id").eq(workerId))
-                .and(field("lease_version").eq(expectedVersion))
-                .and(field("status").in(
+        int rows = dsl.update(RENDER_JOB_LEASE)
+                .set(RENDER_JOB_LEASE.STATUS, RenderJobLeaseStatus.FAILED.name())
+                .set(RENDER_JOB_LEASE.FAILURE_REASON, failureReason)
+                .set(RENDER_JOB_LEASE.FAILURE_ERROR_CODE, failureErrorCode)
+                .set(RENDER_JOB_LEASE.RELEASED_AT, toTs(now))
+                .set(RENDER_JOB_LEASE.LEASE_VERSION, expectedVersion + 1)
+                .set(RENDER_JOB_LEASE.UPDATED_AT, toTs(now))
+                .where(RENDER_JOB_LEASE.LEASE_ID.eq(leaseId))
+                .and(RENDER_JOB_LEASE.WORKER_ID.eq(workerId))
+                .and(RENDER_JOB_LEASE.LEASE_VERSION.eq(expectedVersion))
+                .and(RENDER_JOB_LEASE.STATUS.in(
                         RenderJobLeaseStatus.CLAIMED.name(),
                         RenderJobLeaseStatus.RUNNING.name(),
                         RenderJobLeaseStatus.RENEWED.name()))
@@ -173,12 +172,12 @@ public class RenderJobLeaseRepository {
     public List<RenderJobLeaseRecord> expireStaleLeases(Instant now) {
         // First, find leases to expire
         List<RenderJobLeaseRecord> stale = dsl.select()
-                .from(table("render_job_lease"))
-                .where(field("status").in(
+                .from(RENDER_JOB_LEASE)
+                .where(RENDER_JOB_LEASE.STATUS.in(
                         RenderJobLeaseStatus.CLAIMED.name(),
                         RenderJobLeaseStatus.RUNNING.name(),
                         RenderJobLeaseStatus.RENEWED.name()))
-                .and(field("lease_until").lt(toTs(now)))
+                .and(RENDER_JOB_LEASE.LEASE_UNTIL.lt(toTs(now)))
                 .fetch(this::mapRecord);
 
         if (stale.isEmpty()) {
@@ -186,14 +185,14 @@ public class RenderJobLeaseRepository {
         }
 
         // Mark them expired
-        dsl.update(table("render_job_lease"))
-                .set(field("status"), RenderJobLeaseStatus.EXPIRED.name())
-                .set(field("updated_at"), toTs(now))
-                .where(field("status").in(
+        dsl.update(RENDER_JOB_LEASE)
+                .set(RENDER_JOB_LEASE.STATUS, RenderJobLeaseStatus.EXPIRED.name())
+                .set(RENDER_JOB_LEASE.UPDATED_AT, toTs(now))
+                .where(RENDER_JOB_LEASE.STATUS.in(
                         RenderJobLeaseStatus.CLAIMED.name(),
                         RenderJobLeaseStatus.RUNNING.name(),
                         RenderJobLeaseStatus.RENEWED.name()))
-                .and(field("lease_until").lt(toTs(now)))
+                .and(RENDER_JOB_LEASE.LEASE_UNTIL.lt(toTs(now)))
                 .execute();
 
         return stale;
@@ -203,47 +202,48 @@ public class RenderJobLeaseRepository {
      * Get the current attempt count for a job (from the most recent lease).
      */
     public int getMaxAttemptForJob(String jobId) {
-        Record r = dsl.select(field("attempt"))
-                .from(table("render_job_lease"))
-                .where(field("job_id").eq(jobId))
-                .orderBy(field("attempt").desc())
+        Record r = dsl.select(RENDER_JOB_LEASE.ATTEMPT)
+                .from(RENDER_JOB_LEASE)
+                .where(RENDER_JOB_LEASE.JOB_ID.eq(jobId))
+                .orderBy(RENDER_JOB_LEASE.ATTEMPT.desc())
                 .limit(1)
                 .fetchOne();
-        return r != null ? r.get(field("attempt"), Integer.class) : 0;
+        return r != null ? r.get(RENDER_JOB_LEASE.ATTEMPT, Integer.class) : 0;
     }
 
     private RenderJobLeaseRecord mapRecord(Record r) {
         return new RenderJobLeaseRecord(
-                r.get(field("id"), String.class),
-                r.get(field("lease_id"), String.class),
-                r.get(field("job_id"), String.class),
-                r.get(field("tenant_id"), String.class),
-                r.get(field("worker_id"), String.class),
-                r.get(field("provider_id"), String.class),
-                RenderJobLeaseStatus.valueOf(r.get(field("status"), String.class)),
-                r.get(field("lease_version"), Long.class),
-                toInstant(r.get(field("claimed_at"))),
-                toInstant(r.get(field("lease_until"))),
-                toInstant(r.get(field("renewed_at"))),
-                toInstant(r.get(field("released_at"))),
-                r.get(field("attempt"), Integer.class),
-                r.get(field("max_attempts"), Integer.class),
-                r.get(field("heartbeat_token_hash"), String.class),
-                r.get(field("failure_reason"), String.class),
-                r.get(field("failure_error_code"), String.class),
-                r.get(field("created_by_scheduler"), String.class),
-                toInstant(r.get(field("created_at"))),
-                toInstant(r.get(field("updated_at")))
+                r.get(RENDER_JOB_LEASE.ID, String.class),
+                r.get(RENDER_JOB_LEASE.LEASE_ID, String.class),
+                r.get(RENDER_JOB_LEASE.JOB_ID, String.class),
+                r.get(RENDER_JOB_LEASE.TENANT_ID, String.class),
+                r.get(RENDER_JOB_LEASE.WORKER_ID, String.class),
+                r.get(RENDER_JOB_LEASE.PROVIDER_ID, String.class),
+                RenderJobLeaseStatus.valueOf(r.get(RENDER_JOB_LEASE.STATUS, String.class)),
+                r.get(RENDER_JOB_LEASE.LEASE_VERSION, Long.class),
+                toInstant(r.get(RENDER_JOB_LEASE.CLAIMED_AT)),
+                toInstant(r.get(RENDER_JOB_LEASE.LEASE_UNTIL)),
+                toInstant(r.get(RENDER_JOB_LEASE.RENEWED_AT)),
+                toInstant(r.get(RENDER_JOB_LEASE.RELEASED_AT)),
+                r.get(RENDER_JOB_LEASE.ATTEMPT, Integer.class),
+                r.get(RENDER_JOB_LEASE.MAX_ATTEMPTS, Integer.class),
+                r.get(RENDER_JOB_LEASE.HEARTBEAT_TOKEN_HASH, String.class),
+                r.get(RENDER_JOB_LEASE.FAILURE_REASON, String.class),
+                r.get(RENDER_JOB_LEASE.FAILURE_ERROR_CODE, String.class),
+                r.get(RENDER_JOB_LEASE.CREATED_BY_SCHEDULER, String.class),
+                toInstant(r.get(RENDER_JOB_LEASE.CREATED_AT)),
+                toInstant(r.get(RENDER_JOB_LEASE.UPDATED_AT))
         );
     }
 
-    private static OffsetDateTime toTs(Instant instant) {
-        return instant != null ? OffsetDateTime.from(instant.atOffset(java.time.ZoneOffset.UTC)) : null;
+    private static java.time.LocalDateTime toTs(Instant instant) {
+        return instant != null ? java.time.LocalDateTime.ofInstant(instant, java.time.ZoneOffset.UTC) : null;
     }
 
     private static Instant toInstant(Object value) {
         if (value == null) return null;
         if (value instanceof OffsetDateTime odt) return odt.toInstant();
+        if (value instanceof java.time.LocalDateTime ldt) return ldt.toInstant(java.time.ZoneOffset.UTC);
         if (value instanceof java.sql.Timestamp ts) return ts.toInstant();
         return null;
     }

@@ -16,9 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryJob.DELIVERY_JOB;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Builds the set of storage URIs considered "in use" across catalog, render, delivery, and timelines.
@@ -73,16 +73,16 @@ public class KnownStorageUriIndexService {
             return;
         }
         try {
-            dsl.get().select(field("artifact_uri", String.class))
-                    .from(table("render_job"))
-                    .where(field("artifact_uri").isNotNull())
-                    .fetch(field("artifact_uri", String.class))
+            dsl.get().select(RENDER_JOB.ARTIFACT_URI)
+                    .from(RENDER_JOB)
+                    .where(RENDER_JOB.ARTIFACT_URI.isNotNull())
+                    .fetch(RENDER_JOB.ARTIFACT_URI)
                     .forEach(uri -> addUri(index, uri));
-            dsl.get().select(field("source_uri", String.class), field("remote_uri", String.class))
-                    .from(table("delivery_job"))
+            dsl.get().select(DELIVERY_JOB.SOURCE_URI, DELIVERY_JOB.REMOTE_URI)
+                    .from(DELIVERY_JOB)
                     .fetch(record -> {
-                        addUri(index, record.get(field("source_uri", String.class)));
-                        addUri(index, record.get(field("remote_uri", String.class)));
+                        addUri(index, record.get(DELIVERY_JOB.SOURCE_URI));
+                        addUri(index, record.get(DELIVERY_JOB.REMOTE_URI));
                         return null;
                     });
         } catch (Exception e) {

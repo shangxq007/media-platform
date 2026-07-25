@@ -1,16 +1,15 @@
 package com.example.platform.outbox.coordination;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.outbox.coordination.*;
 import com.example.platform.shared.Ids;
 import java.time.Instant;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.PlatformJob.PLATFORM_JOB;
+
 
 @Repository
 public class PlatformJobRepository {
@@ -24,81 +23,81 @@ public class PlatformJobRepository {
     public PlatformJob create(JobType jobType, String aggregateType, String aggregateId,
                                 String tenantId, String projectId, String payloadJson) {
         String id = Ids.newId("pjob");
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(table("platform_job"))
-                .columns(field("id"), field("job_type"), field("aggregate_type"),
-                        field("aggregate_id"), field("tenant_id"), field("project_id"),
-                        field("status"), field("required_mask"), field("completed_mask"),
-                        field("failed_mask"), field("total_task_count"),
-                        field("completed_task_count"), field("failed_task_count"),
-                        field("payload_json"), field("created_at"), field("updated_at"))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.insertInto(PLATFORM_JOB)
+                .columns(PLATFORM_JOB.ID, PLATFORM_JOB.JOB_TYPE, PLATFORM_JOB.AGGREGATE_TYPE,
+                        PLATFORM_JOB.AGGREGATE_ID, PLATFORM_JOB.TENANT_ID, PLATFORM_JOB.PROJECT_ID,
+                        PLATFORM_JOB.STATUS, PLATFORM_JOB.REQUIRED_MASK, PLATFORM_JOB.COMPLETED_MASK,
+                        PLATFORM_JOB.FAILED_MASK, PLATFORM_JOB.TOTAL_TASK_COUNT,
+                        PLATFORM_JOB.COMPLETED_TASK_COUNT, PLATFORM_JOB.FAILED_TASK_COUNT,
+                        PLATFORM_JOB.PAYLOAD_JSON, PLATFORM_JOB.CREATED_AT, PLATFORM_JOB.UPDATED_AT)
                 .values(id, jobType.name(), aggregateType, aggregateId, tenantId, projectId,
                         "PENDING", 0, 0, 0, 0, 0, 0, payloadJson, now, now)
                 .execute();
         return new PlatformJob(id, jobType, aggregateType, aggregateId, tenantId, projectId,
                 JobStatus.PENDING, 0, 0, 0, 0, 0, 0, payloadJson, null,
-                now.toInstant(), now.toInstant(), null);
+                now.toInstant(java.time.ZoneOffset.UTC), now.toInstant(java.time.ZoneOffset.UTC), null);
     }
 
     public Optional<PlatformJob> findById(String jobId) {
-        Record r = dsl.select().from(table("platform_job")).where(field("id").eq(jobId)).fetchOne();
+        Record r = dsl.select().from(PLATFORM_JOB).where(PLATFORM_JOB.ID.eq(jobId)).fetchOne();
         return r == null ? Optional.empty() : Optional.of(mapJob(r));
     }
 
     public void updateStatus(String jobId, String status) {
-        dsl.update(table("platform_job"))
-                .set(field("status"), status)
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(jobId)).execute();
+        dsl.update(PLATFORM_JOB)
+                .set(PLATFORM_JOB.STATUS, status)
+                .set(PLATFORM_JOB.UPDATED_AT, LocalDateTime.now())
+                .where(PLATFORM_JOB.ID.eq(jobId)).execute();
     }
 
     public void updateMask(String jobId, int requiredMask, int completedMask, int failedMask) {
-        dsl.update(table("platform_job"))
-                .set(field("required_mask"), Integer.valueOf(requiredMask))
-                .set(field("completed_mask"), Integer.valueOf(completedMask))
-                .set(field("failed_mask"), Integer.valueOf(failedMask))
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(jobId)).execute();
+        dsl.update(PLATFORM_JOB)
+                .set(PLATFORM_JOB.REQUIRED_MASK, Integer.valueOf(requiredMask))
+                .set(PLATFORM_JOB.COMPLETED_MASK, Integer.valueOf(completedMask))
+                .set(PLATFORM_JOB.FAILED_MASK, Integer.valueOf(failedMask))
+                .set(PLATFORM_JOB.UPDATED_AT, LocalDateTime.now())
+                .where(PLATFORM_JOB.ID.eq(jobId)).execute();
     }
 
     public void markCompleted(String jobId) {
-        dsl.update(table("platform_job"))
-                .set(field("status"), "COMPLETED")
-                .set(field("completed_at"), OffsetDateTime.now())
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(jobId)).execute();
+        dsl.update(PLATFORM_JOB)
+                .set(PLATFORM_JOB.STATUS, "COMPLETED")
+                .set(PLATFORM_JOB.COMPLETED_AT, LocalDateTime.now())
+                .set(PLATFORM_JOB.UPDATED_AT, LocalDateTime.now())
+                .where(PLATFORM_JOB.ID.eq(jobId)).execute();
     }
 
     public void markFailed(String jobId) {
-        dsl.update(table("platform_job"))
-                .set(field("status"), "FAILED")
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("id").eq(jobId)).execute();
+        dsl.update(PLATFORM_JOB)
+                .set(PLATFORM_JOB.STATUS, "FAILED")
+                .set(PLATFORM_JOB.UPDATED_AT, LocalDateTime.now())
+                .where(PLATFORM_JOB.ID.eq(jobId)).execute();
     }
 
     private static PlatformJob mapJob(Record r) {
         return new PlatformJob(
-                r.get(field("id", String.class)),
-                tryParseEnum(JobType.class, r.get(field("job_type", String.class))),
-                r.get(field("aggregate_type", String.class)),
-                r.get(field("aggregate_id", String.class)),
-                r.get(field("tenant_id", String.class)),
-                r.get(field("project_id", String.class)),
-                tryParseEnum(JobStatus.class, r.get(field("status", String.class))),
-                r.get(field("required_mask", Integer.class)),
-                r.get(field("completed_mask", Integer.class)),
-                r.get(field("failed_mask", Integer.class)),
-                r.get(field("total_task_count", Integer.class)),
-                r.get(field("completed_task_count", Integer.class)),
-                r.get(field("failed_task_count", Integer.class)),
-                r.get(field("payload_json", String.class)),
-                r.get(field("metadata_json", String.class)),
-                toInstant(r.get(field("created_at", OffsetDateTime.class))),
-                toInstant(r.get(field("updated_at", OffsetDateTime.class))),
-                toInstant(r.get(field("completed_at", OffsetDateTime.class))));
+                r.get(PLATFORM_JOB.ID),
+                tryParseEnum(JobType.class, r.get(PLATFORM_JOB.JOB_TYPE)),
+                r.get(PLATFORM_JOB.AGGREGATE_TYPE),
+                r.get(PLATFORM_JOB.AGGREGATE_ID),
+                r.get(PLATFORM_JOB.TENANT_ID),
+                r.get(PLATFORM_JOB.PROJECT_ID),
+                tryParseEnum(JobStatus.class, r.get(PLATFORM_JOB.STATUS)),
+                r.get(PLATFORM_JOB.REQUIRED_MASK),
+                r.get(PLATFORM_JOB.COMPLETED_MASK),
+                r.get(PLATFORM_JOB.FAILED_MASK),
+                r.get(PLATFORM_JOB.TOTAL_TASK_COUNT),
+                r.get(PLATFORM_JOB.COMPLETED_TASK_COUNT),
+                r.get(PLATFORM_JOB.FAILED_TASK_COUNT),
+                r.get(PLATFORM_JOB.PAYLOAD_JSON),
+                r.get(PLATFORM_JOB.METADATA_JSON),
+                toInstant(r.get(PLATFORM_JOB.CREATED_AT)),
+                toInstant(r.get(PLATFORM_JOB.UPDATED_AT)),
+                toInstant(r.get(PLATFORM_JOB.COMPLETED_AT)));
     }
 
-    private static Instant toInstant(OffsetDateTime odt) { return odt != null ? odt.toInstant() : null; }
+    private static Instant toInstant(LocalDateTime ldt) { return ldt != null ? ldt.toInstant(java.time.ZoneOffset.UTC) : null; }
     private static <E extends Enum<E>> E tryParseEnum(Class<E> type, String value) {
         try { return Enum.valueOf(type, value); } catch (Exception e) { return null; }
     }

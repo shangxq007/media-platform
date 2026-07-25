@@ -1,15 +1,14 @@
 package com.example.platform.billing.infrastructure;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.BillingInvoice.BILLING_INVOICE;
+
 
 /**
  * Persistence repository for billing invoices.
@@ -30,12 +29,12 @@ public class BillingInvoiceRepository {
     public void save(String invoiceId, String contractId, String providerCode,
                      String externalInvoiceRef, String invoiceStatus,
                      Long amountDueMinor, Long amountPaidMinor, String currencyCode) {
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(table("BILLING_INVOICE"))
-                .columns(field("ID"), field("CONTRACT_ID"), field("PROVIDER_CODE"),
-                        field("EXTERNAL_INVOICE_REF"), field("INVOICE_STATUS"),
-                        field("AMOUNT_DUE_MINOR"), field("AMOUNT_PAID_MINOR"),
-                        field("CURRENCY_CODE"), field("CREATED_AT"))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.insertInto(BILLING_INVOICE)
+                .columns(BILLING_INVOICE.ID, BILLING_INVOICE.CONTRACT_ID, BILLING_INVOICE.PROVIDER_CODE,
+                        BILLING_INVOICE.EXTERNAL_INVOICE_REF, BILLING_INVOICE.INVOICE_STATUS,
+                        BILLING_INVOICE.AMOUNT_DUE_MINOR, BILLING_INVOICE.AMOUNT_PAID_MINOR,
+                        BILLING_INVOICE.CURRENCY_CODE, BILLING_INVOICE.CREATED_AT)
                 .values(invoiceId, contractId, providerCode, externalInvoiceRef, invoiceStatus,
                         amountDueMinor, amountPaidMinor, currencyCode, now)
                 .execute();
@@ -43,30 +42,30 @@ public class BillingInvoiceRepository {
 
     public Optional<BillingInvoiceRecord> findById(String id) {
         Record record = dsl.select()
-                .from(table("BILLING_INVOICE"))
-                .where(field("ID").eq(id))
+                .from(BILLING_INVOICE)
+                .where(BILLING_INVOICE.ID.eq(id))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public List<BillingInvoiceRecord> findByContractId(String contractId) {
         return dsl.select()
-                .from(table("BILLING_INVOICE"))
-                .where(field("CONTRACT_ID").eq(contractId))
-                .orderBy(field("CREATED_AT").desc())
+                .from(BILLING_INVOICE)
+                .where(BILLING_INVOICE.CONTRACT_ID.eq(contractId))
+                .orderBy(BILLING_INVOICE.CREATED_AT.desc())
                 .fetch(this::mapRecord);
     }
 
     private BillingInvoiceRecord mapRecord(Record r) {
         return new BillingInvoiceRecord(
-                r.get(field("ID"), String.class),
-                r.get(field("CONTRACT_ID"), String.class),
-                r.get(field("PROVIDER_CODE"), String.class),
-                r.get(field("EXTERNAL_INVOICE_REF"), String.class),
-                r.get(field("INVOICE_STATUS"), String.class),
-                r.get(field("AMOUNT_DUE_MINOR"), Long.class),
-                r.get(field("AMOUNT_PAID_MINOR"), Long.class),
-                r.get(field("CURRENCY_CODE"), String.class)
+                r.get(BILLING_INVOICE.ID, String.class),
+                r.get(BILLING_INVOICE.CONTRACT_ID, String.class),
+                r.get(BILLING_INVOICE.PROVIDER_CODE, String.class),
+                r.get(BILLING_INVOICE.EXTERNAL_INVOICE_REF, String.class),
+                r.get(BILLING_INVOICE.INVOICE_STATUS, String.class),
+                r.get(BILLING_INVOICE.AMOUNT_DUE_MINOR, Long.class),
+                r.get(BILLING_INVOICE.AMOUNT_PAID_MINOR, Long.class),
+                r.get(BILLING_INVOICE.CURRENCY_CODE, String.class)
         );
     }
 

@@ -7,11 +7,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLease.RENDER_JOB_LEASE;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Job lease system to prevent double execution.
@@ -40,18 +41,18 @@ public class JobLeaseRepository {
     public Optional<JobLease> acquireLease(String jobId, String workerId) {
         // Check if job already has an active lease
         Record existing = dsl.select(
-                        field("lease_id"),
-                        field("status"),
-                        field("lease_until")
+                        RENDER_JOB_LEASE.LEASE_ID,
+                        RENDER_JOB_LEASE.STATUS,
+                        RENDER_JOB_LEASE.LEASE_UNTIL
                 )
-                .from(table("render_job_lease"))
-                .where(field("job_id").eq(jobId))
-                .and(field("status").eq("ACTIVE"))
+                .from(RENDER_JOB_LEASE)
+                .where(RENDER_JOB_LEASE.JOB_ID.eq(jobId))
+                .and(RENDER_JOB_LEASE.STATUS.eq("ACTIVE"))
                 .fetchOne();
 
         if (existing != null) {
-            OffsetDateTime leaseUntil = existing.get(field("lease_until", OffsetDateTime.class));
-            if (leaseUntil != null && leaseUntil.isAfter(OffsetDateTime.now())) {
+            LocalDateTime leaseUntil = existing.get(RENDER_JOB_LEASE.LEASE_UNTIL);
+            if (leaseUntil != null && leaseUntil.isAfter(LocalDateTime.now())) {
                 // Active lease exists
                 log.debug("Job {} already has active lease", jobId);
                 return Optional.empty();
@@ -60,23 +61,23 @@ public class JobLeaseRepository {
 
         // Create new lease
         String leaseId = "lease-" + jobId + "-" + System.currentTimeMillis();
-        OffsetDateTime now = OffsetDateTime.now();
-        OffsetDateTime leaseUntil = now.plusNanos(LEASE_DURATION_MS * 1_000_000);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime leaseUntil = now.plusNanos(LEASE_DURATION_MS * 1_000_000);
 
-        dsl.insertInto(table("render_job_lease"))
+        dsl.insertInto(RENDER_JOB_LEASE)
                 .columns(
-                        field("id"),
-                        field("lease_id"),
-                        field("job_id"),
-                        field("worker_id"),
-                        field("status"),
-                        field("lease_version"),
-                        field("claimed_at"),
-                        field("lease_until"),
-                        field("attempt"),
-                        field("max_attempts"),
-                        field("created_at"),
-                        field("updated_at")
+                        RENDER_JOB_LEASE.ID,
+                        RENDER_JOB_LEASE.LEASE_ID,
+                        RENDER_JOB_LEASE.JOB_ID,
+                        RENDER_JOB_LEASE.WORKER_ID,
+                        RENDER_JOB_LEASE.STATUS,
+                        RENDER_JOB_LEASE.LEASE_VERSION,
+                        RENDER_JOB_LEASE.CLAIMED_AT,
+                        RENDER_JOB_LEASE.LEASE_UNTIL,
+                        RENDER_JOB_LEASE.ATTEMPT,
+                        RENDER_JOB_LEASE.MAX_ATTEMPTS,
+                        RENDER_JOB_LEASE.CREATED_AT,
+                        RENDER_JOB_LEASE.UPDATED_AT
                 )
                 .values(
                         leaseId,
@@ -84,7 +85,7 @@ public class JobLeaseRepository {
                         jobId,
                         workerId,
                         "ACTIVE",
-                        1,
+                        1L,
                         now,
                         leaseUntil,
                         1,
@@ -95,18 +96,18 @@ public class JobLeaseRepository {
                 .execute();
 
         log.info("Acquired lease {} for job {} by worker {}", leaseId, jobId, workerId);
-        return Optional.of(new JobLease(leaseId, jobId, workerId, leaseUntil.toInstant()));
+        return Optional.of(new JobLease(leaseId, jobId, workerId, leaseUntil.atOffset(ZoneOffset.UTC).toInstant()));
     }
 
     /**
      * Release a lease (job completed or failed).
      */
     public void releaseLease(String leaseId, String status) {
-        dsl.update(table("render_job_lease"))
-                .set(field("status"), status)
-                .set(field("released_at"), OffsetDateTime.now())
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("lease_id").eq(leaseId))
+        dsl.update(RENDER_JOB_LEASE)
+                .set(RENDER_JOB_LEASE.STATUS, status)
+                .set(RENDER_JOB_LEASE.RELEASED_AT, LocalDateTime.now())
+                .set(RENDER_JOB_LEASE.UPDATED_AT, LocalDateTime.now())
+                .where(RENDER_JOB_LEASE.LEASE_ID.eq(leaseId))
                 .execute();
 
         log.info("Released lease {} with status {}", leaseId, status);
@@ -116,14 +117,14 @@ public class JobLeaseRepository {
      * Renew a lease (worker still active).
      */
     public boolean renewLease(String leaseId) {
-        OffsetDateTime newUntil = OffsetDateTime.now().plusNanos(LEASE_DURATION_MS * 1_000_000);
+        LocalDateTime newUntil = LocalDateTime.now().plusNanos(LEASE_DURATION_MS * 1_000_000);
 
-        int updated = dsl.update(table("render_job_lease"))
-                .set(field("lease_until"), newUntil)
-                .set(field("renewed_at"), OffsetDateTime.now())
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("lease_id").eq(leaseId))
-                .and(field("status").eq("ACTIVE"))
+        int updated = dsl.update(RENDER_JOB_LEASE)
+                .set(RENDER_JOB_LEASE.LEASE_UNTIL, newUntil)
+                .set(RENDER_JOB_LEASE.RENEWED_AT, LocalDateTime.now())
+                .set(RENDER_JOB_LEASE.UPDATED_AT, LocalDateTime.now())
+                .where(RENDER_JOB_LEASE.LEASE_ID.eq(leaseId))
+                .and(RENDER_JOB_LEASE.STATUS.eq("ACTIVE"))
                 .execute();
 
         return updated > 0;
@@ -134,15 +135,15 @@ public class JobLeaseRepository {
      */
     public Optional<JobLease> getLease(String jobId) {
         Record record = dsl.select(
-                        field("lease_id"),
-                        field("job_id"),
-                        field("worker_id"),
-                        field("lease_until"),
-                        field("status")
+                        RENDER_JOB_LEASE.LEASE_ID,
+                        RENDER_JOB_LEASE.JOB_ID,
+                        RENDER_JOB_LEASE.WORKER_ID,
+                        RENDER_JOB_LEASE.LEASE_UNTIL,
+                        RENDER_JOB_LEASE.STATUS
                 )
-                .from(table("render_job_lease"))
-                .where(field("job_id").eq(jobId))
-                .and(field("status").eq("ACTIVE"))
+                .from(RENDER_JOB_LEASE)
+                .where(RENDER_JOB_LEASE.JOB_ID.eq(jobId))
+                .and(RENDER_JOB_LEASE.STATUS.eq("ACTIVE"))
                 .fetchOne();
 
         if (record == null) {
@@ -150,10 +151,10 @@ public class JobLeaseRepository {
         }
 
         return Optional.of(new JobLease(
-                record.get(field("lease_id", String.class)),
-                record.get(field("job_id", String.class)),
-                record.get(field("worker_id", String.class)),
-                record.get(field("lease_until", OffsetDateTime.class)).toInstant()
+                record.get(RENDER_JOB_LEASE.LEASE_ID),
+                record.get(RENDER_JOB_LEASE.JOB_ID),
+                record.get(RENDER_JOB_LEASE.WORKER_ID),
+                record.get(RENDER_JOB_LEASE.LEASE_UNTIL).atOffset(ZoneOffset.UTC).toInstant()
         ));
     }
 
@@ -168,11 +169,11 @@ public class JobLeaseRepository {
      * Expire stale leases.
      */
     public int expireStaleLeases() {
-        return dsl.update(table("render_job_lease"))
-                .set(field("status"), "EXPIRED")
-                .set(field("updated_at"), OffsetDateTime.now())
-                .where(field("status").eq("ACTIVE"))
-                .and(field("lease_until").lt(OffsetDateTime.now()))
+        return dsl.update(RENDER_JOB_LEASE)
+                .set(RENDER_JOB_LEASE.STATUS, "EXPIRED")
+                .set(RENDER_JOB_LEASE.UPDATED_AT, LocalDateTime.now())
+                .where(RENDER_JOB_LEASE.STATUS.eq("ACTIVE"))
+                .and(RENDER_JOB_LEASE.LEASE_UNTIL.lt(LocalDateTime.now()))
                 .execute();
     }
 

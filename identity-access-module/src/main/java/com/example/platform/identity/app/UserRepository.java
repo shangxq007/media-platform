@@ -1,16 +1,18 @@
 package com.example.platform.identity.app;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.identity.domain.User;
 import com.example.platform.identity.infrastructure.JooqRecords;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.User.USER;
+
 
 @Repository
 public class UserRepository {
@@ -22,44 +24,44 @@ public class UserRepository {
     }
 
     public User save(User user) {
-        dsl.insertInto(table("\"user\""))
-                .columns(field("id"), field("tenant_id"), field("username"),
-                        field("email"), field("role"), field("status"), field("created_at"))
+        dsl.insertInto(USER)
+                .columns(USER.ID, USER.TENANT_ID, USER.USERNAME,
+                        USER.EMAIL, USER.ROLE, USER.STATUS, USER.CREATED_AT)
                 .values(user.id(), user.tenantId(), user.username(),
-                        user.email(), user.role().name(), user.status().name(), user.createdAt())
+                        user.email(), user.role().name(), user.status().name(), LocalDateTime.ofInstant(user.createdAt(), ZoneOffset.UTC))
                 .execute();
         return user;
     }
 
     public Optional<User> findById(String id) {
         Record record = dsl.select()
-                .from(table("\"user\""))
-                .where(field("id").eq(id))
+                .from(USER)
+                .where(USER.ID.eq(id))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public List<User> findByTenantId(String tenantId) {
         return dsl.select()
-                .from(table("\"user\""))
-                .where(field("tenant_id").eq(tenantId))
-                .orderBy(field("created_at").desc())
+                .from(USER)
+                .where(USER.TENANT_ID.eq(tenantId))
+                .orderBy(USER.CREATED_AT.desc())
                 .fetch(this::mapRecord);
     }
 
     public Optional<User> findByTenantIdAndEmail(String tenantId, String email) {
         Record record = dsl.select()
-                .from(table("\"user\""))
-                .where(field("tenant_id").eq(tenantId))
-                .and(field("email").eq(email))
+                .from(USER)
+                .where(USER.TENANT_ID.eq(tenantId))
+                .and(USER.EMAIL.eq(email))
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
     public void updateRole(String userId, User.UserRole role) {
-        dsl.update(table("\"user\""))
-                .set(field("role"), role.name())
-                .where(field("id").eq(userId))
+        dsl.update(USER)
+                .set(USER.ROLE, role.name())
+                .where(USER.ID.eq(userId))
                 .execute();
     }
 

@@ -11,9 +11,8 @@ import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 @Service
 public class PipelinePlanPersistenceService {
@@ -30,9 +29,9 @@ public class PipelinePlanPersistenceService {
     public void savePlan(String jobId, PipelineExecutionPlan plan) {
         try {
             String json = MAPPER.writeValueAsString(plan);
-            dsl.update(table("render_job"))
-                    .set(field("pipeline_plan_json"), json)
-                    .where(field("id").eq(jobId))
+            dsl.update(RENDER_JOB)
+                    .set(RENDER_JOB.PIPELINE_PLAN_JSON, json)
+                    .where(RENDER_JOB.ID.eq(jobId))
                     .execute();
             log.debug("Saved pipeline plan for job {}", jobId);
         } catch (Exception e) {
@@ -43,9 +42,9 @@ public class PipelinePlanPersistenceService {
     public void saveExecutionState(String jobId, Map<String, Object> state) {
         try {
             String json = MAPPER.writeValueAsString(state);
-            dsl.update(table("render_job"))
-                    .set(field("pipeline_execution_json"), json)
-                    .where(field("id").eq(jobId))
+            dsl.update(RENDER_JOB)
+                    .set(RENDER_JOB.PIPELINE_EXECUTION_JSON, json)
+                    .where(RENDER_JOB.ID.eq(jobId))
                     .execute();
         } catch (Exception e) {
             log.warn("Could not persist pipeline execution state for job {}: {}", jobId, e.getMessage());
@@ -127,10 +126,10 @@ public class PipelinePlanPersistenceService {
 
     public Optional<Map<String, Object>> loadExecutionState(String jobId) {
         try {
-            String json = dsl.select(field("pipeline_execution_json"))
-                    .from(table("render_job"))
-                    .where(field("id").eq(jobId))
-                    .fetchOne(field("pipeline_execution_json"), String.class);
+            String json = dsl.select(RENDER_JOB.PIPELINE_EXECUTION_JSON)
+                    .from(RENDER_JOB)
+                    .where(RENDER_JOB.ID.eq(jobId))
+                    .fetchOne(RENDER_JOB.PIPELINE_EXECUTION_JSON, String.class);
             if (json == null || json.isBlank()) {
                 return Optional.empty();
             }
@@ -143,10 +142,10 @@ public class PipelinePlanPersistenceService {
 
     public Optional<PipelineExecutionPlan> loadPlan(String jobId) {
         try {
-            String json = dsl.select(field("pipeline_plan_json"))
-                    .from(table("render_job"))
-                    .where(field("id").eq(jobId))
-                    .fetchOne(field("pipeline_plan_json"), String.class);
+            String json = dsl.select(RENDER_JOB.PIPELINE_PLAN_JSON)
+                    .from(RENDER_JOB)
+                    .where(RENDER_JOB.ID.eq(jobId))
+                    .fetchOne(RENDER_JOB.PIPELINE_PLAN_JSON, String.class);
             if (json == null || json.isBlank()) {
                 return Optional.empty();
             }

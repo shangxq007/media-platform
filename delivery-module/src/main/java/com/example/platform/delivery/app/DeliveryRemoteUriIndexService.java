@@ -1,18 +1,18 @@
 package com.example.platform.delivery.app;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
 import org.jooq.Record;
 import org.jooq.exception.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.stereotype.Service;
+import static com.example.platform.typedschema.jooq.generated.tables.DeliveryJob.DELIVERY_JOB;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Reverse lookup: remote (or source) storage URI → delivery jobs that reference it.
@@ -61,35 +61,35 @@ public class DeliveryRemoteUriIndexService {
         }
         int cap = Math.min(Math.max(limit, 1), 100);
         try {
-            var condition = field(column).eq(uri);
+            var condition = DSL.field(DSL.name(column)).eq(uri);
             if (projectId != null && !projectId.isBlank()) {
-                condition = condition.and(field("project_id").eq(projectId));
+                condition = condition.and(DELIVERY_JOB.PROJECT_ID.eq(projectId));
             }
             var rows = dsl.select(
-                            field("id", String.class),
-                            field("tenant_id", String.class),
-                            field("project_id", String.class),
-                            field("render_job_id", String.class),
-                            field("status", String.class),
-                            field("source_uri", String.class),
-                            field("remote_uri", String.class),
-                            field("created_at", OffsetDateTime.class))
-                    .from(table("delivery_job"))
+                            DELIVERY_JOB.ID,
+                            DELIVERY_JOB.TENANT_ID,
+                            DELIVERY_JOB.PROJECT_ID,
+                            DELIVERY_JOB.RENDER_JOB_ID,
+                            DELIVERY_JOB.STATUS,
+                            DELIVERY_JOB.SOURCE_URI,
+                            DELIVERY_JOB.REMOTE_URI,
+                            DELIVERY_JOB.CREATED_AT)
+                    .from(DELIVERY_JOB)
                     .where(condition)
-                    .orderBy(field("created_at").desc())
+                    .orderBy(DELIVERY_JOB.CREATED_AT.desc())
                     .limit(cap)
                     .fetch();
             for (Record row : rows) {
                 hits.add(new DeliveryUriHit(
-                        row.get(field("id", String.class)),
-                        row.get(field("tenant_id", String.class)),
-                        row.get(field("project_id", String.class)),
-                        row.get(field("render_job_id", String.class)),
-                        row.get(field("status", String.class)),
-                        row.get(field("source_uri", String.class)),
-                        row.get(field("remote_uri", String.class)),
+                        row.get(DELIVERY_JOB.ID),
+                        row.get(DELIVERY_JOB.TENANT_ID),
+                        row.get(DELIVERY_JOB.PROJECT_ID),
+                        row.get(DELIVERY_JOB.RENDER_JOB_ID),
+                        row.get(DELIVERY_JOB.STATUS),
+                        row.get(DELIVERY_JOB.SOURCE_URI),
+                        row.get(DELIVERY_JOB.REMOTE_URI),
                         column,
-                        row.get(field("created_at", OffsetDateTime.class))));
+                        row.get(DELIVERY_JOB.CREATED_AT)));
             }
         } catch (DataAccessException e) {
             log.debug("delivery_job URI index lookup skipped: {}", e.getMessage());
@@ -106,5 +106,5 @@ public class DeliveryRemoteUriIndexService {
             String sourceUri,
             String remoteUri,
             String matchedColumn,
-            OffsetDateTime createdAt) {}
+            LocalDateTime createdAt) {}
 }

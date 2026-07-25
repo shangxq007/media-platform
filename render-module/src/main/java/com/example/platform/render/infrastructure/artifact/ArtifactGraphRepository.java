@@ -10,11 +10,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
+import static com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph.ARTIFACT_GRAPH;
+import static com.example.platform.typedschema.jooq.generated.tables.ArtifactNode.ARTIFACT_NODE;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Repository for artifact DAG nodes.
@@ -35,17 +37,17 @@ public class ArtifactGraphRepository {
      * Save an artifact node.
      */
     public void saveNode(ArtifactNode node) {
-        dsl.insertInto(table("artifact_node"))
+        dsl.insertInto(ARTIFACT_NODE)
                 .columns(
-                        field("id"),
-                        field("job_id"),
-                        field("type"),
-                        field("uri"),
-                        field("parent_artifact_ids"),
-                        field("version"),
-                        field("hash"),
-                        field("metadata"),
-                        field("created_at")
+                        ARTIFACT_NODE.ID,
+                        ARTIFACT_NODE.JOB_ID,
+                        ARTIFACT_NODE.TYPE,
+                        ARTIFACT_NODE.URI,
+                        ARTIFACT_NODE.PARENT_ARTIFACT_IDS,
+                        ARTIFACT_NODE.VERSION,
+                        ARTIFACT_NODE.HASH,
+                        ARTIFACT_NODE.METADATA,
+                        ARTIFACT_NODE.CREATED_AT
                 )
                 .values(
                         node.id(),
@@ -56,14 +58,14 @@ public class ArtifactGraphRepository {
                         node.version(),
                         node.hash(),
                         serializeMetadata(node.metadata()),
-                        node.createdAt().atOffset(java.time.ZoneOffset.UTC)
+                        java.time.LocalDateTime.ofInstant(node.createdAt(), java.time.ZoneOffset.UTC)
                 )
-                .onConflict(field("id"))
+                .onConflict(ARTIFACT_NODE.ID)
                 .doUpdate()
-                .set(field("uri"), node.uri())
-                .set(field("version"), node.version())
-                .set(field("hash"), node.hash())
-                .set(field("metadata"), serializeMetadata(node.metadata()))
+                .set(ARTIFACT_NODE.URI, node.uri())
+                .set(ARTIFACT_NODE.VERSION, node.version())
+                .set(ARTIFACT_NODE.HASH, node.hash())
+                .set(ARTIFACT_NODE.METADATA, serializeMetadata(node.metadata()))
                 .execute();
 
         log.debug("Saved artifact node: id={} jobId={} type={}", node.id(), node.jobId(), node.type());
@@ -85,25 +87,25 @@ public class ArtifactGraphRepository {
         saveNodes(graph.toList());
 
         // Also save the graph metadata
-        dsl.insertInto(table("artifact_graph"))
+        dsl.insertInto(ARTIFACT_GRAPH)
                 .columns(
-                        field("graph_id"),
-                        field("job_id"),
-                        field("root_artifact_id"),
-                        field("version"),
-                        field("created_at")
+                        ARTIFACT_GRAPH.GRAPH_ID,
+                        ARTIFACT_GRAPH.JOB_ID,
+                        ARTIFACT_GRAPH.ROOT_ARTIFACT_ID,
+                        ARTIFACT_GRAPH.VERSION,
+                        ARTIFACT_GRAPH.CREATED_AT
                 )
                 .values(
                         graph.graphId(),
                         graph.jobId(),
                         graph.rootArtifactId(),
                         graph.version(),
-                        graph.createdAt().atOffset(java.time.ZoneOffset.UTC)
+                        LocalDateTime.ofInstant(graph.createdAt(), java.time.ZoneOffset.UTC)
                 )
-                .onConflict(field("graph_id"))
+                .onConflict(ARTIFACT_GRAPH.GRAPH_ID)
                 .doUpdate()
-                .set(field("root_artifact_id"), graph.rootArtifactId())
-                .set(field("version"), graph.version())
+                .set(ARTIFACT_GRAPH.ROOT_ARTIFACT_ID, graph.rootArtifactId())
+                .set(ARTIFACT_GRAPH.VERSION, graph.version())
                 .execute();
 
         log.info("Saved artifact graph: graphId={} jobId={} nodes={}",
@@ -116,15 +118,15 @@ public class ArtifactGraphRepository {
     public Optional<ArtifactGraph> loadGraphByJobId(String jobId) {
         // Load graph metadata
         Record graphRecord = dsl.select(
-                        field("graph_id"),
-                        field("job_id"),
-                        field("root_artifact_id"),
-                        field("version"),
-                        field("created_at")
+                        ARTIFACT_GRAPH.GRAPH_ID,
+                        ARTIFACT_GRAPH.JOB_ID,
+                        ARTIFACT_GRAPH.ROOT_ARTIFACT_ID,
+                        ARTIFACT_GRAPH.VERSION,
+                        ARTIFACT_GRAPH.CREATED_AT
                 )
-                .from(table("artifact_graph"))
-                .where(field("job_id").eq(jobId))
-                .orderBy(field("version").desc())
+                .from(ARTIFACT_GRAPH)
+                .where(ARTIFACT_GRAPH.JOB_ID.eq(jobId))
+                .orderBy(ARTIFACT_GRAPH.VERSION.desc())
                 .limit(1)
                 .fetchOne();
 
@@ -132,10 +134,10 @@ public class ArtifactGraphRepository {
             return Optional.empty();
         }
 
-        String graphId = graphRecord.get(field("graph_id", String.class));
-        String rootArtifactId = graphRecord.get(field("root_artifact_id", String.class));
-        int version = graphRecord.get(field("version", Integer.class));
-        Instant createdAt = graphRecord.get(field("created_at", OffsetDateTime.class)).toInstant();
+        String graphId = graphRecord.get(ARTIFACT_GRAPH.GRAPH_ID);
+        String rootArtifactId = graphRecord.get(ARTIFACT_GRAPH.ROOT_ARTIFACT_ID);
+        int version = graphRecord.get(ARTIFACT_GRAPH.VERSION);
+        Instant createdAt = graphRecord.get(ARTIFACT_GRAPH.CREATED_AT).toInstant(ZoneOffset.UTC);
 
         // Load all nodes for this job
         List<ArtifactNode> nodes = loadNodesByJobId(jobId);
@@ -160,18 +162,18 @@ public class ArtifactGraphRepository {
      */
     public List<ArtifactNode> loadNodesByJobId(String jobId) {
         return dsl.select(
-                        field("id"),
-                        field("job_id"),
-                        field("type"),
-                        field("uri"),
-                        field("parent_artifact_ids"),
-                        field("version"),
-                        field("hash"),
-                        field("metadata"),
-                        field("created_at")
+                        ARTIFACT_NODE.ID,
+                        ARTIFACT_NODE.JOB_ID,
+                        ARTIFACT_NODE.TYPE,
+                        ARTIFACT_NODE.URI,
+                        ARTIFACT_NODE.PARENT_ARTIFACT_IDS,
+                        ARTIFACT_GRAPH.VERSION,
+                        ARTIFACT_NODE.HASH,
+                        ARTIFACT_NODE.METADATA,
+                        ARTIFACT_GRAPH.CREATED_AT
                 )
-                .from(table("artifact_node"))
-                .where(field("job_id").eq(jobId))
+                .from(ARTIFACT_NODE)
+                .where(ARTIFACT_NODE.JOB_ID.eq(jobId))
                 .fetch(this::mapToNode);
     }
 
@@ -180,18 +182,18 @@ public class ArtifactGraphRepository {
      */
     public Optional<ArtifactNode> loadNodeById(String nodeId) {
         Record record = dsl.select(
-                        field("id"),
-                        field("job_id"),
-                        field("type"),
-                        field("uri"),
-                        field("parent_artifact_ids"),
-                        field("version"),
-                        field("hash"),
-                        field("metadata"),
-                        field("created_at")
+                        ARTIFACT_NODE.ID,
+                        ARTIFACT_NODE.JOB_ID,
+                        ARTIFACT_NODE.TYPE,
+                        ARTIFACT_NODE.URI,
+                        ARTIFACT_NODE.PARENT_ARTIFACT_IDS,
+                        ARTIFACT_GRAPH.VERSION,
+                        ARTIFACT_NODE.HASH,
+                        ARTIFACT_NODE.METADATA,
+                        ARTIFACT_GRAPH.CREATED_AT
                 )
-                .from(table("artifact_node"))
-                .where(field("id").eq(nodeId))
+                .from(ARTIFACT_NODE)
+                .where(ARTIFACT_NODE.ID.eq(nodeId))
                 .fetchOne();
 
         if (record == null) {
@@ -206,18 +208,18 @@ public class ArtifactGraphRepository {
      */
     public List<ArtifactNode> loadNodesByHash(String hash) {
         return dsl.select(
-                        field("id"),
-                        field("job_id"),
-                        field("type"),
-                        field("uri"),
-                        field("parent_artifact_ids"),
-                        field("version"),
-                        field("hash"),
-                        field("metadata"),
-                        field("created_at")
+                        ARTIFACT_NODE.ID,
+                        ARTIFACT_NODE.JOB_ID,
+                        ARTIFACT_NODE.TYPE,
+                        ARTIFACT_NODE.URI,
+                        ARTIFACT_NODE.PARENT_ARTIFACT_IDS,
+                        ARTIFACT_GRAPH.VERSION,
+                        ARTIFACT_NODE.HASH,
+                        ARTIFACT_NODE.METADATA,
+                        ARTIFACT_GRAPH.CREATED_AT
                 )
-                .from(table("artifact_node"))
-                .where(field("hash").eq(hash))
+                .from(ARTIFACT_NODE)
+                .where(ARTIFACT_NODE.HASH.eq(hash))
                 .fetch(this::mapToNode);
     }
 
@@ -225,12 +227,12 @@ public class ArtifactGraphRepository {
      * Delete all nodes for a job.
      */
     public void deleteByJobId(String jobId) {
-        dsl.deleteFrom(table("artifact_node"))
-                .where(field("job_id").eq(jobId))
+        dsl.deleteFrom(ARTIFACT_NODE)
+                .where(ARTIFACT_NODE.JOB_ID.eq(jobId))
                 .execute();
 
-        dsl.deleteFrom(table("artifact_graph"))
-                .where(field("job_id").eq(jobId))
+        dsl.deleteFrom(ARTIFACT_GRAPH)
+                .where(ARTIFACT_GRAPH.JOB_ID.eq(jobId))
                 .execute();
     }
 
@@ -239,29 +241,29 @@ public class ArtifactGraphRepository {
      */
     public boolean exists(String nodeId) {
         return dsl.selectCount()
-                .from(table("artifact_node"))
-                .where(field("id").eq(nodeId))
+                .from(ARTIFACT_NODE)
+                .where(ARTIFACT_NODE.ID.eq(nodeId))
                 .fetchOne(0, int.class) > 0;
     }
 
     // --- Private helpers ---
 
     private ArtifactNode mapToNode(Record record) {
-        String parentIdsStr = record.get(field("parent_artifact_ids", String.class));
+        String parentIdsStr = record.get(ARTIFACT_NODE.PARENT_ARTIFACT_IDS);
         List<String> parentIds = parentIdsStr != null && !parentIdsStr.isEmpty()
                 ? List.of(parentIdsStr.split(","))
                 : List.of();
 
         return new ArtifactNode(
-                record.get(field("id", String.class)),
-                record.get(field("job_id", String.class)),
-                ArtifactNodeType.valueOf(record.get(field("type", String.class))),
-                record.get(field("uri", String.class)),
+                record.get(ARTIFACT_NODE.ID),
+                record.get(ARTIFACT_NODE.JOB_ID),
+                ArtifactNodeType.valueOf(record.get(ARTIFACT_NODE.TYPE)),
+                record.get(ARTIFACT_NODE.URI),
                 parentIds,
-                record.get(field("created_at", OffsetDateTime.class)).toInstant(),
-                record.get(field("version", Integer.class)),
-                record.get(field("hash", String.class)),
-                deserializeMetadata(record.get(field("metadata", String.class)))
+                record.get(ARTIFACT_NODE.CREATED_AT).toInstant(ZoneOffset.UTC),
+                record.get(ARTIFACT_NODE.VERSION),
+                record.get(ARTIFACT_NODE.HASH),
+                deserializeMetadata(record.get(ARTIFACT_NODE.METADATA))
         );
     }
 

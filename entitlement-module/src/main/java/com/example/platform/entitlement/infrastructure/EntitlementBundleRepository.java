@@ -1,18 +1,19 @@
 package com.example.platform.entitlement.infrastructure;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import com.example.platform.entitlement.domain.EntitlementBundle;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.jooq.impl.DSL;
 
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.EntitlementBundle.ENTITLEMENT_BUNDLE;
+
 
 @Repository
 
@@ -25,19 +26,19 @@ public class EntitlementBundleRepository {
     }
 
     public void save(EntitlementBundle bundle) {
-        OffsetDateTime now = OffsetDateTime.now();
-        dsl.insertInto(table("ENTITLEMENT_BUNDLE"))
-                .columns(field("ID"), field("BUNDLE_KEY"), field("NAME"), field("DESCRIPTION"),
-                        field("STATUS"), field("ALLOWED_PROVIDERS"), field("ALLOWED_PRESETS"),
-                        field("GPU_ALLOWED"), field("REMOTE_WORKER_ALLOWED"), field("CUSTOM_FONTS_ALLOWED"),
-                        field("MAX_SUBTITLE_TRACKS"), field("MAX_CONCURRENT_JOBS"),
-                        field("MONTHLY_RENDER_MINUTES"), field("STORAGE_LIMIT_BYTES"),
-                        field("WATERMARK_REQUIRED"), field("PRIORITY_QUEUE_ALLOWED"),
-                        field("BETA_EFFECTS_ALLOWED"), field("PROMPT_EXECUTION_LIMIT"),
-                        field("EXTENSION_EXECUTION_ALLOWED"), field("API_ACCESS_ALLOWED"),
-                        field("MCP_ACCESS_ALLOWED"), field("CREATED_AT"), field("UPDATED_AT"))
+        LocalDateTime now = LocalDateTime.now();
+        dsl.insertInto(ENTITLEMENT_BUNDLE)
+                .columns(ENTITLEMENT_BUNDLE.ID, ENTITLEMENT_BUNDLE.BUNDLE_KEY, ENTITLEMENT_BUNDLE.NAME, ENTITLEMENT_BUNDLE.DESCRIPTION,
+                        ENTITLEMENT_BUNDLE.STATUS, ENTITLEMENT_BUNDLE.ALLOWED_PROVIDERS, ENTITLEMENT_BUNDLE.ALLOWED_PRESETS,
+                        ENTITLEMENT_BUNDLE.GPU_ALLOWED, ENTITLEMENT_BUNDLE.REMOTE_WORKER_ALLOWED, ENTITLEMENT_BUNDLE.CUSTOM_FONTS_ALLOWED,
+                        ENTITLEMENT_BUNDLE.MAX_SUBTITLE_TRACKS, ENTITLEMENT_BUNDLE.MAX_CONCURRENT_JOBS,
+                        ENTITLEMENT_BUNDLE.MONTHLY_RENDER_MINUTES, ENTITLEMENT_BUNDLE.STORAGE_LIMIT_BYTES,
+                        ENTITLEMENT_BUNDLE.WATERMARK_REQUIRED, ENTITLEMENT_BUNDLE.PRIORITY_QUEUE_ALLOWED,
+                        ENTITLEMENT_BUNDLE.BETA_EFFECTS_ALLOWED, ENTITLEMENT_BUNDLE.PROMPT_EXECUTION_LIMIT,
+                        ENTITLEMENT_BUNDLE.EXTENSION_EXECUTION_ALLOWED, ENTITLEMENT_BUNDLE.API_ACCESS_ALLOWED,
+                        ENTITLEMENT_BUNDLE.MCP_ACCESS_ALLOWED, ENTITLEMENT_BUNDLE.CREATED_AT, ENTITLEMENT_BUNDLE.UPDATED_AT)
                 .values(bundle.id(), bundle.bundleKey(), bundle.name(), bundle.description(),
-                        bundle.status(), bundle.allowedProviders(), bundle.allowedPresets(),
+                        bundle.status(), DSL.val(bundle.allowedProviders(), ENTITLEMENT_BUNDLE.ALLOWED_PROVIDERS), DSL.val(bundle.allowedPresets(), ENTITLEMENT_BUNDLE.ALLOWED_PRESETS),
                         bundle.gpuAllowed(), bundle.remoteWorkerAllowed(), bundle.customFontsAllowed(),
                         bundle.maxSubtitleTracks(), bundle.maxConcurrentJobs(),
                         bundle.monthlyRenderMinutes(), bundle.storageLimitBytes(),
@@ -50,74 +51,74 @@ public class EntitlementBundleRepository {
 
     public Optional<EntitlementBundle> findByKey(String bundleKey) {
         return dsl.select()
-                .from(table("ENTITLEMENT_BUNDLE"))
-                .where(field("BUNDLE_KEY").eq(bundleKey))
+                .from(ENTITLEMENT_BUNDLE)
+                .where(ENTITLEMENT_BUNDLE.BUNDLE_KEY.eq(bundleKey))
                 .fetchOptional(this::mapRecord);
     }
 
     public List<EntitlementBundle> findAllActive() {
         return dsl.select()
-                .from(table("ENTITLEMENT_BUNDLE"))
-                .where(field("STATUS").eq("ACTIVE"))
-                .orderBy(field("CREATED_AT").desc())
+                .from(ENTITLEMENT_BUNDLE)
+                .where(ENTITLEMENT_BUNDLE.STATUS.eq("ACTIVE"))
+                .orderBy(ENTITLEMENT_BUNDLE.CREATED_AT.desc())
                 .fetch(this::mapRecord);
     }
 
     public void update(EntitlementBundle bundle) {
-        dsl.update(table("ENTITLEMENT_BUNDLE"))
-                .set(field("NAME"), bundle.name())
-                .set(field("DESCRIPTION"), bundle.description())
-                .set(field("STATUS"), bundle.status())
-                .set(field("ALLOWED_PROVIDERS"), bundle.allowedProviders())
-                .set(field("ALLOWED_PRESETS"), bundle.allowedPresets())
-                .set(field("GPU_ALLOWED"), bundle.gpuAllowed())
-                .set(field("REMOTE_WORKER_ALLOWED"), bundle.remoteWorkerAllowed())
-                .set(field("CUSTOM_FONTS_ALLOWED"), bundle.customFontsAllowed())
-                .set(field("MAX_SUBTITLE_TRACKS"), bundle.maxSubtitleTracks())
-                .set(field("MAX_CONCURRENT_JOBS"), bundle.maxConcurrentJobs())
-                .set(field("MONTHLY_RENDER_MINUTES"), bundle.monthlyRenderMinutes())
-                .set(field("STORAGE_LIMIT_BYTES"), bundle.storageLimitBytes())
-                .set(field("WATERMARK_REQUIRED"), bundle.watermarkRequired())
-                .set(field("PRIORITY_QUEUE_ALLOWED"), bundle.priorityQueueAllowed())
-                .set(field("BETA_EFFECTS_ALLOWED"), bundle.betaEffectsAllowed())
-                .set(field("PROMPT_EXECUTION_LIMIT"), bundle.promptExecutionLimit())
-                .set(field("EXTENSION_EXECUTION_ALLOWED"), bundle.extensionExecutionAllowed())
-                .set(field("API_ACCESS_ALLOWED"), bundle.apiAccessAllowed())
-                .set(field("MCP_ACCESS_ALLOWED"), bundle.mcpAccessAllowed())
-                .set(field("UPDATED_AT"), OffsetDateTime.now())
-                .where(field("BUNDLE_KEY").eq(bundle.bundleKey()))
+        dsl.update(ENTITLEMENT_BUNDLE)
+                .set(ENTITLEMENT_BUNDLE.NAME, bundle.name())
+                .set(ENTITLEMENT_BUNDLE.DESCRIPTION, bundle.description())
+                .set(ENTITLEMENT_BUNDLE.STATUS, bundle.status())
+                .set(ENTITLEMENT_BUNDLE.ALLOWED_PROVIDERS, DSL.val(bundle.allowedProviders(), ENTITLEMENT_BUNDLE.ALLOWED_PROVIDERS))
+                .set(ENTITLEMENT_BUNDLE.ALLOWED_PRESETS, DSL.val(bundle.allowedPresets(), ENTITLEMENT_BUNDLE.ALLOWED_PRESETS))
+                .set(ENTITLEMENT_BUNDLE.GPU_ALLOWED, bundle.gpuAllowed())
+                .set(ENTITLEMENT_BUNDLE.REMOTE_WORKER_ALLOWED, bundle.remoteWorkerAllowed())
+                .set(ENTITLEMENT_BUNDLE.CUSTOM_FONTS_ALLOWED, bundle.customFontsAllowed())
+                .set(ENTITLEMENT_BUNDLE.MAX_SUBTITLE_TRACKS, bundle.maxSubtitleTracks())
+                .set(ENTITLEMENT_BUNDLE.MAX_CONCURRENT_JOBS, bundle.maxConcurrentJobs())
+                .set(ENTITLEMENT_BUNDLE.MONTHLY_RENDER_MINUTES, bundle.monthlyRenderMinutes())
+                .set(ENTITLEMENT_BUNDLE.STORAGE_LIMIT_BYTES, bundle.storageLimitBytes())
+                .set(ENTITLEMENT_BUNDLE.WATERMARK_REQUIRED, bundle.watermarkRequired())
+                .set(ENTITLEMENT_BUNDLE.PRIORITY_QUEUE_ALLOWED, bundle.priorityQueueAllowed())
+                .set(ENTITLEMENT_BUNDLE.BETA_EFFECTS_ALLOWED, bundle.betaEffectsAllowed())
+                .set(ENTITLEMENT_BUNDLE.PROMPT_EXECUTION_LIMIT, bundle.promptExecutionLimit())
+                .set(ENTITLEMENT_BUNDLE.EXTENSION_EXECUTION_ALLOWED, bundle.extensionExecutionAllowed())
+                .set(ENTITLEMENT_BUNDLE.API_ACCESS_ALLOWED, bundle.apiAccessAllowed())
+                .set(ENTITLEMENT_BUNDLE.MCP_ACCESS_ALLOWED, bundle.mcpAccessAllowed())
+                .set(ENTITLEMENT_BUNDLE.UPDATED_AT, LocalDateTime.now())
+                .where(ENTITLEMENT_BUNDLE.BUNDLE_KEY.eq(bundle.bundleKey()))
                 .execute();
     }
 
     private EntitlementBundle mapRecord(Record r) {
         return new EntitlementBundle(
-                r.get(field("ID"), String.class),
-                r.get(field("BUNDLE_KEY"), String.class),
-                r.get(field("NAME"), String.class),
-                r.get(field("DESCRIPTION"), String.class),
-                r.get(field("STATUS"), String.class),
-                r.get(field("ALLOWED_PROVIDERS"), String.class),
-                r.get(field("ALLOWED_PRESETS"), String.class),
-                r.get(field("GPU_ALLOWED", Boolean.class)) != null && r.get(field("GPU_ALLOWED", Boolean.class)),
-                r.get(field("REMOTE_WORKER_ALLOWED", Boolean.class)) != null && r.get(field("REMOTE_WORKER_ALLOWED", Boolean.class)),
-                r.get(field("CUSTOM_FONTS_ALLOWED", Boolean.class)) != null && r.get(field("CUSTOM_FONTS_ALLOWED", Boolean.class)),
-                r.get(field("MAX_SUBTITLE_TRACKS"), Integer.class),
-                r.get(field("MAX_CONCURRENT_JOBS"), Integer.class),
-                r.get(field("MONTHLY_RENDER_MINUTES"), Long.class),
-                r.get(field("STORAGE_LIMIT_BYTES"), Long.class),
-                r.get(field("WATERMARK_REQUIRED", Boolean.class)) != null && r.get(field("WATERMARK_REQUIRED", Boolean.class)),
-                r.get(field("PRIORITY_QUEUE_ALLOWED", Boolean.class)) != null && r.get(field("PRIORITY_QUEUE_ALLOWED", Boolean.class)),
-                r.get(field("BETA_EFFECTS_ALLOWED", Boolean.class)) != null && r.get(field("BETA_EFFECTS_ALLOWED", Boolean.class)),
-                r.get(field("PROMPT_EXECUTION_LIMIT"), Long.class),
-                r.get(field("EXTENSION_EXECUTION_ALLOWED", Boolean.class)) != null && r.get(field("EXTENSION_EXECUTION_ALLOWED", Boolean.class)),
-                r.get(field("API_ACCESS_ALLOWED", Boolean.class)) != null && r.get(field("API_ACCESS_ALLOWED", Boolean.class)),
-                r.get(field("MCP_ACCESS_ALLOWED", Boolean.class)) != null && r.get(field("MCP_ACCESS_ALLOWED", Boolean.class)),
-                toInstant(r.get(field("CREATED_AT"), OffsetDateTime.class)),
-                toInstant(r.get(field("UPDATED_AT"), OffsetDateTime.class))
+                r.get(ENTITLEMENT_BUNDLE.ID, String.class),
+                r.get(ENTITLEMENT_BUNDLE.BUNDLE_KEY, String.class),
+                r.get(ENTITLEMENT_BUNDLE.NAME, String.class),
+                r.get(ENTITLEMENT_BUNDLE.DESCRIPTION, String.class),
+                r.get(ENTITLEMENT_BUNDLE.STATUS, String.class),
+                r.get(ENTITLEMENT_BUNDLE.ALLOWED_PROVIDERS, String.class),
+                r.get(ENTITLEMENT_BUNDLE.ALLOWED_PRESETS, String.class),
+                r.get(ENTITLEMENT_BUNDLE.GPU_ALLOWED) != null && r.get(ENTITLEMENT_BUNDLE.GPU_ALLOWED),
+                r.get(ENTITLEMENT_BUNDLE.REMOTE_WORKER_ALLOWED) != null && r.get(ENTITLEMENT_BUNDLE.REMOTE_WORKER_ALLOWED),
+                r.get(ENTITLEMENT_BUNDLE.CUSTOM_FONTS_ALLOWED) != null && r.get(ENTITLEMENT_BUNDLE.CUSTOM_FONTS_ALLOWED),
+                r.get(ENTITLEMENT_BUNDLE.MAX_SUBTITLE_TRACKS, Integer.class),
+                r.get(ENTITLEMENT_BUNDLE.MAX_CONCURRENT_JOBS, Integer.class),
+                r.get(ENTITLEMENT_BUNDLE.MONTHLY_RENDER_MINUTES, Long.class),
+                r.get(ENTITLEMENT_BUNDLE.STORAGE_LIMIT_BYTES, Long.class),
+                r.get(ENTITLEMENT_BUNDLE.WATERMARK_REQUIRED) != null && r.get(ENTITLEMENT_BUNDLE.WATERMARK_REQUIRED),
+                r.get(ENTITLEMENT_BUNDLE.PRIORITY_QUEUE_ALLOWED) != null && r.get(ENTITLEMENT_BUNDLE.PRIORITY_QUEUE_ALLOWED),
+                r.get(ENTITLEMENT_BUNDLE.BETA_EFFECTS_ALLOWED) != null && r.get(ENTITLEMENT_BUNDLE.BETA_EFFECTS_ALLOWED),
+                r.get(ENTITLEMENT_BUNDLE.PROMPT_EXECUTION_LIMIT, Long.class),
+                r.get(ENTITLEMENT_BUNDLE.EXTENSION_EXECUTION_ALLOWED) != null && r.get(ENTITLEMENT_BUNDLE.EXTENSION_EXECUTION_ALLOWED),
+                r.get(ENTITLEMENT_BUNDLE.API_ACCESS_ALLOWED) != null && r.get(ENTITLEMENT_BUNDLE.API_ACCESS_ALLOWED),
+                r.get(ENTITLEMENT_BUNDLE.MCP_ACCESS_ALLOWED) != null && r.get(ENTITLEMENT_BUNDLE.MCP_ACCESS_ALLOWED),
+                toInstant(r.get(ENTITLEMENT_BUNDLE.CREATED_AT, LocalDateTime.class)),
+                toInstant(r.get(ENTITLEMENT_BUNDLE.UPDATED_AT, LocalDateTime.class))
         );
     }
 
-    private Instant toInstant(OffsetDateTime odt) {
-        return odt != null ? odt.toInstant() : null;
+    private Instant toInstant(LocalDateTime odt) {
+        return odt != null ? odt.toInstant(java.time.ZoneOffset.UTC) : null;
     }
 }

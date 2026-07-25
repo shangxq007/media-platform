@@ -6,10 +6,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderUsageRecord.RENDER_USAGE_RECORD;
+import org.jooq.impl.DSL;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Minimal usage record for billing.
@@ -32,20 +33,20 @@ public class UsageRecordRepository {
      * Record usage for a completed job.
      */
     public void recordUsage(String jobId, String tenantId, long durationSeconds, double cost) {
-        dsl.insertInto(table("render_usage_record"))
+        dsl.insertInto(RENDER_USAGE_RECORD)
                 .columns(
-                        field("job_id"),
-                        field("tenant_id"),
-                        field("duration_seconds"),
-                        field("cost"),
-                        field("created_at")
+                        RENDER_USAGE_RECORD.JOB_ID,
+                        RENDER_USAGE_RECORD.TENANT_ID,
+                        RENDER_USAGE_RECORD.DURATION_SECONDS,
+                        RENDER_USAGE_RECORD.COST,
+                        RENDER_USAGE_RECORD.CREATED_AT
                 )
                 .values(
                         jobId,
                         tenantId,
                         durationSeconds,
                         cost,
-                        OffsetDateTime.now()
+                        LocalDateTime.now()
                 )
                 .execute();
 
@@ -57,20 +58,23 @@ public class UsageRecordRepository {
      * Get total usage for a tenant.
      */
     public TenantUsage getTenantUsage(String tenantId) {
+        var jobCountField = DSL.field(DSL.raw("count(*)"), Long.class).as("job_count");
+        var totalSecondsField = DSL.field(DSL.raw("sum(duration_seconds)"), Long.class).as("total_seconds");
+        var totalCostField = DSL.field(DSL.raw("sum(cost)"), Double.class).as("total_cost");
         var record = dsl.select(
-                        field("count(*)").as("job_count"),
-                        field("sum(duration_seconds)").as("total_seconds"),
-                        field("sum(cost)").as("total_cost")
+                        jobCountField,
+                        totalSecondsField,
+                        totalCostField
                 )
-                .from(table("render_usage_record"))
-                .where(field("tenant_id").eq(tenantId))
+                .from(RENDER_USAGE_RECORD)
+                .where(RENDER_USAGE_RECORD.TENANT_ID.eq(tenantId))
                 .fetchOne();
 
         return new TenantUsage(
                 tenantId,
-                record.get(field("job_count", Integer.class)),
-                record.get(field("total_seconds", Long.class)),
-                record.get(field("total_cost", Double.class))
+                record.get(jobCountField).intValue(),
+                record.get(totalSecondsField),
+                record.get(totalCostField)
         );
     }
 

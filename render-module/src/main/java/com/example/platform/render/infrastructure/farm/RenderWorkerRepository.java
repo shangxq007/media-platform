@@ -1,9 +1,7 @@
 package com.example.platform.render.infrastructure.farm;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
-
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +9,9 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderWorker.RENDER_WORKER;
+import org.jooq.impl.DSL;
+
 
 /**
  * Repository for the {@code render_worker} table.
@@ -31,35 +32,35 @@ public class RenderWorkerRepository {
     public void register(RenderWorkerRegistration reg, Instant now) {
         Optional<RenderWorkerRecord> existing = findByWorkerId(reg.workerId());
         if (existing.isPresent()) {
-            dsl.update(table("render_worker"))
-                    .set(field("worker_type"), reg.workerType())
-                    .set(field("status"), RenderWorkerStatus.STARTING.name())
-                    .set(field("version"), reg.version())
-                    .set(field("image_tag"), reg.imageTag())
-                    .set(field("hostname"), reg.hostname())
-                    .set(field("zone"), reg.zone())
-                    .set(field("provider_ids"), reg.providerIds())
-                    .set(field("capabilities_json"), reg.capabilitiesJson())
-                    .set(field("max_concurrent_jobs"), reg.maxConcurrentJobs())
-                    .set(field("cpu_cores"), reg.cpuCores())
-                    .set(field("memory_mb"), reg.memoryMb())
-                    .set(field("gpu_count"), reg.gpuCount())
-                    .set(field("gpu_type"), reg.gpuType())
-                    .set(field("disk_free_mb"), reg.diskFreeMb())
-                    .set(field("last_heartbeat_at"), toTimestamp(now))
-                    .set(field("expires_at"), (OffsetDateTime) null)
-                    .set(field("updated_at"), toTimestamp(now))
-                    .where(field("worker_id").eq(reg.workerId()))
+            dsl.update(RENDER_WORKER)
+                    .set(RENDER_WORKER.WORKER_TYPE, reg.workerType())
+                    .set(RENDER_WORKER.STATUS, RenderWorkerStatus.STARTING.name())
+                    .set(RENDER_WORKER.VERSION, reg.version())
+                    .set(RENDER_WORKER.IMAGE_TAG, reg.imageTag())
+                    .set(RENDER_WORKER.HOSTNAME, reg.hostname())
+                    .set(RENDER_WORKER.ZONE, reg.zone())
+                    .set(RENDER_WORKER.PROVIDER_IDS, reg.providerIds())
+                    .set(RENDER_WORKER.CAPABILITIES_JSON, reg.capabilitiesJson())
+                    .set(RENDER_WORKER.MAX_CONCURRENT_JOBS, reg.maxConcurrentJobs())
+                    .set(RENDER_WORKER.CPU_CORES, reg.cpuCores())
+                    .set(RENDER_WORKER.MEMORY_MB, reg.memoryMb())
+                    .set(RENDER_WORKER.GPU_COUNT, reg.gpuCount())
+                    .set(RENDER_WORKER.GPU_TYPE, reg.gpuType())
+                    .set(RENDER_WORKER.DISK_FREE_MB, reg.diskFreeMb())
+                    .set(RENDER_WORKER.LAST_HEARTBEAT_AT, toTimestamp(now))
+                    .set(RENDER_WORKER.EXPIRES_AT, (LocalDateTime) null)
+                    .set(RENDER_WORKER.UPDATED_AT, toTimestamp(now))
+                    .where(RENDER_WORKER.WORKER_ID.eq(reg.workerId()))
                     .execute();
         } else {
-            dsl.insertInto(table("render_worker"))
-                    .columns(field("id"), field("worker_id"), field("worker_type"), field("status"),
-                            field("version"), field("image_tag"), field("hostname"), field("zone"),
-                            field("provider_ids"), field("capabilities_json"),
-                            field("max_concurrent_jobs"), field("active_job_count"),
-                            field("cpu_cores"), field("memory_mb"), field("gpu_count"), field("gpu_type"),
-                            field("disk_free_mb"), field("last_heartbeat_at"), field("registered_at"),
-                            field("created_at"), field("updated_at"))
+            dsl.insertInto(RENDER_WORKER)
+                    .columns(RENDER_WORKER.ID, RENDER_WORKER.WORKER_ID, RENDER_WORKER.WORKER_TYPE, RENDER_WORKER.STATUS,
+                            RENDER_WORKER.VERSION, RENDER_WORKER.IMAGE_TAG, RENDER_WORKER.HOSTNAME, RENDER_WORKER.ZONE,
+                            RENDER_WORKER.PROVIDER_IDS, RENDER_WORKER.CAPABILITIES_JSON,
+                            RENDER_WORKER.MAX_CONCURRENT_JOBS, RENDER_WORKER.ACTIVE_JOB_COUNT,
+                            RENDER_WORKER.CPU_CORES, RENDER_WORKER.MEMORY_MB, RENDER_WORKER.GPU_COUNT, RENDER_WORKER.GPU_TYPE,
+                            RENDER_WORKER.DISK_FREE_MB, RENDER_WORKER.LAST_HEARTBEAT_AT, RENDER_WORKER.REGISTERED_AT,
+                            RENDER_WORKER.CREATED_AT, RENDER_WORKER.UPDATED_AT)
                     .values(reg.workerId(), reg.workerId(), reg.workerType(),
                             RenderWorkerStatus.STARTING.name(),
                             reg.version(), reg.imageTag(), reg.hostname(), reg.zone(),
@@ -76,20 +77,20 @@ public class RenderWorkerRepository {
      * Update worker heartbeat. Only updates if worker is not OFFLINE/FAILED.
      */
     public boolean heartbeat(RenderWorkerHeartbeat hb, Instant now) {
-        int rows = dsl.update(table("render_worker"))
-                .set(field("status"), hb.status().name())
-                .set(field("active_job_count"), hb.activeJobCount())
-                .set(field("cpu_cores"), hb.cpuCores())
-                .set(field("memory_mb"), hb.memoryMb())
-                .set(field("gpu_count"), hb.gpuCount())
-                .set(field("gpu_type"), hb.gpuType())
-                .set(field("disk_free_mb"), hb.diskFreeMb())
-                .set(field("metadata_json"), hb.metadataJson())
-                .set(field("last_heartbeat_at"), toTimestamp(now))
-                .set(field("updated_at"), toTimestamp(now))
-                .where(field("worker_id").eq(hb.workerId()))
-                .and(field("status").ne(RenderWorkerStatus.OFFLINE.name()))
-                .and(field("status").ne(RenderWorkerStatus.FAILED.name()))
+        int rows = dsl.update(RENDER_WORKER)
+                .set(RENDER_WORKER.STATUS, hb.status().name())
+                .set(RENDER_WORKER.ACTIVE_JOB_COUNT, hb.activeJobCount())
+                .set(RENDER_WORKER.CPU_CORES, hb.cpuCores())
+                .set(RENDER_WORKER.MEMORY_MB, hb.memoryMb())
+                .set(RENDER_WORKER.GPU_COUNT, hb.gpuCount())
+                .set(RENDER_WORKER.GPU_TYPE, hb.gpuType())
+                .set(RENDER_WORKER.DISK_FREE_MB, hb.diskFreeMb())
+                .set(RENDER_WORKER.METADATA_JSON, hb.metadataJson())
+                .set(RENDER_WORKER.LAST_HEARTBEAT_AT, toTimestamp(now))
+                .set(RENDER_WORKER.UPDATED_AT, toTimestamp(now))
+                .where(RENDER_WORKER.WORKER_ID.eq(hb.workerId()))
+                .and(RENDER_WORKER.STATUS.ne(RenderWorkerStatus.OFFLINE.name()))
+                .and(RENDER_WORKER.STATUS.ne(RenderWorkerStatus.FAILED.name()))
                 .execute();
         return rows > 0;
     }
@@ -98,11 +99,11 @@ public class RenderWorkerRepository {
      * Mark a worker as IDLE (after registration or job completion).
      */
     public void markIdle(String workerId, Instant now) {
-        dsl.update(table("render_worker"))
-                .set(field("status"), RenderWorkerStatus.IDLE.name())
-                .set(field("expires_at"), (OffsetDateTime) null)
-                .set(field("updated_at"), toTimestamp(now))
-                .where(field("worker_id").eq(workerId))
+        dsl.update(RENDER_WORKER)
+                .set(RENDER_WORKER.STATUS, RenderWorkerStatus.IDLE.name())
+                .set(RENDER_WORKER.EXPIRES_AT, (LocalDateTime) null)
+                .set(RENDER_WORKER.UPDATED_AT, toTimestamp(now))
+                .where(RENDER_WORKER.WORKER_ID.eq(workerId))
                 .execute();
     }
 
@@ -110,10 +111,10 @@ public class RenderWorkerRepository {
      * Mark a worker as DRAINING.
      */
     public void markDraining(String workerId, Instant now) {
-        dsl.update(table("render_worker"))
-                .set(field("status"), RenderWorkerStatus.DRAINING.name())
-                .set(field("updated_at"), toTimestamp(now))
-                .where(field("worker_id").eq(workerId))
+        dsl.update(RENDER_WORKER)
+                .set(RENDER_WORKER.STATUS, RenderWorkerStatus.DRAINING.name())
+                .set(RENDER_WORKER.UPDATED_AT, toTimestamp(now))
+                .where(RENDER_WORKER.WORKER_ID.eq(workerId))
                 .execute();
     }
 
@@ -121,11 +122,11 @@ public class RenderWorkerRepository {
      * Mark a worker as OFFLINE.
      */
     public void markOffline(String workerId, Instant now) {
-        dsl.update(table("render_worker"))
-                .set(field("status"), RenderWorkerStatus.OFFLINE.name())
-                .set(field("expires_at"), toTimestamp(now))
-                .set(field("updated_at"), toTimestamp(now))
-                .where(field("worker_id").eq(workerId))
+        dsl.update(RENDER_WORKER)
+                .set(RENDER_WORKER.STATUS, RenderWorkerStatus.OFFLINE.name())
+                .set(RENDER_WORKER.EXPIRES_AT, toTimestamp(now))
+                .set(RENDER_WORKER.UPDATED_AT, toTimestamp(now))
+                .where(RENDER_WORKER.WORKER_ID.eq(workerId))
                 .execute();
     }
 
@@ -133,11 +134,11 @@ public class RenderWorkerRepository {
      * Mark a worker as FAILED.
      */
     public void markFailed(String workerId, Instant now) {
-        dsl.update(table("render_worker"))
-                .set(field("status"), RenderWorkerStatus.FAILED.name())
-                .set(field("expires_at"), toTimestamp(now))
-                .set(field("updated_at"), toTimestamp(now))
-                .where(field("worker_id").eq(workerId))
+        dsl.update(RENDER_WORKER)
+                .set(RENDER_WORKER.STATUS, RenderWorkerStatus.FAILED.name())
+                .set(RENDER_WORKER.EXPIRES_AT, toTimestamp(now))
+                .set(RENDER_WORKER.UPDATED_AT, toTimestamp(now))
+                .where(RENDER_WORKER.WORKER_ID.eq(workerId))
                 .execute();
     }
 
@@ -145,10 +146,10 @@ public class RenderWorkerRepository {
      * Increment active job count for a worker.
      */
     public void incrementActiveJobs(String workerId) {
-        dsl.update(table("render_worker"))
-                .set(field("active_job_count", Integer.class),
-                        org.jooq.impl.DSL.field("active_job_count", Integer.class).plus(1))
-                .where(field("worker_id").eq(workerId))
+        dsl.update(RENDER_WORKER)
+                .set(RENDER_WORKER.ACTIVE_JOB_COUNT,
+                        RENDER_WORKER.ACTIVE_JOB_COUNT.plus(1))
+                .where(RENDER_WORKER.WORKER_ID.eq(workerId))
                 .execute();
     }
 
@@ -156,13 +157,12 @@ public class RenderWorkerRepository {
      * Decrement active job count for a worker.
      */
     public void decrementActiveJobs(String workerId) {
-        dsl.update(table("render_worker"))
-                .set(field("active_job_count", Integer.class),
-                        org.jooq.impl.DSL.when(
-                                org.jooq.impl.DSL.field("active_job_count", Integer.class).gt(0),
-                                org.jooq.impl.DSL.field("active_job_count", Integer.class).minus(1))
+        dsl.update(RENDER_WORKER)
+                .set(RENDER_WORKER.ACTIVE_JOB_COUNT,
+                        DSL.when(RENDER_WORKER.ACTIVE_JOB_COUNT.gt(0),
+                                RENDER_WORKER.ACTIVE_JOB_COUNT.minus(1))
                         .otherwise(0))
-                .where(field("worker_id").eq(workerId))
+                .where(RENDER_WORKER.WORKER_ID.eq(workerId))
                 .execute();
     }
 
@@ -171,8 +171,8 @@ public class RenderWorkerRepository {
      */
     public Optional<RenderWorkerRecord> findByWorkerId(String workerId) {
         Record r = dsl.select()
-                .from(table("render_worker"))
-                .where(field("worker_id").eq(workerId))
+                .from(RENDER_WORKER)
+                .where(RENDER_WORKER.WORKER_ID.eq(workerId))
                 .fetchOne();
         return Optional.ofNullable(r).map(this::mapRecord);
     }
@@ -182,9 +182,9 @@ public class RenderWorkerRepository {
      */
     public List<RenderWorkerRecord> findAvailableWorkers() {
         return dsl.select()
-                .from(table("render_worker"))
-                .where(field("status").eq(RenderWorkerStatus.IDLE.name())
-                        .or(field("status").eq(RenderWorkerStatus.BUSY.name())))
+                .from(RENDER_WORKER)
+                .where(RENDER_WORKER.STATUS.eq(RenderWorkerStatus.IDLE.name())
+                        .or(RENDER_WORKER.STATUS.eq(RenderWorkerStatus.BUSY.name())))
                 .fetch(this::mapRecord);
     }
 
@@ -193,10 +193,10 @@ public class RenderWorkerRepository {
      */
     public List<RenderWorkerRecord> findStaleWorkers(Instant threshold) {
         return dsl.select()
-                .from(table("render_worker"))
-                .where(field("last_heartbeat_at").lt(toTimestamp(threshold)))
-                .and(field("status").ne(RenderWorkerStatus.OFFLINE.name()))
-                .and(field("status").ne(RenderWorkerStatus.FAILED.name()))
+                .from(RENDER_WORKER)
+                .where(RENDER_WORKER.LAST_HEARTBEAT_AT.lt(toTimestamp(threshold)))
+                .and(RENDER_WORKER.STATUS.ne(RenderWorkerStatus.OFFLINE.name()))
+                .and(RENDER_WORKER.STATUS.ne(RenderWorkerStatus.FAILED.name()))
                 .fetch(this::mapRecord);
     }
 
@@ -205,43 +205,44 @@ public class RenderWorkerRepository {
      */
     public List<RenderWorkerRecord> listAll() {
         return dsl.select()
-                .from(table("render_worker"))
+                .from(RENDER_WORKER)
                 .fetch(this::mapRecord);
     }
 
     private RenderWorkerRecord mapRecord(Record r) {
         return new RenderWorkerRecord(
-                r.get(field("id"), String.class),
-                r.get(field("worker_id"), String.class),
-                RenderWorkerStatus.valueOf(r.get(field("status"), String.class)),
-                r.get(field("worker_type"), String.class),
-                r.get(field("version"), String.class),
-                r.get(field("image_tag"), String.class),
-                r.get(field("hostname"), String.class),
-                r.get(field("zone"), String.class),
-                r.get(field("provider_ids"), String.class),
-                r.get(field("capabilities_json"), String.class),
-                r.get(field("max_concurrent_jobs"), Integer.class),
-                r.get(field("active_job_count") != null ? field("active_job_count") : field("active_job_count"), Integer.class),
-                r.get(field("cpu_cores"), Integer.class),
-                r.get(field("memory_mb"), Integer.class),
-                r.get(field("gpu_count") != null ? field("gpu_count") : field("gpu_count"), Integer.class),
-                r.get(field("gpu_type"), String.class),
-                r.get(field("disk_free_mb") != null ? field("disk_free_mb") : field("disk_free_mb"), Long.class),
-                toInstant(r.get(field("last_heartbeat_at"))),
-                toInstant(r.get(field("registered_at"))),
-                toInstant(r.get(field("expires_at"))),
-                r.get(field("metadata_json"), String.class)
+                r.get(RENDER_WORKER.ID, String.class),
+                r.get(RENDER_WORKER.WORKER_ID, String.class),
+                RenderWorkerStatus.valueOf(r.get(RENDER_WORKER.STATUS, String.class)),
+                r.get(RENDER_WORKER.WORKER_TYPE, String.class),
+                r.get(RENDER_WORKER.VERSION, String.class),
+                r.get(RENDER_WORKER.IMAGE_TAG, String.class),
+                r.get(RENDER_WORKER.HOSTNAME, String.class),
+                r.get(RENDER_WORKER.ZONE, String.class),
+                r.get(RENDER_WORKER.PROVIDER_IDS, String.class),
+                r.get(RENDER_WORKER.CAPABILITIES_JSON, String.class),
+                r.get(RENDER_WORKER.MAX_CONCURRENT_JOBS, Integer.class),
+                r.get(RENDER_WORKER.ACTIVE_JOB_COUNT, Integer.class),
+                r.get(RENDER_WORKER.CPU_CORES, Integer.class),
+                r.get(RENDER_WORKER.MEMORY_MB, Integer.class),
+                r.get(RENDER_WORKER.GPU_COUNT, Integer.class),
+                r.get(RENDER_WORKER.GPU_TYPE, String.class),
+                r.get(RENDER_WORKER.DISK_FREE_MB, Long.class),
+                toInstant(r.get(RENDER_WORKER.LAST_HEARTBEAT_AT)),
+                toInstant(r.get(RENDER_WORKER.REGISTERED_AT)),
+                toInstant(r.get(RENDER_WORKER.EXPIRES_AT)),
+                r.get(RENDER_WORKER.METADATA_JSON, String.class)
         );
     }
 
-    private static OffsetDateTime toTimestamp(Instant instant) {
-        return instant != null ? OffsetDateTime.from(instant.atOffset(java.time.ZoneOffset.UTC)) : null;
+    private static LocalDateTime toTimestamp(Instant instant) {
+        return instant != null ? LocalDateTime.ofInstant(instant, java.time.ZoneOffset.UTC) : null;
     }
 
     private static Instant toInstant(Object value) {
         if (value == null) return null;
         if (value instanceof OffsetDateTime odt) return odt.toInstant();
+        if (value instanceof LocalDateTime ldt) return ldt.toInstant(java.time.ZoneOffset.UTC);
         if (value instanceof java.sql.Timestamp ts) return ts.toInstant();
         return null;
     }

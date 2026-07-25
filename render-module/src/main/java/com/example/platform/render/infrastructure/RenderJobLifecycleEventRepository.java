@@ -6,8 +6,12 @@ import org.jooq.Record;
 import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS;
+
 
 /**
  * Repository for persisted RenderJob lifecycle events.
@@ -27,46 +31,46 @@ public class RenderJobLifecycleEventRepository {
                        String reasonCode, String reason, boolean retryable,
                        Long durationMs) {
         String id = Ids.newId("evt");
-        dsl.insertInto(DSL.table("render_job_lifecycle_events"))
+        dsl.insertInto(RENDER_JOB_LIFECYCLE_EVENTS)
                 .columns(
-                        DSL.field("id"),
-                        DSL.field("tenant_id"),
-                        DSL.field("project_id"),
-                        DSL.field("render_job_id"),
-                        DSL.field("event_type"),
-                        DSL.field("status_from"),
-                        DSL.field("status_to"),
-                        DSL.field("worker_id"),
-                        DSL.field("attempt"),
-                        DSL.field("output_product_id"),
-                        DSL.field("reason_code"),
-                        DSL.field("reason"),
-                        DSL.field("retryable"),
-                        DSL.field("duration_ms"),
-                        DSL.field("event_time"),
-                        DSL.field("created_at"))
+                        RENDER_JOB.ID,
+                        RENDER_JOB.TENANT_ID,
+                        RENDER_JOB.PROJECT_ID,
+                        RENDER_JOB_LIFECYCLE_EVENTS.RENDER_JOB_ID,
+                        RENDER_JOB_LIFECYCLE_EVENTS.EVENT_TYPE,
+                        RENDER_JOB_LIFECYCLE_EVENTS.STATUS_FROM,
+                        RENDER_JOB_LIFECYCLE_EVENTS.STATUS_TO,
+                        RENDER_JOB_LIFECYCLE_EVENTS.WORKER_ID,
+                        RENDER_JOB_LIFECYCLE_EVENTS.ATTEMPT,
+                        RENDER_JOB_LIFECYCLE_EVENTS.OUTPUT_PRODUCT_ID,
+                        RENDER_JOB_LIFECYCLE_EVENTS.REASON_CODE,
+                        RENDER_JOB_LIFECYCLE_EVENTS.REASON,
+                        RENDER_JOB_LIFECYCLE_EVENTS.RETRYABLE,
+                        RENDER_JOB_LIFECYCLE_EVENTS.DURATION_MS,
+                        RENDER_JOB_LIFECYCLE_EVENTS.EVENT_TIME,
+                        RENDER_JOB.CREATED_AT)
                 .values(
                         id, tenantId, projectId, renderJobId,
                         eventType, statusFrom, statusTo,
                         workerId, attempt, outputProductId,
                         reasonCode, truncate(reason, 512), retryable,
-                        durationMs, OffsetDateTime.now(), OffsetDateTime.now())
+                        durationMs, LocalDateTime.now(), LocalDateTime.now())
                 .execute();
     }
 
     public List<Record> findByRenderJobId(String projectId, String renderJobId, int limit) {
         return dsl.select()
-                .from(DSL.table("render_job_lifecycle_events"))
-                .where(DSL.field("project_id").eq(projectId)
-                        .and(DSL.field("render_job_id").eq(renderJobId)))
-                .orderBy(DSL.field("event_time").asc())
+                .from(RENDER_JOB_LIFECYCLE_EVENTS)
+                .where(RENDER_JOB.PROJECT_ID.eq(projectId)
+                        .and(RENDER_JOB_LIFECYCLE_EVENTS.RENDER_JOB_ID.eq(renderJobId)))
+                .orderBy(RENDER_JOB_LIFECYCLE_EVENTS.EVENT_TIME.asc())
                 .limit(limit)
                 .fetch();
     }
 
     public int countByRenderJobId(String renderJobId) {
-        return dsl.fetchCount(DSL.table("render_job_lifecycle_events"),
-                DSL.field("render_job_id").eq(renderJobId));
+        return dsl.fetchCount(RENDER_JOB_LIFECYCLE_EVENTS,
+                RENDER_JOB_LIFECYCLE_EVENTS.RENDER_JOB_ID.eq(renderJobId));
     }
 
     private static String truncate(String s, int maxLen) {
@@ -78,25 +82,25 @@ public class RenderJobLifecycleEventRepository {
     // === Retention / Cleanup ===
 
     public int countEventsOlderThan(java.time.Instant cutoff) {
-        return dsl.fetchCount(DSL.table("render_job_lifecycle_events"),
-                DSL.field("event_time").lessThan(java.sql.Timestamp.from(cutoff)));
+        return dsl.fetchCount(RENDER_JOB_LIFECYCLE_EVENTS,
+                RENDER_JOB_LIFECYCLE_EVENTS.EVENT_TIME.lessThan(java.sql.Timestamp.from(cutoff).toLocalDateTime()));
     }
 
     public java.time.Instant findOldestEventTime() {
-        java.sql.Timestamp ts = dsl.select(DSL.min(DSL.field("event_time")))
-                .from(DSL.table("render_job_lifecycle_events"))
-                .fetchOneInto(java.sql.Timestamp.class);
-        return ts != null ? ts.toInstant() : null;
+        LocalDateTime ts = dsl.select(DSL.min(RENDER_JOB_LIFECYCLE_EVENTS.EVENT_TIME))
+                .from(RENDER_JOB_LIFECYCLE_EVENTS)
+                .fetchOneInto(LocalDateTime.class);
+        return ts != null ? ts.atOffset(java.time.ZoneOffset.UTC).toInstant() : null;
     }
 
     public int deleteEventsOlderThan(java.time.Instant cutoff, int batchSize) {
         // Delete events older than cutoff, excluding active EXECUTING jobs
-        return dsl.deleteFrom(DSL.table("render_job_lifecycle_events"))
-                .where(DSL.field("event_time").lessThan(java.sql.Timestamp.from(cutoff))
-                        .and(DSL.field("render_job_id").notIn(
-                                dsl.select(DSL.field("id"))
-                                        .from(DSL.table("render_job"))
-                                        .where(DSL.field("status").eq("EXECUTING")))))
+        return dsl.deleteFrom(RENDER_JOB_LIFECYCLE_EVENTS)
+                .where(RENDER_JOB_LIFECYCLE_EVENTS.EVENT_TIME.lessThan(java.sql.Timestamp.from(cutoff).toLocalDateTime())
+                        .and(RENDER_JOB_LIFECYCLE_EVENTS.RENDER_JOB_ID.notIn(
+                                dsl.select(RENDER_JOB.ID)
+                                        .from(RENDER_JOB)
+                                        .where(RENDER_JOB.STATUS.eq("EXECUTING")))))
                 .limit(batchSize)
                 .execute();
     }

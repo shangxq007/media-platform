@@ -1,5 +1,6 @@
 package com.example.platform.app.ai;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -8,9 +9,8 @@ import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.TenantLitellmVirtualKey.TENANT_LITELLM_VIRTUAL_KEY;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 @Repository
 public class TenantLitellmKeyRepository {
@@ -23,8 +23,8 @@ public class TenantLitellmKeyRepository {
 
     public Optional<TenantLitellmKeyRecord> findByTenantId(String tenantId) {
         Record row = dsl.select()
-                .from(table("tenant_litellm_virtual_key"))
-                .where(field("tenant_id").eq(tenantId))
+                .from(TENANT_LITELLM_VIRTUAL_KEY)
+                .where(TENANT_LITELLM_VIRTUAL_KEY.TENANT_ID.eq(tenantId))
                 .fetchOne();
         if (row == null) {
             return Optional.empty();
@@ -34,40 +34,40 @@ public class TenantLitellmKeyRepository {
 
     public void upsert(
             String tenantId, String virtualKey, String vaultRef, String keyAlias, boolean enabled) {
-        OffsetDateTime now = OffsetDateTime.now();
-        int updated = dsl.update(table("tenant_litellm_virtual_key"))
-                .set(field("virtual_key"), virtualKey)
-                .set(field("vault_ref"), vaultRef)
-                .set(field("key_alias"), keyAlias)
-                .set(field("enabled"), enabled)
-                .set(field("updated_at"), now)
-                .where(field("tenant_id").eq(tenantId))
+        LocalDateTime now = LocalDateTime.now();
+        int updated = dsl.update(TENANT_LITELLM_VIRTUAL_KEY)
+                .set(TENANT_LITELLM_VIRTUAL_KEY.VIRTUAL_KEY, virtualKey)
+                .set(TENANT_LITELLM_VIRTUAL_KEY.VAULT_REF, vaultRef)
+                .set(TENANT_LITELLM_VIRTUAL_KEY.KEY_ALIAS, keyAlias)
+                .set(TENANT_LITELLM_VIRTUAL_KEY.ENABLED, enabled)
+                .set(TENANT_LITELLM_VIRTUAL_KEY.UPDATED_AT, now)
+                .where(TENANT_LITELLM_VIRTUAL_KEY.TENANT_ID.eq(tenantId))
                 .execute();
         if (updated == 0) {
-            dsl.insertInto(table("tenant_litellm_virtual_key"))
+            dsl.insertInto(TENANT_LITELLM_VIRTUAL_KEY)
                     .columns(
-                            field("tenant_id"),
-                            field("virtual_key"),
-                            field("vault_ref"),
-                            field("key_alias"),
-                            field("enabled"),
-                            field("created_at"),
-                            field("updated_at"))
+                            TENANT_LITELLM_VIRTUAL_KEY.TENANT_ID,
+                            TENANT_LITELLM_VIRTUAL_KEY.VIRTUAL_KEY,
+                            TENANT_LITELLM_VIRTUAL_KEY.VAULT_REF,
+                            TENANT_LITELLM_VIRTUAL_KEY.KEY_ALIAS,
+                            TENANT_LITELLM_VIRTUAL_KEY.ENABLED,
+                            TENANT_LITELLM_VIRTUAL_KEY.CREATED_AT,
+                            TENANT_LITELLM_VIRTUAL_KEY.UPDATED_AT)
                     .values(tenantId, virtualKey, vaultRef, keyAlias, enabled, now, now)
                     .execute();
         }
     }
 
     public void delete(String tenantId) {
-        dsl.deleteFrom(table("tenant_litellm_virtual_key"))
-                .where(field("tenant_id").eq(tenantId))
+        dsl.deleteFrom(TENANT_LITELLM_VIRTUAL_KEY)
+                .where(TENANT_LITELLM_VIRTUAL_KEY.TENANT_ID.eq(tenantId))
                 .execute();
     }
 
     /** Rows that may still hold plaintext virtual keys (vault_ref empty). */
     public List<TenantLitellmKeyRecord> findAllInlineKeys() {
         List<Record> rows = dsl.select()
-                .from(table("tenant_litellm_virtual_key"))
+                .from(TENANT_LITELLM_VIRTUAL_KEY)
                 .fetch();
         List<TenantLitellmKeyRecord> result = new ArrayList<>();
         for (Record row : rows) {
@@ -78,13 +78,13 @@ public class TenantLitellmKeyRepository {
 
     private static TenantLitellmKeyRecord map(Record row) {
         return new TenantLitellmKeyRecord(
-                row.get(field("tenant_id", String.class)),
-                row.get(field("virtual_key", String.class)),
-                row.get(field("vault_ref", String.class)),
-                row.get(field("key_alias", String.class)),
-                Boolean.TRUE.equals(row.get(field("enabled", Boolean.class))),
-                toOffsetDateTime(row.get(field("created_at"))),
-                toOffsetDateTime(row.get(field("updated_at"))));
+                row.get(TENANT_LITELLM_VIRTUAL_KEY.TENANT_ID),
+                row.get(TENANT_LITELLM_VIRTUAL_KEY.VIRTUAL_KEY),
+                row.get(TENANT_LITELLM_VIRTUAL_KEY.VAULT_REF),
+                row.get(TENANT_LITELLM_VIRTUAL_KEY.KEY_ALIAS),
+                Boolean.TRUE.equals(row.get(TENANT_LITELLM_VIRTUAL_KEY.ENABLED)),
+                toOffsetDateTime(row.get(TENANT_LITELLM_VIRTUAL_KEY.CREATED_AT)),
+                toOffsetDateTime(row.get(TENANT_LITELLM_VIRTUAL_KEY.UPDATED_AT)));
     }
 
     private static OffsetDateTime toOffsetDateTime(Object value) {
@@ -93,6 +93,9 @@ public class TenantLitellmKeyRepository {
         }
         if (value instanceof OffsetDateTime odt) {
             return odt;
+        }
+        if (value instanceof LocalDateTime ldt) {
+            return ldt.atOffset(ZoneOffset.UTC);
         }
         if (value instanceof java.sql.Timestamp ts) {
             return ts.toInstant().atOffset(ZoneOffset.UTC);

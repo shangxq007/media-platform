@@ -17,9 +17,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.table;
 
 /**
  * Purges deletable tombstoned entries from Internal Timeline {@code assetRegistry} and optionally deletes blobs.
@@ -194,9 +193,9 @@ public class TimelineAssetGcService {
     }
 
     private List<String> listDistinctProjectIds() {
-        return dsl.selectDistinct(field("project_id", String.class))
-                .from(table("timeline_snapshot"))
-                .fetch(field("project_id", String.class));
+        return dsl.selectDistinct(TIMELINE_SNAPSHOT.PROJECT_ID)
+                .from(TIMELINE_SNAPSHOT)
+                .fetch(TIMELINE_SNAPSHOT.PROJECT_ID);
     }
 
     private void deleteBlob(String storageUri) {
