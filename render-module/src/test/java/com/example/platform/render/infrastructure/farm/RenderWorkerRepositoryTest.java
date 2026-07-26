@@ -3,7 +3,8 @@ package com.example.platform.render.infrastructure.farm;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Instant;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
@@ -145,7 +146,7 @@ class RenderWorkerRepositoryTest extends PostgresTestContainerSupport {
                 null, null, 0, null, null, null);
         // Manually set old heartbeat
         dsl.update(DSL.table("render_worker"))
-                .set(DSL.field("last_heartbeat_at"), OffsetDateTime.now().minusHours(1))
+                .set(DSL.field("last_heartbeat_at"), LocalDateTime.now(ZoneOffset.UTC).minusHours(1))
                 .where(DSL.field("worker_id").eq("worker-1"))
                 .execute();
 

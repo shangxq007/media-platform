@@ -3,7 +3,8 @@ package com.example.platform.render.infrastructure.farm;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Instant;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import javax.sql.DataSource;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
@@ -60,7 +61,7 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
                 .columns(DSL.field("id"), DSL.field("project_id"), DSL.field("tenant_id"),
                         DSL.field("timeline_snapshot_id"), DSL.field("profile"),
                         DSL.field("status"), DSL.field("created_at"))
-                .values(jobId, "proj-1", "tenant-1", "snap-1", "default_1080p", status, OffsetDateTime.now())
+                .values(jobId, "proj-1", "tenant-1", "snap-1", "default_1080p", status, LocalDateTime.now(ZoneOffset.UTC))
                 .execute();
     }
 
@@ -356,7 +357,7 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
         // Set lease_until to past
         dsl.update(DSL.table("render_job_lease"))
-                .set(DSL.field("lease_until"), OffsetDateTime.now().minusHours(2))
+                .set(DSL.field("lease_until"), LocalDateTime.now(ZoneOffset.UTC).minusHours(2))
                 .where(DSL.field("lease_id").eq(claimed.leaseId()))
                 .execute();
 
