@@ -1,26 +1,39 @@
 package com.example.platform.web.render;
 
+import com.example.platform.render.app.timeline.PatchApplyResult;
+import com.example.platform.render.app.timeline.PatchPreviewResult;
 import com.example.platform.render.app.timeline.ProductCurrentRevisionService;
 import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
+import com.example.platform.render.app.timeline.TimelinePatchApplicationService;
 import com.example.platform.render.app.timeline.TimelineRevisionSaveService;
 import com.example.platform.render.app.timeline.TimelineSemanticDiffV1Service;
+import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
+import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
+import com.example.platform.render.domain.timeline.diff.ChangeSummary;
 import com.example.platform.render.domain.timeline.diff.TimelineChange;
 import com.example.platform.render.domain.timeline.diff.TimelineChangeSet;
-import com.example.platform.render.domain.timeline.diff.ChangeSummary;
+import com.example.platform.render.domain.timeline.patch.PatchError;
+import com.example.platform.render.domain.timeline.patch.PatchErrorCode;
+import com.example.platform.render.domain.timeline.patch.PatchExecutionException;
+import com.example.platform.render.domain.timeline.patch.TimelinePatch;
 import com.example.platform.render.domain.timeline.version.TimelineConflictException;
 import com.example.platform.render.domain.timeline.version.TimelineRevision;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -38,17 +51,20 @@ public class TimelineGitV1Controller {
     private final RenderJobRevisionPinningService pinningService;
     private final TimelineContentDigester contentDigester;
     private final TimelineSemanticDiffV1Service diffService;
+    private final TimelinePatchApplicationService patchService;
 
     public TimelineGitV1Controller(TimelineRevisionSaveService saveService,
                                    ProductCurrentRevisionService currentRevisionService,
                                    RenderJobRevisionPinningService pinningService,
                                    TimelineContentDigester contentDigester,
-                                   TimelineSemanticDiffV1Service diffService) {
+                                   TimelineSemanticDiffV1Service diffService,
+                                   TimelinePatchApplicationService patchService) {
         this.saveService = saveService;
         this.currentRevisionService = currentRevisionService;
         this.pinningService = pinningService;
         this.contentDigester = contentDigester;
         this.diffService = diffService;
+        this.patchService = patchService;
     }
 
     @PostMapping("/products/{productId}/revisions")
@@ -132,6 +148,45 @@ public class TimelineGitV1Controller {
             com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.TimelineDiffException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new DiffError(ex.getErrorCode(), ex.getMessage()));
+    }
+
+    @PostMapping("/products/{productId}/patch/preview")
+    @Operation(summary = "Preview patch application (dry run)")
+    public ResponseEntity<PatchPreviewResponse> previewPatch(
+            @PathVariable String productId,
+            @RequestBody PatchRequest request) {
+        var patch = request.toPatch(productId);
+        var result = patchService.preview(patch);
+        if (result instanceof PatchPreviewResult.Failure failure) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new PatchPreviewResponse(failure.error().code().name(), failure.error().message(), null, false));
+        }
+        return ResponseEntity.ok(new PatchPreviewResponse(null, null, ((PatchPreviewResult.Success) result).resultDigest(), false));
+    }
+
+    @PostMapping("/products/{productId}/patch/apply")
+    @Operation(summary = "Apply patch and create new revision")
+    public ResponseEntity<PatchApplyResponse> applyPatch(
+            @PathVariable String productId,
+            @RequestBody PatchRequest request) {
+        var patch = request.toPatch(productId);
+        var result = patchService.apply(patch);
+        if (result instanceof PatchApplyResult.Failure failure) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new PatchApplyResponse(failure.error().code().name(), failure.error().message(), null, null, null, false));
+        }
+        if (result instanceof PatchApplyResult.NoChanges noChanges) {
+            return ResponseEntity.ok(new PatchApplyResponse(null, null, noChanges.baseRevisionId(), null, null, false));
+        }
+        PatchApplyResult.Success success = (PatchApplyResult.Success) result;
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new PatchApplyResponse(null, null, success.newRevisionId(), success.parentRevisionId(), success.resultDigest(), true));
+    }
+
+    @ExceptionHandler(PatchExecutionException.class)
+    public ResponseEntity<PatchError> handlePatchException(PatchExecutionException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new PatchError(PatchErrorCode.TIMELINE_PATCH_PRECONDITION_FAILED, ex.getMessage(), null, null));
     }
 
     // Request/Response DTOs
@@ -265,4 +320,67 @@ public class TimelineGitV1Controller {
             int clipsChanged,
             int clipsMoved,
             int clipsReordered) {}
+
+    // Patch DTOs
+
+    public record PatchRequest(
+            String patchVersion,
+            String patchId,
+            String baseRevisionId,
+            String baseContentDigest,
+            String expectedCurrentRevisionId,
+            String timelineSchemaVersion,
+            List<PatchOperationDto> operations,
+            String expectedResultDigest) {
+
+        TimelinePatch toPatch(String productId) {
+            var ops = operations().stream().map(PatchOperationDto::toOperation).toList();
+            return new TimelinePatch(
+                    patchVersion(),
+                    patchId(),
+                    productId,
+                    baseRevisionId(),
+                    baseContentDigest(),
+                    expectedCurrentRevisionId(),
+                    timelineSchemaVersion(),
+                    ops,
+                    expectedResultDigest(),
+                    null);
+        }
+    }
+
+    public record PatchOperationDto(
+            String operationId,
+            String kind,
+            String trackId,
+            String clipId,
+            String targetTrackId,
+            String expectedTrackId,
+            String expectedSourceTrackId,
+            String property,
+            String expectedBefore,
+            String newValue,
+            Integer targetPosition,
+            TrackDto track,
+            ClipDto clip) {
+
+        com.example.platform.render.domain.timeline.patch.TimelinePatchOperation toOperation() {
+            return switch (kind()) {
+                case "ADD_TRACK" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.AddTrack(operationId(), track().toTrack(), targetPosition());
+                case "REMOVE_TRACK" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.RemoveTrack(operationId(), trackId());
+                case "UPDATE_TRACK_PROPERTY" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.UpdateTrackProperty(operationId(), trackId(), property(), expectedBefore(), newValue());
+                case "REORDER_TRACK" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.ReorderTrack(operationId(), trackId(), targetPosition());
+                case "ADD_CLIP" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.AddClip(operationId(), targetTrackId(), clip().toClip(), targetPosition());
+                case "REMOVE_CLIP" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.RemoveClip(operationId(), clipId(), expectedTrackId());
+                case "UPDATE_CLIP_PROPERTY" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.UpdateClipProperty(operationId(), clipId(), property(), expectedBefore(), newValue());
+                case "MOVE_CLIP" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.MoveClip(operationId(), clipId(), expectedSourceTrackId(), targetTrackId(), targetPosition());
+                case "REORDER_CLIP" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.ReorderClip(operationId(), clipId(), trackId(), targetPosition());
+                default -> throw new IllegalArgumentException("Unknown operation kind: " + kind());
+            };
+        }
+    }
+
+    public record PatchPreviewResponse(String error, String message, String resultDigest, boolean persisted) {}
+
+    public record PatchApplyResponse(String error, String message, String revisionId, String parentRevisionId, String resultDigest, boolean persisted) {}
 }
