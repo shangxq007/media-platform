@@ -3,12 +3,16 @@ package com.example.platform.web.render;
 import com.example.platform.render.app.timeline.ProductCurrentRevisionService;
 import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
 import com.example.platform.render.app.timeline.TimelineRevisionSaveService;
+import com.example.platform.render.app.timeline.TimelineSemanticDiffV1Service;
 import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
+import com.example.platform.render.domain.timeline.diff.TimelineChange;
+import com.example.platform.render.domain.timeline.diff.TimelineChangeSet;
+import com.example.platform.render.domain.timeline.diff.ChangeSummary;
 import com.example.platform.render.domain.timeline.version.TimelineConflictException;
 import com.example.platform.render.domain.timeline.version.TimelineRevision;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,15 +37,18 @@ public class TimelineGitV1Controller {
     private final ProductCurrentRevisionService currentRevisionService;
     private final RenderJobRevisionPinningService pinningService;
     private final TimelineContentDigester contentDigester;
+    private final TimelineSemanticDiffV1Service diffService;
 
     public TimelineGitV1Controller(TimelineRevisionSaveService saveService,
                                    ProductCurrentRevisionService currentRevisionService,
                                    RenderJobRevisionPinningService pinningService,
-                                   TimelineContentDigester contentDigester) {
+                                   TimelineContentDigester contentDigester,
+                                   TimelineSemanticDiffV1Service diffService) {
         this.saveService = saveService;
         this.currentRevisionService = currentRevisionService;
         this.pinningService = pinningService;
         this.contentDigester = contentDigester;
+        this.diffService = diffService;
     }
 
     @PostMapping("/products/{productId}/revisions")
@@ -110,6 +117,23 @@ public class TimelineGitV1Controller {
                         ex.getActualRevisionId()));
     }
 
+    @GetMapping("/products/{productId}/diff")
+    @Operation(summary = "Compute semantic diff between two revisions")
+    public ResponseEntity<DiffResponse> getDiff(
+            @PathVariable String productId,
+            @RequestParam String baseRevisionId,
+            @RequestParam String targetRevisionId) {
+        var changeSet = diffService.diff(productId, baseRevisionId, targetRevisionId);
+        return ResponseEntity.ok(DiffResponse.from(changeSet));
+    }
+
+    @ExceptionHandler(com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.TimelineDiffException.class)
+    public ResponseEntity<DiffError> handleDiffError(
+            com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.TimelineDiffException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new DiffError(ex.getErrorCode(), ex.getMessage()));
+    }
+
     // Request/Response DTOs
 
     public record SaveRevisionRequest(
@@ -169,4 +193,76 @@ public class TimelineGitV1Controller {
             String productId,
             String expectedRevisionId,
             String actualRevisionId) {}
+
+    public record DiffError(String code, String message) {}
+
+    public record DiffResponse(
+            String changeSetVersion,
+            String productId,
+            String baseRevisionId,
+            String targetRevisionId,
+            String baseDigest,
+            String targetDigest,
+            String schemaVersion,
+            List<ChangeDto> changes,
+            SummaryDto summary) {
+
+        static DiffResponse from(TimelineChangeSet cs) {
+            List<ChangeDto> changes = cs.getChanges().stream()
+                    .map(c -> new ChangeDto(
+                            c.getChangeType().name(),
+                            c.getEntityKind().name(),
+                            c.getEntityId(),
+                            c.getPropertyName(),
+                            c.getBeforeValue(),
+                            c.getAfterValue(),
+                            c.getTargetPosition()))
+                    .toList();
+
+            ChangeSummary s = cs.getSummary();
+            SummaryDto summary = new SummaryDto(
+                    s.getTotal(),
+                    s.getTracksAdded(),
+                    s.getTracksRemoved(),
+                    s.getTracksChanged(),
+                    s.getTracksReordered(),
+                    s.getClipsAdded(),
+                    s.getClipsRemoved(),
+                    s.getClipsChanged(),
+                    s.getClipsMoved(),
+                    s.getClipsReordered());
+
+            return new DiffResponse(
+                    cs.getChangeSetVersion(),
+                    cs.getProductId(),
+                    cs.getBaseRevisionId(),
+                    cs.getTargetRevisionId(),
+                    cs.getBaseContentDigest(),
+                    cs.getTargetContentDigest(),
+                    cs.getTimelineSchemaVersion(),
+                    changes,
+                    summary);
+        }
+    }
+
+    public record ChangeDto(
+            String changeType,
+            String entityKind,
+            String entityId,
+            String propertyName,
+            String beforeValue,
+            String afterValue,
+            int targetPosition) {}
+
+    public record SummaryDto(
+            int total,
+            int tracksAdded,
+            int tracksRemoved,
+            int tracksChanged,
+            int tracksReordered,
+            int clipsAdded,
+            int clipsRemoved,
+            int clipsChanged,
+            int clipsMoved,
+            int clipsReordered) {}
 }
