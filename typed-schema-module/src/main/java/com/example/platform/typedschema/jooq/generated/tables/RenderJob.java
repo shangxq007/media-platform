@@ -141,6 +141,11 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
     public final TableField<RenderJobRecord, String> SELECTED_PROVIDER = createField(DSL.name("selected_provider"), SQLDataType.VARCHAR(128), this, "");
 
     /**
+     * The column <code>public.render_job.timeline_revision_id</code>.
+     */
+    public final TableField<RenderJobRecord, String> TIMELINE_REVISION_ID = createField(DSL.name("timeline_revision_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
      * The column <code>public.render_job.updated_at</code>.
      */
     public final TableField<RenderJobRecord, Instant> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());

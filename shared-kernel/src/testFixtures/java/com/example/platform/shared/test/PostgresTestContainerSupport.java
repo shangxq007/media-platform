@@ -24,7 +24,7 @@ public abstract class PostgresTestContainerSupport {
                 .withUsername("test")
                 .withPassword("test")
                 .withStartupTimeoutSeconds(120)
-                .withReuse(true);
+                .withReuse(false);
         POSTGRES.start();
     }
 

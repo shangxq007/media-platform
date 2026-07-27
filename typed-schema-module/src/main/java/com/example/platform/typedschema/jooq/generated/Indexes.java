@@ -327,6 +327,8 @@ public class Indexes {
     public static final Index IX_PRODUCT_STATUS = Internal.createIndex(DSL.name("ix_product_status"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.STATUS }, false);
     public static final Index IX_PRODUCT_TENANT = Internal.createIndex(DSL.name("ix_product_tenant"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.TENANT_ID }, false);
     public static final Index IX_PRODUCT_TYPE = Internal.createIndex(DSL.name("ix_product_type"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PRODUCT_TYPE }, false);
+    public static final Index IX_PRODUCT_CURRENT_REVISION = Internal.createIndex(DSL.name("ix_product_current_revision"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PROJECT_ID, Product.PRODUCT.CURRENT_REVISION_ID }, false);
+    public static final Index IX_RENDER_JOB_TIMELINE_REVISION = Internal.createIndex(DSL.name("ix_render_job_timeline_revision"), RenderJob.RENDER_JOB, new OrderField[] { RenderJob.RENDER_JOB.TIMELINE_REVISION_ID }, false);
     public static final Index IX_PROJECT_TENANT_ID = Internal.createIndex(DSL.name("ix_project_tenant_id"), Project.PROJECT, new OrderField[] { Project.PROJECT.TENANT_ID }, false);
     public static final Index IX_PROVIDER_PRODUCT_MAPPING_PRODUCT_ID = Internal.createIndex(DSL.name("ix_provider_product_mapping_product_id"), ProviderProductMapping.PROVIDER_PRODUCT_MAPPING, new OrderField[] { ProviderProductMapping.PROVIDER_PRODUCT_MAPPING.PRODUCT_ID }, false);
     public static final Index IX_PURCHASE_ORDER_CHECKOUT_SESSION_ID = Internal.createIndex(DSL.name("ix_purchase_order_checkout_session_id"), PurchaseOrder.PURCHASE_ORDER, new OrderField[] { PurchaseOrder.PURCHASE_ORDER.CHECKOUT_SESSION_ID }, false);

@@ -2723,14 +2723,6 @@ CREATE TABLE ingest_preflight_safe_report_records (
     CONSTRAINT chk_expires_at CHECK (expires_at IS NOT NULL)
 );
 
--- V5: Add current_revision_id to product for optimistic concurrency
-ALTER TABLE product ADD COLUMN current_revision_id VARCHAR(64);
-CREATE INDEX ix_product_current_revision ON product(project_id, current_revision_id);
-
--- V5: Add timeline_revision_id to render_job for revision pinning
-ALTER TABLE render_job ADD COLUMN timeline_revision_id VARCHAR(64);
-CREATE INDEX ix_render_job_timeline_revision ON render_job(timeline_revision_id);
-
 -- Indexes for DEV_ONLY diagnostics queries
 CREATE INDEX idx_preflight_safe_tenant_created ON ingest_preflight_safe_report_records(tenant_id, project_id, created_at DESC);
 CREATE INDEX idx_preflight_safe_tenant_product ON ingest_preflight_safe_report_records(tenant_id, project_id, raw_media_product_id);

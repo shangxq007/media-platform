@@ -7,6 +7,24 @@ public final class RenderTestSchemaFixture {
     private RenderTestSchemaFixture() {}
 
     public static void createSchema(DSLContext dsl) {
+        // Drop all tables to ensure fresh schema (handles schema evolution)
+        dsl.execute("""
+            DROP TABLE IF EXISTS
+                flyway_schema_history,
+                timeline_revision,
+                timeline_snapshot,
+                media_asset_metadata,
+                client_export_session,
+                quota_usage,
+                render_job_lease,
+                render_worker,
+                render_job_status_history,
+                render_job,
+                product,
+                project
+            CASCADE
+        """);
+
         dsl.execute("""
             CREATE TABLE IF NOT EXISTS project (
                 id varchar(64) primary key,
@@ -19,23 +37,48 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
+            CREATE TABLE IF NOT EXISTS product (
+                product_id varchar(64) primary key,
+                tenant_id varchar(64),
+                project_id varchar(64),
+                owner_asset_id varchar(64),
+                product_type varchar(32) not null,
+                representation_kind varchar(32) not null,
+                producer_type varchar(32),
+                producer_id varchar(64),
+                source_timeline_revision_id varchar(64),
+                status varchar(32) not null,
+                storage_reference_id varchar(256),
+                checksum varchar(128),
+                content_hash varchar(128),
+                mime_type varchar(64),
+                version integer not null default 1,
+                metadata_json text,
+                created_at timestamp not null,
+                updated_at timestamp not null,
+                current_revision_id varchar(64)
+            )
+        """);
+
+        dsl.execute("""
             CREATE TABLE IF NOT EXISTS render_job (
                 id varchar(64) primary key,
-                project_id varchar(64) not null,
-                tenant_id varchar(64),
-                timeline_snapshot_id varchar(64) not null,
-                profile varchar(100) not null,
-                status varchar(20) not null,
-                created_at timestamp not null,
-                updated_at timestamp with time zone,
+                project_id varchar(128) not null,
+                timeline_snapshot_id varchar(128),
+                profile varchar(128),
+                status varchar(32),
+                created_at timestamp,
                 ai_script text,
                 artifact_uri text,
                 error_message text,
+                tenant_id varchar(64),
                 pipeline_plan_json text,
                 pipeline_execution_json text,
                 base_job_id varchar(64),
-                trace_id varchar(64),
-                selected_provider varchar(100)
+                trace_id varchar(128),
+                selected_provider varchar(128),
+                timeline_revision_id varchar(64),
+                updated_at timestamp with time zone
             )
         """);
 
@@ -228,6 +271,7 @@ public final class RenderTestSchemaFixture {
                 render_worker,
                 render_job_status_history,
                 render_job,
+                product,
                 project
             RESTART IDENTITY CASCADE
         """);

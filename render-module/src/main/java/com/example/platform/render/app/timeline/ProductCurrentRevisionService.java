@@ -1,0 +1,69 @@
+package com.example.platform.render.app.timeline;
+
+import com.example.platform.render.domain.timeline.version.TimelineConflictException;
+import org.jooq.DSLContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
+
+@Service
+public class ProductCurrentRevisionService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductCurrentRevisionService.class);
+    private final DSLContext dsl;
+
+    public ProductCurrentRevisionService(DSLContext dsl) {
+        this.dsl = dsl;
+    }
+
+    /**
+     * Atomically updates the product's current revision pointer with optimistic concurrency.
+     *
+     * @param productId the product ID
+     * @param expectedCurrentRevisionId the expected current revision (null if first revision)
+     * @param newRevisionId the new revision to set as current
+     * @throws TimelineConflictException if expected != actual current revision
+     */
+    @Transactional
+    public void updateCurrentRevision(String productId, String expectedCurrentRevisionId, String newRevisionId) {
+        // Read actual current revision
+        String actualCurrentRevisionId = dsl.select(PRODUCT.CURRENT_REVISION_ID)
+                .from(PRODUCT)
+                .where(PRODUCT.PRODUCT_ID.eq(productId))
+                .fetchOne(PRODUCT.CURRENT_REVISION_ID);
+
+        // Optimistic concurrency check
+        if ((expectedCurrentRevisionId == null && actualCurrentRevisionId != null) ||
+            (expectedCurrentRevisionId != null && !expectedCurrentRevisionId.equals(actualCurrentRevisionId))) {
+            log.warn("Timeline revision conflict: product={}, expected={}, actual={}",
+                    productId, expectedCurrentRevisionId, actualCurrentRevisionId);
+            throw new TimelineConflictException(productId, expectedCurrentRevisionId, actualCurrentRevisionId);
+        }
+
+        // Update current revision pointer
+        int updated = dsl.update(PRODUCT)
+                .set(PRODUCT.CURRENT_REVISION_ID, newRevisionId)
+                .where(PRODUCT.PRODUCT_ID.eq(productId))
+                .execute();
+
+        if (updated == 0) {
+            throw new IllegalStateException("Product not found: " + productId);
+        }
+
+        log.debug("Updated product={} current revision to {}", productId, newRevisionId);
+    }
+
+    /**
+     * Reads the current revision ID for a product.
+     */
+    @Transactional(readOnly = true)
+    public String getCurrentRevisionId(String productId) {
+        return dsl.select(PRODUCT.CURRENT_REVISION_ID)
+                .from(PRODUCT)
+                .where(PRODUCT.PRODUCT_ID.eq(productId))
+                .fetchOne(PRODUCT.CURRENT_REVISION_ID);
+    }
+}

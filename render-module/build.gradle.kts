@@ -22,6 +22,7 @@ dependencies {
     api("com.yomahub:liteflow-spring-boot-starter:2.15.3.2")
     // api("org.bytedeco:javacv-platform:1.5.9") // Removed: JavaCV deprecated, use FFmpeg CLI
     api("com.fasterxml.jackson.core:jackson-databind")
+    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     compileOnly("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("software.amazon.awssdk:s3:2.29.45")

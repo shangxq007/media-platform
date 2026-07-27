@@ -149,6 +149,11 @@ public class Product extends TableImpl<ProductRecord> {
      */
     public final TableField<ProductRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
+    /**
+     * The column <code>public.product.current_revision_id</code>.
+     */
+    public final TableField<ProductRecord, String> CURRENT_REVISION_ID = createField(DSL.name("current_revision_id"), SQLDataType.VARCHAR(64), this, "");
+
     private Product(Name alias, Table<ProductRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
