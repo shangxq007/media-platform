@@ -1,0 +1,25 @@
+apiVersion: hermes.platform/v1
+kind: StorageRuntimeContract
+metadata:
+  name: opendal-runtime-contract
+  provider: opendal
+spec:
+  requiredJvmArgs:
+    - "--enable-native-access=ALL-UNNAMED"
+  supportedJava:
+    - "25"
+  supportedPlatforms:
+    - os: linux
+      arch: x86_64
+    - os: linux
+      arch: aarch64
+    - os: osx
+      arch: aarch64
+  failureClassification:
+    missingNativeAccess: STORAGE_PROVIDER_UNAVAILABLE
+    nativeLibraryLoadFailure: STORAGE_PROVIDER_UNAVAILABLE
+    unsupportedPlatform: STORAGE_NOT_IMPLEMENTED
+  smokeValidation:
+    - nativeLibraryLoad
+    - operatorCreation
+    - simpleReadWrite

@@ -39,7 +39,8 @@ include(
     "remote-render-worker",
     "social-publish-module",
     "product-layer-module",
-    "typed-schema-module"
+    "typed-schema-module",
+    "storage-provider-opendal"
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────
