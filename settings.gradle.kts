@@ -40,7 +40,8 @@ include(
     "social-publish-module",
     "product-layer-module",
     "typed-schema-module",
-    "storage-provider-opendal"
+    "storage-provider-opendal",
+    "artifact-module"
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────
