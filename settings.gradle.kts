@@ -54,6 +54,8 @@ val includeHoldModules = providers.gradleProperty("includeHoldModules")
     .map(String::toBoolean)
     .getOrElse(false)
 
+include(":platform-algorithms:graph")
+
 if (includeHoldModules) {
     include("spring-ai-adapter")
 }

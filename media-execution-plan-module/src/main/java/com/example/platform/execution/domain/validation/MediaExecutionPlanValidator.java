@@ -1,6 +1,10 @@
 package com.example.platform.execution.domain;
 
 import com.example.platform.execution.domain.operation.MediaOperation;
+import com.example.platform.execution.domain.projection.MediaExecutionGraphProjection;
+import com.example.platform.graph.api.DirectedGraphView;
+import com.example.platform.graph.result.CycleDetectionResult;
+import com.example.platform.graph.result.TopologicalOrderResult;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -10,7 +14,7 @@ import java.util.stream.Collectors;
  *
  * <p>Performs O(V+E+I+O) validation:
  * <ul>
- *   <li>Cycle detection via topological sort (Kahn's algorithm)</li>
+ *   <li>Cycle detection via topological sort (Kahn's algorithm) — delegated to graph kernel</li>
  *   <li>Duplicate step detection</li>
  *   <li>Duplicate dependency detection</li>
  *   <li>Self-dependency detection</li>
@@ -127,63 +131,21 @@ public final class MediaExecutionPlanValidator {
     }
 
     /**
-     * Detects cycles using topological sort (Kahn's algorithm).
+     * Detects cycles using the platform graph kernel.
      * O(V+E) complexity.
      *
      * @throws ExecutionPlanDomainException if a cycle is detected
      */
     public static void validateCycles(MediaExecutionPlan plan) {
-        Map<ExecutionStepId, Integer> inDegree = new HashMap<>();
-        Map<ExecutionStepId, List<ExecutionStepId>> adjList = new HashMap<>();
+        DirectedGraphView<ExecutionStepId> graph = MediaExecutionGraphProjection.fromPlan(plan).graphView();
+        CycleDetectionResult<ExecutionStepId> result = com.example.platform.graph.api.GraphAlgorithms.detectCycles(graph);
 
-        // Initialize
-        for (MediaExecutionStep step : plan.steps()) {
-            inDegree.put(step.stepId(), 0);
-            adjList.put(step.stepId(), new ArrayList<>());
-        }
-
-        // Build adjacency list and compute in-degrees
-        for (ExecutionDependency edge : plan.edges()) {
-            adjList.get(edge.fromStepId()).add(edge.toStepId());
-            inDegree.merge(edge.toStepId(), 1, Integer::sum);
-        }
-
-        // Kahn's algorithm
-        Deque<ExecutionStepId> queue = new ArrayDeque<>();
-        List<ExecutionStepId> topoOrder = new ArrayList<>();
-
-        // Start with all nodes that have in-degree 0, sorted deterministically
-        inDegree.entrySet().stream()
-                .filter(e -> e.getValue() == 0)
-                .map(Map.Entry::getKey)
-                .sorted(Comparator.comparing(ExecutionStepId::value))
-                .forEach(queue::add);
-
-        while (!queue.isEmpty()) {
-            ExecutionStepId current = queue.poll();
-            topoOrder.add(current);
-
-            List<ExecutionStepId> neighbors = adjList.get(current);
-            // Sort neighbors for deterministic processing
-            neighbors.stream()
-                    .sorted(Comparator.comparing(ExecutionStepId::value))
-                    .forEach(neighbor -> {
-                        int newDegree = inDegree.merge(neighbor, -1, Integer::sum);
-                        if (newDegree == 0) {
-                            queue.add(neighbor);
-                        }
-                    });
-        }
-
-        // Check for cycle
-        if (topoOrder.size() < plan.steps().size()) {
-            // Find nodes in the cycle
-            Set<ExecutionStepId> inTopo = new LinkedHashSet<>(topoOrder);
-            String cycleNodes = plan.steps().stream()
-                    .map(MediaExecutionStep::stepId)
-                    .filter(id -> !inTopo.contains(id))
-                    .map(ExecutionStepId::value)
-                    .collect(Collectors.joining(", "));
+        if (result.hasCycle()) {
+            String cycleNodes = result instanceof CycleDetectionResult.Cyclic<ExecutionStepId> cyclic
+                    ? cyclic.cycleNodes().stream()
+                            .map(ExecutionStepId::value)
+                            .collect(Collectors.joining(", "))
+                    : "unknown";
             throw new ExecutionPlanDomainException(
                     ExecutionPlanErrorCode.Error.builder(ExecutionPlanErrorCode.Code.EXECUTION_PLAN_CYCLE)
                             .planId(plan.planId().value())
@@ -262,39 +224,21 @@ public final class MediaExecutionPlanValidator {
      * @return ordered list of step IDs in topological order
      */
     public static List<ExecutionStepId> topologicalOrder(MediaExecutionPlan plan) {
-        Map<ExecutionStepId, Integer> inDegree = new HashMap<>();
-        Map<ExecutionStepId, List<ExecutionStepId>> adjList = new HashMap<>();
+        DirectedGraphView<ExecutionStepId> graph = MediaExecutionGraphProjection.fromPlan(plan).graphView();
+        TopologicalOrderResult<ExecutionStepId> result = com.example.platform.graph.api.GraphAlgorithms.topologicalOrder(graph);
 
-        for (MediaExecutionStep step : plan.steps()) {
-            inDegree.put(step.stepId(), 0);
-            adjList.put(step.stepId(), new ArrayList<>());
+        if (result instanceof TopologicalOrderResult.Ordered<ExecutionStepId> ordered) {
+            return ordered.order();
+        } else if (result instanceof TopologicalOrderResult.CycleDetected<ExecutionStepId> cycle) {
+            throw new ExecutionPlanDomainException(
+                    ExecutionPlanErrorCode.Error.builder(ExecutionPlanErrorCode.Code.EXECUTION_PLAN_CYCLE)
+                            .planId(plan.planId().value())
+                            .detail("Cycle detected involving steps: " +
+                                    cycle.cycleNodes().stream()
+                                            .map(ExecutionStepId::value)
+                                            .collect(Collectors.joining(", ")))
+                            .build());
         }
-
-        for (ExecutionDependency edge : plan.edges()) {
-            adjList.get(edge.fromStepId()).add(edge.toStepId());
-            inDegree.merge(edge.toStepId(), 1, Integer::sum);
-        }
-
-        // Use a sorted structure for deterministic ordering
-        TreeSet<ExecutionStepId> ready = new TreeSet<>(Comparator.comparing(ExecutionStepId::value));
-        inDegree.entrySet().stream()
-                .filter(e -> e.getValue() == 0)
-                .map(Map.Entry::getKey)
-                .forEach(ready::add);
-
-        List<ExecutionStepId> order = new ArrayList<>();
-        while (!ready.isEmpty()) {
-            ExecutionStepId current = ready.pollFirst();
-            order.add(current);
-
-            for (ExecutionStepId neighbor : adjList.get(current)) {
-                int newDegree = inDegree.merge(neighbor, -1, Integer::sum);
-                if (newDegree == 0) {
-                    ready.add(neighbor);
-                }
-            }
-        }
-
-        return List.copyOf(order);
+        throw new IllegalStateException("Unknown topological order result type");
     }
 }

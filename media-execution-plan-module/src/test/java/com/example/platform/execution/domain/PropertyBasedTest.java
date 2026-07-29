@@ -3,6 +3,7 @@ package com.example.platform.execution.domain;
 import com.example.platform.artifact.domain.ArtifactId;
 import com.example.platform.artifact.domain.ArtifactKind;
 import com.example.platform.execution.domain.operation.*;
+import com.example.platform.execution.domain.projection.MediaExecutionGraphProjection;
 import com.example.platform.render.domain.storage.digest.ContentDigest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
