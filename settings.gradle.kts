@@ -41,7 +41,8 @@ include(
     "product-layer-module",
     "typed-schema-module",
     "storage-provider-opendal",
-    "artifact-module"
+    "artifact-module",
+    "media-execution-plan-module"
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────
