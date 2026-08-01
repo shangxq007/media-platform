@@ -13,8 +13,9 @@ import org.springframework.stereotype.Component;
 /**
  * OpenCue execution environment — submits jobs via OpenCue.
  *
- * <p>Phase 1: submit/cancel/status are stub implementations.
- * No real REST/gRPC client. No frame scheduling. No workers.
+ * <p>Uses injectable OpenCueSubmissionClient seam.
+ * Validates canonical backend before submission.
+ * No static mutable state. No silent fallback.
  *
  * <p>Disabled by default (opencue.enabled=false).
  * Submit rejected when disabled. Production submit requires
@@ -48,10 +49,14 @@ public class OpenCueExecutionEnvironment implements ExecutionEnvironment {
 
     private final OpenCueProperties props;
     private final OpenCueJobSpecValidator jobSpecValidator;
+    private final OpenCueSubmissionClient submissionClient;
 
-    public OpenCueExecutionEnvironment(OpenCueProperties props, OpenCueJobSpecValidator jobSpecValidator) {
+    public OpenCueExecutionEnvironment(OpenCueProperties props,
+                                         OpenCueJobSpecValidator jobSpecValidator,
+                                         OpenCueSubmissionClient submissionClient) {
         this.props = props;
         this.jobSpecValidator = jobSpecValidator;
+        this.submissionClient = submissionClient;
     }
 
     @Override
@@ -83,18 +88,46 @@ public class OpenCueExecutionEnvironment implements ExecutionEnvironment {
                     + "Cannot submit job " + job.jobId());
         }
 
-        if (props.isStubModeEnabled()) {
-            String execId = "oc-" + System.currentTimeMillis();
-            log.info("OpenCue stub submit: job={} backend={} executionId={} (Phase 1 stub)",
-                    job.jobId(), job.backendId(), execId);
-            return execId;
+        // Validate backend is canonical before submission
+        if (!OpenCueSubmissionRequest.CANONICAL_BACKENDS.contains(
+                job.backendId() != null ? job.backendId().toLowerCase() : "")) {
+            throw new IllegalStateException("Unsupported backend: " + job.backendId()
+                    + ". OpenCue only supports canonical backends: "
+                    + OpenCueSubmissionRequest.CANONICAL_BACKENDS);
         }
 
-        log.info("OpenCue submit: job={} backend={} server={}:{}",
-                job.jobId(), job.backendId(), props.getServer(), props.getGrpcPort());
-        String execId = "oc-" + System.currentTimeMillis();
-        log.info("OpenCue executionId={} (Phase 1 — real submit deferred)", execId);
-        return execId;
+        // Delegate to submission client via submission request
+        OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, null);
+        OpenCueSubmissionResult result = submissionClient.submit(request);
+
+        if (result.isAccepted()) {
+            log.info("OpenCue submission accepted: renderJobId={} backend={} externalId={} dur={}ms",
+                    job.jobId(), job.backendId(), result.externalJobId(), result.submissionDurationMs());
+            return result.externalJobId();
+        }
+
+        if (result.isRejected()) {
+            throw new IllegalStateException("OpenCue rejected submission: " + result.error()
+                    + " — " + result.errorMessage());
+        }
+
+        // Failure
+        throw new IllegalStateException("OpenCue submission failed: " + result.error()
+                + " — " + result.errorMessage());
+    }
+
+    /**
+     * Submit via submission request directly — returns full result.
+     * Use when caller needs the acknowledgement details.
+     */
+    public OpenCueSubmissionResult submitToOpenCue(OpenCueSubmissionRequest request) {
+        if (!props.isEnabled()) {
+            return OpenCueSubmissionResult.failure(
+                    OpenCueSubmissionError.MISSING_CONFIGURATION,
+                    "OpenCue is disabled (opencue.enabled=false)",
+                    0);
+        }
+        return submissionClient.submit(request);
     }
 
     @Override

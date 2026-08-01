@@ -23,6 +23,7 @@ class OpenCueEnvironmentTest {
 
     private OpenCueProperties props;
     private OpenCueJobSpecValidator jobSpecValidator;
+    private OpenCueSubmissionClient submissionClient;
     private OpenCueExecutionEnvironment environment;
     private OpenCueEnvironmentCompiler compiler;
     private EnvironmentRuntimeService runtimeService;
@@ -33,7 +34,8 @@ class OpenCueEnvironmentTest {
     void setUp() {
         props = new OpenCueProperties();
         jobSpecValidator = new OpenCueJobSpecValidator(props);
-        environment = new OpenCueExecutionEnvironment(props, jobSpecValidator);
+        submissionClient = new DefaultOpenCueSubmissionClient(props);
+        environment = new OpenCueExecutionEnvironment(props, jobSpecValidator, submissionClient);
         compiler = new OpenCueEnvironmentCompiler(props);
         runtimeService = new EnvironmentRuntimeService(
                 List.of(environment),
