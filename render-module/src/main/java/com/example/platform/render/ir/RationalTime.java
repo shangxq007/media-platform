@@ -32,7 +32,7 @@ public record RationalTime(BigInteger numerator, long denominator) {
             throw new IllegalArgumentException("denominator must be positive, got: " + denominator);
         }
         // Freeze to canonical form
-        if (numerator.signum() != 0 && denominator > 1) {
+        if (denominator > 1) {
             BigInteger gcd = numerator.gcd(BigInteger.valueOf(denominator));
             if (gcd.compareTo(BigInteger.ONE) > 0) {
                 numerator = numerator.divide(gcd);

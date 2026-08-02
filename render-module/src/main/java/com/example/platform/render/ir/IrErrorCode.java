@@ -26,6 +26,12 @@ public enum IrErrorCode {
     /** Unsupported or unknown extension key. Retryable: false. */
     UNSUPPORTED_EXTENSION("UNSUPPORTED_EXTENSION", "Unsupported extension", false),
 
+    /** Invalid extension key or value. Retryable: false. */
+    INVALID_EXTENSION("INVALID_EXTENSION", "Invalid extension key or value", false),
+
+    /** Reference to an undeclared output spec. Retryable: false. */
+    MISSING_OUTPUT_REFERENCE("MISSING_OUTPUT_REFERENCE", "Referenced output spec not declared", false),
+
     /** Canonical serialization failed. Retryable: false. */
     CANONICALIZATION_FAILED("CANONICALIZATION_FAILED", "Canonical serialization failed", false),
 

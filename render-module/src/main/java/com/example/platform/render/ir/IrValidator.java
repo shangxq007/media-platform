@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -243,12 +244,19 @@ public final class IrValidator {
                 // Validate extensions
                 if (spec.extensions() != null) {
                     for (String key : spec.extensions().keySet()) {
+                        if (key == null) {
+                            errors.add(IrValidationError.of(
+                                IrErrorCode.INVALID_EXTENSION, path + ".extensions",
+                                "extension key must not be null"));
+                            continue;
+                        }
                         if (!key.startsWith(EXTENSION_NAMESPACE_PREFIX)) {
                             errors.add(IrValidationError.of(
                                 IrErrorCode.UNSUPPORTED_EXTENSION, path + ".extensions." + key,
                                 "unsupported extension key: " + key));
                         }
                     }
+                    validateExtensionValues(spec.extensions(), path + ".extensions", errors);
                 }
             }
         }
@@ -285,7 +293,7 @@ public final class IrValidator {
                         IrErrorCode.VALIDATION_ERROR, path + ".outputSpecId", "outputSpecId is required"));
                 } else if (!outputIds.contains(art.outputSpecId())) {
                     errors.add(IrValidationError.of(
-                        IrErrorCode.MISSING_ASSET_REFERENCE, path + ".outputSpecId",
+                        IrErrorCode.MISSING_OUTPUT_REFERENCE, path + ".outputSpecId",
                         "outputSpecId '" + art.outputSpecId() + "' not declared in outputs"));
                 }
                 if (art.filename() == null || art.filename().isBlank()) {
@@ -298,12 +306,19 @@ public final class IrValidator {
         // --- Extensions (top-level) ---
         if (ir.extensions() != null) {
             for (String key : ir.extensions().keySet()) {
+                if (key == null) {
+                    errors.add(IrValidationError.of(
+                        IrErrorCode.INVALID_EXTENSION, "$.extensions",
+                        "extension key must not be null"));
+                    continue;
+                }
                 if (!key.startsWith(EXTENSION_NAMESPACE_PREFIX)) {
                     errors.add(IrValidationError.of(
                         IrErrorCode.UNSUPPORTED_EXTENSION, "$.extensions." + key,
                         "unsupported extension key: " + key));
                 }
             }
+            validateExtensionValues(ir.extensions(), "$.extensions", errors);
         }
 
         return Collections.unmodifiableList(errors);
@@ -374,5 +389,74 @@ public final class IrValidator {
                 IrErrorCode.INVALID_TIME_VALUE, path,
                 "time value must be positive, got: " + time));
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void validateExtensionValues(
+        Map<String, Object> extensions, String path,
+        List<IrValidationError> errors
+    ) {
+        for (var entry : extensions.entrySet()) {
+            String key = entry.getKey();
+            if (key == null) continue;
+            validateExtensionValueRecursive(entry.getValue(), path + "." + key, errors);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void validateExtensionValueRecursive(
+        Object value, String path,
+        List<IrValidationError> errors
+    ) {
+        if (value == null) {
+            return;
+        }
+        if (value instanceof String s) {
+            if (s.contains("/") || s.contains("\\")) {
+                errors.add(IrValidationError.of(
+                    IrErrorCode.INVALID_EXTENSION, path,
+                    "extension value must not contain path separators: " + s));
+            }
+            if (s.contains(";") || s.contains("|") || s.contains("`")
+                || s.contains("$") || s.contains("&") || s.contains("\n")) {
+                errors.add(IrValidationError.of(
+                    IrErrorCode.INVALID_EXTENSION, path,
+                    "extension value must not contain command-injection characters"));
+            }
+            if (s.toLowerCase().contains("password") || s.toLowerCase().contains("secret")
+                || s.toLowerCase().contains("token") || s.toLowerCase().contains("api_key")
+                || s.toLowerCase().contains("key=")) {
+                errors.add(IrValidationError.of(
+                    IrErrorCode.INVALID_EXTENSION, path,
+                    "extension value must not contain credentials or secrets"));
+            }
+            return;
+        }
+        if (value instanceof Number || value instanceof Boolean) {
+            return;
+        }
+        if (value instanceof List<?> list) {
+            for (int i = 0; i < list.size(); i++) {
+                validateExtensionValueRecursive(list.get(i), path + "[" + i + "]", errors);
+            }
+            return;
+        }
+        if (value instanceof Map<?, ?> map) {
+            for (var entry : map.entrySet()) {
+                Object mapKey = entry.getKey();
+                if (!(mapKey instanceof String)) {
+                    errors.add(IrValidationError.of(
+                        IrErrorCode.INVALID_EXTENSION, path,
+                        "extension map keys must be strings"));
+                    continue;
+                }
+                validateExtensionValueRecursive(entry.getValue(),
+                    path + "." + (String) mapKey, errors);
+            }
+            return;
+        }
+        errors.add(IrValidationError.of(
+            IrErrorCode.INVALID_EXTENSION, path,
+            "unsupported extension value type: " + value.getClass().getSimpleName()));
     }
 }

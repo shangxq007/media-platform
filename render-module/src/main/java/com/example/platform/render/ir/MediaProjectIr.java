@@ -1,5 +1,7 @@
 package com.example.platform.render.ir;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,10 +35,10 @@ public record MediaProjectIr(
     public static final String SCHEMA_VERSION = "media-project/v1";
 
     public MediaProjectIr {
-        // Defensive copy of lists to prevent external mutation
         if (assets != null) assets = List.copyOf(assets);
         if (outputs != null) outputs = List.copyOf(outputs);
         if (artifacts != null) artifacts = List.copyOf(artifacts);
+        if (extensions != null) extensions = Collections.unmodifiableMap(new LinkedHashMap<>(extensions));
     }
 
     /**

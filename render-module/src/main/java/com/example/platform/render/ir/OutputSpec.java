@@ -1,5 +1,7 @@
 package com.example.platform.render.ir;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -19,5 +21,6 @@ public record OutputSpec(
         Objects.requireNonNull(id, "id must not be null");
         Objects.requireNonNull(container, "container must not be null");
         Objects.requireNonNull(videoCodec, "videoCodec must not be null");
+        if (extensions != null) extensions = Collections.unmodifiableMap(new LinkedHashMap<>(extensions));
     }
 }
