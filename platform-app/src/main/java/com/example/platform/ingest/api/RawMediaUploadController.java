@@ -2,7 +2,7 @@ package com.example.platform.ingest.api;
 
 import com.example.platform.ingest.api.dto.UploadRawMediaResponse;
 import com.example.platform.ingest.app.RawMediaUploadService;
-import com.example.platform.render.domain.product.Product;
+import com.example.platform.ingest.app.RawMediaUploadResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
@@ -68,12 +68,12 @@ public class RawMediaUploadController {
 
         try {
             byte[] bytes = file.getBytes();
-            Product product = uploadService.upload(
+            RawMediaUploadResult result = uploadService.upload(
                     tenantId, projectId, bytes, filename, resolvedContentType, displayName);
 
             log.info("Upload complete: tenant={} project={} productId={}",
-                    tenantId, projectId, product.productId());
-            return ResponseEntity.ok(UploadRawMediaResponse.success(product.productId(), product.createdAt()));
+                    tenantId, projectId, result.productId());
+            return ResponseEntity.ok(UploadRawMediaResponse.success(result.productId(), result.createdAt()));
 
         } catch (IOException e) {
             log.error("Upload failed: tenant={} project={} filename={}", tenantId, projectId, filename, e);

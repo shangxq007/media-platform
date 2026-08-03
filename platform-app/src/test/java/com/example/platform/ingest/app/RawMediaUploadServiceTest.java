@@ -4,12 +4,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.app.product.ProductRuntimeService;
+import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationCommand;
+import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationFacade;
+import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationResult;
 import com.example.platform.render.domain.asset.Asset;
-import com.example.platform.render.domain.product.Product;
-import com.example.platform.render.domain.product.ProductStatus;
-import com.example.platform.render.domain.product.ProductType;
-import com.example.platform.render.domain.product.RepresentationKind;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.StorageObjectRef;
@@ -28,13 +26,13 @@ class RawMediaUploadServiceTest {
     @Mock
     private AssetRepository assetRepository;
     @Mock
-    private ProductRuntimeService productRuntimeService;
+    private RawMediaProductRegistrationFacade productRegistrationFacade;
 
     private RawMediaUploadService service;
 
     @BeforeEach
     void setUp() {
-        service = new RawMediaUploadService(blobStorage, assetRepository, productRuntimeService);
+        service = new RawMediaUploadService(blobStorage, assetRepository, productRegistrationFacade);
     }
 
     @Test
@@ -56,33 +54,28 @@ class RawMediaUploadServiceTest {
         when(assetRepository.register(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(mockAsset);
 
-        Product mockProduct = new Product(
-                "prod-1", tenantId, projectId, "asset-1",
-                ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,
-                "user-upload", null, null, ProductStatus.REGISTERED,
-                "localFs://uploads/tenant/t1/...", null, null, contentType, 1, null,
-                Instant.now(), Instant.now());
-        when(productRuntimeService.register(any())).thenReturn(mockProduct);
+        Instant createdAt = Instant.now();
+        when(productRegistrationFacade.registerRawMedia(any()))
+                .thenReturn(new RawMediaProductRegistrationResult("prod-1", createdAt));
 
         // Act
-        Product result = service.upload(tenantId, projectId, fileBytes, filename, contentType, null);
+        RawMediaUploadResult result = service.upload(tenantId, projectId, fileBytes, filename, contentType, null);
 
         // Assert
         assertNotNull(result);
         assertEquals("prod-1", result.productId());
-        assertEquals(ProductType.RAW_MEDIA, result.productType());
-        assertEquals(ProductStatus.REGISTERED, result.status());
-        assertEquals("asset-1", result.ownerAssetId());
+        assertEquals(createdAt, result.createdAt());
 
         verify(blobStorage).put(argThat(cmd ->
                 cmd.bucket().equals("uploads") && cmd.content() == fileBytes && cmd.contentType().equals(contentType)));
         verify(assetRepository).register(eq(tenantId), eq(projectId), any(), eq("VIDEO"),
                 eq(filename), eq(5L), isNull(), isNull(), isNull(), isNull());
-        verify(productRuntimeService).register(argThat(p ->
-                p.productType() == ProductType.RAW_MEDIA
-                        && p.status() == ProductStatus.REGISTERED
-                        && p.representationKind() == RepresentationKind.MEDIA_FILE
-                        && "user-upload".equals(p.producerType())));
+        verify(productRegistrationFacade).registerRawMedia(argThat(cmd ->
+                cmd.tenantId().equals(tenantId)
+                        && cmd.projectId().equals(projectId)
+                        && cmd.assetId().equals("asset-1")
+                        && cmd.storageReferenceUri().equals("localFs://uploads/tenant/t1/...")
+                        && cmd.mimeType().equals(contentType)));
     }
 
     @Test
@@ -96,13 +89,10 @@ class RawMediaUploadServiceTest {
                 Instant.now(), Instant.now());
         when(assetRepository.register(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(mockAsset);
-        Product mockProduct = new Product(
-                "p1", "t1", "p1", "a1", ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,
-                "user-upload", null, null, ProductStatus.REGISTERED, "ref", null, null, null, 1, null,
-                Instant.now(), Instant.now());
-        when(productRuntimeService.register(any())).thenReturn(mockProduct);
+        when(productRegistrationFacade.registerRawMedia(any()))
+                .thenReturn(new RawMediaProductRegistrationResult("p1", Instant.now()));
 
-        Product result = service.upload("t1", "p1", emptyBytes, "empty", null, null);
+        RawMediaUploadResult result = service.upload("t1", "p1", emptyBytes, "empty", null, null);
         assertNotNull(result);
     }
 
