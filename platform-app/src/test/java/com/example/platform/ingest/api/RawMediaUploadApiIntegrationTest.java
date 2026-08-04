@@ -1,5 +1,7 @@
 package com.example.platform.ingest.api;
 
+import com.example.platform.render.app.input.RenderInputMaterialization;
+import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.domain.asset.Asset;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
@@ -9,7 +11,6 @@ import com.example.platform.render.infrastructure.asset.AssetRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.storage.domain.BlobStorage;
-import com.example.platform.storage.domain.StorageObjectRef;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
@@ -58,6 +59,9 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
     @Autowired
     private BlobStorage blobStorage;
 
+    @Autowired
+    private RenderInputMaterializationService materializationService;
+
     private final ObjectMapper mapper = new ObjectMapper();
     private HttpClient client;
     private String baseUrl;
@@ -91,7 +95,7 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
         Assertions.assertEquals(projectId, product.projectId());
         Assertions.assertEquals(ProductType.RAW_MEDIA, product.productType());
         Assertions.assertEquals(RepresentationKind.MEDIA_FILE, product.representationKind());
-        Assertions.assertEquals(ProductStatus.REGISTERED, product.status());
+        Assertions.assertEquals(ProductStatus.READY, product.status());
         Assertions.assertEquals("user-upload", product.producerType());
         Assertions.assertEquals(CONTENT_TYPE, product.mimeType());
         Assertions.assertNotNull(product.ownerAssetId());
@@ -109,13 +113,18 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
         Assertions.assertTrue(asset.storageKey().contains(projectId));
         Assertions.assertTrue(asset.storageKey().endsWith("/" + FILENAME));
 
-        StorageObjectRef storageRef = BlobStorage.parseUri(product.storageReferenceId()).orElseThrow();
-        Assertions.assertEquals(blobStorage.code(), storageRef.provider());
-        Assertions.assertEquals("uploads", storageRef.bucket());
-        Assertions.assertEquals(asset.storageKey(), storageRef.objectKey());
-        Optional<byte[]> storedBytes = blobStorage.get(storageRef.bucket(), storageRef.objectKey());
+        Optional<byte[]> storedBytes = blobStorage.get("uploads", asset.storageKey());
         Assertions.assertTrue(storedBytes.isPresent(), "uploaded bytes must be retrievable through BlobStorage");
         Assertions.assertArrayEquals(PAYLOAD, storedBytes.orElseThrow());
+
+        RenderInputMaterialization materialization = materializationService.materialize(
+                product.productId(), asset.id(), "clip-f2a-" + unique);
+        Assertions.assertTrue(materialization.valid(), "uploaded RAW_MEDIA must materialize: "
+                + materialization.failureReason());
+        Assertions.assertEquals(product.productId(), materialization.inputProductId());
+        Assertions.assertEquals(product.storageReferenceId(), materialization.storageReferenceId());
+        Assertions.assertTrue(materialization.materializedPath().toString().contains(asset.storageKey()));
+        Assertions.assertArrayEquals(PAYLOAD, java.nio.file.Files.readAllBytes(materialization.materializedPath()));
 
         List<Asset> assets = assetRepository.listByProject(tenantId, projectId);
         Assertions.assertEquals(1, assets.stream().filter(a -> FILENAME.equals(a.filename())).count());
