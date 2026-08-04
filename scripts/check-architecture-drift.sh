@@ -119,16 +119,16 @@ fi
 echo ""
 echo "--- Deferred Status ---"
 
-if grep -qi "opencue" AGENTS.md 2>/dev/null; then
-    pass "OpenCue reference exists in AGENTS.md"
+if grep -q "^- OpenCue: NOT_STARTED$" .hermes.md 2>/dev/null; then
+    pass "OpenCue canonical status is NOT_STARTED"
 else
-    fail "OpenCue not found in AGENTS.md"
+    fail "OpenCue canonical status is not NOT_STARTED in .hermes.md"
 fi
 
-if grep -qi "artifact.dag.*postponed\|artifact.dag.*deferred" AGENTS.md 2>/dev/null; then
-    pass "Artifact DAG remains POSTPONED/DEFERRED"
+if grep -q "^- Artifact DAG: POSTPONED$" .hermes.md 2>/dev/null; then
+    pass "Artifact DAG canonical status is POSTPONED"
 else
-    fail "Artifact DAG status not found as POSTPONED/DEFERRED"
+    fail "Artifact DAG canonical status is not POSTPONED in .hermes.md"
 fi
 
 echo ""
