@@ -2,6 +2,10 @@ package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalNormalizer;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.render.domain.timeline.version.TimelineConflictException;
 import com.example.platform.render.domain.timeline.version.TimelineRevision;
 import org.jooq.DSLContext;
@@ -35,6 +39,16 @@ public class TimelineRevisionSaveService {
     @Transactional
     public TimelineRevision saveRevision(String productId, String expectedCurrentRevisionId,
                                          TimelineDocument document, String createdBy) {
+        // NDSF-SCOPE-E1 canonical save gate: first semantic operation (F018) — before
+        // revision allocation and before every write or side effect.
+        TimelineCandidate candidate = TimelineDocumentCandidateMapper.map(productId, document);
+        TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
+        if (validation.hasFatalErrors()) {
+            throw new TimelineCanonicalRejectionException(validation.diagnostics());
+        }
+        TimelineCanonicalNormalizer.normalize(candidate)
+                .orElseThrow(() -> new TimelineCanonicalRejectionException(validation.diagnostics()));
+
         String digest = contentDigester.digest(document);
         String parentRevisionId = currentRevisionService.getCurrentRevisionId(productId);
 
