@@ -46,10 +46,8 @@ class TimelineEditorSyncServiceTest {
     void pushPersistsInternalSnapshotWhenRequested() {
         TimelineSpec spec = TimelineSpec.create("tl-push", "Push", TimelineOutputSpec.mp4_1080p30());
         String internal = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
-        when(snapshotService.save(eq("prj_1"), eq("ten_1"), anyString(), eq("internal-1.0")))
-                .thenReturn("snap_1");
         when(revisionService.recordRevision(
-                        eq("prj_1"), eq("ten_1"), eq("snap_1"), anyString(), eq("push"), isNull(), isNull(), isNull()))
+                        eq("prj_1"), eq("ten_1"), anyString(), eq("push"), isNull(), isNull(), isNull()))
                 .thenReturn(new TimelineRevisionService.RevisionInfo(
                         "trev_1",
                         "prj_1",
@@ -76,7 +74,10 @@ class TimelineEditorSyncServiceTest {
 
         assertEquals("snap_1", result.snapshotId());
         assertTrue(result.alreadyInternal());
-        verify(snapshotService).save(eq("prj_1"), eq("ten_1"), anyString(), eq("internal-1.0"));
+        // Contract G: no caller-side pre-save; the gated recordRevision persists the snapshot.
+        verify(revisionService).recordRevision(
+                eq("prj_1"), eq("ten_1"), anyString(), eq("push"), isNull(), isNull(), isNull());
+        verify(snapshotService, org.mockito.Mockito.never()).save(any(), any(), any(), any());
     }
 
     @Test

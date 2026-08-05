@@ -78,13 +78,13 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
 
         String snap1 = snapshotService.save("prj-rev", "ten-1", v1, "internal-1.0");
         TimelineRevisionService.RevisionInfo r1 =
-                revisionService.recordRevision("prj-rev", "ten-1", snap1, v1, "sync", null, null, "initial");
+                revisionService.recordRevision("prj-rev", "ten-1", v1, "sync", null, null, "initial");
 
         TimelineSpec spec2 = TimelineSpec.create("tl-rev", "Rev2", TimelineOutputSpec.mp4_1080p30());
         String v2 = writer.toJson(spec2);
         String snap2 = snapshotService.save("prj-rev", "ten-1", v2, "internal-1.0");
         TimelineRevisionService.RevisionInfo r2 =
-                revisionService.recordRevision("prj-rev", "ten-1", snap2, v2, "sync", null, null, "edit");
+                revisionService.recordRevision("prj-rev", "ten-1", v2, "sync", null, null, "edit");
 
         assertEquals(1, r1.revisionNumber());
         assertEquals(2, r2.revisionNumber());
@@ -103,7 +103,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
         String v1 = writer.toJson(spec);
         String snap1 = snapshotService.save("prj-patch", "ten-1", v1, "internal-1.0");
         TimelineRevisionService.RevisionInfo head =
-                revisionService.recordRevision("prj-patch", "ten-1", snap1, v1, "sync", null, null, "base");
+                revisionService.recordRevision("prj-patch", "ten-1", v1, "sync", null, null, "base");
 
         var noOps = revisionService.previewPatchReplay(head.id());
         assertFalse(noOps.hasPatchOps());
@@ -115,12 +115,12 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
         InternalTimelineWriter writer = new InternalTimelineWriter(new TimelineExtensionsReader());
         String v1 = writer.toJson(spec);
         String snap1 = snapshotService.save("prj-filter", "ten-1", v1, "internal-1.0");
-        revisionService.recordRevision("prj-filter", "ten-1", snap1, v1, "sync", "alice", null, "alice edit");
+        revisionService.recordRevision("prj-filter", "ten-1", v1, "sync", "alice", null, "alice edit");
 
         TimelineSpec spec2 = TimelineSpec.create("tl-filter-2", "F2", TimelineOutputSpec.mp4_1080p30());
         String v2 = writer.toJson(spec2);
         String snap2 = snapshotService.save("prj-filter", "ten-1", v2, "internal-1.0");
-        revisionService.recordRevision("prj-filter", "ten-1", snap2, v2, "ai-adopt", "bob", null, "bob adopt");
+        revisionService.recordRevision("prj-filter", "ten-1", v2, "ai-adopt", "bob", null, "bob adopt");
 
         assertEquals(1, revisionService.listHistory("prj-filter", null, "alice", null, 10).size());
         assertEquals(1, revisionService.listHistory("prj-filter", null, null, "ai-adopt", 10).size());
@@ -132,11 +132,11 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
         TimelineSpec spec = TimelineSpec.create("tl-facet", "F", TimelineOutputSpec.mp4_1080p30());
         String v1 = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
         String snap1 = snapshotService.save("prj-facet", "ten-1", v1, "internal-1.0");
-        revisionService.recordRevision("prj-facet", "ten-1", snap1, v1, "sync", "alice", null, "a");
+        revisionService.recordRevision("prj-facet", "ten-1", v1, "sync", "alice", null, "a");
         TimelineSpec spec2 = TimelineSpec.create("tl-facet-2", "F2", TimelineOutputSpec.mp4_1080p30());
         String v2 = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec2);
         String snap2 = snapshotService.save("prj-facet", "ten-1", v2, "internal-1.0");
-        revisionService.recordRevision("prj-facet", "ten-1", snap2, v2, "ai-adopt", "bob", null, "b");
+        revisionService.recordRevision("prj-facet", "ten-1", v2, "ai-adopt", "bob", null, "b");
 
         var facets = revisionService.listFacets("prj-facet");
         assertTrue(facets.sources().contains("sync"));
@@ -150,7 +150,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
         String v1 = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
         String snap1 = snapshotService.save("prj-note", "ten-1", v1, "internal-1.0");
         TimelineRevisionService.RevisionInfo head =
-                revisionService.recordRevision("prj-note", "ten-1", snap1, v1, "sync", null, null, "before");
+                revisionService.recordRevision("prj-note", "ten-1", v1, "sync", null, null, "before");
 
         var updated = revisionService.updateAnnotation(
                 "prj-note", head.id(), "  release candidate  ", List.of("review", "release"));
@@ -169,7 +169,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
         String v1 = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
         String snap1 = snapshotService.save("prj-steps", "ten-1", v1, "internal-1.0");
         TimelineRevisionService.RevisionInfo head =
-                revisionService.recordRevision("prj-steps", "ten-1", snap1, v1, "sync", null, null, "base");
+                revisionService.recordRevision("prj-steps", "ten-1", v1, "sync", null, null, "base");
 
         var steps = revisionService.previewPatchSteps(head.id());
         assertFalse(steps.hasPatchOps());

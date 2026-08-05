@@ -40,9 +40,11 @@ public class TimelineEditorSyncService {
         String storedSchema = "internal-1.0";
         TimelineRevisionService.RevisionInfo revisionInfo = null;
         if (persistSnapshot) {
-            snapshotId = timelineSnapshotService.save(projectId, tenantId, internal, storedSchema);
+            // Contract G: no pre-save; the gated recordRevision persists the governed
+            // snapshot payload inside its transaction after canonical acceptance.
             revisionInfo = timelineRevisionService.recordRevision(
-                    projectId, tenantId, snapshotId, internal, "push", null, null, null);
+                    projectId, tenantId, internal, "push", null, null, null);
+            snapshotId = revisionInfo.snapshotId();
         }
         return new PushResult(
                 internal,
@@ -99,18 +101,19 @@ public class TimelineEditorSyncService {
             List<TimelinePatchService.PatchOperation> patchOperations) {
         TimelineConversionService.PreviewResult preview = conversionService.preview(editorTimelineJson);
         String internal = preview.internalTimelineJson();
-        String snapshotId = timelineSnapshotService.save(projectId, tenantId, internal, "internal-1.0");
         String effectiveSource = resolveSyncSource(source, editSessionId);
+        // Contract G: no pre-save; the gated recordRevision persists the governed snapshot
+        // payload inside its transaction after canonical acceptance.
         TimelineRevisionService.RevisionInfo revision = timelineRevisionService.recordRevision(
                 projectId,
                 tenantId,
-                snapshotId,
                 internal,
                 effectiveSource,
                 authorUserId,
                 editSessionId,
                 message,
                 patchOperations);
+        String snapshotId = revision.snapshotId();
         String editorJson = internalToEditorConverter.toEditorJson(internal);
         return new SyncResult(
                 editorJson,
@@ -134,10 +137,11 @@ public class TimelineEditorSyncService {
     public String saveSnapshotEnsuringInternal(
             String projectId, String tenantId, String timelineJson, String requestedSchemaVersion) {
         String internal = conversionService.ensureInternalTimelineJson(timelineJson);
-        String snapshotId = timelineSnapshotService.save(projectId, tenantId, internal, "internal-1.0");
-        timelineRevisionService.recordRevision(
-                projectId, tenantId, snapshotId, internal, "snapshot", null, null, null);
-        return snapshotId;
+        // Contract G: no pre-save; the gated recordRevision persists the governed snapshot
+        // payload inside its transaction after canonical acceptance.
+        TimelineRevisionService.RevisionInfo revisionInfo = timelineRevisionService.recordRevision(
+                projectId, tenantId, internal, "snapshot", null, null, null);
+        return revisionInfo.snapshotId();
     }
 
     private PullResult pullSnapshot(SnapshotInfo info, TimelineRevisionService.RevisionInfo headRevision) {

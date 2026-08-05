@@ -3,6 +3,10 @@ package com.example.platform.render.app.timeline;
 import com.example.platform.render.app.TimelinePatchService;
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.app.TimelineSnapshotService.SnapshotInfo;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalNormalizer;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
@@ -55,7 +59,6 @@ public class TimelineRevisionService {
     public RevisionInfo recordRevision(
             String projectId,
             String tenantId,
-            String snapshotId,
             String internalTimelineJson,
             String source,
             String authorUserId,
@@ -64,7 +67,6 @@ public class TimelineRevisionService {
         return recordRevision(
                 projectId,
                 tenantId,
-                snapshotId,
                 internalTimelineJson,
                 source,
                 authorUserId,
@@ -73,11 +75,18 @@ public class TimelineRevisionService {
                 null);
     }
 
+    /**
+     * Contract G (PTCSG_RECORD_REVISION_CANONICAL_GATE_E1B_V1): the internal-1.0 write
+     * boundary with the E1b canonical gate as its FIRST semantic operation, before any
+     * dedup decision, allocation, snapshot write, or revision write. The governed snapshot
+     * payload is persisted inside this gated transaction AFTER canonical acceptance; the
+     * snapshot identifier is allocated after acceptance, so a rejection writes zero
+     * snapshot rows, zero revision rows, and leaves no revision gap.
+     */
     @Transactional
     public RevisionInfo recordRevision(
             String projectId,
             String tenantId,
-            String snapshotId,
             String internalTimelineJson,
             String source,
             String authorUserId,
@@ -85,6 +94,16 @@ public class TimelineRevisionService {
             String message,
             List<TimelinePatchService.PatchOperation> patchOperations) {
         String effectiveTenant = tenantId != null ? tenantId : TenantContext.get();
+
+        // E1b canonical gate - first semantic operation (before dedup, before any write).
+        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map(projectId, internalTimelineJson);
+        TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
+        if (validation.hasFatalErrors()) {
+            throw new TimelineCanonicalRejectionException(validation.diagnostics());
+        }
+        TimelineCanonicalNormalizer.normalize(candidate)
+                .orElseThrow(() -> new TimelineCanonicalRejectionException(validation.diagnostics()));
+
         String contentHash = contentHasher.hashInternalTimeline(internalTimelineJson);
         int internalRevision = parseInternalRevision(internalTimelineJson);
 
@@ -98,6 +117,10 @@ public class TimelineRevisionService {
         String parentPayload = head.flatMap(h -> snapshotService.findPayload(h.snapshotId())).orElse(null);
         String changeSummaryJson = diffService.summarizeJson(parentPayload, internalTimelineJson);
         String patchOpsJson = TimelinePatchOpsJson.toJson(patchOperations);
+
+        // Snapshot payload persistence INSIDE the gated transaction, after canonical
+        // acceptance (rejection never writes a snapshot row).
+        String snapshotId = snapshotService.save(projectId, effectiveTenant, internalTimelineJson, "internal-1.0");
 
         int revisionNumber = revisionRepository.nextRevisionNumber(projectId);
         String revisionId = Ids.newId("trev");
@@ -228,11 +251,9 @@ public class TimelineRevisionService {
             log.warn("Backfill skipped: cannot parse snapshot for project={}", projectId);
             return Optional.empty();
         }
-        String snapId = latest.get().id();
         RevisionInfo info = recordRevision(
                 projectId,
                 tenantId,
-                snapId,
                 internal,
                 "backfill",
                 null,
@@ -371,12 +392,12 @@ public class TimelineRevisionService {
             String editSessionId,
             String proposalId,
             List<TimelinePatchService.PatchOperation> patchOperations) {
-        String snapshotId = snapshotService.save(projectId, tenantId, internalTimelineJson, "internal-1.0");
+        // Contract G: no pre-save; the gated recordRevision persists the governed snapshot
+        // payload inside its transaction AFTER canonical acceptance.
         String message = proposalId != null ? "AI proposal adopted: " + proposalId : "AI edit applied";
         return recordRevision(
                 projectId,
                 tenantId,
-                snapshotId,
                 internalTimelineJson,
                 "ai-adopt",
                 null,
@@ -412,12 +433,12 @@ public class TimelineRevisionService {
                 .findPayload(target.snapshotId())
                 .orElseThrow(() -> new IllegalArgumentException("Snapshot missing for revision: " + revisionId));
 
-        String newSnapshotId = snapshotService.save(projectId, tenantId, payload, "internal-1.0");
+        // Contract G: no pre-save; the gated recordRevision persists the restored payload's
+        // governed snapshot row inside its transaction AFTER canonical acceptance.
         String message = "Restored from revision #" + target.revisionNumber();
         RevisionInfo newHead = recordRevision(
                 projectId,
                 tenantId,
-                newSnapshotId,
                 payload,
                 "rollback",
                 authorUserId,
