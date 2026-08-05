@@ -9,6 +9,7 @@ import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanoni
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.render.domain.timeline.version.TimelineConflictException;
 import com.example.platform.render.domain.timeline.version.TimelineRevision;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
@@ -271,5 +273,52 @@ public class TimelineRevisionSaveService {
                 null, contentHash,
                 createdAt != null ? createdAt.atZone(java.time.ZoneId.systemDefault()).toInstant() : null,
                 authorUserId);
+    }
+
+    /**
+     * PPHR-BIC (PATCH_APPLICATION_PAYLOAD_HYDRATION_DEFECT): resolve the governed
+     * snapshot payload for a revision through the existing sole snapshot authority
+     * ({@link TimelineSnapshotService}) and deserialize it with the governed payload
+     * codec ({@link TimelineDocumentJsonSerializer}).
+     *
+     * <p>The Patch application service consumes the original governed
+     * {@link TimelineDocument} through this helper BEFORE invoking the Patch engine.
+     * {@code findById} keeps its documented reconstruction contract (canonicalTimeline
+     * may be null when loading without the full document); the hydration is explicit
+     * and local to the Patch flow.</p>
+     *
+     * <p>Returns {@link Optional#empty()} when the revision has no snapshot payload row
+     * (legacy/GitV1 rows), the payload is missing, or the payload is malformed — the
+     * caller keeps the fail-closed TIMELINE_PATCH_PAYLOAD_INVALID classification. No
+     * snapshot, revision, or current-revision write ever occurs on this path.</p>
+     */
+    @Transactional(readOnly = true)
+    public Optional<TimelineDocument> findPayloadDocument(String revisionId) {
+        if (timelineSnapshotService == null) {
+            // Legacy 3-arg wiring (no snapshot authority): no governed payload exists.
+            return Optional.empty();
+        }
+        String snapshotId = dsl.select(TIMELINE_REVISION.SNAPSHOT_ID)
+                .from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.ID.eq(revisionId))
+                .fetchOne(TIMELINE_REVISION.SNAPSHOT_ID);
+        if (snapshotId == null || snapshotId.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<String> payload = timelineSnapshotService.findPayload(snapshotId);
+        if (payload.isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            TimelineDocument document = TimelineDocumentJsonSerializer.mapper()
+                    .readerFor(TimelineDocument.class)
+                    .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                    .readValue(payload.get());
+            return Optional.ofNullable(document);
+        } catch (Exception e) {
+            // Malformed governed payload: fail closed (caller returns PAYLOAD_INVALID).
+            log.warn("Failed to deserialize governed payload for revision {}: {}", revisionId, e.getMessage());
+            return Optional.empty();
+        }
     }
 }

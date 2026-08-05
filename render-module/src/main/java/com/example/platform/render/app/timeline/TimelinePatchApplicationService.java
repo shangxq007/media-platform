@@ -73,8 +73,12 @@ public class TimelinePatchApplicationService {
                     "Schema version incompatible", null, null));
         }
 
-        // Load canonical timeline
-        TimelineDocument baseDocument = baseRevision.canonicalTimeline();
+        // PPHR-BIC: resolve the governed persisted Timeline payload through the existing
+        // snapshot authority (TimelineSnapshotService via TimelineRevisionSaveService)
+        // before invoking the Patch engine. findById intentionally does not hydrate
+        // canonicalTimeline; the hydration is explicit and local to the Patch flow.
+        TimelineDocument baseDocument = revisionSaveService.findPayloadDocument(patch.baseRevisionId())
+                .orElse(null);
         if (baseDocument == null) {
             return PatchApplyResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
                     "Base revision has no canonical timeline", null, null));
@@ -129,8 +133,10 @@ public class TimelinePatchApplicationService {
                     "Base content digest mismatch", null, null));
         }
 
-        // Load canonical timeline
-        TimelineDocument baseDocument = baseRevision.canonicalTimeline();
+        // PPHR-BIC: resolve the governed persisted Timeline payload through the existing
+        // snapshot authority before invoking the Patch engine (preview: dry run only).
+        TimelineDocument baseDocument = revisionSaveService.findPayloadDocument(patch.baseRevisionId())
+                .orElse(null);
         if (baseDocument == null) {
             return PatchPreviewResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
                     "Base revision has no canonical timeline", null, null));
