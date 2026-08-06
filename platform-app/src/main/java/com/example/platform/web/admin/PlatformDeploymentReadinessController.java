@@ -30,6 +30,7 @@ public class PlatformDeploymentReadinessController {
     private final AppTemporalProperties temporalProperties;
     private final TenantLitellmKeyService litellmKeyService;
     private final TenantLitellmKeyVaultMigrationService litellmKeyVaultMigrationService;
+    private final java.util.Optional<io.temporal.worker.WorkerFactory> workerFactory;
 
     @Value("${platform.environment:dev}")
     private String platformEnvironment;
@@ -42,12 +43,14 @@ public class PlatformDeploymentReadinessController {
             RenderCacheProperties renderCacheProperties,
             TenantLitellmKeyService litellmKeyService,
             TenantLitellmKeyVaultMigrationService litellmKeyVaultMigrationService,
-            @Autowired(required = false) AppTemporalProperties temporalProperties) {
+            @Autowired(required = false) AppTemporalProperties temporalProperties,
+            @Autowired(required = false) io.temporal.worker.WorkerFactory workerFactory) {
         this.storageS3Properties = storageS3Properties;
         this.renderCacheProperties = renderCacheProperties;
         this.litellmKeyService = litellmKeyService;
         this.litellmKeyVaultMigrationService = litellmKeyVaultMigrationService;
         this.temporalProperties = temporalProperties != null ? temporalProperties : new AppTemporalProperties();
+        this.workerFactory = java.util.Optional.ofNullable(workerFactory);
     }
 
     @PostMapping("/migrate/litellm-keys-to-vault")
@@ -65,7 +68,18 @@ public class PlatformDeploymentReadinessController {
         temporal.put("namespace", temporalProperties.resolveNamespace());
         temporal.put("taskQueue", temporalProperties.getTaskQueue());
         temporal.put("workerRequired", temporalProperties.isWorkerRequired());
+        temporal.put("failOnMissingWorker", temporalProperties.isFailOnMissingWorker());
         temporal.put("executionModeHint", temporalProperties.isEnabled() ? "temporal" : "local");
+        // W1-GAP-002 (frozen contract TEPHV1 CONTRACT_V1): when Temporal is
+        // enabled, readiness reflects actual worker health (WorkerFactory
+        // present, started and not shutdown) instead of reporting ready
+        // unconditionally.
+        boolean temporalEnabled = temporalProperties.isEnabled();
+        boolean workerHealthy = workerFactory
+                .map(f -> f.isStarted() && !f.isShutdown())
+                .orElse(false);
+        temporal.put("workerHealthy", workerHealthy);
+        temporal.put("workerFactoryPresent", workerFactory.isPresent());
 
         Map<String, Object> storage = new LinkedHashMap<>();
         storage.put("s3Enabled", storageS3Properties.isEnabled());
@@ -86,7 +100,9 @@ public class PlatformDeploymentReadinessController {
 
         boolean storageReady = storageS3Properties.isEnabled();
         boolean cacheReady = renderCacheProperties.isRemoteEnabled() && renderCacheProperties.isUploadEnabled();
-        boolean temporalReady = !temporalProperties.isEnabled() || temporalProperties.isEnabled();
+        // W1-GAP-002: when Temporal is enabled, temporalConfigured requires a
+        // healthy started worker; when disabled, it is trivially satisfied.
+        boolean temporalReady = !temporalEnabled || workerHealthy;
         boolean aiReady = !openAiProviderEnabled || litellmKeyService.isTenantVirtualKeysEnabled();
 
         return new ReadinessReport(
