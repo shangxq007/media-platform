@@ -3,6 +3,7 @@ package com.example.platform.render.app;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
+import com.example.platform.render.api.port.RenderJobCancellationContinuation;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
@@ -15,6 +16,7 @@ import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,15 +27,30 @@ public class RenderJobService {
     private final NotificationEventPublisher publisher;
     private final RenderJobStateMachine stateMachine;
     private final RenderJobStatusHistoryRepository historyRepository;
+    private final RenderJobCancellationContinuation cancellationContinuation;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public RenderJobService(RenderJobRepository renderJobRepository, RenderPolicyEngine policyEngine,
             NotificationEventPublisher publisher,
-            RenderJobStatusHistoryRepository historyRepository) {
+            RenderJobStatusHistoryRepository historyRepository,
+            @Autowired(required = false) RenderJobCancellationContinuation cancellationContinuation) {
         this.renderJobRepository = renderJobRepository;
         this.policyEngine = policyEngine;
         this.publisher = publisher;
         this.historyRepository = historyRepository;
         this.stateMachine = new RenderJobStateMachine();
+        this.cancellationContinuation = cancellationContinuation;
+    }
+
+    /**
+     * Backward-compatible constructor (existing tests / fakes that do not wire
+     * the optional cancellation continuation). The continuation remains
+     * optional: local mode and legacy call sites behave exactly as before.
+     */
+    public RenderJobService(RenderJobRepository renderJobRepository, RenderPolicyEngine policyEngine,
+            NotificationEventPublisher publisher,
+            RenderJobStatusHistoryRepository historyRepository) {
+        this(renderJobRepository, policyEngine, publisher, historyRepository, null);
     }
 
     public RenderJobResponse create(CreateRenderJobRequest request) {
@@ -104,6 +121,12 @@ public class RenderJobService {
 
         renderJobRepository.updateStatus(jobId, RenderJobStatus.CANCELLED.name());
         historyRepository.record(jobId, job.status(), RenderJobStatus.CANCELLED.name(), "User cancelled", null);
+        // W1-GAP-006 (frozen contract TEPHV1 CONTRACT_V1): propagate the
+        // application cancellation to the durable execution mechanism
+        // (Temporal workflow cancel in temporal mode; no-op in local mode).
+        if (cancellationContinuation != null) {
+            cancellationContinuation.cancelAfterJobCancelled(tenantId, jobId);
+        }
         return getById(jobId);
     }
 
