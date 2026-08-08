@@ -2,6 +2,12 @@ package com.example.platform.quota.domain;
 
 import java.time.Instant;
 
+/**
+ * @deprecated EUMF-V1: semantic authority MERGED into entitlement-module Quota Authority
+ *             (UCUO-ADR-009); physical retirement DEFERRED to PMPR-DDHV1. In-memory engine
+ *             retained for existing render consumers this task.
+ */
+@Deprecated
 public record QuotaBucket(
         String id,
         String tenantId,

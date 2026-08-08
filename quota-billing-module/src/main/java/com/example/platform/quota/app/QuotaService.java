@@ -10,6 +10,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * @deprecated EUMF-V1: semantic authority MERGED into entitlement-module Quota Authority
+ *             (UCUO-ADR-009); physical retirement DEFERRED to PMPR-DDHV1. In-memory engine
+ *             retained for existing render consumers this task.
+ */
+@Deprecated
 @Service
 public class QuotaService {
 
