@@ -46,6 +46,12 @@ public class BuiltinDataInitializer {
         createPermIfNotExists("navigation.manage", "Manage navigation", "Manage workspace navigation items", "NAVIGATION");
         createPermIfNotExists("notification.manage", "Manage notifications", "Manage notification subscriptions and settings", "NOTIFICATION");
         createPermIfNotExists("social.publish", "Social publish", "Publish to social media platforms", "SOCIAL");
+
+        // APPD-CHV1: W2 workflow-definition authorization keys (typed, frozen vocabulary).
+        createPermIfNotExists("workflow-definition.read", "Read workflow definition", "Read/list/get workflow definitions", "WORKFLOW");
+        createPermIfNotExists("workflow-definition.edit", "Edit workflow definition", "Create and edit workflow definitions", "WORKFLOW");
+        createPermIfNotExists("workflow-definition.publish", "Publish workflow definition", "Publish a validated workflow definition", "WORKFLOW");
+        createPermIfNotExists("workflow-definition.archive", "Archive workflow definition", "Archive a workflow definition", "WORKFLOW");
     }
 
     private void initRoles() {
@@ -57,6 +63,16 @@ public class BuiltinDataInitializer {
         linkRolePermissionIfNotExists("ADMIN", "WRITE");
         linkRolePermissionIfNotExists("EDITOR", "WRITE");
         linkRolePermissionIfNotExists("VIEWER", "render.submit");
+
+        // APPD-CHV1: W2 role → permission mappings (tenant owner/editor/admin may publish;
+        // member may read; viewer baseline).
+        linkRolePermissionIfNotExists("ADMIN", "workflow-definition.read");
+        linkRolePermissionIfNotExists("ADMIN", "workflow-definition.edit");
+        linkRolePermissionIfNotExists("ADMIN", "workflow-definition.publish");
+        linkRolePermissionIfNotExists("ADMIN", "workflow-definition.archive");
+        linkRolePermissionIfNotExists("EDITOR", "workflow-definition.read");
+        linkRolePermissionIfNotExists("EDITOR", "workflow-definition.edit");
+        linkRolePermissionIfNotExists("VIEWER", "workflow-definition.read");
     }
 
     private void linkRolePermissionIfNotExists(String roleKey, String permissionKey) {

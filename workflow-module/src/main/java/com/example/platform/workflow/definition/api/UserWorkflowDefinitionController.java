@@ -1,5 +1,14 @@
 package com.example.platform.workflow.definition.api;
 
+import com.example.platform.shared.authorization.AuthorizationActions;
+import com.example.platform.shared.authorization.AuthorizationContext;
+import com.example.platform.shared.authorization.AuthorizationDecisionPort;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
+import com.example.platform.shared.authorization.AuthorizationRequest;
+import com.example.platform.shared.authorization.AuthorizationResourceType;
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.shared.authorization.AuthorizableResourceRef;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionArchiveRequest;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionCreateRequest;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionCreateVersionRequest;
@@ -35,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * W2 V1 public API — exactly the 9 frozen routes under /api/v1
@@ -44,17 +54,22 @@ import java.util.Map;
  * frozen WORKFLOW-<status>-<seq> errorCode property (platform GlobalException
  * Handler response shape).
  *
- * <p>Authorization (authorization-contract.tsv, module-boundary reconciliation
- * recorded in authorization-implementation-verification.txt): the platform
- * security filter layer (platform-app ApiKeyAuthFilter / OAuth2 / permit-all
- * configuration) is the authentication gate, exactly as for every other
- * module-owned controller (RenderController/SchedulerController convention).
- * The controller treats the path tenantId as authoritative and the service +
- * repository enforce tenant scoping on every operation; cross-tenant access
- * surfaces as 404 (no existence leak). Direct PermissionService use is not
- * possible inside workflow-module because the frozen Modulith boundary
- * (package-info allowedDependencies) excludes identity-access-module; the
- * reconciliation is documented in the Stage 2 evidence.
+ * <p><strong>Authorization (APPD-CHV1):</strong> each of the nine operations is
+ * guarded at the application boundary by the canonical
+ * {@link AuthorizationDecisionPort} (resolved here through the shared-kernel
+ * {@link CanonicalActorResolver} port). The frozen Modulith boundary of
+ * workflow-module excludes identity-access-module, so the controller depends only
+ * on the shared-kernel authorization contract — the RBAC-backed
+ * {@code AuthorizationDecisionPort} implementation is injected at runtime. The
+ * path {@code tenantId} is treated as authoritative for the resource; the
+ * authorization layer enforces the tenant-boundary default-deny, and cross-tenant
+ * denial is surfaced as 404 (no existence leak), consistent with the service +
+ * repository tenant scoping underneath.</p>
+ *
+ * <p>When no authenticated actor is present (e.g. the platform security filter
+ * layer is disabled in dev/test profiles), authorization is skipped so the
+ * existing unauthenticated behavior is preserved — an absent actor is never
+ * treated as SYSTEM.</p>
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -67,9 +82,52 @@ public class UserWorkflowDefinitionController {
     public static final String PERMISSION_READ = "workflow-definition.read";
 
     private final UserWorkflowDefinitionService service;
+    private final CanonicalActorResolver actorResolver;
+    private final AuthorizationDecisionPort authorizationPort;
 
-    public UserWorkflowDefinitionController(UserWorkflowDefinitionService service) {
+    public UserWorkflowDefinitionController(UserWorkflowDefinitionService service,
+                                             CanonicalActorResolver actorResolver,
+                                             AuthorizationDecisionPort authorizationPort) {
         this.service = service;
+        this.actorResolver = actorResolver;
+        this.authorizationPort = authorizationPort;
+    }
+
+    // ── authorization boundary ─────────────────────────────────────────────
+
+    /**
+     * Enforce authorization for {@code action} on the given resource scope.
+     *
+     * <p>If no authenticated actor resolves (security filter disabled), the call
+     * proceeds unguarded — preserving dev/test behavior. If an actor is present but
+     * denied, a {@link AuthorizationDeniedException} is thrown: a tenant-boundary
+     * (cross-tenant) denial is translated to the existing 404
+     * {@code DEFINITION_NOT_FOUND} so existence is never leaked across tenants;
+     * any other denial surfaces as 403.</p>
+     */
+    private void authorize(String tenantId, AuthorizationActions action, String resourceId) {
+        Optional<CanonicalActor> actor = actorResolver.resolveCurrentActor();
+        if (actor.isEmpty()) {
+            return;
+        }
+        AuthorizableResourceRef resource = new AuthorizableResourceRef(
+                AuthorizationResourceType.WORKFLOW_DEFINITION, resourceId, tenantId);
+        AuthorizationRequest request = new AuthorizationRequest(
+                actor.get(), action.action(), resource,
+                new AuthorizationContext("web"));
+        try {
+            authorizationPort.requireAuthorized(request);
+        } catch (AuthorizationDeniedException ex) {
+            if (ex.isTenantBoundary()) {
+                throw new UserWorkflowException(UserWorkflowErrorCode.Code.DEFINITION_NOT_FOUND,
+                        "definition not found: " + (resourceId != null ? resourceId : "<new>"));
+            }
+            throw ex;
+        }
+    }
+
+    private void authorize(String tenantId, AuthorizationActions action) {
+        authorize(tenantId, action, null);
     }
 
     // ── CREATE ─────────────────────────────────────────────────────────────
@@ -78,6 +136,7 @@ public class UserWorkflowDefinitionController {
     public ResponseEntity<UserWorkflowDefinitionDto> create(
             @PathVariable String tenantId,
             @RequestBody UserWorkflowDefinitionCreateRequest request) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_EDIT);
         UserWorkflowDefinition created = service.create(
                 tenantId, request.projectId(), request.name(), request.description(),
                 toNodes(request), toEdges(request.edges()),
@@ -92,6 +151,7 @@ public class UserWorkflowDefinitionController {
     public List<UserWorkflowDefinitionDto> list(
             @PathVariable String tenantId,
             @RequestParam(required = false) String projectId) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_READ);
         return service.list(tenantId, projectId).stream()
                 .map(UserWorkflowDefinitionDto::from)
                 .toList();
@@ -103,6 +163,7 @@ public class UserWorkflowDefinitionController {
     public UserWorkflowDefinitionDto getLatest(
             @PathVariable String tenantId,
             @PathVariable String definitionId) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_READ, definitionId);
         return UserWorkflowDefinitionDto.from(
                 service.get(tenantId, UserWorkflowDefinitionId.of(definitionId)));
     }
@@ -114,6 +175,7 @@ public class UserWorkflowDefinitionController {
             @PathVariable String tenantId,
             @PathVariable String definitionId,
             @PathVariable int versionNumber) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_READ, definitionId);
         return UserWorkflowDefinitionDto.from(
                 service.getVersion(tenantId, UserWorkflowDefinitionId.of(definitionId),
                         UserWorkflowDefinitionVersion.of(versionNumber)));
@@ -127,6 +189,7 @@ public class UserWorkflowDefinitionController {
             @PathVariable String definitionId,
             @PathVariable int versionNumber,
             @RequestBody UserWorkflowDefinitionUpdateRequest request) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_EDIT, definitionId);
         UserWorkflowDefinition updated = service.updateDraft(
                 tenantId, UserWorkflowDefinitionId.of(definitionId),
                 UserWorkflowDefinitionVersion.of(versionNumber),
@@ -145,6 +208,7 @@ public class UserWorkflowDefinitionController {
             @PathVariable String definitionId,
             @PathVariable int versionNumber,
             @RequestBody(required = false) UserWorkflowDefinitionValidateRequest request) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_EDIT, definitionId);
         return service.validate(tenantId, UserWorkflowDefinitionId.of(definitionId),
                 UserWorkflowDefinitionVersion.of(versionNumber), principalId());
     }
@@ -157,6 +221,7 @@ public class UserWorkflowDefinitionController {
             @PathVariable String definitionId,
             @PathVariable int versionNumber,
             @RequestBody UserWorkflowDefinitionPublishRequest request) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_PUBLISH, definitionId);
         return UserWorkflowDefinitionDto.from(service.publish(
                 tenantId, UserWorkflowDefinitionId.of(definitionId),
                 UserWorkflowDefinitionVersion.of(versionNumber),
@@ -170,6 +235,7 @@ public class UserWorkflowDefinitionController {
             @PathVariable String tenantId,
             @PathVariable String definitionId,
             @RequestBody(required = false) UserWorkflowDefinitionCreateVersionRequest request) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_EDIT, definitionId);
         UserWorkflowDefinition next = service.createVersion(
                 tenantId, UserWorkflowDefinitionId.of(definitionId),
                 request == null ? null : request.sourceVersion(), principalId());
@@ -184,6 +250,7 @@ public class UserWorkflowDefinitionController {
             @PathVariable String definitionId,
             @PathVariable int versionNumber,
             @RequestBody UserWorkflowDefinitionArchiveRequest request) {
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_ARCHIVE, definitionId);
         return UserWorkflowDefinitionDto.from(service.archive(
                 tenantId, UserWorkflowDefinitionId.of(definitionId),
                 UserWorkflowDefinitionVersion.of(versionNumber),
