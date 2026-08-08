@@ -1,0 +1,74 @@
+# Manual DataSource pool usage inventory (PTEH-V1-MC4IC).
+# Every createDataSource() call site in the repo, classified by the concurrent-connection
+# demand of its transaction topology. Contract V4 recognizes two manual pool profiles:
+#   SIMPLE     -> ordinary profile, createDataSource()     = 2/0  (default)
+#   TX_HEAVY   -> createDataSource(TX_HEAVY_MAX_POOL_SIZE) = 3/0  (REQUIRES_NEW / nested tx /
+#                non-Spring-bound jOOQ-JDBC acquisition / bounded async tx demand)
+# No site in this repo requires demand > 3 (would be a BLOCK condition).
+#
+# path	class	usage-type	justification
+artifact-catalog-module/src/test/java/com/example/platform/artifact/app/ArtifactCatalogServiceTest.java	ArtifactCatalogServiceTest	SIMPLE	plain repository reads/writes via a single jOOQ DSL; no nested/REQUIRES_NEW transaction
+artifact-catalog-module/src/test/java/com/example/platform/artifact/app/ArtifactGcServiceTest.java	ArtifactGcServiceTest	SIMPLE	single DSL, repository lifecycle operations; no concurrent transaction demand
+artifact-catalog-module/src/test/java/com/example/platform/artifact/app/ArtifactLifecycleServiceTest.java	ArtifactLifecycleServiceTest	SIMPLE	single DSL, lifecycle repository calls; no nested transaction
+audit-compliance-module/src/test/java/com/example/platform/audit/app/AuditCategoryBackfillTest.java	AuditCategoryBackfillTest	SIMPLE	single DSL backfill; no concurrent tx
+audit-compliance-module/src/test/java/com/example/platform/audit/app/AuditServiceTest.java	AuditServiceTest	SIMPLE	single DSL audit writes; no nested transaction
+billing-module/src/test/java/com/example/platform/billing/app/BillingCycleServiceTest.java	BillingCycleServiceTest	SIMPLE	single DSL; billing cycle repository; no concurrent tx
+billing-module/src/test/java/com/example/platform/billing/app/BillingLedgerServiceTest.java	BillingLedgerServiceTest	SIMPLE	single DSL ledger repository; no nested tx
+billing-module/src/test/java/com/example/platform/billing/app/CreditWalletServiceTest.java	CreditWalletServiceTest	SIMPLE	single DSL wallet repository; no nested tx
+billing-module/src/test/java/com/example/platform/billing/app/SubscriptionBillingServiceTest.java	SubscriptionBillingServiceTest	SIMPLE	single DSL subscription repository; no nested tx
+billing-module/src/test/java/com/example/platform/billing/infrastructure/CreditWalletJdbcRepositoryTest.java	CreditWalletJdbcRepositoryTest	SIMPLE	single DSL JDBC repository; no nested tx
+datasource-module/src/test/java/com/example/platform/datasource/DslContextRegistryTest.java	DslContextRegistryTest	SIMPLE	single DSL registry test; no concurrent tx
+delivery-module/src/test/java/com/example/platform/delivery/app/DeliveryDestinationUriIndexServiceTest.java	DeliveryDestinationUriIndexServiceTest	SIMPLE	single DSL; no nested tx
+delivery-module/src/test/java/com/example/platform/delivery/app/DeliveryStorageUriReferenceContributorTest.java	DeliveryStorageUriReferenceContributorTest	SIMPLE	single DSL; no nested tx
+federation-query-module/src/test/java/com/example/platform/federation/nlq/infrastructure/NlqJdbcRepositoryTest.java	NlqJdbcRepositoryTest	SIMPLE	single DSL JDBC repository; no nested tx
+identity-access-module/src/test/java/com/example/platform/identity/app/ApiKeyRepositoryTest.java	ApiKeyRepositoryTest	SIMPLE	single DSL repository; no nested tx
+identity-access-module/src/test/java/com/example/platform/identity/app/IdentityAccessServiceTest.java	IdentityAccessServiceTest	SIMPLE	single DSL; service reads; no nested tx
+identity-access-module/src/test/java/com/example/platform/identity/app/MultiTenancyIsolationTest.java	MultiTenancyIsolationTest	SIMPLE	single DSL, schema isolation check via JDBC metadata; no concurrent tx
+identity-access-module/src/test/java/com/example/platform/identity/app/ProjectRepositoryTest.java	ProjectRepositoryTest	SIMPLE	single DSL repository; no nested tx
+identity-access-module/src/test/java/com/example/platform/identity/app/TenantRepositoryTest.java	TenantRepositoryTest	SIMPLE	single DSL repository; no nested tx
+identity-access-module/src/test/java/com/example/platform/identity/app/UserRepositoryTest.java	UserRepositoryTest	SIMPLE	single DSL repository; no nested tx
+identity-access-module/src/test/java/com/example/platform/identity/infrastructure/RoleRepositoryTest.java	RoleRepositoryTest	SIMPLE	single DSL repository; no nested tx
+identity-access-module/src/test/java/com/example/platform/identity/infrastructure/WorkspaceRepositoryTest.java	WorkspaceRepositoryTest	SIMPLE	single DSL repository; no nested tx
+identity-access-module/src/test/java/com/example/platform/identity/infrastructure/WorkspaceMemberRepositoryTest.java	WorkspaceMemberRepositoryTest	SIMPLE	single DSL repository; no nested tx
+notification-module/src/test/java/com/example/platform/notification/app/NotificationDeliveryRepositoryTest.java	NotificationDeliveryRepositoryTest	SIMPLE	single DSL repository; no nested tx
+notification-module/src/test/java/com/example/platform/notification/app/NotificationEventCatalogServiceTest.java	NotificationEventCatalogServiceTest	SIMPLE	single DSL; no nested tx
+notification-module/src/test/java/com/example/platform/notification/app/NotificationEventHandlerTest.java	NotificationEventHandlerTest	SIMPLE	single DSL event handling; no nested tx
+notification-module/src/test/java/com/example/platform/notification/app/NotificationSubscriptionServiceTest.java	NotificationSubscriptionServiceTest	SIMPLE	single DSL subscription service; no nested tx
+notification-module/src/test/java/com/example/platform/notification/app/NotificationTemplateServiceTest.java	NotificationTemplateServiceTest	SIMPLE	single DSL template service; no nested tx
+notification-module/src/test/java/com/example/platform/notification/app/SpringNotificationEventPublisherTest.java	SpringNotificationEventPublisherTest	SIMPLE	single DSL (schemaDataSource); no nested tx
+notification-module/src/test/java/com/example/platform/notification/infrastructure/LocalNotificationProviderTest.java	LocalNotificationProviderTest	SIMPLE	single DSL provider; no nested tx
+notification-module/src/test/java/com/example/platform/notification/test/NotificationTestBase.java	NotificationTestBase	SIMPLE	test base DSL setup; no nested tx
+outbox-event-module/src/test/java/com/example/platform/outbox/app/OutboxEventServiceTest.java	OutboxEventServiceTest	SIMPLE	single DSL outbox operations; no nested tx
+platform-app/src/test/java/com/example/platform/SchemaEquivalenceVerificationTest.java	SchemaEquivalenceVerificationTest	SIMPLE	single helper DSL for JDBC metadata queries in an isolated schema; no concurrent tx
+platform-app/src/test/java/com/example/platform/testinfra/TestDatabaseIsolationGuardTest.java	TestDatabaseIsolationGuardTest	SIMPLE	single shared connection for flyway history + schema checks; no concurrent tx
+platform-app/src/test/java/com/example/platform/testinfra/TestDatabaseConnectionCapacityGuardTest.java	TestDatabaseConnectionCapacityGuardTest	SIMPLE	single helper connection for SHOW GUC capacity reads; no concurrent tx
+prompt-module/src/test/java/com/example/platform/prompt/infrastructure/PromptJdbcRepositoryTest.java	PromptJdbcRepositoryTest	SIMPLE	single DSL JDBC repository; no nested tx
+render-module/src/test/java/com/example/platform/render/app/QuotaUsageRepositoryTest.java	QuotaUsageRepositoryTest	SIMPLE	single DSL repository; no nested tx
+render-module/src/test/java/com/example/platform/render/app/RenderJobStatusHistoryRepositoryTest.java	RenderJobStatusHistoryRepositoryTest	SIMPLE	single DSL repository; no nested tx
+render-module/src/test/java/com/example/platform/render/app/RenderOrchestratorServiceCharacterizationTest.java	RenderOrchestratorServiceCharacterizationTest	SIMPLE	single DSL; REQUIRES_NEW durable-failure/claim methods are Mockito-mocked (no real nested tx)
+render-module/src/test/java/com/example/platform/render/app/StaleRenderJobCompensationServiceTest.java	StaleRenderJobCompensationServiceTest	SIMPLE	single DSL compensation; no nested tx
+render-module/src/test/java/com/example/platform/render/app/StaleRenderJobCompensatorTest.java	StaleRenderJobCompensatorTest	SIMPLE	single DSL compensator; no nested tx
+render-module/src/test/java/com/example/platform/render/app/RenderPipelineE2ECharacterizationTest.java	RenderPipelineE2ECharacterizationTest	SIMPLE	single DSL; REQUIRES_NEW methods are Mockito-mocked (no real nested tx)
+render-module/src/test/java/com/example/platform/render/app/clientexport/ClientExportServiceTest.java	ClientExportServiceTest	SIMPLE	single DSL client export; no nested tx
+render-module/src/test/java/com/example/platform/render/app/mediaprobe/MediaAssetProbeServiceTest.java	MediaAssetProbeServiceTest	SIMPLE	single DSL media probe; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/ProductCurrentRevisionServiceIntegrationTest.java	ProductCurrentRevisionServiceIntegrationTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/RenderJobRevisionPinningServiceIntegrationTest.java	RenderJobRevisionPinningServiceIntegrationTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelineAssetGcServiceTest.java	TimelineAssetGcServiceTest	SIMPLE	single DSL GC; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelineCanonicalSaveGateIntegrationTest.java	TimelineCanonicalSaveGateIntegrationTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelinePatchApplicationServiceHydrationIntegrationTest.java	TimelinePatchApplicationServiceHydrationIntegrationTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelineMergeServiceE1cGateIntegrationTest.java	TimelineMergeServiceE1cGateIntegrationTest	SIMPLE	single raw connection (DSL.using(connection)); no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelineRevisionSaveServiceIntegrationTest.java	TimelineRevisionSaveServiceIntegrationTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelineRevisionSaveServiceSnapshotIntegrationTest.java	TimelineRevisionSaveServiceSnapshotIntegrationTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelineRevisionServiceE1bGateIntegrationTest.java	TimelineRevisionServiceE1bGateIntegrationTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelineRevisionServiceTest.java	TimelineRevisionServiceTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/app/timeline/TimelineSemanticDiffV1ServiceIntegrationTest.java	TimelineSemanticDiffV1ServiceIntegrationTest	SIMPLE	single DSL; no nested tx
+render-module/src/test/java/com/example/platform/render/infrastructure/RenderJobRepositoryTest.java	RenderJobRepositoryTest	SIMPLE	single DSL repository; no nested tx
+render-module/src/test/java/com/example/platform/render/infrastructure/farm/RenderJobLeaseRepositoryTest.java	RenderJobLeaseRepositoryTest	SIMPLE	single DSL lease repository; no nested tx
+render-module/src/test/java/com/example/platform/render/infrastructure/farm/RenderJobLeaseServiceTest.java	RenderJobLeaseServiceTest	SIMPLE	single DSL lease service; no nested tx
+render-module/src/test/java/com/example/platform/render/infrastructure/farm/RenderWorkerRepositoryTest.java	RenderWorkerRepositoryTest	SIMPLE	single DSL worker repository; no nested tx
+render-module/src/test/java/com/example/platform/render/integration/RealRenderSubtitleVerticalSliceIntegrationTest.java	RealRenderSubtitleVerticalSliceIntegrationTest	SIMPLE	single DSL; no @Transactional / no nested tx
+render-module/src/test/java/com/example/platform/render/integration/Vs0VerticalSliceIntegrationTest.java	Vs0VerticalSliceIntegrationTest	SIMPLE	single DSL; no @Transactional / no nested tx
+render-module/src/test/java/com/example/platform/render/integration/RenderJobFailureDurabilityIntegrationTest.java	RenderJobFailureDurabilityIntegrationTest	SIMPLE	single setUpSchema DSL (insert/clean/load only; not part of the REQUIRES_NEW topology); ordinary 2/0
+render-module/src/test/java/com/example/platform/render/integration/RenderJobFailureDurabilityIntegrationTest.java	RenderJobFailureDurabilityIntegrationTest (TestConfig.testDataSource)	TX_HEAVY	REQUIRES_NEW durable-failure boundary: outer tx holds 1 connection, REQUIRES_NEW inner acquires a 2nd independent connection, and a non-Spring-bound jOOQ dsl.update() acquires a 3rd — measured demand = 3
+shared-kernel/src/testFixtures/java/com/example/platform/shared/test/PostgresTestContainerSupport.java	PostgresTestContainerSupport	SIMPLE	definition site: createDataSource() ordinary 2/0 and createDataSource(int) parameterized API
+storage-module/src/test/java/com/example/platform/storage/app/ArtifactRepositoryTest.java	ArtifactRepositoryTest	SIMPLE	single DSL repository; no nested tx
