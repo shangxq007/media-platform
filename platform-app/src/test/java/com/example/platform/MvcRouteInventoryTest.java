@@ -1,5 +1,7 @@
 package com.example.platform;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.nio.file.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -51,7 +53,7 @@ class MvcRouteInventoryTest extends PostgresTestContainerSupport {
                 .filter(p -> p.contains("/workflow-definitions"))
                 .distinct()
                 .count();
-        assertEquals(EXPECTED_W2_ROUTE_COUNT, w2Routes,
+        assertEquals((long) EXPECTED_W2_ROUTE_COUNT, w2Routes,
                 "W2 public route count must be exactly " + EXPECTED_W2_ROUTE_COUNT
                         + " (public-api-contract.tsv); see /tmp/mvc-route-inventory.txt");
     }
