@@ -19,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
@@ -41,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "render.providers.ffmpeg.enabled=true",
         "render.providers.mlt.enabled=true"
 })
-class RenderNativeToolsIT {
+class RenderNativeToolsIT extends PostgresTestContainerSupport {
 
     @Autowired
     private TenantProjectController tenantProjectController;

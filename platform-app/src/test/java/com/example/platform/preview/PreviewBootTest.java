@@ -2,6 +2,7 @@ package com.example.platform.preview;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -12,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  */
 @SpringBootTest
 @ActiveProfiles({"test", "preview"})
-class PreviewBootTest {
+class PreviewBootTest extends PostgresTestContainerSupport {
 
     @Test
     void contextLoads() {

@@ -3,6 +3,7 @@ package com.example.platform;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
@@ -17,7 +18,7 @@ import org.springframework.test.context.TestPropertySource;
         "spring.flyway.enabled=false",
         "spring.sql.init.mode=always"
 })
-class SimpleTaxonomyTest {
+class SimpleTaxonomyTest extends PostgresTestContainerSupport {
 
     @Test
     void contextLoads() {

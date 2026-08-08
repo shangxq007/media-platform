@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -28,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "app.identity.api-key-auth-enabled=false",
         "app.outbox.dispatch-interval-ms=999999999"
 })
-class RenderFlowIntegrationTest {
+class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
 
     @Autowired
     private ApplicationContext context;

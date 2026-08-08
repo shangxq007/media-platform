@@ -1,9 +1,4 @@
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/test
-    username: test
-    password: test
-    driver-class-name: org.postgresql.Driver
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
+  # DataSource + Flyway are injected by the hermetic test runtime
+  # (PostgresTestContainerSupport); the persistent localhost:5432/test
+  # database is no longer referenced.

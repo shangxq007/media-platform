@@ -22,6 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
@@ -43,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "render.providers.natron.fallback-to-ffmpeg=true",
         "app.render.worker-queue.enabled=true"
 })
-class RenderNatronEffectsIT {
+class RenderNatronEffectsIT extends PostgresTestContainerSupport {
 
     @Autowired
     private TenantProjectController tenantProjectController;
