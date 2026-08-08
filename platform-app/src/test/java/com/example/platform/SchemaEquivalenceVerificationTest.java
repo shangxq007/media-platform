@@ -1,13 +1,11 @@
 package com.example.platform;
 
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -28,18 +26,21 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>This test replaces the legacy V1-V4 comparison since the canonical
  * schema is now the single consolidated V1.
+ *
+ * <p>PTEH-V1: this test no longer provisions its own physical PostgreSQL container.
+ * It runs against the shared execution-owned runtime ({@link PostgresTestContainerSupport#POSTGRES},
+ * postgres:15-alpine) inside a UNIQUE logical SCHEMA obtained via
+ * {@link PostgresTestContainerSupport#isolatedSchemaName()}. Both the Flyway migration
+ * and every JDBC metadata / information_schema query are scoped to that isolated schema,
+ * so Flyway state never leaks between test classes — no second container, no manual reset.
  */
-@Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class SchemaEquivalenceVerificationTest {
+class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Container
-    static PostgreSQLContainer<?> db = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("schema_verification")
-            .withUsername("test")
-            .withPassword("test");
+    /** Unique logical schema for this class inside the shared runtime. */
+    private static final String SCHEMA = isolatedSchemaName();
 
     private static boolean deployed = false;
 
@@ -47,9 +48,21 @@ class SchemaEquivalenceVerificationTest {
     @Order(1)
     @DisplayName("V1: single consolidated migration deploys successfully")
     void v1_deploys() {
+        // Create the isolated schema explicitly (Flyway must NOT do it, otherwise the
+        // schema creation is itself recorded as a version-less migration entry and
+        // inflates info.all()).
+        try (Connection conn = createDataSource().getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE SCHEMA IF NOT EXISTS \"" + SCHEMA + "\"");
+        } catch (SQLException e) {
+            fail("Failed to create isolated schema: " + e.getMessage());
+        }
+
         Flyway flyway = Flyway.configure()
-                .dataSource(db.getJdbcUrl(), db.getUsername(), db.getPassword())
+                .dataSource(jdbcUrl(), username(), password())
                 .locations("filesystem:src/main/resources/db/migration")
+                .schemas(SCHEMA)
+                .defaultSchema(SCHEMA)
                 .load();
         var result = flyway.migrate();
         assertTrue(result.migrationsExecuted >= 1, "At least one migration should execute");
@@ -67,7 +80,7 @@ class SchemaEquivalenceVerificationTest {
     void allRequiredTablesPresent() throws Exception {
         assertTrue(deployed);
 
-        Set<String> tables = getTables(db);
+        Set<String> tables = getTables();
         tables.remove("flyway_schema_history");
 
         // Canonical tables that must exist
@@ -106,7 +119,7 @@ class SchemaEquivalenceVerificationTest {
     void notification_preference_model() throws Exception {
         assertTrue(deployed);
 
-        Map<String, ColumnInfo> columns = getTableColumns(db, "notification_preference");
+        Map<String, ColumnInfo> columns = getTableColumns("notification_preference");
 
         // Canonical per-user global preference model
         assertNotNull(columns.get("id"), "id required");
@@ -130,12 +143,12 @@ class SchemaEquivalenceVerificationTest {
         assertEquals("varchar", columns.get("digest_mode").dataType, "digest_mode type");
 
         // Verify unique constraint on (tenant_id, user_id)
-        Set<String> uniqueConstraints = getUniqueConstraints(db);
+        Set<String> uniqueConstraints = getUniqueConstraints();
         assertTrue(uniqueConstraints.contains("notification_preference.tenant_id,user_id"),
                 "notification_preference unique on (tenant_id, user_id)");
 
         // Verify digest_mode check constraint
-        Set<String> checkConstraints = getCheckConstraints(db);
+        Set<String> checkConstraints = getCheckConstraints();
         boolean hasDigestCheck = checkConstraints.stream()
                 .filter(s -> s.startsWith("notification_preference|"))
                 .anyMatch(s -> s.contains("digest_mode") && s.contains("IMMEDIATE"));
@@ -148,7 +161,7 @@ class SchemaEquivalenceVerificationTest {
     void notification_channel_binding_model() throws Exception {
         assertTrue(deployed);
 
-        Map<String, ColumnInfo> columns = getTableColumns(db, "notification_channel_binding");
+        Map<String, ColumnInfo> columns = getTableColumns("notification_channel_binding");
 
         assertNotNull(columns.get("id"), "id required");
         assertNotNull(columns.get("tenant_id"), "tenant_id required");
@@ -170,7 +183,7 @@ class SchemaEquivalenceVerificationTest {
     void render_job_lifecycle_events_model() throws Exception {
         assertTrue(deployed);
 
-        Map<String, ColumnInfo> columns = getTableColumns(db, "render_job_lifecycle_events");
+        Map<String, ColumnInfo> columns = getTableColumns("render_job_lifecycle_events");
 
         assertNotNull(columns.get("id"), "id required");
         assertNotNull(columns.get("tenant_id"), "tenant_id required");
@@ -188,7 +201,7 @@ class SchemaEquivalenceVerificationTest {
         assertNotNull(columns.get("source"), "source required");
 
         // Verify indexes - check by index name prefix
-        Set<String> indexNames = getIndexNames(db, "render_job_lifecycle_events");
+        Set<String> indexNames = getIndexNames("render_job_lifecycle_events");
         assertTrue(indexNames.contains("idx_lifecycle_events_job"),
                 "idx_lifecycle_events_job required, got: " + indexNames);
         assertTrue(indexNames.contains("idx_lifecycle_events_project"),
@@ -203,7 +216,7 @@ class SchemaEquivalenceVerificationTest {
     void ingest_preflight_safe_report_records_model() throws Exception {
         assertTrue(deployed);
 
-        Map<String, ColumnInfo> columns = getTableColumns(db, "ingest_preflight_safe_report_records");
+        Map<String, ColumnInfo> columns = getTableColumns("ingest_preflight_safe_report_records");
 
         assertNotNull(columns.get("id"), "id required");
         assertNotNull(columns.get("tenant_id"), "tenant_id required");
@@ -220,7 +233,7 @@ class SchemaEquivalenceVerificationTest {
         assertNotNull(columns.get("policy_decision"), "policy_decision required");
 
         // Verify check constraints
-        Set<String> checkConstraints = getCheckConstraints(db);
+        Set<String> checkConstraints = getCheckConstraints();
         boolean hasRetentionCheck = checkConstraints.stream()
                 .filter(s -> s.startsWith("ingest_preflight_safe_report_records|"))
                 .anyMatch(s -> s.contains("retention_days"));
@@ -238,7 +251,7 @@ class SchemaEquivalenceVerificationTest {
     void render_job_immutable() throws Exception {
         assertTrue(deployed);
 
-        Map<String, ColumnInfo> columns = getTableColumns(db, "render_job");
+        Map<String, ColumnInfo> columns = getTableColumns("render_job");
 
         assertNotNull(columns.get("id"), "id required");
         assertNotNull(columns.get("project_id"), "project_id required");
@@ -247,7 +260,7 @@ class SchemaEquivalenceVerificationTest {
         assertNotNull(columns.get("selected_provider"), "selected_provider required");
 
         // Verify primary key
-        List<String> pk = getPrimaryKeys(db, "render_job");
+        List<String> pk = getPrimaryKeys("render_job");
         assertEquals(List.of("id"), pk, "render_job PK");
     }
 
@@ -267,20 +280,22 @@ class SchemaEquivalenceVerificationTest {
     @DisplayName("V1: no active V2-V5 migrations")
     void noActiveV2ToV5() {
         Flyway flyway = Flyway.configure()
-                .dataSource(db.getJdbcUrl(), db.getUsername(), db.getPassword())
+                .dataSource(jdbcUrl(), username(), password())
                 .locations("filesystem:src/main/resources/db/migration")
+                .schemas(SCHEMA)
+                .defaultSchema(SCHEMA)
                 .load();
         var info = flyway.info();
         assertEquals(1, info.all().length, "Only V1 should be active");
         assertEquals("1", info.all()[0].getVersion().getVersion());
     }
 
-    // === Helper methods ===
+    // === Helper methods (all scoped to the isolated schema) ===
 
-    private Set<String> getTables(PostgreSQLContainer<?> db) throws SQLException {
+    private static Set<String> getTables() throws SQLException {
         Set<String> tables = new TreeSet<>();
-        try (Connection conn = db.createConnection("")) {
-            ResultSet rs = conn.getMetaData().getTables(null, "public", null, new String[]{"TABLE"});
+        try (Connection conn = createDataSource().getConnection()) {
+            ResultSet rs = conn.getMetaData().getTables(null, SCHEMA, null, new String[]{"TABLE"});
             while (rs.next()) tables.add(rs.getString("TABLE_NAME").toLowerCase());
         }
         return tables;
@@ -288,10 +303,10 @@ class SchemaEquivalenceVerificationTest {
 
     record ColumnInfo(String name, String dataType, String nullable, String defaultValue) {}
 
-    private Map<String, ColumnInfo> getTableColumns(PostgreSQLContainer<?> db, String tableName) throws SQLException {
+    private static Map<String, ColumnInfo> getTableColumns(String tableName) throws SQLException {
         Map<String, ColumnInfo> result = new TreeMap<>();
-        try (Connection conn = db.createConnection("")) {
-            ResultSet rs = conn.getMetaData().getColumns(null, "public", tableName, null);
+        try (Connection conn = createDataSource().getConnection()) {
+            ResultSet rs = conn.getMetaData().getColumns(null, SCHEMA, tableName, null);
             while (rs.next()) {
                 String col = rs.getString("COLUMN_NAME").toLowerCase();
                 String type = rs.getString("TYPE_NAME").toLowerCase();
@@ -303,21 +318,21 @@ class SchemaEquivalenceVerificationTest {
         return result;
     }
 
-    private List<String> getPrimaryKeys(PostgreSQLContainer<?> db, String tableName) throws SQLException {
+    private static List<String> getPrimaryKeys(String tableName) throws SQLException {
         List<String> result = new ArrayList<>();
-        try (Connection conn = db.createConnection("")) {
-            ResultSet rs = conn.getMetaData().getPrimaryKeys(null, "public", tableName);
+        try (Connection conn = createDataSource().getConnection()) {
+            ResultSet rs = conn.getMetaData().getPrimaryKeys(null, SCHEMA, tableName);
             while (rs.next()) result.add(rs.getString("COLUMN_NAME").toLowerCase());
         }
         Collections.sort(result);
         return result;
     }
 
-    private Set<String> getIndexNames(PostgreSQLContainer<?> db, String tableName) throws SQLException {
+    private static Set<String> getIndexNames(String tableName) throws SQLException {
         Set<String> result = new TreeSet<>();
-        try (Connection conn = db.createConnection("")) {
+        try (Connection conn = createDataSource().getConnection()) {
             DatabaseMetaData meta = conn.getMetaData();
-            ResultSet rs = meta.getIndexInfo(null, "public", tableName, false, false);
+            ResultSet rs = meta.getIndexInfo(null, SCHEMA, tableName, false, false);
             while (rs.next()) {
                 String indexName = rs.getString("INDEX_NAME");
                 if (indexName != null) result.add(indexName.toLowerCase());
@@ -326,11 +341,11 @@ class SchemaEquivalenceVerificationTest {
         return result;
     }
 
-    private Set<String> getIndexes(PostgreSQLContainer<?> db, String tableName) throws SQLException {
+    private static Set<String> getIndexes(String tableName) throws SQLException {
         Set<String> result = new TreeSet<>();
-        try (Connection conn = db.createConnection("")) {
+        try (Connection conn = createDataSource().getConnection()) {
             DatabaseMetaData meta = conn.getMetaData();
-            ResultSet rs = meta.getIndexInfo(null, "public", tableName, false, false);
+            ResultSet rs = meta.getIndexInfo(null, SCHEMA, tableName, false, false);
             while (rs.next()) {
                 String indexName = rs.getString("INDEX_NAME");
                 String col = rs.getString("COLUMN_NAME");
@@ -342,26 +357,40 @@ class SchemaEquivalenceVerificationTest {
         return result;
     }
 
-    private Set<String> getUniqueConstraints(PostgreSQLContainer<?> db) throws SQLException {
+    /**
+     * Unique constraints, CORRELATED by table_schema (the historical bug: joining
+     * key_column_usage only on constraint_name crosses schemas and produces spurious
+     * matches when two schemas share a constraint name).
+     */
+    private static Set<String> getUniqueConstraints() throws SQLException {
         Set<String> result = new TreeSet<>();
-        try (Connection conn = db.createConnection("")) {
-            ResultSet rs = conn.createStatement().executeQuery(
+        try (Connection conn = createDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "SELECT tc.table_name, string_agg(kcu.column_name, ',' ORDER BY kcu.ordinal_position) " +
                 "FROM information_schema.table_constraints tc " +
-                "JOIN information_schema.key_column_usage kcu ON tc.constraint_name=kcu.constraint_name " +
-                "WHERE tc.constraint_type='UNIQUE' AND tc.table_schema='public' " +
-                "GROUP BY tc.table_name, tc.constraint_name ORDER BY tc.table_name");
+                "JOIN information_schema.key_column_usage kcu " +
+                "  ON tc.constraint_name=kcu.constraint_name AND tc.table_schema=kcu.table_schema " +
+                "WHERE tc.constraint_type='UNIQUE' AND tc.table_schema=? " +
+                "GROUP BY tc.table_name, tc.constraint_name ORDER BY tc.table_name")) {
+            ps.setString(1, SCHEMA);
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) result.add(rs.getString(1) + "." + rs.getString(2));
         }
         return result;
     }
 
-    private Set<String> getCheckConstraints(PostgreSQLContainer<?> db) throws SQLException {
+    /**
+     * Check constraints, scoped to the isolated schema's namespace (not 'public').
+     */
+    private static Set<String> getCheckConstraints() throws SQLException {
         Set<String> result = new TreeSet<>();
-        try (Connection conn = db.createConnection("")) {
-            ResultSet rs = conn.createStatement().executeQuery(
-                "SELECT conrelid::regclass::text, pg_get_constraintdef(oid) FROM pg_constraint " +
-                "WHERE contype='c' AND connamespace='public'::regnamespace ORDER BY 1, 2");
+        try (Connection conn = createDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                "SELECT c.relname, pg_get_constraintdef(pc.oid) FROM pg_constraint pc " +
+                "JOIN pg_class c ON pc.conrelid = c.oid " +
+                "WHERE pc.contype='c' AND pc.connamespace=?::regnamespace ORDER BY 1, 2")) {
+            ps.setString(1, SCHEMA);
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) result.add(rs.getString(1) + "|" + rs.getString(2));
         }
         return result;
