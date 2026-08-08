@@ -91,6 +91,13 @@ public class ProviderCostObservationJdbcRepository {
                 this::mapRow, operationRef);
     }
 
+    /** Finds cost observations linked to a specific usage record (cost↔usage correlation). */
+    public List<ProviderCostObservation> findByUsageRecordId(String usageRecordId) {
+        return jdbc.query(
+                "SELECT * FROM provider_cost_observation WHERE usage_record_id = ? ORDER BY observed_at",
+                this::mapRow, usageRecordId);
+    }
+
     private ProviderCostObservation mapRow(ResultSet rs, int rowNum) throws SQLException {
         CanonicalActorRef actorRef = null;
         String actorType = rs.getString("actor_type");

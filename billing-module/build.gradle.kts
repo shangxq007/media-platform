@@ -2,6 +2,7 @@ plugins { id("java-library") }
 
 dependencies {
     implementation(project(":typed-schema-module"))
+    implementation(project(":outbox-event-module"))
     api(project(":shared-kernel"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")
