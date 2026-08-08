@@ -933,6 +933,7 @@ create table usage_meter (
 
 create index ix_usage_meter_key on usage_meter(meter_key);
 
+-- EUMF-V1: canonical usage columns (quantity double = legacy, NOT canonical authority; PMPR cleanup target)
 create table usage_record (
     id varchar(64) primary key,
     tenant_id varchar(64),
@@ -943,12 +944,48 @@ create table usage_record (
     unit varchar(64) not null,
     recorded_at timestamp not null,
     idempotency_key varchar(255) unique,
-    created_at timestamp not null default now()
+    created_at timestamp not null default now(),
+    operation_ref varchar(128),
+    attempt_ref varchar(128),
+    dimension varchar(64),
+    quantity_base_units bigint,
+    quantity_unit varchar(32),
+    actor_type varchar(32),
+    actor_ref varchar(128),
+    provider_ref varchar(128),
+    capability varchar(128),
+    provenance varchar(32),
+    source varchar(128),
+    observed_at timestamp
 );
 
 create index ix_usage_record_tenant on usage_record(tenant_id);
 create index ix_usage_record_meter on usage_record(meter_key);
 create index ix_usage_record_recorded on usage_record(recorded_at);
+create index ix_usage_record_operation on usage_record(operation_ref);
+create index ix_usage_record_dimension on usage_record(dimension);
+
+create table provider_cost_observation (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(64),
+    actor_type varchar(32),
+    actor_ref varchar(128),
+    operation_ref varchar(128),
+    execution_ref varchar(128),
+    provider_ref varchar(128),
+    capability varchar(128),
+    amount_minor bigint not null,
+    currency_code varchar(8) not null,
+    cost_type varchar(32) not null,
+    source varchar(128),
+    observed_at timestamp not null,
+    usage_record_id varchar(64),
+    idempotency_key varchar(255) unique,
+    created_at timestamp not null default now()
+);
+create index ix_provider_cost_observation_tenant on provider_cost_observation(tenant_id);
+create index ix_provider_cost_observation_operation on provider_cost_observation(operation_ref);
 
 create table rated_usage_record (
     id varchar(64) primary key,
