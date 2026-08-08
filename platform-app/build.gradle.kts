@@ -60,8 +60,10 @@ dependencies {
 
     testImplementation("org.springframework.modulith:spring-modulith-starter-test:2.0.4")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.testcontainers:junit-jupiter:1.20.6")
-    testImplementation("org.testcontainers:postgresql:1.20.6")
+    // Version authority is spring-boot-dependencies:4.0.4 (testcontainers 2.0.4) — no inline pin.
+    // Testcontainers 2.x renamed these artifacts (old coordinates do not exist at 2.0.4).
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-postgresql")
 }
 
 tasks.named<Test>("test") {

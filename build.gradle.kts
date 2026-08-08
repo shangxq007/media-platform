@@ -34,7 +34,10 @@ subprojects {
             mavenBom("org.springframework.boot:spring-boot-dependencies:4.0.4")
             // Spring AI 尚无面向 Boot 4 的 GA BOM；2.0.0-Mx 与 Boot 4 对齐（见官方 Getting Started / Release Notes）。
             mavenBom("org.springframework.ai:spring-ai-bom:2.0.0-M3")
-            mavenBom("org.testcontainers:testcontainers-bom:1.21.3")
+            // Testcontainers version authority is spring-boot-dependencies:4.0.4 (testcontainers 2.0.4).
+            // The explicit import documents the single authority; the new 2.x module coordinates
+            // (testcontainers-postgresql, testcontainers-junit-jupiter) are managed only by this BOM.
+            mavenBom("org.testcontainers:testcontainers-bom:2.0.4")
         }
     }
 
@@ -48,9 +51,11 @@ subprojects {
         // Annotation-only; aligns all Gradle modules with Spring Modulith metadata in package-info.
         add("compileOnly", "org.springframework.modulith:spring-modulith-api:2.0.4")
         
-        // Test dependencies for all modules
-        add("testImplementation", "org.testcontainers:postgresql")
-        add("testImplementation", "org.testcontainers:junit-jupiter")
+        // Test dependencies for all modules (version governed by testcontainers-bom:2.0.4).
+        // Testcontainers 2.x renamed these artifacts: the old coordinates
+        // (org.testcontainers:postgresql, :junit-jupiter) do not exist at 2.0.4.
+        add("testImplementation", "org.testcontainers:testcontainers-postgresql")
+        add("testImplementation", "org.testcontainers:testcontainers-junit-jupiter")
 
         // ByteBuddy agent for Mockito inline mock maker on Java 25+.
         // Declared as a resolvable configuration so Gradle resolves the exact JAR path
@@ -63,8 +68,10 @@ subprojects {
         // Increase test worker heap for platform-app Spring context explosion (16+ contexts)
         // Using jvmArgs directly because maxHeapSize doesn't reliably override daemon defaults
         jvmArgs("-Xmx2g", "-XX:+HeapDumpOnOutOfMemoryError")
-        // Force Docker API version for Testcontainers compatibility
-        systemProperty("api.version", "1.44")
+        // Docker-compatible API version is negotiated with the daemon (podman compat = 1.41); no forced pin.
+        // Capacity contract V4: explicit (not default) Spring test context cache upper bound = 10.
+        // ResidentSpringPoolBound = cache(10) + evictionOverlap(1) = 11; platform StaticWorstCase = 11x6 + 4 + 4 = 74 <= usable(97)*0.8.
+        systemProperty("spring.test.context.cache.maxSize", "10")
 
         // Attach ByteBuddy agent explicitly to avoid dynamic self-attach failure on Java 25+.
         // This is test-only — no production JVM is affected.
