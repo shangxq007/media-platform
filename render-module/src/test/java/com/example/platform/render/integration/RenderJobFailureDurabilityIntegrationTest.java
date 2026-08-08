@@ -223,7 +223,14 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
     static class TestConfig {
         @Bean
         public javax.sql.DataSource testDataSource() {
-            return createDataSource();
+            // TRANSACTION-HEAVY profile (pool ceiling = 3, minimumIdle = 0). This datasource backs
+            // the REQUIRES_NEW durable-failure boundary plus the non-Spring-bound jOOQ DSL, whose
+            // concurrent demand is exactly three connections: the outer transaction holds one, the
+            // REQUIRES_NEW inner boundary acquires a second independent connection, and a jOOQ
+            // dsl.update() acquired directly from this DataSource (NOT bound to Spring's
+            // transactional ConnectionHolder) acquires a third — all three may be pending at once.
+            // The ordinary profile (2) starves this topology; the ceiling must not exceed 3.
+            return createDataSource(TX_HEAVY_MAX_POOL_SIZE);
         }
 
         @Bean
