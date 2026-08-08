@@ -18,8 +18,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -136,24 +134,24 @@ class TestDatabaseConnectionCapacityGuardTest extends PostgresTestContainerSuppo
         }
     }
 
-    /** Implementation-Version of a loaded class's package (from the jar manifest). */
-    private static String packageVersion(Class<?> clazz) {
-        String v = clazz.getPackage().getImplementationVersion();
-        assertNotNull(v, "Package Implementation-Version must be present for " + clazz.getName());
-        return v;
-    }
-
     /**
      * Resolve the version of a runtime jar from its code-source location on the Gradle module
      * cache (path segment {@code <artifact>/<version>/<hash>/<file>.jar}). Used for docker-java,
      * whose jars carry no Implementation-Version manifest entry.
      */
     private static String jarVersion(Class<?> clazz, String artifact) {
+        // Gradle caches each module jar at <artifact>/<version>/<hash>/<file>.jar. Match the
+        // artifact as a FULL path segment (bounded by '/') so a segment that merely contains the
+        // artifact name (e.g. the 'testcontainers' dir inside 'org.testcontainers') can't match.
         String loc = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
-        Pattern p = Pattern.compile(Pattern.quote(artifact) + "/([^/]+)/");
-        Matcher m = p.matcher(loc);
-        assertTrue(m.find(), "Could not locate " + artifact + " version in: " + loc);
-        return m.group(1);
+        String[] segs = loc.split("/");
+        for (int i = 0; i < segs.length; i++) {
+            if (segs[i].equals(artifact) && i + 1 < segs.length) {
+                return segs[i + 1];
+            }
+        }
+        fail("Could not locate " + artifact + " version in: " + loc);
+        return null; // unreachable
     }
 
     /** Read a classpath resource as a string (for config-authority assertions). */
@@ -176,11 +174,12 @@ class TestDatabaseConnectionCapacityGuardTest extends PostgresTestContainerSuppo
     void testcontainersAuthorityIsExact() {
         // All four testcontainers modules must resolve to the SAME version (skew 0) — the BOM
         // is the single authority. Reading each loaded module's package Implementation-Version.
-        String core = packageVersion(org.testcontainers.containers.PostgreSQLContainer.class);
-        String junit = packageVersion(org.testcontainers.junit.jupiter.Testcontainers.class);
-        // The postgresql module re-exports the core PostgreSQLContainer; assert its jar version too.
+        // Core: GenericContainer lives only in testcontainers-core. The package-version manifest
+        // attribute is unreliable for a package split across several jars, so assert ALL modules
+        // (core included) via their jar path — every one must equal 2.0.4 (skew 0).
+        String core = jarVersion(org.testcontainers.containers.GenericContainer.class, "testcontainers");
+        String junit = jarVersion(org.testcontainers.junit.jupiter.Testcontainers.class, "testcontainers-junit-jupiter");
         String pg = jarVersion(org.testcontainers.containers.PostgreSQLContainer.class, "testcontainers-postgresql");
-        // jdbc module carries no Implementation-Version manifest entry — assert via jar path.
         String jdbc = jarVersion(org.testcontainers.containers.JdbcDatabaseContainer.class, "testcontainers-jdbc");
 
         assertEquals(EXPECTED_TESTCONTAINERS_VERSION, core, "testcontainers core must be 2.0.4");
@@ -229,19 +228,37 @@ class TestDatabaseConnectionCapacityGuardTest extends PostgresTestContainerSuppo
         // at the execution-owned container, and the static test config must not carry a localhost URL.
         String url = registeredProperties().get("spring.datasource.url");
         assertNotNull(url, "spring.datasource.url must be registered");
-        assertFalse(url.contains("localhost") || url.contains("127.0.0.1"),
-                "test datasource must not point at a persistent localhost DB: " + url);
+        // Testcontainers legitimately binds to localhost:<random-port>; what must NOT appear is the
+        // persistent localhost:5432 database (a fixed, pre-provisioned DB). Assert against :5432 only.
+        assertFalse(url.contains("localhost:5432") || url.contains("127.0.0.1:5432"),
+                "test datasource must not point at a persistent localhost:5432 DB: " + url);
 
-        // The committed application-test.yml must likewise carry no localhost datasource.
+        // The committed application-test.yml must likewise carry no persistent localhost:5432 datasource.
         String yml = resourceText("application-test.yml");
-        assertFalse(yml.contains("localhost:5432"),
+        assertFalse(yml.contains("localhost:5432") || yml.contains("127.0.0.1:5432"),
                 "application-test.yml must not reference a persistent localhost:5432 database");
+    }
+
+    /**
+     * Resolve the repository root from the (module-directory) working directory by walking up to the
+     * directory containing settings.gradle.kts. Gradle forks the test JVM with CWD = the module dir,
+     * so a relative scripts/test/... path does not resolve from there.
+     */
+    private static Path repoRoot() {
+        Path dir = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        for (Path p = dir; p != null; p = p.getParent()) {
+            if (Files.isRegularFile(p.resolve("settings.gradle.kts"))) {
+                return p;
+            }
+        }
+        // Fall back to the working directory if no settings.gradle.kts is found.
+        return dir;
     }
 
     @Test
     @DisplayName("hermetic Podman launcher runs podman system service --time=0 (no idle churn)")
     void hermeticLauncherRunsTimeZero() {
-        Path launcher = Paths.get("scripts", "test", "podman-hermetic.sh");
+        Path launcher = repoRoot().resolve("scripts").resolve("test").resolve("podman-hermetic.sh");
         assertTrue(Files.isRegularFile(launcher), "hermetic launcher must exist at " + launcher);
         String body;
         try {
@@ -255,7 +272,14 @@ class TestDatabaseConnectionCapacityGuardTest extends PostgresTestContainerSuppo
         assertTrue(body.contains("--time=0"),
                 "launcher must run with --time=0 (no idle-exit churn)");
         // And the contract must disable Ryuk (rootless podman, repo-owned cleanup).
-        String props = resourceText("testcontainers.properties");
+        // testcontainers.properties lives at the repo root (not on the test classpath).
+        String props;
+        try {
+            props = Files.readString(repoRoot().resolve("testcontainers.properties"), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            fail("Failed to read testcontainers.properties: " + e.getMessage());
+            return;
+        }
         assertTrue(props.contains("ryuk.disabled=true"),
                 "testcontainers.properties must disable Ryuk (DISABLED_BY_CONTRACT)");
     }

@@ -34,8 +34,8 @@ render:
 
 spring:
   # DataSource + Flyway are injected by the hermetic test runtime
-  # (PostgresTestContainerSupport @DynamicPropertySource); the persistent
-  # localhost:5432/test database is no longer referenced.
+  # (PostgresTestContainerSupport @DynamicPropertySource); the pre-provisioned
+  # fixed-port test database is no longer referenced.
   sql:
     init:
       mode: never
