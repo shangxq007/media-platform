@@ -43,5 +43,18 @@ class MvcRouteInventoryTest extends PostgresTestContainerSupport {
 
         sb.append("=== END ===\n");
         Files.writeString(Path.of("/tmp/mvc-route-inventory.txt"), sb.toString());
+
+        // AR-W2-PTEH / public-api-contract.tsv: the W2 V1 public surface exposes
+        // exactly nine frozen routes under /api/v1/tenants/{tenantId}/workflow-definitions.
+        long w2Routes = handlerMethods.keySet().stream()
+                .flatMap(info -> info.getDirectPaths().stream())
+                .filter(p -> p.contains("/workflow-definitions"))
+                .distinct()
+                .count();
+        assertEquals(EXPECTED_W2_ROUTE_COUNT, w2Routes,
+                "W2 public route count must be exactly " + EXPECTED_W2_ROUTE_COUNT
+                        + " (public-api-contract.tsv); see /tmp/mvc-route-inventory.txt");
     }
+
+    private static final int EXPECTED_W2_ROUTE_COUNT = 9;
 }

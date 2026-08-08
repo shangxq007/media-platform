@@ -2744,3 +2744,68 @@ ALTER TABLE render_job ADD COLUMN selected_provider VARCHAR(128);
 
 -- V4: Add updated_at to render_job
 ALTER TABLE render_job ADD COLUMN updated_at TIMESTAMPTZ;
+
+-- =====================================================================
+-- W2 V1: User Workflow Definition (USER_WORKFLOW_DEFINITION_V1_CONTRACT_V2)
+-- Consolidated into canonical V1 per GREENFIELD_MIGRATION_GOVERNANCE_AUTHORITY_V1
+-- (ONE_CONSOLIDATED_V1). CREATE ONLY; PK/UNIQUE only; no CHECK; no FKs
+-- (application-enforced integrity); timestamp not timestamptz.
+-- =====================================================================
+create table user_workflow_definition (
+    definition_id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(128),
+    created_at timestamp not null,
+    created_by varchar(128) not null
+);
+
+create table user_workflow_definition_version (
+    definition_id varchar(64) not null,
+    version_number int not null,
+    tenant_id varchar(64) not null,
+    project_id varchar(128),
+    name varchar(255) not null,
+    description text,
+    status varchar(32) not null,
+    schema_version int not null,
+    optimistic_version bigint not null default 1,
+    trigger_json text not null,
+    parameter_json text not null,
+    created_at timestamp not null,
+    created_by varchar(128) not null,
+    updated_at timestamp not null,
+    updated_by varchar(128) not null,
+    published_at timestamp,
+    published_by varchar(128),
+    archived_at timestamp,
+    archived_by varchar(128),
+    primary key (definition_id, version_number)
+);
+
+create table user_workflow_definition_node (
+    definition_id varchar(64) not null,
+    version_number int not null,
+    node_id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    node_type varchar(32) not null,
+    name varchar(255) not null,
+    config_json text not null,
+    input_json text,
+    output_json text,
+    error_policy varchar(16) not null default 'FAIL',
+    sort_order int not null default 0,
+    primary key (definition_id, version_number, node_id)
+);
+
+create table user_workflow_definition_edge (
+    definition_id varchar(64) not null,
+    version_number int not null,
+    edge_id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    source_node_id varchar(64) not null,
+    target_node_id varchar(64) not null,
+    condition_ref varchar(255) not null default '',
+    sort_order int not null default 0,
+    primary key (definition_id, version_number, edge_id),
+    unique (definition_id, version_number, source_node_id, target_node_id, condition_ref)
+);

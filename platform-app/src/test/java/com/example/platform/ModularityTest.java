@@ -39,7 +39,14 @@ class ModularityTest {
         // Migration: typedschema jooq-tables are now used across modules for typed SQL generation
         "depends on named interface(s) 'typedschema :: jooq-tables'",
         // Migration: ingest module uses non-exposed typed schema record types
-        "depends on non-exposed type com.example.platform.typedschema.jooq.generated.tables.records"
+        "depends on non-exposed type com.example.platform.typedschema.jooq.generated.tables.records",
+        // W2 V1 (USER_WORKFLOW_DEFINITION_V1_CONTRACT_V2): the frozen conditional
+        // path activated workflow-module -> platform-algorithms:graph (graph
+        // kernel reuse for deterministic validation). The graph module is a
+        // deliberately non-Spring library module (no @ApplicationModule, no
+        // named interfaces), so Modulith cannot express the dependency in
+        // allowedDependencies; registered here per the debt-register pattern.
+        "workflow' depends on module 'graph"
     );
 
     @Test

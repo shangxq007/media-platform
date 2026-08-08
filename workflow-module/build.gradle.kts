@@ -4,6 +4,10 @@ dependencies {
     api(project(":policy-governance-module"))
     api(project(":render-module"))
     implementation(project(":delivery-module"))
+    // UWDV1-V2-PIC: activated conditional path (USER_WORKFLOW_DEFINITION_V1_CONTRACT_V2
+    // conditional-path-allowlist.tsv): W2 graph validation reuses the deterministic
+    // platform-algorithms/graph kernel (G-008/G-009/G-010).
+    api(project(":platform-algorithms:graph"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-validation")
     api("io.temporal:temporal-sdk:1.33.0")
@@ -14,5 +18,9 @@ dependencies {
     // TestWorkflowEnvironment tests required for retry/timeout/cancellation/
     // heartbeat semantics). Test-only, version aligned with temporal-sdk 1.33.0.
     testImplementation("io.temporal:temporal-testing:1.33.0")
+    // UWDV1-V2-PIC: test infrastructure required by database-test-contract.txt
+    // (PostgresTestContainerSupport lives in shared-kernel testFixtures; the
+    // frozen JDBC integration test extends it). Documented in implementation-summary.txt.
+    testImplementation(testFixtures(project(":shared-kernel")))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
