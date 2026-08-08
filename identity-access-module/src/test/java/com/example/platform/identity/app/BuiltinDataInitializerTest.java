@@ -38,7 +38,7 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        assertEquals(16, distinctPermissionKeys().size());
+        assertEquals(20, distinctPermissionKeys().size());
     }
 
     @Test
@@ -62,7 +62,7 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        assertEquals(15, distinctPermissionKeys().size());
+        assertEquals(19, distinctPermissionKeys().size());
     }
 
     @Test
@@ -107,7 +107,9 @@ class BuiltinDataInitializerTest {
                 "render.submit", "render.cancel", "render.use_gpu", "render.use_remote_worker",
                 "entitlement.grant", "entitlement.revoke", "billing.manage",
                 "prompt.template.manage", "extension.install", "audit.view",
-                "navigation.manage", "notification.manage", "social.publish")));
+                "navigation.manage", "notification.manage", "social.publish",
+                "workflow-definition.read", "workflow-definition.edit",
+                "workflow-definition.publish", "workflow-definition.archive")));
     }
 
     private Set<String> distinctPermissionKeys() {
