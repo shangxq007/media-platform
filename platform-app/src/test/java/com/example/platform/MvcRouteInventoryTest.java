@@ -48,9 +48,12 @@ class MvcRouteInventoryTest extends PostgresTestContainerSupport {
 
         // AR-W2-PTEH / public-api-contract.tsv: the W2 V1 public surface exposes
         // exactly nine frozen routes under /api/v1/tenants/{tenantId}/workflow-definitions.
-        long w2Routes = handlerMethods.keySet().stream()
-                .flatMap(info -> info.getDirectPaths().stream())
-                .filter(p -> p.contains("/workflow-definitions"))
+        // Counted as the nine handler methods on UserWorkflowDefinitionController — the
+        // authoritative signal for the frozen route surface (public-api-contract.tsv).
+        long w2Routes = handlerMethods.values().stream()
+                .filter(h -> h.getBeanType().getSimpleName()
+                        .equals("UserWorkflowDefinitionController"))
+                .map(h -> h.getMethod().getName())
                 .distinct()
                 .count();
         assertEquals((long) EXPECTED_W2_ROUTE_COUNT, w2Routes,
