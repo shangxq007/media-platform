@@ -4,6 +4,12 @@ dependencies {
     api(project(":policy-governance-module"))
     api(project(":render-module"))
     implementation(project(":delivery-module"))
+    // UWEV1-FV1: effect execution boundary via extension::runtime (UWE-ADR-025)
+    implementation(project(":extension-module"))
+    // ArtifactRef public contract + EUMF canonical types + durable terminal transitions
+    implementation(project(":artifact-module"))
+    implementation(project(":billing-module"))
+    implementation(project(":outbox-event-module"))
     // UWDV1-V2-PIC: activated conditional path (USER_WORKFLOW_DEFINITION_V1_CONTRACT_V2
     // conditional-path-allowlist.tsv): W2 graph validation reuses the deterministic
     // platform-algorithms/graph kernel (G-008/G-009/G-010).
