@@ -9,6 +9,7 @@ package com.example.platform.shared.authorization;
 public enum AuthorizationResourceType {
 
     WORKFLOW_DEFINITION,
+    WORKFLOW_EXECUTION,
     RENDER_JOB,
     PROJECT,
     WORKSPACE,
