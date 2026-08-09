@@ -30,6 +30,7 @@ Rel(PlatformApplication.PlatformApplication.Lifecycle, PlatformApplication.Platf
 Rel(PlatformApplication.PlatformApplication.Lifecycle, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Lifecycle, PlatformApplication.PlatformApplication.SandboxRuntime, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Lifecycle, PlatformApplication.PlatformApplication.Workflow, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes

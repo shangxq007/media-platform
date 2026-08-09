@@ -65,7 +65,7 @@ model {
     }
 
     workflowExecution = container 'Workflow Execution' {
-      description 'TARGET / FROZEN FOR UWEV1 — not yet implemented. execution authority: workflow-module; version-pinned PUBLISHED definitions only'
+      description 'CURRENT (UWEV1-FV1 foundation): execution authority workflow-module; WorkflowExecution + workflow_execution table; PUBLISHED-only version-pinned start; Temporal durable orchestration; ACTION/EXTENSION_POINT -> PluginRuntime. DEFERRED: full plan-walk, HOOK execution, node-level persistence, compensation'
     }
 
     temporal = container 'Temporal' {
@@ -200,7 +200,7 @@ views {
   }
 
   view workflowExecutionTarget of mediaPlatform {
-    title 'Workflow Execution (TARGET — frozen for UWEV1)'
+    title 'Workflow Execution (CURRENT foundation — UWEV1-FV1; remaining scope TARGET)'
     include
       workflowDefinition,
       workflowExecution,

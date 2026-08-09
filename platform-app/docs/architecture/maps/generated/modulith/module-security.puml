@@ -25,11 +25,11 @@ System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="")
 
 }
 
-Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Entitlement, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Security, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Security, PlatformApplication.PlatformApplication.IdentityAccess, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Security, PlatformApplication.PlatformApplication.Entitlement, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Entitlement, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)

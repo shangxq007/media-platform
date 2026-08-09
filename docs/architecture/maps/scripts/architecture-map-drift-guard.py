@@ -11,10 +11,15 @@ Validates high-value mechanical facts only (NOT a semantic theorem prover):
 
 Exit 0 = PASS, 1 = FAIL. Deterministic. No repo test execution.
 """
+import os
 import re
 import sys
 
-REPO = "/home/user/Documents/workspace/projects/media-platform-amra"
+# Repository root: env override (AMRA-V1 published the guard under the old
+# worktree path; resolve dynamically so the guard works from any worktree).
+REPO = os.environ.get("MEDIA_PLATFORM_REPO", os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
+if not os.path.exists(f"{REPO}/settings.gradle.kts"):
+    REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
 # ── 1. Active Gradle modules (mechanical parse of settings.gradle.kts) ──
 src = open(f"{REPO}/settings.gradle.kts").read()
@@ -103,7 +108,7 @@ authority_checks = [
     ("Temporal orchestrates", "DURABLE ORCHESTRATION AUTHORITY"),
     ("sandbox-worker isolation", "SECURITY / PROCESS ISOLATION BOUNDARY"),
     ("Registry describes; runtime executes", "CAPABILITY_REGISTRY_DESCRIBES"),
-    ("Workflow target", "TARGET / FROZEN FOR UWEV1"),
+    ("Workflow current", "CURRENT (UWEV1-FV1 foundation)"),
 ]
 for name, needle in authority_checks:
     if needle not in likec4:

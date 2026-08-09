@@ -18,6 +18,7 @@ _Others_
 * `c.e.p.w.temporal.TemporalEnablementConfiguration`
 * `c.e.p.w.temporal.TemporalEnablementConfiguration.TemporalRuntimeMarker`
 * `c.e.p.w.temporal.TemporalWorkflowStarter`
+* `c.e.p.w.temporal.UserWorkflowExecutionActivities` (via `c.e.p.w.temporal.UserWorkflowExecutionActivitiesImpl`)
 |Bean references
 |* `c.e.p.r.api.port.RenderOrchestratorPort` (in Render)
 * `c.e.p.r.api.port.RenderWorkflowResumePort` (in Render)
@@ -25,6 +26,7 @@ _Others_
 * `c.e.p.s.authorization.AuthorizationDecisionPort` (in Shared Kernel)
 * `c.e.p.p.api.FeatureFlagEvaluator` (in Policy Governance)
 * `c.e.p.d.api.port.DeliveryAfterRenderPort` (in Delivery)
+* `c.e.p.e.runtime.PluginRuntime` (in Extension)
 |Events listened to
 |* `org.springframework.boot.context.event.ApplicationReadyEvent` 
 * `org.springframework.context.event.ContextClosedEvent` 
