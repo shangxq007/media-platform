@@ -147,6 +147,12 @@ public class WorkflowExecutionService {
         return e;
     }
 
+    /** Persists a terminal projection (called from activities at the effect boundary). */
+    @Transactional
+    public void recordTerminal(WorkflowExecution execution) {
+        executionRepository.updateStatus(execution);
+    }
+
     public Clock clock() {
         return clock;
     }
