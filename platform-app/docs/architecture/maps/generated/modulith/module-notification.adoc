@@ -1,0 +1,28 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.notification`
+|Bean references
+|* `c.e.p.s.notification.NotificationEventPublisher` (in Shared Kernel)
+* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+* `c.e.p.s.web.ErrorCodeRegistry` (in Shared Kernel)
+|Events listened to
+|
+* `c.e.p.s.events.ArtifactCreatedEvent` 
+* `c.e.p.s.events.AssetApprovedEvent` 
+* `c.e.p.s.events.AssetArchivedEvent` 
+* `c.e.p.s.events.AssetEnrichedEvent` 
+* `c.e.p.s.events.AssetPublishedEvent` 
+* `c.e.p.s.events.RenderCacheHashInvalidatedEvent` 
+* `c.e.p.s.events.RenderDeliveryCompletedEvent` 
+* `c.e.p.s.events.RenderDeliveryFailedEvent` 
+* `c.e.p.s.events.RenderJobCreatedEvent` 
+* `c.e.p.s.events.RenderJobStatusChangedEvent` 
+* `c.e.p.s.events.ReviewApprovedEvent` 
+* `c.e.p.s.events.ReviewChangesRequestedEvent` 
+* `c.e.p.s.events.ReviewCommentAddedEvent` 
+* `c.e.p.s.events.ReviewRejectedEvent` 
+* `c.e.p.s.events.ReviewThreadResolvedEvent` 
+* `c.e.p.s.events.TimelineMergedEvent` 
+* `c.e.p.s.events.TimelineRestoredEvent` 
+|===

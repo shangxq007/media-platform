@@ -1,0 +1,14 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.prompt`
+|Spring components
+|_Services_
+
+* `c.e.p.p.app.PromptSafetyPolicyService`
+* `c.e.p.p.app.PromptTemplateService`
+|Bean references
+|* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+|Events listened to
+|* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+|===

@@ -1,0 +1,19 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.sandbox`
+|Spring components
+|_Services_
+
+* `c.e.p.s.app.SandboxRuntimeService`
+
+_Configuration properties_
+
+* `c.e.p.s.app.SandboxProperties`
+
+_Others_
+
+* `c.e.p.s.SandboxConfiguration`
+* `c.e.p.s.app.SandboxWorkerPort` (via `c.e.p.s.app.HttpSandboxWorkerAdapter`)
+* `c.e.p.s.app.SandboxWorkerPort` (via `c.e.p.s.app.NoopSandboxWorkerAdapter`)
+|===

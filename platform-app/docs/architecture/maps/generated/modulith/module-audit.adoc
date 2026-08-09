@@ -1,0 +1,50 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.audit`
+|Spring components
+|_Services_
+
+* `c.e.p.a.app.AuditAlertService`
+* `c.e.p.a.app.AuditQueryService`
+* `c.e.p.a.app.AuditService`
+* `c.e.p.a.app.ProblematicDataAutoFixService`
+* `c.e.p.a.app.ProblematicDataDetectionService`
+* `c.e.p.a.app.UsageAnomalyDetectionService`
+* `c.e.p.a.app.UserExperienceGuard`
+
+_Event listeners_
+
+* `c.e.p.a.app.AuditEventHandler`
+
+_Configuration properties_
+
+* `c.e.p.a.app.AuditAlertProperties`
+
+_Others_
+
+* `c.e.p.a.app.AdminAuditPublisherImpl`
+* `c.e.p.a.app.AuditAlertConfiguration`
+* `c.e.p.a.app.AuditPortAdapter`
+* `c.e.p.a.app.SecurityAlertPort`
+|Bean references
+|* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+|Events listened to
+|* `c.e.p.s.events.ArtifactCreatedEvent` 
+* `c.e.p.s.events.AssetApprovedEvent` 
+* `c.e.p.s.events.AssetArchivedEvent` 
+* `c.e.p.s.events.AssetMetadataUpdatedEvent` 
+* `c.e.p.s.events.AssetPublishedEvent` 
+* `c.e.p.s.events.AssetRegisteredEvent` 
+* `c.e.p.s.events.RenderJobCompletedEvent` 
+* `c.e.p.s.events.RenderJobCreatedEvent` 
+* `c.e.p.s.events.RenderJobFailedEvent` 
+* `c.e.p.s.events.RenderJobStatusChangedEvent` 
+* `c.e.p.s.events.ReviewApprovedEvent` 
+* `c.e.p.s.events.ReviewChangesRequestedEvent` 
+* `c.e.p.s.events.ReviewCommentAddedEvent` 
+* `c.e.p.s.events.ReviewRejectedEvent` 
+* `c.e.p.s.events.ReviewThreadResolvedEvent` 
+* `c.e.p.s.events.TimelineMergedEvent` 
+* `c.e.p.s.events.TimelineRestoredEvent` 
+|===

@@ -1,0 +1,30 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.extension`
+|Spring components
+|_Services_
+
+* `c.e.p.e.app.CliToolInvocationService`
+* `c.e.p.e.app.ExtensionAuditService`
+* `c.e.p.e.app.ExtensionCatalogService`
+* `c.e.p.e.app.ExtensionRegistryService`
+* `c.e.p.e.app.ExtensionResourceLimiter`
+* `c.e.p.e.app.ExtensionRouter`
+* `c.e.p.e.app.PluginHealthRegistry`
+* `c.e.p.e.app.PluginMatcher`
+* `c.e.p.e.api.port.PluginRegistryPort` (via `c.e.p.e.app.PluginRegistryImpl`)
+* `c.e.p.e.app.SandboxExecutionService`
+
+_Others_
+
+* `c.e.p.e.app.CliTemplateResolver`
+* `c.e.p.e.api.port.PluginSelectionPolicy` (via `c.e.p.e.app.PluginDefaultSelectionPolicy`)
+* `c.e.p.e.app.PluginDescriptorValidator`
+* `c.e.p.e.app.ToolRegistry`
+* `c.e.p.e.app.ProcessExecutor` (via `c.e.p.e.infrastructure.CommonsExecProcessExecutor`)
+* `c.e.p.e.app.ToolRunner` (via `c.e.p.e.infrastructure.CommonsExecToolRunner`)
+* `c.e.p.e.app.ProcessToolRunner` (via `c.e.p.e.infrastructure.DefaultProcessToolRunner`)
+|Bean references
+|* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+|===

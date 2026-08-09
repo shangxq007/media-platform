@@ -1,0 +1,37 @@
+@startuml
+title <size:24>Security</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
+  Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Entitlement, "Entitlement", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.IdentityAccess, "Identity & Access", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Security, "Security", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Entitlement, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Security, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Security, PlatformApplication.PlatformApplication.IdentityAccess, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Security, PlatformApplication.PlatformApplication.Entitlement, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

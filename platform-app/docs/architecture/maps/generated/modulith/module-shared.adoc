@@ -1,0 +1,20 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.shared`
+|Spring components
+|_Services_
+
+* `c.e.p.s.tenant.TenantIsolationService`
+
+_Configuration properties_
+
+* `c.e.p.s.runtime.PlatformRuntimeProperties`
+
+_Others_
+
+* `c.e.p.s.authorization.CanonicalActorResolver` (via `c.e.p.s.authorization.CompositeCanonicalActorResolver`)
+* `c.e.p.s.authorization.CanonicalActorResolver` (via `c.e.p.s.authorization.MdcCanonicalActorResolver`)
+* `c.e.p.s.monitoring.SentryMonitoringSpringBean`
+* `c.e.p.s.web.ErrorCodeRegistry`
+|===

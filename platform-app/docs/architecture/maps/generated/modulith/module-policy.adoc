@@ -1,0 +1,38 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.policy`
+|Spring components
+|_Controllers_
+
+* `c.e.p.p.api.PolicyController`
+* `c.e.p.p.featureflag.FeatureFlagController`
+
+_Services_
+
+* `c.e.p.p.featureflag.FeatureFlagAuditService`
+* `c.e.p.p.api.FeatureFlagEvaluator` (via `c.e.p.p.featureflag.FeatureFlagService`)
+
+_Repositories_
+
+* `c.e.p.p.featureflag.FeatureFlagPersistence` (via `c.e.p.p.featureflag.FeatureFlagJdbcStore`)
+
+_Event listeners_
+
+* `c.e.p.p.featureflag.FeatureFlagStartupHydrator`
+
+_Configuration properties_
+
+* `c.e.p.p.featureflag.AppFeaturesProperties`
+
+_Others_
+
+* `c.e.p.p.featureflag.LocalFeatureFlagProvider`
+* `c.e.p.p.featureflag.OpenFeatureFlagEvaluator`
+* `c.e.p.p.featureflag.OpenFeatureFlagsConfiguration`
+* `c.e.p.p.featureflag.OpenFeatureLifecycle`
+|Bean references
+|* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+|Events listened to
+|* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+|===

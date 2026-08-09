@@ -1,0 +1,27 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.artifact`
+|Spring components
+|_Services_
+
+* `c.e.p.a.app.ArtifactCatalogService`
+* `c.e.p.a.app.ArtifactGcService`
+* `c.e.p.a.app.ArtifactLifecycleService`
+* `c.e.p.a.app.ArtifactStorageIntegrityScanner`
+
+_Repositories_
+
+* `c.e.p.a.app.ArtifactCatalogRepository`
+* `c.e.p.a.app.ArtifactRelationRepository`
+
+_Others_
+
+* `c.e.p.a.ArtifactCatalogConfiguration`
+* `c.e.p.a.app.ArtifactGcScheduler`
+* `c.e.p.a.app.AssetIntegrityMetrics`
+|Bean references
+|* `c.e.p.s.web.ErrorCodeRegistry` (in Shared Kernel)
+* `c.e.p.s.domain.BlobStorage` (in Storage)
+* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+|===
