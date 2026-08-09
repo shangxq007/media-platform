@@ -7,6 +7,7 @@
             "ai :: video",
             "billing :: app",
             "billing :: domain",
+            "billing :: usage",
             "entitlement",
             "entitlement :: domain",
             "quota :: app",
