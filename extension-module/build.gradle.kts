@@ -1,5 +1,6 @@
 dependencies {
     implementation(project(":shared-kernel"))
+    implementation(project(":billing-module"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.apache.commons:commons-exec:1.6.0")
