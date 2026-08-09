@@ -28,37 +28,29 @@ public final class DefaultPluginRuntime implements PluginRuntime {
     private final ProviderExtensionSpiRuntimeAdapter spiAdapter;
     private final SecretRefResolver secretResolver;
     private final Consumer<PluginExecutionProgress> progressListener;
-    private final Consumer<RuntimeObservation> observationSink;
+    private final Consumer<PluginRuntimeObservation> observationSink;
+    private final RuntimeUsageEmitter usageEmitter;
 
-    /** Observability record (PLUGIN_RUNTIME_OBSERVABILITY_MODEL_V1). */
-    public record RuntimeObservation(
-            String operationId,
-            String attemptId,
-            String providerId,
-            String capability,
-            ExecutionMode executionMode,
-            long latencyMs,
-            PluginExecutionStatus status,
-            PluginRuntimeErrorCategory errorCategory,
-            String providerOperationId) {
-    }
+    /** Observability records are {@link PluginRuntimeObservation}. */
 
     public DefaultPluginRuntime(ProviderExtensionSpiRuntimeAdapter spiAdapter) {
         this(spiAdapter, SecretRefResolver.NOOP, p -> {
         }, o -> {
-        });
+        }, null);
     }
 
     public DefaultPluginRuntime(ProviderExtensionSpiRuntimeAdapter spiAdapter,
                                 SecretRefResolver secretResolver,
                                 Consumer<PluginExecutionProgress> progressListener,
-                                Consumer<RuntimeObservation> observationSink) {
+                                Consumer<PluginRuntimeObservation> observationSink,
+                                RuntimeUsageEmitter usageEmitter) {
         this.spiAdapter = Objects.requireNonNull(spiAdapter, "spiAdapter must not be null");
         this.secretResolver = secretResolver != null ? secretResolver : SecretRefResolver.NOOP;
         this.progressListener = progressListener != null ? progressListener : p -> {
         };
         this.observationSink = observationSink != null ? observationSink : o -> {
         };
+        this.usageEmitter = usageEmitter;
     }
 
     @Override
@@ -77,6 +69,15 @@ public final class DefaultPluginRuntime implements PluginRuntime {
                     "RUNNING", 0, 0, null, Instant.now()));
 
             PluginExecutionResult result = spiAdapter.execute(request);
+
+            // GAP-002 closure: every canonical runtime execution emits base usage facts
+            if (usageEmitter != null && result.status() == PluginExecutionStatus.SUCCEEDED) {
+                long durationMs = (System.nanoTime() - started) / 1_000_000;
+                usageEmitter.emitBaseFacts(
+                        request.tenantId(), request.actorRef(), request.operationRef(),
+                        request.providerRef(), request.capability(), durationMs);
+            }
+
             progressListener.accept(new PluginExecutionProgress(
                     "FINALIZING", 1, 1, null, Instant.now()));
             record(request, result, started);
@@ -106,16 +107,20 @@ public final class DefaultPluginRuntime implements PluginRuntime {
 
     private void record(PluginExecutionRequest request, PluginExecutionResult result, long startedNanos) {
         long latencyMs = (System.nanoTime() - startedNanos) / 1_000_000;
-        observationSink.accept(new RuntimeObservation(
+        observationSink.accept(new PluginRuntimeObservation(
                 request.operationRef().operationId(),
                 request.operationRef().attemptId(),
                 request.providerRef().providerId(),
                 request.capability(),
-                request.executionMode(),
+                request.executionMode().name(),
                 latencyMs,
-                result.status(),
-                result.error() != null ? result.error().category() : null,
-                result.error() != null ? result.error().providerOperationId() : null));
+                result.status().name(),
+                result.error() != null ? result.error().category().name() : null,
+                result.error() != null ? result.error().providerOperationId() : null,
+                null,
+                null,
+                null,
+                Instant.now()));
     }
 
     private static String safeMessage(Throwable t) {
