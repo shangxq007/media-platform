@@ -117,6 +117,17 @@ class UsageOutboxEventAtomicityTest extends PostgresTestContainerSupport {
                 "When outbox append fails, the usage insert must roll back (no half-state)");
     }
 
+    // ── Outbox atomicity RED (MANDATORY): referenced, not duplicated ──
+    // USAGE-RED outbox atomicity: a forced outbox failure inside the @Transactional boundary must
+    // roll the usage insert back, leaving no half-state. This RED-named method references the
+    // outboxFailure_rollsBackUsage_noHalfState() proof above rather than re-implementing the
+    // throwing-outbox @SpringBootTest context.
+
+    @Test
+    void usageRed_outboxAtomicity_forcedFailure_noHalfState() {
+        outboxFailure_rollsBackUsage_noHalfState();
+    }
+
     private long countUsage() {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM usage_record", Long.class);
     }
