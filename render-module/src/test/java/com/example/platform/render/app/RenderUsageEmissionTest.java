@@ -138,11 +138,74 @@ class RenderUsageEmissionTest {
     }
 
     @Test
-    void emission_skipsForNonCompletedStep() {
+    void failedStepWithoutDuration_emitsNothing() {
+        // RED-003 (no fabricated usage): emission is gated on the measured duration fact, not on
+        // business success. A FAILED step that has no measurable duration (never ran) emits nothing.
+        RenderPlan plan = planWithOneStep();
+        RenderStep failedNoDuration = plan.steps().get(0).markFailed("ERR", "boom");
+        service.emitStepUsage(plan, failedNoDuration, 1);
+        assertNull(captured.get(), "a step with no measurable duration fact must not emit fabricated usage");
+    }
+
+    @Test
+    void failedStepWithDuration_emitsOneDurationRecord() {
+        // RED-003 (fact-driven emission, AR-OBS-03 repair): a FAILED step that actually ran and has
+        // a real measured duration emits exactly one canonical DURATION record — success status must
+        // not suppress a genuine consumption fact.
+        RenderPlan plan = planWithOneStep();
+        String stepId = plan.steps().get(0).id();
+        RenderStep failed = plan.steps().get(0).markRunning().markFailed("ERR", "boom");
+
+        service.emitStepUsage(plan, failed, 1);
+
+        UsageRecord record = captured.get();
+        assertNotNull(record, "expected a usage record to be emitted for a FAILED step with a real duration fact");
+        assertEquals(TENANT, record.tenantId());
+        assertEquals(UsageDimension.DURATION, record.dimension());
+        assertEquals("REPORTED", record.provenance());
+        assertEquals("render-step", record.source());
+        assertEquals("render-" + stepId + "-1", record.idempotencyKey());
+        assertEquals(UsageUnit.MILLISECONDS, record.quantity().unit());
+        assertTrue(record.quantity().baseUnits() >= 0);
+        assertNotNull(record.recordedAt());
+        assertEquals(plan.id(), record.operationRef().operationId());
+        assertEquals(stepId, record.operationRef().attemptId());
+    }
+
+    @Test
+    void failedStepRetryOfSameAttempt_doesNotDoubleCount() {
+        // RED-003 (idempotency on the failed path): replaying the SAME failed attempt reuses the
+        // idempotency key, so it does not double count.
+        RenderPlan plan = planWithOneStep();
+        String stepId = plan.steps().get(0).id();
+        RenderStep failed = plan.steps().get(0).markRunning().markFailed("ERR", "boom");
+
+        service.emitStepUsage(plan, failed, 1);
+        UsageRecord first = captured.get();
+        assertNotNull(first);
+
+        service.emitStepUsage(plan, failed, 1);
+        UsageRecord second = captured.get();
+
+        assertEquals(first.idempotencyKey(), second.idempotencyKey(),
+                "retry of the same failed attempt must reuse the idempotency key (no double counting)");
+        assertEquals("render-" + stepId + "-1", first.idempotencyKey());
+    }
+
+    @Test
+    void failedStepEmission_isIndependentOfEnforcementFlag() {
+        // RED-003 / RED-004: fact-driven emission for a FAILED step never consults
+        // billing.enforcement.enabled, so emission happens regardless of the flag.
+        assertNull(System.getProperty("billing.enforcement.enabled"),
+                "sanity: this unit test does not set the enforcement flag");
+
         RenderPlan plan = planWithOneStep();
         RenderStep failed = plan.steps().get(0).markRunning().markFailed("ERR", "boom");
+
         service.emitStepUsage(plan, failed, 1);
-        assertNull(captured.get(), "only COMPLETED steps emit a DURATION fact");
+
+        assertNotNull(captured.get(),
+                "FAILED-step usage emission must occur even though billing.enforcement.enabled is unset (defaults false)");
     }
 
     private RenderPlan planWithOneStep() {

@@ -8,7 +8,6 @@ import com.example.platform.billing.usage.UsageRecordEmissionPort;
 import com.example.platform.billing.usage.UsageUnit;
 import com.example.platform.render.domain.RenderPlan;
 import com.example.platform.render.domain.RenderStep;
-import com.example.platform.render.domain.RenderStepStatus;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Duration;
@@ -28,10 +27,11 @@ import org.springframework.stereotype.Service;
  * Actual tool execution is delegated to the appropriate provider (FFmpeg, MLT, GPAC)
  * through the {@link com.example.platform.extension.app.ProcessToolRunner} port.</p>
  *
- * <p>On step completion it emits a canonical DURATION usage record as an additive side effect.
- * Emission is independent of billing enforcement: the {@code billing.enforcement.enabled} flag
- * does NOT suppress usage facts. Emission never alters step lifecycle semantics and never throws
- * into the execution path.</p>
+ * <p>On step execution it emits a canonical DURATION usage record as an additive side effect,
+ * driven by the measured duration fact rather than business success status. Emission is
+ * independent of billing enforcement: the {@code billing.enforcement.enabled} flag does NOT
+ * suppress usage facts. Emission never alters step lifecycle semantics and never throws into the
+ * execution path.</p>
  */
 @Service
 public class RenderStepExecutionService {
@@ -141,24 +141,27 @@ public class RenderStepExecutionService {
     }
 
     /**
-     * Emits one canonical DURATION {@link UsageRecord} for a completed step.
+     * Emits one canonical DURATION {@link UsageRecord} for a step with a measured duration fact.
      *
-     * <p>The idempotency key is {@code "render-" + stepId + "-" + attempt}: derived from the
-     * step identity plus attempt, so it is stable across retries of the same attempt (a retry of
-     * the same attempt reuses the key and does not double count) and a new attempt produces a new
-     * key. This method is the single emission boundary for render; it is intentionally NOT wired
-     * to {@code billing.enforcement.enabled} — suppressing enforcement must never drop usage
-     * facts (RED-004). Any emission failure is swallowed so it can never break step execution.</p>
+     * <p>Emission is driven by the actual measured consumption fact ({@link RenderStep#duration()}),
+     * independent of business success status: COMPLETED or FAILED steps with a real duration both
+     * emit; a step with no measurable duration emits nothing (no fabricated usage). The idempotency
+     * key is {@code "render-" + stepId + "-" + attempt}: derived from the step identity plus attempt,
+     * so it is stable across retries of the same attempt (a retry of the same attempt reuses the key
+     * and does not double count) and a new attempt produces a new key. This method is the single
+     * emission boundary for render; it is intentionally NOT wired to
+     * {@code billing.enforcement.enabled} — suppressing enforcement must never drop usage facts
+     * (RED-004). Any emission failure is swallowed so it can never break step execution.</p>
      *
      * @param plan      the plan the step belongs to
-     * @param step      the completed step (its {@link RenderStep#duration() duration} is the fact)
+     * @param step      the step (its {@link RenderStep#duration() duration} is the measured fact)
      * @param attempt   the attempt number for this step execution
      */
     void emitStepUsage(RenderPlan plan, RenderStep step, int attempt) {
         if (emissionPort == null) {
             return;
         }
-        if (step == null || step.status() != RenderStepStatus.COMPLETED) {
+        if (step == null) {
             return;
         }
         String tenantId = TenantContext.get();
