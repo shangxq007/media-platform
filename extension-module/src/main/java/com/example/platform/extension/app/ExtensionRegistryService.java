@@ -292,6 +292,18 @@ public class ExtensionRegistryService {
         return router;
     }
 
+    /**
+     * Looks up the registered SPI instance for a provider key (used by the
+     * Plugin Runtime V2 compatibility adapter).
+     *
+     * @param key provider extension key
+     * @return the registered SPI instance, or {@code null} when not registered
+     */
+    public ProviderExtensionSPI findSpiInstance(String key) {
+        Object spi = spiInstances.get(key);
+        return spi instanceof ProviderExtensionSPI provider ? provider : null;
+    }
+
     public ExtensionResourceLimiter getResourceLimiter() {
         return resourceLimiter;
     }
