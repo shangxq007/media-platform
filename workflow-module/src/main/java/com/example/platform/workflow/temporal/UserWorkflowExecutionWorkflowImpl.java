@@ -50,9 +50,15 @@ public class UserWorkflowExecutionWorkflowImpl implements UserWorkflowExecutionW
         // UWE-ADR-008: immutable plan projection at start (activity boundary).
         String planJson = activities.projectDefinitionPlan(tenantId, definitionId, definitionVersion);
 
-        // Durable node execution: ACTION/EXTENSION_POINT through PluginRuntime.
-        // CONDITION nodes evaluate deterministically (represented in the plan);
-        // DELAY nodes use durable timers; APPROVAL nodes wait on typed signal.
+        // Durable node execution loop (UWEV1-ARSF node mapping):
+        //   ACTION / EXTENSION_POINT -> Activity -> PluginRuntime
+        //   CONDITION -> deterministic evaluation (represented in the plan; no provider)
+        //   DELAY -> durable Temporal timer
+        //   APPROVAL -> durable signal wait (typed approve/cancel; cancellable while waiting)
+        // FV1 foundation executes the frozen minimal plan: a single main ACTION
+        // node gated by the approval signal (full plan-walk is bounded by the
+        // frozen scope — node-set expansion beyond the minimal closed loop is
+        // deferred; the mapping contract PLUGIN_EXECUTION_NODE_MAPPING_V1 holds).
         currentStatus = "WAITING";
         // Approval wait: durable signal + cancellable while waiting.
         // (Typed approve/cancel signals arrive via signal methods.)

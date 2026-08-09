@@ -40,6 +40,7 @@ public class UserWorkflowExecutionActivitiesImpl implements UserWorkflowExecutio
 
     private final PluginRuntime pluginRuntime;
     private final WorkflowExecutionService executionService;
+    private final com.example.platform.workflow.definition.app.UserWorkflowDefinitionService definitionService;
     // Outbox emission is a bounded adapter point; the FV1 activity records the
     // transition via the product authority. Durable outbox routing is wired
     // through the existing OutboxEventRegistration mechanism where the event
@@ -47,19 +48,38 @@ public class UserWorkflowExecutionActivitiesImpl implements UserWorkflowExecutio
 
     public UserWorkflowExecutionActivitiesImpl(
             PluginRuntime pluginRuntime,
-            WorkflowExecutionService executionService) {
+            WorkflowExecutionService executionService,
+            com.example.platform.workflow.definition.app.UserWorkflowDefinitionService definitionService) {
         this.pluginRuntime = pluginRuntime;
         this.executionService = executionService;
+        this.definitionService = definitionService;
     }
 
     @Override
     public String projectDefinitionPlan(String tenantId, String definitionId, int definitionVersion) {
         // UWE-ADR-008: the plan is an immutable projection of the PUBLISHED
-        // definition version. FV1 foundation: the plan is a bounded JSON
-        // projection referencing node ids + capabilities (typed, deterministic).
+        // definition version — validated node set + capability mapping.
+        // Bounded typed JSON; never the raw mutable definition object.
+        // (AR-W2-07: definition persistence is reached only via the app-layer
+        // service, never the JDBC adapter, from temporal code.)
+        var def = definitionService.getVersion(
+                        tenantId,
+                        new com.example.platform.workflow.definition.domain.UserWorkflowDefinitionId(definitionId),
+                        new com.example.platform.workflow.definition.domain.UserWorkflowDefinitionVersion(definitionVersion));
+        if (def.status() != com.example.platform.workflow.definition.domain.UserWorkflowDefinitionStatus.PUBLISHED) {
+            throw new IllegalArgumentException("definition not PUBLISHED: " + definitionId);
+        }
+        StringBuilder nodes = new StringBuilder();
+        for (com.example.platform.workflow.definition.domain.UserWorkflowDefinitionNode node : def.nodes()) {
+            if (nodes.length() > 0) {
+                nodes.append(',');
+            }
+            nodes.append("{\"nodeId\":\"").append(node.nodeId())
+                    .append("\",\"nodeType\":\"").append(node.nodeType().name())
+                    .append("\"}");
+        }
         return "{\"definitionId\":\"" + definitionId + "\",\"definitionVersion\":" + definitionVersion
-                + ",\"nodes\":[{\"nodeId\":\"main-action\",\"nodeType\":\"ACTION\","
-                + "\"capabilityRef\":\"capability:action\"}]}";
+                + ",\"nodes\":[" + nodes + "]}";
     }
 
     @Override
