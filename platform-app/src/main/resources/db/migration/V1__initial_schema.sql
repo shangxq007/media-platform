@@ -2846,3 +2846,28 @@ create table user_workflow_definition_edge (
     primary key (definition_id, version_number, edge_id),
     unique (definition_id, version_number, source_node_id, target_node_id, condition_ref)
 );
+
+-- ── UWEV1-FV1: User Workflow Execution (product/query/audit authority) ────────
+-- Minimal single-table persistence (UWE-ADR-006). Temporal history is the
+-- orchestration runtime authority; this table is the product authority.
+create table workflow_execution (
+    execution_id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    actor_type varchar(32) not null,
+    actor_id varchar(64) not null,
+    definition_id varchar(64) not null,
+    definition_version int not null,
+    trigger_type varchar(32) not null,
+    status varchar(16) not null,
+    temporal_workflow_id varchar(255) not null,
+    idempotency_key varchar(255) not null,
+    input_refs_json text,
+    result_summary_json text,
+    error_category varchar(32),
+    created_at timestamptz not null,
+    started_at timestamptz,
+    completed_at timestamptz,
+    primary key (execution_id, tenant_id)
+);
+create unique index ux_workflow_execution_idempotency on workflow_execution (tenant_id, idempotency_key);
+create index ix_workflow_execution_tenant_status on workflow_execution (tenant_id, status, created_at desc);
