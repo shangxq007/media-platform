@@ -1,3 +1,10 @@
+// AMRA-V1 — LikeC4 architecture intent model (RECOVERED 2026-08-09)
+// Role: SEMANTIC / DEPLOYMENT / TRUST INTENT — human curated.
+// As-built structure lives in Spring Modulith generated C4:
+//   docs/architecture/maps/generated/modulith/ (GENERATED — DO NOT EDIT)
+// This file is NOT a manual copy of the Spring module graph.
+// Authorities frozen: PRV2 (PluginRuntime), UWEV1-ARSF (Workflow Execution TARGET), W2 (Definition), EUMF (Usage), APPD (Security).
+
 specification {
   element system
   element container
@@ -32,389 +39,202 @@ model {
     description 'Object storage / shared filesystem'
   }
 
-  mediaPlatform = system 'media-platform' {
-    description 'Render platform'
+  postgres = external 'PostgreSQL' {
+    description 'Primary product database'
+  }
 
+  mediaPlatform = system 'media-platform' {
+    description 'Media platform'
+
+    // ── Deployment units ──────────────────────────────────────────────
     platformApp = container 'platform-app' {
-      description 'Spring Boot entry point'
+      description 'Canonical Spring Boot entry point (PlatformApplication)'
     }
 
-    renderModule = container 'render-module' {
-      description 'Core render domain'
+    sandboxWorker = container 'sandbox-worker' {
+      description 'DEPLOYMENT / SECURITY / PROCESS ISOLATION BOUNDARY — code sandbox execution worker (SandboxWorkerApplication)'
+    }
 
-      timelineEdit = component 'Timeline Edit Command' {
-        description 'TL.0: Sealed interface with 12 typed command records'
-      }
+    remoteRenderWorker = container 'remote-render-worker' {
+      description 'CURRENT deployment unit / render-specific adapter (RemoteRenderWorkerApplication). TARGET: THIN deployment adapter (PMPR)'
+    }
 
-      captionTemplate = component 'Caption Template' {
-        description 'CT.0: Typed intent model for caption/subtitle rendering'
-      }
+    // ── Workflow (Definition PUBLISHED / Execution TARGET UWEV1) ─────
+    workflowDefinition = container 'Workflow Definition' {
+      description 'W2 PUBLISHED/CLOSED — declarative DAG definitions (ACTION/EXTENSION_POINT/CONDITION/APPROVAL/DELAY/NOTIFICATION/WEBHOOK/HOOK)'
+    }
 
-      assStyleMapper = component 'AssStyleMapper' {
-        description 'CT.0: Maps CaptionTemplateSpec to ASS format parameters'
-      }
+    workflowExecution = container 'Workflow Execution' {
+      description 'TARGET / FROZEN FOR UWEV1 — not yet implemented. execution authority: workflow-module; version-pinned PUBLISHED definitions only'
+    }
 
-      providerBinding = component 'Provider Binding' {
-        description 'Deterministic eligibility + priority provider selection'
-      }
+    temporal = container 'Temporal' {
+      description 'DURABLE ORCHESTRATION AUTHORITY — sole durable orchestrator (render pipeline active; generic execution TARGET)'
+    }
 
-      ffmpegBaseline = component 'FFmpeg/libass Baseline' {
-        description 'Production rendering baseline'
-      }
+    // ── Runtime authority ─────────────────────────────────────────────
+    pluginRuntime = container 'PluginRuntime' {
+      description 'CANONICAL EFFECT EXECUTION AUTHORITY (PRV2 PUBLISHED) — DefaultPluginRuntime; extension::runtime; TRUSTED_IN_PROCESS + untrusted DENY'
+    }
 
-      productRuntime = component 'Product Runtime' {
-        description 'Product lifecycle management'
-      }
+    capabilityRegistry = container 'Capability Registry' {
+      description 'METADATA / MATCHING / HEALTH AUTHORITY ONLY (Model B) — never executes providers'
+    }
 
-      storageRuntime = component 'Storage Runtime' {
-        description 'Storage/materialization management'
-      }
+    providers = container 'Providers' {
+      description 'Provider SPI / adapters (ProviderExtensionSPI compatibility; domain provider ports)'
+    }
 
-      previewRenderJobService = component 'Preview Render Job Service' {
-        description 'VS.1: Preview render job lifecycle'
-      }
+    // ── Policy / auth ─────────────────────────────────────────────────
+    policyAuth = container 'Policy / Auth' {
+      description 'APPD: CanonicalActor, tenant default deny, typed AuthorizationDecision, RBAC'
+    }
 
-      previewArtifactQueryService = component 'Preview Artifact Query Service' {
-        description 'VS.1: Product/artifact metadata query'
-      }
+    entitlement = container 'Entitlement' {
+      description 'Entitlement authority'
+    }
 
-      fakeTestLayer = component 'Fake Test Layer' {
-        description 'VS.1-TEST.1: Fake implementations for integration testing'
-      }
+    featureFlags = container 'Feature Flags' {
+      description 'OpenFeature — rollout / routing policy only (NOT security/execution authority)'
+    }
 
-      providerRegistry = component 'Provider Registry' {
-        description 'Canonical Provider ID management. Registry key: ffmpeg (not class name)'
-      }
+    quota = container 'Quota' {
+      description 'Quota authority (quota-billing-module — PMPR candidate)'
+    }
 
-      renderJobClaimService = component 'RenderJob Claim Service' {
-        description 'Atomic CAS: QUEUED → SELECTING_PROVIDER via REQUIRES_NEW transaction'
-      }
+    // ── Data authorities ──────────────────────────────────────────────
+    artifactProvenance = container 'Artifact / Provenance' {
+      description 'ArtifactRef + provenance authority (artifact-module)'
+    }
 
-      renderJobFailureService = component 'RenderJob Failure Service' {
-        description 'Durable failure persistence via REQUIRES_NEW transaction. States: SELECTING_PROVIDER, PROVIDER_SELECTED, EXECUTING, COMPLETING'
-      }
+    usage = container 'Usage' {
+      description 'EUMF PUBLISHED — UsageRecord via UsageRecordEmissionPort (REQUEST+DURATION; OperationRef+attempt idempotency)'
+    }
 
-      renderJobStateMachine = component 'RenderJob State Machine' {
-        description 'Lifecycle transitions: QUEUED → SELECTING_PROVIDER → PROVIDER_SELECTED → EXECUTING → COMPLETING → COMPLETED'
-      }
+    providerCost = container 'ProviderCost' {
+      description 'ProviderCostObservation (REPORTED/ESTIMATED/DERIVED) — runtime != pricing/billing'
     }
 
     storageModule = container 'storage-module' {
-      description 'Storage delivery and materialization'
-
-      storageDeliveryProfile = component 'Storage Delivery Profile' {
-        description 'Profile contract: 8 canonical profiles, access modes, capabilities'
-      }
-
-      storageDeliveryProfileDTO = component 'StorageDeliveryProfile DTO' {
-        description 'Internal value objects: Profile, Capabilities, SecurityPolicy'
-      }
-
-      storageDeliveryProfileValidator = component 'StorageDeliveryProfileValidator' {
-        description 'Local validation: access mode, capability, security rules'
-      }
-
-      storageDeliveryProfileConfig = component 'StorageDeliveryProfileConfig' {
-        description 'Spring config binding: storage.delivery.*'
-      }
-
-      storageDeliveryProfileRegistry = component 'StorageDeliveryProfileRegistry' {
-        description 'Read-only registry: 8 canonical profiles, not used for provider selection'
-      }
-
-      s3Materializer = component 'S3ObjectMaterializer' {
-        description 'S3/R2-compatible storage materializer'
-      }
-
-      accessDescriptor = component 'AccessDescriptor' {
-        description 'User-facing access contract: SIGNED_URL generated on demand'
-      }
+      description 'Storage delivery + materialization (CURRENT: Artifact->Render->Storage SPI debt; TARGET: Artifact->Storage API/SPI — PMPR)'
     }
 
-    ingestModule = container 'ingest-module' {
-      description 'Upload preflight and metadata detection'
-
-      uploadHook = component 'UploadReportOnlyPreflightHook' {
-        description 'Report-only hook: disabled by default, fail-open, never rejects'
-      }
-
-      tikaProvider = component 'TikaDetectorProvider' {
-        description 'MIME detection, extension mismatch, content-type detection'
-      }
-
-      ffprobeProvider = component 'FFprobeMetadataProvider' {
-        description 'Media technical metadata: duration, codec, resolution'
-      }
-
-      metadataMerger = component 'IngestMetadataMerger' {
-        description 'Merges Tika + FFprobe into unified result'
-      }
-
-      safeReportDTO = component 'SafePreflightReportSummary' {
-        description 'Safe internal DTO: no raw metadata, no storage internals'
-      }
-
-      policyEvaluator = component 'ReportOnlyPreflightPolicyEvaluator' {
-        description 'Report-only evaluator: never rejects, fails open'
-      }
-
-      policyResult = component 'PreflightPolicyEvaluationResult' {
-        description 'Policy result: ACCEPT, ACCEPT_WITH_WARNINGS, REJECT_CANDIDATE'
-      }
+    // ── Other CURRENT containers (aggregate) ──────────────────────────
+    renderModule = container 'render-module' {
+      description 'Core render domain (CURRENT; legacy provider-bound paths remain)'
     }
 
     aiModule = container 'ai-module' {
-      description 'AI integration'
+      description 'AI integration (ChatProvider domain port; EUMF producer)'
     }
 
-    sharedKernel = container 'shared-kernel' {
-      description 'Shared domain primitives'
+    sandboxRuntime = container 'sandbox-runtime-module' {
+      description 'Code sandbox runtime (CURRENT; PMPR MERGE/RETIRE review candidate)'
     }
 
-    opencue = container 'OpenCue' {
-      description 'ExecutionEnvironment only — NOT a Provider'
+    outbox = container 'Outbox' {
+      description 'Durable outbox events (outbox-event-module)'
     }
 
-    remotion = container 'Remotion' {
-      description 'Non-production/POC subtitle template provider'
-    }
-  }
-
-  hermes = system 'Hermes Control Plane' {
-    description 'Multi-agent orchestration'
-
-    hermesAgent = component 'Hermes Agent' {
-      description 'Gateway, orchestrator, Level 3 Feature Coordinator'
+    pmprCandidates = container 'PMPR CANDIDATES' {
+      description 'artifact-catalog-module, quota-billing-module, product-layer-module, compatibility-migration-module — CURRENT elements with PMPR governance; NOT prematurely removed'
     }
 
-    codingAgents = component 'Coding Agents' {
-      description 'OpenCode, Codex, Kilo Code, Claude Code, Aider'
-    }
-
-    reviewInfra = component 'Review Infrastructure' {
-      description 'CODEOWNERS, Semgrep, Review Packets'
-    }
-
-    policies = component 'Policies' {
-      description 'Permissions, stop conditions'
-    }
-
-    dashboard = component 'Dashboard' {
-      description 'scribe.cc.cd'
+    scheduler = container 'Scheduler' {
+      description 'TRIGGER AUTHORITY ONLY — requests workflow execution; owns no execution/node/retry'
     }
   }
 
-  // External relationships
+  // ── External relationships ──────────────────────────────────────────
   user -> mediaPlatform 'uses'
-  reviewer -> hermes 'reviews'
-  mediaPlatform -> storage 'reads/writes'
+  reviewer -> mediaPlatform 'reviews'
+  mediaPlatform -> storage 'reads/writes (CURRENT via render-bound path — DEBT)'
+  mediaPlatform -> postgres 'persists product state'
   mediaPlatform -> aiProviders 'calls models'
-  hermes -> cloudflare 'publishes'
-  hermes -> telegram 'notifies'
-  hermes -> mediaPlatform 'develops'
+  mediaPlatform -> cloudflare 'R2/Pages/AI Gateway'
 
-  // Internal: application structure
-  platformApp -> renderModule 'uses'
-  platformApp -> storageModule 'uses'
-  platformApp -> ingestModule 'uses'
-  renderModule -> sharedKernel 'depends on'
-  storageModule -> sharedKernel 'depends on'
-  ingestModule -> sharedKernel 'depends on'
-  aiModule -> sharedKernel 'depends on'
+  // ── Deployment relationships ────────────────────────────────────────
+  platformApp -> sandboxWorker 'isolates code execution'
+  platformApp -> remoteRenderWorker 'dispatches render jobs (CURRENT)'
 
-  // VS.0 vertical slice flow
-  timelineEdit -> captionTemplate 'generates typed intent'
-  captionTemplate -> assStyleMapper 'maps to ASS parameters'
-  assStyleMapper -> providerBinding 'resolves provider'
-  providerBinding -> ffmpegBaseline 'routes PRODUCTION'
-  ffmpegBaseline -> productRuntime 'produces output'
-  productRuntime -> storageRuntime 'manages lifecycle'
-  storageRuntime -> storage 'persists artifacts'
+  // ── Workflow chain (TARGET for UWEV1 — frozen intent, NOT implemented) ──
+  workflowDefinition -> workflowExecution 'definition/version pinned'
+  workflowExecution -> temporal 'durable orchestration'
+  temporal -> pluginRuntime 'Activity/effect boundary'
+  pluginRuntime -> providers 'effect execution'
+  pluginRuntime -> capabilityRegistry 'resolves capability'
+  providers -> artifactProvenance 'produces artifacts'
+  providers -> usage 'emits usage (EUMF)'
+  providers -> providerCost 'reports cost'
+  workflowExecution -> outbox 'terminal transitions (TARGET)'
 
-  // Boundaries
-  providerBinding -> opencue 'routes ExecutionEnv only'
-  providerBinding -> remotion 'routes POC only'
+  // ── Security / policy chain ─────────────────────────────────────────
+  policyAuth -> entitlement 'authorizes'
+  policyAuth -> featureFlags 'rollout policy'
+  policyAuth -> quota 'enforces limits'
+  scheduler -> policyAuth 'system actor policy'
 
-  // VS.1 Preview Render Job flow
-  previewRenderJobService -> providerBinding 'compiles plan'
-  previewRenderJobService -> ffmpegBaseline 'executes preview'
-  previewRenderJobService -> productRuntime 'creates product'
-  previewArtifactQueryService -> productRuntime 'queries product'
-  previewArtifactQueryService -> storageRuntime 'queries storage'
+  // ── Runtime semantics ───────────────────────────────────────────────
+  // Forbidden (never drawn as target): Workflow -> ProviderExtensionSPI; Workflow -> SandboxExecutionService.
+  capabilityRegistry -> pluginRuntime 'describes; runtime executes (CAPABILITY_REGISTRY_DESCRIBES; PLUGIN_RUNTIME_EXECUTES)'
 
-  // RenderJob Claim and Failure relationships
-  previewRenderJobService -> renderJobClaimService 'claims execution'
-  previewRenderJobService -> renderJobFailureService 'records failure'
-  previewRenderJobService -> renderJobStateMachine 'transitions state'
-  renderJobClaimService -> providerRegistry 'verifies provider'
-  providerBinding -> providerRegistry 'resolves by canonical ID'
-  ffmpegBaseline -> providerRegistry 'registers as ffmpeg'
-
-  platformApp -> previewRenderJobService 'exposes API'
-  platformApp -> previewArtifactQueryService 'exposes API'
-
-  // VS.1 Test layer
-  fakeTestLayer -> previewRenderJobService 'tests'
-  fakeTestLayer -> previewArtifactQueryService 'tests'
-
-  // Storage Delivery Profile relationships
-  storageDeliveryProfileRegistry -> storageDeliveryProfile 'holds profiles'
-  storageDeliveryProfileValidator -> storageDeliveryProfile 'validates'
-  storageDeliveryProfileConfig -> storageDeliveryProfile 'binds config'
-  storageDeliveryProfile -> storageDeliveryProfileDTO 'maps to DTOs'
-  s3Materializer -> storage 'R2/S3-compatible'
-  s3Materializer -> accessDescriptor 'generates signed URL'
-
-  // Ingest Preflight Policy relationships
-  uploadHook -> tikaProvider 'detects MIME'
-  uploadHook -> ffprobeProvider 'probes media'
-  uploadHook -> metadataMerger 'merges results'
-  metadataMerger -> safeReportDTO 'produces safe report'
-  safeReportDTO -> policyEvaluator 'evaluates policy'
-  policyEvaluator -> policyResult 'produces result'
+  // ── Data authorities ────────────────────────────────────────────────
+  artifactProvenance -> storageModule 'CURRENT DEBT: via render; TARGET: direct Storage API/SPI (PMPR)'
+  usage -> postgres 'persists usage records'
 }
 
 views {
-
   view systemContext of mediaPlatform {
     title 'System Context'
-    description 'External actors and systems'
-    include *
-    exclude renderModule
-    exclude storageModule
-    exclude ingestModule
-    exclude aiModule
-    exclude sharedKernel
-    exclude platformApp
-  }
-
-  view containerDiagram of mediaPlatform {
-    title 'Container View'
-    description 'Major modules'
     include *
   }
 
-  view controlPlane of hermes {
-    title 'Hermes Control Plane'
-    description 'Control plane components'
-    include *
-  }
-
-  view controlPlaneContext of hermes {
-    title 'Control Plane in Context'
-    description 'Hermes with external integrations'
-    include *
-    include user
-    include reviewer
-    include cloudflare
-    include telegram
-    include mediaPlatform
-  }
-
-  view vs0VerticalSlice of renderModule {
-    title 'VS.0 — Timeline-to-Caption-Render Vertical Slice'
-    description 'Complete flow: Timeline edit → Caption template → ASS mapping → Provider binding → FFmpeg plan → Product output'
-    include *
-    exclude opencue
-    exclude remotion
-  }
-
-  view captionTemplateBoundary of renderModule {
-    title 'Caption Template Boundary'
-    description 'Typed intent slice only — no generic Template System, no raw commands, no provider calls'
+  view deploymentBoundaries of mediaPlatform {
+    title 'Deployment / Trust Boundaries'
     include
-      renderModule.timelineEdit,
-      renderModule.captionTemplate,
-      renderModule.assStyleMapper,
-      renderModule.providerBinding,
-      renderModule.ffmpegBaseline
+      platformApp,
+      sandboxWorker,
+      remoteRenderWorker,
+      sandboxRuntime,
+      temporal
   }
 
-  view productStorageBoundary of renderModule {
-    title 'Product/Storage Boundary'
-    description 'Product output through ProductRuntime/StorageRuntime — no local path exposure, no provider/storage internals in public API'
+  view workflowExecutionTarget of mediaPlatform {
+    title 'Workflow Execution (TARGET — frozen for UWEV1)'
     include
-      renderModule.ffmpegBaseline,
-      renderModule.productRuntime,
-      renderModule.storageRuntime,
-      storage
+      workflowDefinition,
+      workflowExecution,
+      temporal,
+      pluginRuntime,
+      capabilityRegistry,
+      providers,
+      artifactProvenance,
+      usage,
+      providerCost,
+      outbox
   }
 
-  view providerExecutionBoundary of renderModule {
-    title 'Provider Binding vs Execution Environment'
-    description 'FFmpeg/libass production baseline, OpenCue ExecutionEnvironment only, Remotion non-production only'
+  view runtimeAuthority of mediaPlatform {
+    title 'Runtime Authority (PRV2 published)'
     include
-      renderModule.providerBinding,
-      renderModule.ffmpegBaseline,
-      opencue,
-      remotion
+      capabilityRegistry,
+      pluginRuntime,
+      providers,
+      usage,
+      providerCost
   }
 
-  view previewRenderJobApiFlow of renderModule {
-    title 'VS.1 — Preview Render Job API Flow'
-    description 'Headless client → Preview Render Job API → Provider binding → FFmpeg plan → Product output'
+  view policyAndData of mediaPlatform {
+    title 'Policy / Data Authorities'
     include
-      renderModule.previewRenderJobService,
-      renderModule.providerBinding,
-      renderModule.ffmpegBaseline,
-      renderModule.productRuntime,
-      renderModule.storageRuntime,
-      storage
-  }
-
-  view productArtifactResponseFlow of renderModule {
-    title 'VS.1 — Product/Artifact Response Flow'
-    description 'ProductRuntime → Product → StorageRuntime → PreviewArtifactResponse'
-    include
-      renderModule.previewArtifactQueryService,
-      renderModule.productRuntime,
-      renderModule.storageRuntime,
-      storage
-  }
-
-  view headlessApiValidationFlow of renderModule {
-    title 'VS.1 — Headless API Validation Flow'
-    description 'Agent/API smoke test → Fake test layer → Contract tests → Exposure safety checks'
-    include
-      renderModule.fakeTestLayer,
-      renderModule.previewRenderJobService,
-      renderModule.previewArtifactQueryService
-  }
-
-  view storageDeliveryProfileArchitecture of storageModule {
-    title 'Storage Delivery Profile Architecture'
-    description 'Profile contract, DTO, validator, config binding, registry — read-only, not used for provider selection'
-    include *
-    exclude s3Materializer
-    exclude accessDescriptor
-  }
-
-  view ingestPreflightPolicyFlow of ingestModule {
-    title 'Ingest Preflight Policy Flow'
-    description 'Report-only: Tika + FFprobe → SafeReport → PolicyEvaluator → non-blocking result'
-    include *
-  }
-
-  view r2ArtifactAccessPath of renderModule {
-    title 'R2 Artifact Access Path'
-    description 'Active runtime: StorageReference → S3/R2 → signed URL → AccessDescriptor'
-    include
-      renderModule.storageRuntime,
-      storageModule.s3Materializer,
-      storageModule.accessDescriptor,
-      storage
-  }
-
-  view renderJobClaimFailureArchitecture of renderModule {
-    title 'RenderJob Claim and Failure Architecture'
-    description 'Atomic CAS claim (QUEUED → SELECTING_PROVIDER) + Durable failure via REQUIRES_NEW transactions'
-    include
-      renderModule.previewRenderJobService,
-      renderModule.renderJobClaimService,
-      renderModule.renderJobFailureService,
-      renderModule.renderJobStateMachine,
-      renderModule.providerRegistry,
-      renderModule.providerBinding,
-      renderModule.ffmpegBaseline
+      policyAuth,
+      entitlement,
+      featureFlags,
+      quota,
+      artifactProvenance,
+      usage,
+      providerCost,
+      storageModule,
+      outbox
   }
 }
