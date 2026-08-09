@@ -1,6 +1,7 @@
 package com.example.platform.billing.usage;
 
 import com.example.platform.billing.domain.UsageRecord;
+import org.springframework.stereotype.Service;
 
 /**
  * NOT CANONICAL AUTHORITY — transitional compatibility projection for existing billing
@@ -17,6 +18,7 @@ import com.example.platform.billing.domain.UsageRecord;
  * authority lives in {@code billing.usage}. It does NOT define or invent execution usage
  * facts.</p>
  */
+@Service
 public class BillingUsageCompatibilityAdapter {
 
     /**
