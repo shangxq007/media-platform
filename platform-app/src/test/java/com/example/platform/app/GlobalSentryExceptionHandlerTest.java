@@ -1,6 +1,6 @@
 package com.example.platform.app;
 
-import com.example.platform.shared.monitoring.SentryMonitoringService;
+import com.example.platform.observability.monitoring.SentryMonitoringService;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.web.GlobalExceptionHandler;
 import jakarta.servlet.http.HttpServletRequest;

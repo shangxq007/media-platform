@@ -1,7 +1,7 @@
 package com.example.platform.federation.graphql.audit;
 
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
-import com.example.platform.shared.monitoring.SentryMonitoringService;
+import com.example.platform.observability.monitoring.SentryMonitoringService;
 import graphql.GraphQLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

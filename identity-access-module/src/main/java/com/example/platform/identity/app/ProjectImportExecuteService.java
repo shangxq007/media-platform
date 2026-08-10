@@ -4,7 +4,7 @@ import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.io.ChecksumFormat;
-import com.example.platform.shared.security.SafeDownloadUrlValidator;
+import com.example.platform.identity.security.SafeDownloadUrlValidator;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;

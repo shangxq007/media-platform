@@ -1,5 +1,6 @@
 package com.example.platform.shared.monitoring;
 
+import com.example.platform.observability.monitoring.SentryMonitoringService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

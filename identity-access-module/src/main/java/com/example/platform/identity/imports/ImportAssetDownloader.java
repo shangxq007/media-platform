@@ -1,4 +1,4 @@
-package com.example.platform.shared.imports;
+package com.example.platform.identity.imports;
 
 /**
  * Downloads an asset from a URL during project import.

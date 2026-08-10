@@ -1,5 +1,7 @@
-package com.example.platform.shared.authorization;
+package com.example.platform.identity.authorization;
 
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.shared.authorization.CanonicalActorResolver;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 

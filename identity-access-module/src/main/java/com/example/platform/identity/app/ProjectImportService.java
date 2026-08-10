@@ -6,10 +6,11 @@ import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.io.ChecksumFormat;
-import com.example.platform.shared.imports.DownloadedAsset;
-import com.example.platform.shared.imports.ImportAssetDownloader;
-import com.example.platform.shared.imports.ImportCleanupTracker;
-import com.example.platform.shared.security.SafeDownloadUrlValidator;
+import com.example.platform.identity.imports.AssetDownloadException;
+import com.example.platform.identity.imports.DownloadedAsset;
+import com.example.platform.identity.imports.ImportAssetDownloader;
+import com.example.platform.identity.imports.ImportCleanupTracker;
+import com.example.platform.identity.security.SafeDownloadUrlValidator;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;
@@ -197,7 +198,7 @@ public class ProjectImportService {
                 DownloadedAsset downloaded;
                 try {
                     downloaded = assetDownloader.download(downloadUrl);
-                } catch (com.example.platform.shared.imports.AssetDownloadException e) {
+                } catch (AssetDownloadException e) {
                     throw new ImportFailureException(REASON_HTTP_DOWNLOAD_FAILED,
                             "Download failed for asset " + sourceId + ": " + e.reasonCode());
                 }

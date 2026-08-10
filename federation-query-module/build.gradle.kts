@@ -13,6 +13,7 @@ dependencies {
     api(project(":audit-compliance-module"))
     api(project(":ai-module"))
     api(project(":datasource-module"))
+    implementation(project(":observability-module"))
 
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")

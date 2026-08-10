@@ -1,4 +1,4 @@
-package com.example.platform.shared.security;
+package com.example.platform.identity.security;
 
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;

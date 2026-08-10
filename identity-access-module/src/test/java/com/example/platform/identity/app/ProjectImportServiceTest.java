@@ -5,8 +5,8 @@ import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.imports.DownloadedAsset;
-import com.example.platform.shared.imports.ImportAssetDownloader;
+import com.example.platform.identity.imports.DownloadedAsset;
+import com.example.platform.identity.imports.ImportAssetDownloader;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;
@@ -203,7 +203,7 @@ class ProjectImportServiceTest {
 
         // Asset 2: download fails
         lenient().when(assetDownloader.download("https://signed.example.com/video2.mp4"))
-                .thenThrow(new com.example.platform.shared.imports.AssetDownloadException(
+                .thenThrow(new com.example.platform.identity.imports.AssetDownloadException(
                         "HTTP_ERROR", "HTTP 500"));
 
         ProjectImportRequest request = new ProjectImportRequest(

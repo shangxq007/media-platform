@@ -1,4 +1,4 @@
-package com.example.platform.shared.monitoring;
+package com.example.platform.observability.monitoring;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,7 @@
-package com.example.platform.shared.imports;
+package com.example.platform.identity.imports;
 
+import com.example.platform.identity.security.SafeDownloadUrlValidator;
 import com.example.platform.shared.io.ChecksummingInputStream;
-import com.example.platform.shared.security.SafeDownloadUrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

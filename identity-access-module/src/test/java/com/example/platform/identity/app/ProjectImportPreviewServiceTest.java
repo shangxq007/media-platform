@@ -2,7 +2,7 @@ package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.security.SafeDownloadUrlValidator;
+import com.example.platform.identity.security.SafeDownloadUrlValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

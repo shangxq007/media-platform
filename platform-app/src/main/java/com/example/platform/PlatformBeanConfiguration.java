@@ -1,6 +1,6 @@
 package com.example.platform;
 
-import com.example.platform.shared.monitoring.SentryMonitoringService;
+import com.example.platform.observability.monitoring.SentryMonitoringService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import com.example.platform.ingest.experimental.tika.TikaExperimentalProperties;

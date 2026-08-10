@@ -1,4 +1,4 @@
-package com.example.platform.shared.imports;
+package com.example.platform.identity.imports;
 
 /**
  * Exception thrown when an asset download fails during project import.

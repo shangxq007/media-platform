@@ -1,4 +1,4 @@
-package com.example.platform.shared.monitoring;
+package com.example.platform.observability.monitoring;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package com.example.platform.shared.security;
+package com.example.platform.identity.security;
 
 import java.net.InetAddress;
 import java.net.URI;

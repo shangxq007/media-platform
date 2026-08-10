@@ -1,7 +1,7 @@
 package com.example.platform.security;
 
 import com.example.platform.shared.audit.AdminAuditPublisher;
-import com.example.platform.shared.logging.AdminAuditLogger;
+import com.example.platform.audit.logging.AdminAuditLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

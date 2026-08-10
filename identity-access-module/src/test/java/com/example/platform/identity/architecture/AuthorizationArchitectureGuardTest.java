@@ -188,17 +188,18 @@ class AuthorizationArchitectureGuardTest {
     @Test
     void arAuth08_canonicalActorResolvedFromSecurityContext() {
         // The JWT/API-key request-attribute resolver lives in platform-app; the
-        // MDC and System resolvers live in shared-kernel. At least one resolver must
-        // read the jwt.* security-context attributes.
-        Path sharedAuthz = SHARED_KERNEL.resolve("authorization");
-        boolean hasJwtSource = anyFileContains(sharedAuthz, "jwt.subject")
-                || anyFileContains(sharedAuthz, "jwt.tenantId")
+        // MDC and System resolvers live in identity-access-module (the real owner of
+        // authorization behavior). At least one resolver must read the jwt.*
+        // security-context attributes.
+        Path identityAuthz = IDENTITY_ACCESS.resolve("authorization");
+        boolean hasJwtSource = anyFileContains(identityAuthz, "jwt.subject")
+                || anyFileContains(identityAuthz, "jwt.tenantId")
                 || anyFileContains(PLATFORM_APP.resolve("security"), "jwt.subject")
                 || anyFileContains(PLATFORM_APP.resolve("security"), "jwt.tenantId");
         assertTrue(hasJwtSource,
                 "AR-AUTH-08: a resolver must read the jwt.* security-context attributes");
-        assertTrue(Files.exists(sharedAuthz.resolve("SystemCanonicalActorResolver.java")),
-                "AR-AUTH-08: an explicit System resolver must exist");
+        assertTrue(Files.exists(identityAuthz.resolve("SystemCanonicalActorResolver.java")),
+                "AR-AUTH-08: an explicit System resolver must exist in identity-access-module");
     }
 
     // ── AR-AUTH-09: canonical actor from security context (no business

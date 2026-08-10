@@ -42,6 +42,7 @@
             "app :: ai",
             "security",
             "workflow",
-            "workflow :: temporal"
+            "workflow :: temporal",
+            "observability :: monitoring"
         })
 package com.example.platform.web;

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.example.platform.identity.app.BuiltinDataInitializer;
-import com.example.platform.shared.monitoring.SentryMonitoringService;
+import com.example.platform.observability.monitoring.SentryMonitoringService;
 import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

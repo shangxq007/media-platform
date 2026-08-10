@@ -1,6 +1,6 @@
 package com.example.platform.web;
 
-import com.example.platform.shared.monitoring.SentryMonitoringService;
+import com.example.platform.observability.monitoring.SentryMonitoringService;
 import com.example.platform.shared.web.CommonErrorCode;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.ErrorCodeRegistry;

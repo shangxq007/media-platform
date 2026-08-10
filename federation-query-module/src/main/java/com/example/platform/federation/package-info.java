@@ -20,6 +20,7 @@
             "prompt :: domain",
             "ai :: API",
             "ai :: domain",
-            "policy :: feature-flags"
+            "policy :: feature-flags",
+            "observability :: monitoring"
         })
 package com.example.platform.federation;

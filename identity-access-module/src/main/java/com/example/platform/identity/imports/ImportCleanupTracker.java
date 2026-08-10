@@ -1,4 +1,4 @@
-package com.example.platform.shared.imports;
+package com.example.platform.identity.imports;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
