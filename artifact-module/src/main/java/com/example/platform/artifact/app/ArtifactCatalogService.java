@@ -53,7 +53,8 @@ public class ArtifactCatalogService {
 
     public Map<String, Object> overview() {
         return Map.of(
-                "module", "artifact-catalog-module",
+                "authority", "artifact",
+                "capability", "catalog",
                 "status", "active",
                 "description", "ArtifactCatalogEntry catalog — persistent storage of render artifacts, relations, and provenance.",
                 "artifactCount", persistent ? artifactRepository.findAll().size() : artifacts.size(),

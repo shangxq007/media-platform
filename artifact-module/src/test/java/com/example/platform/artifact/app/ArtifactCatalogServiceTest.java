@@ -169,9 +169,10 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void overviewReturnsModuleInfo() {
+    void overviewReturnsCanonicalAuthorityInfo() {
         Map<String, Object> overview = service.overview();
-        assertEquals("artifact-catalog-module", overview.get("module"));
+        assertEquals("artifact", overview.get("authority"));
+        assertEquals("catalog", overview.get("capability"));
         assertEquals("active", overview.get("status"));
         assertEquals(true, overview.get("persistent"));
     }
