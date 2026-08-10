@@ -220,13 +220,13 @@ public class ExtensionRegistryService {
     }
 
     /**
-     * Looks up the registered SPI instance for a provider key (used by the
+     * Looks up the registered provider-binding instance for a provider key (used by the
      * Plugin Runtime V2 compatibility adapter).
      *
      * @param key provider extension key
-     * @return the registered SPI instance, or {@code null} when not registered
+     * @return the registered provider binding, or {@code null} when not registered
      */
-    public PluginRuntimeProviderBinding findSpiInstance(String key) {
+    public PluginRuntimeProviderBinding findProviderBinding(String key) {
         Object spi = spiInstances.get(key);
         return spi instanceof PluginRuntimeProviderBinding provider ? provider : null;
     }

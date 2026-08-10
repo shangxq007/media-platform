@@ -62,7 +62,7 @@ class PluginRuntimeRedMatrixTest {
         // CAPABILITY_UNSUPPORTED without touching the provider SPI
         var registry = org.mockito.Mockito.mock(
                 com.example.platform.extension.app.ExtensionRegistryService.class);
-        org.mockito.Mockito.when(registry.findSpiInstance("ghost")).thenReturn(null);
+        org.mockito.Mockito.when(registry.findProviderBinding("ghost")).thenReturn(null);
         DefaultPluginRuntime runtime = new DefaultPluginRuntime(registry);
         PluginExecutionResult result = runtime.execute(request(ExecutionMode.TRUSTED_IN_PROCESS, "tenant-1"));
         assertEquals(PluginExecutionStatus.FAILED, result.status());
@@ -186,7 +186,7 @@ class PluginRuntimeRedMatrixTest {
                 org.mockito.ArgumentMatchers.any(com.example.platform.extension.domain.ExtensionContext.class),
                 org.mockito.ArgumentMatchers.anyString()))
                 .thenThrow(new IllegalStateException("openai sdk blew up"));
-        org.mockito.Mockito.when(registry.findSpiInstance("p-1")).thenReturn(spi);
+        org.mockito.Mockito.when(registry.findProviderBinding("p-1")).thenReturn(spi);
         DefaultPluginRuntime runtime = new DefaultPluginRuntime(registry);
         PluginExecutionResult result = runtime.execute(request(ExecutionMode.TRUSTED_IN_PROCESS, "tenant-1"));
         assertEquals(PluginRuntimeErrorCategory.EXECUTION_FAILED, result.error().category());

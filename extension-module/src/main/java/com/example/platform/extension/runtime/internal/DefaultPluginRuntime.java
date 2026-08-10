@@ -109,7 +109,7 @@ public final class DefaultPluginRuntime implements PluginRuntime {
 
     private PluginExecutionResult executeViaBinding(PluginExecutionRequest request) {
         String providerId = request.providerRef().providerId();
-        PluginRuntimeProviderBinding binding = registry.findSpiInstance(providerId);
+        PluginRuntimeProviderBinding binding = registry.findProviderBinding(providerId);
         if (binding == null) {
             return PluginExecutionResult.failed(
                     PluginRuntimeErrorCategory.CAPABILITY_UNSUPPORTED,

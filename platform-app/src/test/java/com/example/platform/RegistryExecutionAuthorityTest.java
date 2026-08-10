@@ -74,6 +74,6 @@ class RegistryExecutionAuthorityTest {
     void registryRetainsMetadataResponsibilities() {
         String reg = read("extension-module/src/main/java/com/example/platform/extension/app/ExtensionRegistryService.java");
         assertTrue(reg.contains("public void registerProviderExtension("), "registration must remain");
-        assertTrue(reg.contains("findSpiInstance"), "binding lookup must remain");
+        assertTrue(reg.contains("findProviderBinding"), "binding lookup must remain");
     }
 }
