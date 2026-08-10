@@ -28,15 +28,15 @@ import org.springframework.stereotype.Component;
 public class OcrTaskHandler implements TaskHandler, Producer {
 
     private static final Logger log = LoggerFactory.getLogger(OcrTaskHandler.class);
-    private final ExtensionRegistryService extensionRegistry;
+    private final com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
     private final AssetSemanticMetadataService semanticService;
     private final TimelineReviewEventPublisher eventPublisher;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public OcrTaskHandler(ExtensionRegistryService extensionRegistry,
+    public OcrTaskHandler(com.example.platform.extension.runtime.PluginRuntime pluginRuntime,
                             AssetSemanticMetadataService semanticService,
                             TimelineReviewEventPublisher eventPublisher) {
-        this.extensionRegistry = extensionRegistry;
+        this.pluginRuntime = pluginRuntime;
         this.semanticService = semanticService;
         this.eventPublisher = eventPublisher;
     }
@@ -58,15 +58,15 @@ public class OcrTaskHandler implements TaskHandler, Producer {
         String inputJson = "{\"imageFile\":\"" + imagePath + "\",\"language\":\""
                 + (language != null ? language : "eng") + "\"}";
 
-        ExtensionResult result;
+        com.example.platform.extension.runtime.PluginExecutionResult result;
         try {
-            result = extensionRegistry.executeProvider("tesseract", inputJson, "system", context.jobId());
-        } catch (ExtensionExecutionException e) {
+            result = pluginRuntime.executeProvider("tesseract", "system", "ocr", context.jobId(), inputJson);
+        } catch (com.example.platform.extension.runtime.PluginRuntimeExecutionException e) {
             throw new IllegalStateException("OCR extension runtime failed: " + e.getMessage());
         }
 
-        if (!result.success()) {
-            throw new IllegalStateException("OCR failed: " + result.errorMessage());
+        if (result.status() != com.example.platform.extension.runtime.PluginExecutionStatus.SUCCEEDED) {
+            throw new IllegalStateException("OCR failed: " + (result.error() != null ? result.error().message() : "failed"));
         }
 
         String ocrText = extractText(result);
@@ -93,9 +93,9 @@ public class OcrTaskHandler implements TaskHandler, Producer {
     }
 
     @SuppressWarnings("unchecked")
-    private String extractText(ExtensionResult result) {
+    private String extractText(com.example.platform.extension.runtime.PluginExecutionResult result) {
         try {
-            return (String) mapper.readValue(result.outputJson(), Map.class).getOrDefault("text", "");
+            return (String) mapper.readValue(String.valueOf(result.output()), Map.class).getOrDefault("text", "");
         } catch (Exception e) { return ""; }
     }
 

@@ -18,7 +18,6 @@ public class ExtensionRegistryService {
     private static final Logger log = LoggerFactory.getLogger(ExtensionRegistryService.class);
 
     private final AuditPort auditPort;
-    private final SandboxExecutionService sandboxExecutionService;
     private final ExtensionAuditService auditService;
     private final ExtensionResourceLimiter resourceLimiter;
     private final ExtensionRouter router;
@@ -31,12 +30,10 @@ public class ExtensionRegistryService {
     private final ConcurrentHashMap<String, Object> spiInstances = new ConcurrentHashMap<>();
 
     public ExtensionRegistryService(AuditPort auditPort,
-                                     SandboxExecutionService sandboxExecutionService,
                                      ExtensionAuditService auditService,
                                      ExtensionResourceLimiter resourceLimiter,
                                      ExtensionRouter router) {
         this.auditPort = auditPort;
-        this.sandboxExecutionService = sandboxExecutionService;
         this.auditService = auditService;
         this.resourceLimiter = resourceLimiter;
         this.router = router;
@@ -123,77 +120,6 @@ public class ExtensionRegistryService {
                         "trustLevel", trustLevel.name()));
 
         log.info("Registered workflow step extension: {} v{} trust={}", key, extension.version(), trustLevel);
-    }
-
-    public ExtensionResult executeProvider(String key, String inputJson, String tenantId,
-                                            String userId) throws ExtensionExecutionException {
-        ExtensionHolder holder = providerExtensions.get(key);
-        if (holder == null) {
-            throw new ExtensionExecutionException(key, "EXT-404", "Provider extension not found: " + key);
-        }
-
-        Optional<String> routedVersion = router.resolveVersion(key, holder.version(), tenantId, userId, null);
-        String targetVersion = routedVersion.orElse(holder.version());
-
-        ExtensionContext context = ExtensionContext.builder()
-                .extensionKey(key)
-                .extensionVersion(targetVersion)
-                .tenantId(tenantId)
-                .userId(userId)
-                .traceId(Ids.newId("trace"))
-                .trustLevel(holder.trustLevel())
-                .build();
-
-        ExtensionResourceLimits limits = resourceLimiter.getLimits(key);
-        return sandboxExecutionService.executeExtension(context, inputJson, limits);
-    }
-
-    public ExtensionResult executePromptExtension(String key, String templateBody, String variables,
-                                                    String tenantId, String userId) throws ExtensionExecutionException {
-        ExtensionHolder holder = promptExtensions.get(key);
-        if (holder == null) {
-            throw new ExtensionExecutionException(key, "EXT-404", "Prompt extension not found: " + key);
-        }
-
-        ExtensionContext context = ExtensionContext.builder()
-                .extensionKey(key)
-                .extensionVersion(holder.version())
-                .tenantId(tenantId)
-                .userId(userId)
-                .traceId(Ids.newId("trace"))
-                .trustLevel(holder.trustLevel())
-                .build();
-
-        ExtensionResourceLimits limits = resourceLimiter.getLimits(key);
-        Object spi = spiInstances.get(key);
-        if (spi instanceof PromptExtensionSPI ext) {
-            return ext.execute(context, templateBody, variables);
-        }
-        return sandboxExecutionService.executeExtension(context, templateBody, limits);
-    }
-
-    public ExtensionResult executeWorkflowStep(String key, String stepInput, String tenantId,
-                                                String userId) throws ExtensionExecutionException {
-        ExtensionHolder holder = workflowStepExtensions.get(key);
-        if (holder == null) {
-            throw new ExtensionExecutionException(key, "EXT-404", "Workflow step extension not found: " + key);
-        }
-
-        ExtensionContext context = ExtensionContext.builder()
-                .extensionKey(key)
-                .extensionVersion(holder.version())
-                .tenantId(tenantId)
-                .userId(userId)
-                .traceId(Ids.newId("trace"))
-                .trustLevel(holder.trustLevel())
-                .build();
-
-        ExtensionResourceLimits limits = resourceLimiter.getLimits(key);
-        Object spi = spiInstances.get(key);
-        if (spi instanceof WorkflowStepExtensionSPI ext) {
-            return ext.execute(context, stepInput);
-        }
-        return sandboxExecutionService.executeExtension(context, stepInput, limits);
     }
 
     public boolean unloadExtension(String key, String unloadedBy) {

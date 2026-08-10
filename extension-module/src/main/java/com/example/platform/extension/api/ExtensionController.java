@@ -19,6 +19,7 @@ public class ExtensionController {
     private final ExtensionCatalogService extensionCatalogService;
     private final ToolRunner toolRunner;
     private final CliToolInvocationService cliToolInvocationService;
+    private final com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
     private final ExtensionRouter router;
     private final ExtensionResourceLimiter resourceLimiter;
     private final ExtensionAuditService auditService;
@@ -30,11 +31,13 @@ public class ExtensionController {
             CliToolInvocationService cliToolInvocationService,
             ExtensionRouter router,
             ExtensionResourceLimiter resourceLimiter,
+            com.example.platform.extension.runtime.PluginRuntime pluginRuntime,
             ExtensionAuditService auditService) {
         this.registryService = registryService;
         this.extensionCatalogService = extensionCatalogService;
         this.toolRunner = toolRunner;
         this.cliToolInvocationService = cliToolInvocationService;
+        this.pluginRuntime = pluginRuntime;
         this.router = router;
         this.resourceLimiter = resourceLimiter;
         this.auditService = auditService;
@@ -68,23 +71,23 @@ public class ExtensionController {
             @PathVariable String key,
             @RequestBody ExecuteExtensionRequest request) {
         try {
-            ExtensionResult result = registryService.executeProvider(
-                    key, request.inputJson(), request.tenantId(), request.userId());
-            if (result.success()) {
+            com.example.platform.extension.runtime.PluginExecutionResult result =
+                    pluginRuntime.executeProvider(key, request.tenantId(), request.userId(),
+                            "ext-" + key, request.inputJson());
+            if (result.status() == com.example.platform.extension.runtime.PluginExecutionStatus.SUCCEEDED) {
                 return ResponseEntity.ok(Map.of(
                         "success", true,
-                        "output", result.outputJson(),
-                        "metrics", result.metrics()));
+                        "output", result.output()));
             } else {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
-                        "errorCode", result.errorCode(),
-                        "errorMessage", result.errorMessage()));
+                        "errorCode", result.error() != null ? result.error().code() : "PRV2-500",
+                        "errorMessage", result.error() != null ? result.error().message() : "Execution failed"));
             }
-        } catch (ExtensionExecutionException e) {
+        } catch (com.example.platform.extension.runtime.PluginRuntimeExecutionException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                     "success", false,
-                    "errorCode", e.getErrorCode(),
+                    "errorCode", e.category().name(),
                     "errorMessage", e.getMessage()));
         }
     }

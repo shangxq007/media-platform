@@ -27,14 +27,14 @@ import org.springframework.stereotype.Component;
 public class VisionTaskHandler implements TaskHandler, Producer {
 
     private static final Logger log = LoggerFactory.getLogger(VisionTaskHandler.class);
-    private final ExtensionRegistryService extensionRegistry;
+    private final com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
     private final AssetSemanticMetadataService semanticService;
     private final TimelineReviewEventPublisher eventPublisher;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public VisionTaskHandler(ExtensionRegistryService extReg, AssetSemanticMetadataService sem,
+    public VisionTaskHandler(com.example.platform.extension.runtime.PluginRuntime pluginRuntime, AssetSemanticMetadataService sem,
                                TimelineReviewEventPublisher evt) {
-        this.extensionRegistry = extReg; this.semanticService = sem; this.eventPublisher = evt;
+        this.pluginRuntime = pluginRuntime; this.semanticService = sem; this.eventPublisher = evt;
     }
 
     @Override public TaskCapability capability() { return TaskCapability.VISION; }
@@ -47,17 +47,18 @@ public class VisionTaskHandler implements TaskHandler, Producer {
             throw new IllegalStateException("No storageUri for VISION: " + assetId);
 
         String inputJson = "{\"videoFile\":\"" + videoFile + "\"}";
-        ExtensionResult result;
+        com.example.platform.extension.runtime.PluginExecutionResult result;
         try {
-            result = extensionRegistry.executeProvider("vision-default", inputJson, "system", context.jobId());
-        } catch (ExtensionExecutionException e) {
+            result = pluginRuntime.executeProvider("vision-default", "system", "vision", context.jobId(), inputJson);
+        } catch (com.example.platform.extension.runtime.PluginRuntimeExecutionException e) {
             throw new IllegalStateException("Vision failed: " + e.getMessage());
         }
-        if (!result.success()) throw new IllegalStateException("Vision error: " + result.errorMessage());
+        if (result.status() != com.example.platform.extension.runtime.PluginExecutionStatus.SUCCEEDED)
+            throw new IllegalStateException("Vision error: " + (result.error() != null ? result.error().message() : "failed"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> out;
-        try { out = mapper.readValue(result.outputJson(), Map.class); }
+        try { out = mapper.readValue(String.valueOf(result.output()), Map.class); }
         catch (Exception e) { throw new IllegalStateException("Parse error", e); }
 
         AssetSemanticMetadata existing = semanticService.get(assetId)

@@ -29,15 +29,15 @@ import org.springframework.stereotype.Component;
 public class RealAsrTaskHandler implements TaskHandler, Producer {
 
     private static final Logger log = LoggerFactory.getLogger(RealAsrTaskHandler.class);
-    private final ExtensionRegistryService extensionRegistry;
+    private final com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
     private final AssetSemanticMetadataService semanticService;
     private final TimelineReviewEventPublisher eventPublisher;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public RealAsrTaskHandler(ExtensionRegistryService extensionRegistry,
+    public RealAsrTaskHandler(com.example.platform.extension.runtime.PluginRuntime pluginRuntime,
                                 AssetSemanticMetadataService semanticService,
                                 TimelineReviewEventPublisher eventPublisher) {
-        this.extensionRegistry = extensionRegistry;
+        this.pluginRuntime = pluginRuntime;
         this.semanticService = semanticService;
         this.eventPublisher = eventPublisher;
     }
@@ -71,15 +71,15 @@ public class RealAsrTaskHandler implements TaskHandler, Producer {
         String inputJson = "{\"audioFile\":\"" + audioPath + "\",\"model\":\"" + model
                 + "\",\"language\":\"" + (language != null ? language : "") + "\"}";
 
-        ExtensionResult result;
+        com.example.platform.extension.runtime.PluginExecutionResult result;
         try {
-            result = extensionRegistry.executeProvider("whisper", inputJson, "system", context.jobId());
-        } catch (ExtensionExecutionException e) {
+            result = pluginRuntime.executeProvider("whisper", "system", "asr", context.jobId(), inputJson);
+        } catch (com.example.platform.extension.runtime.PluginRuntimeExecutionException e) {
             throw new IllegalStateException("Extension runtime execution failed: " + e.getMessage());
         }
 
-        if (!result.success()) {
-            throw new IllegalStateException("ASR failed via extension runtime: " + result.errorMessage());
+        if (result.status() != com.example.platform.extension.runtime.PluginExecutionStatus.SUCCEEDED) {
+            throw new IllegalStateException("ASR failed via extension runtime: " + (result.error() != null ? result.error().message() : "failed"));
         }
 
         String transcriptText = extractTranscriptFromResult(result);
@@ -126,9 +126,9 @@ public class RealAsrTaskHandler implements TaskHandler, Producer {
     }
 
     @SuppressWarnings("unchecked")
-    private String extractTranscriptFromResult(ExtensionResult result) {
+    private String extractTranscriptFromResult(com.example.platform.extension.runtime.PluginExecutionResult result) {
         try {
-            Map<String, Object> output = mapper.readValue(result.outputJson(), Map.class);
+            Map<String, Object> output = mapper.readValue(String.valueOf(result.output()), Map.class);
             return (String) output.getOrDefault("transcript", "");
         } catch (Exception e) { return ""; }
     }

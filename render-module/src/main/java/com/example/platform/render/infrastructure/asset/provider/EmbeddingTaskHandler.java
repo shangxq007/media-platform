@@ -27,14 +27,15 @@ import org.springframework.stereotype.Component;
 public class EmbeddingTaskHandler implements TaskHandler, Producer {
 
     private static final Logger log = LoggerFactory.getLogger(EmbeddingTaskHandler.class);
-    private final ExtensionRegistryService extReg;
+    private final com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
     private final AssetSemanticMetadataService semSvc;
     private final TimelineReviewEventPublisher evtPub;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public EmbeddingTaskHandler(ExtensionRegistryService e, AssetSemanticMetadataService s,
-                                  TimelineReviewEventPublisher p) {
-        this.extReg = e; this.semSvc = s; this.evtPub = p;
+    public EmbeddingTaskHandler(com.example.platform.extension.runtime.PluginRuntime pluginRuntime,
+                                AssetSemanticMetadataService s,
+                                TimelineReviewEventPublisher p) {
+        this.pluginRuntime = pluginRuntime; this.semSvc = s; this.evtPub = p;
     }
 
     @Override public TaskCapability capability() { return TaskCapability.EMBEDDING; }
@@ -48,12 +49,13 @@ public class EmbeddingTaskHandler implements TaskHandler, Producer {
         if (input.isBlank()) throw new IllegalStateException("No text/image for EMBEDDING: " + assetId);
 
         String inputJson = "{\"text\":\"" + input + "\"}";
-        ExtensionResult result; try { result = extReg.executeProvider("embedding-default", inputJson, "system", ctx.jobId());
-        } catch (ExtensionExecutionException e) { throw new IllegalStateException("Embedding failed", e); }
-        if (!result.success()) throw new IllegalStateException("Embedding error: " + result.errorMessage());
+        com.example.platform.extension.runtime.PluginExecutionResult result = pluginRuntime.executeProvider(
+                "embedding-default", "system", "embedding", ctx.jobId(), inputJson);
+        if (result.status() != com.example.platform.extension.runtime.PluginExecutionStatus.SUCCEEDED)
+            throw new IllegalStateException("Embedding error: " + (result.error() != null ? result.error().message() : "failed"));
 
         @SuppressWarnings("unchecked") Map<String, Object> out;
-        try { out = mapper.readValue(result.outputJson(), Map.class); } catch (Exception e) { throw new IllegalStateException("Parse", e); }
+        try { out = mapper.readValue(String.valueOf(result.output()), Map.class); } catch (Exception e) { throw new IllegalStateException("Parse", e); }
 
         EmbeddingReference ref = EmbeddingReference.of("embedding-default", "default",
                 ((Number) out.getOrDefault("dimension", 0)).intValue(),

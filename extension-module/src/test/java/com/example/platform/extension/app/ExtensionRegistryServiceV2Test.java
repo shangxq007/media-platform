@@ -29,7 +29,7 @@ class ExtensionRegistryServiceV2Test {
         auditService = new ExtensionAuditService(auditPort);
         resourceLimiter = new ExtensionResourceLimiter(auditPort);
         router = new ExtensionRouter(auditPort);
-        service = new ExtensionRegistryService(auditPort, sandboxService, auditService, resourceLimiter, router);
+        service = new ExtensionRegistryService(auditPort, auditService, resourceLimiter, router);
     }
 
     @Test
