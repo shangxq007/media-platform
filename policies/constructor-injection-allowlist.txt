@@ -8,17 +8,17 @@
 #   OTHER - Other justified retention
 
 # ── OPTIONAL_CONSTRUCTOR_OR_PARAMETER ──────────────────────────────────────────
-artifact-catalog-module.ArtifactCatalogService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
-artifact-catalog-module.ArtifactCatalogService.relationRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactRelationRepository may not be configured
-artifact-catalog-module.ArtifactGcService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
-artifact-catalog-module.ArtifactGcService.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
-artifact-catalog-module.ArtifactGcService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
-artifact-catalog-module.ArtifactLifecycleService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
-artifact-catalog-module.ArtifactLifecycleService.dsl|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DSLContext may not be configured
-artifact-catalog-module.ArtifactLifecycleService.referenceContributors|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: List<StorageUriReferenceContributor> may be empty
-artifact-catalog-module.ArtifactStorageIntegrityScanner.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
-artifact-catalog-module.ArtifactStorageIntegrityScanner.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
-artifact-catalog-module.AssetIntegrityMetrics.meterRegistry|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: MeterRegistry may not be configured
+artifact-module.ArtifactCatalogService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-module.ArtifactCatalogService.relationRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactRelationRepository may not be configured
+artifact-module.ArtifactGcService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-module.ArtifactGcService.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
+artifact-module.ArtifactGcService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
+artifact-module.ArtifactLifecycleService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-module.ArtifactLifecycleService.dsl|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DSLContext may not be configured
+artifact-module.ArtifactLifecycleService.referenceContributors|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: List<StorageUriReferenceContributor> may be empty
+artifact-module.ArtifactStorageIntegrityScanner.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-module.ArtifactStorageIntegrityScanner.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
+artifact-module.AssetIntegrityMetrics.meterRegistry|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: MeterRegistry may not be configured
 audit-compliance-module.AuditAlertService.properties|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditAlertProperties may not be configured
 audit-compliance-module.AuditAlertService.alertPublisher|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: SecurityAlertPort may not be configured
 audit-compliance-module.AuditService.alertService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditAlertService may not be configured
