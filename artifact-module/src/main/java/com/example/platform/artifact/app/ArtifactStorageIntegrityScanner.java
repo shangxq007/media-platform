@@ -1,6 +1,6 @@
 package com.example.platform.artifact.app;
 
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.StorageObjectRef;
@@ -31,7 +31,7 @@ public class ArtifactStorageIntegrityScanner {
         if (artifactRepository == null) {
             return findings;
         }
-        for (Artifact artifact : artifactRepository.findAll()) {
+        for (ArtifactCatalogEntry artifact : artifactRepository.findAll()) {
             String uri = artifact.storageUri();
             if (uri == null || uri.isBlank()) {
                 continue;

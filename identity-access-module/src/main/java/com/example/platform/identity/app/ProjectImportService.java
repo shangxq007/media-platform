@@ -1,7 +1,7 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.artifact.app.ArtifactCatalogService;
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
@@ -242,7 +242,7 @@ public class ProjectImportService {
                 tracker.trackStoredBlob(storageUri);
 
                 // Register artifact with real storageUri
-                Artifact registered;
+                ArtifactCatalogEntry registered;
                 try {
                     registered = artifactCatalogService.registerArtifact(
                             "import:" + importId,

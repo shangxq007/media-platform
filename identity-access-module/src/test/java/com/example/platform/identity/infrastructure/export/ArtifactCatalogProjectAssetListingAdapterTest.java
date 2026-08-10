@@ -1,7 +1,7 @@
 package com.example.platform.identity.infrastructure.export;
 
 import com.example.platform.artifact.app.ArtifactCatalogService;
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.identity.api.dto.ProjectResponse;
 import com.example.platform.identity.app.TenantProjectService;
@@ -39,7 +39,7 @@ class ArtifactCatalogProjectAssetListingAdapterTest {
         ProjectResponse project = new ProjectResponse("prj-1", "tenant-1", "Test", "Desc", "ACTIVE", Instant.now());
         when(tenantProjectService.getProject("prj-1")).thenReturn(project);
 
-        Artifact artifact = new Artifact("art-1", "job-1", "prj-1",
+        ArtifactCatalogEntry artifact = new ArtifactCatalogEntry("art-1", "job-1", "prj-1",
                 "s3://bucket/video.mp4", "mp4", "1920x1080", 10L,
                 12345L, "sha256:abc123def456",
                 ArtifactStatus.ACTIVE, null, Instant.now());
@@ -58,7 +58,7 @@ class ArtifactCatalogProjectAssetListingAdapterTest {
         ProjectResponse project = new ProjectResponse("prj-1", "tenant-1", "Test", "Desc", "ACTIVE", Instant.now());
         when(tenantProjectService.getProject("prj-1")).thenReturn(project);
 
-        Artifact artifact = new Artifact("art-1", "job-1", "prj-1",
+        ArtifactCatalogEntry artifact = new ArtifactCatalogEntry("art-1", "job-1", "prj-1",
                 "s3://bucket/video.mp4", "mp4", "1920x1080", 10L,
                 null, null,
                 ArtifactStatus.ACTIVE, null, Instant.now());
@@ -88,11 +88,11 @@ class ArtifactCatalogProjectAssetListingAdapterTest {
         ProjectResponse project = new ProjectResponse("prj-1", "tenant-1", "Test", "Desc", "ACTIVE", Instant.now());
         when(tenantProjectService.getProject("prj-1")).thenReturn(project);
 
-        Artifact active = new Artifact("art-1", "job-1", "prj-1",
+        ArtifactCatalogEntry active = new ArtifactCatalogEntry("art-1", "job-1", "prj-1",
                 "s3://bucket/video.mp4", "mp4", "1920x1080", 10L,
                 1024L, "sha256:abc",
                 ArtifactStatus.ACTIVE, null, Instant.now());
-        Artifact tombstoned = new Artifact("art-2", "job-1", "prj-1",
+        ArtifactCatalogEntry tombstoned = new ArtifactCatalogEntry("art-2", "job-1", "prj-1",
                 "s3://bucket/audio.mp3", "mp3", null, 30L,
                 512L, "sha256:def",
                 ArtifactStatus.TOMBSTONED, Instant.now(), Instant.now());

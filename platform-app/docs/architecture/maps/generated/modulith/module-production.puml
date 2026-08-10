@@ -28,18 +28,18 @@ System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="")
 
 }
 
-Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Security, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.Billing, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.App, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Production, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Production, PlatformApplication.PlatformApplication.PolicyGovernance, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Production, PlatformApplication.PlatformApplication.Commerce, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Production, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Production, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Production, PlatformApplication.PlatformApplication.Security, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Production, PlatformApplication.PlatformApplication.App, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.PolicyGovernance, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Security, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.App, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.Billing, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes

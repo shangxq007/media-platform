@@ -31,6 +31,11 @@ dependencies {
     // PMPR-ST1: canonical storage contracts (ContentDigest/StorageObjectId/...) now owned by storage authority
     implementation(project(":storage-module"))
 
+    // PMPR-A1R1: artifact catalog absorbed — shared-kernel API + micrometer for catalog services/metrics
+    api(project(":shared-kernel"))
+    implementation("io.micrometer:micrometer-core")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+
     // jOOQ generated sources for typed persistence access
     implementation(project(":typed-schema-module"))
 
@@ -48,7 +53,11 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.14.2")
     testImplementation("org.slf4j:slf4j-simple")
     testImplementation(testFixtures(project(":render-module")))
+    testImplementation(testFixtures(project(":shared-kernel")))
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.postgresql:postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    runtimeOnly("org.postgresql:postgresql")
 }
 
 tasks.test {

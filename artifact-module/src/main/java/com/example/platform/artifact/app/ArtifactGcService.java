@@ -1,6 +1,6 @@
 package com.example.platform.artifact.app;
 
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
 import com.example.platform.shared.audit.AuditPort;
@@ -68,7 +68,7 @@ public class ArtifactGcService {
         }
 
         Instant cutoff = Instant.now().minus(Math.max(1, retentionDays), ChronoUnit.DAYS);
-        List<Artifact> candidates = artifactRepository.findTombstonedBefore(cutoff);
+        List<ArtifactCatalogEntry> candidates = artifactRepository.findTombstonedBefore(cutoff);
         int scanned = candidates.size();
         int purged = 0;
         int skipped = 0;
@@ -77,7 +77,7 @@ public class ArtifactGcService {
         List<String> errors = new ArrayList<>();
         int effectiveLimit = limit > 0 ? limit : Math.max(1, properties.getBatchSize());
 
-        for (Artifact artifact : candidates.stream().limit(effectiveLimit).toList()) {
+        for (ArtifactCatalogEntry artifact : candidates.stream().limit(effectiveLimit).toList()) {
             try {
                 var check = lifecycleService.deleteCheck(artifact.id());
                 if (!check.deletable()) {
@@ -101,7 +101,7 @@ public class ArtifactGcService {
                 skipped++;
                 actions.add("FAILED " + artifact.id() + ": " + e.getMessage());
                 errors.add(artifact.id() + ": " + e.getMessage());
-                log.warn("Artifact GC failed for {}: {}", artifact.id(), e.getMessage());
+                log.warn("ArtifactCatalogEntry GC failed for {}: {}", artifact.id(), e.getMessage());
             }
         }
 

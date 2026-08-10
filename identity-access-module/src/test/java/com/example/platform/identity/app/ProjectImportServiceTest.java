@@ -1,7 +1,7 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.artifact.app.ArtifactCatalogService;
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
@@ -105,8 +105,8 @@ class ProjectImportServiceTest {
                 assets, null, null);
     }
 
-    private Artifact mockRegisteredArtifact(String id) {
-        return new Artifact(id, "import:imp-1", "prj-1", "imported://prj-1/src",
+    private ArtifactCatalogEntry mockRegisteredArtifact(String id) {
+        return new ArtifactCatalogEntry(id, "import:imp-1", "prj-1", "imported://prj-1/src",
                 "mp4", "1920x1080", 5L, 1024L, VALID_CHECKSUM,
                 ArtifactStatus.ACTIVE, null, Instant.now());
     }
@@ -162,8 +162,8 @@ class ProjectImportServiceTest {
                 .thenReturn(new StorageObjectRef("local", "imports", "key2"));
         lenient().when(blobStorage.deleteStorageUri(anyString())).thenReturn(true);
 
-        Artifact art1 = mockRegisteredArtifact("target-art-1");
-        Artifact art2 = mockRegisteredArtifact("target-art-2");
+        ArtifactCatalogEntry art1 = mockRegisteredArtifact("target-art-1");
+        ArtifactCatalogEntry art2 = mockRegisteredArtifact("target-art-2");
         lenient().when(artifactCatalogService.registerArtifact(anyString(), anyString(), anyString(),
                 anyString(), any(), anyLong(), any(), anyString())).thenReturn(art1, art2);
 
@@ -197,7 +197,7 @@ class ProjectImportServiceTest {
         lenient().when(blobStorage.put(any(PutObjectCommand.class)))
                 .thenReturn(new StorageObjectRef("local", "imports", "key1"));
         lenient().when(blobStorage.deleteStorageUri(anyString())).thenReturn(true);
-        Artifact art1 = mockRegisteredArtifact("target-art-1");
+        ArtifactCatalogEntry art1 = mockRegisteredArtifact("target-art-1");
         lenient().when(artifactCatalogService.registerArtifact(anyString(), eq("new-prj-1"), anyString(),
                 anyString(), any(), anyLong(), eq(1024L), eq(VALID_CHECKSUM))).thenReturn(art1);
 
@@ -477,7 +477,7 @@ class ProjectImportServiceTest {
         lenient().when(blobStorage.put(any(PutObjectCommand.class)))
                 .thenReturn(new StorageObjectRef("local", "imports", "key"));
 
-        Artifact art = mockRegisteredArtifact("target-art-1");
+        ArtifactCatalogEntry art = mockRegisteredArtifact("target-art-1");
         lenient().when(artifactCatalogService.registerArtifact(anyString(), anyString(), anyString(),
                 anyString(), any(), anyLong(), any(), anyString())).thenReturn(art);
 

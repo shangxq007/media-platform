@@ -1,7 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.artifact.app.ArtifactCatalogService;
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.render.api.port.ClientExportArtifactPort;
 import org.springframework.stereotype.Component;
 
@@ -22,7 +22,7 @@ public class ClientExportArtifactAdapter implements ClientExportArtifactPort {
             String format,
             String resolution,
             long durationSeconds) {
-        Artifact artifact = artifactCatalogService.registerArtifact(
+        ArtifactCatalogEntry artifact = artifactCatalogService.registerArtifact(
                 sessionId, projectId, storageUri, format, resolution, durationSeconds);
         String downloadPath = "/api/v1/render/client-exports/" + sessionId + "/download";
         return new RegisteredArtifact(artifact.id(), storageUri, downloadPath);
@@ -38,7 +38,7 @@ public class ClientExportArtifactAdapter implements ClientExportArtifactPort {
             long durationSeconds,
             Long sizeBytes,
             String checksum) {
-        Artifact artifact = artifactCatalogService.registerArtifact(
+        ArtifactCatalogEntry artifact = artifactCatalogService.registerArtifact(
                 sessionId, projectId, storageUri, format, resolution, durationSeconds,
                 sizeBytes, checksum);
         String downloadPath = "/api/v1/render/client-exports/" + sessionId + "/download";

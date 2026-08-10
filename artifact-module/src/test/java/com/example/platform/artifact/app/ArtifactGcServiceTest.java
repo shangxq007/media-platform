@@ -11,7 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
 import com.example.platform.shared.audit.AuditPort;
@@ -92,7 +92,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void purgesOldTombstonedArtifacts() {
-        repository.save(new Artifact(
+        repository.save(new ArtifactCatalogEntry(
                 "art_gc1", "rj_1", "prj_1", "s3://bucket/old.mp4",
                 "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
                 Instant.now().minusSeconds(86400 * 10), Instant.now()));
@@ -102,14 +102,14 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
         assertEquals(1, result.purged());
         assertEquals(0, result.failed());
 
-        Artifact updated = repository.findById("art_gc1").orElseThrow();
+        ArtifactCatalogEntry updated = repository.findById("art_gc1").orElseThrow();
         assertEquals(ArtifactStatus.PURGED, updated.status());
         verify(blobStorage).deleteStorageUri("s3://bucket/old.mp4");
     }
 
     @Test
     void dryRunShouldNotDeleteBlob() {
-        repository.save(new Artifact(
+        repository.save(new ArtifactCatalogEntry(
                 "art_dry1", "rj_1", "prj_1", "s3://bucket/dry.mp4",
                 "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
                 Instant.now().minusSeconds(86400 * 10), Instant.now()));
@@ -123,7 +123,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
         verify(blobStorage, never()).deleteStorageUri(anyString());
 
         // Should NOT update status to PURGED
-        Artifact unchanged = repository.findById("art_dry1").orElseThrow();
+        ArtifactCatalogEntry unchanged = repository.findById("art_dry1").orElseThrow();
         assertEquals(ArtifactStatus.TOMBSTONED, unchanged.status());
 
         // Should have recorded dry-run audit
@@ -133,7 +133,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void shouldSkipActiveArtifact() {
-        repository.save(new Artifact(
+        repository.save(new ArtifactCatalogEntry(
                 "art_active", "rj_1", "prj_1", "s3://bucket/active.mp4",
                 "mp4", "1080p", 10L, null, null, ArtifactStatus.ACTIVE,
                 null, Instant.now()));
@@ -147,7 +147,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
     @Test
     void shouldRespectLimit() {
         for (int i = 0; i < 5; i++) {
-            repository.save(new Artifact(
+            repository.save(new ArtifactCatalogEntry(
                     "art_limit_" + i, "rj_1", "prj_1", "s3://bucket/f" + i + ".mp4",
                     "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
                     Instant.now().minusSeconds(86400 * 10), Instant.now()));
@@ -163,7 +163,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
     @Test
     void shouldRespectGracePeriod() {
         // Tombstoned only 1 hour ago (within 7-day grace)
-        repository.save(new Artifact(
+        repository.save(new ArtifactCatalogEntry(
                 "art_recent", "rj_1", "prj_1", "s3://bucket/recent.mp4",
                 "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
                 Instant.now().minusSeconds(3600), Instant.now()));
@@ -176,11 +176,11 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void deleteFailureShouldBeRecordedAndContinue() {
-        repository.save(new Artifact(
+        repository.save(new ArtifactCatalogEntry(
                 "art_ok", "rj_1", "prj_1", "s3://bucket/ok.mp4",
                 "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
                 Instant.now().minusSeconds(86400 * 10), Instant.now()));
-        repository.save(new Artifact(
+        repository.save(new ArtifactCatalogEntry(
                 "art_fail", "rj_1", "prj_1", "s3://bucket/fail.mp4",
                 "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
                 Instant.now().minusSeconds(86400 * 10), Instant.now()));
@@ -198,7 +198,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void auditShouldNotContainStorageUri() {
-        repository.save(new Artifact(
+        repository.save(new ArtifactCatalogEntry(
                 "art_audit", "rj_1", "prj_1", "s3://bucket/secret.mp4",
                 "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
                 Instant.now().minusSeconds(86400 * 10), Instant.now()));

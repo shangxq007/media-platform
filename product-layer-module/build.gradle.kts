@@ -5,7 +5,7 @@ plugins {
 dependencies {
     api(project(":shared-kernel"))
     api(project(":render-module"))
-    api(project(":artifact-catalog-module"))
+    api(project(":artifact-module"))
     api(project(":storage-module"))
     api(project(":ai-module"))
     api("org.springframework.boot:spring-boot-starter")

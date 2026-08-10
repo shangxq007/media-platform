@@ -1,6 +1,6 @@
 package com.example.platform.artifact.app;
 
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactRelation;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.shared.Ids;
@@ -35,7 +35,7 @@ public class ArtifactCatalogService {
     private final ErrorCodeRegistry errorCodeRegistry;
     private final boolean persistent;
 
-    private final Map<String, Artifact> artifacts = new ConcurrentHashMap<>();
+    private final Map<String, ArtifactCatalogEntry> artifacts = new ConcurrentHashMap<>();
     private final Map<String, ArtifactRelation> relations = new ConcurrentHashMap<>();
     private final AtomicLong artifactSeq = new AtomicLong(0);
     private final AtomicLong relationSeq = new AtomicLong(0);
@@ -55,30 +55,30 @@ public class ArtifactCatalogService {
         return Map.of(
                 "module", "artifact-catalog-module",
                 "status", "active",
-                "description", "Artifact catalog — persistent storage of render artifacts, relations, and provenance.",
+                "description", "ArtifactCatalogEntry catalog — persistent storage of render artifacts, relations, and provenance.",
                 "artifactCount", persistent ? artifactRepository.findAll().size() : artifacts.size(),
                 "persistent", persistent
         );
     }
 
-    public Artifact registerArtifact(String renderJobId, String projectId,
+    public ArtifactCatalogEntry registerArtifact(String renderJobId, String projectId,
             String storageUri, String format, String resolution, long duration) {
         return registerArtifact(renderJobId, projectId, storageUri, format, resolution,
                 duration, null, null);
     }
 
-    public Artifact registerArtifact(String renderJobId, String projectId,
+    public ArtifactCatalogEntry registerArtifact(String renderJobId, String projectId,
             String storageUri, String format, String resolution, long duration,
             Long sizeBytes, String checksum) {
         if (persistent) {
             String id = Ids.newId("art");
-            Artifact artifact = new Artifact(id, renderJobId, projectId, storageUri,
+            ArtifactCatalogEntry artifact = new ArtifactCatalogEntry(id, renderJobId, projectId, storageUri,
                     format, resolution, duration, sizeBytes, checksum,
                     ArtifactStatus.ACTIVE, null, Instant.now());
             return artifactRepository.save(artifact);
         } else {
             String id = "art-" + artifactSeq.incrementAndGet();
-            Artifact artifact = new Artifact(id, renderJobId, projectId, storageUri,
+            ArtifactCatalogEntry artifact = new ArtifactCatalogEntry(id, renderJobId, projectId, storageUri,
                     format, resolution, duration, sizeBytes, checksum,
                     ArtifactStatus.ACTIVE, null, Instant.now());
             artifacts.put(id, artifact);
@@ -86,21 +86,21 @@ public class ArtifactCatalogService {
         }
     }
 
-    public Optional<Artifact> findArtifact(String id) {
+    public Optional<ArtifactCatalogEntry> findArtifact(String id) {
         if (persistent) {
             return artifactRepository.findById(id);
         }
         return Optional.ofNullable(artifacts.get(id));
     }
 
-    public List<Artifact> listArtifacts() {
+    public List<ArtifactCatalogEntry> listArtifacts() {
         if (persistent) {
             return artifactRepository.findAll();
         }
         return List.copyOf(artifacts.values());
     }
 
-    public List<Artifact> listArtifactsByProject(String projectId) {
+    public List<ArtifactCatalogEntry> listArtifactsByProject(String projectId) {
         if (persistent) {
             return artifactRepository.findByProjectId(projectId);
         }
@@ -109,7 +109,7 @@ public class ArtifactCatalogService {
                 .toList();
     }
 
-    public List<Artifact> listArtifactsByRenderJob(String renderJobId) {
+    public List<ArtifactCatalogEntry> listArtifactsByRenderJob(String renderJobId) {
         if (persistent) {
             return artifactRepository.findByRenderJobId(renderJobId);
         }
@@ -169,12 +169,12 @@ public class ArtifactCatalogService {
         return refs;
     }
 
-    public Artifact tombstoneInMemory(String artifactId) {
-        Artifact existing = artifacts.get(artifactId);
+    public ArtifactCatalogEntry tombstoneInMemory(String artifactId) {
+        ArtifactCatalogEntry existing = artifacts.get(artifactId);
         if (existing == null) {
             throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
         }
-        Artifact updated = new Artifact(
+        ArtifactCatalogEntry updated = new ArtifactCatalogEntry(
                 existing.id(), existing.renderJobId(), existing.projectId(), existing.storageUri(),
                 existing.format(), existing.resolution(), existing.duration(),
                 existing.sizeBytes(), existing.checksum(),
@@ -183,16 +183,16 @@ public class ArtifactCatalogService {
         return updated;
     }
 
-    public Artifact updateStatus(String artifactId, ArtifactStatus newStatus) {
+    public ArtifactCatalogEntry updateStatus(String artifactId, ArtifactStatus newStatus) {
         if (persistent) {
             return artifactRepository.updateStatus(artifactId, newStatus,
                     newStatus == ArtifactStatus.TOMBSTONED ? Instant.now() : null);
         }
-        Artifact existing = artifacts.get(artifactId);
+        ArtifactCatalogEntry existing = artifacts.get(artifactId);
         if (existing == null) {
             throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
         }
-        Artifact updated = new Artifact(
+        ArtifactCatalogEntry updated = new ArtifactCatalogEntry(
                 existing.id(), existing.renderJobId(), existing.projectId(), existing.storageUri(),
                 existing.format(), existing.resolution(), existing.duration(),
                 existing.sizeBytes(), existing.checksum(),

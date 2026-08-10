@@ -1,6 +1,6 @@
 package com.example.platform.artifact.app;
 
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactRelation;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
@@ -80,7 +80,7 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void registerArtifactReturnsArtifactWithGeneratedId() {
-        Artifact artifact = service.registerArtifact("rj_123", "prj_456",
+        ArtifactCatalogEntry artifact = service.registerArtifact("rj_123", "prj_456",
                 "s3://bucket/output.mp4", "mp4", "1920x1080", 30L);
         assertNotNull(artifact.id());
         assertTrue(artifact.id().startsWith("art_"));
@@ -95,15 +95,15 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void findArtifactReturnsArtifactWhenExists() {
-        Artifact created = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
-        Optional<Artifact> found = service.findArtifact(created.id());
+        ArtifactCatalogEntry created = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
+        Optional<ArtifactCatalogEntry> found = service.findArtifact(created.id());
         assertTrue(found.isPresent());
         assertEquals("rj_1", found.get().renderJobId());
     }
 
     @Test
     void findArtifactReturnsEmptyWhenNotFound() {
-        Optional<Artifact> found = service.findArtifact("art-nonexistent");
+        Optional<ArtifactCatalogEntry> found = service.findArtifact("art-nonexistent");
         assertTrue(found.isEmpty());
     }
 
@@ -125,9 +125,9 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
         service.registerArtifact("rj_2", "prj_B", "uri2", "mp4", "720p", 20L);
         service.registerArtifact("rj_3", "prj_A", "uri3", "mov", "4k", 30L);
 
-        List<Artifact> prjA = service.listArtifactsByProject("prj_A");
+        List<ArtifactCatalogEntry> prjA = service.listArtifactsByProject("prj_A");
         assertEquals(2, prjA.size());
-        List<Artifact> prjB = service.listArtifactsByProject("prj_B");
+        List<ArtifactCatalogEntry> prjB = service.listArtifactsByProject("prj_B");
         assertEquals(1, prjB.size());
     }
 
@@ -136,15 +136,15 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
         service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L);
         service.registerArtifact("rj_2", "prj_1", "uri2", "mp4", "720p", 20L);
 
-        List<Artifact> jobs = service.listArtifactsByRenderJob("rj_1");
+        List<ArtifactCatalogEntry> jobs = service.listArtifactsByRenderJob("rj_1");
         assertEquals(1, jobs.size());
         assertEquals("rj_1", jobs.get(0).renderJobId());
     }
 
     @Test
     void relateArtifactsCreatesRelation() {
-        Artifact source = service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L);
-        Artifact target = service.registerArtifact("rj_2", "prj_1", "uri2", "srt", "subtitle", 0L);
+        ArtifactCatalogEntry source = service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry target = service.registerArtifact("rj_2", "prj_1", "uri2", "srt", "subtitle", 0L);
 
         ArtifactRelation relation = service.relateArtifacts(source.id(), target.id(), "HAS_SUBTITLE");
         assertNotNull(relation.id());
@@ -156,14 +156,14 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void relateArtifactsThrowsForUnknownSource() {
-        Artifact target = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry target = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
         assertThrows(PlatformException.class,
                 () -> service.relateArtifacts("art-nonexistent", target.id(), "DEPENDS_ON"));
     }
 
     @Test
     void relateArtifactsThrowsForUnknownTarget() {
-        Artifact source = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry source = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
         assertThrows(PlatformException.class,
                 () -> service.relateArtifacts(source.id(), "art-nonexistent", "DEPENDS_ON"));
     }

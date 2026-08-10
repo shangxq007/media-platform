@@ -1,6 +1,6 @@
 package com.example.platform.artifact.app;
 
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.shared.asset.StorageUriReferenceContributor;
 import com.example.platform.shared.asset.StorageUriReferenceHit;
@@ -26,7 +26,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.R
 
 
 /**
- * Tombstone and delete-reference checks for catalog {@link Artifact} rows.
+ * Tombstone and delete-reference checks for catalog {@link ArtifactCatalogEntry} rows.
  */
 @Service
 public class ArtifactLifecycleService {
@@ -56,7 +56,7 @@ public class ArtifactLifecycleService {
     }
 
     public DeleteCheckResult deleteCheck(String artifactId) {
-        Artifact artifact = catalogService.findArtifact(artifactId)
+        ArtifactCatalogEntry artifact = catalogService.findArtifact(artifactId)
                 .orElseThrow(() -> MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId));
         List<Map<String, Object>> references = new ArrayList<>();
         references.addAll(catalogService.findRelationReferences(artifactId));
@@ -72,14 +72,14 @@ public class ArtifactLifecycleService {
         return new DeleteCheckResult(artifactId, artifact.projectId(), deletable, references);
     }
 
-    public Artifact tombstone(String artifactId) {
-        Artifact artifact = requireActiveCatalogEntry(artifactId);
+    public ArtifactCatalogEntry tombstone(String artifactId) {
+        ArtifactCatalogEntry artifact = requireActiveCatalogEntry(artifactId);
         DeleteCheckResult check = deleteCheck(artifactId);
         if (!check.deletable()) {
             throw MediaAssetErrors.artifactStillReferenced(errorCodeRegistry, artifactId);
         }
         Instant now = Instant.now();
-        Artifact tombstoned;
+        ArtifactCatalogEntry tombstoned;
         if (artifactRepository != null) {
             tombstoned = artifactRepository.updateStatus(artifactId, ArtifactStatus.TOMBSTONED, now);
         } else {
@@ -90,7 +90,7 @@ public class ArtifactLifecycleService {
         return tombstoned;
     }
 
-    public void assertUsable(Artifact artifact) {
+    public void assertUsable(ArtifactCatalogEntry artifact) {
         if (artifact == null) {
             throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, "unknown");
         }
@@ -99,19 +99,19 @@ public class ArtifactLifecycleService {
         }
     }
 
-    private Artifact requireActiveCatalogEntry(String artifactId) {
-        Optional<Artifact> found = catalogService.findArtifact(artifactId);
+    private ArtifactCatalogEntry requireActiveCatalogEntry(String artifactId) {
+        Optional<ArtifactCatalogEntry> found = catalogService.findArtifact(artifactId);
         if (found.isEmpty()) {
             throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
         }
-        Artifact artifact = found.get();
+        ArtifactCatalogEntry artifact = found.get();
         if (artifact.status() == ArtifactStatus.TOMBSTONED || artifact.status() == ArtifactStatus.PURGED) {
             throw MediaAssetErrors.artifactTombstoned(errorCodeRegistry, artifactId);
         }
         return artifact;
     }
 
-    private List<Map<String, Object>> findRenderJobReferences(Artifact artifact) {
+    private List<Map<String, Object>> findRenderJobReferences(ArtifactCatalogEntry artifact) {
         List<Map<String, Object>> refs = new ArrayList<>();
         String uri = artifact.storageUri();
         if (uri == null || uri.isBlank()) {

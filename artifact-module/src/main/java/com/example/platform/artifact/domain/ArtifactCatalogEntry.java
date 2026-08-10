@@ -18,7 +18,7 @@ import java.time.Instant;
  * @param tombstonedAt when status became TOMBSTONED
  * @param createdAt    timestamp when the artifact was registered
  */
-public record Artifact(
+public record ArtifactCatalogEntry(
         String id,
         String renderJobId,
         String projectId,
@@ -32,7 +32,7 @@ public record Artifact(
         Instant tombstonedAt,
         Instant createdAt) {
 
-    public Artifact {
+    public ArtifactCatalogEntry {
         if (status == null) {
             status = ArtifactStatus.ACTIVE;
         }
@@ -42,13 +42,13 @@ public record Artifact(
         return status == ArtifactStatus.ACTIVE;
     }
 
-    public Artifact withSizeBytes(Long sizeBytes) {
-        return new Artifact(id, renderJobId, projectId, storageUri, format, resolution,
+    public ArtifactCatalogEntry withSizeBytes(Long sizeBytes) {
+        return new ArtifactCatalogEntry(id, renderJobId, projectId, storageUri, format, resolution,
                 duration, sizeBytes, checksum, status, tombstonedAt, createdAt);
     }
 
-    public Artifact withChecksum(String checksum) {
-        return new Artifact(id, renderJobId, projectId, storageUri, format, resolution,
+    public ArtifactCatalogEntry withChecksum(String checksum) {
+        return new ArtifactCatalogEntry(id, renderJobId, projectId, storageUri, format, resolution,
                 duration, sizeBytes, checksum, status, tombstonedAt, createdAt);
     }
 }

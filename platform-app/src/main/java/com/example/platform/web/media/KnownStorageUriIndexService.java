@@ -1,7 +1,7 @@
 package com.example.platform.web.media;
 
 import com.example.platform.artifact.app.ArtifactCatalogRepository;
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.delivery.app.DeliveryDestinationUriIndexService;
 import com.example.platform.render.app.TimelineSnapshotService;
@@ -60,7 +60,7 @@ public class KnownStorageUriIndexService {
         if (artifactRepository.isEmpty()) {
             return;
         }
-        for (Artifact artifact : artifactRepository.get().findAll()) {
+        for (ArtifactCatalogEntry artifact : artifactRepository.get().findAll()) {
             if (artifact.status() == ArtifactStatus.PURGED) {
                 continue;
             }

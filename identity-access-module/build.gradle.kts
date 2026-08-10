@@ -4,7 +4,7 @@ dependencies {
     implementation(project(":typed-schema-module"))
     api(project(":shared-kernel"))
     api(project(":entitlement-module"))
-    api(project(":artifact-catalog-module"))
+    api(project(":artifact-module"))
     api(project(":storage-module"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")

@@ -28,7 +28,7 @@ dependencies {
     implementation(project(":billing-module"))
     implementation(project(":entitlement-module"))
     implementation(project(":policy-governance-module"))
-    implementation(project(":artifact-catalog-module"))
+    implementation(project(":artifact-module"))
     implementation(project(":sandbox-runtime-module"))
     implementation(project(":federation-query-module"))
     implementation(project(":user-analytics-module"))

@@ -17,7 +17,6 @@ _Repositories_
 
 _Others_
 
-* `c.e.p.a.ArtifactCatalogConfiguration`
 * `c.e.p.a.app.ArtifactGcScheduler`
 * `c.e.p.a.app.AssetIntegrityMetrics`
 |Bean references

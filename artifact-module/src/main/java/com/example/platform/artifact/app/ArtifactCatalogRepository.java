@@ -1,6 +1,6 @@
 package com.example.platform.artifact.app;
 
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -15,7 +15,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.Artifact.AR
 
 
 /**
- * Persistence repository for {@link Artifact} entities in the artifact catalog.
+ * Persistence repository for {@link ArtifactCatalogEntry} entities in the artifact catalog.
  *
  * <p>Only created when a {@link DSLContext} bean is available (i.e., when the
  * datasource-module is properly configured). The {@link ArtifactCatalogService}
@@ -34,7 +34,7 @@ public class ArtifactCatalogRepository {
         this.dsl = dsl;
     }
 
-    public Artifact save(Artifact artifact) {
+    public ArtifactCatalogEntry save(ArtifactCatalogEntry artifact) {
         LocalDateTime createdAt = artifact.createdAt() != null
                 ? LocalDateTime.ofInstant(artifact.createdAt(), ZoneOffset.UTC)
                 : LocalDateTime.now();
@@ -54,7 +54,7 @@ public class ArtifactCatalogRepository {
         return artifact;
     }
 
-    public Artifact updateStatus(String artifactId, ArtifactStatus status, Instant tombstonedAt) {
+    public ArtifactCatalogEntry updateStatus(String artifactId, ArtifactStatus status, Instant tombstonedAt) {
         LocalDateTime tombstoneTs = tombstonedAt != null
                 ? LocalDateTime.ofInstant(tombstonedAt, ZoneOffset.UTC)
                 : null;
@@ -66,7 +66,7 @@ public class ArtifactCatalogRepository {
         return findById(artifactId).orElseThrow();
     }
 
-    public Optional<Artifact> findById(String id) {
+    public Optional<ArtifactCatalogEntry> findById(String id) {
         Record record = dsl.select()
                 .from(ARTIFACT)
                 .where(ARTIFACT.ID.eq(id))
@@ -74,7 +74,7 @@ public class ArtifactCatalogRepository {
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
-    public List<Artifact> findByProjectId(String projectId) {
+    public List<ArtifactCatalogEntry> findByProjectId(String projectId) {
         return dsl.select()
                 .from(ARTIFACT)
                 .where(ARTIFACT.PROJECT_ID.eq(projectId))
@@ -82,7 +82,7 @@ public class ArtifactCatalogRepository {
                 .fetch(this::mapRecord);
     }
 
-    public List<Artifact> findByRenderJobId(String renderJobId) {
+    public List<ArtifactCatalogEntry> findByRenderJobId(String renderJobId) {
         return dsl.select()
                 .from(ARTIFACT)
                 .where(ARTIFACT.RENDER_JOB_ID.eq(renderJobId))
@@ -90,14 +90,14 @@ public class ArtifactCatalogRepository {
                 .fetch(this::mapRecord);
     }
 
-    public List<Artifact> findAll() {
+    public List<ArtifactCatalogEntry> findAll() {
         return dsl.select()
                 .from(ARTIFACT)
                 .orderBy(ARTIFACT.CREATED_AT.desc())
                 .fetch(this::mapRecord);
     }
 
-    public List<Artifact> findTombstonedBefore(Instant cutoff) {
+    public List<ArtifactCatalogEntry> findTombstonedBefore(Instant cutoff) {
         LocalDateTime cutoffTs = LocalDateTime.ofInstant(cutoff, ZoneOffset.UTC);
         return dsl.select()
                 .from(ARTIFACT)
@@ -108,7 +108,7 @@ public class ArtifactCatalogRepository {
                 .fetch(this::mapRecord);
     }
 
-    private Artifact mapRecord(Record record) {
+    private ArtifactCatalogEntry mapRecord(Record record) {
         LocalDateTime createdAt = record.get(ARTIFACT.CREATED_AT, LocalDateTime.class);
         LocalDateTime tombstonedAt = record.get(ARTIFACT.TOMBSTONED_AT, LocalDateTime.class);
         Long duration = record.get(ARTIFACT.DURATION, Long.class);
@@ -116,7 +116,7 @@ public class ArtifactCatalogRepository {
         ArtifactStatus status = statusRaw != null && !statusRaw.isBlank()
                 ? ArtifactStatus.valueOf(statusRaw)
                 : ArtifactStatus.ACTIVE;
-        return new Artifact(
+        return new ArtifactCatalogEntry(
                 record.get(ARTIFACT.ID, String.class),
                 record.get(ARTIFACT.RENDER_JOB_ID, String.class),
                 record.get(ARTIFACT.PROJECT_ID, String.class),

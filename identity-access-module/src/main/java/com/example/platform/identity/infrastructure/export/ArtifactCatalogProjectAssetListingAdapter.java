@@ -1,7 +1,7 @@
 package com.example.platform.identity.infrastructure.export;
 
 import com.example.platform.artifact.app.ArtifactCatalogService;
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.identity.api.dto.ProjectResponse;
 import com.example.platform.identity.app.TenantProjectService;
 import com.example.platform.shared.export.ProjectAssetListingPort;
@@ -56,11 +56,11 @@ public class ArtifactCatalogProjectAssetListingAdapter implements ProjectAssetLi
         }
 
         // Query artifacts by projectId
-        List<Artifact> artifacts = artifactCatalogService.listArtifactsByProject(projectId);
+        List<ArtifactCatalogEntry> artifacts = artifactCatalogService.listArtifactsByProject(projectId);
         log.debug("listAssets: found {} artifacts for project {}", artifacts.size(), projectId);
 
         List<ProjectAssetRef> refs = new ArrayList<>();
-        for (Artifact artifact : artifacts) {
+        for (ArtifactCatalogEntry artifact : artifacts) {
             if (!artifact.isUsable()) {
                 continue;
             }
@@ -85,7 +85,7 @@ public class ArtifactCatalogProjectAssetListingAdapter implements ProjectAssetLi
         return true;
     }
 
-    private String extractFilename(Artifact artifact) {
+    private String extractFilename(ArtifactCatalogEntry artifact) {
         if (artifact.storageUri() != null) {
             int lastSlash = artifact.storageUri().lastIndexOf('/');
             if (lastSlash >= 0 && lastSlash < artifact.storageUri().length() - 1) {

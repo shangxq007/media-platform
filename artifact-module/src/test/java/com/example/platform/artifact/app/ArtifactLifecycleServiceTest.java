@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
-import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
@@ -83,23 +83,23 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void deleteCheckAllowsWhenNoReferences() {
-        Artifact artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L);
         var check = lifecycleService.deleteCheck(artifact.id());
         assertTrue(check.deletable());
     }
 
     @Test
     void tombstoneUpdatesStatus() {
-        Artifact artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L);
-        Artifact tombstoned = lifecycleService.tombstone(artifact.id());
+        ArtifactCatalogEntry artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry tombstoned = lifecycleService.tombstone(artifact.id());
         assertEquals(ArtifactStatus.TOMBSTONED, tombstoned.status());
         assertTrue(tombstoned.tombstonedAt() != null);
     }
 
     @Test
     void tombstoneBlockedWhenRelationExists() {
-        Artifact source = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/a.mp4", "mp4", "1080p", 10L);
-        Artifact target = catalogService.registerArtifact("rj_2", "prj_1", "s3://b/b.srt", "srt", "sub", 0L);
+        ArtifactCatalogEntry source = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/a.mp4", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry target = catalogService.registerArtifact("rj_2", "prj_1", "s3://b/b.srt", "srt", "sub", 0L);
         catalogService.relateArtifacts(source.id(), target.id(), "HAS_SUBTITLE");
         var check = lifecycleService.deleteCheck(source.id());
         assertFalse(check.deletable());
