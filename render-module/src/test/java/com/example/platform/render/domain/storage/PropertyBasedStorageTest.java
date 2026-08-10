@@ -1,7 +1,9 @@
 package com.example.platform.render.domain.storage;
 
-import com.example.platform.render.domain.storage.digest.*;
-import com.example.platform.render.domain.storage.identity.*;
+import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import com.example.platform.render.domain.storage.provider.*;
 import com.example.platform.render.domain.storage.replica.*;
 import com.example.platform.render.domain.storage.validation.*;

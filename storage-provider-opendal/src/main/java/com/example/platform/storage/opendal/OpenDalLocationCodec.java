@@ -1,6 +1,6 @@
 package com.example.platform.storage.opendal;
 
-import com.example.platform.render.domain.storage.identity.StorageObjectId;
+import com.example.platform.storage.contract.StorageObjectId;
 
 import java.util.Objects;
 

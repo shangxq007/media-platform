@@ -1,4 +1,4 @@
-package com.example.platform.render.domain.storage.identity;
+package com.example.platform.storage.contract;
 import java.io.Serializable;
 public record StorageReplicaId(String value) implements Serializable {
     public StorageReplicaId {

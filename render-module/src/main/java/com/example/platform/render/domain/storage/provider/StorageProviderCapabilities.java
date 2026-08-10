@@ -1,5 +1,5 @@
 package com.example.platform.render.domain.storage.provider;
-import com.example.platform.render.domain.storage.identity.StorageProviderId;
+import com.example.platform.storage.contract.StorageProviderId;
 import java.io.Serializable;
 import java.util.*;
 public record StorageProviderCapabilities(StorageProviderId providerId, Map<ProviderCapability, CapabilitySupport> capabilities) implements Serializable {

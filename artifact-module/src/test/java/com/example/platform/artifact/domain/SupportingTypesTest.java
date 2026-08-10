@@ -1,9 +1,9 @@
 package com.example.platform.artifact.domain;
 
-import com.example.platform.render.domain.storage.digest.ContentDigest;
-import com.example.platform.render.domain.storage.identity.StorageObjectId;
-import com.example.platform.render.domain.storage.identity.StorageProviderId;
-import com.example.platform.render.domain.storage.identity.StorageReplicaId;
+import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

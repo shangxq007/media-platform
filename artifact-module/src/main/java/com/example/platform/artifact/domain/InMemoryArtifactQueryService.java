@@ -1,6 +1,6 @@
 package com.example.platform.artifact.domain;
 
-import com.example.platform.render.domain.storage.digest.ContentDigest;
+import com.example.platform.storage.contract.ContentDigest;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

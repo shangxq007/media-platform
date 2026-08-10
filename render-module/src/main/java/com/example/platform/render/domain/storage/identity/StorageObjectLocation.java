@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.storage.identity;
 import com.example.platform.render.domain.storage.namespace.StorageNamespace;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
 import java.io.Serializable;
 public record StorageObjectLocation(
     StorageProviderId providerId,

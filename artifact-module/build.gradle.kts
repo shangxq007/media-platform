@@ -28,6 +28,9 @@ dependencies {
     // cloud SDKs, bucket names, object keys, or signed URLs.
     implementation(project(":render-module"))
 
+    // PMPR-ST1: canonical storage contracts (ContentDigest/StorageObjectId/...) now owned by storage authority
+    implementation(project(":storage-module"))
+
     // jOOQ generated sources for typed persistence access
     implementation(project(":typed-schema-module"))
 

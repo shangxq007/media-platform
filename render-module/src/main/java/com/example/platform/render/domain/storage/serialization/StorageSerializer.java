@@ -1,7 +1,9 @@
 package com.example.platform.render.domain.storage.serialization;
-import com.example.platform.render.domain.storage.digest.ContentDigest;
+import com.example.platform.storage.contract.ContentDigest;
 import com.example.platform.render.domain.storage.error.StorageError;
-import com.example.platform.render.domain.storage.identity.*;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import com.example.platform.render.domain.storage.namespace.*;
 import com.example.platform.render.domain.storage.provider.*;
 import com.example.platform.render.domain.storage.replica.*;

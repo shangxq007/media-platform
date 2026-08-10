@@ -1,6 +1,6 @@
 package com.example.platform.storage.opendal.conformance;
 
-import com.example.platform.render.domain.storage.identity.StorageProviderId;
+import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.render.domain.storage.provider.StorageProvider;
 import com.example.platform.storage.opendal.OpenDalProviderConfiguration;
 import com.example.platform.storage.opendal.OpenDalStorageProvider;
@@ -98,7 +98,7 @@ class OpenDalTimeoutRetryTest {
         );
 
         String content = "TimeoutTestContent";
-        var digest = com.example.platform.render.domain.storage.digest.ContentDigest.sha256(
+        var digest = com.example.platform.storage.contract.ContentDigest.sha256(
                 computeSha256(content));
 
         var session = provider.beginWrite("timeout-test-ws", namespace, digest, content.length());

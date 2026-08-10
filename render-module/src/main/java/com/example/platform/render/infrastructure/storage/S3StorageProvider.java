@@ -1,6 +1,6 @@
 package com.example.platform.render.infrastructure.storage;
 
-import com.example.platform.render.domain.storage.StorageProvider;
+import com.example.platform.storage.contract.StorageProvider;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

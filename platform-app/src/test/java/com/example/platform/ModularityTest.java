@@ -26,6 +26,9 @@ class ModularityTest {
         "render' depends on named interface(s) 'outbox",
         // render -> storage infrastructure: render needs S3ObjectMaterializer/Writer for artifact I/O
         "render' depends on named interface(s) 'storage :: infrastructure",
+        // PMPR-ST1: render consumes canonical storage contracts (ContentDigest/StorageObjectId/...)
+        // through storage authority — LEGAL target dependency (STORAGE_SPI_BELONGS_TO_STORAGE_AUTHORITY)
+        "render' depends on named interface(s) 'storage :: contract",
         // web -> render: web controllers delegate to render app/domain services
         "web' depends on module 'render",
         // web -> outbox: ProjectDashboardController uses OutboxEventService

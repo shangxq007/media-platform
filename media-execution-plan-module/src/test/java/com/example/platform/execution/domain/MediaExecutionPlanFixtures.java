@@ -8,7 +8,7 @@ import com.example.platform.execution.domain.operation.ThumbnailOperation;
 import com.example.platform.execution.domain.operation.ScaleOperation;
 import com.example.platform.execution.domain.operation.DecodeOperation;
 import com.example.platform.execution.domain.operation.MediaInspectionOperation;
-import com.example.platform.render.domain.storage.digest.ContentDigest;
+import com.example.platform.storage.contract.ContentDigest;
 
 import java.time.Duration;
 import java.time.Instant;

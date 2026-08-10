@@ -1,5 +1,5 @@
 package com.example.platform.render.domain.storage;
-import com.example.platform.render.domain.storage.digest.*;
+import com.example.platform.storage.contract.ContentDigest;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

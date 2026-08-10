@@ -1,6 +1,8 @@
 package com.example.platform.render.domain.storage;
 import com.example.platform.render.domain.storage.lease.*;
-import com.example.platform.render.domain.storage.identity.*;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import com.example.platform.render.domain.storage.namespace.*;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;

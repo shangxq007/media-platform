@@ -1,6 +1,6 @@
 package com.example.platform.storage.opendal.internal;
 
-import com.example.platform.render.domain.storage.identity.StorageProviderId;
+import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.opendal.OpenDalProviderConfiguration;
 import com.example.platform.storage.opendal.OpenDalServiceFactory;
 import org.apache.opendal.Operator;

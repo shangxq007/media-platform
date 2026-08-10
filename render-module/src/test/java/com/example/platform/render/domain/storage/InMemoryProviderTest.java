@@ -1,10 +1,12 @@
 import com.example.platform.render.domain.storage.memory.*;
-import com.example.platform.render.domain.storage.identity.*;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import com.example.platform.render.domain.storage.namespace.*;
 import com.example.platform.render.domain.storage.provider.*;
 import com.example.platform.render.domain.storage.read.*;
 import com.example.platform.render.domain.storage.write.*;
-import com.example.platform.render.domain.storage.digest.*;
+import com.example.platform.storage.contract.ContentDigest;
 import org.junit.jupiter.api.Test;
 import java.io.InputStream;
 import java.util.*;

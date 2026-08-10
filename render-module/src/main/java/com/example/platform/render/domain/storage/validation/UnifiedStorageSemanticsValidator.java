@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.storage.validation;
 import com.example.platform.render.domain.storage.error.StorageError;
-import com.example.platform.render.domain.storage.identity.StorageObjectId;
+import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.render.domain.storage.identity.StorageObjectLocation;
 import com.example.platform.render.domain.storage.namespace.StoragePlacementPolicy;
 import com.example.platform.render.domain.storage.namespace.StoragePlacementValidator;

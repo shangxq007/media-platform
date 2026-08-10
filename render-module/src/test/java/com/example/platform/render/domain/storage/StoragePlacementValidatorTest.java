@@ -1,10 +1,13 @@
 import com.example.platform.render.domain.storage.namespace.*;
-import com.example.platform.render.domain.storage.identity.*;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import com.example.platform.render.domain.storage.error.StorageError;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.storage.identity.StorageObjectLocation;
 
 class StoragePlacementValidatorTest {
     @Test void placement_validRegion() {

@@ -1,5 +1,5 @@
 package com.example.platform.render.domain.storage.lease;
-import com.example.platform.render.domain.storage.identity.StorageObjectId;
+import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.render.domain.storage.namespace.StorageNamespace;
 import java.io.Serializable;
 import java.time.Instant;

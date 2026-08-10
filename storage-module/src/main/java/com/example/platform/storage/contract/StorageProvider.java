@@ -1,4 +1,4 @@
-package com.example.platform.render.domain.storage;
+package com.example.platform.storage.contract;
 
 import java.util.Map;
 import java.util.Optional;

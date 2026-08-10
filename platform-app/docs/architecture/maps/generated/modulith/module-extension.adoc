@@ -25,6 +25,7 @@ _Others_
 * `c.e.p.e.app.ProcessExecutor` (via `c.e.p.e.infrastructure.CommonsExecProcessExecutor`)
 * `c.e.p.e.app.ToolRunner` (via `c.e.p.e.infrastructure.CommonsExecToolRunner`)
 * `c.e.p.e.app.ProcessToolRunner` (via `c.e.p.e.infrastructure.DefaultProcessToolRunner`)
+* `c.e.p.e.runtime.PluginRuntime`
 |Bean references
 |* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
 |===

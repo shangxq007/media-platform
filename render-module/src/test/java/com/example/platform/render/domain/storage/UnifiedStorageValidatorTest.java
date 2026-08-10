@@ -1,15 +1,18 @@
 package com.example.platform.render.domain.storage;
 import com.example.platform.render.domain.storage.validation.*;
-import com.example.platform.render.domain.storage.identity.*;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import com.example.platform.render.domain.storage.namespace.*;
 import com.example.platform.render.domain.storage.provider.*;
 import com.example.platform.render.domain.storage.replica.*;
 import com.example.platform.render.domain.storage.write.*;
-import com.example.platform.render.domain.storage.digest.*;
+import com.example.platform.storage.contract.ContentDigest;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.storage.identity.StorageObjectLocation;
 
 class UnifiedStorageValidatorTest {
     @Test void emptyModel_isValid() {

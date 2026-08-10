@@ -1,6 +1,6 @@
 package com.example.platform.storage.opendal;
 
-import com.example.platform.render.domain.storage.identity.StorageProviderId;
+import com.example.platform.storage.contract.StorageProviderId;
 import java.io.Serializable;
 import java.util.Objects;
 
