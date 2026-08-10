@@ -5,7 +5,7 @@ import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
 import com.example.platform.render.domain.product.RepresentationKind;
-import com.example.platform.render.domain.storage.StorageReference;
+import com.example.platform.storage.contract.StorageReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

@@ -26,7 +26,7 @@ public final class OpenDalServiceFactory {
             return Operator.of(scheme, buildParams);
         } catch (Exception e) {
             throw new OpenDalStorageException(
-                    com.example.platform.render.domain.storage.error.StorageError.ErrorCode.STORAGE_PROVIDER_UNAVAILABLE,
+                    com.example.platform.storage.contract.error.StorageError.ErrorCode.STORAGE_PROVIDER_UNAVAILABLE,
                     "Failed to create OpenDAL operator: " + e.getMessage(), e);
         }
     }

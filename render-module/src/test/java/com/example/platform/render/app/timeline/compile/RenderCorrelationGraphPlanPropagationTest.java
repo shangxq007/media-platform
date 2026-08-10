@@ -16,7 +16,7 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.render.domain.product.*;
-import com.example.platform.render.domain.storage.*;
+import com.example.platform.storage.contract.*;
 import com.example.platform.render.domain.timeline.compile.executionplan.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;

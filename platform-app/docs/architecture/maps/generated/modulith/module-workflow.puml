@@ -29,6 +29,15 @@ System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="")
 
 }
 
+Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Billing, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.PolicyGovernance, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Graph, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
@@ -37,15 +46,6 @@ Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.Platfo
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.PolicyGovernance, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Delivery, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Billing, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes

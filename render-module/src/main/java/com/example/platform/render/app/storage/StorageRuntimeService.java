@@ -1,6 +1,6 @@
 package com.example.platform.render.app.storage;
 
-import com.example.platform.render.domain.storage.StorageReference;
+import com.example.platform.storage.contract.StorageReference;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import com.example.platform.storage.infrastructure.S3ObjectMaterializer;
 import java.util.Optional;

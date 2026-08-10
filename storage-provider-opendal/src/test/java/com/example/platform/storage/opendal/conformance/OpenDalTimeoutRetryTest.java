@@ -1,7 +1,7 @@
 package com.example.platform.storage.opendal.conformance;
 
 import com.example.platform.storage.contract.StorageProviderId;
-import com.example.platform.render.domain.storage.provider.StorageProvider;
+import com.example.platform.storage.contract.provider.StorageProvider;
 import com.example.platform.storage.opendal.OpenDalProviderConfiguration;
 import com.example.platform.storage.opendal.OpenDalStorageProvider;
 import com.example.platform.storage.opendal.testutil.EmbeddedS3Server;
@@ -90,11 +90,11 @@ class OpenDalTimeoutRetryTest {
     void maxRetryAttemptsZero_singleAttempt() {
         // With maxRetryAttempts=0, operations should make exactly one attempt
         // Verify by performing a successful operation
-        var namespace = new com.example.platform.render.domain.storage.namespace.StorageNamespace(
+        var namespace = new com.example.platform.storage.contract.namespace.StorageNamespace(
                 "test-tenant", "test-project",
-                com.example.platform.render.domain.storage.namespace.NamespaceClass.SOURCE,
-                com.example.platform.render.domain.storage.namespace.RegionPolicy.SINGLE_REGION,
-                com.example.platform.render.domain.storage.namespace.DataClassification.INTERNAL
+                com.example.platform.storage.contract.namespace.NamespaceClass.SOURCE,
+                com.example.platform.storage.contract.namespace.RegionPolicy.SINGLE_REGION,
+                com.example.platform.storage.contract.namespace.DataClassification.INTERNAL
         );
 
         String content = "TimeoutTestContent";

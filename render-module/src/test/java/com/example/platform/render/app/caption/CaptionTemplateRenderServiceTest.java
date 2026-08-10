@@ -9,7 +9,7 @@ import com.example.platform.render.app.timeline.compile.*;
 import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.caption.*;
 import com.example.platform.render.domain.product.*;
-import com.example.platform.render.domain.storage.*;
+import com.example.platform.storage.contract.*;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;

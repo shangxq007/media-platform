@@ -13,7 +13,7 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.RenderOutputStorageProperties;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
-import com.example.platform.render.domain.storage.*;
+import com.example.platform.storage.contract.*;
 import com.example.platform.render.domain.timeline.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
@@ -227,7 +227,7 @@ class TimelineRevisionS3InputOutputRealRenderSmokeTest {
         StorageReference inputRef = storageRuntime.register(new StorageReference(
                 null,
                 StorageProviderType.S3_COMPATIBLE.name(),
-                com.example.platform.render.domain.storage.StorageClass.STANDARD,
+                com.example.platform.storage.contract.StorageClass.STANDARD,
                 S3_BUCKET,
                 inputObjectKey,
                 inputChecksum,

@@ -1,6 +1,6 @@
 package com.example.platform.storage.opendal.runtime;
 
-import com.example.platform.render.domain.storage.error.StorageError;
+import com.example.platform.storage.contract.error.StorageError;
 import com.example.platform.storage.opendal.OpenDalStorageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

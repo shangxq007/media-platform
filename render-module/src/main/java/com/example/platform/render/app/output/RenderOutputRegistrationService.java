@@ -4,7 +4,7 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.RenderOutputStorageProperties;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
-import com.example.platform.render.domain.storage.*;
+import com.example.platform.storage.contract.*;
 import com.example.platform.shared.Ids;
 import com.example.platform.storage.infrastructure.S3ObjectWriter;
 import org.slf4j.Logger;

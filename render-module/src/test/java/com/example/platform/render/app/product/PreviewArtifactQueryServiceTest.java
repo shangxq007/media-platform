@@ -2,8 +2,8 @@ package com.example.platform.render.app.product;
 
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
-import com.example.platform.render.domain.storage.StorageClass;
-import com.example.platform.render.domain.storage.StorageReference;
+import com.example.platform.storage.contract.StorageClass;
+import com.example.platform.storage.contract.StorageReference;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;

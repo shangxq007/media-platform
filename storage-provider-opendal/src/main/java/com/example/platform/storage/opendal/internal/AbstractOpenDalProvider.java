@@ -1,15 +1,15 @@
 package com.example.platform.storage.opendal.internal;
 
-import com.example.platform.render.domain.storage.error.StorageError;
+import com.example.platform.storage.contract.error.StorageError;
 import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.StorageReplicaId;
-import com.example.platform.render.domain.storage.namespace.StorageNamespace;
-import com.example.platform.render.domain.storage.provider.*;
-import com.example.platform.render.domain.storage.read.*;
-import com.example.platform.render.domain.storage.write.StorageWriteSession;
-import com.example.platform.render.domain.storage.write.WriteSessionResult;
-import com.example.platform.render.domain.storage.write.WriteSessionState;
+import com.example.platform.storage.contract.namespace.StorageNamespace;
+import com.example.platform.storage.contract.provider.*;
+import com.example.platform.storage.contract.read.*;
+import com.example.platform.storage.contract.write.StorageWriteSession;
+import com.example.platform.storage.contract.write.WriteSessionResult;
+import com.example.platform.storage.contract.write.WriteSessionState;
 import com.example.platform.storage.opendal.OpenDalCapabilityMapper;
 import com.example.platform.storage.opendal.OpenDalErrorMapper;
 import com.example.platform.storage.opendal.OpenDalLocationCodec;
@@ -47,7 +47,7 @@ import java.util.concurrent.ConcurrentMap;
  * </ul>
  *
  * <p>All OpenDAL types are confined to this package. The public
- * {@link com.example.platform.render.domain.storage.provider.StorageProvider} SPI
+ * {@link com.example.platform.storage.contract.provider.StorageProvider} SPI
  * implementation wraps this class without exposing OpenDAL internals.
  */
 public abstract class AbstractOpenDalProvider implements StorageProvider {

@@ -484,9 +484,9 @@ public class RenderController {
                     if (existing.isEmpty()) {
                         // Create StorageReference
                         String storageRefId = com.example.platform.shared.Ids.newId("stor");
-                        var storageRef = new com.example.platform.render.domain.storage.StorageReference(
+                        var storageRef = new com.example.platform.storage.contract.StorageReference(
                                 storageRefId, "localFsStorageProvider",
-                                com.example.platform.render.domain.storage.StorageClass.STANDARD,
+                                com.example.platform.storage.contract.StorageClass.STANDARD,
                                 "/tmp/platform", "preview-media/" + objectKey,
                                 null, null, file.getSize(), "video/mp4",
                                 java.time.Instant.now(), java.time.Instant.now());

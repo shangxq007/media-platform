@@ -1,7 +1,7 @@
 package com.example.platform.render.infrastructure.storage;
 
 import static org.jooq.impl.DSL.*;
-import com.example.platform.render.domain.storage.*;
+import com.example.platform.storage.contract.*;
 import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.time.LocalDateTime;

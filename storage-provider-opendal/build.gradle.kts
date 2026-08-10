@@ -24,7 +24,6 @@ tasks.withType<JavaCompile>().configureEach {
 
 dependencies {
     // Platform storage provider API — uses render-module which contains StorageProvider SPI
-    implementation(project(":render-module"))
     implementation(project(":storage-module"))
 
     // Apache OpenDAL — fixed version, no SNAPSHOT, no dynamic versions

@@ -1,8 +1,8 @@
 package com.example.platform.render.app.storage;
 
-import com.example.platform.render.domain.storage.StorageClass;
-import com.example.platform.render.domain.storage.StorageProviderType;
-import com.example.platform.render.domain.storage.StorageReference;
+import com.example.platform.storage.contract.StorageClass;
+import com.example.platform.storage.contract.StorageProviderType;
+import com.example.platform.storage.contract.StorageReference;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import java.time.Instant;
 import java.util.Optional;

@@ -29,6 +29,8 @@ class ModularityTest {
         // PMPR-ST1: render consumes canonical storage contracts (ContentDigest/StorageObjectId/...)
         // through storage authority — LEGAL target dependency (STORAGE_SPI_BELONGS_TO_STORAGE_AUTHORITY)
         "render' depends on named interface(s) 'storage :: contract",
+        // PMPR-ST1-CRR1: web StorageRuntimeController consumes storage contracts through storage authority
+        "web' depends on named interface(s) 'storage :: contract",
         // web -> render: web controllers delegate to render app/domain services
         "web' depends on module 'render",
         // web -> outbox: ProjectDashboardController uses OutboxEventService

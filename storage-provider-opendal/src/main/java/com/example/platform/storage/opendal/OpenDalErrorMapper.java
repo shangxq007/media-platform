@@ -1,6 +1,6 @@
 package com.example.platform.storage.opendal;
 
-import com.example.platform.render.domain.storage.error.StorageError;
+import com.example.platform.storage.contract.error.StorageError;
 import org.apache.opendal.OpenDALException;
 
 import java.io.IOException;

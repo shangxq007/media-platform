@@ -4,7 +4,7 @@ import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.timeline.*;
 import com.example.platform.render.domain.product.*;
-import com.example.platform.render.domain.storage.*;
+import com.example.platform.storage.contract.*;
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;

@@ -1,12 +1,12 @@
 package com.example.platform.storage.opendal;
 
-import com.example.platform.render.domain.storage.error.StorageError;
+import com.example.platform.storage.contract.error.StorageError;
 
 /**
  * Internal storage exception for OpenDAL adapter errors.
  *
  * <p>This exception type is internal to the OpenDAL adapter module and must never
- * cross the {@link com.example.platform.render.domain.storage.provider.StorageProvider}
+ * cross the {@link com.example.platform.storage.contract.provider.StorageProvider}
  * SPI boundary. All errors returned through the SPI are mapped to
  * {@link StorageError.Error} via {@link OpenDalErrorMapper}.
  *

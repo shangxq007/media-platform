@@ -1,7 +1,7 @@
 package com.example.platform.storage.opendal;
 
-import com.example.platform.render.domain.storage.provider.CapabilitySupport;
-import com.example.platform.render.domain.storage.provider.ProviderCapability;
+import com.example.platform.storage.contract.provider.CapabilitySupport;
+import com.example.platform.storage.contract.provider.ProviderCapability;
 import org.apache.opendal.Capability;
 
 import java.util.EnumMap;

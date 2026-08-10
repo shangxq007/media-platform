@@ -13,7 +13,7 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.RenderOutputStorageProperties;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
-import com.example.platform.render.domain.storage.*;
+import com.example.platform.storage.contract.*;
 import com.example.platform.render.domain.timeline.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
@@ -208,7 +208,7 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
 
         String inputChecksum = computeSha256(storageInput);
         StorageReference inputRef = new StorageReference(
-                null, StorageProviderType.LOCAL.name(), com.example.platform.render.domain.storage.StorageClass.STANDARD,
+                null, StorageProviderType.LOCAL.name(), com.example.platform.storage.contract.StorageClass.STANDARD,
                 tempDir.toString(), tempDir.relativize(storageInput).toString(),
                 inputChecksum, inputChecksum, Files.size(storageInput), "video/mp4",
                 Instant.now(), Instant.now());

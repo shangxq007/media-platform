@@ -24,9 +24,9 @@ System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="")
 
 }
 
+Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes
