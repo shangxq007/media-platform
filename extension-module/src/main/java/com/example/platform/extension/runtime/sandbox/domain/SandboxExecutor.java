@@ -1,4 +1,4 @@
-package com.example.platform.sandbox.domain;
+package com.example.platform.extension.runtime.sandbox.domain;
 
 /**
  * SPI interface for sandbox code execution.

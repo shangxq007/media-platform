@@ -1,10 +1,11 @@
 package com.example.platform.extension.examples;
 
 import com.example.platform.extension.domain.*;
+import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 
 import java.util.Map;
 
-public class DynamicSchedulerTriggerExtension implements ProviderExtensionSPI {
+public class DynamicSchedulerTriggerExtension implements PluginRuntimeProviderBinding {
 
     @Override
     public String providerKey() {

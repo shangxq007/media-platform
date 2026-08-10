@@ -1,4 +1,4 @@
-package com.example.platform.sandbox.app;
+package com.example.platform.extension.runtime.sandbox.app;
 
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;

@@ -1,4 +1,4 @@
-package com.example.platform.sandbox.app;
+package com.example.platform.extension.runtime.sandbox.app;
 
 /**
  * Execution mode for sandbox code execution.

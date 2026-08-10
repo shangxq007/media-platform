@@ -1,8 +1,9 @@
 package com.example.platform.extension.examples;
 
 import com.example.platform.extension.domain.*;
+import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 
-public class ThirdPartyRenderProviderExtension implements ProviderExtensionSPI {
+public class ThirdPartyRenderProviderExtension implements PluginRuntimeProviderBinding {
 
     @Override
     public String providerKey() {

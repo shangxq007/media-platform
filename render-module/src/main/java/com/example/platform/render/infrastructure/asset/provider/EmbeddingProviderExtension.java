@@ -2,6 +2,7 @@ package com.example.platform.render.infrastructure.asset.provider;
 
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
+import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
@@ -12,12 +13,12 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * Embedding AI provider plugin — implements ProviderExtensionSPI.
+ * Embedding AI provider plugin — implements PluginRuntimeProviderBinding.
  * Self-registers in ExtensionRegistryService on startup.
  * Produces EmbeddingReference — NEVER raw vectors.
  */
 @Component
-public class EmbeddingProviderExtension implements ProviderExtensionSPI {
+public class EmbeddingProviderExtension implements PluginRuntimeProviderBinding {
 
     private static final Logger log = LoggerFactory.getLogger(EmbeddingProviderExtension.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();

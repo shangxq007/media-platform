@@ -1,4 +1,4 @@
-package com.example.platform.sandbox.app;
+package com.example.platform.extension.runtime.sandbox.app;
 
 /**
  * Port interface for executing code in an external sandbox worker.

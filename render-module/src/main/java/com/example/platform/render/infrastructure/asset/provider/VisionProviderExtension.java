@@ -2,6 +2,7 @@ package com.example.platform.render.infrastructure.asset.provider;
 
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
+import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -12,11 +13,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Vision AI provider plugin — implements ProviderExtensionSPI.
+ * Vision AI provider plugin — implements PluginRuntimeProviderBinding.
  * Self-registers in ExtensionRegistryService on startup.
  */
 @Component
-public class VisionProviderExtension implements ProviderExtensionSPI {
+public class VisionProviderExtension implements PluginRuntimeProviderBinding {
 
     private static final Logger log = LoggerFactory.getLogger(VisionProviderExtension.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();

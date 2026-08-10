@@ -3,7 +3,7 @@ package com.example.platform.extension.infrastructure;
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.runtime.PluginRuntime;
 import com.example.platform.extension.runtime.internal.DefaultPluginRuntime;
-import com.example.platform.extension.runtime.internal.ProviderExtensionSpiRuntimeAdapter;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,6 +21,6 @@ public class PluginRuntimeConfiguration {
 
     @Bean
     public PluginRuntime pluginRuntime(ExtensionRegistryService registry) {
-        return new DefaultPluginRuntime(new ProviderExtensionSpiRuntimeAdapter(registry));
+        return new DefaultPluginRuntime(registry);
     }
 }

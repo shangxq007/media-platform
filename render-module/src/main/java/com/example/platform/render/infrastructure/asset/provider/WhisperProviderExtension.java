@@ -2,6 +2,7 @@ package com.example.platform.render.infrastructure.asset.provider;
 
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
+import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import com.example.platform.render.domain.asset.semantic.AsrResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,12 +14,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Whisper AI provider registered as a platform plugin via ProviderExtensionSPI.
+ * Whisper AI provider registered as a platform plugin via PluginRuntimeProviderBinding.
  * Self-registers in ExtensionRegistryService on startup. Delegates transcription
  * to WhisperAsrProvider through the ExecutionBackend pipeline.
  */
 @Component
-public class WhisperProviderExtension implements ProviderExtensionSPI {
+public class WhisperProviderExtension implements PluginRuntimeProviderBinding {
 
     private static final Logger log = LoggerFactory.getLogger(WhisperProviderExtension.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();

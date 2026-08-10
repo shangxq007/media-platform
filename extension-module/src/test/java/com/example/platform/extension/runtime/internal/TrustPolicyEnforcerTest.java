@@ -88,10 +88,8 @@ class TrustPolicyEnforcerTest {
         // DefaultPluginRuntime maps SECURITY_DENIED into a canonical FAILED result
         // (registry lookup returns null -> adapter rejects CAPABILITY_UNSUPPORTED first;
         // trust denial is covered by untrustedProviderDeniedInTrustedInProcess at enforcer level)
-        ProviderExtensionSpiRuntimeAdapter adapter =
-                new ProviderExtensionSpiRuntimeAdapter(
+        DefaultPluginRuntime runtime = new DefaultPluginRuntime(
                         org.mockito.Mockito.mock(com.example.platform.extension.app.ExtensionRegistryService.class));
-        DefaultPluginRuntime runtime = new DefaultPluginRuntime(adapter);
         PluginExecutionResult result = runtime.execute(request(ExecutionMode.TRUSTED_IN_PROCESS));
         assertEquals(PluginExecutionStatus.FAILED, result.status());
         assertTrue(result.error() != null);

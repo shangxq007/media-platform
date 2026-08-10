@@ -3,7 +3,8 @@
             "shared",
             "workflow :: temporal",
             "outbox :: app",
-            "sandbox :: app",
+            "extension",
+            "extension :: runtime",
             "extension :: app"
         })
 package com.example.platform.lifecycle;

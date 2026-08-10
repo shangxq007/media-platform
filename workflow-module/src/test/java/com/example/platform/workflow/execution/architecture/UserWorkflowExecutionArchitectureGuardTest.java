@@ -75,11 +75,11 @@ class UserWorkflowExecutionArchitectureGuardTest {
 
     @org.junit.jupiter.api.Test
     void arUwe03_providerOnlyViaPluginRuntime() throws IOException {
-        // temporal code must not call ProviderExtensionSPI / provider SDK directly
+        // temporal code must not call PluginRuntimeProviderBinding / provider SDK directly
         for (Path p : javaFiles(TEMPORAL)) {
             String src = stripComments(read(p));
-            assertFalse(src.contains("ProviderExtensionSPI"),
-                    "AR-UWE-03 ProviderExtensionSPI in temporal: " + p);
+            assertFalse(src.contains("PluginRuntimeProviderBinding"),
+                    "AR-UWE-03 PluginRuntimeProviderBinding in temporal: " + p);
             assertFalse(Pattern.compile("openai|OpenAI|aws|OkHttp").matcher(src).find(),
                     "AR-UWE-03 provider SDK in temporal: " + p);
         }
@@ -93,8 +93,8 @@ class UserWorkflowExecutionArchitectureGuardTest {
 
     @org.junit.jupiter.api.Test
     void arUwe05_noProviderExtensionSpiImport() throws IOException {
-        assertFalse(anyContains(WORKFLOW, Pattern.compile("extension\\.domain\\.ProviderExtensionSPI")),
-                "AR-UWE-05 workflow imports ProviderExtensionSPI");
+        assertFalse(anyContains(WORKFLOW, Pattern.compile("extension\\.domain\\.PluginRuntimeProviderBinding")),
+                "AR-UWE-05 workflow imports PluginRuntimeProviderBinding");
     }
 
     @org.junit.jupiter.api.Test

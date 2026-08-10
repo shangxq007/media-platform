@@ -13,7 +13,7 @@ _Others_
 |Bean references
 |* `c.e.p.o.app.OutboxEventDispatcher` (in Outbox & Events)
 * `c.e.p.e.app.SandboxExecutionService` (in Extension)
-* `c.e.p.s.app.SandboxRuntimeService` (in Sandbox Runtime)
+* `c.e.p.e.runtime.internal.sandbox.app.SandboxRuntimeService` (in Extension)
 * `c.e.p.w.temporal.AppTemporalProperties` (in Workflow)
 |Events listened to
 |* `org.springframework.context.event.ContextClosedEvent` 

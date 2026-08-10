@@ -51,7 +51,15 @@ class ModularityTest {
         // deliberately non-Spring library module (no @ApplicationModule, no
         // named interfaces), so Modulith cannot express the dependency in
         // allowedDependencies; registered here per the debt-register pattern.
-        "workflow' depends on module 'graph"
+        "workflow' depends on module 'graph",
+        // PMPR-S1: render providers implement canonical PluginRuntimeProviderBinding
+        // (extension::runtime) — provider effect binding under single PluginRuntime authority.
+        "render' depends on named interface(s) 'extension :: runtime",
+        // PMPR-S1: lifecycle graceful-shutdown coordinator holds optional SandboxRuntimeService
+        // (sandbox runtime moved into extension::runtime sandbox package) — declared also in
+        // lifecycle allowedDependencies; Modulith reports nested named-interface subpackage at
+        // module level, so registered here per debt-register pattern.
+        "lifecycle' depends on module 'extension"
     );
 
     @Test

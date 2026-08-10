@@ -1,6 +1,7 @@
 package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.*;
+import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
@@ -41,7 +42,7 @@ public class ExtensionRegistryService {
         this.router = router;
     }
 
-    public void registerProviderExtension(String key, ProviderExtensionSPI extension,
+    public void registerProviderExtension(String key, PluginRuntimeProviderBinding extension,
                                            ExtensionTrustLevel trustLevel, String registeredBy) {
         validateExtension(key, extension);
         ExtensionHolder holder = new ExtensionHolder(key, extension.version(),
@@ -202,7 +203,7 @@ public class ExtensionRegistryService {
 
         if (removed != null) {
             Object spi = spiInstances.remove(key);
-            if (spi instanceof ProviderExtensionSPI p) p.onUnload();
+            if (spi instanceof PluginRuntimeProviderBinding p) p.onUnload();
             if (spi instanceof PromptExtensionSPI p) p.onUnload();
             if (spi instanceof WorkflowStepExtensionSPI p) p.onUnload();
 
@@ -299,9 +300,9 @@ public class ExtensionRegistryService {
      * @param key provider extension key
      * @return the registered SPI instance, or {@code null} when not registered
      */
-    public ProviderExtensionSPI findSpiInstance(String key) {
+    public PluginRuntimeProviderBinding findSpiInstance(String key) {
         Object spi = spiInstances.get(key);
-        return spi instanceof ProviderExtensionSPI provider ? provider : null;
+        return spi instanceof PluginRuntimeProviderBinding provider ? provider : null;
     }
 
     public ExtensionResourceLimiter getResourceLimiter() {

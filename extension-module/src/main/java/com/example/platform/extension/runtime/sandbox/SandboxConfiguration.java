@@ -1,6 +1,6 @@
-package com.example.platform.sandbox;
+package com.example.platform.extension.runtime.sandbox;
 
-import com.example.platform.sandbox.app.SandboxProperties;
+import com.example.platform.extension.runtime.sandbox.app.SandboxProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 

@@ -171,8 +171,8 @@ class PluginRuntimeArchitectureGuardTest {
     @org.junit.jupiter.api.Test
     void arPrv2_10_costProvenancePreserved() throws IOException {
         // runtime never invents cost authorities; adapter preserves provider observations
-        Path adapter = RUNTIME_INTERNAL.resolve("ProviderExtensionSpiRuntimeAdapter.java");
-        String src = read(adapter);
+        Path runtime = RUNTIME_INTERNAL.resolve("DefaultPluginRuntime.java");
+        String src = read(runtime);
         assertTrue(src.contains("metrics"), "AR-PRV2-10 provider observations preserved");
     }
 

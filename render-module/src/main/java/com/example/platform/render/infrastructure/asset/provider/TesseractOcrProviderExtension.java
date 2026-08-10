@@ -2,6 +2,7 @@ package com.example.platform.render.infrastructure.asset.provider;
 
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
+import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -12,12 +13,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Tesseract OCR provider plugin — implements ProviderExtensionSPI.
+ * Tesseract OCR provider plugin — implements PluginRuntimeProviderBinding.
  * Self-registers in ExtensionRegistryService on startup.
  * Follows the same governance pattern as WhisperProviderExtension.
  */
 @Component
-public class TesseractOcrProviderExtension implements ProviderExtensionSPI {
+public class TesseractOcrProviderExtension implements PluginRuntimeProviderBinding {
 
     private static final Logger log = LoggerFactory.getLogger(TesseractOcrProviderExtension.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();

@@ -1,10 +1,16 @@
-package com.example.platform.extension.domain;
+package com.example.platform.extension.runtime;
+
+import com.example.platform.extension.domain.ExtensionContext;
+import com.example.platform.extension.domain.ExtensionResourceLimits;
+import com.example.platform.extension.domain.ExtensionExecutionException;
+import com.example.platform.extension.domain.ExtensionResult;
+import com.example.platform.extension.domain.ExtensionTrustLevel;
 
 /**
  * SPI for dynamic Provider extensions.
  * Allows third-party render providers or AI providers to be registered at runtime.
  */
-public interface ProviderExtensionSPI {
+public interface PluginRuntimeProviderBinding {
 
     String providerKey();
     String providerType();

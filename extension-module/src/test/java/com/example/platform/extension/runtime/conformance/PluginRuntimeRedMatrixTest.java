@@ -12,7 +12,7 @@ import com.example.platform.extension.runtime.PluginExecutionStatus;
 import com.example.platform.extension.runtime.PluginRuntimeErrorCategory;
 import com.example.platform.extension.runtime.PluginRuntimeExecutionException;
 import com.example.platform.extension.runtime.ResourceRequirements;
-import com.example.platform.extension.runtime.internal.ProviderExtensionSpiRuntimeAdapter;
+import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.runtime.internal.RuntimeUsageEmitter;
 import com.example.platform.extension.runtime.internal.SecretRefResolver;
 import com.example.platform.extension.runtime.internal.DefaultPluginRuntime;
@@ -63,8 +63,8 @@ class PluginRuntimeRedMatrixTest {
         var registry = org.mockito.Mockito.mock(
                 com.example.platform.extension.app.ExtensionRegistryService.class);
         org.mockito.Mockito.when(registry.findSpiInstance("ghost")).thenReturn(null);
-        ProviderExtensionSpiRuntimeAdapter adapter = new ProviderExtensionSpiRuntimeAdapter(registry);
-        PluginExecutionResult result = adapter.execute(request(ExecutionMode.TRUSTED_IN_PROCESS, "tenant-1"));
+        DefaultPluginRuntime runtime = new DefaultPluginRuntime(registry);
+        PluginExecutionResult result = runtime.execute(request(ExecutionMode.TRUSTED_IN_PROCESS, "tenant-1"));
         assertEquals(PluginExecutionStatus.FAILED, result.status());
         assertEquals(PluginRuntimeErrorCategory.CAPABILITY_UNSUPPORTED, result.error().category());
     }
@@ -179,7 +179,7 @@ class PluginRuntimeRedMatrixTest {
         var registry = org.mockito.Mockito.mock(
                 com.example.platform.extension.app.ExtensionRegistryService.class);
         var spi = org.mockito.Mockito.mock(
-                com.example.platform.extension.domain.ProviderExtensionSPI.class);
+                com.example.platform.extension.runtime.PluginRuntimeProviderBinding.class);
         org.mockito.Mockito.when(spi.version()).thenReturn("1.0.0");
         org.mockito.Mockito.when(spi.trustLevel()).thenReturn(ExtensionTrustLevel.SEMI_TRUSTED);
         org.mockito.Mockito.when(spi.execute(
@@ -187,8 +187,8 @@ class PluginRuntimeRedMatrixTest {
                 org.mockito.ArgumentMatchers.anyString()))
                 .thenThrow(new IllegalStateException("openai sdk blew up"));
         org.mockito.Mockito.when(registry.findSpiInstance("p-1")).thenReturn(spi);
-        ProviderExtensionSpiRuntimeAdapter adapter = new ProviderExtensionSpiRuntimeAdapter(registry);
-        PluginExecutionResult result = adapter.execute(request(ExecutionMode.TRUSTED_IN_PROCESS, "tenant-1"));
+        DefaultPluginRuntime runtime = new DefaultPluginRuntime(registry);
+        PluginExecutionResult result = runtime.execute(request(ExecutionMode.TRUSTED_IN_PROCESS, "tenant-1"));
         assertEquals(PluginRuntimeErrorCategory.EXECUTION_FAILED, result.error().category());
     }
 

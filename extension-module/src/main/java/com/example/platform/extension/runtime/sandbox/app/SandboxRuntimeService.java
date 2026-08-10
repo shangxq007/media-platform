@@ -1,7 +1,7 @@
-package com.example.platform.sandbox.app;
+package com.example.platform.extension.runtime.sandbox.app;
 
-import com.example.platform.sandbox.domain.SandboxExecutor;
-import com.example.platform.sandbox.domain.SandboxSecurityPolicy;
+import com.example.platform.extension.runtime.sandbox.domain.SandboxExecutor;
+import com.example.platform.extension.runtime.sandbox.domain.SandboxSecurityPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

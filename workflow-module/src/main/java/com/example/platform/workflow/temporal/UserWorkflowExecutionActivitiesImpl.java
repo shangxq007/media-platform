@@ -28,7 +28,7 @@ import java.util.Set;
  * <p>ALL external effects live here (WORKFLOW_CODE_IS_DETERMINISTIC;
  * EFFECTS_LIVE_IN_ACTIVITIES): PluginRuntime invocation via
  * {@code extension::runtime} (the ONLY effect execution path — never
- * ProviderExtensionSPI / SandboxExecutionService directly), terminal product
+ * PluginRuntimeProviderBinding / SandboxExecutionService directly), terminal product
  * persistence, and durable outbox transitions. Usage/cost is emitted by
  * PluginRuntime/EUMF (workflow never duplicates — AR-UWE-16).</p>
  */

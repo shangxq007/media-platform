@@ -2,7 +2,7 @@ package com.example.platform.lifecycle;
 
 import com.example.platform.extension.app.SandboxExecutionService;
 import com.example.platform.outbox.app.OutboxEventDispatcher;
-import com.example.platform.sandbox.app.SandboxRuntimeService;
+import com.example.platform.extension.runtime.sandbox.app.SandboxRuntimeService;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;

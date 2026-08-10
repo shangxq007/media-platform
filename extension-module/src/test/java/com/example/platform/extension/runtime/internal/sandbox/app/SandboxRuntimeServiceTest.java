@@ -1,7 +1,7 @@
-package com.example.platform.sandbox.app;
+package com.example.platform.extension.runtime.sandbox.app;
 
-import com.example.platform.sandbox.domain.DefaultSandboxSecurityPolicy;
-import com.example.platform.sandbox.domain.SandboxExecutor.SandboxResult;
+import com.example.platform.extension.runtime.sandbox.domain.DefaultSandboxSecurityPolicy;
+import com.example.platform.extension.runtime.sandbox.domain.SandboxExecutor.SandboxResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

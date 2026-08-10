@@ -1,4 +1,4 @@
-package com.example.platform.sandbox.app;
+package com.example.platform.extension.runtime.sandbox.app;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

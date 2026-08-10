@@ -1,6 +1,7 @@
 package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.*;
+import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.shared.audit.AuditPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ class ExtensionRegistryServiceTest {
 
     @Test
     void shouldRegisterProviderExtension() {
-        ProviderExtensionSPI extension = createMockProvider("test-provider", "1.0.0");
+        PluginRuntimeProviderBinding extension = createMockProvider("test-provider", "1.0.0");
         service.registerProviderExtension("test-provider", extension, ExtensionTrustLevel.FULLY_TRUSTED, "admin");
 
         Optional<ExtensionRegistryService.ExtensionInfo> info = service.getExtension("test-provider");
@@ -90,8 +91,8 @@ class ExtensionRegistryServiceTest {
 
     @Test
     void shouldUpgradeExtensionAndSaveHistory() {
-        ProviderExtensionSPI v1 = createMockProvider("test-provider", "1.0.0");
-        ProviderExtensionSPI v2 = createMockProvider("test-provider", "2.0.0");
+        PluginRuntimeProviderBinding v1 = createMockProvider("test-provider", "1.0.0");
+        PluginRuntimeProviderBinding v2 = createMockProvider("test-provider", "2.0.0");
 
         service.registerProviderExtension("test-provider", v1, ExtensionTrustLevel.SEMI_TRUSTED, "admin");
         service.registerProviderExtension("test-provider", v2, ExtensionTrustLevel.SEMI_TRUSTED, "admin");
@@ -106,8 +107,8 @@ class ExtensionRegistryServiceTest {
 
     @Test
     void shouldRollbackExtension() {
-        ProviderExtensionSPI v1 = createMockProvider("test-provider", "1.0.0");
-        ProviderExtensionSPI v2 = createMockProvider("test-provider", "2.0.0");
+        PluginRuntimeProviderBinding v1 = createMockProvider("test-provider", "1.0.0");
+        PluginRuntimeProviderBinding v2 = createMockProvider("test-provider", "2.0.0");
 
         service.registerProviderExtension("test-provider", v1, ExtensionTrustLevel.SEMI_TRUSTED, "admin");
         service.registerProviderExtension("test-provider", v2, ExtensionTrustLevel.SEMI_TRUSTED, "admin");
@@ -118,7 +119,7 @@ class ExtensionRegistryServiceTest {
 
     @Test
     void shouldReturnFalseWhenRollingBackToNonExistentVersion() {
-        ProviderExtensionSPI v1 = createMockProvider("test-provider", "1.0.0");
+        PluginRuntimeProviderBinding v1 = createMockProvider("test-provider", "1.0.0");
         service.registerProviderExtension("test-provider", v1, ExtensionTrustLevel.SEMI_TRUSTED, "admin");
 
         boolean rolledBack = service.rollbackExtension("test-provider", "non-existent", "admin");
@@ -143,8 +144,8 @@ class ExtensionRegistryServiceTest {
                 service.registerProviderExtension("test", null, ExtensionTrustLevel.FULLY_TRUSTED, "admin"));
     }
 
-    private ProviderExtensionSPI createMockProvider(String key, String version) {
-        return new ProviderExtensionSPI() {
+    private PluginRuntimeProviderBinding createMockProvider(String key, String version) {
+        return new PluginRuntimeProviderBinding() {
             public String providerKey() { return key; }
             public String providerType() { return "RENDER"; }
             public String version() { return version; }
