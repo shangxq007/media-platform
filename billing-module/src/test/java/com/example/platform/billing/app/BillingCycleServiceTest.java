@@ -56,11 +56,11 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
                 new CreditWalletService(Optional.of(new CreditWalletJdbcRepository(jdbc))));
 
         pricingRuleService.createPricingRule(
-                "render_minutes_overage", "Render", "", PricingModel.USAGE_BASED,
-                "render.minutes", 10L, "USD", null, null, null);
+                "render_overage", "Render", "", PricingModel.USAGE_BASED,
+                "DURATION", 10L, "USD", null, null, null);
         subscriptionBillingService.createPlan(
                 "pro_monthly", "Pro", "", "MONTHLY", 9999, "USD",
-                Map.of("render.minutes", 100L));
+                Map.of("DURATION", 100L));
         subscriptionBillingService.createSubscription(
                 "t1", "u1", "pro_monthly", "pro_monthly", 30, SubscriptionContractRole.BASE);
     }
@@ -68,7 +68,7 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
     @Test
     void chargesOverageBeyondIncludedQuota() {
         usageMeteringService.recordUsage(
-                "t1", null, "u1", "render.minutes", 150, "minute", null, null);
+                "t1", "render_seconds", 150, "seconds", null, null);
 
         BillingCycleService.BillingCycleResult result = cycleService.runCycle("t1", "u1");
 
@@ -79,7 +79,7 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
     @Test
     void noChargeWhenWithinIncludedQuota() {
         usageMeteringService.recordUsage(
-                "t1", null, "u1", "render.minutes", 50, "minute", null, null);
+                "t1", "render_seconds", 50, "seconds", null, null);
 
         BillingCycleService.BillingCycleResult result = cycleService.runCycle("t1", "u1");
 

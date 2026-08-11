@@ -1,7 +1,10 @@
 package com.example.platform.federation.graphql.dataloader;
 
 import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.billing.domain.UsageRecord;
+import com.example.platform.billing.usage.UsageDimension;
+import com.example.platform.billing.usage.UsageQuantity;
+import com.example.platform.billing.usage.UsageRecord;
+import com.example.platform.billing.usage.UsageUnit;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +25,27 @@ import static org.mockito.Mockito.*;
 
 class BillingUsageDataLoaderTest {
 
+    private static final Instant NOW = Instant.now();
+
+    /** Canonical usage fact with an explicit recordId (direct record ctor; factory generates ids). */
+    private static UsageRecord canonicalUsage(String recordId, String tenantId, String meterKey,
+                                              long quantity, String unit) {
+        UsageUnit canonicalUnit = switch (unit) {
+            case "min", "seconds", "s" -> UsageUnit.SECONDS;
+            case "bytes", "byte" -> UsageUnit.BYTE;
+            default -> UsageUnit.COUNT;
+        };
+        UsageDimension dimension = switch (canonicalUnit) {
+            case SECONDS, MILLISECONDS -> UsageDimension.DURATION;
+            case BYTE -> UsageDimension.BYTE_STORED;
+            default -> UsageDimension.REQUEST;
+        };
+        return new UsageRecord(
+                recordId, tenantId, null, null, null, null, null, null,
+                dimension, new UsageQuantity(quantity, canonicalUnit),
+                NOW, NOW, NOW, null, "REPORTED", "test");
+    }
+
     @BeforeEach
     void setUp() {
         TenantContext.clear();
@@ -35,8 +59,7 @@ class BillingUsageDataLoaderTest {
     @Test
     void loadsUsageDataWithExplicitTenantId() throws Exception {
         UsageMeteringService meteringService = mock(UsageMeteringService.class);
-        UsageRecord record = new UsageRecord("rec-1", "tenant-1", "ws-1", "user-1",
-                "render_minutes", 10.0, "min", Instant.now(), null);
+        UsageRecord record = canonicalUsage("rec-1", "tenant-1", "render_minutes", 10, "min");
         when(meteringService.getUsageByTenant("tenant-1")).thenReturn(List.of(record));
 
         BillingUsageDataLoader loader = new BillingUsageDataLoader(meteringService);
@@ -47,6 +70,8 @@ class BillingUsageDataLoaderTest {
         assertTrue(result.containsKey("tenant-1"));
         assertEquals(1, result.get("tenant-1").size());
         assertEquals("rec-1", result.get("tenant-1").get(0).get("id"));
+        assertEquals("DURATION", result.get("tenant-1").get(0).get("meterKey"));
+        assertEquals(10L, result.get("tenant-1").get(0).get("quantity"));
     }
 
     @Test
@@ -67,10 +92,8 @@ class BillingUsageDataLoaderTest {
     @Test
     void doesNotLeakTenantContextBetweenTenants() throws Exception {
         UsageMeteringService meteringService = mock(UsageMeteringService.class);
-        UsageRecord record1 = new UsageRecord("rec-1", "tenant-1", "ws-1", "user-1",
-                "render_minutes", 10.0, "min", Instant.now(), null);
-        UsageRecord record2 = new UsageRecord("rec-2", "tenant-2", "ws-2", "user-2",
-                "render_minutes", 20.0, "min", Instant.now(), null);
+        UsageRecord record1 = canonicalUsage("rec-1", "tenant-1", "render_minutes", 10, "min");
+        UsageRecord record2 = canonicalUsage("rec-2", "tenant-2", "render_minutes", 20, "min");
         when(meteringService.getUsageByTenant("tenant-1")).thenReturn(List.of(record1));
         when(meteringService.getUsageByTenant("tenant-2")).thenReturn(List.of(record2));
 
@@ -121,8 +144,7 @@ class BillingUsageDataLoaderTest {
         UsageMeteringService meteringService = mock(UsageMeteringService.class);
         for (int i = 0; i < 10; i++) {
             String tenantId = "tenant-" + i;
-            UsageRecord record = new UsageRecord("rec-" + i, tenantId, "ws", "user",
-                    "meter", i * 1.0, "unit", Instant.now(), null);
+            UsageRecord record = canonicalUsage("rec-" + i, tenantId, "meter", i, "calls");
             when(meteringService.getUsageByTenant(tenantId)).thenReturn(List.of(record));
         }
 
@@ -145,7 +167,7 @@ class BillingUsageDataLoaderTest {
     void failedTenantDoesNotAffectOthers() throws Exception {
         UsageMeteringService meteringService = mock(UsageMeteringService.class);
         when(meteringService.getUsageByTenant("tenant-good")).thenReturn(List.of(
-                new UsageRecord("rec-1", "tenant-good", "ws", "user", "meter", 1.0, "unit", Instant.now(), null)
+                canonicalUsage("rec-1", "tenant-good", "meter", 1, "calls")
         ));
         when(meteringService.getUsageByTenant("tenant-bad")).thenThrow(new RuntimeException("DB error"));
 

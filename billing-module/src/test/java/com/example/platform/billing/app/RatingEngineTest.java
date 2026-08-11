@@ -1,6 +1,13 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.billing.domain.*;
+import com.example.platform.billing.domain.PricingModel;
+import com.example.platform.billing.domain.PricingRule;
+import com.example.platform.billing.domain.PricingTier;
+import com.example.platform.billing.domain.RatedUsageRecord;
+import com.example.platform.billing.usage.UsageDimension;
+import com.example.platform.billing.usage.UsageQuantity;
+import com.example.platform.billing.usage.UsageRecord;
+import com.example.platform.billing.usage.UsageUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,14 +25,19 @@ class RatingEngineTest {
         engine = new RatingEngine();
     }
 
+    private static UsageRecord canonicalUsage(String recordId, long baseUnits) {
+        return new UsageRecord(
+                recordId, "t1", null, null, null, null, null, null,
+                UsageDimension.REQUEST, new UsageQuantity(baseUnits, UsageUnit.COUNT),
+                Instant.now(), Instant.now(), Instant.now(), null, "REPORTED", "test");
+    }
+
     @Test
     void shouldRateUsageWithFlatPrice() {
-        Instant now = Instant.now();
-        UsageRecord usage = new UsageRecord("u1", "t1", "ws-1", "user-1",
-                "api_calls", 100.0, "calls", now, null);
+        UsageRecord usage = canonicalUsage("u1", 100L);
         PricingRule rule = new PricingRule("r1", "rule-key", "API Calls", "",
                 PricingModel.USAGE_BASED, "api_calls", 5, "USD",
-                List.of(), "ACTIVE", null, null, now, now);
+                List.of(), "ACTIVE", null, null, Instant.now(), Instant.now());
 
         RatedUsageRecord rated = engine.rateUsage(usage, rule);
         assertNotNull(rated);
@@ -37,15 +49,13 @@ class RatingEngineTest {
 
     @Test
     void shouldRateUsageWithTiers() {
-        Instant now = Instant.now();
-        UsageRecord usage = new UsageRecord("u1", "t1", "ws-1", "user-1",
-                "api_calls", 150.0, "calls", now, null);
+        UsageRecord usage = canonicalUsage("u1", 150L);
         List<PricingTier> tiers = List.of(
                 new PricingTier(100, 5, 0),
                 new PricingTier(1000, 3, 0));
         PricingRule rule = new PricingRule("r1", "rule-key", "Tiered API", "",
                 PricingModel.USAGE_BASED, "api_calls", 0, "USD",
-                tiers, "ACTIVE", null, null, now, now);
+                tiers, "ACTIVE", null, null, Instant.now(), Instant.now());
 
         RatedUsageRecord rated = engine.rateUsage(usage, rule);
         assertNotNull(rated);
@@ -54,29 +64,24 @@ class RatingEngineTest {
 
     @Test
     void shouldThrowOnNullUsageRecord() {
-        Instant now = Instant.now();
         PricingRule rule = new PricingRule("r1", "rule-key", "", "",
                 PricingModel.USAGE_BASED, "api_calls", 5, "USD",
-                List.of(), "ACTIVE", null, null, now, now);
+                List.of(), "ACTIVE", null, null, Instant.now(), Instant.now());
         assertThrows(IllegalArgumentException.class, () -> engine.rateUsage(null, rule));
     }
 
     @Test
     void shouldThrowOnNullPricingRule() {
-        Instant now = Instant.now();
-        UsageRecord usage = new UsageRecord("u1", "t1", "ws-1", "user-1",
-                "api_calls", 100.0, "calls", now, null);
+        UsageRecord usage = canonicalUsage("u1", 100L);
         assertThrows(IllegalArgumentException.class, () -> engine.rateUsage(usage, null));
     }
 
     @Test
     void shouldGetRatedRecord() {
-        Instant now = Instant.now();
-        UsageRecord usage = new UsageRecord("u1", "t1", "ws-1", "user-1",
-                "api_calls", 10.0, "calls", now, null);
+        UsageRecord usage = canonicalUsage("u1", 10L);
         PricingRule rule = new PricingRule("r1", "rule-key", "", "",
                 PricingModel.USAGE_BASED, "api_calls", 5, "USD",
-                List.of(), "ACTIVE", null, null, now, now);
+                List.of(), "ACTIVE", null, null, Instant.now(), Instant.now());
         RatedUsageRecord rated = engine.rateUsage(usage, rule);
         RatedUsageRecord found = engine.getRatedRecord(rated.ratedUsageId());
         assertNotNull(found);
@@ -85,15 +90,13 @@ class RatingEngineTest {
 
     @Test
     void shouldIncludeRatingDetails() {
-        Instant now = Instant.now();
-        UsageRecord usage = new UsageRecord("u1", "t1", "ws-1", "user-1",
-                "api_calls", 10.0, "calls", now, null);
+        UsageRecord usage = canonicalUsage("u1", 10L);
         PricingRule rule = new PricingRule("r1", "rule-key", "", "",
                 PricingModel.USAGE_BASED, "api_calls", 5, "USD",
-                List.of(), "ACTIVE", null, null, now, now);
+                List.of(), "ACTIVE", null, null, Instant.now(), Instant.now());
         RatedUsageRecord rated = engine.rateUsage(usage, rule);
         assertNotNull(rated.ratingDetails());
-        assertEquals("api_calls", rated.ratingDetails().get("meterKey"));
+        assertEquals("REQUEST", rated.ratingDetails().get("meterKey"));
         assertEquals(10.0, rated.ratingDetails().get("quantity"));
     }
 }

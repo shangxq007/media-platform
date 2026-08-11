@@ -14,24 +14,20 @@ import static org.mockito.Mockito.*;
 
 class BillingConsumptionBoundaryTest {
 
-    private BillingUsageCompatibilityAdapter adapter;
     private RatingEngine ratingEngine;
     private PricingRuleService pricingRuleService;
     private BillingConsumptionBoundaryImpl boundary;
 
     @BeforeEach
     void setUp() {
-        // Spy the adapter so we can prove the boundary routes consumption THROUGH it
-        // without depending on RatingEngine's internal storage.
-        adapter = Mockito.spy(new BillingUsageCompatibilityAdapter());
         ratingEngine = new RatingEngine();
         pricingRuleService = new PricingRuleService();
-        boundary = new BillingConsumptionBoundaryImpl(adapter, ratingEngine, pricingRuleService);
+        boundary = new BillingConsumptionBoundaryImpl(ratingEngine, pricingRuleService);
     }
 
-    private static com.example.platform.billing.usage.UsageRecord canonical(
+    private static UsageRecord canonical(
             UsageDimension dimension, UsageQuantity quantity, String idempotencyKey) {
-        return com.example.platform.billing.usage.UsageRecord.record(
+        return UsageRecord.record(
                 "tenant-1", null, null,
                 OperationRef.of("op-" + idempotencyKey), null, null, null,
                 dimension, quantity,
@@ -39,30 +35,26 @@ class BillingConsumptionBoundaryTest {
     }
 
     @Test
-    void consumeRoutesThroughAdapter() {
-        com.example.platform.billing.usage.UsageRecord canonical =
+    void consumeRoutesCanonicalToRatingEngine() {
+        UsageRecord canonical =
                 canonical(UsageDimension.DURATION, UsageQuantity.fromBaseUnits(150_000L, UsageUnit.MILLISECONDS), "idem-1");
 
+        // No active rule for DURATION — consume must not fail and must not invent usage.
         boundary.consume(canonical);
 
-        // Boundary routes consumption THROUGH the adapter exactly once.
-        verify(adapter, times(1)).adapt(canonical);
-        // The projection it produces is the legacy billing.domain shape (meterKey = dimension).
-        assertEquals("DURATION", adapter.adapt(canonical).meterKey());
+        // The canonical record itself is untouched (boundary never constructs/replaces it).
+        assertEquals("DURATION", canonical.dimension().name());
+        assertEquals(150_000L, canonical.quantity().baseUnits());
     }
 
     @Test
     void consumeDoesNotInventUsage() {
-        // No pricing rule configured for BYTE_STORED — the boundary must still project
-        // through the adapter but must not fabricate a rated record.
-        com.example.platform.billing.usage.UsageRecord canonical =
+        // No pricing rule configured for BYTE_STORED — the boundary must not fabricate a rated record.
+        UsageRecord canonical =
                 canonical(UsageDimension.BYTE_STORED, UsageQuantity.fromBaseUnits(1024L, UsageUnit.BYTE), "idem-2");
 
         boundary.consume(canonical);
 
-        verify(adapter, times(1)).adapt(canonical);
-        // RatingEngine has no public enumeration; prove non-invention by confirming the
-        // canonical record itself is untouched (boundary never constructs/replaces it).
         assertEquals("BYTE_STORED", canonical.dimension().name());
         assertEquals(1024L, canonical.quantity().baseUnits());
     }
@@ -73,14 +65,12 @@ class BillingConsumptionBoundaryTest {
                 "api_calls", "API", "", PricingModel.USAGE_BASED,
                 "REQUEST", 5L, "USD", null, null, null);
 
-        com.example.platform.billing.usage.UsageRecord canonical =
+        UsageRecord canonical =
                 canonical(UsageDimension.REQUEST, UsageQuantity.fromBaseUnits(10L, UsageUnit.COUNT), "idem-3");
 
         String recordIdBefore = canonical.recordId();
         boundary.consume(canonical);
-
-        verify(adapter, times(1)).adapt(canonical);
-        // Boundary is a pure consumer: canonical record identity is preserved.
         assertEquals(recordIdBefore, canonical.recordId());
+        assertEquals(10L, canonical.quantity().baseUnits());
     }
 }

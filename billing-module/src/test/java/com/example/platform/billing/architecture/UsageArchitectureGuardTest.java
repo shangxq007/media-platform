@@ -164,6 +164,11 @@ class UsageArchitectureGuardTest {
     void arUsage03_billingPolicyClassesDoNotInventUsageFacts() {
         Path app = BILLING.resolve("app");
         for (Path file : javaFiles(app)) {
+            // UsageMeteringService is the sanctioned billing-owned metering facade: it is
+            // the ONLY app class allowed to construct canonical usage facts (recordUsage).
+            if (file.getFileName().toString().equals("UsageMeteringService.java")) {
+                continue;
+            }
             String content = read(file);
             if (importsCanonicalUsageRecord(content)) {
                 assertFalse(content.contains("UsageRecord.record("),
@@ -369,6 +374,41 @@ class UsageArchitectureGuardTest {
                     "AR-SOCIAL-02: " + file + " must not reference billing_ledger");
             assertFalse(content.contains("BillingLedger"),
                     "AR-SOCIAL-02: " + file + " must not reference BillingLedger");
+        }
+    }
+
+    // ── Q1-RED-01: BillingUsageCompatibilityAdapter retired ────────────────
+
+    @Test
+    void q1Red01_compatibilityAdapterAbsent() {
+        assertEquals(0, countFilesContaining(BILLING, "BillingUsageCompatibilityAdapter"),
+                "Q1-RED-01: BillingUsageCompatibilityAdapter must be ABSENT from billing src/main");
+    }
+
+    // ── Q1-RED-02: legacy billing.domain.UsageRecord retired ────────────────
+
+    @Test
+    void q1Red02_legacyDomainUsageRecordAbsent() {
+        assertEquals(0, countFilesContaining(BILLING, "billing.domain.UsageRecord"),
+                "Q1-RED-02: legacy billing.domain.UsageRecord must be ABSENT from billing src/main");
+        assertEquals(0, countFilesContaining(
+                        Path.of("src/main/java/com/example/platform/federation"),
+                        "billing.domain.UsageRecord"),
+                "Q1-RED-02: legacy billing.domain.UsageRecord must be ABSENT from federation src/main");
+    }
+
+    // ── Q1-RED-03: no legacy double quantity column in the canonical usage path ──
+
+    @Test
+    void q1Red03_noLegacyDoubleQuantityColumn() {
+        // The legacy usage_record.quantity double column must be gone from the schema.
+        Path v1 = Path.of("src/main/resources/db/migration/V1__initial_schema.sql");
+        if (Files.exists(v1)) {
+            String sql = read(v1);
+            assertFalse(sql.contains("quantity double precision"),
+                    "Q1-RED-03: legacy usage_record 'quantity double precision' column must be absent from V1 schema");
+            assertFalse(sql.contains("meter_key varchar(128)"),
+                    "Q1-RED-03: legacy usage_record meter_key column must be absent from V1 schema");
         }
     }
 }
