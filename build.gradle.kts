@@ -347,6 +347,46 @@ tasks.register("verifyP1ProductLayerRetirement") {
     }
 }
 
+tasks.register("verifyC1TimelineMergeConvergence") {
+    group = "verification"
+    description = "C1-RED: single canonical Timeline semantic merge authority (engine wired, legacy merge residue 0)"
+    doLast {
+        val appDir = file("render-module/src/main/java/com/example/platform/render/app/timeline")
+        val domainDir = file("render-module/src/main/java/com/example/platform/render/domain/timeline")
+        // C1-RED-01/10: exactly one production merge authority; legacy Stack A merge machinery absent
+        require(!file(appDir.resolve("TimelineMergeService.java")).exists()) { "FAIL: legacy TimelineMergeService still exists" }
+        require(file(appDir.resolve("TimelineMergeEngine.java")).exists()) { "FAIL: canonical TimelineMergeEngine missing" }
+        require(!file(appDir.resolve("TimelineConflictDetector.java")).exists()) { "FAIL: legacy entity-level ConflictDetector still exists" }
+        require(!file(appDir.resolve("TimelineConflictResolver.java")).exists()) { "FAIL: legacy entity-level Resolver still exists" }
+        // C1-RED-02: no third stack — canonical diff/merge authority confined to domain/timeline/diff
+        require(file(domainDir.resolve("diff/TimelineDiffEngine.java")).exists()) { "FAIL: canonical TimelineDiffEngine missing" }
+        // C1-RED-03/04: typed path primitives present
+        require(file(domainDir.resolve("diff/TimelineChangePath.java")).exists()) { "FAIL: typed TimelineChangePath missing" }
+        require(file(domainDir.resolve("diff/merge/TimelineMergeConflictDetector.java")).exists()) { "FAIL: domain conflict detector missing" }
+        // C1-RED-05/06: behavioral proofs must exist (JUnit)
+        val engineTest = file("render-module/src/test/java/com/example/platform/render/app/timeline/TimelineMergeEngineTest.java")
+        require(engineTest.exists()) { "FAIL: TimelineMergeEngineTest missing (C1-RED-05/06 behavioral proof)" }
+        require(engineTest.readText().contains("sameEntityDisjointPathsBothMaterialized")) { "FAIL: disjoint-path materialization proof missing" }
+        require(engineTest.readText().contains("deleteVsModifyConflict")) { "FAIL: delete-vs-modify proof missing" }
+        // C1-RED-08: workflow must not own Timeline semantic merge
+        val workflowFiles = fileTree("workflow-module/src/main") { include("**/*.java") }.files
+        val workflowMergeHits = workflowFiles.filter {
+            val t = it.readText()
+            t.contains("TimelineMergeEngine") || t.contains("TimelineMergeService") || t.contains("TimelineDiffEngine")
+        }
+        require(workflowMergeHits.isEmpty()) { "FAIL: workflow owns Timeline merge: ${'$'}{workflowMergeHits.map { it.path }}" }
+        // C1-RED-09: no merge authority in shared-kernel (event contract only)
+        val sharedFiles = fileTree("shared-kernel/src/main") { include("**/*.java") }.files
+        val sharedMergeHits = sharedFiles.filter {
+            val t = it.readText()
+            (t.contains("TimelineMerge") || t.contains("SemanticDiff") || t.contains("TimelineDiffEngine"))
+                    && !it.name.contains("TimelineMergedEvent")
+        }
+        require(sharedMergeHits.isEmpty()) { "FAIL: merge authority leaked into shared-kernel: ${'$'}{sharedMergeHits.map { it.path }}" }
+        println("OK: C1 timeline merge convergence verified (single engine authority, legacy residue 0, boundaries intact)")
+    }
+}
+
 tasks.register("jooqFoundationCheck") {
     group = "verification"
     description = "Run all jOOQ foundation verification checks"
@@ -355,6 +395,7 @@ tasks.register("jooqFoundationCheck") {
         "verifyJooqGeneratedSources",
         "verifyJooqNamedInterfacePreservation",
         "verifyP1ProductLayerRetirement",
+        "verifyC1TimelineMergeConvergence",
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
