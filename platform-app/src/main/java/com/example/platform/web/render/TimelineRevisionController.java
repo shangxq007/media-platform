@@ -15,7 +15,7 @@ import com.example.platform.render.app.timeline.TimelineRevisionService.PatchPre
 import com.example.platform.render.app.timeline.TimelineRevisionService.PatchStepsResult;
 import com.example.platform.render.app.timeline.TimelineRevisionService.RestoreResult;
 import com.example.platform.render.app.timeline.TimelineRevisionService.RevisionSnapshotPayload;
-import com.example.platform.render.app.timeline.TimelineMergeService;
+import com.example.platform.render.app.timeline.TimelineMergeEngine;
 import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
 import com.example.platform.render.api.dto.TimelineRevisionRenderResponse;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
@@ -52,18 +52,18 @@ public class TimelineRevisionController {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final TimelineRevisionService revisionService;
-    private final TimelineMergeService mergeService;
+    private final TimelineMergeEngine mergeEngine;
     private final TimelineReviewEventPublisher eventPublisher;
     private final TimelineRevisionRenderService renderService;
     private final RenderJobStatusService renderJobStatusService;
 
     public TimelineRevisionController(TimelineRevisionService revisionService,
-                                       TimelineMergeService mergeService,
+                                       TimelineMergeEngine mergeEngine,
                                        TimelineReviewEventPublisher eventPublisher,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService) {
         this.revisionService = revisionService;
-        this.mergeService = mergeService;
+        this.mergeEngine = mergeEngine;
         this.eventPublisher = eventPublisher;
         this.renderService = renderService;
         this.renderJobStatusService = renderJobStatusService;
@@ -227,9 +227,9 @@ public class TimelineRevisionController {
                     intents.put(r.entityRef(), intent);
                 }
             }
-            result = mergeService.threeWayMergeWithResolutions(request, intents);
+            result = mergeEngine.merge(request, intents);
         } else {
-            result = mergeService.threeWayMerge(request);
+            result = mergeEngine.merge(request);
         }
 
         if (result.isMerged() && result.mergedRevisionId() != null) {
