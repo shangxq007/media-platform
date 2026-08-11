@@ -102,8 +102,8 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertTrue(tables.contains("render_worker"), "render_worker required");
         assertTrue(tables.contains("render_usage_record"), "render_usage_record required");
         assertTrue(tables.contains("render_billing_record"), "render_billing_record required");
-        assertTrue(tables.contains("render_history"), "render_history required");
-        assertTrue(tables.contains("render_preset"), "render_preset required");
+        // P1: ownerless Product-layer tables retired (render_history, render_preset, asset_library,
+        // timeline_template, ai_suggestion removed from V1 — no canonical owner existed)
         assertTrue(tables.contains("ingest_preflight_safe_report_records"), "ingest_preflight_safe_report_records required");
         assertTrue(tables.contains("outbox_events"), "outbox_events required");
         assertTrue(tables.contains("audit_records"), "audit_records required");

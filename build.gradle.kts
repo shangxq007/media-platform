@@ -180,12 +180,11 @@ tasks.register("verifyJooqGeneratedSources") {
         println("  Record classes: " + recordCount)
         println("  Total Java files: " + totalFiles)
 
-        // Q1-CLOSE1: corrected expectations to the V1-synchronized generated state.
-        // (Previously hardcoded 147/*Table.java — stale: jOOQ 3.19 emits table classes in
-        // tables/ named after the table (e.g. UsageRecord.java), so *Table.java never matches,
-        // and 147 reflected the pre-Q1 drifted generated set vs V1's 153 tables.)
-        require(tableCount == 153) { "FAIL: Expected 153 Table classes but found " + tableCount }
-        require(recordCount == 153) { "FAIL: Expected 153 Record classes but found " + recordCount }
+        // P1-IMPL1: corrected expectations to the V1-synchronized generated state.
+        // (P1 retired 5 ownerless Product tables from V1: timeline_template, render_preset,
+        // asset_library, render_history, ai_suggestion -> generated 153 -> 148; parity 148/148 EXACT.)
+        require(tableCount == 148) { "FAIL: Expected 148 Table classes but found " + tableCount }
+        require(recordCount == 148) { "FAIL: Expected 148 Record classes but found " + recordCount }
         require(totalFiles >= 300) { "FAIL: Expected at least 300 total Java files but found " + totalFiles }
 
         println("OK: Generated source verification passed")
@@ -296,6 +295,58 @@ tasks.register("verifyJooqNamedInterfacePreservation") {
     }
 }
 
+tasks.register("verifyP1ProductLayerRetirement") {
+    group = "verification"
+    description = "P1-RED: product-layer retired (module, production types, ownerless schema, no compatibility bridge)"
+    doLast {
+        val retiredTables = listOf("timeline_template", "render_preset", "asset_library", "render_history", "ai_suggestion")
+        val v1 = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
+        require(v1.exists()) { "FAIL: V1 schema not found" }
+        val v1Text = v1.readText()
+
+        // P1-RED-09: physical module absent
+        require(!file("product-layer-module").exists()) { "FAIL: product-layer-module still exists" }
+        // P1-RED-03/01/05: no product-layer production authority
+        val prodFiles = fileTree(".") {
+            include("**/src/main/**/*.java")
+            exclude("**/build/**")
+        }.files
+        val productHits = prodFiles.filter { it.readText().contains("com.example.platform.product.") }
+        require(productHits.isEmpty()) {
+            "FAIL: com.example.platform.product.* remains in production: " + productHits.map { it.path }
+        }
+        // P1-RED-02/04: no facade replacement
+        val facadeHits = prodFiles.filter {
+            val t = it.readText()
+            t.contains("ProductFacade") || t.contains("ProductCompatibilityAdapter") || t.contains("ProductApiBridge")
+        }
+        require(facadeHits.isEmpty()) {
+            "FAIL: product compatibility/facade type introduced: " + facadeHits.map { it.path }
+        }
+        // P1-RED-06: ownerless tables absent from V1 (and no V2/V3 cleanup)
+        for (t in retiredTables) {
+            require(!v1Text.contains(t)) { "FAIL: retired ownerless table still in V1: ${'$'}t" }
+        }
+        require(!v1Text.contains("V2__") && !v1Text.contains("V3__")) { "FAIL: P1 introduced V2/V3 migration" }
+        // identity-owned tables retained
+        for (t in listOf("workspace", "project", "workspace_member")) {
+            require(Regex("create table " + t + "\\b", RegexOption.IGNORE_CASE).containsMatchIn(v1Text)) {
+                "FAIL: identity-owned table missing: " + t
+            }
+        }
+        // generated authorities absent
+        val genDir = file("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables")
+        if (genDir.exists()) {
+            for (t in listOf("TimelineTemplate", "RenderPreset", "AssetLibrary", "RenderHistory", "AiSuggestion")) {
+                require(!file("${'$'}{genDir}/${'$'}t.java").exists()) { "FAIL: generated authority remains: ${'$'}t" }
+            }
+        }
+        // P1-RED-07/08: no template module scope escape
+        require(!file("template-module").exists()) { "FAIL: template-module must not exist during Foundation" }
+        println("OK: P1 product-layer retirement verified (module/types/schema/generated absent; identity tables retained)")
+    }
+}
+
 tasks.register("jooqFoundationCheck") {
     group = "verification"
     description = "Run all jOOQ foundation verification checks"
@@ -303,6 +354,7 @@ tasks.register("jooqFoundationCheck") {
         "verifyJooqVersionAlignment",
         "verifyJooqGeneratedSources",
         "verifyJooqNamedInterfacePreservation",
+        "verifyP1ProductLayerRetirement",
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
