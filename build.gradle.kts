@@ -398,11 +398,24 @@ tasks.register("verifyConstructorInjectionPolicy") {
                 }
         }
 
+        // Scan universe is identified by REPOSITORY-RELATIVE source-set semantics so the
+        // verifier behaves identically regardless of where the repository/worktree lives.
+        // (P1-VAC1: previously an absolute-path exclusion of "/.worktrees/" eliminated the
+        // whole scan set when the repo was located under a .worktrees directory, yielding a
+        // false-green PASS. Typed-schema generated sources are excluded by MODULE identity,
+        // not by path shape.)
         val mainSourceSets = subprojects.flatMap { sub ->
             val mainDir = sub.file("src/main/java")
             if (mainDir.exists()) mainDir.walkTopDown().filter { it.isFile && it.name.endsWith(".java") }.toList()
             else emptyList()
-        }.filter { !it.path.contains("/.worktrees/") && !it.path.contains("/typed-schema-module/") }
+        }.filter { !it.toRelativeString(rootDir).startsWith("typed-schema-module/") }
+
+        // Fail-closed: an empty governed scan universe must never PASS.
+        if (mainSourceSets.isEmpty()) {
+            throw GradleException(
+                "constructor injection verification scan universe is empty (0 governed production sources)"
+            )
+        }
 
         println("Scanning ${mainSourceSets.size} production Java files for constructor injection violations...")
 
