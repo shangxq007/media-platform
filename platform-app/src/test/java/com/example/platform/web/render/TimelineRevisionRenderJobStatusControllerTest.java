@@ -3,7 +3,7 @@ package com.example.platform.web.render;
 import com.example.platform.render.api.dto.RenderJobResultResponse;
 import com.example.platform.render.api.dto.RenderJobStatusResponse;
 import com.example.platform.render.app.timeline.RenderJobStatusService;
-import com.example.platform.render.app.timeline.TimelineMergeService;
+import com.example.platform.render.app.timeline.TimelineMergeEngine;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.TimelineRevisionService;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
@@ -36,7 +36,7 @@ import static org.mockito.Mockito.*;
 class TimelineRevisionRenderJobStatusControllerTest {
 
     private TimelineRevisionService revisionService;
-    private TimelineMergeService mergeService;
+    private TimelineMergeEngine mergeEngine;
     private TimelineReviewEventPublisher eventPublisher;
     private TimelineRevisionRenderService renderService;
     private RenderJobStatusService renderJobStatusService;
@@ -45,12 +45,12 @@ class TimelineRevisionRenderJobStatusControllerTest {
     @BeforeEach
     void setUp() {
         revisionService = mock(TimelineRevisionService.class);
-        mergeService = mock(TimelineMergeService.class);
+        mergeEngine = mock(TimelineMergeEngine.class);
         eventPublisher = mock(TimelineReviewEventPublisher.class);
         renderService = mock(TimelineRevisionRenderService.class);
         renderJobStatusService = mock(RenderJobStatusService.class);
         controller = new TimelineRevisionController(
-                revisionService, mergeService, eventPublisher, renderService, renderJobStatusService);
+                revisionService, mergeEngine, eventPublisher, renderService, renderJobStatusService);
     }
 
     // ─── Status endpoint tests ───
@@ -177,7 +177,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
     void statusEndpointServiceUnavailable() {
         // Arrange — controller with null renderJobStatusService
         TimelineRevisionController controllerNoService = new TimelineRevisionController(
-                revisionService, mergeService, eventPublisher, renderService, null);
+                revisionService, mergeEngine, eventPublisher, renderService, null);
 
         // Act
         ResponseEntity<RenderJobStatusResponse> response =
@@ -316,7 +316,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
     void resultEndpointServiceUnavailable() {
         // Arrange — controller with null renderJobStatusService
         TimelineRevisionController controllerNoService = new TimelineRevisionController(
-                revisionService, mergeService, eventPublisher, renderService, null);
+                revisionService, mergeEngine, eventPublisher, renderService, null);
 
         // Act
         ResponseEntity<RenderJobResultResponse> response =

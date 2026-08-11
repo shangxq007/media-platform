@@ -3,7 +3,7 @@ package com.example.platform.web.render;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.app.timeline.TimelineMergeService;
+import com.example.platform.render.app.timeline.TimelineMergeEngine;
 import com.example.platform.render.app.timeline.TimelineRevisionService;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.render.domain.timeline.internal.*;
@@ -17,16 +17,16 @@ import org.springframework.http.ResponseEntity;
 class TimelineMergeControllerTest {
 
     private TimelineRevisionService revisionService;
-    private TimelineMergeService mergeService;
+    private TimelineMergeEngine mergeEngine;
     private TimelineReviewEventPublisher eventPublisher;
     private TimelineRevisionController controller;
 
     @BeforeEach
     void setUp() {
         revisionService = mock(TimelineRevisionService.class);
-        mergeService = mock(TimelineMergeService.class);
+        mergeEngine = mock(TimelineMergeEngine.class);
         eventPublisher = mock(TimelineReviewEventPublisher.class);
-        controller = new TimelineRevisionController(revisionService, mergeService, eventPublisher, null, null);
+        controller = new TimelineRevisionController(revisionService, mergeEngine, eventPublisher, null, null);
     }
 
     @Test
@@ -40,7 +40,7 @@ class TimelineMergeControllerTest {
                 TimelineMergeSummary.merged(2, 1, List.of("CLIP:clip_a", "CLIP:clip_b")),
                 "Merge completed", null);
 
-        when(mergeService.threeWayMerge(any())).thenReturn(result);
+        when(mergeEngine.merge(any())).thenReturn(result);
 
         ResponseEntity<TimelineRevisionController.MergeApiResponse> response =
                 controller.merge("proj_1", req);
@@ -68,7 +68,7 @@ class TimelineMergeControllerTest {
                 TimelineMergeSummary.conflicts(0, 0, List.of(), List.of("CLIP:clip_shared")),
                 "Conflict detected", null);
 
-        when(mergeService.threeWayMerge(any())).thenReturn(result);
+        when(mergeEngine.merge(any())).thenReturn(result);
 
         ResponseEntity<TimelineRevisionController.MergeApiResponse> response =
                 controller.merge("proj_1", req);
