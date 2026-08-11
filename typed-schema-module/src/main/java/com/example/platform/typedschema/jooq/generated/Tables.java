@@ -4,7 +4,6 @@
 package com.example.platform.typedschema.jooq.generated;
 
 
-import com.example.platform.typedschema.jooq.generated.tables.AiSuggestion;
 import com.example.platform.typedschema.jooq.generated.tables.ApiClient;
 import com.example.platform.typedschema.jooq.generated.tables.ApiKey;
 import com.example.platform.typedschema.jooq.generated.tables.AppDatasource;
@@ -13,7 +12,6 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation;
 import com.example.platform.typedschema.jooq.generated.tables.Asset;
-import com.example.platform.typedschema.jooq.generated.tables.AssetLibrary;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata;
 import com.example.platform.typedschema.jooq.generated.tables.AuditRecords;
 import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice;
@@ -97,13 +95,11 @@ import com.example.platform.typedschema.jooq.generated.tables.QuotaProfile;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderBillingRecord;
-import com.example.platform.typedschema.jooq.generated.tables.RenderHistory;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobQueue;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobStatusHistory;
-import com.example.platform.typedschema.jooq.generated.tables.RenderPreset;
 import com.example.platform.typedschema.jooq.generated.tables.RenderUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderWorker;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewDecision;
@@ -133,7 +129,6 @@ import com.example.platform.typedschema.jooq.generated.tables.TimelineComment;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineReview;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot;
-import com.example.platform.typedschema.jooq.generated.tables.TimelineTemplate;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphEdge;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphNode;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph;
@@ -164,11 +159,6 @@ import com.example.platform.typedschema.jooq.generated.tables.WorkspaceQuotaAllo
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
-
-    /**
-     * The table <code>public.ai_suggestion</code>.
-     */
-    public static final AiSuggestion AI_SUGGESTION = AiSuggestion.AI_SUGGESTION;
 
     /**
      * The table <code>public.api_client</code>.
@@ -209,11 +199,6 @@ public class Tables {
      * The table <code>public.asset</code>.
      */
     public static final Asset ASSET = Asset.ASSET;
-
-    /**
-     * The table <code>public.asset_library</code>.
-     */
-    public static final AssetLibrary ASSET_LIBRARY = AssetLibrary.ASSET_LIBRARY;
 
     /**
      * The table <code>public.asset_semantic_metadata</code>.
@@ -631,11 +616,6 @@ public class Tables {
     public static final RenderBillingRecord RENDER_BILLING_RECORD = RenderBillingRecord.RENDER_BILLING_RECORD;
 
     /**
-     * The table <code>public.render_history</code>.
-     */
-    public static final RenderHistory RENDER_HISTORY = RenderHistory.RENDER_HISTORY;
-
-    /**
      * The table <code>public.render_job</code>.
      */
     public static final RenderJob RENDER_JOB = RenderJob.RENDER_JOB;
@@ -659,11 +639,6 @@ public class Tables {
      * The table <code>public.render_job_status_history</code>.
      */
     public static final RenderJobStatusHistory RENDER_JOB_STATUS_HISTORY = RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY;
-
-    /**
-     * The table <code>public.render_preset</code>.
-     */
-    public static final RenderPreset RENDER_PRESET = RenderPreset.RENDER_PRESET;
 
     /**
      * The table <code>public.render_usage_record</code>.
@@ -809,11 +784,6 @@ public class Tables {
      * The table <code>public.timeline_snapshot</code>.
      */
     public static final TimelineSnapshot TIMELINE_SNAPSHOT = TimelineSnapshot.TIMELINE_SNAPSHOT;
-
-    /**
-     * The table <code>public.timeline_template</code>.
-     */
-    public static final TimelineTemplate TIMELINE_TEMPLATE = TimelineTemplate.TIMELINE_TEMPLATE;
 
     /**
      * The table <code>public.unified_graph_edge</code>.

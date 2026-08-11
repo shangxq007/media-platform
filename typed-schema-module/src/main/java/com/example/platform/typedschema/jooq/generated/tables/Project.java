@@ -7,9 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.AiSuggestion.AiSuggestionPath;
 import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata.ProjectImportMetadataPath;
-import com.example.platform.typedschema.jooq.generated.tables.RenderHistory.RenderHistoryPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ProjectRecord;
 
 import java.time.LocalDateTime;
@@ -168,19 +166,6 @@ public class Project extends TableImpl<ProjectRecord> {
         return Keys.PROJECT_PKEY;
     }
 
-    private transient RenderHistoryPath _renderHistory;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.render_history</code> table
-     */
-    public RenderHistoryPath renderHistory() {
-        if (_renderHistory == null)
-            _renderHistory = new RenderHistoryPath(this, null, Keys.RENDER_HISTORY__FK_HISTORY_PROJECT.getInverseKey());
-
-        return _renderHistory;
-    }
-
     private transient ProjectImportMetadataPath _projectImportMetadata;
 
     /**
@@ -192,19 +177,6 @@ public class Project extends TableImpl<ProjectRecord> {
             _projectImportMetadata = new ProjectImportMetadataPath(this, null, Keys.PROJECT_IMPORT_METADATA__FK_IMPORT_METADATA_PROJECT.getInverseKey());
 
         return _projectImportMetadata;
-    }
-
-    private transient AiSuggestionPath _aiSuggestion;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.ai_suggestion</code> table
-     */
-    public AiSuggestionPath aiSuggestion() {
-        if (_aiSuggestion == null)
-            _aiSuggestion = new AiSuggestionPath(this, null, Keys.AI_SUGGESTION__FK_SUGGESTION_PROJECT.getInverseKey());
-
-        return _aiSuggestion;
     }
 
     @Override

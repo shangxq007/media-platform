@@ -4,7 +4,6 @@
 package com.example.platform.typedschema.jooq.generated;
 
 
-import com.example.platform.typedschema.jooq.generated.tables.AiSuggestion;
 import com.example.platform.typedschema.jooq.generated.tables.ApiClient;
 import com.example.platform.typedschema.jooq.generated.tables.ApiKey;
 import com.example.platform.typedschema.jooq.generated.tables.AppDatasource;
@@ -13,7 +12,6 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation;
 import com.example.platform.typedschema.jooq.generated.tables.Asset;
-import com.example.platform.typedschema.jooq.generated.tables.AssetLibrary;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata;
 import com.example.platform.typedschema.jooq.generated.tables.AuditRecords;
 import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice;
@@ -96,13 +94,11 @@ import com.example.platform.typedschema.jooq.generated.tables.QuotaProfile;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderBillingRecord;
-import com.example.platform.typedschema.jooq.generated.tables.RenderHistory;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobQueue;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobStatusHistory;
-import com.example.platform.typedschema.jooq.generated.tables.RenderPreset;
 import com.example.platform.typedschema.jooq.generated.tables.RenderUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderWorker;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewDecision;
@@ -132,7 +128,6 @@ import com.example.platform.typedschema.jooq.generated.tables.TimelineComment;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineReview;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot;
-import com.example.platform.typedschema.jooq.generated.tables.TimelineTemplate;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphEdge;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphNode;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph;
@@ -156,7 +151,6 @@ import com.example.platform.typedschema.jooq.generated.tables.WorkspaceGroupMemb
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceMember;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceMemberEntitlementGrant;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceQuotaAllocation;
-import com.example.platform.typedschema.jooq.generated.tables.records.AiSuggestionRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.ApiClientRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.ApiKeyRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.AppDatasourceRecord;
@@ -164,7 +158,6 @@ import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactGr
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactNodeRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRelationRecord;
-import com.example.platform.typedschema.jooq.generated.tables.records.AssetLibraryRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.AssetRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.AssetSemanticMetadataRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.AuditRecordsRecord;
@@ -249,13 +242,11 @@ import com.example.platform.typedschema.jooq.generated.tables.records.QuotaProfi
 import com.example.platform.typedschema.jooq.generated.tables.records.QuotaUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RatedUsageRecordRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderBillingRecordRecord;
-import com.example.platform.typedschema.jooq.generated.tables.records.RenderHistoryRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobLeaseRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobLifecycleEventsRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobQueueRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobStatusHistoryRecord;
-import com.example.platform.typedschema.jooq.generated.tables.records.RenderPresetRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderUsageRecordRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderWorkerRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.ReviewDecisionRecord;
@@ -285,7 +276,6 @@ import com.example.platform.typedschema.jooq.generated.tables.records.TimelineCo
 import com.example.platform.typedschema.jooq.generated.tables.records.TimelineReviewRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.TimelineRevisionRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.TimelineSnapshotRecord;
-import com.example.platform.typedschema.jooq.generated.tables.records.TimelineTemplateRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.UnifiedGraphEdgeRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.UnifiedGraphNodeRecord;
 import com.example.platform.typedschema.jooq.generated.tables.records.UnifiedRequestGraphRecord;
@@ -328,7 +318,6 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final UniqueKey<AiSuggestionRecord> AI_SUGGESTION_PKEY = Internal.createUniqueKey(AiSuggestion.AI_SUGGESTION, DSL.name("ai_suggestion_pkey"), new TableField[] { AiSuggestion.AI_SUGGESTION.ID }, true);
     public static final UniqueKey<ApiClientRecord> API_CLIENT_PKEY = Internal.createUniqueKey(ApiClient.API_CLIENT, DSL.name("api_client_pkey"), new TableField[] { ApiClient.API_CLIENT.ID }, true);
     public static final UniqueKey<ApiKeyRecord> API_KEY_HASHED_KEY_KEY = Internal.createUniqueKey(ApiKey.API_KEY, DSL.name("api_key_hashed_key_key"), new TableField[] { ApiKey.API_KEY.HASHED_KEY }, true);
     public static final UniqueKey<ApiKeyRecord> API_KEY_PKEY = Internal.createUniqueKey(ApiKey.API_KEY, DSL.name("api_key_pkey"), new TableField[] { ApiKey.API_KEY.ID }, true);
@@ -339,7 +328,6 @@ public class Keys {
     public static final UniqueKey<ArtifactNodeRecord> ARTIFACT_NODE_PKEY = Internal.createUniqueKey(ArtifactNode.ARTIFACT_NODE, DSL.name("artifact_node_pkey"), new TableField[] { ArtifactNode.ARTIFACT_NODE.ID }, true);
     public static final UniqueKey<ArtifactRelationRecord> ARTIFACT_RELATION_PKEY = Internal.createUniqueKey(ArtifactRelation.ARTIFACT_RELATION, DSL.name("artifact_relation_pkey"), new TableField[] { ArtifactRelation.ARTIFACT_RELATION.ID }, true);
     public static final UniqueKey<AssetRecord> ASSET_PKEY = Internal.createUniqueKey(Asset.ASSET, DSL.name("asset_pkey"), new TableField[] { Asset.ASSET.ID }, true);
-    public static final UniqueKey<AssetLibraryRecord> ASSET_LIBRARY_PKEY = Internal.createUniqueKey(AssetLibrary.ASSET_LIBRARY, DSL.name("asset_library_pkey"), new TableField[] { AssetLibrary.ASSET_LIBRARY.ID }, true);
     public static final UniqueKey<AssetSemanticMetadataRecord> ASSET_SEMANTIC_METADATA_PKEY = Internal.createUniqueKey(AssetSemanticMetadata.ASSET_SEMANTIC_METADATA, DSL.name("asset_semantic_metadata_pkey"), new TableField[] { AssetSemanticMetadata.ASSET_SEMANTIC_METADATA.ASSET_ID }, true);
     public static final UniqueKey<AuditRecordsRecord> AUDIT_RECORDS_PKEY = Internal.createUniqueKey(AuditRecords.AUDIT_RECORDS, DSL.name("audit_records_pkey"), new TableField[] { AuditRecords.AUDIT_RECORDS.ID }, true);
     public static final UniqueKey<BillingInvoiceRecord> BILLING_INVOICE_PKEY = Internal.createUniqueKey(BillingInvoice.BILLING_INVOICE, DSL.name("billing_invoice_pkey"), new TableField[] { BillingInvoice.BILLING_INVOICE.ID }, true);
@@ -451,7 +439,6 @@ public class Keys {
     public static final UniqueKey<QuotaUsageRecord> QUOTA_USAGE_PKEY = Internal.createUniqueKey(QuotaUsage.QUOTA_USAGE, DSL.name("quota_usage_pkey"), new TableField[] { QuotaUsage.QUOTA_USAGE.ID }, true);
     public static final UniqueKey<RatedUsageRecordRecord> RATED_USAGE_RECORD_PKEY = Internal.createUniqueKey(RatedUsageRecord.RATED_USAGE_RECORD, DSL.name("rated_usage_record_pkey"), new TableField[] { RatedUsageRecord.RATED_USAGE_RECORD.ID }, true);
     public static final UniqueKey<RenderBillingRecordRecord> RENDER_BILLING_RECORD_PKEY = Internal.createUniqueKey(RenderBillingRecord.RENDER_BILLING_RECORD, DSL.name("render_billing_record_pkey"), new TableField[] { RenderBillingRecord.RENDER_BILLING_RECORD.ID }, true);
-    public static final UniqueKey<RenderHistoryRecord> RENDER_HISTORY_PKEY = Internal.createUniqueKey(RenderHistory.RENDER_HISTORY, DSL.name("render_history_pkey"), new TableField[] { RenderHistory.RENDER_HISTORY.ID }, true);
     public static final UniqueKey<RenderJobRecord> RENDER_JOB_PKEY = Internal.createUniqueKey(RenderJob.RENDER_JOB, DSL.name("render_job_pkey"), new TableField[] { RenderJob.RENDER_JOB.ID }, true);
     public static final UniqueKey<RenderJobLeaseRecord> RENDER_JOB_LEASE_LEASE_ID_KEY = Internal.createUniqueKey(RenderJobLease.RENDER_JOB_LEASE, DSL.name("render_job_lease_lease_id_key"), new TableField[] { RenderJobLease.RENDER_JOB_LEASE.LEASE_ID }, true);
     public static final UniqueKey<RenderJobLeaseRecord> RENDER_JOB_LEASE_PKEY = Internal.createUniqueKey(RenderJobLease.RENDER_JOB_LEASE, DSL.name("render_job_lease_pkey"), new TableField[] { RenderJobLease.RENDER_JOB_LEASE.ID }, true);
@@ -459,7 +446,6 @@ public class Keys {
     public static final UniqueKey<RenderJobQueueRecord> RENDER_JOB_QUEUE_JOB_ID_KEY = Internal.createUniqueKey(RenderJobQueue.RENDER_JOB_QUEUE, DSL.name("render_job_queue_job_id_key"), new TableField[] { RenderJobQueue.RENDER_JOB_QUEUE.JOB_ID }, true);
     public static final UniqueKey<RenderJobQueueRecord> RENDER_JOB_QUEUE_PKEY = Internal.createUniqueKey(RenderJobQueue.RENDER_JOB_QUEUE, DSL.name("render_job_queue_pkey"), new TableField[] { RenderJobQueue.RENDER_JOB_QUEUE.ID }, true);
     public static final UniqueKey<RenderJobStatusHistoryRecord> RENDER_JOB_STATUS_HISTORY_PKEY = Internal.createUniqueKey(RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY, DSL.name("render_job_status_history_pkey"), new TableField[] { RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY.ID }, true);
-    public static final UniqueKey<RenderPresetRecord> RENDER_PRESET_PKEY = Internal.createUniqueKey(RenderPreset.RENDER_PRESET, DSL.name("render_preset_pkey"), new TableField[] { RenderPreset.RENDER_PRESET.ID }, true);
     public static final UniqueKey<RenderUsageRecordRecord> RENDER_USAGE_RECORD_PKEY = Internal.createUniqueKey(RenderUsageRecord.RENDER_USAGE_RECORD, DSL.name("render_usage_record_pkey"), new TableField[] { RenderUsageRecord.RENDER_USAGE_RECORD.ID }, true);
     public static final UniqueKey<RenderWorkerRecord> RENDER_WORKER_PKEY = Internal.createUniqueKey(RenderWorker.RENDER_WORKER, DSL.name("render_worker_pkey"), new TableField[] { RenderWorker.RENDER_WORKER.ID }, true);
     public static final UniqueKey<RenderWorkerRecord> RENDER_WORKER_WORKER_ID_KEY = Internal.createUniqueKey(RenderWorker.RENDER_WORKER, DSL.name("render_worker_worker_id_key"), new TableField[] { RenderWorker.RENDER_WORKER.WORKER_ID }, true);
@@ -494,7 +480,6 @@ public class Keys {
     public static final UniqueKey<TimelineReviewRecord> TIMELINE_REVIEW_PKEY = Internal.createUniqueKey(TimelineReview.TIMELINE_REVIEW, DSL.name("timeline_review_pkey"), new TableField[] { TimelineReview.TIMELINE_REVIEW.ID }, true);
     public static final UniqueKey<TimelineRevisionRecord> TIMELINE_REVISION_PKEY = Internal.createUniqueKey(TimelineRevision.TIMELINE_REVISION, DSL.name("timeline_revision_pkey"), new TableField[] { TimelineRevision.TIMELINE_REVISION.ID }, true);
     public static final UniqueKey<TimelineSnapshotRecord> TIMELINE_SNAPSHOT_PKEY = Internal.createUniqueKey(TimelineSnapshot.TIMELINE_SNAPSHOT, DSL.name("timeline_snapshot_pkey"), new TableField[] { TimelineSnapshot.TIMELINE_SNAPSHOT.ID }, true);
-    public static final UniqueKey<TimelineTemplateRecord> TIMELINE_TEMPLATE_PKEY = Internal.createUniqueKey(TimelineTemplate.TIMELINE_TEMPLATE, DSL.name("timeline_template_pkey"), new TableField[] { TimelineTemplate.TIMELINE_TEMPLATE.ID }, true);
     public static final UniqueKey<UnifiedGraphEdgeRecord> UNIFIED_GRAPH_EDGE_PKEY = Internal.createUniqueKey(UnifiedGraphEdge.UNIFIED_GRAPH_EDGE, DSL.name("unified_graph_edge_pkey"), new TableField[] { UnifiedGraphEdge.UNIFIED_GRAPH_EDGE.EDGE_ID }, true);
     public static final UniqueKey<UnifiedGraphNodeRecord> UNIFIED_GRAPH_NODE_PKEY = Internal.createUniqueKey(UnifiedGraphNode.UNIFIED_GRAPH_NODE, DSL.name("unified_graph_node_pkey"), new TableField[] { UnifiedGraphNode.UNIFIED_GRAPH_NODE.NODE_ID }, true);
     public static final UniqueKey<UnifiedRequestGraphRecord> UNIFIED_REQUEST_GRAPH_PKEY = Internal.createUniqueKey(UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH, DSL.name("unified_request_graph_pkey"), new TableField[] { UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH.GRAPH_ID }, true);
@@ -527,14 +512,11 @@ public class Keys {
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final ForeignKey<AiSuggestionRecord, ProjectRecord> AI_SUGGESTION__FK_SUGGESTION_PROJECT = Internal.createForeignKey(AiSuggestion.AI_SUGGESTION, DSL.name("fk_suggestion_project"), new TableField[] { AiSuggestion.AI_SUGGESTION.PROJECT_ID }, Keys.PROJECT_PKEY, new TableField[] { Project.PROJECT.ID }, true);
-    public static final ForeignKey<AiSuggestionRecord, WorkspaceRecord> AI_SUGGESTION__FK_SUGGESTION_WORKSPACE = Internal.createForeignKey(AiSuggestion.AI_SUGGESTION, DSL.name("fk_suggestion_workspace"), new TableField[] { AiSuggestion.AI_SUGGESTION.WORKSPACE_ID }, Keys.WORKSPACE_PKEY, new TableField[] { Workspace.WORKSPACE.ID }, true);
     public static final ForeignKey<ArtifactGraphRecord, RenderJobRecord> ARTIFACT_GRAPH__FK_ARTIFACT_GRAPH_JOB = Internal.createForeignKey(ArtifactGraph.ARTIFACT_GRAPH, DSL.name("fk_artifact_graph_job"), new TableField[] { ArtifactGraph.ARTIFACT_GRAPH.JOB_ID }, Keys.RENDER_JOB_PKEY, new TableField[] { RenderJob.RENDER_JOB.ID }, true);
     public static final ForeignKey<ArtifactGraphRecord, ArtifactNodeRecord> ARTIFACT_GRAPH__FK_ARTIFACT_GRAPH_ROOT = Internal.createForeignKey(ArtifactGraph.ARTIFACT_GRAPH, DSL.name("fk_artifact_graph_root"), new TableField[] { ArtifactGraph.ARTIFACT_GRAPH.ROOT_ARTIFACT_ID }, Keys.ARTIFACT_NODE_PKEY, new TableField[] { ArtifactNode.ARTIFACT_NODE.ID }, true);
     public static final ForeignKey<ArtifactNodeRecord, RenderJobRecord> ARTIFACT_NODE__FK_ARTIFACT_NODE_JOB = Internal.createForeignKey(ArtifactNode.ARTIFACT_NODE, DSL.name("fk_artifact_node_job"), new TableField[] { ArtifactNode.ARTIFACT_NODE.JOB_ID }, Keys.RENDER_JOB_PKEY, new TableField[] { RenderJob.RENDER_JOB.ID }, true);
     public static final ForeignKey<ArtifactRelationRecord, ArtifactRecord> ARTIFACT_RELATION__FK_ARTIFACT_RELATION_SOURCE = Internal.createForeignKey(ArtifactRelation.ARTIFACT_RELATION, DSL.name("fk_artifact_relation_source"), new TableField[] { ArtifactRelation.ARTIFACT_RELATION.SOURCE_ARTIFACT_ID }, Keys.ARTIFACT_PKEY, new TableField[] { Artifact.ARTIFACT.ID }, true);
     public static final ForeignKey<ArtifactRelationRecord, ArtifactRecord> ARTIFACT_RELATION__FK_ARTIFACT_RELATION_TARGET = Internal.createForeignKey(ArtifactRelation.ARTIFACT_RELATION, DSL.name("fk_artifact_relation_target"), new TableField[] { ArtifactRelation.ARTIFACT_RELATION.TARGET_ARTIFACT_ID }, Keys.ARTIFACT_PKEY, new TableField[] { Artifact.ARTIFACT.ID }, true);
-    public static final ForeignKey<AssetLibraryRecord, WorkspaceRecord> ASSET_LIBRARY__FK_LIBRARY_WORKSPACE = Internal.createForeignKey(AssetLibrary.ASSET_LIBRARY, DSL.name("fk_library_workspace"), new TableField[] { AssetLibrary.ASSET_LIBRARY.WORKSPACE_ID }, Keys.WORKSPACE_PKEY, new TableField[] { Workspace.WORKSPACE.ID }, true);
     public static final ForeignKey<AssetSemanticMetadataRecord, AssetRecord> ASSET_SEMANTIC_METADATA__FK_ASM_ASSET = Internal.createForeignKey(AssetSemanticMetadata.ASSET_SEMANTIC_METADATA, DSL.name("fk_asm_asset"), new TableField[] { AssetSemanticMetadata.ASSET_SEMANTIC_METADATA.ASSET_ID }, Keys.ASSET_PKEY, new TableField[] { Asset.ASSET.ID }, true);
     public static final ForeignKey<EffectPackEffectRecord, EffectPackRecord> EFFECT_PACK_EFFECT__FK_EFFECT_PACK_EFFECT_PACK = Internal.createForeignKey(EffectPackEffect.EFFECT_PACK_EFFECT, DSL.name("fk_effect_pack_effect_pack"), new TableField[] { EffectPackEffect.EFFECT_PACK_EFFECT.PACK_ROW_ID }, Keys.EFFECT_PACK_PKEY, new TableField[] { EffectPack.EFFECT_PACK.ID }, true);
     public static final ForeignKey<MarketplaceListingRecord, AssetRecord> MARKETPLACE_LISTING__FK_ML_ASSET = Internal.createForeignKey(MarketplaceListing.MARKETPLACE_LISTING, DSL.name("fk_ml_asset"), new TableField[] { MarketplaceListing.MARKETPLACE_LISTING.ASSET_ID }, Keys.ASSET_PKEY, new TableField[] { Asset.ASSET.ID }, true);
@@ -547,9 +529,6 @@ public class Keys {
     public static final ForeignKey<PromptExecutionRunRecord, PromptTemplateRecord> PROMPT_EXECUTION_RUN__PROMPT_EXECUTION_RUN_TEMPLATE_ID_FKEY = Internal.createForeignKey(PromptExecutionRun.PROMPT_EXECUTION_RUN, DSL.name("prompt_execution_run_template_id_fkey"), new TableField[] { PromptExecutionRun.PROMPT_EXECUTION_RUN.TEMPLATE_ID }, Keys.PROMPT_TEMPLATE_PKEY, new TableField[] { PromptTemplate.PROMPT_TEMPLATE.TEMPLATE_ID }, true);
     public static final ForeignKey<PromptTemplateVersionRecord, PromptTemplateRecord> PROMPT_TEMPLATE_VERSION__PROMPT_TEMPLATE_VERSION_TEMPLATE_ID_FKEY = Internal.createForeignKey(PromptTemplateVersion.PROMPT_TEMPLATE_VERSION, DSL.name("prompt_template_version_template_id_fkey"), new TableField[] { PromptTemplateVersion.PROMPT_TEMPLATE_VERSION.TEMPLATE_ID }, Keys.PROMPT_TEMPLATE_PKEY, new TableField[] { PromptTemplate.PROMPT_TEMPLATE.TEMPLATE_ID }, true);
     public static final ForeignKey<RenderBillingRecordRecord, RenderJobRecord> RENDER_BILLING_RECORD__FK_BILLING_JOB = Internal.createForeignKey(RenderBillingRecord.RENDER_BILLING_RECORD, DSL.name("fk_billing_job"), new TableField[] { RenderBillingRecord.RENDER_BILLING_RECORD.JOB_ID }, Keys.RENDER_JOB_PKEY, new TableField[] { RenderJob.RENDER_JOB.ID }, true);
-    public static final ForeignKey<RenderHistoryRecord, ProjectRecord> RENDER_HISTORY__FK_HISTORY_PROJECT = Internal.createForeignKey(RenderHistory.RENDER_HISTORY, DSL.name("fk_history_project"), new TableField[] { RenderHistory.RENDER_HISTORY.PROJECT_ID }, Keys.PROJECT_PKEY, new TableField[] { Project.PROJECT.ID }, true);
-    public static final ForeignKey<RenderHistoryRecord, WorkspaceRecord> RENDER_HISTORY__FK_HISTORY_WORKSPACE = Internal.createForeignKey(RenderHistory.RENDER_HISTORY, DSL.name("fk_history_workspace"), new TableField[] { RenderHistory.RENDER_HISTORY.WORKSPACE_ID }, Keys.WORKSPACE_PKEY, new TableField[] { Workspace.WORKSPACE.ID }, true);
-    public static final ForeignKey<RenderPresetRecord, WorkspaceRecord> RENDER_PRESET__FK_PRESET_WORKSPACE = Internal.createForeignKey(RenderPreset.RENDER_PRESET, DSL.name("fk_preset_workspace"), new TableField[] { RenderPreset.RENDER_PRESET.WORKSPACE_ID }, Keys.WORKSPACE_PKEY, new TableField[] { Workspace.WORKSPACE.ID }, true);
     public static final ForeignKey<ReviewDecisionRecord, TimelineReviewRecord> REVIEW_DECISION__FK_REVIEW_DECISION_REVIEW = Internal.createForeignKey(ReviewDecision.REVIEW_DECISION, DSL.name("fk_review_decision_review"), new TableField[] { ReviewDecision.REVIEW_DECISION.REVIEW_ID }, Keys.TIMELINE_REVIEW_PKEY, new TableField[] { TimelineReview.TIMELINE_REVIEW.ID }, true);
     public static final ForeignKey<ReviewThreadRecord, TimelineReviewRecord> REVIEW_THREAD__FK_REVIEW_THREAD_REVIEW = Internal.createForeignKey(ReviewThread.REVIEW_THREAD, DSL.name("fk_review_thread_review"), new TableField[] { ReviewThread.REVIEW_THREAD.REVIEW_ID }, Keys.TIMELINE_REVIEW_PKEY, new TableField[] { TimelineReview.TIMELINE_REVIEW.ID }, true);
     public static final ForeignKey<SearchProjectionRecord, AssetRecord> SEARCH_PROJECTION__FK_SP_ASSET = Internal.createForeignKey(SearchProjection.SEARCH_PROJECTION, DSL.name("fk_sp_asset"), new TableField[] { SearchProjection.SEARCH_PROJECTION.ASSET_ID }, Keys.ASSET_PKEY, new TableField[] { Asset.ASSET.ID }, true);
@@ -559,7 +538,6 @@ public class Keys {
     public static final ForeignKey<SystemCanonicalEventRecord, SystemCanonicalGraphRecord> SYSTEM_CANONICAL_EVENT__FK_EVENT_GRAPH = Internal.createForeignKey(SystemCanonicalEvent.SYSTEM_CANONICAL_EVENT, DSL.name("fk_event_graph"), new TableField[] { SystemCanonicalEvent.SYSTEM_CANONICAL_EVENT.GRAPH_ID }, Keys.SYSTEM_CANONICAL_GRAPH_PKEY, new TableField[] { SystemCanonicalGraph.SYSTEM_CANONICAL_GRAPH.GRAPH_ID }, true);
     public static final ForeignKey<SystemCanonicalGraphRecord, RenderJobRecord> SYSTEM_CANONICAL_GRAPH__FK_CANONICAL_JOB = Internal.createForeignKey(SystemCanonicalGraph.SYSTEM_CANONICAL_GRAPH, DSL.name("fk_canonical_job"), new TableField[] { SystemCanonicalGraph.SYSTEM_CANONICAL_GRAPH.JOB_ID }, Keys.RENDER_JOB_PKEY, new TableField[] { RenderJob.RENDER_JOB.ID }, true);
     public static final ForeignKey<TimelineCommentRecord, TimelineReviewRecord> TIMELINE_COMMENT__FK_TIMELINE_COMMENT_REVIEW = Internal.createForeignKey(TimelineComment.TIMELINE_COMMENT, DSL.name("fk_timeline_comment_review"), new TableField[] { TimelineComment.TIMELINE_COMMENT.REVIEW_ID }, Keys.TIMELINE_REVIEW_PKEY, new TableField[] { TimelineReview.TIMELINE_REVIEW.ID }, true);
-    public static final ForeignKey<TimelineTemplateRecord, WorkspaceRecord> TIMELINE_TEMPLATE__FK_TEMPLATE_WORKSPACE = Internal.createForeignKey(TimelineTemplate.TIMELINE_TEMPLATE, DSL.name("fk_template_workspace"), new TableField[] { TimelineTemplate.TIMELINE_TEMPLATE.WORKSPACE_ID }, Keys.WORKSPACE_PKEY, new TableField[] { Workspace.WORKSPACE.ID }, true);
     public static final ForeignKey<UnifiedGraphEdgeRecord, UnifiedRequestGraphRecord> UNIFIED_GRAPH_EDGE__FK_EDGE_GRAPH = Internal.createForeignKey(UnifiedGraphEdge.UNIFIED_GRAPH_EDGE, DSL.name("fk_edge_graph"), new TableField[] { UnifiedGraphEdge.UNIFIED_GRAPH_EDGE.GRAPH_ID }, Keys.UNIFIED_REQUEST_GRAPH_PKEY, new TableField[] { UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH.GRAPH_ID }, true);
     public static final ForeignKey<UnifiedGraphEdgeRecord, UnifiedGraphNodeRecord> UNIFIED_GRAPH_EDGE__FK_EDGE_SOURCE = Internal.createForeignKey(UnifiedGraphEdge.UNIFIED_GRAPH_EDGE, DSL.name("fk_edge_source"), new TableField[] { UnifiedGraphEdge.UNIFIED_GRAPH_EDGE.SOURCE_NODE_ID }, Keys.UNIFIED_GRAPH_NODE_PKEY, new TableField[] { UnifiedGraphNode.UNIFIED_GRAPH_NODE.NODE_ID }, true);
     public static final ForeignKey<UnifiedGraphEdgeRecord, UnifiedGraphNodeRecord> UNIFIED_GRAPH_EDGE__FK_EDGE_TARGET = Internal.createForeignKey(UnifiedGraphEdge.UNIFIED_GRAPH_EDGE, DSL.name("fk_edge_target"), new TableField[] { UnifiedGraphEdge.UNIFIED_GRAPH_EDGE.TARGET_NODE_ID }, Keys.UNIFIED_GRAPH_NODE_PKEY, new TableField[] { UnifiedGraphNode.UNIFIED_GRAPH_NODE.NODE_ID }, true);

@@ -4,7 +4,6 @@
 package com.example.platform.typedschema.jooq.generated;
 
 
-import com.example.platform.typedschema.jooq.generated.tables.AiSuggestion;
 import com.example.platform.typedschema.jooq.generated.tables.ApiClient;
 import com.example.platform.typedschema.jooq.generated.tables.ApiKey;
 import com.example.platform.typedschema.jooq.generated.tables.AppDatasource;
@@ -13,7 +12,6 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation;
 import com.example.platform.typedschema.jooq.generated.tables.Asset;
-import com.example.platform.typedschema.jooq.generated.tables.AssetLibrary;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata;
 import com.example.platform.typedschema.jooq.generated.tables.AuditRecords;
 import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice;
@@ -97,13 +95,11 @@ import com.example.platform.typedschema.jooq.generated.tables.QuotaProfile;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderBillingRecord;
-import com.example.platform.typedschema.jooq.generated.tables.RenderHistory;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobQueue;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobStatusHistory;
-import com.example.platform.typedschema.jooq.generated.tables.RenderPreset;
 import com.example.platform.typedschema.jooq.generated.tables.RenderUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderWorker;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewDecision;
@@ -133,7 +129,6 @@ import com.example.platform.typedschema.jooq.generated.tables.TimelineComment;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineReview;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot;
-import com.example.platform.typedschema.jooq.generated.tables.TimelineTemplate;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphEdge;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphNode;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph;
@@ -180,11 +175,6 @@ public class Public extends SchemaImpl {
     public static final Public PUBLIC = new Public();
 
     /**
-     * The table <code>public.ai_suggestion</code>.
-     */
-    public final AiSuggestion AI_SUGGESTION = AiSuggestion.AI_SUGGESTION;
-
-    /**
      * The table <code>public.api_client</code>.
      */
     public final ApiClient API_CLIENT = ApiClient.API_CLIENT;
@@ -223,11 +213,6 @@ public class Public extends SchemaImpl {
      * The table <code>public.asset</code>.
      */
     public final Asset ASSET = Asset.ASSET;
-
-    /**
-     * The table <code>public.asset_library</code>.
-     */
-    public final AssetLibrary ASSET_LIBRARY = AssetLibrary.ASSET_LIBRARY;
 
     /**
      * The table <code>public.asset_semantic_metadata</code>.
@@ -645,11 +630,6 @@ public class Public extends SchemaImpl {
     public final RenderBillingRecord RENDER_BILLING_RECORD = RenderBillingRecord.RENDER_BILLING_RECORD;
 
     /**
-     * The table <code>public.render_history</code>.
-     */
-    public final RenderHistory RENDER_HISTORY = RenderHistory.RENDER_HISTORY;
-
-    /**
      * The table <code>public.render_job</code>.
      */
     public final RenderJob RENDER_JOB = RenderJob.RENDER_JOB;
@@ -673,11 +653,6 @@ public class Public extends SchemaImpl {
      * The table <code>public.render_job_status_history</code>.
      */
     public final RenderJobStatusHistory RENDER_JOB_STATUS_HISTORY = RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY;
-
-    /**
-     * The table <code>public.render_preset</code>.
-     */
-    public final RenderPreset RENDER_PRESET = RenderPreset.RENDER_PRESET;
 
     /**
      * The table <code>public.render_usage_record</code>.
@@ -825,11 +800,6 @@ public class Public extends SchemaImpl {
     public final TimelineSnapshot TIMELINE_SNAPSHOT = TimelineSnapshot.TIMELINE_SNAPSHOT;
 
     /**
-     * The table <code>public.timeline_template</code>.
-     */
-    public final TimelineTemplate TIMELINE_TEMPLATE = TimelineTemplate.TIMELINE_TEMPLATE;
-
-    /**
      * The table <code>public.unified_graph_edge</code>.
      */
     public final UnifiedGraphEdge UNIFIED_GRAPH_EDGE = UnifiedGraphEdge.UNIFIED_GRAPH_EDGE;
@@ -960,7 +930,6 @@ public class Public extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
-            AiSuggestion.AI_SUGGESTION,
             ApiClient.API_CLIENT,
             ApiKey.API_KEY,
             AppDatasource.APP_DATASOURCE,
@@ -969,7 +938,6 @@ public class Public extends SchemaImpl {
             ArtifactNode.ARTIFACT_NODE,
             ArtifactRelation.ARTIFACT_RELATION,
             Asset.ASSET,
-            AssetLibrary.ASSET_LIBRARY,
             AssetSemanticMetadata.ASSET_SEMANTIC_METADATA,
             AuditRecords.AUDIT_RECORDS,
             BillingInvoice.BILLING_INVOICE,
@@ -1053,13 +1021,11 @@ public class Public extends SchemaImpl {
             QuotaUsage.QUOTA_USAGE,
             RatedUsageRecord.RATED_USAGE_RECORD,
             RenderBillingRecord.RENDER_BILLING_RECORD,
-            RenderHistory.RENDER_HISTORY,
             RenderJob.RENDER_JOB,
             RenderJobLease.RENDER_JOB_LEASE,
             RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS,
             RenderJobQueue.RENDER_JOB_QUEUE,
             RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY,
-            RenderPreset.RENDER_PRESET,
             RenderUsageRecord.RENDER_USAGE_RECORD,
             RenderWorker.RENDER_WORKER,
             ReviewDecision.REVIEW_DECISION,
@@ -1089,7 +1055,6 @@ public class Public extends SchemaImpl {
             TimelineReview.TIMELINE_REVIEW,
             TimelineRevision.TIMELINE_REVISION,
             TimelineSnapshot.TIMELINE_SNAPSHOT,
-            TimelineTemplate.TIMELINE_TEMPLATE,
             UnifiedGraphEdge.UNIFIED_GRAPH_EDGE,
             UnifiedGraphNode.UNIFIED_GRAPH_NODE,
             UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH,

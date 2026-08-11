@@ -253,7 +253,6 @@ create table notification_record (
 create index ix_notification_record_event_id on notification_record(event_id);
 create index ix_notification_record_status on notification_record(status);
 
-
 -- ============================================================
 -- 2. IDENTITY & ACCESS
 -- ============================================================
@@ -425,7 +424,6 @@ create table api_client (
 );
 
 create index ix_api_client_workspace_id on api_client(workspace_id);
-
 
 -- ============================================================
 -- 3. MEDIA & RENDERING
@@ -680,7 +678,6 @@ create table media_asset_metadata (
 create index ix_mam_tenant_asset on media_asset_metadata(tenant_id, asset_id);
 create index ix_mam_project on media_asset_metadata(project_id);
 create index ix_mam_probed_at on media_asset_metadata(probed_at);
-
 
 -- ============================================================
 -- 4. COMMERCE & BILLING
@@ -1048,7 +1045,6 @@ create table commerce_cart_line (
 
 create index ix_commerce_cart_line_cart on commerce_cart_line(cart_id);
 
-
 -- ============================================================
 -- 5. ENTITLEMENT & QUOTA
 -- ============================================================
@@ -1228,7 +1224,6 @@ create table tenant_entitlement_tier (
 );
 
 create index ix_tenant_entitlement_tier_tier on tenant_entitlement_tier(tier);
-
 
 -- ============================================================
 -- 6. PLATFORM CAPABILITIES
@@ -1626,7 +1621,6 @@ create table nlq_report_execution (
 
 create index ix_nlq_report_exec_report on nlq_report_execution(report_id);
 
-
 -- ============================================================
 -- 7. GOVERNANCE & COMPLIANCE
 -- ============================================================
@@ -1844,7 +1838,6 @@ create table notification_user_inbox (
 
 create index ix_notification_user_inbox_user on notification_user_inbox(user_id);
 
-
 -- ============================================================
 -- 8. DELIVERY & PUBLISHING
 -- ============================================================
@@ -1959,7 +1952,6 @@ create table social_post_analytics (
 
 create index ix_social_post_analytics_post on social_post_analytics(post_id);
 
-
 -- ============================================================
 -- 9. ANALYTICS & USER
 -- ============================================================
@@ -2039,7 +2031,6 @@ create table shared_resource_grant (
 
 create index ix_shared_resource_grant_recipient on shared_resource_grant(tenant_id, shared_with_user_id);
 create index ix_shared_resource_grant_resource on shared_resource_grant(resource_type, resource_id);
-
 
 -- ============================================================
 -- 10. AI & LITELLM
@@ -2475,106 +2466,6 @@ create index idx_project_import_metadata_created_at
     on project_import_metadata(created_at);
 
 -- ============================================================
--- PRODUCT LAYER TABLES (from V11)
--- ============================================================
-
--- Timeline template table
-CREATE TABLE timeline_template (
-    id VARCHAR(64) PRIMARY KEY,
-    workspace_id VARCHAR(64),
-    name VARCHAR(256) NOT NULL,
-    description TEXT,
-    category VARCHAR(64),
-    creator_id VARCHAR(64) NOT NULL,
-    status VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
-    timeline_json TEXT,
-    effect_keys TEXT,
-    metadata TEXT,
-    version INT NOT NULL DEFAULT 1,
-    parent_template_id VARCHAR(64),
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    CONSTRAINT fk_template_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id)
-);
-
-CREATE INDEX ix_template_workspace ON timeline_template(workspace_id);
-CREATE INDEX ix_template_category ON timeline_template(category);
-CREATE INDEX ix_template_status ON timeline_template(status);
-
--- Render preset table
-CREATE TABLE render_preset (
-    id VARCHAR(64) PRIMARY KEY,
-    workspace_id VARCHAR(64),
-    name VARCHAR(256) NOT NULL,
-    description TEXT,
-    creator_id VARCHAR(64) NOT NULL,
-    format VARCHAR(32),
-    resolution VARCHAR(32),
-    profile VARCHAR(64),
-    settings TEXT,
-    is_default BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    CONSTRAINT fk_preset_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id)
-);
-
-CREATE INDEX ix_preset_workspace ON render_preset(workspace_id);
-
--- Asset library table
-CREATE TABLE asset_library (
-    id VARCHAR(64) PRIMARY KEY,
-    workspace_id VARCHAR(64) NOT NULL,
-    name VARCHAR(256) NOT NULL,
-    description TEXT,
-    type VARCHAR(32) NOT NULL DEFAULT 'GENERAL',
-    asset_count INT DEFAULT 0,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    CONSTRAINT fk_library_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id)
-);
-
-CREATE INDEX ix_library_workspace ON asset_library(workspace_id);
-
--- Render history table
-CREATE TABLE render_history (
-    id VARCHAR(64) PRIMARY KEY,
-    workspace_id VARCHAR(64) NOT NULL,
-    project_id VARCHAR(64) NOT NULL,
-    render_job_id VARCHAR(64) NOT NULL,
-    user_id VARCHAR(64) NOT NULL,
-    preset_id VARCHAR(64),
-    status VARCHAR(32) NOT NULL DEFAULT 'STARTED',
-    output_uri TEXT,
-    duration_ms BIGINT DEFAULT 0,
-    created_at TIMESTAMP NOT NULL,
-    completed_at TIMESTAMP,
-    CONSTRAINT fk_history_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id),
-    CONSTRAINT fk_history_project FOREIGN KEY (project_id) REFERENCES project(id)
-);
-
-CREATE INDEX ix_history_workspace ON render_history(workspace_id);
-CREATE INDEX ix_history_project ON render_history(project_id);
-CREATE INDEX ix_history_user ON render_history(user_id);
-
--- AI suggestion table
-CREATE TABLE ai_suggestion (
-    id VARCHAR(64) PRIMARY KEY,
-    project_id VARCHAR(64) NOT NULL,
-    workspace_id VARCHAR(64) NOT NULL,
-    type VARCHAR(32) NOT NULL,
-    title VARCHAR(256) NOT NULL,
-    description TEXT,
-    confidence DOUBLE PRECISION,
-    affected_clip_ids TEXT,
-    suggested_changes TEXT,
-    trace_id VARCHAR(128),
-    created_at TIMESTAMP NOT NULL,
-    CONSTRAINT fk_suggestion_project FOREIGN KEY (project_id) REFERENCES project(id),
-    CONSTRAINT fk_suggestion_workspace FOREIGN KEY (workspace_id) REFERENCES workspace(id)
-);
-
-CREATE INDEX ix_suggestion_project ON ai_suggestion(project_id);
-CREATE INDEX ix_suggestion_workspace ON ai_suggestion(workspace_id);
 
 create table product (
     product_id varchar(64) primary key,
