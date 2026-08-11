@@ -14,6 +14,7 @@
             "extension :: domain",
             "billing :: app",
             "billing :: domain",
+            "billing :: usage",
             "entitlement :: app",
             "entitlement :: domain",
             "prompt :: app",

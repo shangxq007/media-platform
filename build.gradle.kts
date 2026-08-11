@@ -269,12 +269,40 @@ tasks.register("verifyJooqAllowlistIntegrity") {
     }
 }
 
+tasks.register("verifyJooqNamedInterfacePreservation") {
+    group = "verification"
+    description = "Verify the typed-schema Modulith named interface survives canonical jOOQ regeneration"
+    doLast {
+        // Q1-MA1 (JOOQ_REGENERATION_MUST_PRESERVE_TYPED_SCHEMA_NAMED_INTERFACE_AUTHORITY_V1):
+        // the @NamedInterface("jooq-tables") architecture contract must live OUTSIDE the
+        // jOOQ generation target (src/main/java) so GenerationTool cannot delete it.
+        val marker = file("typed-schema-module/src/main/modulith/java/com/example/platform/typedschema/jooq/generated/tables/package-info.java")
+        require(marker.exists()) {
+            "FAIL: Named-interface marker missing at ${'$'}{marker.absolutePath} (deleted or relocated by generation)"
+        }
+        val content = marker.readText()
+        require(content.contains("@org.springframework.modulith.NamedInterface(\"jooq-tables\")")) {
+            "FAIL: Named-interface marker lost its @NamedInterface(\"jooq-tables\") contract"
+        }
+        require(content.contains("package com.example.platform.typedschema.jooq.generated.tables;")) {
+            "FAIL: Named-interface marker targets the wrong package"
+        }
+        // Ownership separation: the marker must NOT be back under the destructive generator target.
+        val destructive = file("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables/package-info.java")
+        require(!destructive.exists()) {
+            "FAIL: architecture metadata found inside the jOOQ generation target (ownership separation violated)"
+        }
+        println("OK: typed-schema named-interface authority preserved (jooq-tables, generator-immune location)")
+    }
+}
+
 tasks.register("jooqFoundationCheck") {
     group = "verification"
     description = "Run all jOOQ foundation verification checks"
     dependsOn(
         "verifyJooqVersionAlignment",
         "verifyJooqGeneratedSources",
+        "verifyJooqNamedInterfacePreservation",
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
