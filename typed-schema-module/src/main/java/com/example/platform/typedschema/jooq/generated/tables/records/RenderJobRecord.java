@@ -218,31 +218,45 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
     }
 
     /**
+     * Setter for <code>public.render_job.timeline_revision_id</code>.
+     */
+    public void setTimelineRevisionId(String value) {
+        set(14, value);
+    }
+
+    /**
+     * Getter for <code>public.render_job.timeline_revision_id</code>.
+     */
+    public String getTimelineRevisionId() {
+        return (String) get(14);
+    }
+
+    /**
      * Setter for <code>public.render_job.selected_provider</code>.
      */
     public void setSelectedProvider(String value) {
-        set(14, value);
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.render_job.selected_provider</code>.
      */
     public String getSelectedProvider() {
-        return (String) get(14);
+        return (String) get(15);
     }
 
     /**
      * Setter for <code>public.render_job.updated_at</code>.
      */
     public void setUpdatedAt(Instant value) {
-        set(15, value);
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.render_job.updated_at</code>.
      */
     public Instant getUpdatedAt() {
-        return (Instant) get(15);
+        return (Instant) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -268,7 +282,7 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
     /**
      * Create a detached, initialised RenderJobRecord
      */
-    public RenderJobRecord(String id, String projectId, String timelineSnapshotId, String profile, String status, LocalDateTime createdAt, String aiScript, String artifactUri, String errorMessage, String tenantId, String pipelinePlanJson, String pipelineExecutionJson, String baseJobId, String traceId, String selectedProvider, Instant updatedAt) {
+    public RenderJobRecord(String id, String projectId, String timelineSnapshotId, String profile, String status, LocalDateTime createdAt, String aiScript, String artifactUri, String errorMessage, String tenantId, String pipelinePlanJson, String pipelineExecutionJson, String baseJobId, String traceId, String timelineRevisionId, String selectedProvider, Instant updatedAt) {
         super(RenderJob.RENDER_JOB);
 
         setId(id);
@@ -285,6 +299,7 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
         setPipelineExecutionJson(pipelineExecutionJson);
         setBaseJobId(baseJobId);
         setTraceId(traceId);
+        setTimelineRevisionId(timelineRevisionId);
         setSelectedProvider(selectedProvider);
         setUpdatedAt(updatedAt);
         resetChangedOnNotNull();

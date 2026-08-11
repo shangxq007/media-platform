@@ -2,7 +2,7 @@ package com.example.platform.federation.graphql.resolver;
 
 import com.example.platform.billing.app.BillingProjectionService;
 import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.billing.domain.UsageRecord;
+import com.example.platform.billing.usage.UsageRecord;
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.app.ExtensionRegistryService.ExtensionInfo;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
@@ -87,7 +87,7 @@ public class AdminDashboardGraphQLResolver {
         try {
             List<UsageRecord> allUsage = usageMeteringService.getUsage(null, null);
             double totalAmount = allUsage.stream()
-                    .mapToDouble(r -> r.quantity())
+                    .mapToDouble(r -> (double) r.quantity().baseUnits())
                     .sum();
             return new AdminBillingSummary(
                     new MoneyDto(totalAmount, "USD"),

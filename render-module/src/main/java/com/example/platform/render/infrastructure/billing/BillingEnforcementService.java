@@ -206,14 +206,12 @@ public class BillingEnforcementService {
 
         // Record usage in metering system
         usageMeteringService.recordUsage(
-                tenantId, null, null,
-                "render_seconds", actualDurationSeconds, "seconds",
+                tenantId, "render_seconds", actualDurationSeconds, "seconds",
                 Instant.now(), "job-" + jobId + "-seconds"
         );
 
         usageMeteringService.recordUsage(
-                tenantId, null, null,
-                "render_output_bytes", outputSizeBytes, "bytes",
+                tenantId, "render_output_bytes", outputSizeBytes, "bytes",
                 Instant.now(), "job-" + jobId + "-bytes"
         );
 

@@ -136,14 +136,14 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
     public final TableField<RenderJobRecord, String> TRACE_ID = createField(DSL.name("trace_id"), SQLDataType.VARCHAR(128), this, "");
 
     /**
-     * The column <code>public.render_job.selected_provider</code>.
-     */
-    public final TableField<RenderJobRecord, String> SELECTED_PROVIDER = createField(DSL.name("selected_provider"), SQLDataType.VARCHAR(128), this, "");
-
-    /**
      * The column <code>public.render_job.timeline_revision_id</code>.
      */
     public final TableField<RenderJobRecord, String> TIMELINE_REVISION_ID = createField(DSL.name("timeline_revision_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.render_job.selected_provider</code>.
+     */
+    public final TableField<RenderJobRecord, String> SELECTED_PROVIDER = createField(DSL.name("selected_provider"), SQLDataType.VARCHAR(128), this, "");
 
     /**
      * The column <code>public.render_job.updated_at</code>.
@@ -219,7 +219,7 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_RENDER_JOB_BASE_JOB_ID, Indexes.IX_RENDER_JOB_PROJECT_ID, Indexes.IX_RENDER_JOB_STATUS, Indexes.IX_RENDER_JOB_TRACE_ID);
+        return Arrays.asList(Indexes.IX_RENDER_JOB_BASE_JOB_ID, Indexes.IX_RENDER_JOB_PROJECT_ID, Indexes.IX_RENDER_JOB_STATUS, Indexes.IX_RENDER_JOB_TIMELINE_REVISION, Indexes.IX_RENDER_JOB_TRACE_ID);
     }
 
     @Override

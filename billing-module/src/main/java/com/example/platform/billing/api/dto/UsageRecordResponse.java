@@ -5,8 +5,6 @@ import java.time.Instant;
 public record UsageRecordResponse(
         String recordId,
         String tenantId,
-        String workspaceId,
-        String userId,
         String meterKey,
         double quantity,
         String unit,

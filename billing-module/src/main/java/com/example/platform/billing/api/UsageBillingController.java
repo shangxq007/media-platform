@@ -3,6 +3,7 @@ package com.example.platform.billing.api;
 import com.example.platform.billing.api.dto.*;
 import com.example.platform.billing.app.*;
 import com.example.platform.billing.domain.*;
+import com.example.platform.billing.usage.UsageRecord;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -48,8 +49,7 @@ public class UsageBillingController {
         String tenantId = resolveTenantId(request.tenantId());
         Instant recordedAt = request.recordedAt() != null ? request.recordedAt() : Instant.now();
         UsageRecord record = usageMeteringService.recordUsage(
-                tenantId, request.workspaceId(), request.userId(),
-                request.meterKey(), request.quantity(), request.unit(),
+                tenantId, request.meterKey(), request.quantity(), request.unit(),
                 recordedAt, request.idempotencyKey());
 
         PricingRule rule = findRuleForMeter(request.meterKey());
@@ -58,9 +58,9 @@ public class UsageBillingController {
         }
 
         return new UsageRecordResponse(
-                record.recordId(), record.tenantId(), record.workspaceId(),
-                record.userId(), record.meterKey(), record.quantity(),
-                record.unit(), record.recordedAt(), record.idempotencyKey());
+                record.recordId(), record.tenantId(), record.dimension().name(),
+                (double) record.quantity().baseUnits(), record.quantity().unit().name(),
+                record.recordedAt(), record.idempotencyKey());
     }
 
     @GetMapping("/usage")
@@ -70,9 +70,9 @@ public class UsageBillingController {
         String effectiveTenant = resolveTenantId(tenantId);
         return usageMeteringService.getUsage(effectiveTenant, meterKey).stream()
                 .map(r -> new UsageRecordResponse(
-                        r.recordId(), r.tenantId(), r.workspaceId(),
-                        r.userId(), r.meterKey(), r.quantity(),
-                        r.unit(), r.recordedAt(), r.idempotencyKey()))
+                        r.recordId(), r.tenantId(), r.dimension().name(),
+                        (double) r.quantity().baseUnits(), r.quantity().unit().name(),
+                        r.recordedAt(), r.idempotencyKey()))
                 .toList();
     }
 

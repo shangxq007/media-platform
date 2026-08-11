@@ -85,6 +85,7 @@ import com.example.platform.typedschema.jooq.generated.tables.PromptEvaluationRe
 import com.example.platform.typedschema.jooq.generated.tables.PromptExecutionRun;
 import com.example.platform.typedschema.jooq.generated.tables.PromptTemplate;
 import com.example.platform.typedschema.jooq.generated.tables.PromptTemplateVersion;
+import com.example.platform.typedschema.jooq.generated.tables.ProviderCostObservation;
 import com.example.platform.typedschema.jooq.generated.tables.ProviderProductMapping;
 import com.example.platform.typedschema.jooq.generated.tables.ProviderWebhookEvent;
 import com.example.platform.typedschema.jooq.generated.tables.PurchaseOrder;
@@ -144,6 +145,11 @@ import com.example.platform.typedschema.jooq.generated.tables.UserHabits;
 import com.example.platform.typedschema.jooq.generated.tables.UserProfile;
 import com.example.platform.typedschema.jooq.generated.tables.UserRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.UserSegment;
+import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinition;
+import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionEdge;
+import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionNode;
+import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionVersion;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowExecution;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceEntitlementPool;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceGroup;
@@ -579,6 +585,11 @@ public class Public extends SchemaImpl {
     public final PromptTemplateVersion PROMPT_TEMPLATE_VERSION = PromptTemplateVersion.PROMPT_TEMPLATE_VERSION;
 
     /**
+     * The table <code>public.provider_cost_observation</code>.
+     */
+    public final ProviderCostObservation PROVIDER_COST_OBSERVATION = ProviderCostObservation.PROVIDER_COST_OBSERVATION;
+
+    /**
      * The table <code>public.provider_product_mapping</code>.
      */
     public final ProviderProductMapping PROVIDER_PRODUCT_MAPPING = ProviderProductMapping.PROVIDER_PRODUCT_MAPPING;
@@ -874,6 +885,31 @@ public class Public extends SchemaImpl {
     public final UserSegment USER_SEGMENT = UserSegment.USER_SEGMENT;
 
     /**
+     * The table <code>public.user_workflow_definition</code>.
+     */
+    public final UserWorkflowDefinition USER_WORKFLOW_DEFINITION = UserWorkflowDefinition.USER_WORKFLOW_DEFINITION;
+
+    /**
+     * The table <code>public.user_workflow_definition_edge</code>.
+     */
+    public final UserWorkflowDefinitionEdge USER_WORKFLOW_DEFINITION_EDGE = UserWorkflowDefinitionEdge.USER_WORKFLOW_DEFINITION_EDGE;
+
+    /**
+     * The table <code>public.user_workflow_definition_node</code>.
+     */
+    public final UserWorkflowDefinitionNode USER_WORKFLOW_DEFINITION_NODE = UserWorkflowDefinitionNode.USER_WORKFLOW_DEFINITION_NODE;
+
+    /**
+     * The table <code>public.user_workflow_definition_version</code>.
+     */
+    public final UserWorkflowDefinitionVersion USER_WORKFLOW_DEFINITION_VERSION = UserWorkflowDefinitionVersion.USER_WORKFLOW_DEFINITION_VERSION;
+
+    /**
+     * The table <code>public.workflow_execution</code>.
+     */
+    public final WorkflowExecution WORKFLOW_EXECUTION = WorkflowExecution.WORKFLOW_EXECUTION;
+
+    /**
      * The table <code>public.workspace</code>.
      */
     public final Workspace WORKSPACE = Workspace.WORKSPACE;
@@ -1005,6 +1041,7 @@ public class Public extends SchemaImpl {
             PromptExecutionRun.PROMPT_EXECUTION_RUN,
             PromptTemplate.PROMPT_TEMPLATE,
             PromptTemplateVersion.PROMPT_TEMPLATE_VERSION,
+            ProviderCostObservation.PROVIDER_COST_OBSERVATION,
             ProviderProductMapping.PROVIDER_PRODUCT_MAPPING,
             ProviderWebhookEvent.PROVIDER_WEBHOOK_EVENT,
             PurchaseOrder.PURCHASE_ORDER,
@@ -1064,6 +1101,11 @@ public class Public extends SchemaImpl {
             UserProfile.USER_PROFILE,
             UserRoleAssignment.USER_ROLE_ASSIGNMENT,
             UserSegment.USER_SEGMENT,
+            UserWorkflowDefinition.USER_WORKFLOW_DEFINITION,
+            UserWorkflowDefinitionEdge.USER_WORKFLOW_DEFINITION_EDGE,
+            UserWorkflowDefinitionNode.USER_WORKFLOW_DEFINITION_NODE,
+            UserWorkflowDefinitionVersion.USER_WORKFLOW_DEFINITION_VERSION,
+            WorkflowExecution.WORKFLOW_EXECUTION,
             Workspace.WORKSPACE,
             WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL,
             WorkspaceGroup.WORKSPACE_GROUP,

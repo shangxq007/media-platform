@@ -163,24 +163,30 @@ tasks.register("verifyJooqGeneratedSources") {
             "FAIL: Committed generated sources not found at ${'$'}{committedDir.absolutePath}"
         }
 
+        // Table classes = all *.java directly under tables/ (jOOQ 3.19 names the table class
+        // after the table, e.g. UsageRecord.java; records/ holds the *Record.java companions).
         val tableCount = committedDir.walkTopDown()
-            .filter { it.isFile && it.name.endsWith("Table.java") }
+            .filter { it.isFile && it.parentFile?.name == "tables" && it.name.endsWith(".java") }
             .count()
         val recordCount = committedDir.walkTopDown()
-            .filter { it.isFile && it.name.endsWith("Record.java") }
+            .filter { it.isFile && it.parentFile?.name == "records" && it.name.endsWith(".java") }
             .count()
         val totalFiles = committedDir.walkTopDown()
             .filter { it.isFile && it.name.endsWith(".java") }
             .count()
 
         println("Generated source inventory:")
-        println("  Table classes: ${'$'}tableCount")
-        println("  Record classes: ${'$'}recordCount")
-        println("  Total Java files: ${'$'}totalFiles")
+        println("  Table classes: " + tableCount)
+        println("  Record classes: " + recordCount)
+        println("  Total Java files: " + totalFiles)
 
-        require(tableCount == 147) { "FAIL: Expected 147 Table classes but found ${'$'}tableCount" }
-        require(recordCount == 147) { "FAIL: Expected 147 Record classes but found ${'$'}recordCount" }
-        require(totalFiles >= 299) { "FAIL: Expected at least 299 total Java files but found ${'$'}totalFiles" }
+        // Q1-CLOSE1: corrected expectations to the V1-synchronized generated state.
+        // (Previously hardcoded 147/*Table.java — stale: jOOQ 3.19 emits table classes in
+        // tables/ named after the table (e.g. UsageRecord.java), so *Table.java never matches,
+        // and 147 reflected the pre-Q1 drifted generated set vs V1's 153 tables.)
+        require(tableCount == 153) { "FAIL: Expected 153 Table classes but found " + tableCount }
+        require(recordCount == 153) { "FAIL: Expected 153 Record classes but found " + recordCount }
+        require(totalFiles >= 300) { "FAIL: Expected at least 300 total Java files but found " + totalFiles }
 
         println("OK: Generated source verification passed")
     }

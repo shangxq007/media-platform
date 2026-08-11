@@ -223,7 +223,7 @@ public class Product extends TableImpl<ProductRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_PRODUCT_ASSET, Indexes.IX_PRODUCT_PRODUCER, Indexes.IX_PRODUCT_PROJECT, Indexes.IX_PRODUCT_STATUS, Indexes.IX_PRODUCT_TENANT, Indexes.IX_PRODUCT_TYPE);
+        return Arrays.asList(Indexes.IX_PRODUCT_ASSET, Indexes.IX_PRODUCT_CURRENT_REVISION, Indexes.IX_PRODUCT_PRODUCER, Indexes.IX_PRODUCT_PROJECT, Indexes.IX_PRODUCT_STATUS, Indexes.IX_PRODUCT_TENANT, Indexes.IX_PRODUCT_TYPE);
     }
 
     @Override

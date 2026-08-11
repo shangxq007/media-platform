@@ -1,7 +1,7 @@
 package com.example.platform.federation.graphql.dataloader;
 
 import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.billing.domain.UsageRecord;
+import com.example.platform.billing.usage.UsageRecord;
 import org.dataloader.MappedBatchLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,9 +48,9 @@ public class BillingUsageDataLoader implements MappedBatchLoader<String, List<Ma
                     for (var r : usageRecords) {
                         Map<String, Object> map = new HashMap<>();
                         map.put("id", r.recordId());
-                        map.put("meterKey", r.meterKey());
-                        map.put("quantity", r.quantity());
-                        map.put("unit", r.unit());
+                        map.put("meterKey", r.dimension().name());
+                        map.put("quantity", r.quantity().baseUnits());
+                        map.put("unit", r.quantity().unit().name());
                         map.put("recordedAt", r.recordedAt() != null ? r.recordedAt().toString() : "");
                         records.add(map);
                     }

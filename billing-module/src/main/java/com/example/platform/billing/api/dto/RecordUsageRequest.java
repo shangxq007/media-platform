@@ -4,8 +4,6 @@ import java.time.Instant;
 
 public record RecordUsageRequest(
         String tenantId,
-        String workspaceId,
-        String userId,
         String meterKey,
         double quantity,
         String unit,

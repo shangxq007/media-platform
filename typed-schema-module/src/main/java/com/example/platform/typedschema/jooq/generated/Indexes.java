@@ -73,6 +73,7 @@ import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetad
 import com.example.platform.typedschema.jooq.generated.tables.PromptExecutionRun;
 import com.example.platform.typedschema.jooq.generated.tables.PromptTemplate;
 import com.example.platform.typedschema.jooq.generated.tables.PromptTemplateVersion;
+import com.example.platform.typedschema.jooq.generated.tables.ProviderCostObservation;
 import com.example.platform.typedschema.jooq.generated.tables.ProviderProductMapping;
 import com.example.platform.typedschema.jooq.generated.tables.PurchaseOrder;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaProfile;
@@ -123,6 +124,7 @@ import com.example.platform.typedschema.jooq.generated.tables.UserBehaviorEvent;
 import com.example.platform.typedschema.jooq.generated.tables.UserProfile;
 import com.example.platform.typedschema.jooq.generated.tables.UserRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.UserSegment;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowExecution;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceEntitlementPool;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceGroup;
@@ -322,14 +324,15 @@ public class Indexes {
     public static final Index IX_PROD_DEP_TYPE = Internal.createIndex(DSL.name("ix_prod_dep_type"), ProductDependency.PRODUCT_DEPENDENCY, new OrderField[] { ProductDependency.PRODUCT_DEPENDENCY.DEPENDENCY_TYPE }, false);
     public static final Index IX_PROD_DEP_UPSTREAM = Internal.createIndex(DSL.name("ix_prod_dep_upstream"), ProductDependency.PRODUCT_DEPENDENCY, new OrderField[] { ProductDependency.PRODUCT_DEPENDENCY.DEPENDS_ON_PRODUCT_ID }, false);
     public static final Index IX_PRODUCT_ASSET = Internal.createIndex(DSL.name("ix_product_asset"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.OWNER_ASSET_ID }, false);
+    public static final Index IX_PRODUCT_CURRENT_REVISION = Internal.createIndex(DSL.name("ix_product_current_revision"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PROJECT_ID, Product.PRODUCT.CURRENT_REVISION_ID }, false);
     public static final Index IX_PRODUCT_PRODUCER = Internal.createIndex(DSL.name("ix_product_producer"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PRODUCER_ID }, false);
     public static final Index IX_PRODUCT_PROJECT = Internal.createIndex(DSL.name("ix_product_project"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PROJECT_ID }, false);
     public static final Index IX_PRODUCT_STATUS = Internal.createIndex(DSL.name("ix_product_status"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.STATUS }, false);
     public static final Index IX_PRODUCT_TENANT = Internal.createIndex(DSL.name("ix_product_tenant"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.TENANT_ID }, false);
     public static final Index IX_PRODUCT_TYPE = Internal.createIndex(DSL.name("ix_product_type"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PRODUCT_TYPE }, false);
-    public static final Index IX_PRODUCT_CURRENT_REVISION = Internal.createIndex(DSL.name("ix_product_current_revision"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PROJECT_ID, Product.PRODUCT.CURRENT_REVISION_ID }, false);
-    public static final Index IX_RENDER_JOB_TIMELINE_REVISION = Internal.createIndex(DSL.name("ix_render_job_timeline_revision"), RenderJob.RENDER_JOB, new OrderField[] { RenderJob.RENDER_JOB.TIMELINE_REVISION_ID }, false);
     public static final Index IX_PROJECT_TENANT_ID = Internal.createIndex(DSL.name("ix_project_tenant_id"), Project.PROJECT, new OrderField[] { Project.PROJECT.TENANT_ID }, false);
+    public static final Index IX_PROVIDER_COST_OBSERVATION_OPERATION = Internal.createIndex(DSL.name("ix_provider_cost_observation_operation"), ProviderCostObservation.PROVIDER_COST_OBSERVATION, new OrderField[] { ProviderCostObservation.PROVIDER_COST_OBSERVATION.OPERATION_REF }, false);
+    public static final Index IX_PROVIDER_COST_OBSERVATION_TENANT = Internal.createIndex(DSL.name("ix_provider_cost_observation_tenant"), ProviderCostObservation.PROVIDER_COST_OBSERVATION, new OrderField[] { ProviderCostObservation.PROVIDER_COST_OBSERVATION.TENANT_ID }, false);
     public static final Index IX_PROVIDER_PRODUCT_MAPPING_PRODUCT_ID = Internal.createIndex(DSL.name("ix_provider_product_mapping_product_id"), ProviderProductMapping.PROVIDER_PRODUCT_MAPPING, new OrderField[] { ProviderProductMapping.PROVIDER_PRODUCT_MAPPING.PRODUCT_ID }, false);
     public static final Index IX_PURCHASE_ORDER_CHECKOUT_SESSION_ID = Internal.createIndex(DSL.name("ix_purchase_order_checkout_session_id"), PurchaseOrder.PURCHASE_ORDER, new OrderField[] { PurchaseOrder.PURCHASE_ORDER.CHECKOUT_SESSION_ID }, false);
     public static final Index IX_PURCHASE_ORDER_TENANT = Internal.createIndex(DSL.name("ix_purchase_order_tenant"), PurchaseOrder.PURCHASE_ORDER, new OrderField[] { PurchaseOrder.PURCHASE_ORDER.TENANT_ID }, false);
@@ -344,6 +347,7 @@ public class Indexes {
     public static final Index IX_RENDER_JOB_BASE_JOB_ID = Internal.createIndex(DSL.name("ix_render_job_base_job_id"), RenderJob.RENDER_JOB, new OrderField[] { RenderJob.RENDER_JOB.BASE_JOB_ID }, false);
     public static final Index IX_RENDER_JOB_PROJECT_ID = Internal.createIndex(DSL.name("ix_render_job_project_id"), RenderJob.RENDER_JOB, new OrderField[] { RenderJob.RENDER_JOB.PROJECT_ID }, false);
     public static final Index IX_RENDER_JOB_STATUS = Internal.createIndex(DSL.name("ix_render_job_status"), RenderJob.RENDER_JOB, new OrderField[] { RenderJob.RENDER_JOB.STATUS }, false);
+    public static final Index IX_RENDER_JOB_TIMELINE_REVISION = Internal.createIndex(DSL.name("ix_render_job_timeline_revision"), RenderJob.RENDER_JOB, new OrderField[] { RenderJob.RENDER_JOB.TIMELINE_REVISION_ID }, false);
     public static final Index IX_RENDER_JOB_TRACE_ID = Internal.createIndex(DSL.name("ix_render_job_trace_id"), RenderJob.RENDER_JOB, new OrderField[] { RenderJob.RENDER_JOB.TRACE_ID }, false);
     public static final Index IX_RENDER_WORKER_HEARTBEAT = Internal.createIndex(DSL.name("ix_render_worker_heartbeat"), RenderWorker.RENDER_WORKER, new OrderField[] { RenderWorker.RENDER_WORKER.LAST_HEARTBEAT_AT }, false);
     public static final Index IX_RENDER_WORKER_STATUS = Internal.createIndex(DSL.name("ix_render_worker_status"), RenderWorker.RENDER_WORKER, new OrderField[] { RenderWorker.RENDER_WORKER.STATUS }, false);
@@ -404,8 +408,9 @@ public class Indexes {
     public static final Index IX_UEEG_TENANT_ID = Internal.createIndex(DSL.name("ix_ueeg_tenant_id"), UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH, new OrderField[] { UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH.TENANT_ID }, false);
     public static final Index IX_USAGE_METER_KEY = Internal.createIndex(DSL.name("ix_usage_meter_key"), UsageMeter.USAGE_METER, new OrderField[] { UsageMeter.USAGE_METER.METER_KEY }, false);
     public static final Index IX_USAGE_RECORD_CREATED_AT = Internal.createIndex(DSL.name("ix_usage_record_created_at"), RenderUsageRecord.RENDER_USAGE_RECORD, new OrderField[] { RenderUsageRecord.RENDER_USAGE_RECORD.CREATED_AT }, false);
+    public static final Index IX_USAGE_RECORD_DIMENSION = Internal.createIndex(DSL.name("ix_usage_record_dimension"), UsageRecord.USAGE_RECORD, new OrderField[] { UsageRecord.USAGE_RECORD.DIMENSION }, false);
     public static final Index IX_USAGE_RECORD_JOB_ID = Internal.createIndex(DSL.name("ix_usage_record_job_id"), RenderUsageRecord.RENDER_USAGE_RECORD, new OrderField[] { RenderUsageRecord.RENDER_USAGE_RECORD.JOB_ID }, false);
-    public static final Index IX_USAGE_RECORD_METER = Internal.createIndex(DSL.name("ix_usage_record_meter"), UsageRecord.USAGE_RECORD, new OrderField[] { UsageRecord.USAGE_RECORD.METER_KEY }, false);
+    public static final Index IX_USAGE_RECORD_OPERATION = Internal.createIndex(DSL.name("ix_usage_record_operation"), UsageRecord.USAGE_RECORD, new OrderField[] { UsageRecord.USAGE_RECORD.OPERATION_REF }, false);
     public static final Index IX_USAGE_RECORD_RECORDED = Internal.createIndex(DSL.name("ix_usage_record_recorded"), UsageRecord.USAGE_RECORD, new OrderField[] { UsageRecord.USAGE_RECORD.RECORDED_AT }, false);
     public static final Index IX_USAGE_RECORD_TENANT = Internal.createIndex(DSL.name("ix_usage_record_tenant"), UsageRecord.USAGE_RECORD, new OrderField[] { UsageRecord.USAGE_RECORD.TENANT_ID }, false);
     public static final Index IX_USAGE_RECORD_TENANT_ID = Internal.createIndex(DSL.name("ix_usage_record_tenant_id"), RenderUsageRecord.RENDER_USAGE_RECORD, new OrderField[] { RenderUsageRecord.RENDER_USAGE_RECORD.TENANT_ID }, false);
@@ -417,6 +422,7 @@ public class Indexes {
     public static final Index IX_USER_ROLE_ASSIGNMENT_WORKSPACE_ID = Internal.createIndex(DSL.name("ix_user_role_assignment_workspace_id"), UserRoleAssignment.USER_ROLE_ASSIGNMENT, new OrderField[] { UserRoleAssignment.USER_ROLE_ASSIGNMENT.WORKSPACE_ID }, false);
     public static final Index IX_USER_SEGMENT_TENANT = Internal.createIndex(DSL.name("ix_user_segment_tenant"), UserSegment.USER_SEGMENT, new OrderField[] { UserSegment.USER_SEGMENT.TENANT_ID }, false);
     public static final Index IX_USER_TENANT_ID = Internal.createIndex(DSL.name("ix_user_tenant_id"), User.USER, new OrderField[] { User.USER.TENANT_ID }, false);
+    public static final Index IX_WORKFLOW_EXECUTION_TENANT_STATUS = Internal.createIndex(DSL.name("ix_workflow_execution_tenant_status"), WorkflowExecution.WORKFLOW_EXECUTION, new OrderField[] { WorkflowExecution.WORKFLOW_EXECUTION.TENANT_ID, WorkflowExecution.WORKFLOW_EXECUTION.STATUS, WorkflowExecution.WORKFLOW_EXECUTION.CREATED_AT.desc() }, false);
     public static final Index IX_WORKSPACE_ENTITLEMENT_POOL_FEATURE_KEY = Internal.createIndex(DSL.name("ix_workspace_entitlement_pool_feature_key"), WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL, new OrderField[] { WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL.FEATURE_KEY }, false);
     public static final Index IX_WORKSPACE_ENTITLEMENT_POOL_WORKSPACE_ID = Internal.createIndex(DSL.name("ix_workspace_entitlement_pool_workspace_id"), WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL, new OrderField[] { WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL.WORKSPACE_ID }, false);
     public static final Index IX_WORKSPACE_GROUP_MEMBER_GROUP_ID = Internal.createIndex(DSL.name("ix_workspace_group_member_group_id"), WorkspaceGroupMember.WORKSPACE_GROUP_MEMBER, new OrderField[] { WorkspaceGroupMember.WORKSPACE_GROUP_MEMBER.GROUP_ID }, false);
@@ -433,4 +439,5 @@ public class Indexes {
     public static final Index UQ_EFFECT_PACK_EFFECT_KEY = Internal.createIndex(DSL.name("uq_effect_pack_effect_key"), EffectPackEffect.EFFECT_PACK_EFFECT, new OrderField[] { EffectPackEffect.EFFECT_PACK_EFFECT.PACK_ROW_ID, EffectPackEffect.EFFECT_PACK_EFFECT.EFFECT_KEY }, true);
     public static final Index UQ_EFFECT_PACK_IDENTITY = Internal.createIndex(DSL.name("uq_effect_pack_identity"), EffectPack.EFFECT_PACK, new OrderField[] { EffectPack.EFFECT_PACK.PACK_ID, EffectPack.EFFECT_PACK.VERSION, EffectPack.EFFECT_PACK.TENANT_ID }, true);
     public static final Index UX_TIMELINE_REVISION_PROJECT_NUM = Internal.createIndex(DSL.name("ux_timeline_revision_project_num"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.REVISION_NUMBER }, true);
+    public static final Index UX_WORKFLOW_EXECUTION_IDEMPOTENCY = Internal.createIndex(DSL.name("ux_workflow_execution_idempotency"), WorkflowExecution.WORKFLOW_EXECUTION, new OrderField[] { WorkflowExecution.WORKFLOW_EXECUTION.TENANT_ID, WorkflowExecution.WORKFLOW_EXECUTION.IDEMPOTENCY_KEY }, true);
 }

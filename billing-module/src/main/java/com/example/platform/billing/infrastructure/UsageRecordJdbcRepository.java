@@ -50,18 +50,14 @@ public class UsageRecordJdbcRepository {
     public UsageRecord insert(UsageRecord record) {
         int updated = jdbc.update("""
                 INSERT INTO usage_record (
-                    id, tenant_id, meter_key, quantity, unit, recorded_at, idempotency_key,
+                    id, tenant_id, recorded_at, idempotency_key,
                     operation_ref, attempt_ref, dimension, quantity_base_units, quantity_unit,
                     actor_type, actor_ref, provider_ref, capability, provenance, source, observed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (idempotency_key) DO NOTHING
                 """,
                 record.recordId(),
                 record.tenantId(),
-                // Legacy NOT NULL columns: placeholders only. Canonical authority is base_units + unit.
-                record.dimension().name(),
-                0.0,
-                record.quantity().unit().name(),
                 Timestamp.from(record.recordedAt()),
                 record.idempotencyKey(),
                 // Canonical columns.

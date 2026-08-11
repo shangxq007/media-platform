@@ -49,115 +49,213 @@ public class UsageRecordRecord extends UpdatableRecordImpl<UsageRecordRecord> {
     }
 
     /**
-     * Setter for <code>public.usage_record.workspace_id</code>.
-     */
-    public void setWorkspaceId(String value) {
-        set(2, value);
-    }
-
-    /**
-     * Getter for <code>public.usage_record.workspace_id</code>.
-     */
-    public String getWorkspaceId() {
-        return (String) get(2);
-    }
-
-    /**
-     * Setter for <code>public.usage_record.user_id</code>.
-     */
-    public void setUserId(String value) {
-        set(3, value);
-    }
-
-    /**
-     * Getter for <code>public.usage_record.user_id</code>.
-     */
-    public String getUserId() {
-        return (String) get(3);
-    }
-
-    /**
-     * Setter for <code>public.usage_record.meter_key</code>.
-     */
-    public void setMeterKey(String value) {
-        set(4, value);
-    }
-
-    /**
-     * Getter for <code>public.usage_record.meter_key</code>.
-     */
-    public String getMeterKey() {
-        return (String) get(4);
-    }
-
-    /**
-     * Setter for <code>public.usage_record.quantity</code>.
-     */
-    public void setQuantity(Double value) {
-        set(5, value);
-    }
-
-    /**
-     * Getter for <code>public.usage_record.quantity</code>.
-     */
-    public Double getQuantity() {
-        return (Double) get(5);
-    }
-
-    /**
-     * Setter for <code>public.usage_record.unit</code>.
-     */
-    public void setUnit(String value) {
-        set(6, value);
-    }
-
-    /**
-     * Getter for <code>public.usage_record.unit</code>.
-     */
-    public String getUnit() {
-        return (String) get(6);
-    }
-
-    /**
      * Setter for <code>public.usage_record.recorded_at</code>.
      */
     public void setRecordedAt(LocalDateTime value) {
-        set(7, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.usage_record.recorded_at</code>.
      */
     public LocalDateTime getRecordedAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(2);
     }
 
     /**
      * Setter for <code>public.usage_record.idempotency_key</code>.
      */
     public void setIdempotencyKey(String value) {
-        set(8, value);
+        set(3, value);
     }
 
     /**
      * Getter for <code>public.usage_record.idempotency_key</code>.
      */
     public String getIdempotencyKey() {
-        return (String) get(8);
+        return (String) get(3);
     }
 
     /**
      * Setter for <code>public.usage_record.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.usage_record.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(4);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.operation_ref</code>.
+     */
+    public void setOperationRef(String value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.operation_ref</code>.
+     */
+    public String getOperationRef() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.attempt_ref</code>.
+     */
+    public void setAttemptRef(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.attempt_ref</code>.
+     */
+    public String getAttemptRef() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.dimension</code>.
+     */
+    public void setDimension(String value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.dimension</code>.
+     */
+    public String getDimension() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.quantity_base_units</code>.
+     */
+    public void setQuantityBaseUnits(Long value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.quantity_base_units</code>.
+     */
+    public Long getQuantityBaseUnits() {
+        return (Long) get(8);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.quantity_unit</code>.
+     */
+    public void setQuantityUnit(String value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.quantity_unit</code>.
+     */
+    public String getQuantityUnit() {
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.actor_type</code>.
+     */
+    public void setActorType(String value) {
+        set(10, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.actor_type</code>.
+     */
+    public String getActorType() {
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.actor_ref</code>.
+     */
+    public void setActorRef(String value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.actor_ref</code>.
+     */
+    public String getActorRef() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.provider_ref</code>.
+     */
+    public void setProviderRef(String value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.provider_ref</code>.
+     */
+    public String getProviderRef() {
+        return (String) get(12);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.capability</code>.
+     */
+    public void setCapability(String value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.capability</code>.
+     */
+    public String getCapability() {
+        return (String) get(13);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.provenance</code>.
+     */
+    public void setProvenance(String value) {
+        set(14, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.provenance</code>.
+     */
+    public String getProvenance() {
+        return (String) get(14);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.source</code>.
+     */
+    public void setSource(String value) {
+        set(15, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.source</code>.
+     */
+    public String getSource() {
+        return (String) get(15);
+    }
+
+    /**
+     * Setter for <code>public.usage_record.observed_at</code>.
+     */
+    public void setObservedAt(LocalDateTime value) {
+        set(16, value);
+    }
+
+    /**
+     * Getter for <code>public.usage_record.observed_at</code>.
+     */
+    public LocalDateTime getObservedAt() {
+        return (LocalDateTime) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -183,19 +281,26 @@ public class UsageRecordRecord extends UpdatableRecordImpl<UsageRecordRecord> {
     /**
      * Create a detached, initialised UsageRecordRecord
      */
-    public UsageRecordRecord(String id, String tenantId, String workspaceId, String userId, String meterKey, Double quantity, String unit, LocalDateTime recordedAt, String idempotencyKey, LocalDateTime createdAt) {
+    public UsageRecordRecord(String id, String tenantId, LocalDateTime recordedAt, String idempotencyKey, LocalDateTime createdAt, String operationRef, String attemptRef, String dimension, Long quantityBaseUnits, String quantityUnit, String actorType, String actorRef, String providerRef, String capability, String provenance, String source, LocalDateTime observedAt) {
         super(UsageRecord.USAGE_RECORD);
 
         setId(id);
         setTenantId(tenantId);
-        setWorkspaceId(workspaceId);
-        setUserId(userId);
-        setMeterKey(meterKey);
-        setQuantity(quantity);
-        setUnit(unit);
         setRecordedAt(recordedAt);
         setIdempotencyKey(idempotencyKey);
         setCreatedAt(createdAt);
+        setOperationRef(operationRef);
+        setAttemptRef(attemptRef);
+        setDimension(dimension);
+        setQuantityBaseUnits(quantityBaseUnits);
+        setQuantityUnit(quantityUnit);
+        setActorType(actorType);
+        setActorRef(actorRef);
+        setProviderRef(providerRef);
+        setCapability(capability);
+        setProvenance(provenance);
+        setSource(source);
+        setObservedAt(observedAt);
         resetChangedOnNotNull();
     }
 }

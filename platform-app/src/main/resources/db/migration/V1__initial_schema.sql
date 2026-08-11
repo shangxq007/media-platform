@@ -937,19 +937,14 @@ create index ix_usage_meter_key on usage_meter(meter_key);
 create table usage_record (
     id varchar(64) primary key,
     tenant_id varchar(64),
-    workspace_id varchar(64),
-    user_id varchar(64),
-    meter_key varchar(128) not null,
-    quantity double precision not null,
-    unit varchar(64) not null,
     recorded_at timestamp not null,
     idempotency_key varchar(255) unique,
     created_at timestamp not null default now(),
     operation_ref varchar(128),
     attempt_ref varchar(128),
-    dimension varchar(64),
-    quantity_base_units bigint,
-    quantity_unit varchar(32),
+    dimension varchar(64) not null,
+    quantity_base_units bigint not null,
+    quantity_unit varchar(32) not null,
     actor_type varchar(32),
     actor_ref varchar(128),
     provider_ref varchar(128),
@@ -960,7 +955,6 @@ create table usage_record (
 );
 
 create index ix_usage_record_tenant on usage_record(tenant_id);
-create index ix_usage_record_meter on usage_record(meter_key);
 create index ix_usage_record_recorded on usage_record(recorded_at);
 create index ix_usage_record_operation on usage_record(operation_ref);
 create index ix_usage_record_dimension on usage_record(dimension);

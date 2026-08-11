@@ -1,6 +1,10 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.billing.domain.*;
+import com.example.platform.billing.domain.BillingDecision;
+import com.example.platform.billing.domain.BillingLedgerEntry;
+import com.example.platform.billing.domain.BillingState;
+import com.example.platform.billing.domain.CreditWallet;
+import com.example.platform.billing.usage.UsageRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -40,7 +44,7 @@ public class BillingCycleService {
 
         Map<String, Double> usageByMeter = new HashMap<>();
         for (UsageRecord record : usage) {
-            usageByMeter.merge(record.meterKey(), record.quantity(), Double::sum);
+            usageByMeter.merge(record.dimension().name(), (double) record.quantity().baseUnits(), Double::sum);
         }
 
         long totalChargeMinor = 0L;

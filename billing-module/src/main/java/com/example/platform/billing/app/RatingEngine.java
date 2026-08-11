@@ -1,6 +1,9 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.billing.domain.*;
+import com.example.platform.billing.domain.RatedUsageRecord;
+import com.example.platform.billing.domain.PricingRule;
+import com.example.platform.billing.domain.PricingTier;
+import com.example.platform.billing.usage.UsageRecord;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,17 +31,18 @@ public class RatingEngine {
 
         long ratedAmountMinor;
 
+        double quantity = (double) usageRecord.quantity().baseUnits();
         if (pricingRule.tiers() != null && !pricingRule.tiers().isEmpty()) {
-            ratedAmountMinor = calculateTieredAmount(usageRecord.quantity(), pricingRule);
+            ratedAmountMinor = calculateTieredAmount(quantity, pricingRule);
         } else {
-            ratedAmountMinor = Math.round(usageRecord.quantity() * pricingRule.unitPriceMinor());
+            ratedAmountMinor = Math.round(quantity * pricingRule.unitPriceMinor());
         }
 
         String ratedUsageId = Ids.newId("rat");
         Map<String, Object> details = new HashMap<>();
-        details.put("meterKey", usageRecord.meterKey());
-        details.put("quantity", usageRecord.quantity());
-        details.put("unit", usageRecord.unit());
+        details.put("meterKey", usageRecord.dimension().name());
+        details.put("quantity", quantity);
+        details.put("unit", usageRecord.quantity().unit().name());
         details.put("pricingModel", pricingRule.pricingModel().name());
         details.put("unitPriceMinor", pricingRule.unitPriceMinor());
 

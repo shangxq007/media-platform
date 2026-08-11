@@ -65,31 +65,6 @@ public class UsageRecord extends TableImpl<UsageRecordRecord> {
     public final TableField<UsageRecordRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
-     * The column <code>public.usage_record.workspace_id</code>.
-     */
-    public final TableField<UsageRecordRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.usage_record.user_id</code>.
-     */
-    public final TableField<UsageRecordRecord, String> USER_ID = createField(DSL.name("user_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.usage_record.meter_key</code>.
-     */
-    public final TableField<UsageRecordRecord, String> METER_KEY = createField(DSL.name("meter_key"), SQLDataType.VARCHAR(128).nullable(false), this, "");
-
-    /**
-     * The column <code>public.usage_record.quantity</code>.
-     */
-    public final TableField<UsageRecordRecord, Double> QUANTITY = createField(DSL.name("quantity"), SQLDataType.DOUBLE.nullable(false), this, "");
-
-    /**
-     * The column <code>public.usage_record.unit</code>.
-     */
-    public final TableField<UsageRecordRecord, String> UNIT = createField(DSL.name("unit"), SQLDataType.VARCHAR(64).nullable(false), this, "");
-
-    /**
      * The column <code>public.usage_record.recorded_at</code>.
      */
     public final TableField<UsageRecordRecord, LocalDateTime> RECORDED_AT = createField(DSL.name("recorded_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
@@ -103,6 +78,66 @@ public class UsageRecord extends TableImpl<UsageRecordRecord> {
      * The column <code>public.usage_record.created_at</code>.
      */
     public final TableField<UsageRecordRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+
+    /**
+     * The column <code>public.usage_record.operation_ref</code>.
+     */
+    public final TableField<UsageRecordRecord, String> OPERATION_REF = createField(DSL.name("operation_ref"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.usage_record.attempt_ref</code>.
+     */
+    public final TableField<UsageRecordRecord, String> ATTEMPT_REF = createField(DSL.name("attempt_ref"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.usage_record.dimension</code>.
+     */
+    public final TableField<UsageRecordRecord, String> DIMENSION = createField(DSL.name("dimension"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.usage_record.quantity_base_units</code>.
+     */
+    public final TableField<UsageRecordRecord, Long> QUANTITY_BASE_UNITS = createField(DSL.name("quantity_base_units"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.usage_record.quantity_unit</code>.
+     */
+    public final TableField<UsageRecordRecord, String> QUANTITY_UNIT = createField(DSL.name("quantity_unit"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column <code>public.usage_record.actor_type</code>.
+     */
+    public final TableField<UsageRecordRecord, String> ACTOR_TYPE = createField(DSL.name("actor_type"), SQLDataType.VARCHAR(32), this, "");
+
+    /**
+     * The column <code>public.usage_record.actor_ref</code>.
+     */
+    public final TableField<UsageRecordRecord, String> ACTOR_REF = createField(DSL.name("actor_ref"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.usage_record.provider_ref</code>.
+     */
+    public final TableField<UsageRecordRecord, String> PROVIDER_REF = createField(DSL.name("provider_ref"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.usage_record.capability</code>.
+     */
+    public final TableField<UsageRecordRecord, String> CAPABILITY = createField(DSL.name("capability"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.usage_record.provenance</code>.
+     */
+    public final TableField<UsageRecordRecord, String> PROVENANCE = createField(DSL.name("provenance"), SQLDataType.VARCHAR(32), this, "");
+
+    /**
+     * The column <code>public.usage_record.source</code>.
+     */
+    public final TableField<UsageRecordRecord, String> SOURCE = createField(DSL.name("source"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.usage_record.observed_at</code>.
+     */
+    public final TableField<UsageRecordRecord, LocalDateTime> OBSERVED_AT = createField(DSL.name("observed_at"), SQLDataType.LOCALDATETIME(6), this, "");
 
     private UsageRecord(Name alias, Table<UsageRecordRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -140,7 +175,7 @@ public class UsageRecord extends TableImpl<UsageRecordRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_USAGE_RECORD_METER, Indexes.IX_USAGE_RECORD_RECORDED, Indexes.IX_USAGE_RECORD_TENANT);
+        return Arrays.asList(Indexes.IX_USAGE_RECORD_DIMENSION, Indexes.IX_USAGE_RECORD_OPERATION, Indexes.IX_USAGE_RECORD_RECORDED, Indexes.IX_USAGE_RECORD_TENANT);
     }
 
     @Override
