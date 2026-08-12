@@ -495,6 +495,57 @@ tasks.register("verifyC1Cnm1RedGates") {
     }
 }
 
+tasks.register("verifyC1Cnm1Red14") {
+    group = "verification"
+    description = "C1-CNM1-RED-14: cross-language canonical rate wire contract — every production consumer enforces one bounded exact domain; invalid/out-of-range/zero-denominator inputs are REJECTED, never narrowed or defaulted; adapter/parser path parity; validation precedes narrowing"
+    doLast {
+        val codec = file("render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/time/CanonicalFrameRateCodec.java")
+        require(codec.exists()) { "FAIL: canonical rate codec missing" }
+        val cc = codec.readText()
+        require(cc.contains("int32 wire domain") || cc.contains("Integer.MAX_VALUE")) { "FAIL: codec must enforce int32 wire bound" }
+        require(cc.contains("denominator must not be zero") || cc.contains("den == 0")) { "FAIL: codec must reject zero denominator" }
+        require(cc.contains("InvalidCanonicalRateException")) { "FAIL: codec must have explicit invalid-rate type" }
+        require(cc.contains("isIntegralNumber")) { "FAIL: codec must require exact integer JSON numbers" }
+
+        // Consumers must route through the codec (no unsafe asInt narrowing on rate).
+        val adapter = file("render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineCandidateAdapter.java").readText()
+        require(adapter.contains("CanonicalFrameRateCodec.parse")) { "FAIL: adapter must parse rate via codec" }
+        require(!adapter.contains("rate.get(\"num\").asInt") && !adapter.contains("rate.get(\"den\").asInt")) {
+            "FAIL: adapter must not use asInt as rate validator"
+        }
+        val parser = file("render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineScriptParser.java").readText()
+        require(parser.contains("CanonicalFrameRateCodec.parse")) { "FAIL: script parser must parse rate via codec" }
+        require(parser.contains("InvalidCanonicalRateException")) { "FAIL: script parser must propagate invalid-rate rejection" }
+        require(!parser.contains("asLong(0)") || !parser.contains("parseFrameRateNode")) { "note: parser rate reads must be codec-bounded" }
+
+        // Legacy int-fps projection readers must validate before narrowing.
+        for (f in listOf(
+            "render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineAdapter.java",
+            "render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineToEditorConverter.java",
+            "render-module/src/main/java/com/example/platform/render/app/timeline/SegmentTimelinePlanner.java",
+            "render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineExtensionsReader.java")) {
+            val src = file(f).readText()
+            require(src.contains("CanonicalFrameRateCodec.parse")) { "FAIL: $f must validate rate via codec" }
+            require(!src.contains("asInt(30) / rate.get(\"den\").asInt(1)") && !src.contains("asInt(defaultFps) / rate.get(\"den\").asInt(1)")) {
+                "FAIL: $f must not narrow-then-divide rate"
+            }
+        }
+
+        // Behavioral parity proof must exist and cover both paths.
+        val behavioral = file("render-module/src/test/java/com/example/platform/render/app/timeline/C1Cnm1Cr1RateContractTest.java")
+        require(behavioral.exists()) { "FAIL: RED-14 behavioral parity test missing" }
+        val bt = behavioral.readText()
+        require(bt.contains("outOfInt32RateRejectsOnBothPaths")) { "FAIL: out-of-int32 behavioral proof missing" }
+        require(bt.contains("zeroDenominatorRejectsOnBothPaths")) { "FAIL: zero-denominator behavioral proof missing" }
+        require(bt.contains("validRatesAcceptOnBothPaths")) { "FAIL: valid-fractional behavioral proof missing" }
+        require(bt.contains("missingRateDefaultsOnAdapterPath")) { "FAIL: missing-vs-invalid proof missing" }
+        require(bt.contains("60000") && bt.contains("30000") && bt.contains("1001")) { "FAIL: fractional fixtures missing" }
+
+        println("OK: C1-CNM1-RED-14 verified (bounded exact wire domain; reject-not-default; validate-before-narrowing; adapter/parser parity)")
+    }
+}
+
+
 tasks.register("jooqFoundationCheck") {
     group = "verification"
     description = "Run all jOOQ foundation verification checks"
