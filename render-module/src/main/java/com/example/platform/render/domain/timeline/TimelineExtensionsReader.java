@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.example.platform.render.domain.timeline.semantics.time.CanonicalFrameRateCodec;
 import org.springframework.stereotype.Component;
 
 /**
@@ -167,11 +168,23 @@ public class TimelineExtensionsReader {
     }
 
     private static int frameRateFromRoot(JsonNode root) {
-        JsonNode rate = root.path("project").path("frameRate");
-        if (rate.has("num") && rate.has("den") && rate.get("den").asInt(1) > 0) {
-            return Math.max(1, rate.get("num").asInt(30) / rate.get("den").asInt(1));
-        }
-        return 30;
+        return projectFps(root.path("project").path("frameRate"));
+    }
+
+    /**
+     * C1-CNM1-CR1: project-level wire rate -> integer fps projection.
+     * The wire rate is validated through {@link CanonicalFrameRateCodec}
+     * BEFORE narrowing: present-but-invalid input is rejected (propagated),
+     * never silently truncated or defaulted; a fully absent rate node is an
+     * optional field and follows the documented default. Fractional rates
+     * project to integer fps by explicit bounded division (legacy int-fps
+     * carrier semantics) after domain validation.
+     */
+    private static int projectFps(JsonNode rate) {
+        var parsed = CanonicalFrameRateCodec.parse(rate, true);
+        long num = parsed.numerator().longValueExact();
+        long den = parsed.denominator();
+        return Math.max(1, (int) (num / den));
     }
 
     private static double rangeStartSec(JsonNode range, int fps) {

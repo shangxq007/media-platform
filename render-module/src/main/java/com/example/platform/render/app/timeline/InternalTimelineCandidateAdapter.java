@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.render.domain.timeline.semantics.time.CanonicalFrameRateCodec;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalProfile;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect;
@@ -26,8 +27,6 @@ import java.util.Map;
  * assetRegistry are representation-level and documented as non-semantic).</p>
  */
 final class InternalTimelineCandidateAdapter {
-
-    private static final int DEFAULT_FPS = 30;
 
     private InternalTimelineCandidateAdapter() {
     }
@@ -139,38 +138,24 @@ final class InternalTimelineCandidateAdapter {
     }
 
     /**
-     * C1-CNM1: exact rational clip rate — reads BOTH numerator and denominator.
-     * The denominator is never dropped; the rate is a canonical domain value.
-     * Defaults to 30/1 when the wire rate block is absent (existing convention).
-     *
-     * <p>Cross-language contract (Option A — bounded numeric): the canonical
-     * wire rate components are JSON numbers bounded to the int32 domain
-     * (all supported rates 24/1..60000/1001 fit comfortably; JS-safe). Values
-     * outside the bound are REJECTED, never silently narrowed by asInt.</p>
+     * C1-CNM1-CR1: parse the canonical clip rate through
+     * {@link CanonicalFrameRateCodec}. Present-but-invalid rate input
+     * (out-of-int32, zero/negative denominator, malformed, non-integral) is
+     * REJECTED with {@link TimelineCanonicalRejectionException} — never
+     * silently defaulted. Only a fully absent rate node follows the optional
+     * default policy.
      */
     private static FrameRate clipRateOf(JsonNode clipNode) {
         JsonNode rate = clipNode.path("timelineRange").path("start").path("rate");
-        if (rate.has("num") && rate.has("den") && rate.get("num").asInt(0) > 0 && rate.get("den").asInt(1) > 0) {
-            try {
-                long num = rate.get("num").asLong();
-                long den = rate.get("den").asLong();
-                if (num > Integer.MAX_VALUE || den > Integer.MAX_VALUE || num <= 0 || den <= 0) {
-                    throw new TimelineCanonicalRejectionException(
-                            new TimelineCanonicalRejectionException.AdapterDiagnostic(
-                                    TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
-                                    TimelineModelPath.root().field("composition").field("tracks").field("clips").field("rate"),
-                                    "Frame rate out of canonical int32 wire bound: " + num + "/" + den));
-                }
-                return FrameRate.of(num, den);
-            } catch (ArithmeticException | IllegalArgumentException invalid) {
-                throw new TimelineCanonicalRejectionException(
-                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
-                                TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
-                                TimelineModelPath.root().field("composition").field("tracks").field("clips").field("rate"),
-                                "Internal timeline frame rate invalid or out of range"));
-            }
+        try {
+            return CanonicalFrameRateCodec.parse(rate, true);
+        } catch (CanonicalFrameRateCodec.InvalidCanonicalRateException e) {
+            throw new TimelineCanonicalRejectionException(
+                    new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                            TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
+                            TimelineModelPath.root().field("composition").field("tracks").field("clips").field("rate"),
+                            e.getMessage()));
         }
-        return FrameRate.of(DEFAULT_FPS, 1);
     }
 
     /**

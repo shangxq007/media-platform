@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import com.example.platform.render.domain.timeline.semantics.time.CanonicalFrameRateCodec;
 import org.springframework.stereotype.Service;
 
 /**
@@ -221,11 +222,23 @@ public class InternalTimelineToEditorConverter {
     }
 
     private static int frameRate(JsonNode root) {
-        JsonNode rate = root.path("project").path("frameRate");
-        if (rate.has("num") && rate.has("den") && rate.get("den").asInt(1) > 0) {
-            return Math.max(1, rate.get("num").asInt(30) / rate.get("den").asInt(1));
-        }
-        return rate.asInt(30);
+        return projectFps(root.path("project").path("frameRate"));
+    }
+
+    /**
+     * C1-CNM1-CR1: project-level wire rate -> integer fps projection.
+     * The wire rate is validated through {@link CanonicalFrameRateCodec}
+     * BEFORE narrowing: present-but-invalid input is rejected (propagated),
+     * never silently truncated or defaulted; a fully absent rate node is an
+     * optional field and follows the documented default. Fractional rates
+     * project to integer fps by explicit bounded division (legacy int-fps
+     * carrier semantics) after domain validation.
+     */
+    private static int projectFps(JsonNode rate) {
+        var parsed = CanonicalFrameRateCodec.parse(rate, true);
+        long num = parsed.numerator().longValueExact();
+        long den = parsed.denominator();
+        return Math.max(1, (int) (num / den));
     }
 
     private static double rangeStartSec(JsonNode range, int fps) {
@@ -262,9 +275,12 @@ public class InternalTimelineToEditorConverter {
     }
 
     private static int fpsFromNode(JsonNode rate, int defaultFps) {
-        if (rate.has("num") && rate.has("den") && rate.get("den").asInt(1) > 0) {
-            return Math.max(1, rate.get("num").asInt(defaultFps) / rate.get("den").asInt(1));
-        }
-        return defaultFps;
+        // C1-CNM1-CR1: validate through the canonical codec BEFORE projection;
+        // invalid rate input is rejected (propagated), never narrowed-then-
+        // divided; an absent rate node follows the caller's default policy.
+        var parsed = CanonicalFrameRateCodec.parse(rate, true);
+        long num = parsed.numerator().longValueExact();
+        long den = parsed.denominator();
+        return Math.max(1, (int) (num / den));
     }
 }

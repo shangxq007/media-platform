@@ -1,8 +1,10 @@
 package com.example.platform.render.domain.timeline;
 
+import com.example.platform.render.domain.timeline.semantics.time.CanonicalFrameRateCodec;
 import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -257,16 +259,13 @@ public class TimelineScriptParser {
     private TimelineOutputSpec parseOutputSpec(JsonNode root) {
         JsonNode output = root.get("outputSpec");
         if (output != null && output.isObject()) {
+            // C1-CNM1-CR1: a present-but-invalid canonical frameRate is a
+            // REJECTED input, never silently defaulted through the profile
+            // fallback. Parse the rate FIRST, outside the tolerant catch.
+            FrameRate frameRate = parseFrameRateNode(output.get("frameRate"));
             try {
                 String format = textOr(output, "format", "mp4");
                 String resolution = textOr(output, "resolution", "1920x1080");
-                // C1-CNM1: exact rational frame rate. Accepts either the
-                // structured rate {num, den} (canonical) or a legacy decimal
-                // fps number, exact-rationalized from its DECIMAL STRING
-                // (never a binary floating authority). treeToValue would
-                // deserialize FrameRate via reflection; explicit parsing keeps
-                // the legacy boundary deterministic.
-                FrameRate frameRate = parseFrameRateNode(output.get("frameRate"));
                 String videoCodec = textOr(output, "videoCodec", "h264");
                 int videoBitrate = output.path("videoBitrate").asInt(8000);
                 TimelineAudioSpec audioSpec = output.has("audioSpec")
@@ -276,7 +275,8 @@ public class TimelineScriptParser {
                 return new TimelineOutputSpec(format, resolution, frameRate, videoCodec,
                         videoBitrate, audioSpec, pixelFormat);
             } catch (Exception ignored) {
-                // fall through to profile default
+                // Non-rate output fields are tolerant: fall through to profile
+                // default. Invalid RATE input was already rejected above.
             }
         }
         String profile = textOr(root, "profile", "default_1080p");
@@ -287,43 +287,79 @@ public class TimelineScriptParser {
     }
 
     /**
-     * C1-CNM1: exact rational frame rate from a JSON node.
-     * Structured {@code {num, den}} is the canonical form; a legacy decimal
-     * fps number is rationalized from its decimal string (e.g. 29.97 -&gt;
-     * 2997/100). Never a binary floating authority; never silently truncated
-     * to an integer.
+     * C1-CNM1-CR1: exact rational frame rate from a JSON node.
+     * Structured {@code {num, den}} is the canonical form, parsed through
+     * {@link CanonicalFrameRateCodec} (int32-bounded, zero/negative/partial
+     * rejected — never defaulted). A legacy decimal fps number is
+     * rationalized from its decimal string (e.g. 29.97 -&gt; 2997/100) and
+     * validated against the same bounded domain. Never a binary floating
+     * authority; never silently truncated to an integer; never silently
+     * defaulted on invalid input.
      */
     private static FrameRate parseFrameRateNode(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
-            return FrameRate.of(30, 1);
+            // Absent outputSpec frameRate: optional field, documented default.
+            return CanonicalFrameRateCodec.DEFAULT_RATE;
         }
         if (node.isObject()) {
-            long num = node.path("num").asLong(0);
-            long den = node.path("den").asLong(1);
-            return FrameRate.of(num, den);
+            // Canonical {num, den} form, OR the OTIO/Jackson bean alias
+            // {numerator, denominator} produced by toOtioJson serializing the
+            // FrameRate record. Both are exact-integer, int32-bounded.
+            if (!node.has("num") && node.has("numerator")) {
+                ObjectNode canonical = MAPPER.createObjectNode();
+                canonical.set("num", node.get("numerator"));
+                canonical.set("den", node.get("denominator"));
+                return CanonicalFrameRateCodec.parse(canonical, false);
+            }
+            return CanonicalFrameRateCodec.parse(node, false);
         }
         if (node.isNumber() || node.isTextual()) {
             String s = node.isTextual() ? node.asText() : node.asText();
             int slash = s.indexOf('/');
+            long num;
+            long den;
             if (slash > 0) {
-                return FrameRate.of(Long.parseLong(s.substring(0, slash).trim()),
-                        Long.parseLong(s.substring(slash + 1).trim()));
+                num = parseBounded(s.substring(0, slash).trim());
+                den = parseBounded(s.substring(slash + 1).trim());
+            } else {
+                double d = node.asDouble();
+                if (!Double.isFinite(d) || d <= 0) {
+                    throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+                            "decimal fps must be finite and positive: " + s);
+                }
+                if (d == Math.rint(d)) {
+                    num = (long) d;
+                    den = 1L;
+                } else {
+                    String ds = String.valueOf(d);
+                    int dot = ds.indexOf('.');
+                    String frac = dot < 0 ? "" : ds.substring(dot + 1);
+                    den = frac.isEmpty() ? 1L : (long) Math.pow(10, frac.length());
+                    num = (long) Math.round(d * den);
+                }
             }
-            double d = node.asDouble();
-            if (d == Math.rint(d)) {
-                return FrameRate.of((long) d, 1);
+            if (num <= 0 || den <= 0 || num > Integer.MAX_VALUE || den > Integer.MAX_VALUE) {
+                throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+                        "fps out of canonical wire domain: " + num + "/" + den);
             }
-            String ds = String.valueOf(d);
-            int dot = ds.indexOf('.');
-            if (dot < 0) {
-                return FrameRate.of((long) d, 1);
-            }
-            String frac = ds.substring(dot + 1);
-            long den = (long) Math.pow(10, frac.length());
-            long num = (long) Math.round(d * den);
             return FrameRate.of(num, den);
         }
-        return FrameRate.of(30, 1);
+        throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+                "unexpected frameRate node type: " + node.getNodeType());
+    }
+
+    private static long parseBounded(String s) {
+        try {
+            long v = Long.parseLong(s);
+            if (v > Integer.MAX_VALUE || v < Integer.MIN_VALUE) {
+                throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+                        "component out of int32 wire domain: " + v);
+            }
+            return v;
+        } catch (NumberFormatException e) {
+            throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+                    "malformed rate component: " + s);
+        }
     }
 
     private TimelineTrack.TrackType parseTrackType(JsonNode trackNode) {
