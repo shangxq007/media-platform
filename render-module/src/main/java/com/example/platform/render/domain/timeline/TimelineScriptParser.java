@@ -1,5 +1,6 @@
 package com.example.platform.render.domain.timeline;
 
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
@@ -177,8 +178,19 @@ public class TimelineScriptParser {
         if (assetRefNode != null && assetRefNode.isObject()) {
             assetMetadata = mergeMaps(assetMetadata, parseStringMap(assetRefNode.get("metadata")));
         }
+        // C1-CNM1 SOURCE_BINDING_PRESERVATION_CORRECTION: clip identity and
+        // media asset identity are DISTINCT authorities. The production payload
+        // carries the authoritative asset id under assetRef.assetId; the legacy
+        // OTIO/script shape must preserve it (never substitute clipId).
+        String assetId = clipId;
+        if (assetRefNode != null && assetRefNode.isObject()) {
+            String refAssetId = textOr(assetRefNode, "assetId", "");
+            if (!refAssetId.isBlank()) {
+                assetId = refAssetId;
+            }
+        }
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                clipId, mediaRef, "unknown", 0, 0, 0, assetMetadata, null);
+                assetId, mediaRef, "unknown", 0, 0, 0, assetMetadata, null);
         List<TimelineClipEffect> effects = parseClipEffects(clipNode);
         return new TimelineClip(clipId, assetRef, timelineStart, startTime, outPoint,
                 duration, effects);
@@ -246,9 +258,25 @@ public class TimelineScriptParser {
         JsonNode output = root.get("outputSpec");
         if (output != null && output.isObject()) {
             try {
-                return MAPPER.treeToValue(output, TimelineOutputSpec.class);
+                String format = textOr(output, "format", "mp4");
+                String resolution = textOr(output, "resolution", "1920x1080");
+                // C1-CNM1: exact rational frame rate. Accepts either the
+                // structured rate {num, den} (canonical) or a legacy decimal
+                // fps number, exact-rationalized from its DECIMAL STRING
+                // (never a binary floating authority). treeToValue would
+                // deserialize FrameRate via reflection; explicit parsing keeps
+                // the legacy boundary deterministic.
+                FrameRate frameRate = parseFrameRateNode(output.get("frameRate"));
+                String videoCodec = textOr(output, "videoCodec", "h264");
+                int videoBitrate = output.path("videoBitrate").asInt(8000);
+                TimelineAudioSpec audioSpec = output.has("audioSpec")
+                        ? MAPPER.treeToValue(output.get("audioSpec"), TimelineAudioSpec.class)
+                        : TimelineAudioSpec.aacDefault();
+                String pixelFormat = textOr(output, "pixelFormat", "yuv420p");
+                return new TimelineOutputSpec(format, resolution, frameRate, videoCodec,
+                        videoBitrate, audioSpec, pixelFormat);
             } catch (Exception ignored) {
-                // fall through
+                // fall through to profile default
             }
         }
         String profile = textOr(root, "profile", "default_1080p");
@@ -256,6 +284,46 @@ public class TimelineScriptParser {
             return TimelineOutputSpec.mp4_720p30();
         }
         return TimelineOutputSpec.mp4_1080p30();
+    }
+
+    /**
+     * C1-CNM1: exact rational frame rate from a JSON node.
+     * Structured {@code {num, den}} is the canonical form; a legacy decimal
+     * fps number is rationalized from its decimal string (e.g. 29.97 -&gt;
+     * 2997/100). Never a binary floating authority; never silently truncated
+     * to an integer.
+     */
+    private static FrameRate parseFrameRateNode(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return FrameRate.of(30, 1);
+        }
+        if (node.isObject()) {
+            long num = node.path("num").asLong(0);
+            long den = node.path("den").asLong(1);
+            return FrameRate.of(num, den);
+        }
+        if (node.isNumber() || node.isTextual()) {
+            String s = node.isTextual() ? node.asText() : node.asText();
+            int slash = s.indexOf('/');
+            if (slash > 0) {
+                return FrameRate.of(Long.parseLong(s.substring(0, slash).trim()),
+                        Long.parseLong(s.substring(slash + 1).trim()));
+            }
+            double d = node.asDouble();
+            if (d == Math.rint(d)) {
+                return FrameRate.of((long) d, 1);
+            }
+            String ds = String.valueOf(d);
+            int dot = ds.indexOf('.');
+            if (dot < 0) {
+                return FrameRate.of((long) d, 1);
+            }
+            String frac = ds.substring(dot + 1);
+            long den = (long) Math.pow(10, frac.length());
+            long num = (long) Math.round(d * den);
+            return FrameRate.of(num, den);
+        }
+        return FrameRate.of(30, 1);
     }
 
     private TimelineTrack.TrackType parseTrackType(JsonNode trackNode) {

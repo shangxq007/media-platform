@@ -2,13 +2,16 @@ package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalProfile;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineModelPath;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineSourceRef;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Contract G adapter (PTCSG_RECORD_REVISION_CANONICAL_GATE_E1B_V1): maps the internal-1.0
@@ -127,18 +130,79 @@ final class InternalTimelineCandidateAdapter {
                             TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field("sourceRef"),
                             "Source reference (assetId) must be nonblank and already normalized"));
         }
-        int fps = frameRateOf(clipNode);
-        MediaTime timelineStart = rangeStart(clipNode.path("timelineRange"), "timelineRange", clipId, fps);
-        MediaTime sourceStart = sourceRangeStart(clipNode, clipId, fps);
-        MediaTime duration = rangeDuration(clipNode.path("timelineRange"), "timelineRange", clipId, fps);
+        FrameRate rate = clipRateOf(clipNode);
+        MediaTime timelineStart = rangeStart(clipNode.path("timelineRange"), "timelineRange", clipId, rate);
+        MediaTime sourceStart = sourceRangeStart(clipNode, clipId, rate);
+        MediaTime duration = rangeDuration(clipNode.path("timelineRange"), "timelineRange", clipId, rate);
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(assetId),
-                timelineStart, sourceStart, duration, List.of());
+                timelineStart, sourceStart, duration, rate, mapEffects(clipNode), List.of());
     }
 
-    /** Exact rational frame conversion via MediaTime.ofFrames; zero floating-point loss. */
-    private static MediaTime ofFrames(int frames, int fps) {
+    /**
+     * C1-CNM1: exact rational clip rate — reads BOTH numerator and denominator.
+     * The denominator is never dropped; the rate is a canonical domain value.
+     * Defaults to 30/1 when the wire rate block is absent (existing convention).
+     *
+     * <p>Cross-language contract (Option A — bounded numeric): the canonical
+     * wire rate components are JSON numbers bounded to the int32 domain
+     * (all supported rates 24/1..60000/1001 fit comfortably; JS-safe). Values
+     * outside the bound are REJECTED, never silently narrowed by asInt.</p>
+     */
+    private static FrameRate clipRateOf(JsonNode clipNode) {
+        JsonNode rate = clipNode.path("timelineRange").path("start").path("rate");
+        if (rate.has("num") && rate.has("den") && rate.get("num").asInt(0) > 0 && rate.get("den").asInt(1) > 0) {
+            try {
+                long num = rate.get("num").asLong();
+                long den = rate.get("den").asLong();
+                if (num > Integer.MAX_VALUE || den > Integer.MAX_VALUE || num <= 0 || den <= 0) {
+                    throw new TimelineCanonicalRejectionException(
+                            new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                    TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
+                                    TimelineModelPath.root().field("composition").field("tracks").field("clips").field("rate"),
+                                    "Frame rate out of canonical int32 wire bound: " + num + "/" + den));
+                }
+                return FrameRate.of(num, den);
+            } catch (ArithmeticException | IllegalArgumentException invalid) {
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
+                                TimelineModelPath.root().field("composition").field("tracks").field("clips").field("rate"),
+                                "Internal timeline frame rate invalid or out of range"));
+            }
+        }
+        return FrameRate.of(DEFAULT_FPS, 1);
+    }
+
+    /**
+     * C1-CNM1: effect preservation — parse the wire {@code effects[]} array
+     * into opaque {@link TimelineClipEffect} payloads. Never interpreted
+     * semantically; preserved verbatim through merge.
+     */
+    private static List<TimelineClipEffect> mapEffects(JsonNode clipNode) {
+        JsonNode effects = clipNode.path("effects");
+        if (!effects.isArray() || effects.isEmpty()) {
+            return List.of();
+        }
+        List<TimelineClipEffect> out = new ArrayList<>();
+        for (JsonNode fx : effects) {
+            String id = fx.path("id").asText(null);
+            String effectKey = fx.path("effectKey").asText("");
+            if (effectKey.isBlank()) {
+                // Opaque preservation: keep the raw node even if effectKey is absent.
+                effectKey = "opaque";
+            }
+            Map<String, Object> parameters = fx.path("parameters").isObject()
+                    ? InternalTimelineJson.mapper().convertValue(fx.path("parameters"), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {})
+                    : Map.of();
+            out.add(new TimelineClipEffect(id, effectKey, parameters));
+        }
+        return out;
+    }
+
+    /** Exact rational frame conversion via MediaTime.ofFrames(frames, rate.num, rate.den); zero floating-point loss. */
+    private static MediaTime ofFrames(long frames, FrameRate rate) {
         try {
-            return MediaTime.ofFrames(frames, fps, 1);
+            return MediaTime.ofFrames(frames, rate.numerator().longValueExact(), rate.denominator());
         } catch (ArithmeticException | IllegalArgumentException invalid) {
             throw new TimelineCanonicalRejectionException(
                     new TimelineCanonicalRejectionException.AdapterDiagnostic(
@@ -148,15 +212,7 @@ final class InternalTimelineCandidateAdapter {
         }
     }
 
-    private static int frameRateOf(JsonNode node) {
-        JsonNode rate = node.path("rate");
-        if (rate.has("num") && rate.has("den") && rate.get("num").asInt(0) > 0 && rate.get("den").asInt(1) > 0) {
-            return rate.get("num").asInt();
-        }
-        return DEFAULT_FPS;
-    }
-
-    private static MediaTime rangeStart(JsonNode range, String field, String clipId, int fps) {
+    private static MediaTime rangeStart(JsonNode range, String field, String clipId, FrameRate rate) {
         if (range.isMissingNode() || range.isNull()) {
             return MediaTime.ZERO; // missing range start defaults to zero (existing convention)
         }
@@ -168,12 +224,10 @@ final class InternalTimelineCandidateAdapter {
                             TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field(field),
                             "Clip timing frame must be non-negative"));
         }
-        int rate = range.path("start").path("rate").has("num")
-                ? range.path("start").path("rate").get("num").asInt(fps) : fps;
         return ofFrames(frame, rate);
     }
 
-    private static MediaTime sourceRangeStart(JsonNode clipNode, String clipId, int fps) {
+    private static MediaTime sourceRangeStart(JsonNode clipNode, String clipId, FrameRate rate) {
         JsonNode sourceRange = clipNode.path("sourceRange");
         if (sourceRange.isMissingNode() || sourceRange.isNull()) {
             return MediaTime.ZERO;
@@ -186,12 +240,10 @@ final class InternalTimelineCandidateAdapter {
                             TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field("sourceRange"),
                             "Clip source range frame must be non-negative"));
         }
-        int rate = sourceRange.path("start").path("rate").has("num")
-                ? sourceRange.path("start").path("rate").get("num").asInt(fps) : fps;
         return ofFrames(frame, rate);
     }
 
-    private static MediaTime rangeDuration(JsonNode range, String field, String clipId, int fps) {
+    private static MediaTime rangeDuration(JsonNode range, String field, String clipId, FrameRate rate) {
         if (range.isMissingNode() || range.isNull()) {
             throw new TimelineCanonicalRejectionException(
                     new TimelineCanonicalRejectionException.AdapterDiagnostic(
@@ -207,8 +259,6 @@ final class InternalTimelineCandidateAdapter {
                             TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field(field),
                             "Clip duration must be positive"));
         }
-        int rate = range.path("duration").path("rate").has("num")
-                ? range.path("duration").path("rate").get("num").asInt(fps) : fps;
         return ofFrames(frame, rate);
     }
 }

@@ -5,7 +5,8 @@ import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandid
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalNormalizer;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineValidationResult;
-import com.example.platform.render.domain.timeline.semantics.time.TimelineTimeQuantization;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
 import com.example.platform.render.domain.timeline.diff.TimelineChangeOperation;
 import com.example.platform.render.domain.timeline.diff.TimelinePatch;
 import com.example.platform.render.domain.timeline.diff.TimelinePatchId;
@@ -330,14 +331,15 @@ public class TimelineMergeEngine {
             if (!InternalTimelineJson.isInternalTimeline(targetRoot)) {
                 throw new IllegalStateException("Merge target payload is not internal-1.0");
             }
-            int fps = targetFps(targetRoot);
             ObjectNode composition = (ObjectNode) targetRoot.path("composition");
             if (composition == null || composition.isMissingNode()) {
                 throw new IllegalStateException("Merge target payload has no composition block");
             }
             ObjectNode mergedRoot = (ObjectNode) InternalTimelineJson.mapper().valueToTree(targetRoot);
             ObjectNode mergedComposition = (ObjectNode) mergedRoot.path("composition");
-            mergedComposition.set("tracks", tracksToJson(mergedSnapshot.tracks(), fps));
+            // C1-CNM1: merged tracks carry each clip's exact rational rate and
+            // opaque effect payload; no single target-fps projection is applied.
+            mergedComposition.set("tracks", tracksToJson(mergedSnapshot.tracks()));
             // revision counter is a document-level field; the persistence layer
             // re-assigns it on insert, so leave it untouched here.
             return InternalTimelineJson.write(mergedRoot);
@@ -346,25 +348,7 @@ public class TimelineMergeEngine {
         }
     }
 
-    private int targetFps(JsonNode root) {
-        JsonNode tracks = root.path("composition").path("tracks");
-        if (tracks.isArray()) {
-            for (JsonNode track : tracks) {
-                JsonNode clips = track.path("clips");
-                if (clips.isArray()) {
-                    for (JsonNode clip : clips) {
-                        JsonNode rate = clip.path("timelineRange").path("start").path("rate");
-                        if (rate.has("num") && rate.get("num").asInt(0) > 0) {
-                            return rate.get("num").asInt();
-                        }
-                    }
-                }
-            }
-        }
-        return 30;
-    }
-
-    private ArrayNode tracksToJson(List<CanonicalTimelineTrackSnapshot> tracks, int fps) {
+    private ArrayNode tracksToJson(List<CanonicalTimelineTrackSnapshot> tracks) {
         ObjectMapper mapper = InternalTimelineJson.mapper();
         ArrayNode out = mapper.createArrayNode();
         // Track order is semantic (TRACK_REORDERED materializes the order field);
@@ -378,7 +362,7 @@ public class TimelineMergeEngine {
             trackNode.put("type", type);
             ArrayNode clips = mapper.createArrayNode();
             for (CanonicalTimelineClipSnapshot clip : track.clips()) {
-                clips.add(clipToJson(clip, fps, mapper));
+                clips.add(clipToJson(clip, mapper));
             }
             trackNode.set("clips", clips);
             out.add(trackNode);
@@ -386,31 +370,56 @@ public class TimelineMergeEngine {
         return out;
     }
 
-    private ObjectNode clipToJson(CanonicalTimelineClipSnapshot clip, int fps, ObjectMapper mapper) {
+    private ObjectNode clipToJson(CanonicalTimelineClipSnapshot clip, ObjectMapper mapper) {
         ObjectNode node = mapper.createObjectNode();
         node.put("id", clip.clipId());
         node.put("assetId", clip.assetBindingId());
-        node.set("timelineRange", rangeToJson(clip.startMs(), clip.durationMs(), fps, mapper));
-        node.set("sourceRange", rangeToJson(clip.sourceStartMs(), clip.sourceDurationMs(), fps, mapper));
+        node.set("timelineRange", rangeToJson(clip.start(), clip.duration(), clip.rate(), mapper));
+        node.set("sourceRange", rangeToJson(clip.sourceStart(), clip.sourceDuration(), clip.rate(), mapper));
+        // C1-CNM1 effect preservation: merged clips carry their opaque effect
+        // payloads (preserved target/source-side, never semantically merged).
+        if (clip.effects() != null && !clip.effects().isEmpty()) {
+            ArrayNode effects = mapper.createArrayNode();
+            for (com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect fx : clip.effects()) {
+                ObjectNode fxNode = mapper.createObjectNode();
+                if (fx.id() != null) {
+                    fxNode.put("id", fx.id());
+                }
+                fxNode.put("effectKey", fx.effectKey());
+                if (fx.parameters() != null && !fx.parameters().isEmpty()) {
+                    fxNode.set("parameters", mapper.valueToTree(fx.parameters()));
+                }
+                effects.add(fxNode);
+            }
+            node.set("effects", effects);
+        }
         return node;
     }
 
-    private ObjectNode rangeToJson(long startMs, long durationMs, int fps, ObjectMapper mapper) {
-        ObjectNode rate = mapper.createObjectNode();
-        rate.put("num", fps);
-        rate.put("den", 1);
-        // C1-CRR2: ms -> frame via the single canonical quantization policy
-        // (round-half-up), paired with the input conversion so the persisted
-        // frame domain round-trips losslessly.
-        ObjectNode start = mapper.createObjectNode();
-        start.put("frame", TimelineTimeQuantization.millisToFrame(startMs, fps));
-        start.set("rate", rate);
-        ObjectNode duration = mapper.createObjectNode();
-        duration.put("frame", TimelineTimeQuantization.millisToFrame(durationMs, fps));
-        duration.set("rate", rate);
+    /**
+     * C1-CNM1: exact rational time -> frame @ exact rational rate.
+     *
+     * <p>{@code MediaTime.toFrameExact(rate)} computes
+     * frame = ticks * rate.num / (timeScale * rate.den) exactly (BigInteger).
+     * For canonical frame-derived values this is the exact inverse — no
+     * quantization, no integer-ms step, no denominator loss. A non-frame-
+     * aligned merged value throws (canonical merge output must never silently
+     * quantize); the merge machinery only ever produces frame-aligned values
+     * from frame-aligned inputs.</p>
+     */
+    private ObjectNode rangeToJson(MediaTime start, MediaTime duration, FrameRate rate, ObjectMapper mapper) {
+        ObjectNode rateNode = mapper.createObjectNode();
+        rateNode.put("num", rate.numerator());
+        rateNode.put("den", rate.denominator());
+        ObjectNode startNode = mapper.createObjectNode();
+        startNode.put("frame", start.toFrameExact(rate));
+        startNode.set("rate", rateNode);
+        ObjectNode durationNode = mapper.createObjectNode();
+        durationNode.put("frame", duration.toFrameExact(rate));
+        durationNode.set("rate", rateNode);
         ObjectNode range = mapper.createObjectNode();
-        range.set("start", start);
-        range.set("duration", duration);
+        range.set("start", startNode);
+        range.set("duration", durationNode);
         return range;
     }
 

@@ -2,6 +2,8 @@ package com.example.platform.render.domain.timeline.diff.application;
 
 import com.example.platform.render.domain.timeline.diff.*;
 import com.example.platform.render.domain.timeline.diff.calculation.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -38,7 +40,7 @@ public class TimelinePatchApplier {
         }
 
         CanonicalTimelineSnapshot patched = new CanonicalTimelineSnapshot(
-                current.id(), base.revisionId() + "+patched", current.durationMs(),
+                current.id(), base.revisionId() + "+patched", current.duration(),
                 current.tracks(), current.captions(), current.watermarks(),
                 current.templateApplications(), current.workflowSteps(),
                 current.outputProfile(), current.safeMetadata());
@@ -54,8 +56,9 @@ public class TimelinePatchApplier {
             case TRACK_REORDERED -> applyTrackReordered(s, op);
             case CLIP_ADDED -> applyClipAdded(s, op);
             case CLIP_REMOVED -> applyClipRemoved(s, op);
-            case CLIP_MOVED -> applyClipField(s, op, "startMs");
-            case CLIP_TRIMMED -> applyClipField(s, op, "durationMs");
+            case CLIP_MOVED -> applyClipField(s, op, "start");
+            case CLIP_TRIMMED -> applyClipField(s, op, "duration");
+            case CLIP_SPEED_CHANGED -> applyClipField(s, op, "rate");
             case ASSET_BINDING_CHANGED -> applyClipField(s, op, "assetBindingId");
             case CAPTION_SEGMENT_CHANGED -> applyCaptionText(s, op);
             case TEXT_STYLE_CHANGED -> applyCaptionText(s, op);
@@ -72,7 +75,7 @@ public class TimelinePatchApplier {
     // --- Duration ---
 
     private TimelinePatchApplicationResult applyDuration(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
-        long val = parseLong(afterVal(op), s.durationMs());
+        MediaTime val = parseMediaTime(afterVal(op), s.duration());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), val,
                 s.tracks(), s.captions(), s.watermarks(),
                 s.templateApplications(), s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
@@ -85,8 +88,36 @@ public class TimelinePatchApplier {
         if (s.tracks().stream().anyMatch(t -> t.trackId().equals(id))) {
             return fail(TimelinePatchApplicationIssueCode.TARGET_ALREADY_EXISTS, op.path().value(), "Track exists: " + id);
         }
+        // C1-CNM1 field-preservation correction: materialize the added track
+        // WITH its clips (identity, exact timing/rate, opaque effects) from the
+        // op's safeMetadata. A track added without reconstruction data is a
+        // failure — never an empty shell silently dropping source content.
+        Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        String kind = meta.getOrDefault("trackKind", "VIDEO");
+        List<CanonicalTimelineClipSnapshot> clips = new ArrayList<>();
+        String encoded = meta.get("clips");
+        if (encoded != null && !encoded.isBlank()) {
+            for (String clipEnc : encoded.split("\\u001f")) {
+                String[] parts = clipEnc.split("\\u001e", -1);
+                if (parts.length >= 8) {
+                    String clipId = parts[0];
+                    String assetBindingId = parts[1];
+                    MediaTime start = parseMediaTime(parts[2], MediaTime.ZERO);
+                    MediaTime duration = parseMediaTime(parts[3], MediaTime.ZERO);
+                    MediaTime sourceStart = parseMediaTime(parts[4], MediaTime.ZERO);
+                    MediaTime sourceDuration = parseMediaTime(parts[5], MediaTime.ZERO);
+                    long rateNum = parseLong(parts[6], 30);
+                    long rateDen = parseLong(parts[7], 1);
+                    String effectsEnc = parts.length > 8 ? parts[8] : null;
+                    clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
+                            start, duration, sourceStart, sourceDuration,
+                            FrameRate.of(rateNum, rateDen),
+                            parseEffects(effectsEnc), Map.of()));
+                }
+            }
+        }
         List<CanonicalTimelineTrackSnapshot> tracks = new ArrayList<>(s.tracks());
-        tracks.add(new CanonicalTimelineTrackSnapshot(id, s.tracks().size(), "VIDEO", List.of(), Map.of()));
+        tracks.add(new CanonicalTimelineTrackSnapshot(id, s.tracks().size(), kind, clips, Map.of()));
         return ok(withTracks(s, tracks));
     }
 
@@ -124,7 +155,26 @@ public class TimelinePatchApplier {
             return fail(TimelinePatchApplicationIssueCode.TARGET_ALREADY_EXISTS, op.path().value(), "Clip exists");
         }
         List<CanonicalTimelineClipSnapshot> clips = new ArrayList<>(track.clips());
-        clips.add(new CanonicalTimelineClipSnapshot(clipId, "", 0, 0, 0, 0, Map.of()));
+        // C1-CNM1 SOURCE_BINDING/field-preservation correction: reconstruct the
+        // added clip EXACTLY from the op's safeMetadata (asset binding, exact
+        // times, exact rate, opaque effects). A clip added with no metadata is
+        // a reconstruction failure — never a silent blank-asset/timing stub.
+        Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        String assetBindingId = meta.getOrDefault("assetBindingId", "");
+        if (assetBindingId.isBlank()) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "CLIP_ADDED missing assetBindingId reconstruction data");
+        }
+        MediaTime start = parseMediaTime(meta.get("start"), MediaTime.ZERO);
+        MediaTime duration = parseMediaTime(meta.get("duration"), MediaTime.ZERO);
+        MediaTime sourceStart = parseMediaTime(meta.get("sourceStart"), MediaTime.ZERO);
+        MediaTime sourceDuration = parseMediaTime(meta.get("sourceDuration"), MediaTime.ZERO);
+        long rateNum = parseLong(meta.get("rateNum"), 30);
+        long rateDen = parseLong(meta.get("rateDen"), 1);
+        FrameRate rate = FrameRate.of(rateNum, rateDen);
+        clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
+                start, duration, sourceStart, sourceDuration, rate,
+                parseEffects(meta.get("effects")), Map.of()));
         return ok(withUpdatedTrack(s, trackId, newTrackWithClips(track, clips)));
     }
 
@@ -175,10 +225,10 @@ public class TimelinePatchApplier {
         CanonicalTimelineCaptionSnapshot cap = capOpt.get();
         String newText = afterVal(op) != null ? afterVal(op) : cap.text();
         CanonicalTimelineCaptionSnapshot updated = new CanonicalTimelineCaptionSnapshot(
-                cap.captionId(), cap.startMs(), cap.endMs(), newText, cap.style(), cap.safeMetadata());
+                cap.captionId(), cap.start(), cap.end(), newText, cap.style(), cap.safeMetadata());
         List<CanonicalTimelineCaptionSnapshot> captions = s.captions().stream()
                 .map(c -> c.captionId().equals(capId) ? updated : c).collect(Collectors.toList());
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.durationMs(),
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), captions, s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
     }
@@ -203,7 +253,7 @@ public class TimelinePatchApplier {
                 wm.watermarkId(), wm.assetBindingId(), newPos, newOpacity, wm.safeMetadata());
         List<CanonicalTimelineWatermarkSnapshot> wms = s.watermarks().stream()
                 .map(w -> w.watermarkId().equals(wmId) ? updated : w).collect(Collectors.toList());
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.durationMs(),
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), wms, s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
     }
@@ -227,7 +277,7 @@ public class TimelinePatchApplier {
                 ta.templateApplicationId(), ta.templateId(), ta.templateVersion(), newParams, ta.safeMetadata());
         List<CanonicalTimelineTemplateApplicationSnapshot> apps = s.templateApplications().stream()
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.durationMs(),
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), apps,
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
     }
@@ -244,7 +294,7 @@ public class TimelinePatchApplier {
                 ta.templateApplicationId(), newId, ta.templateVersion(), ta.parameters(), ta.safeMetadata());
         List<CanonicalTimelineTemplateApplicationSnapshot> apps = s.templateApplications().stream()
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.durationMs(),
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), apps,
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
     }
@@ -262,7 +312,7 @@ public class TimelinePatchApplier {
                 ws.workflowStepId(), ws.stepType(), newAppId, ws.safeMetadata());
         List<CanonicalTimelineWorkflowStepSnapshot> steps = s.workflowSteps().stream()
                 .map(w -> w.workflowStepId().equals(stepId) ? updated : w).collect(Collectors.toList());
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.durationMs(),
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
                 steps, s.outputProfile(), s.safeMetadata()));
     }
@@ -282,7 +332,7 @@ public class TimelinePatchApplier {
         CanonicalTimelineOutputProfileSnapshot profile = new CanonicalTimelineOutputProfileSnapshot(
                 old != null ? old.profileId() : "default", old != null ? old.format() : "mp4",
                 old != null ? old.aspectRatio() : "16:9", newW, newH, Map.of());
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.durationMs(),
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), profile, s.safeMetadata()));
     }
@@ -303,7 +353,7 @@ public class TimelinePatchApplier {
                 }
             }
         }
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.durationMs(),
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), meta));
     }
@@ -313,13 +363,20 @@ public class TimelinePatchApplier {
     private CanonicalTimelineClipSnapshot applyClipFieldOp(
             CanonicalTimelineClipSnapshot c, String field, String afterValue) {
         return switch (field) {
-            case "startMs" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
-                    parseLong(afterValue, c.startMs()), c.durationMs(), c.sourceStartMs(), c.sourceDurationMs(), c.safeMetadata());
-            case "durationMs" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
-                    c.startMs(), parseLong(afterValue, c.durationMs()), c.sourceStartMs(), parseLong(afterValue, c.sourceDurationMs()), c.safeMetadata());
+            case "start" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
+                    parseMediaTime(afterValue, c.start()), c.duration(), c.sourceStart(), c.sourceDuration(),
+                    c.rate(), c.effects(), c.safeMetadata());
+            case "duration" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
+                    c.start(), parseMediaTime(afterValue, c.duration()), c.sourceStart(),
+                    parseMediaTime(afterValue, c.sourceDuration()),
+                    c.rate(), c.effects(), c.safeMetadata());
+            case "rate" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
+                    c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
+                    parseFrameRate(afterValue, c.rate()), c.effects(), c.safeMetadata());
             case "assetBindingId" -> new CanonicalTimelineClipSnapshot(c.clipId(),
                     afterValue != null ? afterValue : c.assetBindingId(),
-                    c.startMs(), c.durationMs(), c.sourceStartMs(), c.sourceDurationMs(), c.safeMetadata());
+                    c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
+                    c.rate(), c.effects(), c.safeMetadata());
             default -> c;
         };
     }
@@ -363,6 +420,56 @@ public class TimelinePatchApplier {
         try { return Long.parseLong(v.toString()); } catch (Exception e) { return def; }
     }
 
+    /** Exact MediaTime from canonical "ticks/timeScale" string (falls back to default). */
+    private MediaTime parseMediaTime(Object v, MediaTime def) {
+        if (v == null) return def;
+        try { return MediaTime.parse(v.toString()); } catch (Exception e) { return def; }
+    }
+
+    /**
+     * C1-CNM1: deserialize the opaque effect payload encoded by the diff
+     * calculator's clipAddedOp (unit-separator encoding). Empty/null -> no
+     * effects.
+     */
+    private List<com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect> parseEffects(String encoded) {
+        if (encoded == null || encoded.isBlank()) {
+            return List.of();
+        }
+        List<com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect> out = new ArrayList<>();
+        for (String fx : encoded.split("\\u001f")) {
+            String[] parts = fx.split("\\u001e", -1);
+            if (parts.length >= 2) {
+                String id = parts[0].isEmpty() ? null : parts[0];
+                String effectKey = parts[1];
+                java.util.Map<String, Object> params = new java.util.LinkedHashMap<>();
+                if (parts.length > 2 && !parts[2].isBlank()) {
+                    for (String kv : parts[2].split(",")) {
+                        int eq = kv.indexOf('=');
+                        if (eq > 0) {
+                            params.put(kv.substring(0, eq), kv.substring(eq + 1));
+                        }
+                    }
+                }
+                out.add(new com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect(id, effectKey, params));
+            }
+        }
+        return out;
+    }
+
+    /** Exact FrameRate from canonical "num/den" form; falls back to current value. */
+    private FrameRate parseFrameRate(Object v, FrameRate def) {
+        if (v == null) return def;
+        try {
+            String s = v.toString().trim();
+            int slash = s.indexOf('/');
+            if (slash < 0) {
+                return FrameRate.of(Long.parseLong(s), 1);
+            }
+            return FrameRate.of(Long.parseLong(s.substring(0, slash).trim()),
+                    Long.parseLong(s.substring(slash + 1).trim()));
+        } catch (Exception e) { return def; }
+    }
+
     private int parseInt(Object v, int def) {
         if (v == null) return def;
         try { return Integer.parseInt(v.toString()); } catch (Exception e) { return def; }
@@ -377,7 +484,7 @@ public class TimelinePatchApplier {
     }
 
     private CanonicalTimelineSnapshot withTracks(CanonicalTimelineSnapshot s, List<CanonicalTimelineTrackSnapshot> tracks) {
-        return new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.durationMs(),
+        return new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 tracks, s.captions(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata());
     }

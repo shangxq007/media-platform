@@ -1,5 +1,6 @@
 package com.example.platform.render.domain.timeline.canonicalmodel;
 
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
 import java.util.List;
 import java.util.Objects;
@@ -54,9 +55,18 @@ public record TimelineCandidate(
     }
 
     public record Clip(String clipId, TimelineSourceRef sourceRef, MediaTime timelineStart,
-            MediaTime sourceStart, MediaTime duration, List<Object> unsupportedConstructs) {
+            MediaTime sourceStart, MediaTime duration, FrameRate rate,
+            List<TimelineClipEffect> effects, List<Object> unsupportedConstructs) {
         public Clip {
             unsupportedConstructs = unsupportedConstructs == null ? List.of() : List.copyOf(unsupportedConstructs);
+            effects = effects == null ? List.of() : List.copyOf(effects);
+        }
+
+        /** Legacy constructor — no rate/effects (defaults 30/1 rate, no effects). */
+        public Clip(String clipId, TimelineSourceRef sourceRef, MediaTime timelineStart,
+                MediaTime sourceStart, MediaTime duration, List<Object> unsupportedConstructs) {
+            this(clipId, sourceRef, timelineStart, sourceStart, duration,
+                    FrameRate.of(30, 1), List.of(), unsupportedConstructs);
         }
     }
 }

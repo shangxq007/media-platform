@@ -1,14 +1,20 @@
 package com.example.platform.render.domain.timeline.diff.calculation;
 
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+
 import java.util.Map;
+import java.util.Objects;
 
 /**
- * Caption snapshot for diff input. Internal domain model.
+ * Canonical semantic merge caption snapshot (C1-CNM1 exact-time contract).
+ *
+ * <p>{@code start}/{@code end} are exact {@link MediaTime}; integer
+ * milliseconds are a projection, never merge semantic authority.
  */
 public record CanonicalTimelineCaptionSnapshot(
         String captionId,
-        long startMs,
-        long endMs,
+        MediaTime start,
+        MediaTime end,
         String text,
         Map<String, String> style,
         Map<String, String> safeMetadata) {
@@ -16,7 +22,8 @@ public record CanonicalTimelineCaptionSnapshot(
     public CanonicalTimelineCaptionSnapshot {
         if (captionId == null || captionId.isBlank())
             throw new IllegalArgumentException("captionId must not be blank");
-        if (startMs < 0) throw new IllegalArgumentException("startMs must be non-negative");
-        if (endMs < startMs) throw new IllegalArgumentException("endMs must be >= startMs");
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(end, "end");
+        if (end.isLessThan(start)) throw new IllegalArgumentException("end must be >= start");
     }
 }

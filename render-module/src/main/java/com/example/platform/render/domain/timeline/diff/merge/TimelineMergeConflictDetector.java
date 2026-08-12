@@ -254,7 +254,7 @@ public class TimelineMergeConflictDetector {
     }
 
     private String extractParentPath(String path) {
-        // e.g. "timeline.tracks.track-1.clips.clip-1.startMs" -> "timeline.tracks.track-1.clips.clip-1"
+        // e.g. "timeline.tracks.track-1.clips.clip-1.start" -> "timeline.tracks.track-1.clips.clip-1"
         // or "timeline.captions.cap-1.text" -> "timeline.captions.cap-1"
         int lastDot = path.lastIndexOf('.');
         if (lastDot > 0) {

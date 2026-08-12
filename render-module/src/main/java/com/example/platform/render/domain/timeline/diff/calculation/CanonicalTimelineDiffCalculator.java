@@ -25,10 +25,10 @@ public class CanonicalTimelineDiffCalculator {
         int[] opSeq = {0};
 
         // Duration
-        if (before.durationMs() != after.durationMs()) {
+        if (!before.duration().isEqualTo(after.duration())) {
             operations.add(change(opSeq, TimelineChangeType.TIMELINE_DURATION_CHANGED,
-                    TimelineChangeScope.TIMELINE, "timeline.durationMs",
-                    String.valueOf(before.durationMs()), String.valueOf(after.durationMs())));
+                    TimelineChangeScope.TIMELINE, "timeline.duration",
+                    before.duration().toString(), after.duration().toString()));
         }
 
         // Tracks
@@ -85,9 +85,13 @@ public class CanonicalTimelineDiffCalculator {
         // Added tracks
         for (String id : afterTracks.keySet()) {
             if (!beforeTracks.containsKey(id)) {
-                ops.add(change(seq, TimelineChangeType.TRACK_ADDED,
-                        TimelineChangeScope.TRACK, "timeline.tracks." + id,
-                        null, id));
+                // C1-CNM1 field-preservation correction: TRACK_ADDED carries
+                // the added track's full clip reconstruction data (identity,
+                // exact timing/rate, opaque effects) so the patch applier
+                // materializes the track WITH its clips — a source-added track
+                // must never degrade to an empty shell.
+                CanonicalTimelineTrackSnapshot at = afterTracks.get(id);
+                ops.add(trackAddedOp(seq, id, at));
             }
         }
 
@@ -130,8 +134,13 @@ public class CanonicalTimelineDiffCalculator {
         // Added
         for (String id : afterClips.keySet()) {
             if (!beforeClips.containsKey(id)) {
-                ops.add(change(seq, TimelineChangeType.CLIP_ADDED,
-                        TimelineChangeScope.CLIP, trackPath + "." + id, null, id));
+                // C1-CNM1 SOURCE_BINDING/field-preservation correction: the
+                // added clip's full reconstruction data (asset binding, exact
+                // times, exact rate, opaque effects) rides in safeMetadata so
+                // the patch applier materializes the clip EXACTLY — never a
+                // blank-asset/timing stub (identity authority preserved).
+                CanonicalTimelineClipSnapshot ac = afterClips.get(id);
+                ops.add(clipAddedOp(seq, trackPath + "." + id, ac));
             }
         }
 
@@ -142,23 +151,31 @@ public class CanonicalTimelineDiffCalculator {
                 CanonicalTimelineClipSnapshot ac = afterClips.get(id);
                 String clipPath = trackPath + "." + id;
 
-                if (bc.startMs() != ac.startMs()) {
+                if (!bc.start().isEqualTo(ac.start())) {
                     ops.add(change(seq, TimelineChangeType.CLIP_MOVED,
-                            TimelineChangeScope.CLIP, clipPath + ".startMs",
-                            String.valueOf(bc.startMs()), String.valueOf(ac.startMs())));
+                            TimelineChangeScope.CLIP, clipPath + ".start",
+                            bc.start().toString(), ac.start().toString()));
                 }
-                if (bc.durationMs() != ac.durationMs()
-                        || bc.sourceStartMs() != ac.sourceStartMs()
-                        || bc.sourceDurationMs() != ac.sourceDurationMs()) {
+                if (!bc.duration().isEqualTo(ac.duration())
+                        || !bc.sourceStart().isEqualTo(ac.sourceStart())
+                        || !bc.sourceDuration().isEqualTo(ac.sourceDuration())) {
                     ops.add(change(seq, TimelineChangeType.CLIP_TRIMMED,
-                            TimelineChangeScope.CLIP, clipPath + ".durationMs",
-                            String.valueOf(bc.durationMs()), String.valueOf(ac.durationMs())));
+                            TimelineChangeScope.CLIP, clipPath + ".duration",
+                            bc.duration().toString(), ac.duration().toString()));
+                }
+                if (!bc.rate().equals(ac.rate())) {
+                    // C1-CNM1: rate is a first-class merge-sensitive clip field.
+                    ops.add(change(seq, TimelineChangeType.CLIP_SPEED_CHANGED,
+                            TimelineChangeScope.CLIP, clipPath + ".rate",
+                            bc.rate().toString(), ac.rate().toString()));
                 }
                 if (!Objects.equals(bc.assetBindingId(), ac.assetBindingId())) {
                     ops.add(change(seq, TimelineChangeType.ASSET_BINDING_CHANGED,
                             TimelineChangeScope.ASSET_BINDING, clipPath + ".assetBindingId",
                             bc.assetBindingId(), ac.assetBindingId()));
                 }
+                // Effects are OPAQUE (CNM1): never diffed, never semantically
+                // merged — preserved target/source-side verbatim.
             }
         }
     }
@@ -179,8 +196,8 @@ public class CanonicalTimelineDiffCalculator {
             } else {
                 CanonicalTimelineCaptionSnapshot ac = afterCaptions.get(id);
                 if (!Objects.equals(bc.text(), ac.text())
-                        || bc.startMs() != ac.startMs()
-                        || bc.endMs() != ac.endMs()) {
+                        || !bc.start().isEqualTo(ac.start())
+                        || !bc.end().isEqualTo(ac.end())) {
                     ops.add(change(seq, TimelineChangeType.CAPTION_SEGMENT_CHANGED,
                             TimelineChangeScope.CAPTION, "timeline.captions." + id + ".text",
                             bc.text(), ac.text()));
@@ -417,6 +434,91 @@ public class CanonicalTimelineDiffCalculator {
                 before != null ? TimelineChangePayload.ofString(before) : TimelineChangePayload.empty(),
                 after != null ? TimelineChangePayload.ofString(after) : TimelineChangePayload.empty(),
                 Map.of());
+    }
+
+    /**
+     * C1-CNM1: TRACK_ADDED op carrying the added track's full reconstruction
+     * data — the track kind/order and every clip (identity, exact timing/rate,
+     * opaque effects) — so the patch applier materializes the track WITH its
+     * clips (a source-added track never degrades to an empty shell).
+     */
+    private TimelineChangeOperation trackAddedOp(int[] seq, String trackId, CanonicalTimelineTrackSnapshot track) {
+        Map<String, String> meta = new LinkedHashMap<>();
+        meta.put("trackKind", track.kind() != null ? track.kind() : "VIDEO");
+        if (track.clips() != null && !track.clips().isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (CanonicalTimelineClipSnapshot clip : track.clips()) {
+                if (sb.length() > 0) sb.append('\u001f');
+                sb.append(clip.clipId()).append('\u001e')
+                        .append(clip.assetBindingId()).append('\u001e')
+                        .append(clip.start().toString()).append('\u001e')
+                        .append(clip.duration().toString()).append('\u001e')
+                        .append(clip.sourceStart().toString()).append('\u001e')
+                        .append(clip.sourceDuration().toString()).append('\u001e')
+                        .append(clip.rate().numerator().toString()).append('\u001e')
+                        .append(clip.rate().denominator()).append('\u001e');
+                if (clip.effects() != null && !clip.effects().isEmpty()) {
+                    StringBuilder efx = new StringBuilder();
+                    for (var fx : clip.effects()) {
+                        if (efx.length() > 0) efx.append('\u001f');
+                        efx.append(fx.id() == null ? "" : fx.id()).append('\u001e')
+                                .append(fx.effectKey()).append('\u001e');
+                        if (fx.parameters() != null) {
+                            efx.append(fx.parameters().entrySet().stream()
+                                    .map(e -> e.getKey() + "=" + e.getValue())
+                                    .reduce((a, b) -> a + "," + b).orElse(""));
+                        }
+                    }
+                    sb.append(efx);
+                }
+            }
+            meta.put("clips", sb.toString());
+        }
+        return new TimelineChangeOperation(
+                new TimelineChangeOperationId("op-" + (++seq[0])),
+                TimelineChangeType.TRACK_ADDED, TimelineChangeScope.TRACK,
+                new TimelineChangePath("timeline.tracks." + trackId),
+                TimelineChangePayload.empty(),
+                TimelineChangePayload.ofString(trackId),
+                meta);
+    }
+
+    /**
+     * C1-CNM1: CLIP_ADDED op carrying the added clip's full reconstruction
+     * data (identity + exact timing/rate + opaque effects) in safeMetadata.
+     * The patch applier materializes the clip EXACTLY from this data, so a
+     * source-added clip never degrades to a blank-asset/timing stub.
+     */
+    private TimelineChangeOperation clipAddedOp(int[] seq, String path, CanonicalTimelineClipSnapshot clip) {
+        Map<String, String> meta = new LinkedHashMap<>();
+        meta.put("assetBindingId", clip.assetBindingId());
+        meta.put("start", clip.start().toString());
+        meta.put("duration", clip.duration().toString());
+        meta.put("sourceStart", clip.sourceStart().toString());
+        meta.put("sourceDuration", clip.sourceDuration().toString());
+        meta.put("rateNum", clip.rate().numerator().toString());
+        meta.put("rateDen", String.valueOf(clip.rate().denominator()));
+        if (clip.effects() != null && !clip.effects().isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (var fx : clip.effects()) {
+                if (sb.length() > 0) sb.append('\u001f');
+                sb.append(fx.id() == null ? "" : fx.id()).append('\u001e')
+                        .append(fx.effectKey()).append('\u001e');
+                if (fx.parameters() != null) {
+                    sb.append(fx.parameters().entrySet().stream()
+                            .map(e -> e.getKey() + "=" + e.getValue())
+                            .reduce((a, b) -> a + "," + b).orElse(""));
+                }
+            }
+            meta.put("effects", sb.toString());
+        }
+        return new TimelineChangeOperation(
+                new TimelineChangeOperationId("op-" + (++seq[0])),
+                TimelineChangeType.CLIP_ADDED, TimelineChangeScope.CLIP,
+                new TimelineChangePath(path),
+                TimelineChangePayload.empty(),
+                TimelineChangePayload.ofString(clip.clipId()),
+                meta);
     }
 
     private Map<String, CanonicalTimelineTrackSnapshot> toMap(List<CanonicalTimelineTrackSnapshot> tracks) {

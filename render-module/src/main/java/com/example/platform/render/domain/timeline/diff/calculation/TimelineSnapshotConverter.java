@@ -5,8 +5,9 @@ import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
-import com.example.platform.render.domain.timeline.semantics.time.TimelineTimeQuantization;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,38 +35,40 @@ public final class TimelineSnapshotConverter {
     }
 
     /**
-     * Convert the canonical gate's {@link TimelineCandidate} (produced from the
-     * persisted internal-1.0 payload by {@code InternalTimelineCandidateAdapter})
-     * into the semantic merge snapshot model.
+     * C1-CNM1: convert the canonical gate's {@link TimelineCandidate} (produced
+     * from the persisted internal-1.0 payload by
+     * {@code InternalTimelineCandidateAdapter}) into the semantic merge snapshot
+     * model.
      *
-     * <p>Frozen contract (C1-CRR1): the candidate is the canonical semantic
-     * model of the persisted revision payload; this conversion is the single
-     * bounded bridge into the merge snapshot space. Track order = declaration
-     * order (matching the TimelineDocument mapping). Clip fields: clipId,
-     * assetBindingId (sourceRef), startMs (timelineStart), durationMs,
-     * sourceStartMs (sourceStart), sourceDurationMs (duration).</p>
+     * <p>Frozen contract: the candidate is the canonical semantic model of the
+     * persisted revision payload; this conversion is the single bounded bridge
+     * into the merge snapshot space. All time fields are copied EXACTLY as
+     * {@link MediaTime} (no integer-ms step — integer milliseconds are a
+     * projection, never merge semantic authority). Clip rate (exact rational
+     * {@link FrameRate}) and opaque effects are carried through so the merged
+     * payload preserves denominator and effect payloads.</p>
      */
     public static CanonicalTimelineSnapshot toSnapshot(TimelineCandidate candidate, String revisionId) {
         List<CanonicalTimelineTrackSnapshot> tracks = new ArrayList<>();
-        long durationMs = 0L;
+        MediaTime duration = MediaTime.ZERO;
         List<TimelineCandidate.Track> candidateTracks = candidate.tracks();
         for (int i = 0; i < candidateTracks.size(); i++) {
             TimelineCandidate.Track track = candidateTracks.get(i);
             List<CanonicalTimelineClipSnapshot> clips = new ArrayList<>();
             for (TimelineCandidate.Clip clip : track.clips()) {
-                long startMs = toMillis(clip.timelineStart());
-                long duration = toMillis(clip.duration());
-                long sourceStartMs = toMillis(clip.sourceStart());
-                long sourceDurationMs = toMillis(clip.duration());
-                long endMs = startMs + duration;
-                durationMs = Math.max(durationMs, endMs);
+                MediaTime end = clip.timelineStart().add(clip.duration());
+                if (end.isGreaterThan(duration)) {
+                    duration = end;
+                }
                 clips.add(new CanonicalTimelineClipSnapshot(
                         clip.clipId(),
                         clip.sourceRef() != null ? clip.sourceRef().value() : "",
-                        startMs,
-                        duration,
-                        sourceStartMs,
-                        sourceDurationMs,
+                        clip.timelineStart(),
+                        clip.duration(),
+                        clip.sourceStart(),
+                        clip.duration(),
+                        clip.rate() != null ? clip.rate() : FrameRate.of(30, 1),
+                        clip.effects() != null ? List.copyOf(clip.effects()) : List.of(),
                         Map.of()));
             }
             String kind = track.type() != null ? track.type().name() : "VIDEO";
@@ -75,7 +78,7 @@ public final class TimelineSnapshotConverter {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId,
-                durationMs,
+                duration,
                 List.copyOf(tracks),
                 List.of(),
                 List.of(),
@@ -85,35 +88,29 @@ public final class TimelineSnapshotConverter {
                 Map.of("schemaVersion", "internal-1.0"));
     }
 
-    /**
-     * C1-CRR2: exact rational MediaTime -> nearest millisecond via the single
-     * canonical quantization policy ({@link TimelineTimeQuantization}).
-     * Round-half-up, paired with the engine's {@code millisToFrame} so the
-     * canonical persisted frame domain round-trips losslessly.
-     */
-    private static long toMillis(MediaTime time) {
-        return TimelineTimeQuantization.mediaTimeToMillis(time);
-    }
-
     public static CanonicalTimelineSnapshot toSnapshot(TimelineDocument document, String revisionId) {
         List<CanonicalTimelineTrackSnapshot> tracks = new ArrayList<>();
-        long durationMs = 0L;
+        MediaTime duration = MediaTime.ZERO;
         List<TimelineTrack> docTracks = document.getTracks();
         for (int i = 0; i < docTracks.size(); i++) {
             TimelineTrack track = docTracks.get(i);
             List<CanonicalTimelineClipSnapshot> clips = new ArrayList<>();
             for (TimelineClip clip : track.clips()) {
-                long startMs = clip.getStartTime().toMillis();
-                long endMs = clip.getEndTime().toMillis();
-                long duration = Math.max(0L, endMs - startMs);
-                durationMs = Math.max(durationMs, endMs);
+                MediaTime start = MediaTime.ofMicros(clip.getStartTime().toMillis() * 1000L);
+                MediaTime end = MediaTime.ofMicros(clip.getEndTime().toMillis() * 1000L);
+                MediaTime clipDuration = end.subtract(start).max(MediaTime.ZERO);
+                if (end.isGreaterThan(duration)) {
+                    duration = end;
+                }
                 clips.add(new CanonicalTimelineClipSnapshot(
                         clip.getClipId(),
                         clip.getAssetId(),
-                        startMs,
-                        duration,
-                        clip.getTrimStart().toMillis(),
-                        clip.getTrimEnd().toMillis(),
+                        start,
+                        clipDuration,
+                        MediaTime.ofMicros(clip.getTrimStart().toMillis() * 1000L),
+                        MediaTime.ofMicros(clip.getTrimEnd().toMillis() * 1000L),
+                        FrameRate.of(30, 1),
+                        List.of(),
                         Map.of()));
             }
             String kind = track.type() != null ? track.type().name() : "VIDEO";
@@ -123,7 +120,7 @@ public final class TimelineSnapshotConverter {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId,
-                durationMs,
+                duration,
                 List.copyOf(tracks),
                 List.of(),
                 List.of(),
@@ -137,6 +134,11 @@ public final class TimelineSnapshotConverter {
      * Reconstruct a {@link TimelineDocument} from a merged snapshot, using
      * {@code template} as the source for document-level fields (schema version,
      * metadata) that are outside the canonical snapshot space.
+     *
+     * <p>Legacy timeline-1.0 document boundary: TimelineDocument is expressed
+     * in {@link java.time.Duration}; the exact {@link MediaTime} snapshot
+     * values are projected through the exact rational ms conversion (media
+     * time is never re-quantized through floating point here).</p>
      */
     public static TimelineDocument toDocument(CanonicalTimelineSnapshot snapshot, TimelineDocument template) {
         String schemaVersion = snapshot.safeMetadata() != null
@@ -149,15 +151,15 @@ public final class TimelineSnapshotConverter {
         for (CanonicalTimelineTrackSnapshot track : ordered) {
             List<TimelineClip> clips = new ArrayList<>();
             for (CanonicalTimelineClipSnapshot clip : track.clips()) {
-                java.time.Duration start = java.time.Duration.ofMillis(clip.startMs());
-                java.time.Duration end = java.time.Duration.ofMillis(clip.startMs() + clip.durationMs());
+                java.time.Duration start = java.time.Duration.ofMillis(toMillis(clip.start()));
+                java.time.Duration end = java.time.Duration.ofMillis(toMillis(clip.start().add(clip.duration())));
                 clips.add(new TimelineClip(
                         clip.clipId(),
                         clip.assetBindingId(),
                         start,
                         end,
-                        java.time.Duration.ofMillis(clip.sourceStartMs()),
-                        java.time.Duration.ofMillis(clip.sourceDurationMs())));
+                        java.time.Duration.ofMillis(toMillis(clip.sourceStart())),
+                        java.time.Duration.ofMillis(toMillis(clip.sourceDuration()))));
             }
             TrackType type = TrackType.VIDEO;
             try {
@@ -173,5 +175,20 @@ public final class TimelineSnapshotConverter {
                 schemaVersion,
                 List.copyOf(tracks),
                 template != null ? template.getMetadata() : null);
+    }
+
+    /**
+     * Exact rational MediaTime -&gt; integer milliseconds (half-up).
+     *
+     * <p>PROJECTION ONLY — used at the legacy timeline-1.0 document boundary
+     * ({@link TimelineDocument} expresses time in {@link java.time.Duration}).
+     * Never a merge semantic authority; canonical merge time is exact
+     * {@link MediaTime} end-to-end (C1-CNM1).</p>
+     */
+    private static long toMillis(MediaTime time) {
+        if (time == null) {
+            return 0L;
+        }
+        return (time.ticks() * 1000L + time.timeScale() / 2) / time.timeScale();
     }
 }
