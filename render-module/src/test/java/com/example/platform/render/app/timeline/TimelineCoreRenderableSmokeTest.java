@@ -8,6 +8,7 @@ import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
@@ -311,8 +312,9 @@ class TimelineCoreRenderableSmokeTest {
 
     @Test
     void invalidFpsFailsBeforeOutputRegistration() {
-        TimelineOutputSpec output = new TimelineOutputSpec(
-                "mp4", "1920x1080", 0, "h264", 8000,
+        // FrameRate.of rejects zero numerator at the exact-rate domain boundary.
+        assertThrows(IllegalArgumentException.class, () -> FrameRate.of(0, 1));
+        TimelineOutputSpec output = new TimelineOutputSpec("mp4", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
@@ -324,8 +326,7 @@ class TimelineCoreRenderableSmokeTest {
 
     @Test
     void invalidCanvasFailsBeforeOutputRegistration() {
-        TimelineOutputSpec output = new TimelineOutputSpec(
-                "mp4", "0x0", 30, "h264", 8000,
+        TimelineOutputSpec output = new TimelineOutputSpec("mp4", "0x0", FrameRate.of(30, 1), "h264", 8000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
@@ -337,8 +338,7 @@ class TimelineCoreRenderableSmokeTest {
 
     @Test
     void unsupportedFormatFailsBeforeOutputRegistration() {
-        TimelineOutputSpec output = new TimelineOutputSpec(
-                "avi", "1920x1080", 30, "h264", 8000,
+        TimelineOutputSpec output = new TimelineOutputSpec("avi", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),

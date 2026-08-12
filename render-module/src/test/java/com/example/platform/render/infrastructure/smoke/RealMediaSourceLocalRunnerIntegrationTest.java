@@ -2,6 +2,7 @@ package com.example.platform.render.infrastructure.smoke;
 
 import com.example.platform.render.domain.render.local.*;
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.render.plan.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -80,8 +81,7 @@ class RealMediaSourceLocalRunnerIntegrationTest {
         assertEquals(180, inputValidation.height());
 
         // Step 3: Build BasicTimeline fixture referencing controlled media source
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "640x360", 30.0, "h264", 1000000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "640x360", FrameRate.of(30, 1), "h264", 1000000,
                 new TimelineAudioSpec("aac", 48000, 2, 128000, 1.0, false),
                 "yuv420p");
         TimelineAssetRef assetRef = TimelineAssetRef.of("asset-001", "internal://testsrc");

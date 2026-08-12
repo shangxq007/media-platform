@@ -7,6 +7,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 
 /**
  * Tests for Timeline Checkout, Rollback, and Branch Switch application services.
@@ -762,7 +764,7 @@ class TimelineCheckoutRollbackApplicationServiceTest {
             var snapshot = new CanonicalTimelineSnapshot(
                     new CanonicalTimelineSnapshotId("snap-" + revisionId),
                     revisionId,
-                    0, List.of(), List.of(), List.of(),
+                    MediaTime.ofMillis(0), List.of(), List.of(), List.of(),
                     List.of(), List.of(), null, Map.of());
             snapshots.put(revisionId, snapshot);
         }

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 
 /**
  * Tests for CanonicalTimelineDiffCalculator.
@@ -47,7 +49,7 @@ class CanonicalTimelineDiffCalculatorTest {
     void durationChanged() {
         CanonicalTimelineSnapshot before = simpleSnapshot("rev-1");
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 10000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
                 before.tracks(), before.captions(), before.watermarks(),
                 before.templateApplications(), before.workflowSteps(),
                 before.outputProfile(), Map.of());
@@ -68,7 +70,7 @@ class CanonicalTimelineDiffCalculatorTest {
         CanonicalTimelineTrackSnapshot newTrack = new CanonicalTimelineTrackSnapshot(
                 "track-2", 1, "VIDEO", List.of(), Map.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 5000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0), newTrack),
                 List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
@@ -82,7 +84,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Track removed")
     void trackRemoved() {
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", 5000,
+                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0), trackSnapshot("track-2", 1)),
                 List.of(), List.of(), List.of(), List.of(), null, Map.of());
         CanonicalTimelineSnapshot after = simpleSnapshot("rev-2");
@@ -104,10 +106,10 @@ class CanonicalTimelineDiffCalculatorTest {
                 "track-2", 0, "VIDEO", List.of(), Map.of());
 
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", 5000,
+                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(t1, t2), List.of(), List.of(), List.of(), List.of(), null, Map.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 5000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(t1moved, t2moved), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
@@ -122,8 +124,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Clip added")
     void clipAdded() {
         CanonicalTimelineSnapshot before = simpleSnapshot("rev-1");
-        CanonicalTimelineClipSnapshot newClip = new CanonicalTimelineClipSnapshot(
-                "clip-2", "asset-2", 5000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot newClip = new CanonicalTimelineClipSnapshot("clip-2", "asset-2", MediaTime.ofMillis(5000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineSnapshot after = snapshotWithClips("rev-2",
                 List.of(clipSnapshot("clip-1", 0), newClip));
 
@@ -150,8 +151,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Clip moved (start changed)")
     void clipMoved() {
         CanonicalTimelineClipSnapshot beforeClip = clipSnapshot("clip-1", 0);
-        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 2000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(2000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
 
         CanonicalTimelineSnapshot before = snapshotWithClips("rev-1", List.of(beforeClip));
         CanonicalTimelineSnapshot after = snapshotWithClips("rev-2", List.of(afterClip));
@@ -166,8 +166,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Clip trimmed (duration changed)")
     void clipTrimmed() {
         CanonicalTimelineClipSnapshot beforeClip = clipSnapshot("clip-1", 0);
-        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 0, 8000, 0, 8000, Map.of());
+        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(8000), MediaTime.ofMillis(0), MediaTime.ofMillis(8000), FrameRate.of(30, 1), List.of(), Map.of());
 
         CanonicalTimelineSnapshot before = snapshotWithClips("rev-1", List.of(beforeClip));
         CanonicalTimelineSnapshot after = snapshotWithClips("rev-2", List.of(afterClip));
@@ -182,8 +181,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Asset binding changed")
     void assetBindingChanged() {
         CanonicalTimelineClipSnapshot beforeClip = clipSnapshot("clip-1", 0);
-        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-NEW", 0, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-NEW", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
 
         CanonicalTimelineSnapshot before = snapshotWithClips("rev-1", List.of(beforeClip));
         CanonicalTimelineSnapshot after = snapshotWithClips("rev-2", List.of(afterClip));
@@ -199,10 +197,8 @@ class CanonicalTimelineDiffCalculatorTest {
     @Test
     @DisplayName("Caption text changed")
     void captionTextChanged() {
-        CanonicalTimelineCaptionSnapshot beforeCap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
-        CanonicalTimelineCaptionSnapshot afterCap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "World", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot beforeCap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot afterCap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "World", Map.of(), Map.of());
 
         CanonicalTimelineSnapshot before = snapshotWithCaptions("rev-1", List.of(beforeCap));
         CanonicalTimelineSnapshot after = snapshotWithCaptions("rev-2", List.of(afterCap));
@@ -217,10 +213,8 @@ class CanonicalTimelineDiffCalculatorTest {
     @Test
     @DisplayName("Caption style changed")
     void captionStyleChanged() {
-        CanonicalTimelineCaptionSnapshot beforeCap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of("fontSize", "24"), Map.of());
-        CanonicalTimelineCaptionSnapshot afterCap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of("fontSize", "32"), Map.of());
+        CanonicalTimelineCaptionSnapshot beforeCap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of("fontSize", "24"), Map.of());
+        CanonicalTimelineCaptionSnapshot afterCap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of("fontSize", "32"), Map.of());
 
         CanonicalTimelineSnapshot before = snapshotWithCaptions("rev-1", List.of(beforeCap));
         CanonicalTimelineSnapshot after = snapshotWithCaptions("rev-2", List.of(afterCap));
@@ -318,10 +312,10 @@ class CanonicalTimelineDiffCalculatorTest {
                 "prof-1", "mp4", "16:9", 1280, 720, Map.of());
 
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", 5000,
+                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), beforeP, Map.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 5000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), afterP, Map.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
@@ -337,11 +331,11 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Metadata changed")
     void metadataChanged() {
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", 5000,
+                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "Old"));
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 5000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "New"));
 
@@ -357,10 +351,8 @@ class CanonicalTimelineDiffCalculatorTest {
     @Test
     @DisplayName("Caption-only change -> PARTIAL_RERENDER")
     void captionOnlyPartialRerender() {
-        CanonicalTimelineCaptionSnapshot beforeCap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
-        CanonicalTimelineCaptionSnapshot afterCap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "World", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot beforeCap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot afterCap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "World", Map.of(), Map.of());
 
         CanonicalTimelineSnapshot before = snapshotWithCaptions("rev-1", List.of(beforeCap));
         CanonicalTimelineSnapshot after = snapshotWithCaptions("rev-2", List.of(afterCap));
@@ -388,11 +380,11 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Metadata-only change -> METADATA_ONLY")
     void metadataOnlyImpact() {
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", 5000,
+                new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "Old"));
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 5000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "New"));
 
@@ -407,10 +399,9 @@ class CanonicalTimelineDiffCalculatorTest {
     void deterministicOrdering() {
         CanonicalTimelineSnapshot before = simpleSnapshot("rev-1");
         // Multiple changes: duration + caption + metadata
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 10000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
                 List.of(), List.of(cap), List.of(), List.of(), List.of(), null,
                 Map.of("title", "New"));
 
@@ -439,7 +430,7 @@ class CanonicalTimelineDiffCalculatorTest {
     void noProviderStorageFields() {
         CanonicalTimelineSnapshot before = simpleSnapshot("rev-1");
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 10000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
@@ -454,7 +445,7 @@ class CanonicalTimelineDiffCalculatorTest {
     private CanonicalTimelineSnapshot simpleSnapshot(String revisionId) {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
-                revisionId, 5000,
+                revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
                 List.of(), List.of(), List.of(), List.of(), null, Map.of());
     }
@@ -462,7 +453,7 @@ class CanonicalTimelineDiffCalculatorTest {
     private CanonicalTimelineSnapshot snapshotWithClips(String revisionId, List<CanonicalTimelineClipSnapshot> clips) {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
-                revisionId, 10000,
+                revisionId, MediaTime.ofMillis(10000),
                 List.of(new CanonicalTimelineTrackSnapshot("track-1", 0, "VIDEO", clips, Map.of())),
                 List.of(), List.of(), List.of(), List.of(), null, Map.of());
     }
@@ -470,7 +461,7 @@ class CanonicalTimelineDiffCalculatorTest {
     private CanonicalTimelineSnapshot snapshotWithCaptions(String revisionId, List<CanonicalTimelineCaptionSnapshot> captions) {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
-                revisionId, 5000,
+                revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
                 captions, List.of(), List.of(), List.of(), null, Map.of());
     }
@@ -478,7 +469,7 @@ class CanonicalTimelineDiffCalculatorTest {
     private CanonicalTimelineSnapshot snapshotWithWatermarks(String revisionId, List<CanonicalTimelineWatermarkSnapshot> watermarks) {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
-                revisionId, 5000,
+                revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
                 List.of(), watermarks, List.of(), List.of(), null, Map.of());
     }
@@ -486,7 +477,7 @@ class CanonicalTimelineDiffCalculatorTest {
     private CanonicalTimelineSnapshot snapshotWithTemplates(String revisionId, List<CanonicalTimelineTemplateApplicationSnapshot> templates) {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
-                revisionId, 5000,
+                revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
                 List.of(), List.of(), templates, List.of(), null, Map.of());
     }
@@ -494,7 +485,7 @@ class CanonicalTimelineDiffCalculatorTest {
     private CanonicalTimelineSnapshot snapshotWithWorkflow(String revisionId, List<CanonicalTimelineWorkflowStepSnapshot> steps) {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
-                revisionId, 5000,
+                revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
                 List.of(), List.of(), List.of(), steps, null, Map.of());
     }
@@ -505,6 +496,6 @@ class CanonicalTimelineDiffCalculatorTest {
     }
 
     private CanonicalTimelineClipSnapshot clipSnapshot(String id, long startMs) {
-        return new CanonicalTimelineClipSnapshot(id, "asset-1", startMs, 5000, 0, 5000, Map.of());
+        return new CanonicalTimelineClipSnapshot(id, "asset-1", MediaTime.ofMillis(startMs), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
     }
 }

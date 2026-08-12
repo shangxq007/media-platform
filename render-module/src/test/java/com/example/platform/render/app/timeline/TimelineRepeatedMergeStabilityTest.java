@@ -212,12 +212,12 @@ class TimelineRepeatedMergeStabilityTest {
         TimelineCandidate candidate = InternalTimelineCandidateAdapter.map(PROJECT, mergedPayload);
         assertNotNull(candidate);
         assertEquals("c1", candidate.tracks().get(0).clips().get(0).clipId());
-        // conversion yields the same frame back
+        // C1-CNM1: conversion yields the same exact frame back (exact rational
+        // MediaTime -> frame @ rate; no integer-ms step).
         var snap = com.example.platform.render.domain.timeline.diff.calculation.TimelineSnapshotConverter
                 .toSnapshot(candidate, "rev-merged");
-        long startMs = snap.tracks().get(0).clips().get(0).startMs();
-        long back = com.example.platform.render.domain.timeline.semantics.time.TimelineTimeQuantization
-                .millisToFrame(startMs, FPS);
-        assertEquals(frame, back, "reload roundtrip drifted at frame=" + frame);
+        var start = snap.tracks().get(0).clips().get(0).start();
+        var rate = snap.tracks().get(0).clips().get(0).rate();
+        assertEquals(frame, start.toFrameExact(rate), "reload roundtrip drifted at frame=" + frame);
     }
 }

@@ -7,6 +7,7 @@ import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
@@ -111,8 +112,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
                 "trk_r2_v1", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
 
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "320x180", 30, "h264", 1000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(30, 1), "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
 
         TimelineSpec spec = new TimelineSpec(
@@ -222,8 +222,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
                 "trk_r2_v2", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
 
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "320x180", 24, "h264", 1000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(24, 1), "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
 
         TimelineSpec spec = new TimelineSpec(
@@ -272,8 +271,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
         TimelineTextOverlay overlay = TimelineTextOverlay.of(
                 "ov_r2_001", "Hello from libass", 0.5, 2.0);
 
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "640x360", 30, "h264", 2000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "640x360", FrameRate.of(30, 1), "h264", 2000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
 
         TimelineSpec spec = new TimelineSpec(
@@ -335,8 +333,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack(
                 "t1", "V", TimelineTrack.TrackType.VIDEO, 0, List.of(clip), false, false);
-        TimelineOutputSpec output = new TimelineOutputSpec(
-                "mp4", "320x180", 30, "h264", 1000,
+        TimelineOutputSpec output = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(30, 1), "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
                 List.of(track), List.of(), output, 10.0, Map.<String,String>of());
@@ -452,8 +449,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack(
                 "t1", "V", TimelineTrack.TrackType.VIDEO, 0, List.of(clip), false, false);
-        TimelineOutputSpec output = new TimelineOutputSpec(
-                "mp4", "320x180", 30, "h264", 1000,
+        TimelineOutputSpec output = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(30, 1), "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("", "Bad", null,
                 List.of(track), List.of(), output, 10.0, Map.<String,String>of());
@@ -488,8 +484,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
         TimelineClip clip = TimelineClip.of("c1", ref, 0, 0, 10);
         TimelineTrack track = new TimelineTrack(
                 "t1", "V", TimelineTrack.TrackType.VIDEO, 0, List.of(clip), false, false);
-        TimelineOutputSpec output = new TimelineOutputSpec(
-                "mp4", "320x180", 30, "h264", 1000,
+        TimelineOutputSpec output = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(30, 1), "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
                 List.of(track), List.of(), output, 10.0, Map.<String,String>of());
@@ -514,8 +509,7 @@ class TimelineFfmpegBaselineRenderSmokeTest {
                 "trk_prov", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
 
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "320x180", 24, "h264", 1000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(24, 1), "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
 
         TimelineSpec spec = new TimelineSpec(

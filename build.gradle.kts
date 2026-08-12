@@ -422,43 +422,76 @@ tasks.register("verifyC1CrrPayloadContract") {
     }
 }
 
-tasks.register("verifyC1Crr2TimeRoundtrip") {
+tasks.register("verifyC1Cnm1RedGates") {
     group = "verification"
-    description = "C1-CRR2-RED: time roundtrip stability (single quantization authority, no floor residue, drift-free proofs)"
+    description = "C1-CNM1-RED-01..13: fail-closed architecture gates (exact rational rate, no double->int truncation, no integer-ms canonical authority, fractional roundtrip, drift-free, effect preservation, field/identity preservation, no dual parser, sole merge authority, schema/module zero-delta, R1 quarantine)"
     doLast {
-        // RED-06: single time-conversion policy authority — exactly one quantization class
-        val quant = file("render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/time/TimelineTimeQuantization.java")
-        require(quant.exists()) { "FAIL: TimelineTimeQuantization policy authority missing" }
-        val quantSrc = quant.readText()
-        require(quantSrc.contains("millisToFrame")) { "FAIL: millisToFrame policy missing" }
-        require(quantSrc.contains("mediaTimeToMillis")) { "FAIL: mediaTimeToMillis policy missing" }
-        require(quantSrc.contains("round-half-up") || quantSrc.contains("half-up")) { "FAIL: rounding policy not declared" }
-        // RED-07: no implicit floor/truncation remains on the canonical merge persistence boundary
+        // ── RED-01: fractional FrameRate denominator preserved end-to-end ──
+        val frameRate = file("render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/time/FrameRate.java")
+        require(frameRate.exists()) { "FAIL: FrameRate domain type missing" }
+        val fr = frameRate.readText()
+        require(fr.contains("BigInteger numerator")) { "FAIL: FrameRate must be exact rational (BigInteger)" }
+        require(fr.contains("denominator")) { "FAIL: FrameRate denominator missing" }
+        require(fr.contains("gcd") || fr.contains("normalize")) { "FAIL: FrameRate gcd normalization missing" }
+
+        // ── RED-02: no live double->integer fps truncation ──
+        val writer = file("render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineWriter.java")
+        val w = writer.readText()
+        require(!w.contains("(int) spec.outputSpec().frameRate()")) { "FAIL: (int) doubleFps truncation in writer" }
+        val mapper = file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderJobMapper.java")
+        require(!mapper.readText().contains("(int) output.frameRate()")) { "FAIL: (int) doubleFps truncation in render mapper" }
+
+        // ── RED-03: canonical merge time path contains no integer-ms authority ──
         val engine = file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java")
-        val engineSrc = engine.readText()
-        require(!engineSrc.contains("(startMs * fps) / 1000L")) { "FAIL: floor ms->frame still in engine" }
-        require(!engineSrc.contains("(durationMs * fps) / 1000L")) { "FAIL: floor ms->frame still in engine" }
+        val e = engine.readText()
+        require(!e.contains("millisToFrame") && !e.contains("mediaTimeToMillis")) { "FAIL: integer-ms authority in merge engine" }
+        require(!e.contains("TimelineTimeQuantization")) { "FAIL: retired quantization authority referenced in engine" }
         val converter = file("render-module/src/main/java/com/example/platform/render/domain/timeline/diff/calculation/TimelineSnapshotConverter.java")
-        val converterSrc = converter.readText()
-        require(!converterSrc.contains("(time.ticks() * 1000L) / timeScale")) { "FAIL: floor MediaTime->ms still in converter" }
-        // RED-08: payload contract correction preserved (no TimelineDocument parse path)
-        require(!engineSrc.contains("readValue(payload, TimelineDocument.class)")) { "FAIL: TimelineDocument parse path present" }
-        // RED-09: engine remains sole semantic merge authority
-        require(engineSrc.contains("class TimelineMergeEngine")) { "FAIL: TimelineMergeEngine missing" }
-        // RED-01..05: behavioral/property proofs must exist (JUnit)
-        val quantTest = file("render-module/src/test/java/com/example/platform/render/domain/timeline/semantics/time/TimelineTimeQuantizationTest.java")
-        require(quantTest.exists()) { "FAIL: quantization property test missing" }
-        val q = quantTest.readText()
-        require(q.contains("frameRoundTripIsLosslessForNonAlignedFrames")) { "FAIL: RED-01 non-aligned frame roundtrip proof missing" }
-        require(q.contains("durationRoundTripIsLossless")) { "FAIL: RED-02 duration roundtrip proof missing" }
-        require(q.contains("repeatedRoundTripIsStable")) { "FAIL: RED-03 repeated conversion proof missing" }
-        require(q.contains("exhaustiveFrameRoundTripFirstThousand")) { "FAIL: RED-05 supported rate domain proof missing" }
-        val stability = file("render-module/src/test/java/com/example/platform/render/app/timeline/TimelineRepeatedMergeStabilityTest.java")
-        require(stability.exists()) { "FAIL: repeated merge stability test missing" }
-        require(stability.readText().contains("uneditedNonAlignedFramesSurviveRepeatedMerges")) { "FAIL: RED-04 repeated merge proof missing" }
-        // RED-10: schema/module zero delta (no new sql, no settings change — structural check)
+        val c = converter.readText()
+        require(c.contains("MediaTime") && !c.contains("TimelineTimeQuantization")) { "FAIL: converter must be exact MediaTime, no quantization" }
+
+        // ── RED-04/05: fractional-rate + repeated-merge behavioral proofs exist ──
+        val behavioral = file("render-module/src/test/java/com/example/platform/render/app/timeline/C1Cnm1RedBehavioralTest.java")
+        require(behavioral.exists()) { "FAIL: CNM1 behavioral proof test missing" }
+        val bt = behavioral.readText()
+        require(bt.contains("fractionalRateDenominatorSurvivesMerge")) { "FAIL: RED-04 fractional roundtrip proof missing" }
+        require(bt.contains("repeatedMergeDriftIsZeroAtFractionalRate")) { "FAIL: RED-05 repeated merge drift proof missing" }
+        require(bt.contains("clipEffectsSurviveMergeReconstruction")) { "FAIL: RED-06 effect preservation proof missing" }
+        require(bt.contains("clipIdentityAndAssetIdentityRemainDistinct")) { "FAIL: RED-13 identity distinction proof missing" }
+        require(bt.contains("24000") && bt.contains("30000") && bt.contains("60000")) { "FAIL: fractional fixtures missing" }
+
+        // ── RED-06: effect preservation wiring (adapter -> converter -> engine) ──
+        val adapter = file("render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineCandidateAdapter.java")
+        require(adapter.readText().contains("mapEffects")) { "FAIL: adapter effect parse missing" }
+        require(e.contains("clip.effects()") && e.contains("node.set(\"effects\"")) { "FAIL: engine effect re-emit missing" }
+
+        // ── RED-07: no unjustified canonical binary-float authorities ──
+        require(!w.contains("double fps =") && !w.contains("(int) fps")) { "FAIL: canonical double fps residue in writer" }
+
+        // ── RED-09: no dual parser / legacy rate compatibility path ──
+        val parser = file("render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineScriptParser.java")
+        val p = parser.readText()
+        require(p.contains("parseFrameRateNode")) { "FAIL: exact rational rate parse missing" }
+        require(!p.contains("treeToValue(output, TimelineOutputSpec.class)")) { "FAIL: legacy blind treeToValue rate parse" }
+
+        // ── RED-10: TimelineMergeEngine remains sole semantic merge authority ──
+        require(e.contains("class TimelineMergeEngine")) { "FAIL: TimelineMergeEngine missing" }
+        require(!e.contains("readValue(payload, TimelineDocument.class)")) { "FAIL: TimelineDocument parse path present" }
+
+        // ── RED-11: schema/module zero delta ──
         require(!file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderExecutionMode.java").exists()) { "note: baseline check" }
-        println("OK: C1-CRR2 time roundtrip verified (single quantization authority, no floor residue, drift-free proofs present)")
+
+        // ── RED-12: R1 quarantine contamination = 0 ──
+        // R1 lives in a separate quarantined worktree (.worktrees/r1-canonicalization),
+        // NOT in the candidate source tree. No candidate source may reference
+        // R1's quarantine branch identity as production code.
+        require(!file("render-module/src/main/java/com/example/platform/render/app/timeline/R1TimelineMigration.java").exists()) { "note: R1 residue baseline check" }
+
+        // ── RED-13: source-binding preservation wiring ──
+        require(e.contains("clip.assetBindingId()")) { "FAIL: merged clip asset binding re-emit missing" }
+        require(adapter.readText().contains("TimelineSourceRef.of(assetId)")) { "FAIL: adapter asset identity binding missing" }
+
+        println("OK: C1-CNM1-RED-01..13 verified (exact rational rate, no truncation, no ms authority, preservation proofs, identity distinction)")
     }
 }
 

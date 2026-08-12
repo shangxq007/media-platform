@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 
 /**
  * Safety rules tests for constrained graph operations.
@@ -122,7 +124,7 @@ class ConstrainedGraphSafetyRulesTest {
     void timelineDiffIsDeterministic() {
         CanonicalTimelineSnapshot before = simpleSnapshot("rev-1");
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", 10000,
+                new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
                 before.tracks(), before.captions(), before.watermarks(),
                 before.templateApplications(), before.workflowSteps(),
                 before.outputProfile(), Map.of());
@@ -145,7 +147,7 @@ class ConstrainedGraphSafetyRulesTest {
     void timelinePatchDoesNotMutateInput() {
         CanonicalTimelineSnapshot original = simpleSnapshot("rev-1");
         CanonicalTimelineSnapshot copy = new CanonicalTimelineSnapshot(
-                original.id(), original.revisionId(), original.durationMs(),
+                original.id(), original.revisionId(), original.duration(),
                 original.tracks(), original.captions(), original.watermarks(),
                 original.templateApplications(), original.workflowSteps(),
                 original.outputProfile(), original.safeMetadata());
@@ -156,7 +158,7 @@ class ConstrainedGraphSafetyRulesTest {
                         new TimelineChangeOperationId("op1"),
                         TimelineChangeType.TIMELINE_DURATION_CHANGED,
                         TimelineChangeScope.TIMELINE,
-                        new TimelineChangePath("timeline.durationMs"),
+                        new TimelineChangePath("timeline.duration"),
                         TimelineChangePayload.ofString("5000"),
                         TimelineChangePayload.ofString("10000"),
                         Map.of())),
@@ -166,7 +168,7 @@ class ConstrainedGraphSafetyRulesTest {
         TimelinePatchApplicationResult result = applier.apply(original, patch);
 
         // Input snapshot must not be mutated
-        assertEquals(original.durationMs(), copy.durationMs());
+        assertEquals(original.duration(), copy.duration());
         assertEquals(original.id(), copy.id());
         assertEquals(original.revisionId(), copy.revisionId());
     }
@@ -178,12 +180,12 @@ class ConstrainedGraphSafetyRulesTest {
     void mergePreviewDoesNotApplyPatchOrMerge() {
         CanonicalTimelineSnapshot base = simpleSnapshot("rev-base");
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-ours"), "rev-ours", 8000,
+                new CanonicalTimelineSnapshotId("snap-ours"), "rev-ours", MediaTime.ofMillis(8000),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(),
                 base.outputProfile(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("snap-theirs"), "rev-theirs", 12000,
+                new CanonicalTimelineSnapshotId("snap-theirs"), "rev-theirs", MediaTime.ofMillis(12000),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(),
                 base.outputProfile(), Map.of());
@@ -199,9 +201,9 @@ class ConstrainedGraphSafetyRulesTest {
         TimelineMergePreviewResult result = service.preview(request);
 
         // Preview must not mutate inputs
-        assertEquals(5000, base.durationMs());
-        assertEquals(8000, ours.durationMs());
-        assertEquals(12000, theirs.durationMs());
+        assertEquals(MediaTime.ofMillis(5000), base.duration());
+        assertEquals(MediaTime.ofMillis(8000), ours.duration());
+        assertEquals(MediaTime.ofMillis(12000), theirs.duration());
 
         // Preview result is a conflict analysis, not a merged result
         assertNotNull(result);
@@ -306,12 +308,10 @@ class ConstrainedGraphSafetyRulesTest {
         return new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId,
-                5000,
+                MediaTime.ofMillis(5000),
                 List.of(new CanonicalTimelineTrackSnapshot(
                         "track-v", 0, "VIDEO", List.of(
-                        new CanonicalTimelineClipSnapshot(
-                                "clip-1", "asset-1",
-                                0, 5000, 0, 5000, Map.of())), Map.of())),
+                        new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of())), Map.of())),
                 List.of(),
                 List.of(),
                 List.of(),

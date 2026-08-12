@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 
 /**
  * Tests for TimelineMergeConflictDetector covering:
@@ -61,13 +63,13 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         // ours changes metadata
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                base.id(), "rev-ours", base.durationMs(),
+                base.id(), "rev-ours", base.duration(),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 Map.of("title", "Ours"));
         // theirs changes duration
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                base.id(), "rev-theirs", 9999,
+                base.id(), "rev-theirs", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata());
@@ -82,12 +84,12 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         // Both sides change duration to same value
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                base.id(), "rev-ours", 9999,
+                base.id(), "rev-ours", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                base.id(), "rev-theirs", 9999,
+                base.id(), "rev-theirs", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata());
@@ -102,13 +104,13 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         // ours changes duration to 9999
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                base.id(), "rev-ours", 9999,
+                base.id(), "rev-ours", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata());
         // theirs changes duration to 7777
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                base.id(), "rev-theirs", 7777,
+                base.id(), "rev-theirs", MediaTime.ofMillis(7777),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata());
@@ -124,15 +126,15 @@ class TimelineMergeConflictDetectorTest {
     @Test @DisplayName("Different metadata keys changed = MERGE_READY")
     void differentMetadataKeysMergeReady() {
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("a", "1", "b", "2"));
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("a", "changed", "b", "2"));
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("a", "1", "b", "changed"));
 
@@ -147,15 +149,15 @@ class TimelineMergeConflictDetectorTest {
     @Test @DisplayName("Same metadata key same value = MERGE_READY")
     void sameMetadataKeyValueMergeReady() {
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "Old"));
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "New"));
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "New"));
 
@@ -166,15 +168,15 @@ class TimelineMergeConflictDetectorTest {
     @Test @DisplayName("Same metadata key different value = MANUAL_REVIEW_REQUIRED")
     void sameMetadataKeyDiffValueManualReview() {
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "Old"));
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "Ours Title"));
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
                 Map.of("title", "Theirs Title"));
 
@@ -188,10 +190,10 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineOutputProfileSnapshot profile = new CanonicalTimelineOutputProfileSnapshot(
                 "p1", "mp4", "16:9", 1920, 1080, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), profile, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, base);
@@ -205,13 +207,13 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineOutputProfileSnapshot p2 = new CanonicalTimelineOutputProfileSnapshot(
                 "p2", "mp4", "16:9", 1280, 720, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), p1, Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), p2, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -223,26 +225,22 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Different captions changed = MERGE_READY")
     void differentCaptionsChangedMergeReady() {
-        CanonicalTimelineCaptionSnapshot cap1 = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
-        CanonicalTimelineCaptionSnapshot cap2 = new CanonicalTimelineCaptionSnapshot(
-                "cap-2", 3000, 6000, "World", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap1 = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap2 = new CanonicalTimelineCaptionSnapshot("cap-2", MediaTime.ofMillis(3000), MediaTime.ofMillis(6000), "World", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap1, cap2), List.of(), List.of(), List.of(), null, Map.of());
 
         // ours changes cap-1
-        CanonicalTimelineCaptionSnapshot cap1ours = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hi", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap1ours = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hi", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap1ours, cap2), List.of(), List.of(), List.of(), null, Map.of());
 
         // theirs changes cap-2
-        CanonicalTimelineCaptionSnapshot cap2theirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-2", 3000, 6000, "Earth", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap2theirs = new CanonicalTimelineCaptionSnapshot("cap-2", MediaTime.ofMillis(3000), MediaTime.ofMillis(6000), "Earth", Map.of(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap1, cap2theirs), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -251,19 +249,17 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Same caption text same value = MERGE_READY")
     void sameCaptionTextSameValueMergeReady() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineCaptionSnapshot capChanged = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "World", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot capChanged = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "World", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(capChanged), List.of(), List.of(), List.of(), null, Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(capChanged), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -272,22 +268,19 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Same caption text different value = CAPTION_TEXT_CONFLICT")
     void sameCaptionTextDifferentValueConflict() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Ours", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Theirs", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -297,22 +290,19 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Caption style changed differently = TEXT_STYLE_CONFLICT")
     void captionStyleDifferentConflict() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of("font", "Arial"), Map.of());
+        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of("font", "Arial"), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of("font", "Bold"), Map.of());
+        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of("font", "Bold"), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of("font", "Italic"), Map.of());
+        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of("font", "Italic"), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -322,22 +312,20 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Caption removed on one side = non-merge-ready (different paths)")
     void captionRemovedOneSideNonMergeReady() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of());
 
         // ours modifies caption text
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Modified", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Modified", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of());
 
         // theirs removes caption entirely
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -354,32 +342,28 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Different clips changed = MERGE_READY")
     void differentClipsChangedMergeReady() {
-        CanonicalTimelineClipSnapshot clip1 = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 0, 5000, 0, 5000, Map.of());
-        CanonicalTimelineClipSnapshot clip2 = new CanonicalTimelineClipSnapshot(
-                "clip-2", "asset-2", 5000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot clip1 = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
+        CanonicalTimelineClipSnapshot clip2 = new CanonicalTimelineClipSnapshot("clip-2", "asset-2", MediaTime.ofMillis(5000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot track = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clip1, clip2), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 10000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(10000),
                 List.of(track), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         // ours moves clip-1
-        CanonicalTimelineClipSnapshot clip1moved = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 1000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot clip1moved = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(1000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackOurs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clip1moved, clip2), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 10000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(10000),
                 List.of(trackOurs), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         // theirs trims clip-2
-        CanonicalTimelineClipSnapshot clip2trimmed = new CanonicalTimelineClipSnapshot(
-                "clip-2", "asset-2", 5000, 3000, 0, 3000, Map.of());
+        CanonicalTimelineClipSnapshot clip2trimmed = new CanonicalTimelineClipSnapshot("clip-2", "asset-2", MediaTime.ofMillis(5000), MediaTime.ofMillis(3000), MediaTime.ofMillis(0), MediaTime.ofMillis(3000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackTheirs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clip1, clip2trimmed), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 10000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(10000),
                 List.of(trackTheirs), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -388,28 +372,25 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Same clip moved differently = CLIP_TIMING_CONFLICT")
     void sameClipMovedDifferentlyConflict() {
-        CanonicalTimelineClipSnapshot clip = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 0, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot clip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot track = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clip), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 10000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(10000),
                 List.of(track), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineClipSnapshot clipOurs = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 1000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot clipOurs = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(1000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackOurs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clipOurs), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 10000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(10000),
                 List.of(trackOurs), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineClipSnapshot clipTheirs = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 3000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot clipTheirs = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(3000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackTheirs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clipTheirs), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 10000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(10000),
                 List.of(trackTheirs), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -419,28 +400,25 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Same clip trimmed differently = CLIP_TIMING_CONFLICT")
     void sameClipTrimmedDifferentlyConflict() {
-        CanonicalTimelineClipSnapshot clip = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 0, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot clip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot track = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clip), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 10000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(10000),
                 List.of(track), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineClipSnapshot clipOurs = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 0, 3000, 0, 3000, Map.of());
+        CanonicalTimelineClipSnapshot clipOurs = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), MediaTime.ofMillis(0), MediaTime.ofMillis(3000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackOurs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clipOurs), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 10000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(10000),
                 List.of(trackOurs), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineClipSnapshot clipTheirs = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 0, 4000, 0, 4000, Map.of());
+        CanonicalTimelineClipSnapshot clipTheirs = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(4000), MediaTime.ofMillis(0), MediaTime.ofMillis(4000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackTheirs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clipTheirs), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 10000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(10000),
                 List.of(trackTheirs), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -450,28 +428,26 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Clip removed vs clip moved = conflict")
     void clipRemovedVsMovedConflict() {
-        CanonicalTimelineClipSnapshot clip = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 0, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot clip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot track = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clip), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 10000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(10000),
                 List.of(track), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         // ours removes clip
         CanonicalTimelineTrackSnapshot trackOurs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 10000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(10000),
                 List.of(trackOurs), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         // theirs moves clip
-        CanonicalTimelineClipSnapshot clipMoved = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 2000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineClipSnapshot clipMoved = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(2000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackTheirs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clipMoved), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 10000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(10000),
                 List.of(trackTheirs), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -485,19 +461,19 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineTrackSnapshot t2 = new CanonicalTimelineTrackSnapshot(
                 "track-2", 1, "VIDEO", List.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(t1, t2), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineTrackSnapshot t1ours = new CanonicalTimelineTrackSnapshot(
                 "track-1", 5, "VIDEO", List.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(t1ours, t2), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineTrackSnapshot t1theirs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 9, "VIDEO", List.of(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(t1theirs, t2), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -514,19 +490,19 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineTemplateApplicationSnapshot ta2 = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-2", "tpl-2", "1.0", Map.of("width", "100"), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(ta1, ta2), List.of(), null, Map.of());
 
         CanonicalTimelineTemplateApplicationSnapshot ta1ours = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-1", "tpl-1", "1.0", Map.of("fontSize", "32", "color", "red"), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(ta1ours, ta2), List.of(), null, Map.of());
 
         CanonicalTimelineTemplateApplicationSnapshot ta2theirs = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-2", "tpl-2", "1.0", Map.of("width", "200"), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(ta1, ta2theirs), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -538,19 +514,19 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineTemplateApplicationSnapshot ta = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-1", "tpl-1", "1.0", Map.of("fontSize", "24"), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(ta), List.of(), null, Map.of());
 
         CanonicalTimelineTemplateApplicationSnapshot taOurs = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-1", "tpl-1", "1.0", Map.of("fontSize", "32"), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(taOurs), List.of(), null, Map.of());
 
         CanonicalTimelineTemplateApplicationSnapshot taTheirs = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-1", "tpl-1", "1.0", Map.of("fontSize", "48"), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(taTheirs), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -563,19 +539,19 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineTemplateApplicationSnapshot ta = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-1", "tpl-1", "1.0", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(ta), List.of(), null, Map.of());
 
         CanonicalTimelineTemplateApplicationSnapshot taOurs = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-1", "tpl-new-a", "1.0", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(taOurs), List.of(), null, Map.of());
 
         CanonicalTimelineTemplateApplicationSnapshot taTheirs = new CanonicalTimelineTemplateApplicationSnapshot(
                 "app-1", "tpl-new-b", "1.0", Map.of(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(taTheirs), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -587,19 +563,19 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineWorkflowStepSnapshot ws = new CanonicalTimelineWorkflowStepSnapshot(
                 "step-1", "APPLY_TEMPLATE", "app-1", Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(ws), null, Map.of());
 
         CanonicalTimelineWorkflowStepSnapshot wsOurs = new CanonicalTimelineWorkflowStepSnapshot(
                 "step-1", "APPLY_TEMPLATE", "app-ours", Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(wsOurs), null, Map.of());
 
         CanonicalTimelineWorkflowStepSnapshot wsTheirs = new CanonicalTimelineWorkflowStepSnapshot(
                 "step-1", "APPLY_TEMPLATE", "app-theirs", Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(wsTheirs), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -612,19 +588,19 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineWatermarkSnapshot wm = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "BOTTOM_RIGHT", 50, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(wm), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineWatermarkSnapshot wmOurs = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "TOP_LEFT", 50, Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(wmOurs), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineWatermarkSnapshot wmTheirs = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "CENTER", 50, Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(wmTheirs), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -637,19 +613,19 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineWatermarkSnapshot wm = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "BOTTOM_RIGHT", 50, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(wm), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineWatermarkSnapshot wmOurs = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "BOTTOM_RIGHT", 80, Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(wmOurs), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineWatermarkSnapshot wmTheirs = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "BOTTOM_RIGHT", 30, Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(wmTheirs), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -664,12 +640,12 @@ class TimelineMergeConflictDetectorTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         // ours adds a track (triggers full rerender)
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", base.durationMs(),
+                snapId("s1"), "rev-ours", base.duration(),
                 List.of(track("track-1", 0), track("track-new", 1)),
                 List.of(), List.of(), List.of(), List.of(), null, Map.of());
         // theirs changes duration (also triggers full rerender)
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 9999,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(9999),
                 base.tracks(), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -741,36 +717,30 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Deterministic conflict ordering")
     void deterministicConflictOrdering() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
-        CanonicalTimelineClipSnapshot clip = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 0, 5000, 0, 5000, Map.of());
+        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
+        CanonicalTimelineClipSnapshot clip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot track = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clip), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(track), List.of(cap), List.of(), List.of(), List.of(), null, Map.of());
 
         // ours changes caption + clip
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Ours", Map.of(), Map.of());
-        CanonicalTimelineClipSnapshot clipOurs = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 1000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
+        CanonicalTimelineClipSnapshot clipOurs = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(1000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackOurs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clipOurs), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(trackOurs), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of());
 
         // theirs changes caption + clip differently
-        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Theirs", Map.of(), Map.of());
-        CanonicalTimelineClipSnapshot clipTheirs = new CanonicalTimelineClipSnapshot(
-                "clip-1", "asset-1", 3000, 5000, 0, 5000, Map.of());
+        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
+        CanonicalTimelineClipSnapshot clipTheirs = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(3000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
         CanonicalTimelineTrackSnapshot trackTheirs = new CanonicalTimelineTrackSnapshot(
                 "track-1", 0, "VIDEO", List.of(clipTheirs), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(trackTheirs), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of());
 
         // Run twice — should produce same order
@@ -785,22 +755,19 @@ class TimelineMergeConflictDetectorTest {
 
     @Test @DisplayName("Summary counts are correct")
     void summaryCountsCorrect() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Hello", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", 5000,
+                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Ours", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", 5000,
+                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
                 List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of());
 
-        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", 0, 3000, "Theirs", Map.of(), Map.of());
+        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", 5000,
+                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
                 List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of());
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
@@ -843,13 +810,13 @@ class TimelineMergeConflictDetectorTest {
     }
 
     private CanonicalTimelineSnapshot snap(String revId) {
-        return new CanonicalTimelineSnapshot(snapId("snap-" + revId), revId, 5000,
+        return new CanonicalTimelineSnapshot(snapId("snap-" + revId), revId, MediaTime.ofMillis(5000),
                 List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of());
     }
 
     private CanonicalTimelineTrackSnapshot track(String id, int order) {
         return new CanonicalTimelineTrackSnapshot(id, order, "VIDEO",
-                List.of(new CanonicalTimelineClipSnapshot("clip-1", "asset-1", 0, 5000, 0, 5000, Map.of())),
+                List.of(new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of())),
                 Map.of());
     }
 }

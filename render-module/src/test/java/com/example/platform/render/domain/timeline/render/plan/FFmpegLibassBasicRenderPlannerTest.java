@@ -1,6 +1,7 @@
 package com.example.platform.render.domain.timeline.render.plan;
 
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -332,8 +333,7 @@ class FFmpegLibassBasicRenderPlannerTest {
 
     @Test @DisplayName("Unsupported container blocked")
     void unsupportedContainerBlocked() {
-        TimelineOutputSpec output = new TimelineOutputSpec(
-                "avi", "1920x1080", 30.0, "h264", 8000,
+        TimelineOutputSpec output = new TimelineOutputSpec("avi", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec timeline = TimelineSpec.create("tl-1", "Test", output);
         FFmpegLibassBasicRenderPlanningResult result = plan(timeline);
@@ -343,8 +343,7 @@ class FFmpegLibassBasicRenderPlannerTest {
 
     @Test @DisplayName("Unsupported video codec blocked")
     void unsupportedVideoCodecBlocked() {
-        TimelineOutputSpec output = new TimelineOutputSpec(
-                "mp4", "1920x1080", 30.0, "mpeg2", 8000,
+        TimelineOutputSpec output = new TimelineOutputSpec("mp4", "1920x1080", FrameRate.of(30, 1), "mpeg2", 8000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec timeline = TimelineSpec.create("tl-1", "Test", output);
         FFmpegLibassBasicRenderPlanningResult result = plan(timeline);

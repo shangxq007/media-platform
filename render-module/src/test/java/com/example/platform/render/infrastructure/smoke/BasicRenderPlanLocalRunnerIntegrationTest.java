@@ -2,6 +2,7 @@ package com.example.platform.render.infrastructure.smoke;
 
 import com.example.platform.render.domain.render.local.*;
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.render.plan.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -58,8 +59,7 @@ class BasicRenderPlanLocalRunnerIntegrationTest {
 
         // Step 1: Build deterministic BasicTimeline fixture
         // Must have at least one track with one clip for BasicTimelineValidator
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "320x180", 30.0, "h264", 1000000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(30, 1), "h264", 1000000,
                 new TimelineAudioSpec("aac", 48000, 2, 128000, 1.0, false),
                 "yuv420p");
         TimelineAssetRef assetRef = TimelineAssetRef.of("asset-001", "internal://testsrc");
@@ -153,8 +153,7 @@ class BasicRenderPlanLocalRunnerIntegrationTest {
     void basicRenderPlanReportWrittenToStableOutput() throws Exception {
         Path outputRoot = resolveOutputRoot();
 
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "640x480", 24.0, "h264", 500000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "640x480", FrameRate.of(24, 1), "h264", 500000,
                 new TimelineAudioSpec("aac", 44100, 2, 128000, 1.0, false),
                 "yuv420p");
         TimelineAssetRef assetRef = TimelineAssetRef.of("asset-002", "internal://testsrc");

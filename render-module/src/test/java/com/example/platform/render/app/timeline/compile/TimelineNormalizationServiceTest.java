@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.compile.*;
 import java.util.List;
 import java.util.Map;
@@ -95,8 +96,7 @@ class TimelineNormalizationServiceTest {
     @Test
     @DisplayName("Output profile is normalized with defaults")
     void outputProfileIsNormalized() {
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "1920x1080", 30.0, "h264", 8000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl-1", "Test", null,
                 List.of(createTrack("trk-1")), List.of(), outputSpec, 5.0, Map.of());

@@ -4,6 +4,8 @@ import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandid
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineSnapshot;
 import com.example.platform.render.domain.timeline.diff.calculation.TimelineSnapshotConverter;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
@@ -67,9 +69,12 @@ class TimelineMergePayloadContractRegressionTest {
         assertEquals("v1", snapshot.tracks().get(0).trackId());
         assertEquals("c1", snapshot.tracks().get(0).clips().get(0).clipId());
         assertEquals("ast-1", snapshot.tracks().get(0).clips().get(0).assetBindingId());
-        // 90 frames @30fps = 3000ms; start frame 0 -> startMs 0
-        assertEquals(0L, snapshot.tracks().get(0).clips().get(0).startMs());
-        assertEquals(3000L, snapshot.tracks().get(0).clips().get(0).durationMs());
+        // C1-CNM1: exact MediaTime snapshot; 90 frames @30fps = 3000ms.
+        // start frame 0 -> MediaTime.ZERO; duration 90 frames @30/1.
+        assertEquals(MediaTime.ZERO, snapshot.tracks().get(0).clips().get(0).start());
+        assertEquals(MediaTime.ofFrames(90, 30, 1),
+                snapshot.tracks().get(0).clips().get(0).duration());
+        assertEquals(FrameRate.of(30, 1), snapshot.tracks().get(0).clips().get(0).rate());
     }
 
     @Test

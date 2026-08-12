@@ -146,7 +146,11 @@ public final class TimelineCoreSmokeFixture {
             Map<String, Object> outputSpecJson = new java.util.LinkedHashMap<>();
             outputSpecJson.put("format", spec.outputSpec().format());
             outputSpecJson.put("resolution", spec.outputSpec().resolution());
-            outputSpecJson.put("frameRate", spec.outputSpec().frameRate());
+            // C1-CNM1: exact rational rate as structured {num, den}
+            Map<String, Long> rateJson = new java.util.LinkedHashMap<>();
+            rateJson.put("num", spec.outputSpec().frameRate().numerator().longValue());
+            rateJson.put("den", spec.outputSpec().frameRate().denominator());
+            outputSpecJson.put("frameRate", rateJson);
             outputSpecJson.put("videoCodec", spec.outputSpec().videoCodec());
             outputSpecJson.put("videoBitrate", spec.outputSpec().videoBitrate());
             if (spec.outputSpec().pixelFormat() != null) {

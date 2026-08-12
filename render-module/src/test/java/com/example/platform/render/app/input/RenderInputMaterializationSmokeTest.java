@@ -9,6 +9,7 @@ import com.example.platform.render.app.timeline.TimelineRenderJobMapper;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
@@ -164,8 +165,7 @@ class RenderInputMaterializationSmokeTest {
                 "trk_r4_v1", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
 
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "320x180", 30, "h264", 1000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(30, 1), "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
 
         TimelineSpec spec = new TimelineSpec(
@@ -556,8 +556,7 @@ class RenderInputMaterializationSmokeTest {
         TimelineTrack videoTrack = new TimelineTrack(
                 "trk_r5_v1", "Video 1", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "320x180", 30, "h264", 1000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(30, 1), "h264", 1000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec(
                 "tl_r5_001", "R5 Dependency Edge Timeline", "R5 smoke",

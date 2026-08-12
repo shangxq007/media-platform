@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.compile.*;
 import java.util.List;
 import java.util.Map;
@@ -71,8 +72,7 @@ class TimelineCompileGoldenFixtureTest {
     @Test
     @DisplayName("Golden: single video clip with output profile")
     void goldenSingleClipWithOutputProfile() {
-        TimelineOutputSpec outputSpec = new TimelineOutputSpec(
-                "mp4", "1280x720", 24.0, "h264", 4000,
+        TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "1280x720", FrameRate.of(24, 1), "h264", 4000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec spec = new TimelineSpec("tl-golden-720p", "Golden 720p", null,
                 List.of(createVideoTrack("trk-1")), List.of(), outputSpec, 5.0, Map.of());

@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 
 class TimelinePatchApplierTest {
 
@@ -53,9 +55,9 @@ class TimelinePatchApplierTest {
 
     @Test @DisplayName("Duration changed")
     void durationChanged() {
-        TimelinePatchApplicationResult r = applier.apply(snap("rev-1"), patchOf(TimelineChangeType.TIMELINE_DURATION_CHANGED, "timeline.durationMs", "5000", "10000"));
+        TimelinePatchApplicationResult r = applier.apply(snap("rev-1"), patchOf(TimelineChangeType.TIMELINE_DURATION_CHANGED, "timeline.duration", "5/1", "10/1"));
         assertTrue(r.isApplied());
-        assertEquals(10000, r.patchedSnapshot().durationMs());
+        assertEquals(MediaTime.ofMillis(10000), r.patchedSnapshot().duration());
     }
 
     @Test @DisplayName("Metadata changed")
@@ -68,7 +70,8 @@ class TimelinePatchApplierTest {
     @Test @DisplayName("Output profile changed")
     void outputProfileChanged() {
         CanonicalTimelineOutputProfileSnapshot p = new CanonicalTimelineOutputProfileSnapshot("p1", "mp4", "16:9", 1920, 1080, Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(new CanonicalTimelineSnapshotId("s1"), "rev-1", 5000,
+        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
+                new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), p, Map.of());
         TimelinePatchApplicationResult r = applier.apply(base, patchOf(TimelineChangeType.OUTPUT_PROFILE_CHANGED, "timeline.outputProfile", "1920x1080", "1280x720"));
         assertTrue(r.isApplied());
@@ -97,8 +100,9 @@ class TimelinePatchApplierTest {
 
     @Test @DisplayName("Caption text changed")
     void captionChanged() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", 0, 3000, "Hello", Map.of(), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(new CanonicalTimelineSnapshotId("s1"), "rev-1", 5000,
+        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
+        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
+                new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of());
         TimelinePatchApplicationResult r = applier.apply(base, patchOf(TimelineChangeType.CAPTION_SEGMENT_CHANGED, "timeline.captions.cap-1.text", "Hello", "World"));
         assertTrue(r.isApplied());
@@ -114,7 +118,8 @@ class TimelinePatchApplierTest {
     @Test @DisplayName("Watermark opacity changed")
     void watermarkChanged() {
         CanonicalTimelineWatermarkSnapshot wm = new CanonicalTimelineWatermarkSnapshot("wm-1", "logo", "BOTTOM_RIGHT", 50, Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(new CanonicalTimelineSnapshotId("s1"), "rev-1", 5000,
+        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
+                new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(wm), List.of(), List.of(), null, Map.of());
         TimelinePatchApplicationResult r = applier.apply(base, patchOf(TimelineChangeType.WATERMARK_CHANGED, "timeline.watermarks.wm-1", "BOTTOM_RIGHT:50", "TOP_LEFT:80"));
         assertTrue(r.isApplied());
@@ -125,7 +130,8 @@ class TimelinePatchApplierTest {
     @Test @DisplayName("Template parameter changed")
     void templateParamChanged() {
         CanonicalTimelineTemplateApplicationSnapshot ta = new CanonicalTimelineTemplateApplicationSnapshot("app-1", "tpl-1", "1.0", Map.of("fontSize", "24"), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(new CanonicalTimelineSnapshotId("s1"), "rev-1", 5000,
+        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
+                new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(ta), List.of(), null, Map.of());
         TimelinePatchApplicationResult r = applier.apply(base, patchOf(TimelineChangeType.TEMPLATE_PARAMETER_CHANGED,
                 "timeline.templateApplications.app-1.parameters.fontSize", "24", "fontSize=32"));
@@ -137,7 +143,7 @@ class TimelinePatchApplierTest {
     void roundTripDuration() {
         CanonicalTimelineSnapshot before = snap("rev-1");
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("s2"), "rev-2", 10000,
+                new CanonicalTimelineSnapshotId("s2"), "rev-2", MediaTime.ofMillis(10000),
                 List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of());
 
         CanonicalTimelineDiffCalculationResult diff = diffCalculator.calculate(before, after);
@@ -148,16 +154,16 @@ class TimelinePatchApplierTest {
                 diff.diff().operations(), TimelineMergePolicy.FAIL_FAST, Map.of());
         TimelinePatchApplicationResult result = applier.apply(before, patch);
         assertTrue(result.isApplied(), "Patch should apply: " + result.issues());
-        assertEquals(10000, result.patchedSnapshot().durationMs());
+        assertEquals(MediaTime.ofMillis(10000), result.patchedSnapshot().duration());
     }
 
     @Test @DisplayName("Round-trip: metadata diff -> patch -> apply")
     void roundTripMetadata() {
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("s1"), "rev-1", 5000,
+                new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of("title", "Old"));
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("s2"), "rev-2", 5000,
+                new CanonicalTimelineSnapshotId("s2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of("title", "New"));
 
         CanonicalTimelineDiffCalculationResult diff = diffCalculator.calculate(before, after);
@@ -180,13 +186,13 @@ class TimelinePatchApplierTest {
     }
 
     private CanonicalTimelineSnapshot snap(String revId) {
-        return new CanonicalTimelineSnapshot(new CanonicalTimelineSnapshotId("snap-" + revId), revId, 5000,
+        return new CanonicalTimelineSnapshot(new CanonicalTimelineSnapshotId("snap-" + revId), revId, MediaTime.ofMillis(5000),
                 List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of());
     }
 
     private CanonicalTimelineTrackSnapshot track(String id, int order) {
         return new CanonicalTimelineTrackSnapshot(id, order, "VIDEO",
-                List.of(new CanonicalTimelineClipSnapshot("clip-1", "asset-1", 0, 5000, 0, 5000, Map.of())), Map.of());
+                List.of(new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of())), Map.of());
     }
 
     private TimelineChangeOperation op(TimelineChangeType type, TimelineChangeScope scope, String path, String before, String after) {
