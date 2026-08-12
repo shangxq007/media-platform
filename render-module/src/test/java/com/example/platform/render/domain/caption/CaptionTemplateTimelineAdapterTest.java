@@ -1,6 +1,7 @@
 package com.example.platform.render.domain.caption;
 
 import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
@@ -112,7 +113,7 @@ class CaptionTemplateTimelineAdapterTest {
 
         assertEquals("mp4", spec.outputSpec().format());
         assertEquals("1280x720", spec.outputSpec().resolution());
-        assertEquals(30.0, spec.outputSpec().frameRate());
+        assertEquals(FrameRate.of(30, 1), spec.outputSpec().frameRate());
     }
 
     @Test
@@ -122,7 +123,7 @@ class CaptionTemplateTimelineAdapterTest {
         TimelineSpec spec = adapter.adapt(request);
 
         assertEquals("1920x1080", spec.outputSpec().resolution());
-        assertEquals(30.0, spec.outputSpec().frameRate());
+        assertEquals(FrameRate.of(30, 1), spec.outputSpec().frameRate());
     }
 
     @Test
