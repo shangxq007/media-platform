@@ -6,6 +6,7 @@ import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.render.domain.timeline.semantics.time.TimelineTimeQuantization;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,17 +85,14 @@ public final class TimelineSnapshotConverter {
                 Map.of("schemaVersion", "internal-1.0"));
     }
 
-    /** Exact rational MediaTime -> milliseconds (truncated to long, same convention as the double path). */
+    /**
+     * C1-CRR2: exact rational MediaTime -> nearest millisecond via the single
+     * canonical quantization policy ({@link TimelineTimeQuantization}).
+     * Round-half-up, paired with the engine's {@code millisToFrame} so the
+     * canonical persisted frame domain round-trips losslessly.
+     */
     private static long toMillis(MediaTime time) {
-        if (time == null) {
-            return 0L;
-        }
-        long timeScale = time.timeScale();
-        if (timeScale == 0) {
-            return 0L;
-        }
-        // ticks / timeScale seconds -> milliseconds
-        return (time.ticks() * 1000L) / timeScale;
+        return TimelineTimeQuantization.mediaTimeToMillis(time);
     }
 
     public static CanonicalTimelineSnapshot toSnapshot(TimelineDocument document, String revisionId) {

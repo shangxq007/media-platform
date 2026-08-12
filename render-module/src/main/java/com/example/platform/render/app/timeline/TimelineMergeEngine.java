@@ -5,6 +5,7 @@ import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandid
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalNormalizer;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineValidationResult;
+import com.example.platform.render.domain.timeline.semantics.time.TimelineTimeQuantization;
 import com.example.platform.render.domain.timeline.diff.TimelineChangeOperation;
 import com.example.platform.render.domain.timeline.diff.TimelinePatch;
 import com.example.platform.render.domain.timeline.diff.TimelinePatchId;
@@ -398,11 +399,14 @@ public class TimelineMergeEngine {
         ObjectNode rate = mapper.createObjectNode();
         rate.put("num", fps);
         rate.put("den", 1);
+        // C1-CRR2: ms -> frame via the single canonical quantization policy
+        // (round-half-up), paired with the input conversion so the persisted
+        // frame domain round-trips losslessly.
         ObjectNode start = mapper.createObjectNode();
-        start.put("frame", (startMs * fps) / 1000L);
+        start.put("frame", TimelineTimeQuantization.millisToFrame(startMs, fps));
         start.set("rate", rate);
         ObjectNode duration = mapper.createObjectNode();
-        duration.put("frame", (durationMs * fps) / 1000L);
+        duration.put("frame", TimelineTimeQuantization.millisToFrame(durationMs, fps));
         duration.set("rate", rate);
         ObjectNode range = mapper.createObjectNode();
         range.set("start", start);
