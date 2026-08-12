@@ -1,8 +1,6 @@
 package com.example.platform.render.domain.timeline.semantics.time;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -22,17 +20,21 @@ class TimelineTimeQuantizationTest {
 
     private static final int[] SUPPORTED_FPS = {24, 25, 30, 50, 60};
 
-    @ParameterizedTest
-    @ValueSource(ints = {24, 25, 30, 50, 60})
-    void frameRoundTripIsLosslessForNonAlignedFrames(int fps) {
-        // The exact frames the CRR1-FCV probe proved to drift (floor/floor).
+    @Test
+    void frameRoundTripIsLosslessForNonAlignedFrames() {
+        // The exact frames the CRR1-FCV probe proved to drift (floor/floor),
+        // across every supported fps. (Plain @Test loop — deliberately NOT
+        // @ParameterizedTest, so the AS-IS source extractor sees exactly the
+        // testcase the runtime executes.)
         long[] frames = {1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23, 25, 26, 28, 29, 31, 32, 34};
-        for (long frame : frames) {
-            MediaTime mt = MediaTime.ofFrames(frame, fps, 1);
-            long ms = TimelineTimeQuantization.mediaTimeToMillis(mt);
-            long back = TimelineTimeQuantization.millisToFrame(ms, fps);
-            assertEquals(frame, back,
-                    "roundtrip drift at fps=" + fps + " frame=" + frame + " (ms=" + ms + ")");
+        for (int fps : SUPPORTED_FPS) {
+            for (long frame : frames) {
+                MediaTime mt = MediaTime.ofFrames(frame, fps, 1);
+                long ms = TimelineTimeQuantization.mediaTimeToMillis(mt);
+                long back = TimelineTimeQuantization.millisToFrame(ms, fps);
+                assertEquals(frame, back,
+                        "roundtrip drift at fps=" + fps + " frame=" + frame + " (ms=" + ms + ")");
+            }
         }
     }
 
