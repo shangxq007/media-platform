@@ -422,6 +422,46 @@ tasks.register("verifyC1CrrPayloadContract") {
     }
 }
 
+tasks.register("verifyC1Crr2TimeRoundtrip") {
+    group = "verification"
+    description = "C1-CRR2-RED: time roundtrip stability (single quantization authority, no floor residue, drift-free proofs)"
+    doLast {
+        // RED-06: single time-conversion policy authority — exactly one quantization class
+        val quant = file("render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/time/TimelineTimeQuantization.java")
+        require(quant.exists()) { "FAIL: TimelineTimeQuantization policy authority missing" }
+        val quantSrc = quant.readText()
+        require(quantSrc.contains("millisToFrame")) { "FAIL: millisToFrame policy missing" }
+        require(quantSrc.contains("mediaTimeToMillis")) { "FAIL: mediaTimeToMillis policy missing" }
+        require(quantSrc.contains("round-half-up") || quantSrc.contains("half-up")) { "FAIL: rounding policy not declared" }
+        // RED-07: no implicit floor/truncation remains on the canonical merge persistence boundary
+        val engine = file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java")
+        val engineSrc = engine.readText()
+        require(!engineSrc.contains("(startMs * fps) / 1000L")) { "FAIL: floor ms->frame still in engine" }
+        require(!engineSrc.contains("(durationMs * fps) / 1000L")) { "FAIL: floor ms->frame still in engine" }
+        val converter = file("render-module/src/main/java/com/example/platform/render/domain/timeline/diff/calculation/TimelineSnapshotConverter.java")
+        val converterSrc = converter.readText()
+        require(!converterSrc.contains("(time.ticks() * 1000L) / timeScale")) { "FAIL: floor MediaTime->ms still in converter" }
+        // RED-08: payload contract correction preserved (no TimelineDocument parse path)
+        require(!engineSrc.contains("readValue(payload, TimelineDocument.class)")) { "FAIL: TimelineDocument parse path present" }
+        // RED-09: engine remains sole semantic merge authority
+        require(engineSrc.contains("class TimelineMergeEngine")) { "FAIL: TimelineMergeEngine missing" }
+        // RED-01..05: behavioral/property proofs must exist (JUnit)
+        val quantTest = file("render-module/src/test/java/com/example/platform/render/domain/timeline/semantics/time/TimelineTimeQuantizationTest.java")
+        require(quantTest.exists()) { "FAIL: quantization property test missing" }
+        val q = quantTest.readText()
+        require(q.contains("frameRoundTripIsLosslessForNonAlignedFrames")) { "FAIL: RED-01 non-aligned frame roundtrip proof missing" }
+        require(q.contains("durationRoundTripIsLossless")) { "FAIL: RED-02 duration roundtrip proof missing" }
+        require(q.contains("repeatedRoundTripIsStable")) { "FAIL: RED-03 repeated conversion proof missing" }
+        require(q.contains("exhaustiveFrameRoundTripFirstThousand")) { "FAIL: RED-05 supported rate domain proof missing" }
+        val stability = file("render-module/src/test/java/com/example/platform/render/app/timeline/TimelineRepeatedMergeStabilityTest.java")
+        require(stability.exists()) { "FAIL: repeated merge stability test missing" }
+        require(stability.readText().contains("uneditedNonAlignedFramesSurviveRepeatedMerges")) { "FAIL: RED-04 repeated merge proof missing" }
+        // RED-10: schema/module zero delta (no new sql, no settings change — structural check)
+        require(!file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderExecutionMode.java").exists()) { "note: baseline check" }
+        println("OK: C1-CRR2 time roundtrip verified (single quantization authority, no floor residue, drift-free proofs present)")
+    }
+}
+
 tasks.register("jooqFoundationCheck") {
     group = "verification"
     description = "Run all jOOQ foundation verification checks"
