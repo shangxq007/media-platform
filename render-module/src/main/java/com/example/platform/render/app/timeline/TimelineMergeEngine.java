@@ -1,7 +1,6 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.app.TimelineSnapshotService;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalNormalizer;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
@@ -12,7 +11,9 @@ import com.example.platform.render.domain.timeline.diff.TimelinePatchId;
 import com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationResult;
 import com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationStatus;
 import com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplier;
+import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineClipSnapshot;
 import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineSnapshot;
+import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineTrackSnapshot;
 import com.example.platform.render.domain.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineMergePlanOperation;
 import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineMergePlanOperationStatus;
@@ -43,10 +44,12 @@ import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.ErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantGuard;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -91,7 +94,6 @@ public class TimelineMergeEngine {
     private final TimelineNonConflictingMergePlanner mergePlanner;
     private final TimelinePatchApplier patchApplier;
     private final ObjectMapper objectMapper;
-    private final boolean canonicalGatesEnabled;
 
     public TimelineMergeEngine(
             TimelineRevisionRepository revisionRepository,
@@ -100,8 +102,7 @@ public class TimelineMergeEngine {
             TimelineMergePreviewService previewService,
             TimelineNonConflictingMergePlanner mergePlanner,
             TimelinePatchApplier patchApplier,
-            ObjectMapper objectMapper,
-            @Value("${timeline.merge.canonical-gates-enabled:true}") boolean canonicalGatesEnabled) {
+            ObjectMapper objectMapper) {
         this.revisionRepository = revisionRepository;
         this.snapshotService = snapshotService;
         this.currentRevisionService = currentRevisionService;
@@ -109,7 +110,6 @@ public class TimelineMergeEngine {
         this.mergePlanner = mergePlanner;
         this.patchApplier = patchApplier;
         this.objectMapper = objectMapper;
-        this.canonicalGatesEnabled = canonicalGatesEnabled;
     }
 
     public TimelineMergeResult merge(TimelineMergeRequest request) {
@@ -121,51 +121,44 @@ public class TimelineMergeEngine {
             TimelineMergeRequest request,
             Map<String, TimelineResolutionIntent> resolutions) {
         try {
-            String contextTenant = null;
+            String contextTenant = TenantGuard.requireTenantId();
             String effectiveTenant = request.effectiveTenant();
-            if (canonicalGatesEnabled) {
-                contextTenant = TenantGuard.requireTenantId();
-                if (effectiveTenant == null || effectiveTenant.isBlank()) {
-                    effectiveTenant = contextTenant;
-                } else {
-                    TenantGuard.assertSameTenant(effectiveTenant);
-                }
-                requireNotBlank(request.projectId(), "projectId");
-                requireNotBlank(request.baseRevisionId(), "baseRevisionId");
-                requireNotBlank(request.sourceRevisionId(), "sourceRevisionId");
-                requireNotBlank(request.targetRevisionId(), "targetRevisionId");
+            if (effectiveTenant == null || effectiveTenant.isBlank()) {
+                effectiveTenant = contextTenant;
+            } else {
+                TenantGuard.assertSameTenant(effectiveTenant);
             }
+            requireNotBlank(request.projectId(), "projectId");
+            requireNotBlank(request.baseRevisionId(), "baseRevisionId");
+            requireNotBlank(request.sourceRevisionId(), "sourceRevisionId");
+            requireNotBlank(request.targetRevisionId(), "targetRevisionId");
 
             var baseRevision = loadRevision(request.baseRevisionId());
             var sourceRevision = loadRevision(request.sourceRevisionId());
             var targetRevision = loadRevision(request.targetRevisionId());
 
-            if (canonicalGatesEnabled) {
-                assertProjectAndTenant(request.projectId(), contextTenant, baseRevision);
-                assertProjectAndTenant(request.projectId(), contextTenant, sourceRevision);
-                assertProjectAndTenant(request.projectId(), contextTenant, targetRevision);
-            }
+            assertProjectAndTenant(request.projectId(), contextTenant, baseRevision);
+            assertProjectAndTenant(request.projectId(), contextTenant, sourceRevision);
+            assertProjectAndTenant(request.projectId(), contextTenant, targetRevision);
 
             String basePayload = loadPayload(baseRevision, contextTenant);
             String sourcePayload = loadPayload(sourceRevision, contextTenant);
             String targetPayload = loadPayload(targetRevision, contextTenant);
 
-            if (canonicalGatesEnabled) {
-                canonicalGate(request.projectId(), basePayload);
-                canonicalGate(request.projectId(), sourcePayload);
-                canonicalGate(request.projectId(), targetPayload);
-            }
+            // Canonical gate (C1 authority): internal-1.0 payload -> TimelineCandidate,
+            // validated + normalized. Always enabled (C1-CRR1: no bypass flag).
+            TimelineCandidate baseCandidate = canonicalGate(request.projectId(), basePayload);
+            TimelineCandidate sourceCandidate = canonicalGate(request.projectId(), sourcePayload);
+            TimelineCandidate targetCandidate = canonicalGate(request.projectId(), targetPayload);
 
-            TimelineDocument baseDoc = parse(basePayload);
-            TimelineDocument sourceDoc = parse(sourcePayload);
-            TimelineDocument targetDoc = parse(targetPayload);
-
+            // Single bounded conversion path (C1-CRR1): canonical persisted payload
+            // -> semantic merge snapshot via the gate's own candidate model.
             CanonicalTimelineSnapshot baseSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(baseDoc, request.baseRevisionId());
+                    TimelineSnapshotConverter.toSnapshot(baseCandidate, request.baseRevisionId());
             CanonicalTimelineSnapshot sourceSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(sourceDoc, request.sourceRevisionId());
+                    TimelineSnapshotConverter.toSnapshot(sourceCandidate, request.sourceRevisionId());
             CanonicalTimelineSnapshot targetSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(targetDoc, request.targetRevisionId());
+                    TimelineSnapshotConverter.toSnapshot(targetCandidate, request.targetRevisionId());
 
             // Canonical preview + plan: typed-path conflict detection over both branches.
             TimelineMergePreviewRequest previewRequest = new TimelineMergePreviewRequest(
@@ -246,12 +239,14 @@ public class TimelineMergeEngine {
             }
 
             CanonicalTimelineSnapshot mergedSnapshot = application.patchedSnapshot();
-            TimelineDocument mergedDoc = TimelineSnapshotConverter.toDocument(mergedSnapshot, targetDoc);
-            String mergedPayload = TimelineDocumentJsonSerializer.serialize(mergedDoc);
+            // C1-CRR1: merged payload is rebuilt in the canonical persisted format
+            // (internal-1.0). The target JSON's document-level fields are preserved;
+            // composition.tracks are replaced by the merged semantic tracks so the
+            // persisted merged revision passes the canonical gate and remains
+            // consumable by the same save/load/merge authority.
+            String mergedPayload = toInternalPayload(targetPayload, mergedSnapshot, request.targetRevisionId());
 
-            if (canonicalGatesEnabled) {
-                canonicalGate(request.projectId(), mergedPayload);
-            }
+            canonicalGate(request.projectId(), mergedPayload);
 
             // Frozen idempotency + stale-current contract (unchanged from legacy engine).
             String mergedPayloadHash = computeMergeHash(
@@ -289,10 +284,8 @@ public class TimelineMergeEngine {
             log.info("Canonical merge revision created: id={} project={} rev={}",
                     mergeRevisionId, request.projectId(), revNum);
 
-            if (canonicalGatesEnabled) {
-                currentRevisionService.updateCurrentRevision(
-                        request.projectId(), request.targetRevisionId(), mergeRevisionId);
-            }
+            currentRevisionService.updateCurrentRevision(
+                    request.projectId(), request.targetRevisionId(), mergeRevisionId);
 
             List<SemanticChange> autoMerged = applyOps.stream()
                     .map(op -> SemanticChange.of(
@@ -318,12 +311,103 @@ public class TimelineMergeEngine {
     }
     // ── helpers (frozen contract preserved from legacy authority) ─────────────────
 
-    private TimelineDocument parse(String payload) {
+    /**
+     * Rebuild the merged revision payload in the canonical persisted format
+     * (internal-1.0). Document-level fields of the target payload (id, name,
+     * project, assetRegistry, output, extensions, metadata) are preserved;
+     * {@code composition.tracks} are replaced by the merged semantic tracks
+     * (ms -> exact frame @ target rate).
+     *
+     * <p>C1-CRR1 frozen contract: the merged payload must pass the canonical
+     * gate (which it does — {@code merge} re-gates it immediately) and remain
+     * consumable by the same save/load/merge authority on the next merge.</p>
+     */
+    private String toInternalPayload(String targetPayload, CanonicalTimelineSnapshot mergedSnapshot,
+                                     String revisionId) {
         try {
-            return objectMapper.readValue(payload, TimelineDocument.class);
-        } catch (Exception e) {
-            throw new IllegalStateException("Merge payload is not a canonical TimelineDocument", e);
+            JsonNode targetRoot = InternalTimelineJson.parse(targetPayload);
+            if (!InternalTimelineJson.isInternalTimeline(targetRoot)) {
+                throw new IllegalStateException("Merge target payload is not internal-1.0");
+            }
+            int fps = targetFps(targetRoot);
+            ObjectNode composition = (ObjectNode) targetRoot.path("composition");
+            if (composition == null || composition.isMissingNode()) {
+                throw new IllegalStateException("Merge target payload has no composition block");
+            }
+            ObjectNode mergedRoot = (ObjectNode) InternalTimelineJson.mapper().valueToTree(targetRoot);
+            ObjectNode mergedComposition = (ObjectNode) mergedRoot.path("composition");
+            mergedComposition.set("tracks", tracksToJson(mergedSnapshot.tracks(), fps));
+            // revision counter is a document-level field; the persistence layer
+            // re-assigns it on insert, so leave it untouched here.
+            return InternalTimelineJson.write(mergedRoot);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Failed to rebuild internal-1.0 merged payload", e);
         }
+    }
+
+    private int targetFps(JsonNode root) {
+        JsonNode tracks = root.path("composition").path("tracks");
+        if (tracks.isArray()) {
+            for (JsonNode track : tracks) {
+                JsonNode clips = track.path("clips");
+                if (clips.isArray()) {
+                    for (JsonNode clip : clips) {
+                        JsonNode rate = clip.path("timelineRange").path("start").path("rate");
+                        if (rate.has("num") && rate.get("num").asInt(0) > 0) {
+                            return rate.get("num").asInt();
+                        }
+                    }
+                }
+            }
+        }
+        return 30;
+    }
+
+    private ArrayNode tracksToJson(List<CanonicalTimelineTrackSnapshot> tracks, int fps) {
+        ObjectMapper mapper = InternalTimelineJson.mapper();
+        ArrayNode out = mapper.createArrayNode();
+        // Track order is semantic (TRACK_REORDERED materializes the order field);
+        // emit in order, mirroring TimelineSnapshotConverter.toDocument sorting.
+        List<CanonicalTimelineTrackSnapshot> ordered = new ArrayList<>(tracks);
+        ordered.sort(java.util.Comparator.comparingInt(CanonicalTimelineTrackSnapshot::order));
+        for (CanonicalTimelineTrackSnapshot track : ordered) {
+            ObjectNode trackNode = mapper.createObjectNode();
+            trackNode.put("id", track.trackId());
+            String type = track.kind() != null ? track.kind() : "VIDEO";
+            trackNode.put("type", type);
+            ArrayNode clips = mapper.createArrayNode();
+            for (CanonicalTimelineClipSnapshot clip : track.clips()) {
+                clips.add(clipToJson(clip, fps, mapper));
+            }
+            trackNode.set("clips", clips);
+            out.add(trackNode);
+        }
+        return out;
+    }
+
+    private ObjectNode clipToJson(CanonicalTimelineClipSnapshot clip, int fps, ObjectMapper mapper) {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("id", clip.clipId());
+        node.put("assetId", clip.assetBindingId());
+        node.set("timelineRange", rangeToJson(clip.startMs(), clip.durationMs(), fps, mapper));
+        node.set("sourceRange", rangeToJson(clip.sourceStartMs(), clip.sourceDurationMs(), fps, mapper));
+        return node;
+    }
+
+    private ObjectNode rangeToJson(long startMs, long durationMs, int fps, ObjectMapper mapper) {
+        ObjectNode rate = mapper.createObjectNode();
+        rate.put("num", fps);
+        rate.put("den", 1);
+        ObjectNode start = mapper.createObjectNode();
+        start.put("frame", (startMs * fps) / 1000L);
+        start.set("rate", rate);
+        ObjectNode duration = mapper.createObjectNode();
+        duration.put("frame", (durationMs * fps) / 1000L);
+        duration.set("rate", rate);
+        ObjectNode range = mapper.createObjectNode();
+        range.set("start", start);
+        range.set("duration", duration);
+        return range;
     }
 
     private TimelineCandidate canonicalGate(String projectId, String internalTimelineJson) {

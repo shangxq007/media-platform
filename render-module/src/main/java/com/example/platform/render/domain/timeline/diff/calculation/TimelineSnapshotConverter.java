@@ -4,6 +4,8 @@ import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
+import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,10 +19,82 @@ import java.util.Map;
  * as defined by the canonical diff model. Document-level fields outside that
  * space (metadata, schema version) are carried through {@code safeMetadata}
  * so the reverse conversion is lossless for the merge scope.</p>
+ *
+ * <p>C1-CRR1: {@link #toSnapshot(TimelineCandidate, String)} converts the
+ * canonical persisted internal-1.0 payload (via the E1b gate's own
+ * {@link TimelineCandidate} representation) into the semantic merge model.
+ * The candidate carries exact rational {@link MediaTime}; the snapshot space
+ * uses milliseconds, mirroring the existing {@code TimelineDocument} mapping
+ * (start/duration/source bounds) with zero floating-point loss.</p>
  */
 public final class TimelineSnapshotConverter {
 
     private TimelineSnapshotConverter() {
+    }
+
+    /**
+     * Convert the canonical gate's {@link TimelineCandidate} (produced from the
+     * persisted internal-1.0 payload by {@code InternalTimelineCandidateAdapter})
+     * into the semantic merge snapshot model.
+     *
+     * <p>Frozen contract (C1-CRR1): the candidate is the canonical semantic
+     * model of the persisted revision payload; this conversion is the single
+     * bounded bridge into the merge snapshot space. Track order = declaration
+     * order (matching the TimelineDocument mapping). Clip fields: clipId,
+     * assetBindingId (sourceRef), startMs (timelineStart), durationMs,
+     * sourceStartMs (sourceStart), sourceDurationMs (duration).</p>
+     */
+    public static CanonicalTimelineSnapshot toSnapshot(TimelineCandidate candidate, String revisionId) {
+        List<CanonicalTimelineTrackSnapshot> tracks = new ArrayList<>();
+        long durationMs = 0L;
+        List<TimelineCandidate.Track> candidateTracks = candidate.tracks();
+        for (int i = 0; i < candidateTracks.size(); i++) {
+            TimelineCandidate.Track track = candidateTracks.get(i);
+            List<CanonicalTimelineClipSnapshot> clips = new ArrayList<>();
+            for (TimelineCandidate.Clip clip : track.clips()) {
+                long startMs = toMillis(clip.timelineStart());
+                long duration = toMillis(clip.duration());
+                long sourceStartMs = toMillis(clip.sourceStart());
+                long sourceDurationMs = toMillis(clip.duration());
+                long endMs = startMs + duration;
+                durationMs = Math.max(durationMs, endMs);
+                clips.add(new CanonicalTimelineClipSnapshot(
+                        clip.clipId(),
+                        clip.sourceRef() != null ? clip.sourceRef().value() : "",
+                        startMs,
+                        duration,
+                        sourceStartMs,
+                        sourceDurationMs,
+                        Map.of()));
+            }
+            String kind = track.type() != null ? track.type().name() : "VIDEO";
+            tracks.add(new CanonicalTimelineTrackSnapshot(
+                    track.trackId(), i, kind, List.copyOf(clips), Map.of()));
+        }
+        return new CanonicalTimelineSnapshot(
+                new CanonicalTimelineSnapshotId("snap-" + revisionId),
+                revisionId,
+                durationMs,
+                List.copyOf(tracks),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                null,
+                Map.of("schemaVersion", "internal-1.0"));
+    }
+
+    /** Exact rational MediaTime -> milliseconds (truncated to long, same convention as the double path). */
+    private static long toMillis(MediaTime time) {
+        if (time == null) {
+            return 0L;
+        }
+        long timeScale = time.timeScale();
+        if (timeScale == 0) {
+            return 0L;
+        }
+        // ticks / timeScale seconds -> milliseconds
+        return (time.ticks() * 1000L) / timeScale;
     }
 
     public static CanonicalTimelineSnapshot toSnapshot(TimelineDocument document, String revisionId) {
