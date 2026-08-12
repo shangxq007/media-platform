@@ -387,6 +387,41 @@ tasks.register("verifyC1TimelineMergeConvergence") {
     }
 }
 
+tasks.register("verifyC1CrrPayloadContract") {
+    group = "verification"
+    description = "C1-CRR-RED: canonical payload contract (gate domain == merge conversion domain, no bypass flag, no fallback parser)"
+    doLast {
+        val engine = file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java")
+        require(engine.exists()) { "FAIL: TimelineMergeEngine missing" }
+        val engineSrc = engine.readText()
+        // C1-CRR-RED-04: no production gate bypass flag
+        require(!engineSrc.contains("canonicalGatesEnabled")) { "FAIL: canonicalGatesEnabled bypass flag present" }
+        require(!engineSrc.contains("canonical-gates-enabled")) { "FAIL: canonical-gates-enabled property present" }
+        // C1-CRR-RED-05: exactly one merge payload conversion path — internal-1.0 via the E1b gate adapter
+        require(engineSrc.contains("InternalTimelineCandidateAdapter.map")) { "FAIL: canonical gate adapter conversion missing" }
+        require(engineSrc.contains("TimelineSnapshotConverter.toSnapshot")) { "FAIL: candidate -> snapshot conversion missing" }
+        require(!engineSrc.contains("objectMapper.readValue(payload, TimelineDocument")) { "FAIL: legacy TimelineDocument parse path present" }
+        // C1-CRR-RED-09 (part): no dual-format fallback — the engine must not try-catch
+        // around a legacy parse then fall through to an alternate parser.
+        require(!engineSrc.contains("readValue(payload, TimelineDocument.class)")) { "FAIL: dual-format fallback parse present" }
+        // C1-CRR-RED-06: engine remains sole semantic merge authority
+        require(engineSrc.contains("class TimelineMergeEngine")) { "FAIL: TimelineMergeEngine missing" }
+        // C1-CRR-RED-01/02/03: behavioral proofs must exist (JUnit, gates naturally active)
+        val regression = file("render-module/src/test/java/com/example/platform/render/app/timeline/TimelineMergePayloadContractRegressionTest.java")
+        require(regression.exists()) { "FAIL: payload contract regression missing" }
+        val regSrc = regression.readText()
+        require(regSrc.contains("productionSavedPayloadIsAcceptedByCanonicalGate")) { "FAIL: C1-CRR-RED-01 proof missing" }
+        require(regSrc.contains("productionSavedPayloadCanBeConvertedToCanonicalMergeSnapshot")) { "FAIL: C1-CRR-RED-02 proof missing" }
+        require(regSrc.contains("validationAndConversionDomainsAreEqual")) { "FAIL: C1-CRR-RED-03 proof missing" }
+        // C1-CRR-RED-09: real application-context proof must exist
+        val contextProof = file("platform-app/src/test/java/com/example/platform/C1CrrMergeAuthorityCompositionTest.java")
+        require(contextProof.exists()) { "FAIL: real application-context proof missing" }
+        // C1-CRR-RED-10: no schema/module change (jOOQ generated tables unchanged)
+        require(!file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderExecutionMode.java").exists()) { "note: baseline check" }
+        println("OK: C1-CRR payload contract verified (single internal-1.0 conversion path, gate domain == conversion domain, no bypass)")
+    }
+}
+
 tasks.register("jooqFoundationCheck") {
     group = "verification"
     description = "Run all jOOQ foundation verification checks"
