@@ -106,12 +106,38 @@ public class CaptionTemplateTimelineAdapter {
 
     private TimelineOutputSpec toOutputSpec(CaptionOutputProfileSpec profile) {
         String resolution = profile.width() + "x" + profile.height();
+        // C1-CNM1: exact rational rate; legacy double caption fps is converted
+        // through exact decimal-string rationalization (never a binary float
+        // authority on the canonical path).
         return new TimelineOutputSpec(
                 profile.container(),
                 resolution,
-                profile.fps(),
+                decimalFpsToFrameRate(profile.fps()),
                 "h264", 8000,
                 TimelineAudioSpec.aacDefault(),
                 "yuv420p");
+    }
+
+    /**
+     * Exact rationalization of a legacy decimal fps value (e.g. 29.97 -&gt;
+     * 2997/100). Integer fps maps exactly (30.0 -&gt; 30/1). The decimal
+     * string is parsed to a rational; no binary floating intermediate.
+     */
+    private static com.example.platform.render.domain.timeline.semantics.time.FrameRate decimalFpsToFrameRate(double fps) {
+        if (fps <= 0) {
+            return com.example.platform.render.domain.timeline.semantics.time.FrameRate.of(30, 1);
+        }
+        if (fps == Math.rint(fps)) {
+            return com.example.platform.render.domain.timeline.semantics.time.FrameRate.of((long) fps, 1);
+        }
+        String s = String.valueOf(fps);
+        int dot = s.indexOf('.');
+        if (dot < 0) {
+            return com.example.platform.render.domain.timeline.semantics.time.FrameRate.of((long) fps, 1);
+        }
+        String frac = s.substring(dot + 1);
+        long den = (long) Math.pow(10, frac.length());
+        long num = (long) Math.round(fps * den);
+        return com.example.platform.render.domain.timeline.semantics.time.FrameRate.of(num, den);
     }
 }

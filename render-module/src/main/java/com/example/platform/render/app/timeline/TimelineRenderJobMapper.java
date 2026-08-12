@@ -94,15 +94,27 @@ public class TimelineRenderJobMapper {
         validateNotNull(spec, "Timeline spec must not be null");
         validateNotBlank(spec.id(), "Timeline ID must not be blank");
 
-        // Output spec validation
+        // Output spec validation. The render-provider contract is
+        // INTEGER_ONLY_PROVIDER_EXPLICIT_REJECTION: fractional rates (e.g.
+        // 30000/1001) are rejected explicitly — they must never silently
+        // become an integer fps at the provider boundary.
         validateNotNull(spec.outputSpec(), "Output specification is required");
         TimelineOutputSpec output = spec.outputSpec();
 
-        if (output.frameRate() <= 0) {
+        if (output.frameRate() == null || output.frameRate().numerator().signum() <= 0) {
             throw new IllegalArgumentException("Frame rate must be positive: " + output.frameRate());
         }
-        if (output.frameRate() > MAX_FPS) {
+        if (!output.frameRate().isInteger()) {
+            throw new IllegalArgumentException(
+                    "Render provider requires integer fps; fractional rate not supported: "
+                            + output.frameRate());
+        }
+        int fpsProjection = output.frameRate().intFps();
+        if (fpsProjection > MAX_FPS) {
             throw new IllegalArgumentException("Frame rate exceeds maximum (" + MAX_FPS + "fps): " + output.frameRate());
+        }
+        if (fpsProjection <= 0) {
+            throw new IllegalArgumentException("Frame rate must be positive: " + output.frameRate());
         }
         if (output.width() <= 0) {
             throw new IllegalArgumentException("Canvas width must be positive: " + output.width());
@@ -195,7 +207,7 @@ public class TimelineRenderJobMapper {
         SubmitRenderJobRequest request = new SubmitRenderJobRequest(
                 tenantId, projectId, timelineJson, resolvedProfile, null);
 
-        int fps = (int) output.frameRate();
+        int fps = output.frameRate().intFps();
         int width = output.width();
         int height = output.height();
 

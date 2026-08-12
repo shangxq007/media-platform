@@ -6,6 +6,7 @@ import com.example.platform.render.domain.timeline.TimelineClipEffect;
 import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.domain.timeline.TimelineTextOverlay;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.TimelineTrack;
 import com.example.platform.render.domain.timeline.compile.*;
 import java.util.ArrayList;
@@ -194,7 +195,8 @@ public class TimelineNormalizationService {
                 ? spec.format() : "mp4";
         String resolution = spec.resolution() != null && !spec.resolution().isBlank()
                 ? spec.resolution() : "1920x1080";
-        double frameRate = spec.frameRate() > 0 ? spec.frameRate() : 30.0;
+        FrameRate frameRate = spec.frameRate() != null && spec.frameRate().numerator().signum() > 0
+                ? spec.frameRate() : FrameRate.of(30, 1);
         String videoCodec = spec.videoCodec() != null && !spec.videoCodec().isBlank()
                 ? spec.videoCodec() : "h264";
         int videoBitrate = spec.videoBitrate() > 0 ? spec.videoBitrate() : 8000;
@@ -214,7 +216,7 @@ public class TimelineNormalizationService {
         }
 
         return new NormalizedOutputProfile(
-                format, resolution, frameRate, videoCodec, videoBitrate,
+                format, resolution, frameRate.toDouble(), videoCodec, videoBitrate,
                 audioCodec, sampleRate, channels, audioBitrate, pixelFormat);
     }
 

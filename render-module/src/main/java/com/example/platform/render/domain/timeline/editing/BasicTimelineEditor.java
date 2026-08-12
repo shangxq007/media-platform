@@ -1,6 +1,7 @@
 package com.example.platform.render.domain.timeline.editing;
 
 import com.example.platform.render.domain.timeline.*;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import java.util.*;
 
 /**
@@ -129,7 +130,7 @@ public final class BasicTimelineEditor {
 
         String format = getString(params, "format", existing.format());
         String resolution = getString(params, "resolution", existing.resolution());
-        double frameRate = getDouble(params, "frameRate", existing.frameRate());
+        FrameRate frameRate = parseFrameRate(params, existing.frameRate());
         String videoCodec = getString(params, "videoCodec", existing.videoCodec());
         int videoBitrate = getInt(params, "videoBitrate", existing.videoBitrate());
 
@@ -530,8 +531,34 @@ public final class BasicTimelineEditor {
     private static double getDouble(Map<String, Object> params, String key, double defaultVal) {
         Object v = params.get(key);
         if (v instanceof Number n) return n.doubleValue();
-        if (v instanceof String s) {
-            try { return Double.parseDouble(s); } catch (Exception e) { return defaultVal; }
+        if (v instanceof String s) { try { return Double.parseDouble(s); } catch (Exception ignored) {} }
+        return defaultVal;
+    }
+
+    /**
+     * C1-CNM1: exact rational frame rate from edit params. Accepts "num/den"
+     * string, an integer fps value, or a legacy decimal fps string projected
+     * through exact rationalization of the DECIMAL string (never a binary
+     * float authority). Falls back to the current rate.
+     */
+    private static FrameRate parseFrameRate(Map<String, Object> params, FrameRate defaultVal) {
+        Object v = params.get("frameRate");
+        if (v == null) return defaultVal;
+        try {
+            if (v instanceof String s) {
+                String t = s.trim();
+                int slash = t.indexOf('/');
+                if (slash > 0) {
+                    return FrameRate.of(Long.parseLong(t.substring(0, slash).trim()),
+                            Long.parseLong(t.substring(slash + 1).trim()));
+                }
+                return FrameRate.of(Long.parseLong(t), 1);
+            }
+            if (v instanceof Number n) {
+                return FrameRate.of(n.longValue(), 1);
+            }
+        } catch (Exception ignored) {
+            // fall through to default
         }
         return defaultVal;
     }

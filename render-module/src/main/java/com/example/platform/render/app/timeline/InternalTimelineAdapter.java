@@ -5,6 +5,7 @@ import com.example.platform.render.domain.timeline.TimelineAssetRef;
 import com.example.platform.render.domain.timeline.TimelineAudioSpec;
 import com.example.platform.render.domain.timeline.TimelineClip;
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.domain.timeline.TimelineTextOverlay;
@@ -246,7 +247,7 @@ public class InternalTimelineAdapter {
 
     private static TimelineOutputSpec outputSpec(String format, int w, int h, int fps) {
         return new TimelineOutputSpec(
-                format, w + "x" + h, fps, "h264", 8000,
+                format, w + "x" + h, FrameRate.of(fps, 1), "h264", 8000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
     }
 

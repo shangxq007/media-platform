@@ -64,6 +64,17 @@ public final class MediaTime implements Comparable<MediaTime>, Serializable {
     }
 
     /**
+     * Exact MediaTime from integer milliseconds.
+     *
+     * <p>PROJECTION boundary helper: milliseconds are not canonical merge
+     * authority; this exists for legacy document/Duration interop and test
+     * fixtures (1 ms = 1/1000 s, exact rational).</p>
+     */
+    public static MediaTime ofMillis(long millis) {
+        return ofTicks(millis, 1_000);
+    }
+
+    /**
      * Creates MediaTime representing the given number of nanoseconds.
      */
     public static MediaTime ofNanos(long nanos) {
@@ -237,9 +248,77 @@ public final class MediaTime implements Comparable<MediaTime>, Serializable {
     }
 
     @Override
+    /** Canonical string form "ticks/timeScale" (e.g. "1001/800"); zero renders as "0". */
     public String toString() {
         if (ticks == 0) return "0";
         return ticks + "/" + timeScale;
+    }
+
+    /**
+     * Parses the canonical string form produced by {@link #toString()}
+     * ("ticks/timeScale" or "0") back into an exact MediaTime.
+     */
+    public static MediaTime parse(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("MediaTime value must not be blank");
+        }
+        String v = value.trim();
+        if (v.equals("0")) {
+            return ZERO;
+        }
+        int slash = v.indexOf('/');
+        if (slash < 0) {
+            throw new IllegalArgumentException("Invalid MediaTime canonical form (expected ticks/timeScale): " + value);
+        }
+        long ticks = Long.parseLong(v.substring(0, slash).trim());
+        long timeScale = Long.parseLong(v.substring(slash + 1).trim());
+        return ofTicks(ticks, timeScale);
+    }
+
+    /**
+     * Exact conversion to a frame index at the given exact rational rate.
+     *
+     * <p>frame = ticks * rate.num / (timeScale * rate.den), computed exactly.
+     * For canonical frame-derived times (created via {@link #ofFrames(long, long, long)})
+     * this is the exact inverse and returns the original frame. If the time is
+     * not an exact frame boundary at the given rate, the division does not
+     * divide evenly and the floor is returned — callers on the canonical
+     * persistence boundary must use {@link #toFrameExact(FrameRate)} to enforce
+     * exactness.
+     */
+    public long toFrame(FrameRate rate) {
+        if (ticks == 0) {
+            return 0L;
+        }
+        java.math.BigInteger num = java.math.BigInteger.valueOf(ticks)
+                .multiply(rate.numerator());
+        java.math.BigInteger den = java.math.BigInteger.valueOf(timeScale)
+                .multiply(java.math.BigInteger.valueOf(rate.denominator()));
+        return num.divide(den).longValueExact();
+    }
+
+    /**
+     * Exact frame conversion with integrality enforcement.
+     *
+     * <p>Returns the exact frame index when the time is an exact frame
+     * boundary at the given rate; throws {@link ArithmeticException} when the
+     * value is not representable as an integer frame (canonical persisted
+     * merge output must never silently quantize a non-frame-aligned value).
+     */
+    public long toFrameExact(FrameRate rate) {
+        if (ticks == 0) {
+            return 0L;
+        }
+        java.math.BigInteger num = java.math.BigInteger.valueOf(ticks)
+                .multiply(rate.numerator());
+        java.math.BigInteger den = java.math.BigInteger.valueOf(timeScale)
+                .multiply(java.math.BigInteger.valueOf(rate.denominator()));
+        java.math.BigInteger[] qr = num.divideAndRemainder(den);
+        if (qr[1].signum() != 0) {
+            throw new ArithmeticException(
+                    "Time " + this + " is not an exact frame boundary at rate " + rate);
+        }
+        return qr[0].longValueExact();
     }
 
     private static long gcd(long a, long b) {

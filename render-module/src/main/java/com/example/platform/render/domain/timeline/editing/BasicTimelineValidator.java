@@ -288,7 +288,7 @@ public final class BasicTimelineValidator {
                     "Video codec not in allowlist: " + outputSpec.videoCodec()));
         }
 
-        if (outputSpec.frameRate() <= 0) {
+        if (outputSpec.frameRate() == null || outputSpec.frameRate().numerator().signum() <= 0) {
             issues.add(TimelineValidationIssue.error(
                     TimelineValidationIssueCode.INVALID_OUTPUT_PROFILE,
                     "timeline.outputSpec.frameRate", "Frame rate must be positive"));

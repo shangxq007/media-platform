@@ -2,6 +2,7 @@ package com.example.platform.render.domain.scenario;
 
 import com.example.platform.render.domain.timeline.*;
 import com.example.platform.render.domain.timeline.editing.TimelineEditOperation;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -298,7 +299,7 @@ public final class InternalScenarioRegistry {
                 List.of(clip), false, false);
         // Use an unsupported container to trigger output profile validation failure
         TimelineOutputSpec badOutput = new TimelineOutputSpec(
-                "avi", "1920x1080", 30.0, "h264", 8000, TimelineAudioSpec.aacDefault(), "yuv420p");
+                "avi", "1920x1080", FrameRate.of(30, 1), "h264", 8000, TimelineAudioSpec.aacDefault(), "yuv420p");
         TimelineSpec timeline = new TimelineSpec(
                 "sc009-tl", "bad-output-timeline", "Invalid output profile test",
                 List.of(track), List.of(),

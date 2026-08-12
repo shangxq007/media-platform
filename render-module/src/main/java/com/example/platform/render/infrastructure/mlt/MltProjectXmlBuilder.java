@@ -26,10 +26,11 @@ public class MltProjectXmlBuilder {
         TimelineOutputSpec output = timeline.outputSpec();
         int width = output != null ? output.width() : 1920;
         int height = output != null ? output.height() : 1080;
-        double fps = output != null ? output.frameRate() : 30.0;
+        long fps = output != null && output.frameRate() != null ? output.frameRate().numerator().longValue() : 30L;
+        long fpsDen = output != null && output.frameRate() != null ? output.frameRate().denominator() : 1L;
 
-        xml.append(String.format("<mlt width=\"%d\" height=\"%d\" frame_rate_num=\"%.0f\">\n",
-                width, height, fps));
+        xml.append(String.format("<mlt width=\"%d\" height=\"%d\" frame_rate_num=\"%d\" frame_rate_den=\"%d\">\n",
+                width, height, fps, fpsDen));
 
         if (timeline.tracks() != null) {
             for (TimelineTrack track : timeline.tracks()) {

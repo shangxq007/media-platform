@@ -1,11 +1,14 @@
 package com.example.platform.render.domain.timeline;
 
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+
 /**
  * Output specification for a timeline render.
  *
  * @param format       output format (e.g., "mp4", "mov", "webm")
  * @param resolution   output resolution (e.g., "1920x1080")
- * @param frameRate    output frame rate (e.g., 30.0)
+ * @param frameRate    output frame rate (C1-CNM1: EXACT rational, e.g. 30/1,
+ *                     24000/1001 for 23.976) — never a binary floating value
  * @param videoCodec   video codec (e.g., "h264", "h265")
  * @param videoBitrate video bitrate in kbps
  * @param audioSpec    audio output specification
@@ -14,7 +17,7 @@ package com.example.platform.render.domain.timeline;
 public record TimelineOutputSpec(
         String format,
         String resolution,
-        double frameRate,
+        FrameRate frameRate,
         String videoCodec,
         int videoBitrate,
         TimelineAudioSpec audioSpec,
@@ -25,7 +28,7 @@ public record TimelineOutputSpec(
      */
     public static TimelineOutputSpec mp4_1080p30() {
         return new TimelineOutputSpec(
-                "mp4", "1920x1080", 30.0, "h264", 8000,
+                "mp4", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
     }
 
@@ -34,7 +37,7 @@ public record TimelineOutputSpec(
      */
     public static TimelineOutputSpec mp4_720p30() {
         return new TimelineOutputSpec(
-                "mp4", "1280x720", 30.0, "h264", 4000,
+                "mp4", "1280x720", FrameRate.of(30, 1), "h264", 4000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");
     }
 

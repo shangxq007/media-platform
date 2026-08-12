@@ -295,8 +295,17 @@ public class MultiProviderPipelineService {
                 int startFrame = Integer.parseInt(stage.parameters().getOrDefault("startFrame", "0"));
                 int durationFrames = Integer.parseInt(
                         stage.parameters().getOrDefault("durationFrames", "120"));
-                int fps = timeline.outputSpec() != null
-                        ? (int) timeline.outputSpec().frameRate() : 30;
+                int fps = 30;
+                if (timeline.outputSpec() != null && timeline.outputSpec().frameRate() != null) {
+                    // INTEGER_ONLY_PROVIDER_EXPLICIT_REJECTION: fractional rates
+                    // never silently become integer fps at the segment provider.
+                    if (!timeline.outputSpec().frameRate().isInteger()) {
+                        throw new IllegalArgumentException(
+                                "Segment provider requires integer fps; fractional rate not supported: "
+                                        + timeline.outputSpec().frameRate());
+                    }
+                    fps = timeline.outputSpec().frameRate().intFps();
+                }
                 return SegmentPipelinePayloadBuilder.segmentRenderPayload(
                         timeline, stage.name(), startFrame, durationFrames, fps, previousOutput);
             } catch (Exception e) {

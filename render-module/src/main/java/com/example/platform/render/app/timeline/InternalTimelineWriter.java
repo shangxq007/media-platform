@@ -10,6 +10,7 @@ import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.domain.timeline.TimelineTextOverlay;
 import com.example.platform.render.domain.timeline.TimelineTrack;
+import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -38,8 +39,21 @@ public class InternalTimelineWriter {
 
     public String toJson(TimelineSpec spec, TimelineExtensions extensions) {
         try {
-            int fps = spec.outputSpec() != null ? (int) spec.outputSpec().frameRate() : 30;
-            if (fps <= 0) {
+            // C1-CNM1: exact rational rate from the output spec; the (int)
+            // double-fps cast is eliminated. Wire rate{num,den} preserves the
+            // denominator end-to-end (den=1 only when the source rate is
+            // integer).
+            FrameRate rate = spec.outputSpec() != null && spec.outputSpec().frameRate() != null
+                    ? spec.outputSpec().frameRate() : FrameRate.of(30, 1);
+            // Integer fps convenience for the legacy spec model (used only for
+            // coarse helpers that carry it; all canonical frame emission uses
+            // the exact rational rate). Fractional rates never silently
+            // truncate: intFps() throws for den != 1, so fall back to 30 only
+            // for the non-authoritative int carrier used by display helpers.
+            int fps = 30;
+            try {
+                fps = rate.intFps();
+            } catch (ArithmeticException fractionalRate) {
                 fps = 30;
             }
             ObjectNode root = InternalTimelineJson.mapper().createObjectNode();
@@ -56,13 +70,13 @@ public class InternalTimelineWriter {
             }
             root.put("revision", revision);
 
-            root.set("project", buildProject(spec, fps));
-            root.set("assetRegistry", buildAssetRegistry(spec, fps));
-            ObjectNode composition = buildComposition(spec, fps);
+            root.set("project", buildProject(spec, fps, rate));
+            root.set("assetRegistry", buildAssetRegistry(spec, fps, rate));
+            ObjectNode composition = buildComposition(spec, fps, rate);
             root.set("composition", composition);
             root.set("styles", buildStyles(spec, extensions));
             root.set("templates", buildTemplates(spec, extensions));
-            root.set("renderGraph", buildRenderGraph(spec, extensions, fps, composition));
+            root.set("renderGraph", buildRenderGraph(spec, extensions, fps, rate, composition));
             root.set("outputs", buildOutputs(spec));
             if (!extensions.packagingHints().isEmpty()) {
                 ObjectNode packaging = InternalTimelineJson.mapper().createObjectNode();
@@ -82,7 +96,7 @@ public class InternalTimelineWriter {
         }
     }
 
-    private ObjectNode buildProject(TimelineSpec spec, int fps) {
+    private ObjectNode buildProject(TimelineSpec spec, int fps, FrameRate rate) {
         ObjectNode project = InternalTimelineJson.mapper().createObjectNode();
         project.put("id", spec.id() + "_project");
         TimelineOutputSpec out = spec.outputSpec();
@@ -90,13 +104,13 @@ public class InternalTimelineWriter {
         int h = out != null ? out.height() : 1080;
         project.put("width", w);
         project.put("height", h);
-        project.set("frameRate", rationalRate(fps, 1));
+        project.set("frameRate", rationalRate(rate.numerator().intValueExact(), rate.denominator()));
         double durationSec = spec.computeDuration() > 0 ? spec.computeDuration() : 30;
-        project.set("duration", frameRange(0, durationSec, fps));
+        project.set("duration", frameRange(0, durationSec, rate));
         return project;
     }
 
-    private ObjectNode buildAssetRegistry(TimelineSpec spec, int fps) {
+    private ObjectNode buildAssetRegistry(TimelineSpec spec, int fps, FrameRate rate) {
         ObjectNode registry = InternalTimelineJson.mapper().createObjectNode();
         ObjectNode assets = InternalTimelineJson.mapper().createObjectNode();
         Set<String> seen = new LinkedHashSet<>();
@@ -121,7 +135,7 @@ public class InternalTimelineWriter {
                     ObjectNode probe = InternalTimelineJson.mapper().createObjectNode();
                     probe.put("width", clip.assetRef().width() > 0 ? clip.assetRef().width() : 1920);
                     probe.put("height", clip.assetRef().height() > 0 ? clip.assetRef().height() : 1080);
-                    probe.set("duration", frameRange(0, clip.clipDuration(), fps));
+                    probe.set("duration", frameRange(0, clip.clipDuration(), rate));
                     ast.set("probe", probe);
                     assets.set(assetId, ast);
                 }
@@ -131,7 +145,7 @@ public class InternalTimelineWriter {
         return registry;
     }
 
-    private ObjectNode buildComposition(TimelineSpec spec, int fps) {
+    private ObjectNode buildComposition(TimelineSpec spec, int fps, FrameRate rate) {
         ObjectNode composition = InternalTimelineJson.mapper().createObjectNode();
         ArrayNode tracks = InternalTimelineJson.mapper().createArrayNode();
         if (spec.tracks() != null) {
@@ -150,9 +164,9 @@ public class InternalTimelineWriter {
                                 ? clip.assetRef().assetId() : "ast_" + clip.id();
                         clipNode.put("assetId", assetId);
                         clipNode.set("timelineRange",
-                                frameRange(clip.timelineStart(), clip.clipDuration(), fps));
+                                frameRange(clip.timelineStart(), clip.clipDuration(), rate));
                         clipNode.set("sourceRange",
-                                frameRange(clip.assetInPoint(), clip.assetOutPoint() - clip.assetInPoint(), fps));
+                                frameRange(clip.assetInPoint(), clip.assetOutPoint() - clip.assetInPoint(), rate));
                         clipNode.set("speed", InternalTimelineJson.mapper().createObjectNode()
                                 .put("factor", 1.0));
                         if (clip.effects() != null && !clip.effects().isEmpty()) {
@@ -179,7 +193,7 @@ public class InternalTimelineWriter {
                 ObjectNode cue = InternalTimelineJson.mapper().createObjectNode();
                 cue.put("id", overlay.id());
                 cue.put("text", overlay.text());
-                cue.set("timelineRange", frameRange(overlay.startTime(), overlay.duration(), fps));
+                cue.set("timelineRange", frameRange(overlay.startTime(), overlay.duration(), rate));
                 cues.add(cue);
             }
             subTrack.set("cues", cues);
@@ -189,7 +203,7 @@ public class InternalTimelineWriter {
         return composition;
     }
 
-    private ObjectNode buildRenderGraph(TimelineSpec spec, TimelineExtensions extensions, int fps,
+    private ObjectNode buildRenderGraph(TimelineSpec spec, TimelineExtensions extensions, int fps, FrameRate rate,
                                           ObjectNode composition) {
         ObjectNode graph = InternalTimelineJson.mapper().createObjectNode();
         graph.put("finalComposer", extensions.finalComposer() != null
@@ -199,12 +213,12 @@ public class InternalTimelineWriter {
         if (!extensions.externalRenderNodes().isEmpty()) {
             ArrayNode nodes = InternalTimelineJson.mapper().createArrayNode();
             for (ExternalRenderNode node : extensions.externalRenderNodes()) {
-                nodes.add(buildExternalRenderNode(node, fps));
+                nodes.add(buildExternalRenderNode(node, fps, rate));
             }
             graph.set("externalRenderNodes", nodes);
         }
 
-        ArrayNode layers = buildLayers(spec, fps, composition);
+        ArrayNode layers = buildLayers(spec, fps, rate, composition);
         if (!layers.isEmpty()) {
             graph.set("layers", layers);
         }
@@ -225,7 +239,7 @@ public class InternalTimelineWriter {
         return graph;
     }
 
-    private ObjectNode buildExternalRenderNode(ExternalRenderNode node, int fps) {
+    private ObjectNode buildExternalRenderNode(ExternalRenderNode node, int fps, FrameRate rate) {
         ObjectNode n = InternalTimelineJson.mapper().createObjectNode();
         n.put("id", node.id());
         n.put("backend", node.backend());
@@ -238,7 +252,7 @@ public class InternalTimelineWriter {
         if (node.attachToClipId() != null) {
             n.put("attachToClipId", node.attachToClipId());
         }
-        n.set("timelineRange", frameRange(node.timelineStart(), node.duration(), fps));
+        n.set("timelineRange", frameRange(node.timelineStart(), node.duration(), rate));
         Map<String, Object> params = node.params() != null ? new LinkedHashMap<>(node.params()) : new LinkedHashMap<>();
         if (params.containsKey("dependsOn")) {
             n.set("dependsOn", InternalTimelineJson.mapper().valueToTree(params.remove("dependsOn")));
@@ -271,12 +285,12 @@ public class InternalTimelineWriter {
         return n;
     }
 
-    private ArrayNode buildLayers(TimelineSpec spec, int fps, ObjectNode composition) {
+    private ArrayNode buildLayers(TimelineSpec spec, int fps, FrameRate rate, ObjectNode composition) {
         ArrayNode layers = readPreservedArray(spec, InternalTimelineJson.META_RENDER_GRAPH_LAYERS);
         if (layers == null) {
             layers = InternalTimelineJson.mapper().createArrayNode();
         }
-        syncSubtitleLayersFromComposition(layers, composition, fps);
+        syncSubtitleLayersFromComposition(layers, composition, fps, rate);
         if (spec.textOverlays() != null && !spec.textOverlays().isEmpty()
                 && !layerExists(layers, "layer_sub_imported")) {
             ObjectNode subLayer = InternalTimelineJson.mapper().createObjectNode();
@@ -290,7 +304,7 @@ public class InternalTimelineWriter {
         return layers;
     }
 
-    private void syncSubtitleLayersFromComposition(ArrayNode layers, ObjectNode composition, int fps) {
+    private void syncSubtitleLayersFromComposition(ArrayNode layers, ObjectNode composition, int fps, FrameRate rate) {
         JsonNode subtitleTracks = composition.path("subtitleTracks");
         if (!subtitleTracks.isArray()) {
             return;
@@ -316,10 +330,10 @@ public class InternalTimelineWriter {
             if (track.has("cues") && track.get("cues").isArray() && !track.get("cues").isEmpty()) {
                 JsonNode firstCue = track.get("cues").get(0);
                 JsonNode lastCue = track.get("cues").get(track.get("cues").size() - 1);
-                double start = rangeStartSec(firstCue.path("timelineRange"), fps);
-                double end = rangeStartSec(lastCue.path("timelineRange"), fps)
-                        + rangeDurationSec(lastCue.path("timelineRange"), fps);
-                layer.set("timelineRange", frameRange(start, Math.max(0.1, end - start), fps));
+                double start = rangeStartSec(firstCue.path("timelineRange"), rate);
+                double end = rangeStartSec(lastCue.path("timelineRange"), rate)
+                        + rangeDurationSec(lastCue.path("timelineRange"), rate);
+                layer.set("timelineRange", frameRange(start, Math.max(0.1, end - start), rate));
             }
             layer.set("render", defaultLayerRender("libass", "LAYER"));
             layers.add(layer);
@@ -338,22 +352,22 @@ public class InternalTimelineWriter {
         }
     }
 
-    private static double rangeStartSec(JsonNode range, int fps) {
+    private static double rangeStartSec(JsonNode range, FrameRate rate) {
         if (range.isMissingNode()) {
             return 0;
         }
         JsonNode start = range.path("start");
         int frame = start.path("frame").asInt(0);
-        return frame / (double) Math.max(1, fps);
+        return frame * rate.denominator() / rate.numerator().doubleValue();
     }
 
-    private static double rangeDurationSec(JsonNode range, int fps) {
+    private static double rangeDurationSec(JsonNode range, FrameRate rate) {
         if (range.isMissingNode()) {
             return 0;
         }
         JsonNode dur = range.path("duration");
         int frame = dur.path("frame").asInt(0);
-        return frame / (double) Math.max(1, fps);
+        return frame * rate.denominator() / rate.numerator().doubleValue();
     }
 
     private static boolean layerExists(ArrayNode layers, String id) {
@@ -531,24 +545,33 @@ public class InternalTimelineWriter {
         return outputs;
     }
 
-    private static ObjectNode rationalRate(int num, int den) {
+    private static ObjectNode rationalRate(long num, long den) {
         ObjectNode rate = InternalTimelineJson.mapper().createObjectNode();
         rate.put("num", num);
         rate.put("den", den);
         return rate;
     }
 
-    private static ObjectNode frameRange(double startSec, double durationSec, int fps) {
-        int startFrame = (int) Math.round(startSec * fps);
-        int durationFrames = Math.max(1, (int) Math.round(durationSec * fps));
-        ObjectNode rate = rationalRate(fps, 1);
+    /**
+     * Legacy spec -&gt; wire range. Double seconds (legacy spec model) are
+     * projected to frames with EXPLICIT round-half-up at this input boundary;
+     * the emitted wire rate is the EXACT rational project rate (num/den
+     * preserved — never den=1 reconstruction).
+     */
+    private static ObjectNode frameRange(double startSec, double durationSec, FrameRate rate) {
+        // Legacy input boundary: double seconds (spec model) -> frame at the
+        // EXACT rational rate. frame = round(seconds * num / den); the rate
+        // num/den is preserved in the wire (never an int-fps projection).
+        int startFrame = (int) Math.round(startSec * rate.numerator().doubleValue() / rate.denominator());
+        int durationFrames = Math.max(1, (int) Math.round(durationSec * rate.numerator().doubleValue() / rate.denominator()));
+        ObjectNode rateNode = rationalRate(rate.numerator().intValueExact(), rate.denominator());
         ObjectNode range = InternalTimelineJson.mapper().createObjectNode();
         ObjectNode start = InternalTimelineJson.mapper().createObjectNode();
         start.put("frame", startFrame);
-        start.set("rate", rate);
+        start.set("rate", rateNode);
         ObjectNode duration = InternalTimelineJson.mapper().createObjectNode();
         duration.put("frame", durationFrames);
-        duration.set("rate", rate);
+        duration.set("rate", rateNode);
         range.set("start", start);
         range.set("duration", duration);
         return range;
