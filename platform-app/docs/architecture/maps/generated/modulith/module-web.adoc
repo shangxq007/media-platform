@@ -83,7 +83,7 @@ _Others_
 * `c.e.p.r.app.timeline.SegmentPlanFilter` (in Render)
 * `c.e.p.r.app.timeline.TimelineAssetLifecycleService` (in Render)
 * `c.e.p.i.app.RoleService` (in Identity & Access)
-* `c.e.p.s.entitlement.EntitlementPort` (in Shared Kernel)
+* `c.e.p.e.app.EntitlementPort` (in Entitlement)
 * `c.e.p.p.api.FeatureFlagEvaluator` (in Policy Governance)
 * `c.e.p.p.app.PromptTemplateService` (in Prompt)
 * `c.e.p.p.app.PromptSafetyPolicyService` (in Prompt)
@@ -106,7 +106,7 @@ _Others_
 * `c.e.p.r.app.timeline.TimelineSemanticDiffV1Service` (in Render)
 * `c.e.p.r.app.timeline.TimelinePatchApplicationService` (in Render)
 * `c.e.p.r.app.timeline.TimelineRevisionService` (in Render)
-* `c.e.p.r.app.timeline.TimelineMergeService` (in Render)
+* `c.e.p.r.app.timeline.TimelineMergeEngine` (in Render)
 * `c.e.p.r.app.timeline.TimelineRevisionRenderService` (in Render)
 * `c.e.p.r.app.timeline.RenderJobStatusService` (in Render)
 |Events listened to

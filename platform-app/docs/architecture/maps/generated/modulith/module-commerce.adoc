@@ -5,8 +5,7 @@
 |Spring components
 |_Services_
 
-* `c.e.p.c.PaymentSucceededCheckoutHandler`
-* `c.e.p.c.PurchaseFulfillmentService`
+* `c.e.p.c.app.PurchaseFulfillmentPort` (via `c.e.p.c.PurchaseFulfillmentService`)
 * `c.e.p.c.app.CheckoutOrchestrator`
 * `c.e.p.c.app.CommerceCartService`
 * `c.e.p.c.app.CommerceCatalogService`
@@ -30,8 +29,6 @@ _Others_
 * `c.e.p.b.app.BillingLedgerService` (in Billing)
 * `c.e.p.e.app.EntitlementPolicyService` (in Entitlement)
 * `c.e.p.e.app.EntitlementService` (in Entitlement)
-* `c.e.p.s.commerce.PurchaseFulfillmentPort` (in Shared Kernel)
-* `c.e.p.s.commerce.CheckoutPaymentPort` (in Shared Kernel)
 |Events listened to
 |* `org.springframework.boot.context.event.ApplicationReadyEvent` 
 |===

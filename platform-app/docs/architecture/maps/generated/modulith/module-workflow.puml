@@ -17,18 +17,26 @@ top to bottom direction
 
 System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
   Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
-    Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.PolicyGovernance, "Policy Governance", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.Billing, "Billing", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Delivery, "Delivery", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Extension, "Extension", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.Render, "Render", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.Workflow, "Workflow", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Graph, "Graph", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.PolicyGovernance, "Policy Governance", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Render, "Render", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Workflow, "Workflow", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Billing, "Billing", $techn="Module", $descr="", $tags="", $link="")
   }
 
 }
 
+Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Billing, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.PolicyGovernance, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Graph, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Render, "uses", $techn="", $tags="", $link="")
@@ -36,16 +44,8 @@ Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.Platfo
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.PolicyGovernance, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Delivery, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.PolicyGovernance, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Billing, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes

@@ -14,6 +14,7 @@ _Event listeners_
 _Configuration properties_
 
 * `c.e.p.p.EgressProxySmokeProperties`
+* `c.e.p.p.PlatformRuntimeProperties`
 
 _Others_
 
@@ -22,8 +23,7 @@ _Others_
 * `c.e.p.p.PlatformReadinessHealthIndicator`
 * `c.e.p.p.PlatformRuntimeConfiguration`
 |Bean references
-|* `c.e.p.s.runtime.PlatformRuntimeProperties` (in Shared Kernel)
-* `c.e.p.s.JwtProperties` (in Security)
+|* `c.e.p.s.JwtProperties` (in Security)
 * `c.e.p.a.AppCorsProperties` (in App)
 |Events listened to
 |* `org.springframework.boot.context.event.ApplicationReadyEvent` 

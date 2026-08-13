@@ -17,10 +17,10 @@ top to bottom direction
 
 System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
   Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.IdentityAccess, "Identity & Access", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.SecretsConfigAccess, "Secrets & Config Access", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Typedschema, "Typedschema", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.SecretsConfigAccess, "Secrets & Config Access", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.IdentityAccess, "Identity & Access", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.App, "App", $techn="Module", $descr="", $tags="", $link="")
   }
 
@@ -30,10 +30,10 @@ Rel(PlatformApplication.PlatformApplication.App, PlatformApplication.PlatformApp
 Rel(PlatformApplication.PlatformApplication.App, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.App, PlatformApplication.PlatformApplication.IdentityAccess, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.App, PlatformApplication.PlatformApplication.SecretsConfigAccess, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.SecretsConfigAccess, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.SecretsConfigAccess, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes

@@ -59,7 +59,20 @@ class ModularityTest {
         // (sandbox runtime moved into extension::runtime sandbox package) — declared also in
         // lifecycle allowedDependencies; Modulith reports nested named-interface subpackage at
         // module level, so registered here per debt-register pattern.
-        "lifecycle' depends on module 'extension"
+        "lifecycle' depends on module 'extension",
+        // K2 (K2-04): cost ports (CostEstimationPort/BudgetGuardPort + nested results) rehomed
+        // from shared-kernel to billing::app — entitlement consumes the cost-facing contract at
+        // the billing owner (EUMF usage/cost semantics preserved at billing).
+        "entitlement' depends on named interface(s) 'billing :: app",
+        // K2 (K2-11): NotificationEventPublisher rehomed from shared-kernel to notification;
+        // outbox implements the notification publisher port (outbox -> notification, leaf owner).
+        "outbox' depends on non-exposed type com.example.platform.notification.app.NotificationEventPublisher",
+        // K2 (K2-11): render consumes NotificationEventPublisher at its notification owner.
+        "render' depends on module 'notification",
+        // K2 (K2-05): EntitlementPort rehomed from shared-kernel to entitlement::app — render
+        // consumes the entitlement validation contract at its owner (render -> entitlement was
+        // already an allowed module edge; the port now lives in the app named interface).
+        "render' depends on named interface(s) 'entitlement :: app"
     );
 
     @Test

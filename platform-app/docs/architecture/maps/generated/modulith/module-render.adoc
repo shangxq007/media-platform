@@ -84,7 +84,7 @@ _Services_
 * `c.e.p.r.app.timeline.TimelineConversionService`
 * `c.e.p.r.app.timeline.TimelineEditorSyncService`
 * `c.e.p.r.app.timeline.TimelineInputProductResolver`
-* `c.e.p.r.app.timeline.TimelineMergeService`
+* `c.e.p.r.app.timeline.TimelineMergeEngine`
 * `c.e.p.r.app.timeline.TimelinePatchApplicationService`
 * `c.e.p.r.app.timeline.TimelineRenderJobMapper`
 * `c.e.p.r.app.timeline.TimelineReviewService`
@@ -154,9 +154,8 @@ _Others_
 * `c.e.p.r.app.timeline.InternalTimelineMetadataEnricher`
 * `c.e.p.r.app.timeline.TimelineAssetGcScheduler`
 * `c.e.p.r.app.timeline.TimelineAssetUriResolver`
-* `c.e.p.r.app.timeline.TimelineConflictDetector`
-* `c.e.p.r.app.timeline.TimelineConflictResolver`
 * `c.e.p.r.app.timeline.TimelineContentHasher`
+* `c.e.p.r.app.timeline.TimelineMergeConfiguration`
 * `c.e.p.r.domain.RenderJobStateMachine`
 * `c.e.p.r.domain.StateMachineTraceEmitter`
 * `c.e.p.r.domain.timeline.TimelineExtensionsReader`
@@ -166,7 +165,6 @@ _Others_
 * `c.e.p.r.infrastructure.RenderOrchestrator` (via `c.e.p.r.infrastructure.DefaultRenderOrchestrator`)
 * `c.e.p.r.infrastructure.RenderPlanner` (via `c.e.p.r.infrastructure.DefaultRenderPlanner`)
 * `c.e.p.r.infrastructure.MediaProbeAdapter` (via `c.e.p.r.infrastructure.FFprobeMediaProbeAdapter`)
-* `c.e.p.r.infrastructure.RenderProvider` (via `c.e.p.r.infrastructure.MockRenderProvider`)
 * `c.e.p.r.infrastructure.RenderDomainConfiguration`
 * `c.e.p.r.infrastructure.RenderModuleConfiguration`
 * `c.e.p.r.infrastructure.RenderProviderAutoConfiguration`
@@ -199,11 +197,11 @@ _Others_
 |Bean references
 |* `c.e.p.s.api.StorageCatalogPort` (in Storage)
 * `c.e.p.a.api.AiGatewayPort` (in AI)
-* `c.e.p.s.notification.NotificationEventPublisher` (in Shared Kernel)
-* `c.e.p.s.entitlement.EntitlementPort` (in Shared Kernel)
-* `c.e.p.s.cost.CostEstimationPort` (in Shared Kernel)
-* `c.e.p.s.cost.BudgetGuardPort` (in Shared Kernel)
-* `c.e.p.s.cost.CostReservationPort` (in Shared Kernel)
+* `c.e.p.n.app.NotificationEventPublisher` (in Notification)
+* `c.e.p.e.app.EntitlementPort` (in Entitlement)
+* `c.e.p.b.app.CostEstimationPort` (in Billing)
+* `c.e.p.b.app.BudgetGuardPort` (in Billing)
+* `c.e.p.b.app.CostReservationPort` (in Billing)
 * `c.e.p.b.usage.UsageRecordEmissionPort` (in Billing)
 * `c.e.p.e.app.ExtensionRegistryService` (in Extension)
 * `c.e.p.o.coordination.PlatformCoordinationService` (in Outbox & Events)
@@ -211,9 +209,9 @@ _Others_
 * `c.e.p.s.domain.BlobStorage` (in Storage)
 * `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
 * `c.e.p.o.coordination.ExecutionBackendRegistry` (in Outbox & Events)
-* `c.e.p.s.media.MediaProbePort` (in Shared Kernel)
 * `c.e.p.s.web.ErrorCodeRegistry` (in Shared Kernel)
 * `c.e.p.e.app.ProcessToolRunner` (in Extension)
+* `c.e.p.e.runtime.PluginRuntime` (in Extension)
 * `c.e.p.b.app.SubscriptionBillingService` (in Billing)
 * `c.e.p.q.app.QuotaService` (in Quota & Metering)
 * `c.e.p.b.app.CostEstimationService` (in Billing)

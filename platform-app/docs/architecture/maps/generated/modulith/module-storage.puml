@@ -18,8 +18,8 @@ top to bottom direction
 System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
   Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
     Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.Typedschema, "Typedschema", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Storage, "Storage", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Typedschema, "Typedschema", $techn="Module", $descr="", $tags="", $link="")
   }
 
 }

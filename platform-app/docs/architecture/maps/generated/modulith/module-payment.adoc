@@ -5,10 +5,13 @@
 |Spring components
 |_Services_
 
+* `c.e.p.p.app.PaymentSucceededPort` (via `c.e.p.p.PaymentSucceededCheckoutHandler`)
 * `c.e.p.p.app.PaymentGatewayService`
 * `c.e.p.p.commerce.CheckoutPaymentPortAdapter`
 
 _Others_
 
 * `c.e.p.p.app.CheckoutPaymentBindingRegistry`
+|Bean references
+|* `c.e.p.c.app.CheckoutOrchestrator` (in Commerce)
 |===

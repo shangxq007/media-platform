@@ -17,23 +17,24 @@ top to bottom direction
 
 System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
   Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.Commerce, "Commerce", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Entitlement, "Entitlement", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Typedschema, "Typedschema", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Billing, "Billing", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.Entitlement, "Entitlement", $techn="Module", $descr="", $tags="", $link="")
-    Component(PlatformApplication.PlatformApplication.Commerce, "Commerce", $techn="Module", $descr="", $tags="", $link="")
   }
 
 }
 
+Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.Billing, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.Entitlement, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.Billing, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Billing, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes

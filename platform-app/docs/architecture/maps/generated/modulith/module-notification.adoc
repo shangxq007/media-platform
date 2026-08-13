@@ -3,8 +3,7 @@
 |Base package
 |`com.example.platform.notification`
 |Bean references
-|* `c.e.p.s.notification.NotificationEventPublisher` (in Shared Kernel)
-* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+|* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
 * `c.e.p.s.web.ErrorCodeRegistry` (in Shared Kernel)
 |Events listened to
 |

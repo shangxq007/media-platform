@@ -4,7 +4,7 @@
 |`com.example.platform.federation`
 |Bean references
 |* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
-* `c.e.p.s.monitoring.SentryMonitoringService` (in Shared Kernel)
+* `c.e.p.o.monitoring.SentryMonitoringService` (in Observability)
 * `c.e.p.b.app.UsageMeteringService` (in Billing)
 * `c.e.p.e.app.EntitlementDecisionService` (in Entitlement)
 * `c.e.p.p.app.PromptTemplateService` (in Prompt)

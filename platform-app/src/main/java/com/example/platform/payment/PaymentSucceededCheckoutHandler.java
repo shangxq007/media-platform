@@ -1,4 +1,4 @@
-package com.example.platform.commerce;
+package com.example.platform.payment;
 
 import com.example.platform.commerce.app.CheckoutOrchestrator;
 import com.example.platform.payment.app.PaymentSucceededPort;
