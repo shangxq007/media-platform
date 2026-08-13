@@ -4,11 +4,18 @@ plugins {
 }
 
 dependencies {
-    api("org.springframework.boot:spring-boot-starter")
-    api("com.fasterxml.jackson.core:jackson-databind")
-    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
-    api("org.springframework.boot:spring-boot-starter-validation")
-    compileOnly("jakarta.servlet:jakarta.servlet-api")
+    // K2-03: transitive framework surface reduction. `api` now exposes only what
+    // public contracts require: jackson-core (TypeReference appears in the
+    // Jsons public signature). Jackson databind/JSR-310 and Spring are
+    // implementation details of the serialization boundary / retained
+    // ErrorCodeRegistry composition — consumers with direct framework usage
+    // declare their own legitimate dependencies.
+    implementation("org.springframework.boot:spring-boot")
+    implementation("org.slf4j:slf4j-api")
+    implementation("jakarta.annotation:jakarta.annotation-api")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    api("com.fasterxml.jackson.core:jackson-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework:spring-web")
     // Testcontainers 2.x renamed these artifacts (old coordinates do not exist at 2.0.4).
