@@ -1,4 +1,4 @@
-package com.example.platform.shared.export;
+package com.example.platform.identity.app;
 
 /**
  * Immutable reference to a project asset for export purposes.

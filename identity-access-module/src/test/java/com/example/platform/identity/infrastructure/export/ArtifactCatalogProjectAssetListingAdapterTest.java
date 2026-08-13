@@ -5,7 +5,7 @@ import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.identity.api.dto.ProjectResponse;
 import com.example.platform.identity.app.TenantProjectService;
-import com.example.platform.shared.export.ProjectAssetRef;
+import com.example.platform.identity.app.ProjectAssetRef;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

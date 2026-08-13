@@ -1,4 +1,4 @@
-package com.example.platform.shared.export;
+package com.example.platform.identity.app;
 
 import java.util.List;
 
