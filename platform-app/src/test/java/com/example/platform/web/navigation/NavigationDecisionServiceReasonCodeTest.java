@@ -7,7 +7,7 @@ import static org.mockito.Mockito.mock;
 
 import com.example.platform.identity.app.PermissionService;
 import com.example.platform.identity.app.RoleService;
-import com.example.platform.shared.entitlement.EntitlementPort;
+import com.example.platform.entitlement.app.EntitlementPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Set;

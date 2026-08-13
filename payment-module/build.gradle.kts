@@ -2,6 +2,7 @@ plugins { id("java-library") }
 
 dependencies {
     implementation(project(":typed-schema-module"))
+    implementation(project(":commerce-module")) // CheckoutPaymentPort contract rehomed to commerce (K2)
     api(project(":shared-kernel"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")

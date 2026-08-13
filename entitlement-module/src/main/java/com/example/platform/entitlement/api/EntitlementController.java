@@ -6,7 +6,7 @@ import com.example.platform.entitlement.app.EntitlementService;
 import com.example.platform.entitlement.app.QuotaDecisionService;
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.entitlement.domain.ClientExportRoutingPolicy;
-import com.example.platform.shared.entitlement.EntitlementPort;
+import com.example.platform.entitlement.app.EntitlementPort;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;

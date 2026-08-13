@@ -3,7 +3,7 @@ package com.example.platform.web.navigation;
 import com.example.platform.identity.app.PermissionService;
 import com.example.platform.identity.app.RoleService;
 import com.example.platform.policy.api.FeatureFlagEvaluator;
-import com.example.platform.shared.entitlement.EntitlementPort;
+import com.example.platform.entitlement.app.EntitlementPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

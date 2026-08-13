@@ -1,6 +1,5 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.shared.cost.CostEstimationPort;
 import org.springframework.stereotype.Component;
 
 /**

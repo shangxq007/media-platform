@@ -3,7 +3,7 @@ package com.example.platform.payment.commerce;
 import com.example.platform.payment.app.PaymentGatewayService;
 import com.example.platform.payment.domain.CheckoutCommand;
 import com.example.platform.payment.domain.CheckoutResult;
-import com.example.platform.shared.commerce.CheckoutPaymentPort;
+import com.example.platform.commerce.app.CheckoutPaymentPort;
 import org.springframework.stereotype.Service;
 
 @Service

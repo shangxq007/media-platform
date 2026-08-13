@@ -1,12 +1,12 @@
 package com.example.platform.render.app;
 
-import com.example.platform.shared.cost.BudgetGuardPort;
-import com.example.platform.shared.cost.BudgetGuardPort.BudgetCheckResult;
-import com.example.platform.shared.cost.CostEstimationPort;
-import com.example.platform.shared.cost.CostEstimationPort.CostEstimate;
-import com.example.platform.shared.cost.CostReservationPort;
-import com.example.platform.shared.entitlement.EntitlementPort;
-import com.example.platform.shared.entitlement.EntitlementPort.ExportValidationResult;
+import com.example.platform.billing.app.BudgetGuardPort;
+import com.example.platform.billing.app.BudgetGuardPort.BudgetCheckResult;
+import com.example.platform.billing.app.CostEstimationPort;
+import com.example.platform.billing.app.CostEstimationPort.CostEstimate;
+import com.example.platform.billing.app.CostReservationPort;
+import com.example.platform.entitlement.app.EntitlementPort;
+import com.example.platform.entitlement.app.EntitlementPort.ExportValidationResult;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.render.infrastructure.RenderProviderRouter;

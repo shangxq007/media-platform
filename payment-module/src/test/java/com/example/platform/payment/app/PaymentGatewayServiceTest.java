@@ -33,7 +33,7 @@ class PaymentGatewayServiceTest {
 
     private PaymentGatewayService buildService(List<PaymentProvider> providers) {
         @SuppressWarnings("unchecked")
-        ObjectProvider<com.example.platform.shared.payment.PaymentSucceededPort> ports = mock(ObjectProvider.class);
+        ObjectProvider<com.example.platform.payment.app.PaymentSucceededPort> ports = mock(ObjectProvider.class);
         return new PaymentGatewayService(
                 providers,
                 null,

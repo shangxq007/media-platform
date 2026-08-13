@@ -1,4 +1,4 @@
-package com.example.platform.shared.cost;
+package com.example.platform.billing.app;
 
 import java.time.OffsetDateTime;
 

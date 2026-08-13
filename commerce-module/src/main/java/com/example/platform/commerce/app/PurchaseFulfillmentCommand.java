@@ -1,4 +1,4 @@
-package com.example.platform.shared.commerce;
+package com.example.platform.commerce.app;
 
 /**
  * Internal command emitted after a purchase order is confirmed.

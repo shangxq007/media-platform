@@ -1,4 +1,4 @@
-package com.example.platform.shared.commerce;
+package com.example.platform.commerce.app;
 
 /**
  * Optional payment initiation when a commerce checkout session is created.

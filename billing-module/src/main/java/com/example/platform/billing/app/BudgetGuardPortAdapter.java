@@ -1,6 +1,5 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.shared.cost.BudgetGuardPort;
 import org.springframework.stereotype.Component;
 
 /**

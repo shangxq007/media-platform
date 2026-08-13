@@ -1,4 +1,4 @@
-package com.example.platform.shared.cost;
+package com.example.platform.billing.app;
 
 /**
  * Port interface for cost estimation, implemented by billing module.

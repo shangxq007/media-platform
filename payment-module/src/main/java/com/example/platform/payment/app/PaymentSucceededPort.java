@@ -1,4 +1,4 @@
-package com.example.platform.shared.payment;
+package com.example.platform.payment.app;
 
 /**
  * Invoked after a provider webhook is parsed as a successful payment.

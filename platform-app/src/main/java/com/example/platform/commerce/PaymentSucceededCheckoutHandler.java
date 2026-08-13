@@ -1,7 +1,7 @@
 package com.example.platform.commerce;
 
 import com.example.platform.commerce.app.CheckoutOrchestrator;
-import com.example.platform.shared.payment.PaymentSucceededPort;
+import com.example.platform.payment.app.PaymentSucceededPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

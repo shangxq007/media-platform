@@ -1,4 +1,4 @@
-package com.example.platform.shared.entitlement;
+package com.example.platform.entitlement.app;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package com.example.platform.shared.commerce;
+package com.example.platform.commerce.app;
 
 /**
  * Projects a confirmed purchase into billing contracts and entitlement state.

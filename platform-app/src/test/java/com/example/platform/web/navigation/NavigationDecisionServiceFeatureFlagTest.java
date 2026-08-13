@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 import com.example.platform.identity.app.PermissionService;
 import com.example.platform.identity.app.RoleService;
 import com.example.platform.policy.api.FeatureFlagEvaluator;
-import com.example.platform.shared.entitlement.EntitlementPort;
+import com.example.platform.entitlement.app.EntitlementPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

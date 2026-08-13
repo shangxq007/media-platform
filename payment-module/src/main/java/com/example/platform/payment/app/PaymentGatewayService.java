@@ -9,7 +9,7 @@ import com.example.platform.payment.infrastructure.StripePaymentProperties;
 import com.example.platform.payment.infrastructure.HyperswitchWebhookSignatureVerifier;
 import com.example.platform.payment.infrastructure.StripeWebhookSignatureVerifier;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.payment.PaymentSucceededPort;
+import com.example.platform.payment.app.PaymentSucceededPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;

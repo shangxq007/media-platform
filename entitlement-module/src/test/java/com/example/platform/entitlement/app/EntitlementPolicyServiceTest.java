@@ -1,7 +1,7 @@
 package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.*;
-import com.example.platform.shared.entitlement.EntitlementPort;
+import com.example.platform.entitlement.app.EntitlementPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

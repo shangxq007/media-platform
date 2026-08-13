@@ -32,7 +32,7 @@ import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
 import com.example.platform.shared.notification.NotificationEventPublisher;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.entitlement.EntitlementPort;
+import com.example.platform.entitlement.app.EntitlementPort;
 import com.example.platform.shared.web.TenantContext;
 import org.jooq.Record;
 import org.slf4j.Logger;

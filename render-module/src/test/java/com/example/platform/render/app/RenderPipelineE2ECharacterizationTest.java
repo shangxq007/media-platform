@@ -23,7 +23,7 @@ import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
-import com.example.platform.shared.entitlement.EntitlementPort;
+import com.example.platform.entitlement.app.EntitlementPort;
 import com.example.platform.shared.notification.NotificationEventPublisher;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
