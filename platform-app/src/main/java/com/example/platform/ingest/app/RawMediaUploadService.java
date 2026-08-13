@@ -6,7 +6,7 @@ import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationResul
 import com.example.platform.render.domain.asset.Asset;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.tenant.StorageKeyPolicy;
+import com.example.platform.storage.contract.StorageKeyPolicy;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;
 import com.example.platform.storage.domain.StorageObjectRef;

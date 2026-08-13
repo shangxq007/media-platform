@@ -1,7 +1,7 @@
 package com.example.platform.render.app.cache;
 
-import com.example.platform.shared.tenant.StorageKeyPolicy;
-import com.example.platform.shared.tenant.StorageKeyPolicy;
+import com.example.platform.storage.contract.StorageKeyPolicy;
+import com.example.platform.storage.contract.StorageKeyPolicy;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.StorageObjectRef;
 import java.util.Map;

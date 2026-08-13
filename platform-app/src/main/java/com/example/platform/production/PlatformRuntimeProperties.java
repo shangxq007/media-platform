@@ -1,4 +1,4 @@
-package com.example.platform.shared.runtime;
+package com.example.platform.production;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

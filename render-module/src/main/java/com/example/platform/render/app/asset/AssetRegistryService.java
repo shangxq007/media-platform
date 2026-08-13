@@ -5,7 +5,7 @@ import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
 import com.example.platform.render.domain.asset.AssetIdentity;
 import com.example.platform.render.domain.asset.AssetLineageMetadata;
 import com.example.platform.render.domain.asset.AssetRegistryRecord;
-import com.example.platform.shared.tenant.StorageKeyPolicy;
+import com.example.platform.storage.contract.StorageKeyPolicy;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
 import java.util.List;

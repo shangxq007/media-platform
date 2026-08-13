@@ -2,7 +2,7 @@ package com.example.platform.render.infrastructure.asset;
 
 import com.example.platform.render.domain.asset.Asset;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.tenant.StorageKeyPolicy;
+import com.example.platform.storage.contract.StorageKeyPolicy;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;

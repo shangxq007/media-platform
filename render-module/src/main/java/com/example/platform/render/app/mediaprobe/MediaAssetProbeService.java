@@ -1,8 +1,8 @@
 package com.example.platform.render.app.mediaprobe;
 
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.media.MediaProbePort;
-import com.example.platform.shared.media.MediaProbePort.MediaProbeResult;
+import com.example.platform.render.app.mediaprobe.MediaProbePort;
+import com.example.platform.render.app.mediaprobe.MediaProbePort.MediaProbeResult;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.example.platform.shared.io;
+package com.example.platform.storage.contract;
 
 import org.junit.jupiter.api.Test;
 

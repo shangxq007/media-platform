@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
-import com.example.platform.shared.media.MediaProbePort;
-import com.example.platform.shared.media.MediaProbePort.MediaProbeResult;
+import com.example.platform.render.app.mediaprobe.MediaProbePort;
+import com.example.platform.render.app.mediaprobe.MediaProbePort.MediaProbeResult;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.List;
 import javax.sql.DataSource;

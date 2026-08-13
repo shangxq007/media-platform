@@ -2,7 +2,7 @@ package com.example.platform.render.app.cache;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.shared.tenant.StorageKeyPolicy;
+import com.example.platform.storage.contract.StorageKeyPolicy;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

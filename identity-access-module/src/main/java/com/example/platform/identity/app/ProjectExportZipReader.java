@@ -1,7 +1,7 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
-import com.example.platform.shared.io.ChecksumFormat;
+import com.example.platform.storage.contract.ChecksumFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;

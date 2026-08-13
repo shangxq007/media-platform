@@ -171,7 +171,7 @@ public class ProjectImportPreviewService {
                 }
 
                 // Validate checksum format if provided
-                if (asset.checksum() != null && !com.example.platform.shared.io.ChecksumFormat.isValid(asset.checksum())) {
+                if (asset.checksum() != null && !com.example.platform.storage.contract.ChecksumFormat.isValid(asset.checksum())) {
                     errors.add(new ImportPreviewIssueDto(
                             "INVALID_CHECKSUM_FORMAT", "error",
                             "Asset '" + asset.assetId() + "' has invalid checksum format",

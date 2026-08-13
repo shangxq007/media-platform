@@ -2,7 +2,7 @@ package com.example.platform.render.api;
 
 import com.example.platform.render.app.mediaprobe.MediaAssetProbeService;
 import com.example.platform.render.app.mediaprobe.MediaAssetProbeService.ProbeAndPersistResult;
-import com.example.platform.shared.media.MediaProbePort.MediaProbeResult;
+import com.example.platform.render.app.mediaprobe.MediaProbePort.MediaProbeResult;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;

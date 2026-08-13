@@ -1,4 +1,4 @@
-package com.example.platform.shared.media;
+package com.example.platform.render.app.mediaprobe;
 
 import java.util.List;
 

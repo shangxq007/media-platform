@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
  * REST API for project assets.
  *
  * <p>All endpoints enforce tenant + project scoping.
- * Storage keys are validated via {@link com.example.platform.shared.tenant.StorageKeyPolicy}.
+ * Storage keys are validated via {@link com.example.platform.storage.contract.StorageKeyPolicy}.
  */
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/assets")

@@ -1,4 +1,4 @@
-package com.example.platform.shared.tenant;
+package com.example.platform.storage.contract;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;

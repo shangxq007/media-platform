@@ -1,7 +1,7 @@
 package com.example.platform.render.infrastructure.media;
 
 import com.example.platform.render.infrastructure.MediaProbeService;
-import com.example.platform.shared.media.MediaProbePort;
+import com.example.platform.render.app.mediaprobe.MediaProbePort;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

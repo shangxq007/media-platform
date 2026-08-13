@@ -6,7 +6,7 @@ import com.example.platform.commerce.infrastructure.CheckoutSessionRepository;
 import com.example.platform.commerce.infrastructure.CommerceCartRepository;
 import com.example.platform.policy.featureflag.FeatureFlagJdbcStore;
 import com.example.platform.security.JwtProperties;
-import com.example.platform.shared.runtime.PlatformRuntimeProperties;
+import com.example.platform.production.PlatformRuntimeProperties;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

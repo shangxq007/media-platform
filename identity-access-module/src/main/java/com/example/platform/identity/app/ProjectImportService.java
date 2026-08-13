@@ -5,7 +5,7 @@ import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.io.ChecksumFormat;
+import com.example.platform.storage.contract.ChecksumFormat;
 import com.example.platform.identity.imports.AssetDownloadException;
 import com.example.platform.identity.imports.DownloadedAsset;
 import com.example.platform.identity.imports.ImportAssetDownloader;

@@ -1,4 +1,4 @@
-package com.example.platform.shared.tenant;
+package com.example.platform.storage.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

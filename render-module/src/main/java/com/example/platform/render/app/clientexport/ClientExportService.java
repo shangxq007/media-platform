@@ -7,7 +7,7 @@ import com.example.platform.render.infrastructure.ExportPolicyService;
 import com.example.platform.render.infrastructure.ExportPolicyService.ExportPreset;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.io.ChecksummingInputStream;
+import com.example.platform.storage.contract.ChecksummingInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
