@@ -5,7 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.shared.audit.AdminAuditPublisher;
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

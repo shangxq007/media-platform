@@ -30,7 +30,7 @@ import com.example.platform.shared.events.ArtifactCreatedEvent;
 import com.example.platform.shared.events.RenderJobCompletedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
-import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.shared.Ids;
 import com.example.platform.entitlement.app.EntitlementPort;
 import com.example.platform.shared.web.TenantContext;

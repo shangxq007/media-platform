@@ -2,6 +2,7 @@ plugins { id("java-library") }
 
 dependencies {
     implementation(project(":typed-schema-module"))
+    implementation(project(":notification-module")) // NotificationEventPublisher rehomed to notification (K2)
     api(project(":shared-kernel"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")

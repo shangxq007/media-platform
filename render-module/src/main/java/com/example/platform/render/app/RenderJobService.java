@@ -8,7 +8,7 @@ import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
-import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.CommonErrorCode;

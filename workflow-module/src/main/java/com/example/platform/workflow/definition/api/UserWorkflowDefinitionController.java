@@ -343,7 +343,7 @@ public class UserWorkflowDefinitionController {
         // actor priority = MDC principal > "system". The platform security
         // filters (OAuth2RequestContextFilter / ApiKeyAuthFilter) populate MDC
         // TraceKeys.PRINCIPAL with the authenticated subject on every request.
-        String principal = org.slf4j.MDC.get(com.example.platform.shared.logging.TraceKeys.PRINCIPAL);
+        String principal = org.slf4j.MDC.get(com.example.platform.observability.app.TraceKeys.PRINCIPAL);
         return principal != null && !principal.isBlank() ? principal : "system";
     }
 }

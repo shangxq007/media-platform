@@ -1,4 +1,4 @@
-package com.example.platform.shared.notification;
+package com.example.platform.notification.app;
 
 public interface NotificationEventPublisher {
     void publish(Object event);

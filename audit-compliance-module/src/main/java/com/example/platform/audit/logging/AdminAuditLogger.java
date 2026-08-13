@@ -1,6 +1,6 @@
 package com.example.platform.audit.logging;
 
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;

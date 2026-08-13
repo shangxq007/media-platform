@@ -1,6 +1,6 @@
 package com.example.platform.identity.app;
 
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import com.example.platform.shared.web.CommonErrorCode;
 import com.example.platform.shared.web.TenantContext;
 import jakarta.servlet.FilterChain;

@@ -1,6 +1,6 @@
 package com.example.platform.observability.app;
 
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;

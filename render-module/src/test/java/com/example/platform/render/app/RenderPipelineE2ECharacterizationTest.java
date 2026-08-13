@@ -24,7 +24,7 @@ import com.example.platform.render.infrastructure.timeline.EditorTimelineConvert
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.entitlement.app.EntitlementPort;
-import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.storage.api.StorageCatalogPort;

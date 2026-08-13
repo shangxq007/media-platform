@@ -10,6 +10,7 @@ dependencies {
     // shared-kernel; artifact-module is intentionally NOT depended on — its
     // render-bound ContentDigest debt must not enter the workflow module graph).
     implementation(project(":billing-module"))
+    implementation(project(":observability-module")) // TraceKeys rehomed to observability (K2)
     implementation(project(":outbox-event-module"))
     // UWDV1-V2-PIC: activated conditional path (USER_WORKFLOW_DEFINITION_V1_CONTRACT_V2
     // conditional-path-allowlist.tsv): W2 graph validation reuses the deterministic

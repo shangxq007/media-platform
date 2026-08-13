@@ -3,6 +3,7 @@ plugins { id("java-library") }
 dependencies {
     api(project(":shared-kernel"))
     implementation(project(":typed-schema-module"))
+    implementation(project(":observability-module")) // TraceKeys rehomed to observability (K2)
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")
     api("org.springframework.boot:spring-boot-starter-jdbc")

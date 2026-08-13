@@ -1,4 +1,4 @@
-package com.example.platform.shared.logging;
+package com.example.platform.observability.app;
 
 public final class TraceKeys {
     public static final String REQUEST_ID = "requestId";

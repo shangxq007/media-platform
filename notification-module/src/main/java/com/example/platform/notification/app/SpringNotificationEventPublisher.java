@@ -8,7 +8,7 @@ import com.example.platform.notification.infrastructure.NotificationProviderRout
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.Jsons;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.notification.app.NotificationEventPublisher;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;

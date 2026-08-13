@@ -3,7 +3,7 @@ package com.example.platform.audit.logging;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

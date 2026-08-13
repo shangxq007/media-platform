@@ -14,7 +14,7 @@ import com.example.platform.render.infrastructure.billing.decision.BillingDecisi
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import org.jooq.DSLContext;

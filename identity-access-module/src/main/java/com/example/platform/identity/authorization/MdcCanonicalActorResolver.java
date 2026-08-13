@@ -3,7 +3,7 @@ package com.example.platform.identity.authorization;
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.authorization.CanonicalActorResolver;
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import com.example.platform.shared.web.TenantContext;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;

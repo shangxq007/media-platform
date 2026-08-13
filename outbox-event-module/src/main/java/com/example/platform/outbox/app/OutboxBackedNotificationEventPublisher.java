@@ -5,7 +5,7 @@ import com.example.platform.shared.events.RenderJobCompletedEvent;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
-import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.notification.app.NotificationEventPublisher;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,6 +1,6 @@
 package com.example.platform.security;
 
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import com.example.platform.shared.web.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

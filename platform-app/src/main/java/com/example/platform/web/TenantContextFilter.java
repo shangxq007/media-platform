@@ -1,7 +1,7 @@
 package com.example.platform.web;
 
 import com.example.platform.security.JwtProperties;
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import com.example.platform.shared.web.TenantContext;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

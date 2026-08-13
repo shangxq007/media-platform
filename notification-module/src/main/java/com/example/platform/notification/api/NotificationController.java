@@ -5,7 +5,7 @@ import com.example.platform.notification.app.*;
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.notification.infrastructure.NovuNotificationProvider;
-import com.example.platform.shared.notification.NotificationEventPublisher;
+import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.notification.domain.NotificationInboundEvent;
 import com.example.platform.shared.web.TenantGuard;
 import io.swagger.v3.oas.annotations.Operation;

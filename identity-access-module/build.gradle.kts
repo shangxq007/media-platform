@@ -2,6 +2,7 @@ plugins { id("java-library") }
 
 dependencies {
     implementation(project(":typed-schema-module"))
+    implementation(project(":observability-module")) // TraceKeys rehomed to observability (K2)
     api(project(":shared-kernel"))
     api(project(":entitlement-module"))
     api(project(":artifact-module"))

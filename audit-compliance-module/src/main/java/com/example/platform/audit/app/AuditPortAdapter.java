@@ -1,7 +1,7 @@
 package com.example.platform.audit.app;
 
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.logging.TraceKeys;
+import com.example.platform.observability.app.TraceKeys;
 import com.example.platform.shared.web.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
