@@ -16,15 +16,11 @@ class FontSecurityConfigurationTest {
         assertTrue(scanner.productionSafe());
     }
 
-    @Test
-    void noopScannerIsNotProductionSafe() {
-        FontSecurityConfiguration config = new FontSecurityConfiguration();
-        FontSecurityScanner scanner = config.noopFontSecurityScanner();
-
-        assertNotNull(scanner);
-        assertInstanceOf(NoopFontSecurityScanner.class, scanner);
-        assertFalse(scanner.productionSafe());
-    }
+    // R1-REISSUE: noopFontSecurityScanner removed — the
+    // render.font.security.scanner=noop test-only production toggle was
+    // retired; NoopFontSecurityScanner lives in testFixtures. The
+    // production contract is now: BasicFontSecurityScanner is the only
+    // scanner.
 
     @Test
     void basicScannerRejectsTraversal() {

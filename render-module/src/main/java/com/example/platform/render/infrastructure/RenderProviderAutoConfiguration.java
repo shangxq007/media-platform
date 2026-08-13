@@ -33,11 +33,10 @@ public class RenderProviderAutoConfiguration {
 
     @Bean
     CommandLineRunner registerProviders(RenderProviderRegistry registry,
-                                         
-                                         
-                                         Optional<MockRenderProvider> mockProvider,
-                                         RenderProviderProperties properties,
-                                         Optional<MltRenderProvider> mltProvider,
+                                        
+                                        
+                                        RenderProviderProperties properties,
+                                        Optional<MltRenderProvider> mltProvider,
                                          Optional<FFmpegRenderProvider> ffmpegProvider,
                                          Optional<GStreamerRenderProvider> gstreamerProvider,
                                          
@@ -53,20 +52,6 @@ public class RenderProviderAutoConfiguration {
                                          Optional<SkiaStickerOverlayProvider> skiaProvider,
                                          Optional<VapourSynthRenderProvider> vapourSynthProvider) {
         return args -> {
-            mockProvider.ifPresent(p -> registry.register("mock", p, RenderProviderCapability.legacy(
-                    "mock",
-                    Set.of("mp4"),
-                    Set.of("h264", "aac"),
-                    Set.of("video.fade_in", "video.fade_out", "text.subtitle_burn_in", "audio.volume"),
-                    Set.of("dissolve"),
-                    Set.of("burn_in"),
-                    "1920x1080",
-                    false,
-                    false,
-                    true,
-                    Set.of("test_mock")
-            )));
-
             mltProvider.ifPresent(mlt -> {
                 registry.register("mlt", mlt, mlt.getCapability());
                 log.info("MLT render provider registered (POC/P1/Timeline-NLE)");
