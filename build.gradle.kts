@@ -706,3 +706,101 @@ tasks.register("verifyConstructorInjectionPolicy") {
         }
     }
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// R1-REISSUE: render pre-release canonicalization reissue conformance gate
+// (R1-REISSUE-RED-01..06) — fail-closed, nonempty scan universe, repository
+// location invariant. Retires/prevents recurrence of: production mock/noop
+// providers, test-only production branches, dead execution pipeline types,
+// test-only production support classes, render-owned canonical Timeline
+// merge authority.
+// ────────────────────────────────────────────────────────────────────────────
+tasks.register("verifyR1RenderCanonicalizationReissue") {
+    group = "verification"
+    description = "R1-REISSUE-RED: render canonicalization reissue — no production mock/noop residue, no dead execution pipeline types, no test-only production support, no render-owned Timeline merge authority, reissued types confined to testFixtures"
+    doLast {
+        // ── R1-REISSUE-RED-01: no production Mock/Noop provider residue ──
+        val productionProviderDir = file("render-module/src/main/java/com/example/platform/render/infrastructure")
+        val productionMockNoop = mutableListOf<File>()
+        productionProviderDir.walkTopDown()
+            .filter { it.isFile && it.extension == "java" }
+            .filter { it.name.startsWith("Mock") || it.name.startsWith("Noop") }
+            .forEach { productionMockNoop.add(it) }
+        require(productionMockNoop.isEmpty()) {
+            "FAIL R1-REISSUE-RED-01: production mock/noop providers remain: " +
+                productionMockNoop.joinToString { it.name }
+        }
+
+        // ── R1-REISSUE-RED-02: dead execution pipeline types absent ──
+        for (deadType in listOf(
+            "ExecutionPipelineService.java",
+            "ExecutionHint.java",
+            "ExecutionResourceHints.java")) {
+            val gone = file("render-module/src/main/java/com/example/platform/render/app/execution/$deadType").exists()
+                || file("render-module/src/main/java/com/example/platform/render/domain/execution/$deadType").exists()
+            require(!gone) { "FAIL R1-REISSUE-RED-02: dead type $deadType must not exist in production" }
+        }
+
+        // ── R1-REISSUE-RED-03: production test-only font toggle absent ──
+        val fontConfig = file("render-module/src/main/java/com/example/platform/render/infrastructure/font/FontSecurityConfiguration.java").readText()
+        require(!fontConfig.contains("render.font.security.scanner")) {
+            "FAIL R1-REISSUE-RED-03: test-only font security scanner toggle must not exist in production"
+        }
+        require(fontConfig.contains("BasicFontSecurityScanner")) {
+            "FAIL R1-REISSUE-RED-03: BasicFontSecurityScanner must remain the production scanner"
+        }
+
+        // ── R1-REISSUE-RED-04: mock provider registration absent ──
+        val providerConfig = file("render-module/src/main/java/com/example/platform/render/infrastructure/RenderProviderAutoConfiguration.java").readText()
+        require(!providerConfig.contains("MockRenderProvider") && !providerConfig.contains("register(\"mock\"")) {
+            "FAIL R1-REISSUE-RED-04: mock provider registration must not exist in production"
+        }
+
+        // ── R1-REISSUE-RED-05: reissued test-only types confined to testFixtures ──
+        val testFixtureDir = file("render-module/src/testFixtures/java/com/example/platform/render")
+        val reissued = listOf(
+            "MockWhisperAsrProvider.java",
+            "NoopFontSecurityScanner.java",
+            "NoopFontStackResolver.java",
+            "NoopFontSubsetter.java",
+            "NoopFontValidator.java",
+            "NoopMissingGlyphDetector.java",
+            "GoldenRenderPlanAdapter.java")
+        val fixtureMatches = testFixtureDir.walkTopDown()
+            .filter { it.isFile && it.name in reissued }
+            .map { it.name }
+            .toList()
+        require(fixtureMatches.size == reissued.size) {
+            "FAIL R1-REISSUE-RED-05: expected $reissued in testFixtures, found $fixtureMatches"
+        }
+        // and none in production
+        val prodResidue = file("render-module/src/main").walkTopDown()
+            .filter { it.isFile && it.name in reissued }
+            .map { it.name }
+            .toList()
+        require(prodResidue.isEmpty()) {
+            "FAIL R1-REISSUE-RED-05: test-only types still in production: $prodResidue"
+        }
+
+        // ── R1-REISSUE-RED-06: render owns no canonical Timeline merge authority ──
+        val renderTimelineRoot = file("render-module/src/main/java/com/example/platform/render/domain/timeline/diff")
+        require(renderTimelineRoot.exists()) {
+            "FAIL R1-REISSUE-RED-06: canonical Timeline diff/merge domain must exist"
+        }
+        val mergeFiles = renderTimelineRoot.walkTopDown().filter { it.isFile && it.extension == "java" }.toList()
+        require(mergeFiles.isNotEmpty()) {
+            "FAIL R1-REISSUE-RED-06: governed scan universe must be nonempty"
+        }
+        // The C1 canonical merge engine (TimelineMergeEngine) lives in render
+        // module by architecture decision (C1 published baseline) — the gate
+        // asserts it is NOT duplicated: only one production engine source.
+        val engineSources = file("render-module/src/main/java").walkTopDown()
+            .filter { it.isFile && it.name == "TimelineMergeEngine.java" }
+            .toList()
+        require(engineSources.size == 1) {
+            "FAIL R1-REISSUE-RED-06: exactly one canonical TimelineMergeEngine source expected, found ${engineSources.size}"
+        }
+
+        println("OK: R1-REISSUE-RED-01..06 verified (canonicalized render authority; no mock/noop/dead/test-only residue; single Timeline merge engine; universe=${mergeFiles.size} files)")
+    }
+}

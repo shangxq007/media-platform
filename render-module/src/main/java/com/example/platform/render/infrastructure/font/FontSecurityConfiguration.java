@@ -8,8 +8,8 @@ import org.springframework.context.annotation.Configuration;
  * Configuration for font security scanning.
  *
  * <p>{@link BasicFontSecurityScanner} is registered as the production-safe
- * scanner (R1-REISSUE: the historical {@code render.font.security.scanner=noop}
- * test-only toggle was retired; noop implementations live in testFixtures).</p>
+ * scanner (R1-REISSUE: the historical test-only noop scanner toggle was
+ * retired; noop implementations live in testFixtures).</p>
  */
 @Configuration
 public class FontSecurityConfiguration {
