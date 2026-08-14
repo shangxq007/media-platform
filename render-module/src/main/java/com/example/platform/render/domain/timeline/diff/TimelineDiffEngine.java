@@ -190,9 +190,9 @@ public final class TimelineDiffEngine {
 
     private static void addClipPropertyChanges(String clipId, TimelineClip base, TimelineClip target,
                                                 List<TimelineChange> changes) {
-        if (!Objects.equals(base.getAssetId(), target.getAssetId())) {
+        if (!Objects.equals(base.getMediaAssetId(), target.getMediaAssetId())) {
             changes.add(TimelineChange.propertyChanged(EntityKind.CLIP, clipId, "assetId",
-                    base.getAssetId(), target.getAssetId()));
+                    base.getMediaAssetId(), target.getMediaAssetId()));
         }
         if (!Objects.equals(base.getStartTime(), target.getStartTime())) {
             changes.add(TimelineChange.propertyChanged(EntityKind.CLIP, clipId, "startTime",
@@ -213,7 +213,7 @@ public final class TimelineDiffEngine {
     }
 
     private static boolean clipsEqual(TimelineClip a, TimelineClip b) {
-        return Objects.equals(a.getAssetId(), b.getAssetId())
+        return Objects.equals(a.getMediaAssetId(), b.getMediaAssetId())
                 && Objects.equals(a.getStartTime(), b.getStartTime())
                 && Objects.equals(a.getEndTime(), b.getEndTime())
                 && Objects.equals(a.getTrimStart(), b.getTrimStart())

@@ -19,7 +19,11 @@ public class TimelineContentDigester {
     public TimelineContentDigester() {
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                // CANONICAL_TIMELINE_SERIALIZATION_V2: deterministic byte-for-byte
+                // serialization (stable property order) for revision content hashing.
+                .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+                .configure(com.fasterxml.jackson.databind.MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
     }
 
     public String digest(TimelineDocument document) {

@@ -210,6 +210,38 @@ else
     pass "MediaStreamType retired"
 fi
 
+echo "--- TIMELINE_V2 SourceBinding / Exactness ---"
+
+# T14 Gate 1: no legacy mediaReference String authority in canonical Timeline domain
+# (javadoc references to the retired field are documentation, not authority)
+if grep -rn 'mediaReference' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/ render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/ --include='*.java' 2>/dev/null | grep -vE ':\s*\*|/\*|^\s*[0-9]+:\s*\*' | grep -q .; then
+    fail "legacy mediaReference String present in canonical Timeline domain"
+else
+    pass "mediaReference String retired from canonical Timeline domain"
+fi
+
+# T14 Gate 2: TimelineClip must not expose legacy assetId String getter
+if grep -q 'getAssetId' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineClip.java; then
+    fail "legacy TimelineClip.getAssetId still present"
+else
+    pass "TimelineClip typed source binding fields only"
+fi
+
+# T14 Gate 3: canonical serializer must not emit double PLAYBACK RATE / time fields
+# (doubleField remains legal for non-time automation keyframe values)
+if grep -q 'doubleField(sb, "playbackRate"\|playbackRate().doubleValue()' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/CanonicalSerializer.java; then
+    fail "double playback rate in canonical serializer"
+else
+    pass "canonical serializer exact rational rate"
+fi
+
+# T14 Gate 4: legacy parser alias assetRef.storageUri retired
+if grep -q 'storageUri.*mediaRef\|"storageUri"' render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineScriptParser.java; then
+    fail "legacy assetRef.storageUri alias still present in parser"
+else
+    pass "legacy parser alias retired"
+fi
+
 echo "=== Summary ==="
 echo "Checks: $CHECKS"
 echo "Failed: $FAILED"

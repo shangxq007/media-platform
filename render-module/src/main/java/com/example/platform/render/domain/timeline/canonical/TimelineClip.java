@@ -1,55 +1,96 @@
 package com.example.platform.render.domain.timeline.canonical;
 
+import com.example.platform.shared.time.MediaTime;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.Duration;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 /**
- * Canonical Timeline Clip - stable entity with clipId.
+ * Canonical Timeline Clip — stable entity with clipId (TIMELINE_V2).
+ *
+ * <p>Source binding is TYPED via explicit identity fields (mediaAssetId /
+ * mediaStreamId / artifactId / contentDigest) — the legacy ambiguous
+ * {@code assetId} String is retired. All time fields are EXACT rational
+ * {@link MediaTime} ({@code num/den} canonical form), never double/Duration.
+ *
+ * <p>This record is the revision persistence/API projection; the typed
+ * canonical authority is {@code SourceBinding} + {@code MediaClip} in
+ * semantics (single typed source binding, no duplicated media metadata).
  */
 public class TimelineClip {
-    
+
     @JsonProperty("clipId")
     private final String clipId;
-    
-    @JsonProperty("assetId")
-    private final String assetId;
-    
+
+    @JsonProperty("mediaAssetId")
+    private final String mediaAssetId;
+
+    @JsonProperty("mediaStreamId")
+    private final String mediaStreamId;
+
+    @JsonProperty("artifactId")
+    private final String artifactId;
+
+    @JsonProperty("contentDigest")
+    private final String contentDigest;
+
     @JsonProperty("startTime")
-    private final Duration startTime;
-    
+    @JsonSerialize(using = MediaTimeJsonCodec.Serializer.class)
+    @JsonDeserialize(using = MediaTimeJsonCodec.Deserializer.class)
+    private final MediaTime startTime;
+
     @JsonProperty("endTime")
-    private final Duration endTime;
-    
+    @JsonSerialize(using = MediaTimeJsonCodec.Serializer.class)
+    @JsonDeserialize(using = MediaTimeJsonCodec.Deserializer.class)
+    private final MediaTime endTime;
+
     @JsonProperty("trimStart")
-    private final Duration trimStart;
-    
+    @JsonSerialize(using = MediaTimeJsonCodec.Serializer.class)
+    @JsonDeserialize(using = MediaTimeJsonCodec.Deserializer.class)
+    private final MediaTime trimStart;
+
     @JsonProperty("trimEnd")
-    private final Duration trimEnd;
+    @JsonSerialize(using = MediaTimeJsonCodec.Serializer.class)
+    @JsonDeserialize(using = MediaTimeJsonCodec.Deserializer.class)
+    private final MediaTime trimEnd;
 
     @JsonCreator
     public TimelineClip(
             @JsonProperty("clipId") String clipId,
-            @JsonProperty("assetId") String assetId,
-            @JsonProperty("startTime") Duration startTime,
-            @JsonProperty("endTime") Duration endTime,
-            @JsonProperty("trimStart") Duration trimStart,
-            @JsonProperty("trimEnd") Duration trimEnd) {
+            @JsonProperty("mediaAssetId") String mediaAssetId,
+            @JsonProperty("mediaStreamId") String mediaStreamId,
+            @JsonProperty("artifactId") String artifactId,
+            @JsonProperty("contentDigest") String contentDigest,
+            @JsonProperty("startTime") MediaTime startTime,
+            @JsonProperty("endTime") MediaTime endTime,
+            @JsonProperty("trimStart") MediaTime trimStart,
+            @JsonProperty("trimEnd") MediaTime trimEnd) {
         if (clipId == null || clipId.isBlank()) {
             throw new IllegalArgumentException("clipId must not be blank");
         }
+        // NOTE: mediaAssetId blankness is deliberately NOT rejected here — the
+        // canonical adapter (TimelineDocumentCandidateMapper) owns the frozen
+        // TimelineCanonicalRejectionException(TIMELINE_SOURCE_REF_INVALID) error
+        // contract for invalid source references.
         this.clipId = clipId;
-        this.assetId = assetId;
-        this.startTime = startTime != null ? startTime : Duration.ZERO;
-        this.endTime = endTime != null ? endTime : Duration.ZERO;
-        this.trimStart = trimStart != null ? trimStart : Duration.ZERO;
-        this.trimEnd = trimEnd != null ? trimEnd : Duration.ZERO;
+        this.mediaAssetId = mediaAssetId;
+        this.mediaStreamId = mediaStreamId;
+        this.artifactId = artifactId;
+        this.contentDigest = contentDigest;
+        this.startTime = startTime != null ? startTime : MediaTime.ZERO;
+        this.endTime = endTime != null ? endTime : MediaTime.ZERO;
+        this.trimStart = trimStart != null ? trimStart : MediaTime.ZERO;
+        this.trimEnd = trimEnd != null ? trimEnd : MediaTime.ZERO;
     }
 
     public String getClipId() { return clipId; }
-    public String getAssetId() { return assetId; }
-    public Duration getStartTime() { return startTime; }
-    public Duration getEndTime() { return endTime; }
-    public Duration getTrimStart() { return trimStart; }
-    public Duration getTrimEnd() { return trimEnd; }
+    public String getMediaAssetId() { return mediaAssetId; }
+    public String getMediaStreamId() { return mediaStreamId; }
+    public String getArtifactId() { return artifactId; }
+    public String getContentDigest() { return contentDigest; }
+    public MediaTime getStartTime() { return startTime; }
+    public MediaTime getEndTime() { return endTime; }
+    public MediaTime getTrimStart() { return trimStart; }
+    public MediaTime getTrimEnd() { return trimEnd; }
 }

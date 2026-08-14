@@ -1,5 +1,7 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.shared.time.MediaTime;
+
 import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
@@ -86,10 +88,10 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         String productId = "prod-gate-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         // Multiple deterministic canonical violations: duplicate track ids AND duplicate clip ids.
-        var clipA = new TimelineClip("clip-x", "asset-1",
-                Duration.ofSeconds(0), Duration.ofSeconds(10), Duration.ZERO, Duration.ZERO);
-        var clipB = new TimelineClip("clip-x", "asset-2",
-                Duration.ofSeconds(0), Duration.ofSeconds(10), Duration.ZERO, Duration.ZERO);
+        var clipA = new TimelineClip("clip-x", "asset-1", null, null, null,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
+        var clipB = new TimelineClip("clip-x", "asset-2", null, null, null,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(
                         new TimelineTrack("track-1", "A", TrackType.VIDEO, List.of(clipA)),
@@ -125,8 +127,8 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
     void invalidPath_negativeTiming_rejectedByAdapterWithFrozenCode() {
         String productId = "prod-gate-" + java.util.UUID.randomUUID();
         insertProduct(productId);
-        var clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofSeconds(10), Duration.ofSeconds(5), Duration.ZERO, Duration.ZERO);
+        var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofRational(10, 1), MediaTime.ofRational(5, 1), MediaTime.ZERO, MediaTime.ZERO);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("invalid", "", Map.of()));
@@ -159,8 +161,8 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
     }
 
     private TimelineDocument createSampleDocument() {
-        var clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofSeconds(0), Duration.ofSeconds(10), Duration.ZERO, Duration.ZERO);
+        var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));

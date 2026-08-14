@@ -95,7 +95,11 @@ public class GoldenRenderPlanAdapter {
                 var child = MAPPER.createObjectNode();
                 child.put("id", trackId + "-clip-" + idx++);
                 child.put("name", assetId);
-                child.put("media_reference", "file://" + localPath);
+                // TIMELINE_V2 (T14): execution locator carried explicitly under
+                // assetRef.storageUri (media_reference is no longer a locator alias).
+                var ar = MAPPER.createObjectNode();
+                ar.put("storageUri", "file://" + localPath);
+                child.set("assetRef", ar);
                 var sr = MAPPER.createObjectNode();
                 sr.put("start_time", offsetMs / 1000.0);
                 sr.put("duration", durationMs / 1000.0);

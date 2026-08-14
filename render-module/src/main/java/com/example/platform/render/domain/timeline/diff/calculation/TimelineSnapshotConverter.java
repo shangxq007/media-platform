@@ -96,19 +96,19 @@ public final class TimelineSnapshotConverter {
             TimelineTrack track = docTracks.get(i);
             List<CanonicalTimelineClipSnapshot> clips = new ArrayList<>();
             for (TimelineClip clip : track.clips()) {
-                MediaTime start = MediaTime.ofMicros(clip.getStartTime().toMillis() * 1000L);
-                MediaTime end = MediaTime.ofMicros(clip.getEndTime().toMillis() * 1000L);
+                MediaTime start = clip.getStartTime();
+                MediaTime end = clip.getEndTime();
                 MediaTime clipDuration = end.subtract(start).max(MediaTime.ZERO);
                 if (end.isGreaterThan(duration)) {
                     duration = end;
                 }
                 clips.add(new CanonicalTimelineClipSnapshot(
                         clip.getClipId(),
-                        clip.getAssetId(),
+                        clip.getMediaAssetId(),
                         start,
                         clipDuration,
-                        MediaTime.ofMicros(clip.getTrimStart().toMillis() * 1000L),
-                        MediaTime.ofMicros(clip.getTrimEnd().toMillis() * 1000L),
+                        clip.getTrimStart(),
+                        clip.getTrimEnd(),
                         FrameRate.of(30, 1),
                         List.of(),
                         Map.of()));
@@ -151,15 +151,21 @@ public final class TimelineSnapshotConverter {
         for (CanonicalTimelineTrackSnapshot track : ordered) {
             List<TimelineClip> clips = new ArrayList<>();
             for (CanonicalTimelineClipSnapshot clip : track.clips()) {
-                java.time.Duration start = java.time.Duration.ofMillis(toMillis(clip.start()));
-                java.time.Duration end = java.time.Duration.ofMillis(toMillis(clip.start().add(clip.duration())));
+                MediaTime start = clip.start();
+                MediaTime end = clip.start().add(clip.duration());
+                // Snapshot boundary: single binding id is restored as mediaAssetId;
+                // stream/artifact/digest are not carried in the merge snapshot
+                // (full binding restoration is a follow-up bounded delivery).
                 clips.add(new TimelineClip(
                         clip.clipId(),
                         clip.assetBindingId(),
+                        null,
+                        null,
+                        null,
                         start,
                         end,
-                        java.time.Duration.ofMillis(toMillis(clip.sourceStart())),
-                        java.time.Duration.ofMillis(toMillis(clip.sourceDuration()))));
+                        clip.sourceStart(),
+                        clip.sourceStart().add(clip.sourceDuration())));
             }
             TrackType type = TrackType.VIDEO;
             try {

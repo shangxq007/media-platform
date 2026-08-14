@@ -1,5 +1,7 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.shared.time.MediaTime;
+
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
@@ -139,8 +141,8 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
     }
 
     private TimelineRevision createAndSaveRevision(String productId, String revisionId, String parentId) {
-        TimelineClip clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip));
         TimelineDocument doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 new TimelineMetadata("", "", Map.of()));
@@ -149,10 +151,10 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
     }
 
     private TimelineRevision createAndSaveRevisionWithExtraClip(String productId, String revisionId, String parentId) {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1, clip2));
         TimelineDocument doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 new TimelineMetadata("", "", Map.of()));

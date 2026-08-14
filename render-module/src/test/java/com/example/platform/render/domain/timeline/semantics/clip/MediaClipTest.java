@@ -1,5 +1,6 @@
 package com.example.platform.render.domain.timeline.semantics.clip;
 
+import com.example.platform.render.testsupport.TestSourceBindings;
 import com.example.platform.shared.time.MediaTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,8 @@ class MediaClipTest {
             new MediaClip.TimeRange(t0, t1),
             new MediaClip.TimeRange(s0, s1),
             new MediaClip.Rational(2, 1),
-            "asset-ref"
+            TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
+                new MediaClip.TimeRange(s0, s1))
         );
 
         assertEquals("clip-1", clip.clipId());
@@ -38,7 +40,8 @@ class MediaClipTest {
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
             new MediaClip.Rational(2, 1),
-            "asset-ref"
+            TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
+                new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)))
         );
         assertTrue(clip.hasValidFixedRateDuration());
     }
@@ -51,7 +54,8 @@ class MediaClipTest {
                 new MediaClip.TimeRange(MediaTime.ofRational(5, 1), MediaTime.ZERO),
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
                 new MediaClip.Rational(1, 1),
-                null)
+                TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
+                    new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1))))
         );
     }
 
@@ -63,7 +67,8 @@ class MediaClipTest {
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
                 new MediaClip.TimeRange(MediaTime.ofRational(10, 1), MediaTime.ZERO),
                 new MediaClip.Rational(1, 1),
-                null)
+                TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
+                    new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1))))
         );
     }
 
@@ -75,7 +80,8 @@ class MediaClipTest {
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
                 new MediaClip.Rational(0, 1),
-                null)
+                TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
+                    new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1))))
         );
     }
 
@@ -87,7 +93,8 @@ class MediaClipTest {
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
             new MediaClip.Rational(2, 1),
-            null
+            TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
+                new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)))
         );
         // timeline 2s -> source 4s
         MediaTime sourceTime = clip.timelineToSourceTime(MediaTime.ofRational(2, 1));

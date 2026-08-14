@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.patch;
 
+import com.example.platform.shared.time.MediaTime;
+
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
@@ -84,8 +86,8 @@ class TimelinePatchEngineTest {
     @DisplayName("Add clip to track")
     void addClip() {
         TimelineDocument base = documentWithTrack("track-1");
-        TimelineClip clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelinePatch patch = patch(opId("op1", "ADD_CLIP", "track-1", clip, 0));
 
         PatchApplicationResult result = TimelinePatchEngine.apply(base, patch);
@@ -99,8 +101,8 @@ class TimelinePatchEngineTest {
     @Test
     @DisplayName("Remove clip from track")
     void removeClip() {
-        TimelineClip clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineDocument base = documentWithTrackAndClip("track-1", clip);
         TimelinePatch patch = patch(opId("op1", "REMOVE_CLIP", "clip-1", "track-1"));
 
@@ -113,22 +115,22 @@ class TimelinePatchEngineTest {
     @Test
     @DisplayName("Update clip property")
     void updateClipProperty() {
-        TimelineClip clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineDocument base = documentWithTrackAndClip("track-1", clip);
-        TimelinePatch patch = patch(opId("op1", "UPDATE_CLIP_PROPERTY", "clip-1", "assetId", "asset-1", "asset-2"));
+        TimelinePatch patch = patch(opId("op1", "UPDATE_CLIP_PROPERTY", "clip-1", "mediaAssetId", "asset-1", "asset-2"));
 
         PatchApplicationResult result = TimelinePatchEngine.apply(base, patch);
 
         assertTrue(result.isSuccess());
-        assertEquals("asset-2", ((PatchApplicationResult.Success) result).document().getTracks().get(0).clips().get(0).getAssetId());
+        assertEquals("asset-2", ((PatchApplicationResult.Success) result).document().getTracks().get(0).clips().get(0).getMediaAssetId());
     }
 
     @Test
     @DisplayName("Move clip across tracks")
     void moveClip() {
-        TimelineClip clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineDocument base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(
                         new TimelineTrack("track-1", "V1", TrackType.VIDEO, List.of(clip)),
@@ -148,12 +150,12 @@ class TimelinePatchEngineTest {
     @Test
     @DisplayName("Reorder clip in same track")
     void reorderClip() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip3 = new TimelineClip("clip-3", "asset-3",
-                Duration.ofMillis(2000), Duration.ofMillis(3000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip3 = new TimelineClip("clip-3", "asset-3", null, null, null,
+                MediaTime.ofMicros((2000) * 1000L), MediaTime.ofMicros((3000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineDocument base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack("track-1", "V1", TrackType.VIDEO, List.of(clip1, clip2, clip3))),
                 TimelineMetadata.empty());

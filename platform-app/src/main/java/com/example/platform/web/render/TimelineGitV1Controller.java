@@ -1,5 +1,6 @@
 package com.example.platform.web.render;
 
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.app.timeline.PatchApplyResult;
 import com.example.platform.render.app.timeline.PatchPreviewResult;
 import com.example.platform.render.app.timeline.ProductCurrentRevisionService;
@@ -212,9 +213,12 @@ public class TimelineGitV1Controller {
 
     public record ClipDto(String clipId, String assetId, long startMs, long endMs) {
         TimelineClip toClip() {
+            // API projection boundary: ms input projected to exact MediaTime
+            // (integer microseconds, never floating point).
             return new TimelineClip(clipId, assetId,
-                    Duration.ofMillis(startMs), Duration.ofMillis(endMs),
-                    Duration.ZERO, Duration.ZERO);
+                    null, null, null,
+                    MediaTime.ofMicros(startMs * 1000L), MediaTime.ofMicros(endMs * 1000L),
+                    MediaTime.ZERO, MediaTime.ZERO);
         }
     }
 

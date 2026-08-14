@@ -1,5 +1,7 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.shared.time.MediaTime;
+
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
@@ -90,14 +92,14 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void preview_validPersistedPayload_hydratesAndReturnsSemanticResult_noWrites() {
         String productId = "prod-prev-green-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
 
         String baseSnapshotId = snapshotIdOf(base.revisionId());
         assertTrue(snapshotService.findPayload(baseSnapshotId).isPresent(),
                 "governed payload exists (precondition)");
 
-        TimelinePatch patch = validPatch(productId, base, docBase, "PT2S");
+        TimelinePatch patch = validPatch(productId, base, docBase, "2/1");
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         PatchPreviewResult result = patchService.preview(patch);
 
@@ -124,13 +126,13 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void apply_validPersistedPayload_hydratesAndPersistsThroughE1Gate() throws Exception {
         String productId = "prod-apply-green-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
         String baseSnapshotId = snapshotIdOf(base.revisionId());
         String basePayload = snapshotService.findPayload(baseSnapshotId).orElseThrow();
         assertTrue(snapshotService.findPayload(baseSnapshotId).isPresent(), "base payload readable");
 
-        TimelinePatch patch = validPatch(productId, base, docBase, "PT2S");
+        TimelinePatch patch = validPatch(productId, base, docBase, "2/1");
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         PatchApplyResult result = patchService.apply(patch);
 
@@ -154,7 +156,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         String newPayload = snapshotService.findPayload(newSnapshotId).orElseThrow();
         TimelineDocument persisted = TimelineDocumentJsonSerializer.mapper()
                 .readValue(newPayload, TimelineDocument.class);
-        assertEquals(Duration.ofSeconds(2), persisted.getTracks().get(0).clips().get(0).getStartTime(),
+        assertEquals(MediaTime.ofRational(2, 1), persisted.getTracks().get(0).clips().get(0).getStartTime(),
                 "persisted snapshot payload contains startTime PT2S");
         // A034: tenant/project identity preserved
         assertEquals(productId, persistedRowProject(newRevisionId), "project identity preserved");
@@ -172,12 +174,12 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void apply_missingBaseRevision_failsClosedZeroWrites() {
         String productId = "prod-miss-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
         TimelinePatch patch = new TimelinePatch("1.0", "patch-" + UUID.randomUUID(), productId,
                 "rev-does-not-exist", digester.digest(docBase), "rev-does-not-exist",
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "PT0S", "PT2S")),
+                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "0", "2/1")),
                 null, null);
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         PatchApplyResult result = patchService.apply(patch);
@@ -193,10 +195,10 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         var legacySave = new TimelineRevisionSaveService(dsl, currentRevisionService, digester);
         String productId = "prod-nopay-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = legacySave.saveRevision(productId, null, docBase, "pphr-user");
 
-        TimelinePatch patch = validPatch(productId, base, docBase, "PT2S");
+        TimelinePatch patch = validPatch(productId, base, docBase, "2/1");
         var patchService = new TimelinePatchApplicationService(legacySave, currentRevisionService, digester);
         PatchApplyResult result = patchService.apply(patch);
         assertTrue(result instanceof PatchApplyResult.Failure f
@@ -214,7 +216,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void apply_malformedSnapshotPayload_failsClosedZeroWrites() {
         String productId = "prod-badpay-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
         // Corrupt the governed payload row: malformed JSON must fail closed.
         String snapshotId = snapshotIdOf(base.revisionId());
@@ -223,7 +225,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
                 .where(TIMELINE_SNAPSHOT.ID.eq(snapshotId))
                 .execute();
 
-        TimelinePatch patch = validPatch(productId, base, docBase, "PT2S");
+        TimelinePatch patch = validPatch(productId, base, docBase, "2/1");
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         PatchApplyResult result = patchService.apply(patch);
         assertTrue(result instanceof PatchApplyResult.Failure f
@@ -236,12 +238,12 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void apply_digestMismatch_failsClosedZeroWrites() {
         String productId = "prod-dig-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
         TimelinePatch patch = new TimelinePatch("1.0", "patch-" + UUID.randomUUID(), productId,
                 base.revisionId(), "wrong-digest", base.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "PT0S", "PT2S")),
+                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "0", "2/1")),
                 null, null);
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         PatchApplyResult result = patchService.apply(patch);
@@ -257,11 +259,11 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         insertProduct(productA);
         insertProduct(productB);
         TimelineRevision base = saveService.saveRevision(productA, null,
-                sampleDocument("clip-1", "PT0S", "PT10S"), "pphr-user");
+                sampleDocument("clip-1", "0/1", "10/1"), "pphr-user");
         TimelinePatch patch = new TimelinePatch("1.0", "patch-" + UUID.randomUUID(), productB,
-                base.revisionId(), digester.digest(sampleDocument("clip-1", "PT0S", "PT10S")), base.revisionId(),
+                base.revisionId(), digester.digest(sampleDocument("clip-1", "0/1", "10/1")), base.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "PT0S", "PT2S")),
+                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "0", "2/1")),
                 null, null);
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         PatchApplyResult result = patchService.apply(patch);
@@ -275,10 +277,10 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void apply_staleBaseAndExpectedCurrentConflict_failClosedZeroWrites() {
         String productId = "prod-stale-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision r1 = saveService.saveRevision(productId, null, docBase, "pphr-user");
         TimelineRevision r2 = saveService.saveRevision(productId, r1.revisionId(),
-                sampleDocument("clip-1", "PT0S", "PT5S"), "pphr-user");
+                sampleDocument("clip-1", "0/1", "5/1"), "pphr-user");
         assertEquals(r2.revisionId(), currentRevisionService.getCurrentRevisionId(productId));
 
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
@@ -286,7 +288,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         TimelinePatch stalePatch = new TimelinePatch("1.0", "patch-" + UUID.randomUUID(), productId,
                 r1.revisionId(), digester.digest(docBase), r1.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "PT0S", "PT2S")),
+                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "0", "2/1")),
                 null, null);
         PatchApplyResult stale = patchService.apply(stalePatch);
         assertTrue(stale instanceof PatchApplyResult.Failure f
@@ -294,9 +296,9 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         assertEquals(2L, countRevisions(productId));
 
         TimelinePatch conflictPatch = new TimelinePatch("1.0", "patch-" + UUID.randomUUID(), productId,
-                r2.revisionId(), digester.digest(sampleDocument("clip-1", "PT0S", "PT5S")), r1.revisionId(),
+                r2.revisionId(), digester.digest(sampleDocument("clip-1", "0/1", "5/1")), r1.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "PT0S", "PT2S")),
+                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "0", "2/1")),
                 null, null);
         PatchApplyResult conflict = patchService.apply(conflictPatch);
         assertTrue(conflict instanceof PatchApplyResult.Failure f
@@ -310,13 +312,13 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         // canonically invalid (startTime PT0S -> PT15S while endTime stays PT10S).
         String productId = "prod-inv-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
 
         TimelinePatch patch = new TimelinePatch("1.0", "patch-" + UUID.randomUUID(), productId,
                 base.revisionId(), digester.digest(docBase), base.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "PT0S", "PT15S")),
+                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "0", "15/1")),
                 null, null);
         TimelineDocument baseDoc = TimelineDocumentJsonSerializer.mapper()
                 .readValue(snapshotService.findPayload(snapshotIdOf(base.revisionId())).orElseThrow(),
@@ -324,7 +326,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         PatchApplicationResult engineResult = TimelinePatchEngine.apply(baseDoc, patch);
         assertTrue(engineResult.isSuccess(), "engine applies the timing op (canonically invalid result)");
         TimelineDocument invalidDoc = ((PatchApplicationResult.Success) engineResult).document();
-        assertEquals(Duration.ofSeconds(15),
+        assertEquals(MediaTime.ofRational(15, 1),
                 invalidDoc.getTracks().get(0).clips().get(0).getStartTime());
 
         assertThrows(TimelineCanonicalRejectionException.class,
@@ -336,12 +338,12 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void apply_malformedOperation_failsClosedZeroWrites() {
         String productId = "prod-mal-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
         TimelinePatch patch = new TimelinePatch("1.0", "patch-" + UUID.randomUUID(), productId,
                 base.revisionId(), digester.digest(docBase), base.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-NOPE", "startTime", "PT0S", "PT2S")),
+                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-NOPE", "startTime", "0", "2/1")),
                 null, null);
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         PatchApplyResult result = patchService.apply(patch);
@@ -353,18 +355,18 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void subsequentValidApply_afterRejection_succeedsWithoutGap() {
         String productId = "prod-usable-" + UUID.randomUUID();
         insertProduct(productId);
-        TimelineDocument docBase = sampleDocument("clip-1", "PT0S", "PT10S");
+        TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
 
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         TimelinePatch badPatch = new TimelinePatch("1.0", "patch-" + UUID.randomUUID(), productId,
                 base.revisionId(), "wrong-digest", base.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "PT0S", "PT2S")),
+                List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "0", "2/1")),
                 null, null);
         assertTrue(patchService.apply(badPatch).isFailure(), "rejected request first");
 
-        TimelinePatch goodPatch = validPatch(productId, base, docBase, "PT2S");
+        TimelinePatch goodPatch = validPatch(productId, base, docBase, "2/1");
         PatchApplyResult result = patchService.apply(goodPatch);
         assertTrue(result instanceof PatchApplyResult.Success,
                 "subsequent valid Patch succeeds after rejection (observed "
@@ -408,8 +410,8 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     }
 
     private TimelineDocument sampleDocument(String clipId, String start, String end) {
-        TimelineClip clip = new TimelineClip(clipId, "asset-1",
-                Duration.parse(start), Duration.parse(end), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip = new TimelineClip(clipId, "asset-1", null, null, null,
+                parseMediaTime(start), parseMediaTime(end), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));
@@ -438,5 +440,22 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     private String persistedRowTenant(String revisionId) {
         return dsl.select(TIMELINE_REVISION.TENANT_ID).from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(revisionId)).fetchOne(TIMELINE_REVISION.TENANT_ID);
+    }
+
+
+    private static MediaTime parseMediaTime(String text) {
+        if ("0".equals(text)) {
+            return MediaTime.ZERO;
+        }
+        int slash = text.indexOf('/');
+        if (slash < 1 || slash == text.length() - 1) {
+            throw new IllegalArgumentException("Invalid exact MediaTime: " + text);
+        }
+        long num = Long.parseLong(text.substring(0, slash).trim());
+        long den = Long.parseLong(text.substring(slash + 1).trim());
+        if (den <= 0) {
+            throw new IllegalArgumentException("MediaTime denominator must be > 0: " + text);
+        }
+        return MediaTime.ofRational(num, den);
     }
 }

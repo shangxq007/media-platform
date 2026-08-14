@@ -1,5 +1,11 @@
 package com.example.platform.render.domain.timeline.semantics;
 
+import com.example.platform.media.domain.identity.MediaAssetId;
+import com.example.platform.media.domain.stream.MediaStreamId;
+import com.example.platform.render.domain.timeline.semantics.clip.SourceBinding;
+import com.example.platform.shared.identity.ArtifactId;
+import com.example.platform.storage.contract.ContentDigest;
+
 import com.example.platform.render.domain.timeline.semantics.automation.Automation;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
 import com.example.platform.render.domain.timeline.semantics.duration.TimelineDurationCalculator;
@@ -111,7 +117,15 @@ class PropertyBasedTests {
                         MediaTime.ofRational(start, 1),
                         MediaTime.ofRational(start + 5, 1)),
                     new MediaClip.Rational(1, 1),
-                    "asset-" + i
+                    new SourceBinding(
+                        MediaAssetId.of("asset-" + i),
+                        MediaStreamId.of("stream-" + i),
+                        new ArtifactId("artifact-" + i),
+                        new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256,
+                                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+                        new MediaClip.TimeRange(
+                            MediaTime.ofRational(start, 1),
+                            MediaTime.ofRational(start + 5, 1)))
                 ));
             }
             TimelineSemanticModel model = new TimelineSemanticModel(
@@ -134,7 +148,15 @@ class PropertyBasedTests {
                     MediaTime.ofRational(start, 1),
                     MediaTime.ofRational(start + 5, 1)),
                 new MediaClip.Rational(1, 1),
-                "asset-" + i
+                new SourceBinding(
+                    MediaAssetId.of("asset-" + i),
+                    MediaStreamId.of("stream-" + i),
+                    new ArtifactId("artifact-" + i),
+                    new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256,
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+                    new MediaClip.TimeRange(
+                        MediaTime.ofRational(start, 1),
+                        MediaTime.ofRational(start + 5, 1)))
             ));
         }
 
@@ -156,11 +178,19 @@ class PropertyBasedTests {
             new MediaClip("dup", "track-1",
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
-                new MediaClip.Rational(1, 1), "a"),
+                new MediaClip.Rational(1, 1), new SourceBinding(
+                    MediaAssetId.of("asset-a"), MediaStreamId.of("stream-a"), new ArtifactId("artifact-a"),
+                    new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256,
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+                    new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)))),
             new MediaClip("dup", "track-1",
                 new MediaClip.TimeRange(MediaTime.ofRational(5, 1), MediaTime.ofRational(10, 1)),
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
-                new MediaClip.Rational(1, 1), "b")
+                new MediaClip.Rational(1, 1), new SourceBinding(
+                    MediaAssetId.of("asset-b"), MediaStreamId.of("stream-b"), new ArtifactId("artifact-b"),
+                    new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256,
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+                    new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1))))
         );
         return new TimelineSemanticModel(clips, List.of(), List.of(), List.of(),
             "timeline-semantics-v1");

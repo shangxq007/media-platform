@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.semantics.projection;
 
+import com.example.platform.render.testsupport.TestSourceBindings;
+
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
 import com.example.platform.shared.time.MediaTime;
@@ -97,7 +99,10 @@ class RelationProjectionsTest {
                 MediaTime.ofRational(sStart, 1),
                 MediaTime.ofRational(sEnd, 1)),
             new MediaClip.Rational(1, 1),
-            "asset-" + id
+            TestSourceBindings.of("asset-" + id, "stream-1", "artifact-1",
+                new MediaClip.TimeRange(
+                    MediaTime.ofRational(sStart, 1),
+                    MediaTime.ofRational(sEnd, 1)))
         );
     }
 }

@@ -48,7 +48,7 @@ class ShotstackRenderProviderTest {
     void renderDownloadsCloudOutput(@TempDir Path storageRoot) throws Exception {
         String script = """
                 {"tracks":[{"type":"VIDEO","clips":[{
-                  "media_reference":"file:///tmp/clip.mp4",
+                  "assetRef": {"storageUri": "file:///tmp/clip.mp4"},
                   "clipDuration":10,
                   "timelineStart":0,
                   "assetInPoint":0,

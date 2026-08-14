@@ -78,33 +78,32 @@ final class TimelineDocumentCandidateMapper {
                     TimelineModelPath.root().field("tracks").field("clips").field("clipId"),
                     "Clip identifier must be nonblank and already normalized"));
         }
-        String assetId = clip.getAssetId();
-        if (assetId == null || assetId.isBlank() || !assetId.equals(assetId.strip())) {
+        String mediaAssetId = clip.getMediaAssetId();
+        if (mediaAssetId == null || mediaAssetId.isBlank() || !mediaAssetId.equals(mediaAssetId.strip())) {
             throw new TimelineCanonicalRejectionException(new TimelineCanonicalRejectionException.AdapterDiagnostic(
                     TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
                     TimelineModelPath.root().field("tracks").field("clips").id(clipId).field("sourceRef"),
-                    "Source reference (assetId) must be nonblank and already normalized"));
+                    "Source reference (mediaAssetId) must be nonblank and already normalized"));
         }
-        MediaTime timelineStart = toMediaTime(clip.getStartTime());
-        MediaTime sourceStart = toMediaTime(clip.getTrimStart());
+        MediaTime timelineStart = clip.getStartTime();
+        MediaTime sourceStart = clip.getTrimStart();
         MediaTime duration;
         try {
-            Duration diff = clip.getEndTime().minus(clip.getStartTime());
-            if (diff.isNegative()) {
+            if (clip.getEndTime().isLessThan(clip.getStartTime())) {
                 throw new TimelineCanonicalRejectionException(
                         new TimelineCanonicalRejectionException.AdapterDiagnostic(
                                 TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
                                 TimelineModelPath.root().field("tracks").field("clips").id(clipId).field("duration"),
                                 "Clip endTime must not precede startTime"));
             }
-            duration = toMediaTime(diff);
+            duration = clip.getEndTime().subtract(clip.getStartTime());
         } catch (ArithmeticException overflow) {
             throw new TimelineCanonicalRejectionException(new TimelineCanonicalRejectionException.AdapterDiagnostic(
                     TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
                     TimelineModelPath.root().field("tracks").field("clips").id(clipId).field("duration"),
                     "Clip duration overflow"));
         }
-        return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(assetId),
+        return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(mediaAssetId),
                 timelineStart, sourceStart, duration, List.of());
     }
 

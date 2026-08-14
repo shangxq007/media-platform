@@ -103,7 +103,7 @@ class GoldenRenderE2ETest {
         String uri = "file://" + colorBars.toAbsolutePath();
         String timelineJson = String.format("""
                 {"id":"golden-single","name":"Single","outputSpec":{"format":"mp4","width":1920,"height":1080,"frameRate":30,"videoCodec":"h264","audioCodec":"aac","videoBitrateKbps":5000,"audioBitrateKbps":192},
-                 "tracks":[{"id":"v1","name":"Video","type":"VIDEO","children":[{"id":"c1","name":"color_bars","media_reference":"%s","source_range":{"start_time":0,"duration":5}}]}],
+                 "tracks":[{"id":"v1","name":"Video","type":"VIDEO","children":[{"id":"c1","name":"color_bars","assetRef": {"storageUri": "%s"},"source_range":{"start_time":0,"duration":5}}]}],
                  "duration":5}
                 """, uri);
 
@@ -158,7 +158,7 @@ class GoldenRenderE2ETest {
             timelineJson = """
                     {"id":"golden-fade-test","name":"Fade Test","outputSpec":{"format":"mp4","width":1920,"height":1080,"frameRate":30,"videoCodec":"h264","videoBitrateKbps":5000},
                      "tracks":[{"id":"v1","name":"Video","type":"VIDEO","children":[
-                       {"id":"c1","name":"color_bars","media_reference":"file://%s","source_range":{"start_time":0,"duration":5}}
+                       {"id":"c1","name":"color_bars","assetRef": {"storageUri": "file://%s"},"source_range":{"start_time":0,"duration":5}}
                      ]}],
                      "metadata":{"fadeDuration":1.0},
                      "duration":5}
@@ -195,7 +195,7 @@ class GoldenRenderE2ETest {
             if (!Files.exists(assetPath)) continue;
             String uri = "file://" + assetPath.toAbsolutePath();
             if (i > 0) children.append(",");
-            children.append(String.format("{\"id\":\"c%d\",\"name\":\"%s\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+            children.append(String.format("{\"id\":\"c%d\",\"name\":\"%s\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     i, assetIds[i], uri, (int) clipDuration));
         }
 
@@ -282,7 +282,7 @@ class GoldenRenderE2ETest {
             String uri = "file://" + p.toAbsolutePath();
             if (validClips > 0) videoChildren.append(",");
             videoChildren.append(String.format(
-                    "{\"id\":\"vc%d\",\"name\":\"%s\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+                    "{\"id\":\"vc%d\",\"name\":\"%s\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     i, videoAssets[i], uri, (int) clipDuration));
             validClips++;
         }
@@ -295,7 +295,7 @@ class GoldenRenderE2ETest {
         if (Files.exists(bgmPath)) {
             String audioUri = "file://" + bgmPath.toAbsolutePath();
             audioChildren = String.format(
-                    "{\"id\":\"ac0\",\"name\":\"music_bgm\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+                    "{\"id\":\"ac0\",\"name\":\"music_bgm\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     audioUri, (int) totalDuration);
         }
 
@@ -384,7 +384,7 @@ class GoldenRenderE2ETest {
             String uri = "file://" + p.toAbsolutePath();
             if (validClips > 0) videoChildren.append(",");
             videoChildren.append(String.format(
-                    "{\"id\":\"vc%d\",\"name\":\"%s\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+                    "{\"id\":\"vc%d\",\"name\":\"%s\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     i, videoAssets[i], uri, (int) clipDuration));
             validClips++;
         }
@@ -397,7 +397,7 @@ class GoldenRenderE2ETest {
         if (Files.exists(bgmPath)) {
             String audioUri = "file://" + bgmPath.toAbsolutePath();
             audioChildren = String.format(
-                    "{\"id\":\"ac0\",\"name\":\"music_bgm\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+                    "{\"id\":\"ac0\",\"name\":\"music_bgm\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     audioUri, (int) totalDuration);
         }
 
@@ -515,7 +515,7 @@ class GoldenRenderE2ETest {
             String uri = "file://" + p.toAbsolutePath();
             if (validClips > 0) videoChildren.append(",");
             videoChildren.append(String.format(
-                    "{\"id\":\"vc%d\",\"name\":\"%s\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+                    "{\"id\":\"vc%d\",\"name\":\"%s\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     i, videoAssets[i], uri, (int) clipDuration));
             validClips++;
         }
@@ -529,7 +529,7 @@ class GoldenRenderE2ETest {
         if (Files.exists(bgmPath)) {
             String audioUri = "file://" + bgmPath.toAbsolutePath();
             audioChildren = String.format(
-                    "{\"id\":\"ac0\",\"name\":\"music_bgm\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+                    "{\"id\":\"ac0\",\"name\":\"music_bgm\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     audioUri, (int) totalDuration);
         }
 
@@ -681,7 +681,7 @@ class GoldenRenderE2ETest {
             String uri = "file://" + p.toAbsolutePath();
             if (validClips > 0) videoChildren.append(",");
             videoChildren.append(String.format(
-                    "{\"id\":\"vc%d\",\"name\":\"%s\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+                    "{\"id\":\"vc%d\",\"name\":\"%s\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     i, videoAssets[i], uri, (int) clipDuration));
             validClips++;
         }
@@ -696,7 +696,7 @@ class GoldenRenderE2ETest {
         if (Files.exists(bgmPath)) {
             String audioUri = "file://" + bgmPath.toAbsolutePath();
             audioChildren = String.format(
-                    "{\"id\":\"ac0\",\"name\":\"music_bgm\",\"media_reference\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
+                    "{\"id\":\"ac0\",\"name\":\"music_bgm\",\"assetRef\":{\"storageUri\":\"%s\",\"source_range\":{\"start_time\":0,\"duration\":%d}}",
                     audioUri, (int) expectedDuration);
         }
 
@@ -879,7 +879,7 @@ class GoldenRenderE2ETest {
         String timelineJson = String.format("""
                 {"id":"golden-crop-val","name":"Crop Validation","outputSpec":{"format":"mp4","width":1920,"height":1080,"frameRate":30,"videoCodec":"h264","videoBitrateKbps":5000},
                  "tracks":[{"id":"v1","name":"Video","type":"VIDEO","children":[
-                   {"id":"c1","name":"grid_motion","media_reference":"%s","source_range":{"start_time":2,"duration":5}}
+                   {"id":"c1","name":"grid_motion","assetRef": {"storageUri": "%s"},"source_range":{"start_time":2,"duration":5}}
                  ]}],
                  "duration":5}
                 """, uri);

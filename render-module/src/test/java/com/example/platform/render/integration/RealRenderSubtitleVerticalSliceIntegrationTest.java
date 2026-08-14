@@ -1,5 +1,7 @@
 package com.example.platform.render.integration;
 
+import com.example.platform.shared.time.MediaTime;
+
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.app.ToolRegistry;
 import com.example.platform.extension.infrastructure.DefaultProcessToolRunner;
@@ -446,8 +448,8 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                   {"id":"cue-1","text":"Welcome to the Media Platform","startMs":1000,"durationMs":1000},
                   {"id":"cue-2","text":"你好，字幕验证","startMs":2000,"durationMs":800}
                 ]""";
-        var clip = new TimelineClip(clipId, assetId,
-                Duration.ofSeconds(0), Duration.ofSeconds(3), Duration.ZERO, Duration.ZERO);
+        var clip = new TimelineClip(clipId, assetId, null, null, null,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(3, 1), MediaTime.ZERO, MediaTime.ZERO);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 new TimelineMetadata("Vertical Slice", "",
@@ -455,8 +457,8 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
     }
 
     private TimelineDocument createDocumentWithDuplicateTrackIds() {
-        var clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofSeconds(0), Duration.ofSeconds(10), Duration.ZERO, Duration.ZERO);
+        var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
         var trackA = new TimelineTrack("dup-track", "A", TrackType.VIDEO, List.of(clip));
         var trackB = new TimelineTrack("dup-track", "B", TrackType.AUDIO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,

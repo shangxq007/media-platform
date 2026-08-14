@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.canonical;
 
+import com.example.platform.shared.time.MediaTime;
+
 import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.List;
@@ -45,18 +47,18 @@ class TimelineContentDigesterTest {
     }
 
     private TimelineDocument createSampleDocument() {
-        var clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofSeconds(0), Duration.ofSeconds(10),
-                Duration.ZERO, Duration.ZERO);
+        var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1),
+                MediaTime.ZERO, MediaTime.ZERO);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));
     }
 
     private TimelineDocument createSampleDocumentWithDifferentClip() {
-        var clip = new TimelineClip("clip-2", "asset-2",
-                Duration.ofSeconds(5), Duration.ofSeconds(15),
-                Duration.ZERO, Duration.ZERO);
+        var clip = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofRational(5, 1), MediaTime.ofRational(15, 1),
+                MediaTime.ZERO, MediaTime.ZERO);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));

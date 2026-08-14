@@ -66,7 +66,7 @@ class NatronRenderProviderTest {
 
         String script = """
                 {"tracks":[{"type":"VIDEO","clips":[{
-                  "media_reference":"file://%s",
+                  "assetRef": {"storageUri": "file://%s"},
                   "effects":[{"effectKey":"video.natron_vignette","parameters":{"intensity":0.5}}]
                 }]}]}
                 """.formatted(input.toString().replace("\\", "/"));

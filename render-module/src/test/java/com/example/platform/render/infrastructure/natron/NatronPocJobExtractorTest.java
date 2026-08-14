@@ -24,7 +24,7 @@ class NatronPocJobExtractorTest {
                     "type": "VIDEO",
                     "clips": [{
                       "id": "c1",
-                      "media_reference": "file://%s",
+                      "assetRef": {"storageUri": "file://%s"},
                       "effects": [{
                         "effectKey": "video.natron_vignette",
                         "parameters": { "intensity": 0.7 }

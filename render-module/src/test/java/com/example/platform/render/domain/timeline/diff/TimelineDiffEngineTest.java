@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.diff;
 
+import com.example.platform.shared.time.MediaTime;
+
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
@@ -330,22 +332,22 @@ class TimelineDiffEngineTest {
     // ==================== Helper Methods ====================
 
     private TimelineDocument sampleDocument() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000),
-                Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000),
-                Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L),
+                MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L),
+                MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1, clip2));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1),
                 new TimelineMetadata("", "", Map.of()));
     }
 
     private TimelineDocument sampleDocumentWithExtraTrack() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1, clip2));
         TimelineTrack track2 = new TimelineTrack("track-2", "Audio 1", TrackType.AUDIO, List.of());
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1, track2),
@@ -354,10 +356,10 @@ class TimelineDiffEngineTest {
 
     private TimelineDocument sampleDocumentWithExtraTrackReversed() {
         // Same content as above but tracks added in different order
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1, clip2));
         TimelineTrack track2 = new TimelineTrack("track-2", "Audio 1", TrackType.AUDIO, List.of());
         // Reversed order in list
@@ -366,16 +368,16 @@ class TimelineDiffEngineTest {
     }
 
     private TimelineDocument sampleDocumentWithRenamedTrack() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Renamed Video", TrackType.VIDEO, List.of(clip1));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1),
                 new TimelineMetadata("", "", Map.of()));
     }
 
     private TimelineDocument sampleDocumentWithReorderedTracks() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1));
         // Single track, no reorder possible - add second track
         TimelineTrack track2 = new TimelineTrack("track-2", "Audio 1", TrackType.AUDIO, List.of());
@@ -384,20 +386,20 @@ class TimelineDiffEngineTest {
     }
 
     private TimelineDocument sampleDocumentWithExtraClip() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip3 = new TimelineClip("clip-3", "asset-3",
-                Duration.ofMillis(2000), Duration.ofMillis(3000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip3 = new TimelineClip("clip-3", "asset-3", null, null, null,
+                MediaTime.ofMicros((2000) * 1000L), MediaTime.ofMicros((3000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1, clip2, clip3));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1),
                 new TimelineMetadata("", "", Map.of()));
     }
 
     private TimelineDocument sampleDocumentWithChangedClip() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-changed",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-changed", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1),
                 new TimelineMetadata("", "", Map.of()));
@@ -405,10 +407,10 @@ class TimelineDiffEngineTest {
 
     private TimelineDocument sampleDocumentWithMovedClip() {
         // clip-1 moved from track-1 to track-2
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip2));
         TimelineTrack track2 = new TimelineTrack("track-2", "Audio 1", TrackType.AUDIO, List.of(clip1));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1, track2),
@@ -416,10 +418,10 @@ class TimelineDiffEngineTest {
     }
 
     private TimelineDocument sampleDocumentWithReorderedClips() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         // Reversed clip order
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip2, clip1));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1),
@@ -428,10 +430,10 @@ class TimelineDiffEngineTest {
 
     private TimelineDocument sampleDocumentWithMovedAndChangedClip() {
         // clip-1 moved to track-2 AND assetId changed
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-new",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-new", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 料", TrackType.VIDEO, List.of(clip2));
         TimelineTrack track2 = new TimelineTrack("track-2", "Audio 1", TrackType.AUDIO, List.of(clip1));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1, track2),
@@ -439,12 +441,12 @@ class TimelineDiffEngineTest {
     }
 
     private TimelineDocument sampleDocumentWithExtraTrackAndClip() {
-        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1",
-                Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2",
-                Duration.ofMillis(1000), Duration.ofMillis(2000), Duration.ZERO, Duration.ZERO);
-        TimelineClip clip3 = new TimelineClip("clip-3", "asset-3",
-                Duration.ofMillis(2000), Duration.ofMillis(3000), Duration.ZERO, Duration.ZERO);
+        TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip3 = new TimelineClip("clip-3", "asset-3", null, null, null,
+                MediaTime.ofMicros((2000) * 1000L), MediaTime.ofMicros((3000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
         TimelineTrack track1 = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1, clip2));
         TimelineTrack track2 = new TimelineTrack("track-2", "Audio 1", TrackType.AUDIO, List.of(clip3));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track1, track2),

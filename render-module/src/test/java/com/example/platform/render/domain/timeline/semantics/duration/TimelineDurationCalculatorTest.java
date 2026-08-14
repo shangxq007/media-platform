@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import com.example.platform.render.testsupport.TestSourceBindings;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TimelineDurationCalculatorTest {
@@ -21,7 +22,10 @@ class TimelineDurationCalculatorTest {
             new MediaClip.TimeRange(
                 MediaTime.ofRational(sStart, 1), MediaTime.ofRational(sEnd, 1)),
             new MediaClip.Rational(1, 1),
-            "asset-" + id
+            TestSourceBindings.of("asset-" + id, "stream-1", "artifact-1",
+                new MediaClip.TimeRange(
+                    MediaTime.ofRational(sStart, 1),
+                    MediaTime.ofRational(sEnd, 1)))
         );
     }
 
@@ -95,7 +99,7 @@ class TimelineDurationCalculatorTest {
         MediaClip modifiedClip1 = new MediaClip(
             "c1", "track-1",
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(8, 1)),
-            clip1.sourceRange(), clip1.playbackRate(), clip1.mediaReference()
+            clip1.sourceRange(), clip1.playbackRate(), clip1.sourceBinding()
         );
 
         TimelineSemanticModel after = new TimelineSemanticModel(

@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.semantics.validation;
 
+import com.example.platform.render.testsupport.TestSourceBindings;
+
 import com.example.platform.render.domain.timeline.semantics.automation.Automation;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
@@ -29,7 +31,10 @@ class TimelineMediaSemanticsValidatorTest {
                 MediaTime.ofRational(sourceStart, 1),
                 MediaTime.ofRational(sourceEnd, 1)),
             new MediaClip.Rational(rateNum, rateDen),
-            "asset-" + id
+            TestSourceBindings.of("asset-" + id, "stream-1", "artifact-1",
+                new MediaClip.TimeRange(
+                    MediaTime.ofRational(sourceStart, 1),
+                    MediaTime.ofRational(sourceEnd, 1)))
         );
     }
 

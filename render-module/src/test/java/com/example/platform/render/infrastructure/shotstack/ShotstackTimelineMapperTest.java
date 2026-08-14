@@ -17,7 +17,7 @@ class ShotstackTimelineMapperTest {
     void mapsVideoClipToShotstackPayload() {
         String script = """
                 {"tracks":[{"type":"VIDEO","clips":[{
-                  "media_reference":"file:///tmp/clip.mp4",
+                  "assetRef": {"storageUri": "file:///tmp/clip.mp4"},
                   "clipDuration":12.5,
                   "timelineStart":0,
                   "assetInPoint":0,

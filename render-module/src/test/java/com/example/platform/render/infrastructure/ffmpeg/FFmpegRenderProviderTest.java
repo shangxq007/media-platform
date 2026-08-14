@@ -42,7 +42,7 @@ class FFmpegRenderProviderTest {
         Files.writeString(input, "video");
 
         String timeline = """
-                {"tracks":[{"type":"VIDEO","children":[{"media_reference":"file://%s",
+                {"tracks":[{"type":"VIDEO","children":[{"assetRef": {"storageUri": "file://%s"},
                 "source_range":{"start_time":0,"duration":2}}]}]}
                 """.formatted(input);
 

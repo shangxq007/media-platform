@@ -2,6 +2,7 @@ package com.example.platform.render.domain.timeline.patch;
 
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
 
@@ -171,7 +172,7 @@ public final class TimelinePatchEngine {
         TimelineTrack track = trackIdx.track();
         TimelineClip clip = clipIdx.clip();
         String currentValue = switch (op.property()) {
-            case "assetId" -> clip.getAssetId();
+            case "mediaAssetId" -> clip.getMediaAssetId();
             case "startTime" -> clip.getStartTime().toString();
             case "endTime" -> clip.getEndTime().toString();
             case "trimStart" -> clip.getTrimStart().toString();
@@ -182,11 +183,21 @@ public final class TimelinePatchEngine {
             throw new PatchExecutionException("Precondition failed for clip " + op.clipId() + " property " + op.property() + ": expected " + op.expectedBefore() + ", actual " + currentValue);
         }
         TimelineClip updated = switch (op.property()) {
-            case "assetId" -> new TimelineClip(clip.getClipId(), op.newValue(), clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd());
-            case "startTime" -> new TimelineClip(clip.getClipId(), clip.getAssetId(), java.time.Duration.parse(op.newValue()), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd());
-            case "endTime" -> new TimelineClip(clip.getClipId(), clip.getAssetId(), clip.getStartTime(), java.time.Duration.parse(op.newValue()), clip.getTrimStart(), clip.getTrimEnd());
-            case "trimStart" -> new TimelineClip(clip.getClipId(), clip.getAssetId(), clip.getStartTime(), clip.getEndTime(), java.time.Duration.parse(op.newValue()), clip.getTrimEnd());
-            case "trimEnd" -> new TimelineClip(clip.getClipId(), clip.getAssetId(), clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), java.time.Duration.parse(op.newValue()));
+            case "mediaAssetId" -> new TimelineClip(clip.getClipId(), op.newValue(),
+                    clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                    clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd());
+            case "startTime" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
+                    clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                    parseMediaTime(op.newValue()), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd());
+            case "endTime" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
+                    clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                    clip.getStartTime(), parseMediaTime(op.newValue()), clip.getTrimStart(), clip.getTrimEnd());
+            case "trimStart" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
+                    clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                    clip.getStartTime(), clip.getEndTime(), parseMediaTime(op.newValue()), clip.getTrimEnd());
+            case "trimEnd" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
+                    clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
+                    clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), parseMediaTime(op.newValue()));
             default -> throw new PatchExecutionException("Unknown clip property: " + op.property());
         };
         List<TimelineClip> clips = new ArrayList<>(track.clips());
@@ -241,6 +252,22 @@ public final class TimelinePatchEngine {
         List<TimelineTrack> result = new ArrayList<>(tracks);
         result.set(trackIdx.position(), updated);
         return result;
+    }
+
+    private static MediaTime parseMediaTime(String text) {
+        if ("0".equals(text)) {
+            return MediaTime.ZERO;
+        }
+        int slash = text.indexOf('/');
+        if (slash < 1 || slash == text.length() - 1) {
+            throw new IllegalArgumentException("Invalid exact MediaTime: " + text);
+        }
+        long num = Long.parseLong(text.substring(0, slash).trim());
+        long den = Long.parseLong(text.substring(slash + 1).trim());
+        if (den <= 0) {
+            throw new IllegalArgumentException("MediaTime denominator must be > 0: " + text);
+        }
+        return MediaTime.ofRational(num, den);
     }
 
     private static void indexDocument(TimelineDocument doc, Map<String, IndexedTrack> trackIndex, Map<String, IndexedClip> clipIndex) {

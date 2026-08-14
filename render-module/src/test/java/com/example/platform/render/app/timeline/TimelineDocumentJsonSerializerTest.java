@@ -1,5 +1,7 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.shared.time.MediaTime;
+
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
@@ -23,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class TimelineDocumentJsonSerializerTest {
 
     private TimelineDocument sampleDocument(Map<String, String> properties) {
-        var clip = new TimelineClip("clip-1", "asset-1",
-                Duration.ofSeconds(0), Duration.ofSeconds(10), Duration.ZERO, Duration.ZERO);
+        var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", properties));

@@ -156,6 +156,7 @@ _Others_
 * `c.e.p.r.app.timeline.TimelineAssetUriResolver`
 * `c.e.p.r.app.timeline.TimelineContentHasher`
 * `c.e.p.r.app.timeline.TimelineMergeConfiguration`
+* `c.e.p.r.app.timeline.TimelineSourceReferenceValidator`
 * `c.e.p.r.domain.RenderJobStateMachine`
 * `c.e.p.r.domain.StateMachineTraceEmitter`
 * `c.e.p.r.domain.timeline.TimelineExtensionsReader`
@@ -212,6 +213,8 @@ _Others_
 * `c.e.p.o.coordination.ExecutionBackendRegistry` (in Outbox & Events)
 * `c.e.p.s.web.ErrorCodeRegistry` (in Shared Kernel)
 * `c.e.p.e.app.ProcessToolRunner` (in Extension)
+* `c.e.p.m.app.MediaAssetRepository` (in Media)
+* `c.e.p.m.app.MediaStreamRepository` (in Media)
 * `c.e.p.e.runtime.PluginRuntime` (in Extension)
 * `c.e.p.b.app.SubscriptionBillingService` (in Billing)
 * `c.e.p.q.app.QuotaService` (in Quota & Metering)

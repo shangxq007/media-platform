@@ -40,7 +40,7 @@ public class GoldenRenderSmokeTest {
         String uri = "file://" + colorBars.toAbsolutePath();
         String timelineJson = String.format("""
                 {"id":"golden-smoke","name":"Smoke","outputSpec":{"format":"mp4","width":1920,"height":1080,"frameRate":30,"videoCodec":"h264","audioCodec":"aac","videoBitrateKbps":5000,"audioBitrateKbps":192},
-                 "tracks":[{"id":"v1","name":"Video","type":"VIDEO","children":[{"id":"c1","name":"color_bars","media_reference":"%s","source_range":{"start_time":0,"duration":5}]}],
+                 "tracks":[{"id":"v1","name":"Video","type":"VIDEO","children":[{"id":"c1","name":"color_bars","assetRef": {"storageUri": "%s"},"source_range":{"start_time":0,"duration":5}]}],
                  "duration":5}
                 """, uri);
 

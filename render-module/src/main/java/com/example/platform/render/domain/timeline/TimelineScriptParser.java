@@ -148,13 +148,12 @@ public class TimelineScriptParser {
 
     private TimelineClip parseClip(JsonNode clipNode, String defaultId, double timelineStart) {
         String clipId = textOr(clipNode, "id", defaultId);
+        // TIMELINE_V2 (T14): legacy mixed-semantics aliases retired. The canonical
+        // source binding is typed (SourceBinding); script DSL keeps media_reference
+        // as an opaque script-level field only — assetRef.storageUri alias removed.
         String mediaRef = textOr(clipNode, "media_reference",
                 textOr(clipNode, "mediaReference", ""));
-
         JsonNode assetRefNode = clipNode.get("assetRef");
-        if (assetRefNode != null && assetRefNode.isObject()) {
-            mediaRef = textOr(assetRefNode, "storageUri", mediaRef);
-        }
 
         double startTime = 0;
         double duration = 30;
@@ -177,9 +176,6 @@ public class TimelineScriptParser {
 
         double outPoint = startTime + duration;
         Map<String, String> assetMetadata = parseStringMap(clipNode.get("metadata"));
-        if (assetRefNode != null && assetRefNode.isObject()) {
-            assetMetadata = mergeMaps(assetMetadata, parseStringMap(assetRefNode.get("metadata")));
-        }
         // C1-CNM1 SOURCE_BINDING_PRESERVATION_CORRECTION: clip identity and
         // media asset identity are DISTINCT authorities. The production payload
         // carries the authoritative asset id under assetRef.assetId; the legacy
@@ -191,8 +187,15 @@ public class TimelineScriptParser {
                 assetId = refAssetId;
             }
         }
+        // TIMELINE_V2 (T14): storageUri is read EXPLICITLY as the execution-only
+        // local-file locator (render adapter); it is NOT a canonical source
+        // identity and NOT an alias into mediaReference.
+        String storageUri = "";
+        if (assetRefNode != null && assetRefNode.isObject()) {
+            storageUri = textOr(assetRefNode, "storageUri", "");
+        }
         TimelineAssetRef assetRef = new TimelineAssetRef(
-                assetId, mediaRef, "unknown", 0, 0, 0, assetMetadata, null);
+                assetId, storageUri, "unknown", 0, 0, 0, assetMetadata, null);
         List<TimelineClipEffect> effects = parseClipEffects(clipNode);
         return new TimelineClip(clipId, assetRef, timelineStart, startTime, outPoint,
                 duration, effects);

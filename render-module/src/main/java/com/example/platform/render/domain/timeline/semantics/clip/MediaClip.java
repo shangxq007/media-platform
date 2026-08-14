@@ -21,7 +21,7 @@ public final class MediaClip {
     private final TimeRange timelineRange;
     private final TimeRange sourceRange;
     private final Rational playbackRate;
-    private final String mediaReference;
+    private final SourceBinding sourceBinding;
 
     public MediaClip(
             String clipId,
@@ -29,13 +29,13 @@ public final class MediaClip {
             TimeRange timelineRange,
             TimeRange sourceRange,
             Rational playbackRate,
-            String mediaReference) {
+            SourceBinding sourceBinding) {
         this.clipId = Objects.requireNonNull(clipId, "clipId");
         this.trackId = Objects.requireNonNull(trackId, "trackId");
         this.timelineRange = Objects.requireNonNull(timelineRange, "timelineRange");
         this.sourceRange = Objects.requireNonNull(sourceRange, "sourceRange");
         this.playbackRate = Objects.requireNonNull(playbackRate, "playbackRate");
-        this.mediaReference = mediaReference;
+        this.sourceBinding = Objects.requireNonNull(sourceBinding, "sourceBinding");
         validate();
     }
 
@@ -47,6 +47,11 @@ public final class MediaClip {
         }
         if (sourceRange.start().isGreaterThan(sourceRange.end())) {
             throw new IllegalArgumentException("sourceRange.start must be <= sourceRange.end");
+        }
+        // Single source-range authority: clip range MUST equal the binding's exact source range.
+        if (!sourceRange.equals(sourceBinding.sourceRange())) {
+            throw new IllegalArgumentException(
+                    "clip sourceRange must equal sourceBinding.sourceRange (single authority)");
         }
         if (playbackRate.numerator() <= 0) {
             throw new IllegalArgumentException("playbackRate must be > 0");
@@ -61,7 +66,7 @@ public final class MediaClip {
     public TimeRange timelineRange() { return timelineRange; }
     public TimeRange sourceRange() { return sourceRange; }
     public Rational playbackRate() { return playbackRate; }
-    public String mediaReference() { return mediaReference; }
+    public SourceBinding sourceBinding() { return sourceBinding; }
 
     /**
      * Returns the duration of this clip on the timeline.

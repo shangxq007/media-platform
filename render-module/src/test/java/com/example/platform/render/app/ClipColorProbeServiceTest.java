@@ -29,7 +29,7 @@ class ClipColorProbeServiceTest {
         String timeline = """
                 {
                   "tracks":[{"type":"VIDEO","clips":[{
-                    "media_reference":"file:///tmp/a.mp4",
+                    "assetRef": {"storageUri": "file:///tmp/a.mp4"},
                     "clipDuration":5,"timelineStart":0,"assetInPoint":0,"assetOutPoint":5
                   }]}]
                 }

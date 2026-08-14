@@ -2,6 +2,7 @@ package com.example.platform.render.domain.timeline.semantics.serialization;
 
 import com.example.platform.render.domain.timeline.semantics.automation.Automation;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
+import com.example.platform.render.domain.timeline.semantics.clip.SourceBinding;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
 import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
 import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
@@ -111,10 +112,24 @@ public final class CanonicalSerializer {
         strField(sb, "timelineEnd", clip.timelineRange().end().toString(), false);
         strField(sb, "sourceStart", clip.sourceRange().start().toString(), false);
         strField(sb, "sourceEnd", clip.sourceRange().end().toString(), false);
-        doubleField(sb, "playbackRate", clip.playbackRate().doubleValue(), false);
-        if (clip.mediaReference() != null) {
-            strField(sb, "mediaReference", clip.mediaReference(), false);
-        }
+        // Exact rational playback rate (CANONICAL_TIMELINE_SERIALIZATION_V2: no double fields).
+        strField(sb, "playbackRate",
+                clip.playbackRate().numerator() + "/" + clip.playbackRate().denominator(), false);
+        appendSourceBinding(sb, clip.sourceBinding());
+    }
+
+    private static void appendSourceBinding(StringBuilder sb, SourceBinding binding) {
+        sb.append("\"sourceBinding\":{");
+        strField(sb, "mediaAssetId", binding.mediaAssetId().value(), true);
+        strField(sb, "mediaStreamId", binding.mediaStreamId().value(), false);
+        strField(sb, "artifactId", binding.artifactId().value(), false);
+        sb.append("\"contentDigest\":{");
+        strField(sb, "algorithm", binding.contentDigest().algorithm().name(), true);
+        strField(sb, "value", binding.contentDigest().value(), false);
+        sb.append('}');
+        strField(sb, "sourceRangeStart", binding.sourceRange().start().toString(), false);
+        strField(sb, "sourceRangeEnd", binding.sourceRange().end().toString(), false);
+        sb.append('}');
     }
 
     private static void appendTransition(StringBuilder sb, TransitionInstance t) {
