@@ -14,7 +14,8 @@ authority: AUDIO_V2_BOUNDED_ARCHITECTURE_CONTRACT_V1 (FROZEN, A1-A16)
 - ROADMAP_15_BASE_TREE = 1c3016e8e3a57f35393cdbae7a8e08baa292d55f
 
 ## Implementation
-- IMPLEMENTATION_SHA = (committed on agent/audio-v2; see git log)
+- IMPLEMENTATION_SHA = 1e63e08636acaa53a2d751a7a918513edf50664c
+- IMPLEMENTATION_TREE = ee0dcbb8ee837e5bc1a90082bf5792c348fbeadf
 - IMPLEMENTATION_TREE = (see git log)
 
 ## Audio authority model
