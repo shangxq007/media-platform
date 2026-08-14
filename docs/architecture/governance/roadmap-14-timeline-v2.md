@@ -15,7 +15,8 @@ authority: ROADMAP_14_TIMELINE_V2_DECISION_RECOVERY (PASS) + TIMELINE_V2_BOUNDED
 - CONTAINS_ROADMAP_13 = YES
 
 ## Implementation
-- IMPLEMENTATION_SHA = (committed on agent/timeline-v2; see git log)
+- IMPLEMENTATION_SHA = 3a53309a55cc63e86c5d4e7d71ad0b27cae4c613
+- IMPLEMENTATION_TREE = 62c4a8925865f0a3ad09148a6c7fe51497b24c62
 - SourceBinding = { MediaAssetId, MediaStreamId, ArtifactId + ContentDigest, exact TimeRange } (T2/T3)
 - MediaClip.mediaReference String retired from canonical Timeline domain (T14)
 - CanonicalSerializer V2: exact rational playbackRate (num/den), typed SourceBinding, no double time (T5/T6)
