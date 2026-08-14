@@ -43,6 +43,12 @@ jobs:
           java-version: "25"
           cache: gradle
 
+      - name: Set up test runtime (ffmpeg + container API)
+        run: bash scripts/ci/setup-test-runtime.sh
+
+      - name: Run PFIRR1 remediation gates
+        run: ./gradlew --no-daemon pfirr1RemediationCheck
+
       - name: Verify tests (includes Modulith test)
         run: ./gradlew --no-daemon test
 

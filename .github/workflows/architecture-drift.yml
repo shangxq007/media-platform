@@ -35,13 +35,16 @@ jobs:
           cache: gradle
 
       - name: Script syntax check
-        run: bash -n scripts/verify-pfirr1-jooq-authority-fail-closed.sh
+        run: bash -n scripts/verify-pfirr1-jooq-authority-fail-closed.sh && bash -n scripts/ci/setup-test-runtime.sh
 
       - name: Prove jOOQ authority verification is fail-closed
         run: bash scripts/verify-pfirr1-jooq-authority-fail-closed.sh
 
       - name: Run bounded PFIRR1 gates
         run: ./gradlew --no-daemon pfirr1RemediationCheck
+
+      - name: Set up test runtime (ffmpeg + container API)
+        run: bash scripts/ci/setup-test-runtime.sh
 
       - name: Run backend tests
         run: ./gradlew --no-daemon test
