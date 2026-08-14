@@ -165,9 +165,9 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         String productId = "prod-gateext-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var clipA = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         var clipB = new TimelineClip("clip-2", "asset-2", null, null, null,
-                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack("track-1", "A", TrackType.VIDEO, List.of(clipA)),
                         new TimelineTrack("track-1", "B", TrackType.VIDEO, List.of(clipB))),
@@ -185,7 +185,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         String productId = "prod-gateext-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofRational(10, 1), MediaTime.ofRational(5, 1), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofRational(10, 1), MediaTime.ofRational(5, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("invalid", "", Map.of()));
@@ -205,7 +205,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         String productId = "prod-gateext-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var clip = new TimelineClip("clip-x", "asset-1", null, null, null,
-                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack("track-1", "A", TrackType.VIDEO, List.of(clip)),
                         new TimelineTrack("track-1", "B", TrackType.VIDEO, List.of(clip))),
@@ -270,7 +270,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
     private TimelineDocument createSampleDocument() {
         var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
                 MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1),
-                MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));
@@ -279,7 +279,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
     private TimelineDocument createSampleDocumentWithDifferentClip() {
         var clip = new TimelineClip("clip-2", "asset-2", null, null, null,
                 MediaTime.ofRational(5, 1), MediaTime.ofRational(15, 1),
-                MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));

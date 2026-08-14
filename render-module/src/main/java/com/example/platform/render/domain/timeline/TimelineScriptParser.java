@@ -149,7 +149,7 @@ public class TimelineScriptParser {
     private TimelineClip parseClip(JsonNode clipNode, String defaultId, double timelineStart) {
         String clipId = textOr(clipNode, "id", defaultId);
         // TIMELINE_V2 (T14): legacy mixed-semantics aliases retired. The canonical
-        // source binding is typed (SourceBinding); script DSL keeps media_reference
+        // source binding is typed (MediaStreamSourceBinding); script DSL keeps media_reference
         // as an opaque script-level field only — assetRef.storageUri alias removed.
         String mediaRef = textOr(clipNode, "media_reference",
                 textOr(clipNode, "mediaReference", ""));

@@ -2,7 +2,7 @@ package com.example.platform.render.domain.timeline.semantics;
 
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
-import com.example.platform.render.domain.timeline.semantics.clip.SourceBinding;
+import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.storage.contract.ContentDigest;
 
@@ -117,7 +117,7 @@ class PropertyBasedTests {
                         MediaTime.ofRational(start, 1),
                         MediaTime.ofRational(start + 5, 1)),
                     new MediaClip.Rational(1, 1),
-                    new SourceBinding(
+                    new MediaStreamSourceBinding(
                         MediaAssetId.of("asset-" + i),
                         MediaStreamId.of("stream-" + i),
                         new ArtifactId("artifact-" + i),
@@ -148,7 +148,7 @@ class PropertyBasedTests {
                     MediaTime.ofRational(start, 1),
                     MediaTime.ofRational(start + 5, 1)),
                 new MediaClip.Rational(1, 1),
-                new SourceBinding(
+                new MediaStreamSourceBinding(
                     MediaAssetId.of("asset-" + i),
                     MediaStreamId.of("stream-" + i),
                     new ArtifactId("artifact-" + i),
@@ -178,7 +178,7 @@ class PropertyBasedTests {
             new MediaClip("dup", "track-1",
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
-                new MediaClip.Rational(1, 1), new SourceBinding(
+                new MediaClip.Rational(1, 1), new MediaStreamSourceBinding(
                     MediaAssetId.of("asset-a"), MediaStreamId.of("stream-a"), new ArtifactId("artifact-a"),
                     new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256,
                             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
@@ -186,7 +186,7 @@ class PropertyBasedTests {
             new MediaClip("dup", "track-1",
                 new MediaClip.TimeRange(MediaTime.ofRational(5, 1), MediaTime.ofRational(10, 1)),
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
-                new MediaClip.Rational(1, 1), new SourceBinding(
+                new MediaClip.Rational(1, 1), new MediaStreamSourceBinding(
                     MediaAssetId.of("asset-b"), MediaStreamId.of("stream-b"), new ArtifactId("artifact-b"),
                     new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256,
                             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),

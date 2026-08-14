@@ -2,7 +2,7 @@ package com.example.platform.render.domain.timeline.semantics.serialization;
 
 import com.example.platform.render.domain.timeline.semantics.automation.Automation;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
-import com.example.platform.render.domain.timeline.semantics.clip.SourceBinding;
+import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
 import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
 import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
@@ -115,12 +115,14 @@ public final class CanonicalSerializer {
         // Exact rational playback rate (CANONICAL_TIMELINE_SERIALIZATION_V2: no double fields).
         strField(sb, "playbackRate",
                 clip.playbackRate().numerator() + "/" + clip.playbackRate().denominator(), false);
-        appendSourceBinding(sb, clip.sourceBinding());
+        appendMediaStreamSourceBinding(sb, clip.sourceBinding());
     }
 
-    private static void appendSourceBinding(StringBuilder sb, SourceBinding binding) {
+    private static void appendMediaStreamSourceBinding(StringBuilder sb, MediaStreamSourceBinding binding) {
         sb.append("\"sourceBinding\":{");
-        strField(sb, "mediaAssetId", binding.mediaAssetId().value(), true);
+        // ROADMAP_17 (S12): source-kind discriminator participates in canonical serialization
+        strField(sb, "sourceKind", binding.sourceKind().name(), true);
+        strField(sb, "mediaAssetId", binding.mediaAssetId().value(), false);
         strField(sb, "mediaStreamId", binding.mediaStreamId().value(), false);
         strField(sb, "artifactId", binding.artifactId().value(), false);
         sb.append("\"contentDigest\":{");

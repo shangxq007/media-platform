@@ -325,6 +325,55 @@ else
     fail "multi-axis lifecycle separation missing"
 fi
 
+# T17 Gate 1 (S1): TimelineSourceBinding is the canonical source root
+if grep -q 'sealed interface TimelineSourceBinding' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/TimelineSourceBinding.java; then
+    pass "TimelineSourceBinding canonical source root"
+else
+    fail "TimelineSourceBinding root missing"
+fi
+
+# T17 Gate 2 (S2): MediaStreamSourceBinding carries #14 immutable source semantics
+if grep -q 'record MediaStreamSourceBinding' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java && grep -q 'contentDigest' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java; then
+    pass "MediaStreamSourceBinding preserves #14 semantics"
+else
+    fail "MediaStreamSourceBinding missing"
+fi
+
+# T17 Gate 3 (S3): legacy SourceBinding canonical type/path gone
+if grep -rq 'record SourceBinding' render-module/src/main 2>/dev/null; then
+    fail "legacy SourceBinding still present"
+else
+    pass "legacy SourceBinding retired (greenfield)"
+fi
+
+# T17 Gate 4 (S8): OTIO remains adapter/projection, not canonical authority
+if grep -q 'class OpenTimelineioAdapter' render-module/src/main/java/com/example/platform/render/domain/timeline/OpenTimelineioAdapter.java; then
+    pass "OTIO adapter boundary intact"
+else
+    fail "OTIO adapter missing"
+fi
+
+# T17 Gate 5 (S12): serialization/hash source-kind aware
+if grep -q 'sourceKind' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/CanonicalSerializer.java && grep -q 'sourceKind' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineClip.java; then
+    pass "source-kind aware serialization/hash"
+else
+    fail "source-kind discriminator missing"
+fi
+
+# T17 Gate 7 (S18): no universal nullable source object
+if grep -q 'permits MediaStreamSourceBinding' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/TimelineSourceBinding.java; then
+    pass "sealed typed source root (no god object)"
+else
+    fail "source root not sealed/typed"
+fi
+
+# T17 Gate 8 (S10): TemporalMapping remains outside #17
+if grep -rq 'class TemporalMapping' render-module/src/main 2>/dev/null; then
+    fail "TemporalMapping implemented inside #17"
+else
+    pass "TemporalMapping not implemented (deferred)"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

@@ -26,7 +26,7 @@ class TimelineDocumentJsonSerializerTest {
 
     private TimelineDocument sampleDocument(Map<String, String> properties) {
         var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", properties));

@@ -21,7 +21,7 @@ public final class MediaClip {
     private final TimeRange timelineRange;
     private final TimeRange sourceRange;
     private final Rational playbackRate;
-    private final SourceBinding sourceBinding;
+    private final MediaStreamSourceBinding sourceBinding;
 
     public MediaClip(
             String clipId,
@@ -29,7 +29,7 @@ public final class MediaClip {
             TimeRange timelineRange,
             TimeRange sourceRange,
             Rational playbackRate,
-            SourceBinding sourceBinding) {
+            MediaStreamSourceBinding sourceBinding) {
         this.clipId = Objects.requireNonNull(clipId, "clipId");
         this.trackId = Objects.requireNonNull(trackId, "trackId");
         this.timelineRange = Objects.requireNonNull(timelineRange, "timelineRange");
@@ -66,7 +66,7 @@ public final class MediaClip {
     public TimeRange timelineRange() { return timelineRange; }
     public TimeRange sourceRange() { return sourceRange; }
     public Rational playbackRate() { return playbackRate; }
-    public SourceBinding sourceBinding() { return sourceBinding; }
+    public MediaStreamSourceBinding sourceBinding() { return sourceBinding; }
 
     /**
      * Returns the duration of this clip on the timeline.

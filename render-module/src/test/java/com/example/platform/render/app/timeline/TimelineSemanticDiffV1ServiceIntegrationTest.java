@@ -142,7 +142,7 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
 
     private TimelineRevision createAndSaveRevision(String productId, String revisionId, String parentId) {
         TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineTrack track = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip));
         TimelineDocument doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 new TimelineMetadata("", "", Map.of()));
@@ -152,9 +152,9 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
 
     private TimelineRevision createAndSaveRevisionWithExtraClip(String productId, String revisionId, String parentId) {
         TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
-                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineTrack track = new TimelineTrack("track-1", "Video 1", TrackType.VIDEO, List.of(clip1, clip2));
         TimelineDocument doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 new TimelineMetadata("", "", Map.of()));

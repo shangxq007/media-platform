@@ -9,7 +9,7 @@ import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.media.domain.stream.StreamKind;
 import com.example.platform.render.app.timeline.TimelineSourceReferenceValidator.ValidationResult;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip.TimeRange;
-import com.example.platform.render.domain.timeline.semantics.clip.SourceBinding;
+import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.storage.contract.ContentDigest;
@@ -32,8 +32,8 @@ class TimelineSourceReferenceValidatorTest {
     private static final MediaAssetId ASSET = MediaAssetId.of("asset-1");
     private static final MediaStreamId STREAM = MediaStreamId.of("stream-1");
 
-    private static SourceBinding binding() {
-        return new SourceBinding(ASSET, STREAM, new ArtifactId("artifact-1"),
+    private static MediaStreamSourceBinding binding() {
+        return new MediaStreamSourceBinding(ASSET, STREAM, new ArtifactId("artifact-1"),
                 new ContentDigest(DigestAlgorithm.SHA_256, DIGEST_HEX),
                 new TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)));
     }
@@ -73,7 +73,7 @@ class TimelineSourceReferenceValidatorTest {
 
     @Test
     void missingAssetFailsClosed() {
-        SourceBinding b = new SourceBinding(MediaAssetId.of("missing"), STREAM,
+        MediaStreamSourceBinding b = new MediaStreamSourceBinding(MediaAssetId.of("missing"), STREAM,
                 new ArtifactId("artifact-1"), binding().contentDigest(), binding().sourceRange());
         ValidationResult r = validator.validate(b);
         assertFalse(r.valid());
@@ -82,7 +82,7 @@ class TimelineSourceReferenceValidatorTest {
 
     @Test
     void streamNotOwnedByAssetFailsClosed() {
-        SourceBinding b = new SourceBinding(ASSET, MediaStreamId.of("other-stream"),
+        MediaStreamSourceBinding b = new MediaStreamSourceBinding(ASSET, MediaStreamId.of("other-stream"),
                 new ArtifactId("artifact-1"), binding().contentDigest(), binding().sourceRange());
         ValidationResult r = validator.validate(b);
         assertFalse(r.valid());

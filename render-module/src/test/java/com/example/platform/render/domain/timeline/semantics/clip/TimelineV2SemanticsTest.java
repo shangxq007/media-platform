@@ -19,7 +19,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * TIMELINE_V2 test matrix A-G: SourceBinding invariants, historical immutability,
+ * TIMELINE_V2 test matrix A-G: MediaStreamSourceBinding invariants, historical immutability,
  * metadata non-semantics, serialization determinism, exact rational, content hash.
  */
 class TimelineV2SemanticsTest {
@@ -27,8 +27,8 @@ class TimelineV2SemanticsTest {
     private static final String DIGEST_HEX =
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
-    private static SourceBinding binding(String asset, String stream, String artifact, TimeRange range) {
-        return new SourceBinding(
+    private static MediaStreamSourceBinding binding(String asset, String stream, String artifact, TimeRange range) {
+        return new MediaStreamSourceBinding(
                 MediaAssetId.of(asset),
                 MediaStreamId.of(stream),
                 new ArtifactId(artifact),
@@ -36,7 +36,7 @@ class TimelineV2SemanticsTest {
                 range);
     }
 
-    private static MediaClip clip(String id, SourceBinding binding, long tStart, long tEnd) {
+    private static MediaClip clip(String id, MediaStreamSourceBinding binding, long tStart, long tEnd) {
         return new MediaClip(id, "track-1",
                 new TimeRange(MediaTime.ofRational(tStart, 1), MediaTime.ofRational(tEnd, 1)),
                 binding.sourceRange(),
@@ -49,14 +49,14 @@ class TimelineV2SemanticsTest {
                 "timeline-semantics-v1");
     }
 
-    // ---- A. SourceBinding invariants ----
+    // ---- A. MediaStreamSourceBinding invariants ----
 
     @Test
-    @DisplayName("SourceBinding requires all identity + pin + range components")
+    @DisplayName("MediaStreamSourceBinding requires all identity + pin + range components")
     void sourceBindingRequiredFields() {
         TimeRange range = new TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1));
         assertThrows(NullPointerException.class,
-                () -> new SourceBinding(null, MediaStreamId.of("s"), new ArtifactId("a"),
+                () -> new MediaStreamSourceBinding(null, MediaStreamId.of("s"), new ArtifactId("a"),
                         new ContentDigest(DigestAlgorithm.SHA_256, DIGEST_HEX), range));
         assertThrows(NullPointerException.class,
                 () -> binding("asset", "stream", "artifact", null));
@@ -65,7 +65,7 @@ class TimelineV2SemanticsTest {
     @Test
     @DisplayName("MediaAssetId != ArtifactId != content pin semantics (typed separation)")
     void identitySeparation() {
-        SourceBinding b = TestSourceBindings.sample();
+        MediaStreamSourceBinding b = TestSourceBindings.sample();
         assertNotEquals(b.mediaAssetId(), b.artifactId());
         assertNotNull(b.contentDigest());
         assertNotNull(b.mediaStreamId());
@@ -77,8 +77,8 @@ class TimelineV2SemanticsTest {
     @DisplayName("Historical revision pins exact consumed content: relink does not change it")
     void historicalImmutability() {
         TimeRange range = new TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1));
-        SourceBinding originalPin = binding("asset-A", "stream-1", "artifact-X", range);
-        SourceBinding relinked = binding("asset-A", "stream-1", "artifact-Y", range); // same asset, new content
+        MediaStreamSourceBinding originalPin = binding("asset-A", "stream-1", "artifact-X", range);
+        MediaStreamSourceBinding relinked = binding("asset-A", "stream-1", "artifact-Y", range); // same asset, new content
 
         MediaClip r1Clip = clip("c1", originalPin, 0, 10);
         String r1Hash = CanonicalSerializer.digest(model(r1Clip));
@@ -126,7 +126,7 @@ class TimelineV2SemanticsTest {
         MediaTime rate = MediaTime.ofRational(30_000, 1_001);
         TimeRange range = new TimeRange(MediaTime.ofRational(1_234_567, 1_001),
                 MediaTime.ofRational(2_345_678, 1_001));
-        SourceBinding b = binding("asset-r", "stream-r", "artifact-r", range);
+        MediaStreamSourceBinding b = binding("asset-r", "stream-r", "artifact-r", range);
         String serialized = CanonicalSerializer.serialize(model(clip("cr", b, 0, 10)));
         assertTrue(serialized.contains("1234567/1001"), "exact numerator/denominator preserved");
         assertTrue(serialized.contains("2345678/1001"), "exact end preserved");
@@ -139,7 +139,7 @@ class TimelineV2SemanticsTest {
     @DisplayName("Same content different construction -> same hash; semantic edit -> different hash")
     void contentHashSemantics() {
         TimeRange range = new TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1));
-        SourceBinding b = binding("a", "s", "x", range);
+        MediaStreamSourceBinding b = binding("a", "s", "x", range);
         String h1 = CanonicalSerializer.digest(model(clip("c1", b, 0, 10)));
         String h2 = CanonicalSerializer.digest(model(clip("c1", b, 0, 10)));
         assertEquals(h1, h2, "same semantic content -> same hash");

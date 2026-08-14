@@ -5,7 +5,7 @@ import com.example.platform.media.app.MediaStreamRepository;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStream;
 import com.example.platform.media.domain.stream.MediaStreamId;
-import com.example.platform.render.domain.timeline.semantics.clip.SourceBinding;
+import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>artifact pin (artifactId/contentDigest) existence check is DEFERRED: the current
  *       dependency graph is artifact-module -&gt; render-module, so render cannot query the
- *       artifact catalog without a cycle; the pin structure is enforced by SourceBinding
+ *       artifact catalog without a cycle; the pin structure is enforced by MediaStreamSourceBinding
  *       invariants (non-null, typed).</li>
  *   <li>stream kind compatibility is left to clip semantics (TimelineClip has no kind
  *       field); MediaStreamId must belong to the pinned MediaAsset.</li>
@@ -40,7 +40,7 @@ public class TimelineSourceReferenceValidator {
         this.mediaStreamRepository = mediaStreamRepository;
     }
 
-    public ValidationResult validate(SourceBinding binding) {
+    public ValidationResult validate(MediaStreamSourceBinding binding) {
         List<String> violations = new ArrayList<>();
 
         MediaAssetId assetId = binding.mediaAssetId();

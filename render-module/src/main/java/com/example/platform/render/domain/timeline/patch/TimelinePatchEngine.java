@@ -185,19 +185,19 @@ public final class TimelinePatchEngine {
         TimelineClip updated = switch (op.property()) {
             case "mediaAssetId" -> new TimelineClip(clip.getClipId(), op.newValue(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
-                    clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd());
+                    clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind());
             case "startTime" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
-                    parseMediaTime(op.newValue()), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd());
+                    parseMediaTime(op.newValue()), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind());
             case "endTime" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
-                    clip.getStartTime(), parseMediaTime(op.newValue()), clip.getTrimStart(), clip.getTrimEnd());
+                    clip.getStartTime(), parseMediaTime(op.newValue()), clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind());
             case "trimStart" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
-                    clip.getStartTime(), clip.getEndTime(), parseMediaTime(op.newValue()), clip.getTrimEnd());
+                    clip.getStartTime(), clip.getEndTime(), parseMediaTime(op.newValue()), clip.getTrimEnd(), clip.getSourceKind());
             case "trimEnd" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
-                    clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), parseMediaTime(op.newValue()));
+                    clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), parseMediaTime(op.newValue()), clip.getSourceKind());
             default -> throw new PatchExecutionException("Unknown clip property: " + op.property());
         };
         List<TimelineClip> clips = new ArrayList<>(track.clips());

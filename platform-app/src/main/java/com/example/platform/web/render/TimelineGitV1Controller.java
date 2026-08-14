@@ -218,7 +218,7 @@ public class TimelineGitV1Controller {
             return new TimelineClip(clipId, assetId,
                     null, null, null,
                     MediaTime.ofMicros(startMs * 1000L), MediaTime.ofMicros(endMs * 1000L),
-                    MediaTime.ZERO, MediaTime.ZERO);
+                    MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         }
     }
 

@@ -165,7 +165,8 @@ public final class TimelineSnapshotConverter {
                         start,
                         end,
                         clip.sourceStart(),
-                        clip.sourceStart().add(clip.sourceDuration())));
+                        clip.sourceStart().add(clip.sourceDuration()),
+                        "MEDIA_STREAM"));
             }
             TrackType type = TrackType.VIDEO;
             try {

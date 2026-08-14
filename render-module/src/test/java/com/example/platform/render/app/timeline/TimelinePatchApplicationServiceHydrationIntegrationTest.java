@@ -411,7 +411,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
 
     private TimelineDocument sampleDocument(String clipId, String start, String end) {
         TimelineClip clip = new TimelineClip(clipId, "asset-1", null, null, null,
-                parseMediaTime(start), parseMediaTime(end), MediaTime.ZERO, MediaTime.ZERO);
+                parseMediaTime(start), parseMediaTime(end), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineTrack track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));

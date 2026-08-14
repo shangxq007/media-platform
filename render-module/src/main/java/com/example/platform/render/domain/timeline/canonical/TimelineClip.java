@@ -15,13 +15,16 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
  * {@link MediaTime} ({@code num/den} canonical form), never double/Duration.
  *
  * <p>This record is the revision persistence/API projection; the typed
- * canonical authority is {@code SourceBinding} + {@code MediaClip} in
+ * canonical authority is {@code MediaStreamSourceBinding} + {@code MediaClip} in
  * semantics (single typed source binding, no duplicated media metadata).
  */
 public class TimelineClip {
 
     @JsonProperty("clipId")
     private final String clipId;
+
+    @JsonProperty("sourceKind")
+    private final String sourceKind;
 
     @JsonProperty("mediaAssetId")
     private final String mediaAssetId;
@@ -65,7 +68,8 @@ public class TimelineClip {
             @JsonProperty("startTime") MediaTime startTime,
             @JsonProperty("endTime") MediaTime endTime,
             @JsonProperty("trimStart") MediaTime trimStart,
-            @JsonProperty("trimEnd") MediaTime trimEnd) {
+            @JsonProperty("trimEnd") MediaTime trimEnd,
+            @JsonProperty("sourceKind") String sourceKind) {
         if (clipId == null || clipId.isBlank()) {
             throw new IllegalArgumentException("clipId must not be blank");
         }
@@ -74,6 +78,7 @@ public class TimelineClip {
         // TimelineCanonicalRejectionException(TIMELINE_SOURCE_REF_INVALID) error
         // contract for invalid source references.
         this.clipId = clipId;
+        this.sourceKind = sourceKind != null ? sourceKind : "MEDIA_STREAM";
         this.mediaAssetId = mediaAssetId;
         this.mediaStreamId = mediaStreamId;
         this.artifactId = artifactId;
@@ -85,6 +90,7 @@ public class TimelineClip {
     }
 
     public String getClipId() { return clipId; }
+    public String getSourceKind() { return sourceKind; }
     public String getMediaAssetId() { return mediaAssetId; }
     public String getMediaStreamId() { return mediaStreamId; }
     public String getArtifactId() { return artifactId; }

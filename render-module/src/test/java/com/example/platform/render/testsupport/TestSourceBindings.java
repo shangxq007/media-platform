@@ -3,18 +3,18 @@ package com.example.platform.render.testsupport;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip.TimeRange;
-import com.example.platform.render.domain.timeline.semantics.clip.SourceBinding;
+import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.storage.contract.ContentDigest;
 
-/** Test factory for typed SourceBinding (TIMELINE_V2 test fixtures). */
+/** Test factory for typed MediaStreamSourceBinding (TIMELINE_V2 test fixtures). */
 public final class TestSourceBindings {
 
     private TestSourceBindings() {}
 
-    public static SourceBinding sample() {
-        return new SourceBinding(
+    public static MediaStreamSourceBinding sample() {
+        return new MediaStreamSourceBinding(
                 MediaAssetId.of("asset-1"),
                 MediaStreamId.of("stream-1"),
                 new ArtifactId("artifact-1"),
@@ -23,9 +23,9 @@ public final class TestSourceBindings {
                 new TimeRange(MediaTime.ZERO, MediaTime.ofNanos(5_000_000_000L)));
     }
 
-    public static SourceBinding of(
+    public static MediaStreamSourceBinding of(
             String mediaAssetId, String mediaStreamId, String artifactId, TimeRange range) {
-        return new SourceBinding(
+        return new MediaStreamSourceBinding(
                 MediaAssetId.of(mediaAssetId),
                 MediaStreamId.of(mediaStreamId),
                 new ArtifactId(artifactId),

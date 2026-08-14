@@ -7,9 +7,10 @@ import com.example.platform.storage.contract.ContentDigest;
 import java.util.Objects;
 
 /**
- * TYPED SOURCE BINDING (TIMELINE_V2_BOUNDED_ARCHITECTURE_CONTRACT_V1, T2/T3/T4).
+ * ROADMAP_17 (S2): canonical MediaStream source binding — the recorded-media
+ * specialization of {@link TimelineSourceBinding}.
  *
- * <p>{@code SourceBinding = identity + exact consumed content + stream + exact source range}:
+ * <p>Preserves the FULL #14 TIMELINE_V2 source semantics:
  * <ul>
  *   <li>{@code mediaAssetId} — canonical media asset identity (semantic owner, stable across
  *       re-probe / metadata enrichment / storage relocation).</li>
@@ -20,24 +21,32 @@ import java.util.Objects;
  *   <li>{@code sourceRange} — exact source range in canonical MediaTime (exact rational, never double).</li>
  * </ul>
  *
- * <p>Replaces the legacy {@code MediaClip.mediaReference} String authority. A revision that binds
- * this object stays semantically immutable: relink/replacement of the media asset does not change
- * what the historical revision actually consumed (T3). No media technical metadata is embedded
- * (T4): duration/fps/codec/channels/color live in the media domain, never here.
+ * <p>Content pinning is NOT weakened: a revision that binds this object stays semantically
+ * immutable (T3). No media technical metadata is embedded (T4): duration/fps/codec/channels/
+ * color live in the media domain, never here. The exact source TimeRange remains here until
+ * the Temporal Mapping foundation lands (S10); it is NOT a TemporalMapping model.
+ *
+ * <p>Replaces the legacy {@code SourceBinding} name (S3): one canonical model, no V1/V2
+ * dual track, no compatibility wrapper.
  */
-public record SourceBinding(
+public record MediaStreamSourceBinding(
         MediaAssetId mediaAssetId,
         MediaStreamId mediaStreamId,
         ArtifactId artifactId,
         ContentDigest contentDigest,
-        MediaClip.TimeRange sourceRange) {
+        MediaClip.TimeRange sourceRange) implements TimelineSourceBinding {
 
-    public SourceBinding {
+    public MediaStreamSourceBinding {
         Objects.requireNonNull(mediaAssetId, "mediaAssetId");
         Objects.requireNonNull(mediaStreamId, "mediaStreamId");
         Objects.requireNonNull(artifactId, "artifactId");
         Objects.requireNonNull(contentDigest, "contentDigest");
         Objects.requireNonNull(sourceRange, "sourceRange");
         // sourceRange itself validates exact start <= end via MediaClip.TimeRange invariants.
+    }
+
+    @Override
+    public SourceKind sourceKind() {
+        return SourceKind.MEDIA_STREAM;
     }
 }

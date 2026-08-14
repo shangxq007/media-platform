@@ -86,8 +86,7 @@ class TimelinePatchEngineTest {
     @DisplayName("Add clip to track")
     void addClip() {
         TimelineDocument base = documentWithTrack("track-1");
-        TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+        TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null, MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelinePatch patch = patch(opId("op1", "ADD_CLIP", "track-1", clip, 0));
 
         PatchApplicationResult result = TimelinePatchEngine.apply(base, patch);
@@ -102,7 +101,7 @@ class TimelinePatchEngineTest {
     @DisplayName("Remove clip from track")
     void removeClip() {
         TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineDocument base = documentWithTrackAndClip("track-1", clip);
         TimelinePatch patch = patch(opId("op1", "REMOVE_CLIP", "clip-1", "track-1"));
 
@@ -116,7 +115,7 @@ class TimelinePatchEngineTest {
     @DisplayName("Update clip property")
     void updateClipProperty() {
         TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineDocument base = documentWithTrackAndClip("track-1", clip);
         TimelinePatch patch = patch(opId("op1", "UPDATE_CLIP_PROPERTY", "clip-1", "mediaAssetId", "asset-1", "asset-2"));
 
@@ -130,7 +129,7 @@ class TimelinePatchEngineTest {
     @DisplayName("Move clip across tracks")
     void moveClip() {
         TimelineClip clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineDocument base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(
                         new TimelineTrack("track-1", "V1", TrackType.VIDEO, List.of(clip)),
@@ -151,11 +150,11 @@ class TimelinePatchEngineTest {
     @DisplayName("Reorder clip in same track")
     void reorderClip() {
         TimelineClip clip1 = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((0) * 1000L), MediaTime.ofMicros((1000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineClip clip2 = new TimelineClip("clip-2", "asset-2", null, null, null,
-                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((1000) * 1000L), MediaTime.ofMicros((2000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineClip clip3 = new TimelineClip("clip-3", "asset-3", null, null, null,
-                MediaTime.ofMicros((2000) * 1000L), MediaTime.ofMicros((3000) * 1000L), MediaTime.ZERO, MediaTime.ZERO);
+                MediaTime.ofMicros((2000) * 1000L), MediaTime.ofMicros((3000) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
         TimelineDocument base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack("track-1", "V1", TrackType.VIDEO, List.of(clip1, clip2, clip3))),
                 TimelineMetadata.empty());
