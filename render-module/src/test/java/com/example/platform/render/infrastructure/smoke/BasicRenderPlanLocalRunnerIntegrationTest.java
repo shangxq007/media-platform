@@ -60,7 +60,7 @@ class BasicRenderPlanLocalRunnerIntegrationTest {
         // Step 1: Build deterministic BasicTimeline fixture
         // Must have at least one track with one clip for BasicTimelineValidator
         TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "320x180", FrameRate.of(30, 1), "h264", 1000000,
-                new TimelineAudioSpec("aac", 48000, 2, 128000, 1.0, false),
+                new TimelineAudioSpec("aac", 48000, 2, 128000),
                 "yuv420p");
         TimelineAssetRef assetRef = TimelineAssetRef.of("asset-001", "internal://testsrc");
         TimelineClip clip = TimelineClip.of("clip-001", assetRef, 0.0, 0.0, 2.0);
@@ -154,7 +154,7 @@ class BasicRenderPlanLocalRunnerIntegrationTest {
         Path outputRoot = resolveOutputRoot();
 
         TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "640x480", FrameRate.of(24, 1), "h264", 500000,
-                new TimelineAudioSpec("aac", 44100, 2, 128000, 1.0, false),
+                new TimelineAudioSpec("aac", 44100, 2, 128000),
                 "yuv420p");
         TimelineAssetRef assetRef = TimelineAssetRef.of("asset-002", "internal://testsrc");
         TimelineClip clip = TimelineClip.of("clip-002", assetRef, 0.0, 0.0, 2.0);

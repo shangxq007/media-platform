@@ -5,5 +5,6 @@ package com.example.platform.render.domain.timeline.diff;
  */
 public enum EntityKind {
     TRACK,
-    CLIP
+    CLIP,
+    AUDIO_MIX
 }

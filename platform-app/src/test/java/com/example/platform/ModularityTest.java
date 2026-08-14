@@ -77,7 +77,10 @@ class ModularityTest {
         // (Timeline/Render/Workflow/AI/Delivery/Adapter -> Media Canonical Model).
         // MediaProbeController/MediaAssetProbeService consume the canonical media model;
         // the direction is additionally enforced by check-architecture-drift.sh.
-        "render' depends on module 'media"
+        "render' depends on module 'media",
+        // AUDIO_V2 (frozen: render -> audio): TimelineDocument carries the canonical
+        // AudioMix reference (A3); audio-module is pure domain with no reverse dependency.
+        "render' depends on module 'audio"
     );
 
     @Test

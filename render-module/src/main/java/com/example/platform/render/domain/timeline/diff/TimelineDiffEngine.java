@@ -1,5 +1,6 @@
 package com.example.platform.render.domain.timeline.diff;
 
+import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
@@ -49,6 +50,9 @@ public final class TimelineDiffEngine {
         // Clip-level diff (per track)
         diffClips(baseTracks, targetTracks, changes);
 
+        // AUDIO_V2 (A13): document-level canonical audio mix semantic diff
+        diffAudioMix(base, target, changes);
+
         // Deterministic ordering
         changes.sort(TimelineDiffEngine::compareChanges);
 
@@ -79,6 +83,21 @@ public final class TimelineDiffEngine {
             index.put(track.trackId(), new IndexedTrack(track, i));
         }
         return index;
+    }
+
+    private static void diffAudioMix(TimelineDocument base, TimelineDocument target, List<TimelineChange> changes) {
+        AudioMix baseMix = base != null ? base.getAudioMix() : AudioMix.EMPTY;
+        AudioMix targetMix = target != null ? target.getAudioMix() : AudioMix.EMPTY;
+        if (!baseMix.equals(targetMix)) {
+            changes.add(new TimelineChange(
+                    ChangeType.AUDIO_MIX_CHANGED,
+                    EntityKind.AUDIO_MIX,
+                    "audioMix",
+                    null,
+                    baseMix.toString(),
+                    targetMix.toString(),
+                    0));
+        }
     }
 
     private static void diffTracks(
@@ -255,7 +274,7 @@ public final class TimelineDiffEngine {
     }
 
     private static int kindOrder(EntityKind kind) {
-        return kind == EntityKind.TRACK ? 0 : 1;
+        return kind == EntityKind.TRACK ? 0 : (kind == EntityKind.CLIP ? 1 : 2);
     }
 
     private static int changeOrder(ChangeType type) {
@@ -265,6 +284,7 @@ public final class TimelineDiffEngine {
             case TRACK_PROPERTY_CHANGED, CLIP_PROPERTY_CHANGED, PROPERTY_CHANGED -> 2;
             case CLIP_MOVED -> 3;
             case TRACK_REORDERED, CLIP_REORDERED, REORDERED -> 4;
+            case AUDIO_MIX_CHANGED -> 5;
         };
     }
 

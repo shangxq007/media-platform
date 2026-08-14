@@ -247,6 +247,34 @@ echo "=== Summary ==="
 echo "Checks: $CHECKS"
 echo "Failed: $FAILED"
 
+# T15 Gate 1 (A16): legacy TimelineAudioSpec.volume/normalize retired
+if grep -q 'double volume\|boolean normalize' render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineAudioSpec.java; then
+    fail "legacy TimelineAudioSpec volume/normalize still present"
+else
+    pass "legacy TimelineAudioSpec volume/normalize retired"
+fi
+
+# T15 Gate 2 (A15/A9): no FFmpeg filter strings in canonical audio domain
+if grep -rq 'filter_complex\|amix=\|volume=\|pan=' audio-module/src/main/java --include='*.java'; then
+    fail "FFmpeg filter syntax present in canonical audio domain"
+else
+    pass "canonical audio domain is provider-neutral"
+fi
+
+# T15 Gate 3 (A1/A12): audio-module must not copy Media source technical metadata
+if grep -rq 'sampleRate\|bitDepth\|channelLayout\|sampleFormat\|bitrateKbps' audio-module/src/main/java --include='*.java'; then
+    fail "source technical metadata copied into canonical audio domain"
+else
+    pass "source metadata not duplicated into audio domain"
+fi
+
+# T15 Gate 4 (A3/A13): AudioMix integrated into TimelineDocument canonical content
+if grep -q 'AudioMix audioMix\|getAudioMix' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+    pass "AudioMix in TimelineDocument canonical content"
+else
+    fail "AudioMix missing from TimelineDocument canonical content"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

@@ -19,7 +19,8 @@
             "extension",
             "extension :: app",
             "extension :: domain",
-            "media"
+            "media",
+            "audio"
         }
 )
 package com.example.platform.render;

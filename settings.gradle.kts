@@ -40,7 +40,8 @@ include(
     "storage-provider-opendal",
     "artifact-module",
     "media-execution-plan-module",
-    "media-module"
+    "media-module",
+    "audio-module",
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────

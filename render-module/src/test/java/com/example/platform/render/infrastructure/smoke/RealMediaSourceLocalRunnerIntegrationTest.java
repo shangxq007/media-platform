@@ -82,7 +82,7 @@ class RealMediaSourceLocalRunnerIntegrationTest {
 
         // Step 3: Build BasicTimeline fixture referencing controlled media source
         TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "640x360", FrameRate.of(30, 1), "h264", 1000000,
-                new TimelineAudioSpec("aac", 48000, 2, 128000, 1.0, false),
+                new TimelineAudioSpec("aac", 48000, 2, 128000),
                 "yuv420p");
         TimelineAssetRef assetRef = TimelineAssetRef.of("asset-001", "internal://testsrc");
         TimelineClip clip = TimelineClip.of("clip-001", assetRef, 0.0, 0.0, 2.0);

@@ -21,5 +21,8 @@ public enum ChangeType {
     ADDED,
     REMOVED,
     PROPERTY_CHANGED,
-    REORDERED
+    REORDERED,
+
+    // AUDIO_V2 (A13): document-level canonical audio mix semantic change
+    AUDIO_MIX_CHANGED
 }
