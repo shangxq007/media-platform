@@ -235,8 +235,9 @@ else
     pass "canonical serializer exact rational rate"
 fi
 
-# T14 Gate 4: legacy parser alias assetRef.storageUri retired
-if grep -q 'storageUri.*mediaRef\|"storageUri"' render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineScriptParser.java; then
+# T14 Gate 4: legacy parser alias assetRef.storageUri retired (explicit execution-only
+# storageUri reading is legal; the ALIAS that injected storageUri into mediaRef is not)
+if grep -q 'mediaRef = textOr(assetRefNode, "storageUri"' render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineScriptParser.java; then
     fail "legacy assetRef.storageUri alias still present in parser"
 else
     pass "legacy parser alias retired"
