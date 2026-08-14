@@ -196,11 +196,9 @@ tasks.register("verifyJooqNoNewUntypedIdentifiers") {
     description = "Verify no new untyped jOOQ identifiers beyond baseline"
     doLast {
         val baselineFile = file("typed-schema-module/jooq-baseline.properties")
-        if (!baselineFile.exists()) {
-            println("WARN: No baseline file found. Creating initial baseline.")
-            baselineFile.writeText("# jOOQ untyped identifier baseline\n")
-            baselineFile.appendText("production.raw=226\n")
-            baselineFile.appendText("test.raw=110\n")
+        require(baselineFile.exists()) {
+            "FAIL: jOOQ baseline authority missing at ${baselineFile.path}. " +
+                    "Verification authority must be pre-existing and version-controlled; verifier will not create it."
         }
 
         val mainCount = file(".").walkTopDown()
@@ -217,8 +215,12 @@ tasks.register("verifyJooqNoNewUntypedIdentifiers") {
 
         val props = java.util.Properties()
         baselineFile.inputStream().use { props.load(it) }
-        val baselineProd = props.getProperty("production.raw")?.toIntOrNull() ?: 226
-        val baselineTest = props.getProperty("test.raw")?.toIntOrNull() ?: 110
+        val baselineProd = props.getProperty("production.raw")?.toIntOrNull()
+            ?: throw GradleException("FAIL: jOOQ baseline production.raw is missing or not an integer")
+        val baselineTest = props.getProperty("test.raw")?.toIntOrNull()
+            ?: throw GradleException("FAIL: jOOQ baseline test.raw is missing or not an integer")
+        require(baselineProd >= 0) { "FAIL: jOOQ baseline production.raw must be >= 0" }
+        require(baselineTest >= 0) { "FAIL: jOOQ baseline test.raw must be >= 0" }
 
         require(mainCount <= baselineProd) { "FAIL: Production untyped identifiers increased: ${'$'}mainCount > ${'$'}baselineProd" }
         require(testCount <= baselineTest) { "FAIL: Test untyped identifiers increased: ${'$'}testCount > ${'$'}baselineTest" }
@@ -232,9 +234,20 @@ tasks.register("verifyJooqPlainSqlAllowlist") {
     description = "Verify jOOQ plain SQL allowlist integrity"
     doLast {
         val f = file("typed-schema-module/jooq-plain-sql-allowlist.txt")
-        if (!f.exists()) {
-            f.writeText("# Plain SQL allowlist\n# Format: stable_site_id|file_path|count\n")
+        require(f.exists()) {
+            "FAIL: jOOQ plain SQL allowlist authority missing at ${f.path}. " +
+                    "Verification authority must be pre-existing and version-controlled; verifier will not create it."
         }
+        val malformed = f.readLines()
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+            .filter { line ->
+                val parts = line.split("|")
+                parts.size != 3 ||
+                        parts[0].isBlank() ||
+                        parts[1].isBlank() ||
+                        (parts[2].trim().toIntOrNull()?.let { it > 0 } != true)
+            }
+        require(malformed.isEmpty()) { "FAIL: Malformed entries in ${f.name}: $malformed" }
         println("OK: Plain SQL allowlist verified")
     }
 }
@@ -244,9 +257,20 @@ tasks.register("verifyJooqDynamicIdentifierAllowlist") {
     description = "Verify jOOQ dynamic identifier allowlist integrity"
     doLast {
         val f = file("typed-schema-module/jooq-dynamic-identifier-allowlist.txt")
-        if (!f.exists()) {
-            f.writeText("# Dynamic identifier allowlist\n# Format: stable_site_id|file_path|count\n")
+        require(f.exists()) {
+            "FAIL: jOOQ dynamic identifier allowlist authority missing at ${f.path}. " +
+                    "Verification authority must be pre-existing and version-controlled; verifier will not create it."
         }
+        val malformed = f.readLines()
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+            .filter { line ->
+                val parts = line.split("|")
+                parts.size != 3 ||
+                        parts[0].isBlank() ||
+                        parts[1].isBlank() ||
+                        (parts[2].trim().toIntOrNull()?.let { it > 0 } != true)
+            }
+        require(malformed.isEmpty()) { "FAIL: Malformed entries in ${f.name}: $malformed" }
         println("OK: Dynamic identifier allowlist verified")
     }
 }
@@ -255,10 +279,17 @@ tasks.register("verifyJooqAllowlistIntegrity") {
     group = "verification"
     description = "Verify jOOQ allowlist integrity (no duplicates)"
     doLast {
-        listOf(
+        val allowlists = listOf(
             file("typed-schema-module/jooq-plain-sql-allowlist.txt"),
             file("typed-schema-module/jooq-dynamic-identifier-allowlist.txt")
-        ).filter { it.exists() }.forEach { f ->
+        )
+        allowlists.forEach { f ->
+            require(f.exists()) {
+                "FAIL: jOOQ allowlist authority missing at ${f.path}. " +
+                        "Verification authority must be pre-existing and version-controlled; verifier will not create it."
+            }
+        }
+        allowlists.forEach { f ->
             val ids = f.readLines().filter { it.isNotBlank() && !it.startsWith("#") }
                 .map { it.split("|").first().trim() }
             val dupes = ids.groupBy { it }.filter { it.value.size > 1 }
@@ -560,6 +591,58 @@ tasks.register("jooqFoundationCheck") {
         "verifyJooqDynamicIdentifierAllowlist",
         "verifyJooqAllowlistIntegrity"
     )
+}
+
+tasks.register("verifyPfirr1AuthenticationAuthority") {
+    group = "verification"
+    description = "PFIRR1-B2: production authentication has one canonical OIDC authority; legacy HMAC is unreachable"
+    doLast {
+        val oauth2Config = file(
+            "platform-app/src/main/java/com/example/platform/security/OAuth2ResourceServerSecurityConfiguration.java"
+        ).readText()
+        require(!oauth2Config.contains("new LegacyHmacJwtDecoder")) {
+            "FAIL PFIRR1-B2: OIDC decoder still composes LegacyHmacJwtDecoder"
+        }
+        require(!oauth2Config.contains("new CompositeJwtDecoder")) {
+            "FAIL PFIRR1-B2: OIDC decoder still exposes a composite bearer-token trust chain"
+        }
+
+        for (path in listOf(
+            "platform-app/src/main/java/com/example/platform/security/JwtAuthFilter.java",
+            "platform-app/src/main/java/com/example/platform/security/SecurityFilterChainConfig.java"
+        )) {
+            val source = file(path).readText()
+            require(source.contains("@Profile(\"!prod\")")) {
+                "FAIL PFIRR1-B2: legacy HMAC security path is not excluded from prod profile: $path"
+            }
+            require(source.contains("platform.runtime.production-checks-enabled")) {
+                "FAIL PFIRR1-B2: legacy HMAC security path is not excluded when production checks are enabled: $path"
+            }
+        }
+
+        val productionSafety = file(
+            "platform-app/src/main/java/com/example/platform/production/ProductionSafetyValidator.java"
+        ).readText()
+        require(productionSafety.contains("app.security.oauth2.enabled must be true in production")) {
+            "FAIL PFIRR1-B2: production readiness does not require canonical OIDC"
+        }
+        require(productionSafety.contains("legacy HMAC JWT is not permitted in production")) {
+            "FAIL PFIRR1-B2: production readiness does not reject legacy HMAC"
+        }
+
+        val prodConfig = file("platform-app/src/main/resources/application-prod.yml").readText()
+        require(prodConfig.contains("legacy-hmac-jwt-enabled: false")) {
+            "FAIL PFIRR1-B2: production profile must pin legacy HMAC compatibility off"
+        }
+
+        println("OK PFIRR1-B2: production authentication authority is OIDC-only; legacy HMAC is bounded to non-production")
+    }
+}
+
+tasks.register("pfirr1RemediationCheck") {
+    group = "verification"
+    description = "Run bounded PFIRR1 remediation gates (B1/B2)"
+    dependsOn("jooqFoundationCheck", "verifyPfirr1AuthenticationAuthority")
 }
 
 // ── Constructor Injection Policy Guard ────────────────────────────────────────

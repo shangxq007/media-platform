@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -26,8 +27,10 @@ import java.util.List;
 import java.util.Set;
 
 @Configuration
+@Profile("!prod")
 @ConditionalOnProperty(name = "app.security.enabled", havingValue = "true", matchIfMissing = false)
 @ConditionalOnProperty(name = "app.security.oauth2.enabled", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(name = "platform.runtime.production-checks-enabled", havingValue = "false", matchIfMissing = true)
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtProperties jwtProperties;

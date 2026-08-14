@@ -52,6 +52,7 @@ app:
         - ${APP_CORS_ALLOWED_ORIGIN:https://localhost:5173}
     oauth2:
       enabled: ${APP_SECURITY_OAUTH2_ENABLED:true}
+      legacy-hmac-jwt-enabled: false
   features:
     unleash:
       enabled: ${APP_FEATURES_UNLEASH_ENABLED:false}

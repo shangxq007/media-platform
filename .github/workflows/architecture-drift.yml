@@ -1,10 +1,14 @@
-name: Architecture Drift Guard
+name: Foundation Verification
 
 on:
   pull_request:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   architecture-drift:
@@ -17,3 +21,30 @@ jobs:
 
       - name: Run architecture drift guard
         run: bash scripts/check-architecture-drift.sh
+
+  foundation-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Script syntax check
+        run: bash -n scripts/verify-pfirr1-jooq-authority-fail-closed.sh
+
+      - name: Prove jOOQ authority verification is fail-closed
+        run: bash scripts/verify-pfirr1-jooq-authority-fail-closed.sh
+
+      - name: Run bounded PFIRR1 gates
+        run: ./gradlew --no-daemon pfirr1RemediationCheck
+
+      - name: Run backend tests
+        run: ./gradlew --no-daemon test
+
+      - name: Build boot jar smoke check
+        run: ./gradlew --no-daemon :platform-app:bootJar -x test

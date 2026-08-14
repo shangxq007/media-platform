@@ -62,11 +62,11 @@ public class ProductionSafetyValidator {
         if (!getBool("app.security.enabled", false)) {
             errors.add("app.security.enabled must be true");
         }
-        if (!getBool("app.security.oauth2.enabled", false)
-                && !getBool("app.security.dev-auth-endpoint", false)
-                && !getBool("app.security.oauth2.legacy-hmac-jwt-enabled", false)) {
-            errors.add(
-                    "configure OIDC (app.security.oauth2.enabled=true) or an approved legacy JWT path for production");
+        if (!getBool("app.security.oauth2.enabled", false)) {
+            errors.add("app.security.oauth2.enabled must be true in production (OIDC is the canonical authentication authority)");
+        }
+        if (getBool("app.security.oauth2.legacy-hmac-jwt-enabled", false)) {
+            errors.add("legacy HMAC JWT is not permitted in production");
         }
         if (jwtProperties.usesInsecureDefault()) {
             errors.add("APP_JWT_SECRET must be set to a strong secret (not blank or dev default)");

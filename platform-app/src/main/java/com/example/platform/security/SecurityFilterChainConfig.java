@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -18,10 +19,12 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
+@Profile("!prod")
 @EnableWebSecurity
 @EnableConfigurationProperties(JwtProperties.class)
 @ConditionalOnProperty(name = "app.security.enabled", havingValue = "true", matchIfMissing = false)
 @ConditionalOnProperty(name = "app.security.oauth2.enabled", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(name = "platform.runtime.production-checks-enabled", havingValue = "false", matchIfMissing = true)
 public class SecurityFilterChainConfig {
 
     private final JwtAuthFilter jwtAuthFilter;

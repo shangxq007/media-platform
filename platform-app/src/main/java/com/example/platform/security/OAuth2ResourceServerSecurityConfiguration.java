@@ -67,19 +67,9 @@ public class OAuth2ResourceServerSecurityConfiguration {
                             + "(or SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI)");
         }
 
-        List<JwtDecoder> decoders = new ArrayList<>();
         NimbusJwtDecoder oidcDecoder = JwtDecoders.fromIssuerLocation(oauth2Properties.issuerUri());
         oidcDecoder.setJwtValidator(jwtValidator());
-        decoders.add(oidcDecoder);
-
-        if (oauth2Properties.legacyHmacJwtEnabled()) {
-            decoders.add(new LegacyHmacJwtDecoder(jwtProperties));
-        }
-
-        if (decoders.size() == 1) {
-            return decoders.getFirst();
-        }
-        return new CompositeJwtDecoder(decoders);
+        return oidcDecoder;
     }
 
     private OAuth2TokenValidator<Jwt> jwtValidator() {

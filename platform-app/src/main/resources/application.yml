@@ -138,7 +138,7 @@ app:
       tenant-claim: ${APP_SECURITY_OAUTH2_TENANT_CLAIM:tenantId}
       roles-claim: ${APP_SECURITY_OAUTH2_ROLES_CLAIM:roles}
       user-id-claim: ${APP_SECURITY_OAUTH2_USER_ID_CLAIM:platform_user_id}
-      # Migration: accept legacy HMAC JWT (dev token) alongside Authentik when true
+      # Deprecated migration flag. OIDC mode no longer composes HMAC; production rejects true.
       legacy-hmac-jwt-enabled: ${APP_SECURITY_OAUTH2_LEGACY_HMAC_JWT_ENABLED:false}
       jit-provisioning-enabled: ${APP_SECURITY_OAUTH2_JIT_PROVISIONING_ENABLED:true}
       trust-jwt-tenant-only: ${APP_SECURITY_OAUTH2_TRUST_JWT_TENANT_ONLY:true}
