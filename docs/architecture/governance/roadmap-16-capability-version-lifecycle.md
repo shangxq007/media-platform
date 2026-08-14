@@ -14,7 +14,8 @@ authority: CAPABILITY_VERSION_LIFECYCLE_BOUNDED_ARCHITECTURE_CONTRACT_V1 (FROZEN
 - ROADMAP_16_BASE_TREE = 94935fc50a10fa6cce7a96007b3ee4b275ed5020
 
 ## Implementation
-- IMPLEMENTATION_SHA = (committed on agent/capability-version-lifecycle; see git log)
+- IMPLEMENTATION_SHA = 0174c61ecedcd2236308bbb41d237222e3f809bb
+- IMPLEMENTATION_TREE = 4d854607aa4def3b324e87b216fd3a443ff3ef4d
 - IMPLEMENTATION_TREE = (see git log)
 
 ## Authority model (R1-R4 refinements applied)
