@@ -10,7 +10,7 @@ import com.example.platform.render.domain.timeline.TimelineOutputSpec;
 import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.domain.timeline.TimelineTextOverlay;
 import com.example.platform.render.domain.timeline.TimelineTrack;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.shared.time.FrameRate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;

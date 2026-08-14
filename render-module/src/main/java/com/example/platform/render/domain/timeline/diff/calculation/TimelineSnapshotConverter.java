@@ -6,8 +6,8 @@ import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
 
 import java.util.ArrayList;
 import java.util.List;

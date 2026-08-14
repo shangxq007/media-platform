@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation(project(":typed-schema-module"))
+    implementation(project(":media-module")) // MCMV2-C: Media Canonical Model (frozen direction: Render -> Media)
     implementation(project(":notification-module")) // NotificationEventPublisher rehomed to notification (K2)
     api(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))

@@ -54,7 +54,7 @@ class AssetReviewServiceTest {
     private com.example.platform.render.domain.asset.Asset makeAsset(String id) {
         return new com.example.platform.render.domain.asset.Asset(
                 id, "tenant_1", "proj_1", "key", "VIDEO", "f.mp4",
-                100L, null, null, null, null, "v1", null, null, null, null,
+                100L, null, "v1", null, null, null, null,
                 null, null, false, false, "DRAFT", java.time.Instant.now(), java.time.Instant.now());
     }
 

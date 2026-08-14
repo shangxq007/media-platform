@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.timeline.semantics.transition;
 
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 
 import java.util.Objects;
 

@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.timeline.semantics.effect;
 
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
 
 import java.util.List;

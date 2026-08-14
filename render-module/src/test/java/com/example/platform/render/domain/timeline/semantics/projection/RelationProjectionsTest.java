@@ -2,7 +2,7 @@ package com.example.platform.render.domain.timeline.semantics.projection;
 
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

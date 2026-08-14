@@ -645,39 +645,9 @@ create index ix_cex_project on client_export_session(project_id);
 create index ix_cex_status on client_export_session(status);
 create index ix_cex_tenant_proj on client_export_session(tenant_id, project_id);
 
-create table media_asset_metadata (
-    id varchar(64) primary key,
-    tenant_id varchar(64) not null,
-    project_id varchar(64) not null,
-    asset_id varchar(64) not null,
-    asset_uri varchar(1024) not null,
-    valid boolean not null default false,
-    container varchar(32),
-    file_size_bytes bigint default 0,
-    duration_ms double precision default 0,
-    width int default 0,
-    height int default 0,
-    fps double precision default 0,
-    video_codec varchar(64),
-    audio_codec varchar(64),
-    audio_sample_rate int default 0,
-    audio_channels int default 0,
-    has_audio boolean default false,
-    rotation int default 0,
-    color_space varchar(32),
-    bitrate bigint default 0,
-    is_vfr boolean default false,
-    stream_count int default 0,
-    client_export_compatible boolean default false,
-    normalize_required boolean default true,
-    warnings varchar(4096),
-    error_message varchar(1024),
-    probed_at timestamp not null default current_timestamp
-);
-
-create index ix_mam_tenant_asset on media_asset_metadata(tenant_id, asset_id);
-create index ix_mam_project on media_asset_metadata(project_id);
-create index ix_mam_probed_at on media_asset_metadata(probed_at);
+-- MCMV2-C: media_asset_metadata (double fps/duration authority) REMOVED.
+-- Raw probe observations now live in media_probe_observation (opaque);
+-- canonical structural truth lives in media_stream / media_asset (exact).
 
 -- ============================================================
 -- 4. COMMERCE & BILLING
@@ -2116,7 +2086,7 @@ create index ix_lease_until on render_job_lease(lease_until);
 -- ASSET TABLE
 -- ============================================================
 
-create table asset (
+create table media_asset (
     id varchar(64) primary key,
     tenant_id varchar(64) not null,
     project_id varchar(128) not null,
@@ -2125,10 +2095,7 @@ create table asset (
     filename varchar(256),
     size_bytes bigint,
     checksum varchar(128),
-    duration_ms bigint,
-    width int,
-    height int,
-    asset_version varchar(64),
+    media_version varchar(64),
     owner_id varchar(128),
     entity_ref text,
     classification varchar(64),
@@ -2142,10 +2109,78 @@ create table asset (
     publish_status varchar(32) not null default 'DRAFT'
 );
 
-create index ix_asset_tenant_project on asset(tenant_id, project_id);
-create index ix_asset_tenant_created on asset(tenant_id, created_at desc);
-create index ix_asset_classification on asset(classification);
-create index ix_asset_ai_generated on asset(ai_generated);
+create index ix_media_asset_tenant_project on media_asset(tenant_id, project_id);
+create index ix_media_asset_tenant_created on media_asset(tenant_id, created_at desc);
+create index ix_media_asset_classification on media_asset(classification);
+create index ix_media_asset_ai_generated on media_asset(ai_generated);
+
+-- MCMV2-C: typed MediaAsset <-> Artifact linkage (MEDIA_ASSET_ARTIFACT_RELATIONSHIP_V1)
+create table media_asset_artifact (
+    media_asset_id varchar(64) not null,
+    artifact_id varchar(64) not null,
+    relationship varchar(16) not null,
+    created_at timestamp not null default current_timestamp,
+    constraint pk_maa primary key (media_asset_id, artifact_id, relationship),
+    constraint fk_maa_media_asset foreign key (media_asset_id) references media_asset(id) on delete restrict,
+    constraint fk_maa_artifact foreign key (artifact_id) references artifact(id) on delete restrict
+);
+
+create index ix_maa_artifact on media_asset_artifact(artifact_id);
+
+-- MCMV2-C: canonical source stream structural model (exact time/rate)
+create table media_stream (
+    id varchar(64) primary key,
+    media_asset_id varchar(64) not null,
+    stream_index int not null,
+    stream_kind varchar(16) not null,
+    codec varchar(64),
+    timebase_num bigint not null,
+    timebase_den bigint not null,
+    rate_num bigint,
+    rate_den bigint,
+    is_vfr boolean not null default false,
+    width int,
+    height int,
+    pixel_format varchar(64),
+    sample_rate int,
+    channels int,
+    channel_layout varchar(64),
+    sample_format varchar(64),
+    bit_depth int,
+    color_primaries varchar(64),
+    color_transfer varchar(64),
+    color_matrix varchar(64),
+    color_range varchar(64),
+    hdr_mastering_display_ref varchar(128),
+    hdr_content_light_ref varchar(128),
+    container_stream_description varchar(128),
+    constraint fk_ms_media_asset foreign key (media_asset_id) references media_asset(id) on delete cascade
+);
+
+create index ix_ms_media_asset on media_stream(media_asset_id);
+
+-- MCMV2-C: raw probe observation (RAW_PROBE_RESULT_IS_NOT_CANONICAL_MEDIA_AUTHORITY_V1)
+-- Provider-specific raw payload is opaque; canonical structural truth lives in
+-- media_stream / media_asset. No double time/rate authority persists here.
+create table media_probe_observation (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(64) not null,
+    media_asset_id varchar(64) not null,
+    provider varchar(64),
+    raw_payload text,
+    valid boolean not null default false,
+    client_export_compatible boolean not null default false,
+    normalize_required boolean not null default true,
+    warnings varchar(4096),
+    error_message varchar(1024),
+    probed_at timestamp not null default current_timestamp,
+    constraint fk_mpo_media_asset foreign key (media_asset_id) references media_asset(id) on delete cascade
+);
+
+create index ix_mpo_tenant_asset on media_probe_observation(tenant_id, media_asset_id);
+create index ix_mpo_project on media_probe_observation(project_id);
+create index ix_mpo_probed_at on media_probe_observation(probed_at);
 
 create table asset_semantic_metadata (
     asset_id varchar(64) primary key,
@@ -2155,7 +2190,7 @@ create table asset_semantic_metadata (
     semantic_json text,
     created_at timestamp not null,
     updated_at timestamp,
-    constraint fk_asm_asset foreign key (asset_id) references asset(id)
+    constraint fk_asm_asset foreign key (asset_id) references media_asset(id)
 );
 
 create index ix_asm_status on asset_semantic_metadata(status);
@@ -2178,7 +2213,7 @@ create table search_projection (
     search_text text,
     search_vector tsvector,
     updated_at timestamp not null,
-    constraint fk_sp_asset foreign key (asset_id) references asset(id)
+    constraint fk_sp_asset foreign key (asset_id) references media_asset(id)
 );
 
 create index ix_sp_tenant on search_projection(tenant_id);
@@ -2205,7 +2240,7 @@ create table marketplace_listing (
     created_at timestamp not null,
     updated_at timestamp not null,
     constraint uq_ml_asset unique(asset_id),
-    constraint fk_ml_asset foreign key (asset_id) references asset(id)
+    constraint fk_ml_asset foreign key (asset_id) references media_asset(id)
 );
 
 create index ix_ml_status on marketplace_listing(status);

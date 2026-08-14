@@ -76,16 +76,13 @@ public class RawMediaUploadService {
         log.info("Upload stored: tenant={} project={} asset={} bucket={} key={}",
                 tenantId, projectId, assetId, ref.bucket(), ref.objectKey());
 
-        // 3. Register asset
+        // 3. Register asset (MCMV2-C: structural truth captured via probe normalization)
         Asset asset = assetRepository.register(
                 tenantId, projectId, storageKey,
                 detectMediaType(contentType, safeFilename),
                 safeFilename,
                 fileBytes != null ? (long) fileBytes.length : null,
-                null, // checksum (future)
-                null, // durationMs (future: probe)
-                null, // width (future: probe)
-                null  // height (future: probe)
+                null // checksum (future)
         );
         log.info("Asset registered: id={} mediaType={}", asset.id(), asset.mediaType());
 

@@ -36,8 +36,8 @@ class FlywaySchemaIntegrationTest extends PostgresTestContainerSupport {
             ResultSet renderJob = conn.getMetaData().getColumns(null, null, "render_job", "id");
             assertTrue(renderJob.next(), "render_job table must exist");
 
-            ResultSet asset = conn.getMetaData().getColumns(null, null, "asset", "id");
-            assertTrue(asset.next(), "asset table must exist");
+            ResultSet asset = conn.getMetaData().getColumns(null, null, "media_asset", "id");
+            assertTrue(asset.next(), "media_asset table must exist (MCMV2-C: asset renamed to canonical media_asset)");
 
             ResultSet artifactNode = conn.getMetaData().getColumns(null, null, "artifact_node", "id");
             assertTrue(artifactNode.next(), "artifact_node table must exist");

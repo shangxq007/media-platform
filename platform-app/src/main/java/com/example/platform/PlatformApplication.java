@@ -20,6 +20,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.workflow",
     "com.example.platform.identity",
     "com.example.platform.artifact",
+    "com.example.platform.media",
     "com.example.platform.billing",
     "com.example.platform.entitlement",
     "com.example.platform.policy",

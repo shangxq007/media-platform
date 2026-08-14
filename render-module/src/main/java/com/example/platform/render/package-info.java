@@ -18,7 +18,8 @@
             "workflow",
             "extension",
             "extension :: app",
-            "extension :: domain"
+            "extension :: domain",
+            "media"
         }
 )
 package com.example.platform.render;

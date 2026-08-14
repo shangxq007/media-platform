@@ -22,11 +22,11 @@ public class AssetService {
     }
 
     /**
-     * Register a new asset for a project.
+     * Register a new asset for a project (MCMV2-C: structural truth no longer
+     * carried at registration; captured by probe normalization).
      */
     public Asset register(String projectId, String storageKey, String mediaType,
-                          String filename, Long sizeBytes, String checksum,
-                          Long durationMs, Integer width, Integer height) {
+                          String filename, Long sizeBytes, String checksum) {
         String tenantId = TenantContext.get();
         if (tenantId == null || tenantId.isBlank()) {
             throw new SecurityException("Tenant context required for asset registration");
@@ -36,7 +36,7 @@ public class AssetService {
         StorageKeyPolicy.assertValidPath(storageKey);
 
         return assetRepository.register(tenantId, projectId, storageKey, mediaType,
-                filename, sizeBytes, checksum, durationMs, width, height);
+                filename, sizeBytes, checksum);
     }
 
     /**

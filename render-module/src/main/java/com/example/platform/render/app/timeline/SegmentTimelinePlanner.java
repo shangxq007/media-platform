@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.semantics.time.CanonicalFrameRateCodec;
+import com.example.platform.shared.time.CanonicalFrameRateCodec;
 import com.example.platform.render.domain.timeline.SegmentPolicy;
 import com.example.platform.render.domain.timeline.TimelineSegment;
 import com.example.platform.render.domain.timeline.TimelineSpec;

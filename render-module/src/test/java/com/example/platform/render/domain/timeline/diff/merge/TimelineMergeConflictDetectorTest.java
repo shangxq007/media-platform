@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
+import com.example.platform.shared.time.FrameRate;
 
 /**
  * Tests for TimelineMergeConflictDetector covering:

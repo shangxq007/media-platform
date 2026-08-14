@@ -130,7 +130,7 @@ class RawMediaProductRegistrationFacadeTest {
     private static Asset asset(String tenantId, String projectId, String assetId, String storageKey) {
         Instant now = Instant.now();
         return new Asset(assetId, tenantId, projectId, storageKey, "VIDEO", "video.mp4",
-                11L, null, null, null, null, "v1", null, null, null, null,
+                11L, null, "v1", null, null, null, null,
                 null, null, false, false, "DRAFT", now, now);
     }
 

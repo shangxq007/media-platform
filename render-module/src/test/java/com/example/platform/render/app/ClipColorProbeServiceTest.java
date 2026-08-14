@@ -7,7 +7,7 @@ import static org.mockito.Mockito.*;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.infrastructure.ColorProbeMetadata;
 import com.example.platform.render.infrastructure.MediaProbeResult;
-import com.example.platform.render.infrastructure.MediaProbeService;
+import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +15,7 @@ class ClipColorProbeServiceTest {
 
     @Test
     void enrichesClipAssetMetadata() {
-        MediaProbeService probeService = mock(MediaProbeService.class);
+        FfprobeMediaProbeExecutor probeService = mock(FfprobeMediaProbeExecutor.class);
         when(probeService.probeAbsolute(anyString(), anyString()))
                 .thenReturn(new MediaProbeResult("j", true, "/tmp/a.mp4", 1000, 5000,
                         1920, 1080, "h264", "aac", 30, 0, 2, 44100, List.of(), "",

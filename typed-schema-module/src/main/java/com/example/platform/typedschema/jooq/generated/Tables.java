@@ -11,7 +11,6 @@ import com.example.platform.typedschema.jooq.generated.tables.Artifact;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation;
-import com.example.platform.typedschema.jooq.generated.tables.Asset;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata;
 import com.example.platform.typedschema.jooq.generated.tables.AuditRecords;
 import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice;
@@ -52,7 +51,10 @@ import com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignmen
 import com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords;
 import com.example.platform.typedschema.jooq.generated.tables.InvoiceLineItem;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAssetMetadata;
+import com.example.platform.typedschema.jooq.generated.tables.MediaAsset;
+import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact;
+import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation;
+import com.example.platform.typedschema.jooq.generated.tables.MediaStream;
 import com.example.platform.typedschema.jooq.generated.tables.NavigationPolicy;
 import com.example.platform.typedschema.jooq.generated.tables.NlqQueryHistory;
 import com.example.platform.typedschema.jooq.generated.tables.NlqReportDefinition;
@@ -194,11 +196,6 @@ public class Tables {
      * The table <code>public.artifact_relation</code>.
      */
     public static final ArtifactRelation ARTIFACT_RELATION = ArtifactRelation.ARTIFACT_RELATION;
-
-    /**
-     * The table <code>public.asset</code>.
-     */
-    public static final Asset ASSET = Asset.ASSET;
 
     /**
      * The table <code>public.asset_semantic_metadata</code>.
@@ -401,9 +398,24 @@ public class Tables {
     public static final MarketplaceListing MARKETPLACE_LISTING = MarketplaceListing.MARKETPLACE_LISTING;
 
     /**
-     * The table <code>public.media_asset_metadata</code>.
+     * The table <code>public.media_asset</code>.
      */
-    public static final MediaAssetMetadata MEDIA_ASSET_METADATA = MediaAssetMetadata.MEDIA_ASSET_METADATA;
+    public static final MediaAsset MEDIA_ASSET = MediaAsset.MEDIA_ASSET;
+
+    /**
+     * The table <code>public.media_asset_artifact</code>.
+     */
+    public static final MediaAssetArtifact MEDIA_ASSET_ARTIFACT = MediaAssetArtifact.MEDIA_ASSET_ARTIFACT;
+
+    /**
+     * The table <code>public.media_probe_observation</code>.
+     */
+    public static final MediaProbeObservation MEDIA_PROBE_OBSERVATION = MediaProbeObservation.MEDIA_PROBE_OBSERVATION;
+
+    /**
+     * The table <code>public.media_stream</code>.
+     */
+    public static final MediaStream MEDIA_STREAM = MediaStream.MEDIA_STREAM;
 
     /**
      * The table <code>public.navigation_policy</code>.

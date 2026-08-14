@@ -1,6 +1,6 @@
 package com.example.platform.execution.domain;
 
-import com.example.platform.artifact.domain.ArtifactId;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.artifact.domain.ArtifactKind;
 import com.example.platform.execution.domain.operation.*;
 import com.example.platform.storage.contract.ContentDigest;
@@ -112,7 +112,7 @@ class FrozenInterfacesTest {
                 .creationContext(ExecutionCreationContext.minimal(java.time.Instant.now()))
                 .addInput(ExecutionInputBinding.primaryMedia(
                         new ExecutionInputId("in1"),
-                        new com.example.platform.artifact.domain.ArtifactId("art-1"),
+                        new com.example.platform.shared.identity.ArtifactId("art-1"),
                         ContentDigest.sha256("a".repeat(64)),
                         1000L, "video/mp4"))
                 .addStep(MediaExecutionStep.of(

@@ -38,7 +38,7 @@ import com.example.platform.render.domain.timeline.standards.FcpXmlTimelineAdapt
 import com.example.platform.render.domain.timeline.standards.SrtSubtitleAdapter;
 import com.example.platform.render.domain.timeline.standards.WebVttSubtitleAdapter;
 import com.example.platform.render.infrastructure.MediaProbeResult;
-import com.example.platform.render.infrastructure.MediaProbeService;
+import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import com.example.platform.render.infrastructure.bento4.Bento4PackagingProvider;
 import com.example.platform.render.infrastructure.gpac.GPACPackagingProvider;
 import com.example.platform.render.infrastructure.gpac.PackagingDrmProfile;
@@ -72,7 +72,7 @@ public class McpMediaToolsController {
 
     private static final Logger log = LoggerFactory.getLogger(McpMediaToolsController.class);
 
-    private final MediaProbeService mediaProbeService;
+    private final FfprobeMediaProbeExecutor mediaProbeService;
     private final TimelineValidationService timelineValidationService;
     private final TimelineScriptParser timelineScriptParser;
     private final RenderPlannerService renderPlannerService;
@@ -97,7 +97,7 @@ public class McpMediaToolsController {
     private final TimelineSnapshotService timelineSnapshotService;
     private final SegmentPlanFilter segmentPlanFilter;
 
-    public McpMediaToolsController(MediaProbeService mediaProbeService,
+    public McpMediaToolsController(FfprobeMediaProbeExecutor mediaProbeService,
                                    TimelineValidationService timelineValidationService,
                                    TimelineScriptParser timelineScriptParser,
                                    RenderPlannerService renderPlannerService,

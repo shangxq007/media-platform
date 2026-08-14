@@ -8,7 +8,7 @@ import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.shared.time.FrameRate;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;

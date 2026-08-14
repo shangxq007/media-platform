@@ -2,8 +2,8 @@ package com.example.platform.render.domain.timeline.diff.application;
 
 import com.example.platform.render.domain.timeline.diff.*;
 import com.example.platform.render.domain.timeline.diff.calculation.*;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
 import java.util.*;
 import java.util.stream.Collectors;
 

@@ -8,7 +8,7 @@ import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandid
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalProfile;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineModelPath;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineSourceRef;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;

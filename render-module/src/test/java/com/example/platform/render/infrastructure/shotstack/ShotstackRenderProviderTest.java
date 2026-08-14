@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.infrastructure.MediaProbeResult;
-import com.example.platform.render.infrastructure.MediaProbeService;
+import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
@@ -29,7 +29,7 @@ class ShotstackRenderProviderTest {
         props.setApiUrl("https://api.shotstack.io/edit/v1");
 
         TimelineScriptParser parser = new TimelineScriptParser();
-        MediaProbeService probeService = mock(MediaProbeService.class);
+        FfprobeMediaProbeExecutor probeService = mock(FfprobeMediaProbeExecutor.class);
         when(probeService.probeAbsolute(anyString(), anyString()))
                 .thenReturn(new MediaProbeResult("j", true, "p", 1000, 5000,
                         1920, 1080, "h264", "aac", 30, 0, 2, 44100, java.util.List.of(), null,
@@ -81,7 +81,7 @@ class ShotstackRenderProviderTest {
                 apiClient,
                 empty,
                 new TimelineScriptParser(),
-                mock(MediaProbeService.class));
+                mock(FfprobeMediaProbeExecutor.class));
         assertFalse(p.validateEnvironment().valid());
     }
 }

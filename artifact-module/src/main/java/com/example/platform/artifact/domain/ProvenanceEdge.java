@@ -1,4 +1,5 @@
 package com.example.platform.artifact.domain;
+import com.example.platform.shared.identity.ArtifactId;
 
 import java.io.Serializable;
 import java.time.Instant;

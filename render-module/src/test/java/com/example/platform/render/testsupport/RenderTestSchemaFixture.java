@@ -13,7 +13,10 @@ public final class RenderTestSchemaFixture {
                 flyway_schema_history,
                 timeline_revision,
                 timeline_snapshot,
-                media_asset_metadata,
+                media_probe_observation,
+                media_stream,
+                media_asset_artifact,
+                media_asset,
                 client_export_session,
                 quota_usage,
                 render_job_lease,
@@ -189,31 +192,81 @@ public final class RenderTestSchemaFixture {
         """);
 
         dsl.execute("""
-            CREATE TABLE IF NOT EXISTS media_asset_metadata (
+            CREATE TABLE IF NOT EXISTS media_asset (
+                id varchar(64) primary key,
+                tenant_id varchar(64) not null,
+                project_id varchar(128) not null,
+                storage_key text not null,
+                media_type varchar(32) not null,
+                filename varchar(256),
+                size_bytes bigint,
+                checksum varchar(128),
+                media_version varchar(64),
+                owner_id varchar(128),
+                entity_ref text,
+                classification varchar(64),
+                license varchar(128),
+                retention_policy varchar(128),
+                security_level varchar(64),
+                contains_pii boolean not null default false,
+                ai_generated boolean not null default false,
+                created_at timestamp not null,
+                updated_at timestamp,
+                publish_status varchar(32) not null default 'DRAFT'
+            )
+        """);
+
+        dsl.execute("""
+            CREATE TABLE IF NOT EXISTS media_stream (
+                id varchar(64) primary key,
+                media_asset_id varchar(64) not null,
+                stream_index int not null,
+                stream_kind varchar(16) not null,
+                codec varchar(64),
+                timebase_num bigint not null,
+                timebase_den bigint not null,
+                rate_num bigint,
+                rate_den bigint,
+                is_vfr boolean not null default false,
+                width int,
+                height int,
+                pixel_format varchar(64),
+                sample_rate int,
+                channels int,
+                channel_layout varchar(64),
+                sample_format varchar(64),
+                bit_depth int,
+                color_primaries varchar(64),
+                color_transfer varchar(64),
+                color_matrix varchar(64),
+                color_range varchar(64),
+                hdr_mastering_display_ref varchar(128),
+                hdr_content_light_ref varchar(128),
+                container_stream_description varchar(128)
+            )
+        """);
+
+        dsl.execute("""
+            CREATE TABLE IF NOT EXISTS media_asset_artifact (
+                media_asset_id varchar(64) not null,
+                artifact_id varchar(64) not null,
+                relationship varchar(16) not null,
+                created_at timestamp not null default now(),
+                constraint pk_maa primary key (media_asset_id, artifact_id, relationship)
+            )
+        """);
+
+        dsl.execute("""
+            CREATE TABLE IF NOT EXISTS media_probe_observation (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
                 project_id varchar(64) not null,
-                asset_id varchar(64) not null,
-                asset_uri varchar(1024) not null,
+                media_asset_id varchar(64) not null,
+                provider varchar(64),
+                raw_payload text,
                 valid boolean not null default false,
-                container varchar(32),
-                file_size_bytes bigint default 0,
-                duration_ms double precision default 0,
-                width int default 0,
-                height int default 0,
-                fps double precision default 0,
-                video_codec varchar(64),
-                audio_codec varchar(64),
-                audio_sample_rate int default 0,
-                audio_channels int default 0,
-                has_audio boolean default false,
-                rotation int default 0,
-                color_space varchar(32),
-                bitrate bigint default 0,
-                is_vfr boolean default false,
-                stream_count int default 0,
-                client_export_compatible boolean default false,
-                normalize_required boolean default true,
+                client_export_compatible boolean not null default false,
+                normalize_required boolean not null default true,
                 warnings varchar(4096),
                 error_message varchar(1024),
                 probed_at timestamp not null default now()
@@ -264,7 +317,10 @@ public final class RenderTestSchemaFixture {
             TRUNCATE TABLE
                 timeline_revision,
                 timeline_snapshot,
-                media_asset_metadata,
+                media_probe_observation,
+                media_stream,
+                media_asset_artifact,
+                media_asset,
                 client_export_session,
                 quota_usage,
                 render_job_lease,

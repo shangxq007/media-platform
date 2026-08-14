@@ -63,10 +63,7 @@ public class AssetController {
                 request.mediaType(),
                 request.filename(),
                 request.sizeBytes(),
-                request.checksum(),
-                request.durationMs(),
-                request.width(),
-                request.height()
+                request.checksum()
         );
         eventPublisher.publish(new AssetRegisteredEvent(asset.id(), "v1", asset.mediaType(),
                 projectId, asset.tenantId(), asset.storageKey()));

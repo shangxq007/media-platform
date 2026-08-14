@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.timeline;
 
-import com.example.platform.render.domain.timeline.semantics.time.CanonicalFrameRateCodec;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.shared.time.CanonicalFrameRateCodec;
+import com.example.platform.shared.time.FrameRate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;

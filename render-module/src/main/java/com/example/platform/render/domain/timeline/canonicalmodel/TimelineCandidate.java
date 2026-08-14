@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.timeline.canonicalmodel;
 
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
 import java.util.List;
 import java.util.Objects;
 

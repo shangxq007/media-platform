@@ -1,4 +1,5 @@
 package com.example.platform.artifact.domain;
+import com.example.platform.shared.identity.ArtifactId;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

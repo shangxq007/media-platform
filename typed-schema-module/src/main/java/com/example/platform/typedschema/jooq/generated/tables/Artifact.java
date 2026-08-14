@@ -8,6 +8,7 @@ import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ArtifactRelationPath;
+import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 
 import java.time.LocalDateTime;
@@ -212,6 +213,19 @@ public class Artifact extends TableImpl<ArtifactRecord> {
             _fkArtifactRelationTarget = new ArtifactRelationPath(this, null, Keys.ARTIFACT_RELATION__FK_ARTIFACT_RELATION_TARGET.getInverseKey());
 
         return _fkArtifactRelationTarget;
+    }
+
+    private transient MediaAssetArtifactPath _mediaAssetArtifact;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.media_asset_artifact</code> table
+     */
+    public MediaAssetArtifactPath mediaAssetArtifact() {
+        if (_mediaAssetArtifact == null)
+            _mediaAssetArtifact = new MediaAssetArtifactPath(this, null, Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_ARTIFACT.getInverseKey());
+
+        return _mediaAssetArtifact;
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.shared.time.FrameRate;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

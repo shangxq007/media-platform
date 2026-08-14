@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.timeline.render.plan;
 
 import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.shared.time.FrameRate;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;

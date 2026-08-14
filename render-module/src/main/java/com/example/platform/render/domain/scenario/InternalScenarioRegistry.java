@@ -2,7 +2,7 @@ package com.example.platform.render.domain.scenario;
 
 import com.example.platform.render.domain.timeline.*;
 import com.example.platform.render.domain.timeline.editing.TimelineEditOperation;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.shared.time.FrameRate;
 import java.util.*;
 import java.util.stream.Collectors;
 

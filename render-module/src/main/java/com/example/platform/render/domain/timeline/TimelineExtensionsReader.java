@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import com.example.platform.render.domain.timeline.semantics.time.CanonicalFrameRateCodec;
+import com.example.platform.shared.time.CanonicalFrameRateCodec;
 import org.springframework.stereotype.Component;
 
 /**

@@ -33,44 +33,44 @@ class AssetServiceTest {
     @Test
     void shouldRegisterAsset() {
         Asset expected = testAsset("asset-1", "tenant-1", "proj-1",
-                "tenant/workspace/project/assets/asset-1/video.mp4", "VIDEO", "video.mp4", 1024L, "abc123", 5000L, 1920, 1080);
-        when(assetRepository.register(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                "tenant/workspace/project/assets/asset-1/video.mp4", "VIDEO", "video.mp4", 1024L, "abc123");
+        when(assetRepository.register(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(expected);
 
         Asset result = assetService.register("proj-1", "tenant/workspace/project/assets/asset-1/video.mp4",
-                "VIDEO", "video.mp4", 1024L, "abc123", 5000L, 1920, 1080);
+                "VIDEO", "video.mp4", 1024L, "abc123");
 
         assertNotNull(result);
         assertEquals("asset-1", result.id());
         assertEquals("tenant-1", result.tenantId());
         verify(assetRepository).register("tenant-1", "proj-1",
                 "tenant/workspace/project/assets/asset-1/video.mp4",
-                "VIDEO", "video.mp4", 1024L, "abc123", 5000L, 1920, 1080);
+                "VIDEO", "video.mp4", 1024L, "abc123");
     }
 
     @Test
     void shouldRejectRegistrationWithoutTenant() {
         TenantContext.clear();
         assertThrows(SecurityException.class, () ->
-                assetService.register("proj-1", "key", "VIDEO", "file.mp4", 100L, null, null, null, null));
+                assetService.register("proj-1", "key", "VIDEO", "file.mp4", 100L, null));
     }
 
     @Test
     void shouldRejectInvalidStorageKey() {
         assertThrows(SecurityException.class, () ->
-                assetService.register("proj-1", "/absolute/path", "VIDEO", "file.mp4", 100L, null, null, null, null));
+                assetService.register("proj-1", "/absolute/path", "VIDEO", "file.mp4", 100L, null));
     }
 
     @Test
     void shouldRejectTraversalStorageKey() {
         assertThrows(SecurityException.class, () ->
-                assetService.register("proj-1", "../etc/passwd", "VIDEO", "file.mp4", 100L, null, null, null, null));
+                assetService.register("proj-1", "../etc/passwd", "VIDEO", "file.mp4", 100L, null));
     }
 
     @Test
     void shouldGetById() {
         Asset expected = testAsset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
-                100L, null, null, null, null);
+                100L, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(expected));
 
         Asset result = assetService.getById("proj-1", "asset-1");
@@ -80,7 +80,7 @@ class AssetServiceTest {
     @Test
     void shouldRejectGetByIdWithWrongProject() {
         Asset asset = testAsset("asset-1", "tenant-1", "proj-other", "key", "VIDEO", "file.mp4",
-                100L, null, null, null, null);
+                100L, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(asset));
 
         assertThrows(IllegalArgumentException.class, () -> assetService.getById("proj-1", "asset-1"));
@@ -89,8 +89,8 @@ class AssetServiceTest {
     @Test
     void shouldListByProject() {
         List<Asset> expected = List.of(
-                testAsset("a1", "tenant-1", "proj-1", "key1", "VIDEO", "v1.mp4", 100L, null, null, null, null),
-                testAsset("a2", "tenant-1", "proj-1", "key2", "IMAGE", "img.png", 50L, null, null, 1920, 1080)
+                testAsset("a1", "tenant-1", "proj-1", "key1", "VIDEO", "v1.mp4", 100L, null),
+                testAsset("a2", "tenant-1", "proj-1", "key2", "IMAGE", "img.png", 50L, null)
         );
         when(assetRepository.listByProject("tenant-1", "proj-1")).thenReturn(expected);
 
@@ -101,7 +101,7 @@ class AssetServiceTest {
     @Test
     void shouldDelete() {
         Asset asset = testAsset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
-                100L, null, null, null, null);
+                100L, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(asset));
         when(assetRepository.delete("tenant-1", "asset-1")).thenReturn(true);
 
@@ -112,7 +112,7 @@ class AssetServiceTest {
     @Test
     void shouldGeneratePreviewUrl() {
         Asset asset = testAsset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
-                100L, null, null, null, null);
+                100L, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(asset));
 
         String url = assetService.getPreviewUrl("proj-1", "asset-1");
@@ -121,9 +121,9 @@ class AssetServiceTest {
 
     private static Asset testAsset(String id, String tenantId, String projectId, String key,
                                      String mediaType, String filename, Long sizeBytes,
-                                     String checksum, Long durationMs, Integer width, Integer height) {
+                                     String checksum) {
         return new Asset(id, tenantId, projectId, key, mediaType, filename,
-                sizeBytes, checksum, durationMs, width, height,
+                sizeBytes, checksum,
                 "v1", null, null, null, null, null, null, false, false, "DRAFT",
                 Instant.now(), Instant.now());
     }

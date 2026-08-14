@@ -169,6 +169,47 @@ else
     fail "SPA fallback scope may be too broad"
 fi
 
+echo ""
+echo "--- MCMV2-C Media Canonical Model ---"
+
+# MEDIA_DOMAIN_DOES_NOT_DEPEND_ON_PROVIDER_OR_WORKER / frozen direction Render -> Media
+if grep -R "com.example.platform.render" media-module/src/main --include='*.java' 2>/dev/null | grep -q .; then
+    fail "media-module production imports render-module (frozen direction violated)"
+else
+    pass "media-module does not depend on render-module"
+fi
+if grep -R "com.example.platform.remoterender|com.example.platform.worker" media-module/src/main --include='*.java' 2>/dev/null | grep -q .; then
+    fail "media-module production imports worker/provider packages"
+else
+    pass "media-module does not depend on worker/provider packages"
+fi
+if grep -R "com.example.platform.render" media-module/build.gradle.kts 2>/dev/null | grep -q .; then
+    fail "media-module build depends on render-module"
+else
+    pass "media-module build has no render-module dependency"
+fi
+
+# CANONICAL_DOUBLE_TIME_RATE_AUTHORITY = 0 (media tables carry no double time/rate)
+if awk '/create table media_asset |create table media_stream |create table media_probe_observation /,/^\);/' platform-app/src/main/resources/db/migration/V1__initial_schema.sql | grep -q "double precision"; then
+    fail "canonical media tables contain double precision time/rate authority"
+else
+    pass "canonical media tables contain no double precision time/rate"
+fi
+
+# RAW_PROBE_RESULT_IS_NOT_CANONICAL_MEDIA_AUTHORITY: old MAM double table removed
+if grep -q "create table media_asset_metadata" platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+    fail "legacy media_asset_metadata table (double authority) still present"
+else
+    pass "legacy media_asset_metadata double authority removed"
+fi
+
+# RETIRED MediaStreamType gone (main checkout only; sibling .worktrees are historical checkouts)
+if find . -path './build' -prune -o -path './.worktrees' -prune -o -name 'MediaStreamType.java' -print | grep -q .; then
+    fail "retired MediaStreamType still present"
+else
+    pass "MediaStreamType retired"
+fi
+
 echo "=== Summary ==="
 echo "Checks: $CHECKS"
 echo "Failed: $FAILED"

@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.timeline.semantics.duration;
 
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
 import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
 import org.junit.jupiter.api.DisplayName;

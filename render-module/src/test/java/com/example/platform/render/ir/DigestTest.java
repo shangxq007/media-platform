@@ -1,4 +1,5 @@
 package com.example.platform.render.ir;
+import com.example.platform.shared.time.RationalTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 

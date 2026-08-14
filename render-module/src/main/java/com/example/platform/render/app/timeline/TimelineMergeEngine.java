@@ -5,8 +5,8 @@ import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandid
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalNormalizer;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineValidationResult;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.diff.TimelineChangeOperation;
 import com.example.platform.render.domain.timeline.diff.TimelinePatch;
 import com.example.platform.render.domain.timeline.diff.TimelinePatchId;

@@ -1,13 +1,13 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.semantics.time.CanonicalFrameRateCodec;
+import com.example.platform.shared.time.CanonicalFrameRateCodec;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalProfile;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineModelPath;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineSourceRef;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;

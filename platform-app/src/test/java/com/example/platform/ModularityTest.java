@@ -72,7 +72,12 @@ class ModularityTest {
         // K2 (K2-05): EntitlementPort rehomed from shared-kernel to entitlement::app — render
         // consumes the entitlement validation contract at its owner (render -> entitlement was
         // already an allowed module edge; the port now lives in the app named interface).
-        "render' depends on named interface(s) 'entitlement :: app"
+        "render' depends on named interface(s) 'entitlement :: app",
+        // MCMV2-C (F1-F4): render -> media is the frozen dependency direction
+        // (Timeline/Render/Workflow/AI/Delivery/Adapter -> Media Canonical Model).
+        // MediaProbeController/MediaAssetProbeService consume the canonical media model;
+        // the direction is additionally enforced by check-architecture-drift.sh.
+        "render' depends on module 'media"
     );
 
     @Test

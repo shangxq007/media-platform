@@ -4,7 +4,7 @@ import com.example.platform.render.domain.timeline.semantics.automation.Automati
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
 import com.example.platform.render.domain.timeline.semantics.error.TimelineError;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
 
 import java.util.*;

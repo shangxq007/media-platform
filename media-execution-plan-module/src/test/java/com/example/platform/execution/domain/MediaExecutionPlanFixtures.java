@@ -1,6 +1,6 @@
 package com.example.platform.execution.domain;
 
-import com.example.platform.artifact.domain.ArtifactId;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.artifact.domain.ArtifactKind;
 import com.example.platform.execution.domain.operation.TranscodeOperation;
 import com.example.platform.execution.domain.operation.TrimOperation;

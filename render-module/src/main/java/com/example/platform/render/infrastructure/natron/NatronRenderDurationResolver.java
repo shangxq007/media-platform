@@ -1,16 +1,16 @@
 package com.example.platform.render.infrastructure.natron;
 
 import com.example.platform.render.infrastructure.MediaProbeResult;
-import com.example.platform.render.infrastructure.MediaProbeService;
+import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import java.nio.file.Path;
 import org.springframework.stereotype.Component;
 
 @Component
 public class NatronRenderDurationResolver {
 
-    private final MediaProbeService mediaProbeService;
+    private final FfprobeMediaProbeExecutor mediaProbeService;
 
-    public NatronRenderDurationResolver(MediaProbeService mediaProbeService) {
+    public NatronRenderDurationResolver(FfprobeMediaProbeExecutor mediaProbeService) {
         this.mediaProbeService = mediaProbeService;
     }
 

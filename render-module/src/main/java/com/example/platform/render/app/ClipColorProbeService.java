@@ -6,7 +6,7 @@ import com.example.platform.render.domain.timeline.TimelineSpec;
 import com.example.platform.render.domain.timeline.TimelineTrack;
 import com.example.platform.render.infrastructure.ColorProbeMetadata;
 import com.example.platform.render.infrastructure.MediaProbeResult;
-import com.example.platform.render.infrastructure.MediaProbeService;
+import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -26,11 +26,11 @@ public class ClipColorProbeService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final TimelineScriptParser timelineScriptParser;
-    private final MediaProbeService mediaProbeService;
+    private final FfprobeMediaProbeExecutor mediaProbeService;
     private final TimelineColorMetadataService timelineColorMetadataService;
 
     public ClipColorProbeService(TimelineScriptParser timelineScriptParser,
-                                   MediaProbeService mediaProbeService,
+                                   FfprobeMediaProbeExecutor mediaProbeService,
                                    TimelineColorMetadataService timelineColorMetadataService) {
         this.timelineScriptParser = timelineScriptParser;
         this.mediaProbeService = mediaProbeService;

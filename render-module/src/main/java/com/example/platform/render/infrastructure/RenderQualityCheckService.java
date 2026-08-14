@@ -10,9 +10,9 @@ import java.util.List;
 public class RenderQualityCheckService {
     private static final Logger log = LoggerFactory.getLogger(RenderQualityCheckService.class);
 
-    private final MediaProbeService probeService;
+    private final FfprobeMediaProbeExecutor probeService;
 
-    public RenderQualityCheckService(MediaProbeService probeService) {
+    public RenderQualityCheckService(FfprobeMediaProbeExecutor probeService) {
         this.probeService = probeService;
     }
 

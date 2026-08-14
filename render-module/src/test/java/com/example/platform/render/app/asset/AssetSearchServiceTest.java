@@ -29,7 +29,7 @@ class AssetSearchServiceTest {
 
     private Asset asset(String id, String type, String filename, String classif, boolean aiGen) {
         return new Asset(id, "tenant_1", "proj_1", "s3://bucket/" + id, type, filename,
-                100L, "sha256:" + id, null, null, null, "v1", null, null,
+                100L, "sha256:" + id, "v1", null, null,
                 classif, null, null, null, false, aiGen, "DRAFT", Instant.now(), Instant.now());
     }
 

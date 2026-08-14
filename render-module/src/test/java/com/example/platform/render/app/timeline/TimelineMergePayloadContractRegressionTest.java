@@ -4,8 +4,8 @@ import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandid
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineSnapshot;
 import com.example.platform.render.domain.timeline.diff.calculation.TimelineSnapshotConverter;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 

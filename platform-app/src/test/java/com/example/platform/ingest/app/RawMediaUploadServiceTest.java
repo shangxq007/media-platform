@@ -48,10 +48,9 @@ class RawMediaUploadServiceTest {
         when(blobStorage.put(any())).thenReturn(new StorageObjectRef("localFs", "uploads", "tenant/t1/..."));
         Asset mockAsset = new Asset(
                 "asset-1", tenantId, projectId, "tenant/t1/workspace/default/project/p1/assets/asset-1/video.mp4",
-                "VIDEO", filename, 5L, null, null, null, null,
-                "v1", null, null, null, null, null, null, false, false, "DRAFT",
+                "VIDEO", filename, 5L, null, "v1", null, null, null, null, null, null, false, false, "DRAFT",
                 Instant.now(), Instant.now());
-        when(assetRepository.register(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(assetRepository.register(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(mockAsset);
 
         Instant createdAt = Instant.now();
@@ -69,7 +68,7 @@ class RawMediaUploadServiceTest {
         verify(blobStorage).put(argThat(cmd ->
                 cmd.bucket().equals("uploads") && cmd.content() == fileBytes && cmd.contentType().equals(contentType)));
         verify(assetRepository).register(eq(tenantId), eq(projectId), any(), eq("VIDEO"),
-                eq(filename), eq(5L), isNull(), isNull(), isNull(), isNull());
+                eq(filename), eq(5L), isNull());
         verify(productRegistrationFacade).registerRawMedia(argThat(cmd ->
                 cmd.tenantId().equals(tenantId)
                         && cmd.projectId().equals(projectId)
@@ -85,9 +84,9 @@ class RawMediaUploadServiceTest {
         when(blobStorage.put(any())).thenReturn(new StorageObjectRef("localFs", "uploads", "key"));
         Asset mockAsset = new Asset(
                 "a1", "t1", "p1", "key", "UNKNOWN", "empty", 0L,
-                null, null, null, null, "v1", null, null, null, null, null, null, false, false, "DRAFT",
+                null, "v1", null, null, null, null, null, null, false, false, "DRAFT",
                 Instant.now(), Instant.now());
-        when(assetRepository.register(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(assetRepository.register(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(mockAsset);
         when(productRegistrationFacade.registerRawMedia(any()))
                 .thenReturn(new RawMediaProductRegistrationResult("p1", Instant.now()));

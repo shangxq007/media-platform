@@ -1,4 +1,5 @@
 package com.example.platform.artifact.domain;
+import com.example.platform.shared.identity.ArtifactId;
 
 import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.storage.contract.StorageProviderId;

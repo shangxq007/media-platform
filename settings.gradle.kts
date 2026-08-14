@@ -39,7 +39,8 @@ include(
     "typed-schema-module",
     "storage-provider-opendal",
     "artifact-module",
-    "media-execution-plan-module"
+    "media-execution-plan-module",
+    "media-module"
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────

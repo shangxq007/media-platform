@@ -7,7 +7,7 @@ import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalProfile;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;

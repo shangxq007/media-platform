@@ -7,7 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.Asset.AssetPath;
+import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.AssetSemanticMetadataRecord;
 
 import java.time.LocalDateTime;
@@ -178,16 +178,16 @@ public class AssetSemanticMetadata extends TableImpl<AssetSemanticMetadataRecord
         return Arrays.asList(Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ASSET);
     }
 
-    private transient AssetPath _asset;
+    private transient MediaAssetPath _mediaAsset;
 
     /**
-     * Get the implicit join path to the <code>public.asset</code> table.
+     * Get the implicit join path to the <code>public.media_asset</code> table.
      */
-    public AssetPath asset() {
-        if (_asset == null)
-            _asset = new AssetPath(this, Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ASSET, null);
+    public MediaAssetPath mediaAsset() {
+        if (_mediaAsset == null)
+            _mediaAsset = new MediaAssetPath(this, Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ASSET, null);
 
-        return _asset;
+        return _mediaAsset;
     }
 
     @Override

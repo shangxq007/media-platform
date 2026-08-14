@@ -20,7 +20,7 @@ public class ShotstackRenderProviderConfiguration {
                                                     ShotstackApiClient apiClient,
                                                     ShotstackRenderProviderProperties properties,
                                                     com.example.platform.render.domain.timeline.TimelineScriptParser timelineScriptParser,
-                                                    com.example.platform.render.infrastructure.MediaProbeService mediaProbeService) {
+                                                    com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor mediaProbeService) {
         return new ShotstackRenderProvider(timelineMapper, apiClient, properties,
                 timelineScriptParser, mediaProbeService);
     }

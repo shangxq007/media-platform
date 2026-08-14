@@ -1,4 +1,5 @@
-package com.example.platform.render.domain.timeline.semantics.time;
+package com.example.platform.shared.time;
+import com.example.platform.shared.time.FrameRate;
 
 import org.junit.jupiter.api.Test;
 

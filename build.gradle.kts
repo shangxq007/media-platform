@@ -183,8 +183,11 @@ tasks.register("verifyJooqGeneratedSources") {
         // P1-IMPL1: corrected expectations to the V1-synchronized generated state.
         // (P1 retired 5 ownerless Product tables from V1: timeline_template, render_preset,
         // asset_library, render_history, ai_suggestion -> generated 153 -> 148; parity 148/148 EXACT.)
-        require(tableCount == 148) { "FAIL: Expected 148 Table classes but found " + tableCount }
-        require(recordCount == 148) { "FAIL: Expected 148 Record classes but found " + recordCount }
+        // MCMV2-C (C3): canonical media schema rewrite — asset -> media_asset,
+        // media_asset_artifact + media_stream + media_probe_observation added,
+        // media_asset_metadata (double authority) removed -> 148 -> 150; parity 150/150 EXACT.
+        require(tableCount == 150) { "FAIL: Expected 150 Table classes but found " + tableCount }
+        require(recordCount == 150) { "FAIL: Expected 150 Record classes but found " + recordCount }
         require(totalFiles >= 300) { "FAIL: Expected at least 300 total Java files but found " + totalFiles }
 
         println("OK: Generated source verification passed")

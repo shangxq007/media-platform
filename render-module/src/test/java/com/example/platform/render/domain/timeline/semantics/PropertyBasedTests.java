@@ -4,7 +4,7 @@ import com.example.platform.render.domain.timeline.semantics.automation.Automati
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
 import com.example.platform.render.domain.timeline.semantics.duration.TimelineDurationCalculator;
 import com.example.platform.render.domain.timeline.semantics.serialization.CanonicalSerializer;
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.semantics.validation.TimelineMediaSemanticsValidator;
 import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
 import org.junit.jupiter.api.DisplayName;

@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.timeline.canonicalmodel;
 
-import com.example.platform.render.domain.timeline.semantics.time.MediaTime;
+import com.example.platform.shared.time.MediaTime;
 import java.util.Objects;
 
 public record TimelineClipCanonical(

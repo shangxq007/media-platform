@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.semantics.time.FrameRate;
+import com.example.platform.shared.time.FrameRate;
 import com.example.platform.render.domain.timeline.compile.*;
 import java.util.List;
 import java.util.Map;

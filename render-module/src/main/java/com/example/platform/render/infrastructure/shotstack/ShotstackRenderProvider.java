@@ -3,7 +3,7 @@ package com.example.platform.render.infrastructure.shotstack;
 import com.example.platform.render.domain.timeline.TimelineClipEffect;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
 import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.infrastructure.MediaProbeService;
+import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderPreset;
@@ -38,7 +38,7 @@ public class ShotstackRenderProvider implements RenderProvider {
     private final ShotstackApiClient apiClient;
     private final ShotstackRenderProviderProperties properties;
     private final TimelineScriptParser timelineScriptParser;
-    private final MediaProbeService mediaProbeService;
+    private final FfprobeMediaProbeExecutor mediaProbeService;
 
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
@@ -47,7 +47,7 @@ public class ShotstackRenderProvider implements RenderProvider {
                                    ShotstackApiClient apiClient,
                                    ShotstackRenderProviderProperties properties,
                                    TimelineScriptParser timelineScriptParser,
-                                   MediaProbeService mediaProbeService) {
+                                   FfprobeMediaProbeExecutor mediaProbeService) {
         this.timelineMapper = timelineMapper;
         this.apiClient = apiClient;
         this.properties = properties;

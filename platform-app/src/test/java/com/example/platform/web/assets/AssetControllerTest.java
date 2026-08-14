@@ -54,7 +54,7 @@ class AssetControllerTest {
     @Test
     void shouldRegisterAsset() {
         Asset expected = testAsset("a1");
-        when(assetService.register(any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(expected);
+        when(assetService.register(any(), any(), any(), any(), any(), any())).thenReturn(expected);
 
         AssetController.RegisterAssetRequest request = new AssetController.RegisterAssetRequest(
                 "tenant/workspace/project/assets/a1/v.mp4", "VIDEO", "v.mp4", 100L, null, null, null, null);
@@ -86,8 +86,7 @@ class AssetControllerTest {
 
     private static Asset testAsset(String id) {
         return new Asset(id, "t1", "p1", "key1", "VIDEO", "v.mp4",
-                100L, null, null, null, null,
-                "v1", null, null, null, null, null, null, false, false, "DRAFT",
+                100L, null, "v1", null, null, null, null, null, null, false, false, "DRAFT",
                 Instant.now(), Instant.now());
     }
 }
