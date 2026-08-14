@@ -1,5 +1,6 @@
 package com.example.platform.extension.domain;
 
+import com.example.platform.extension.api.port.CapabilityRegistryPort;
 import com.example.platform.extension.api.port.PluginRegistryPort;
 import com.example.platform.extension.app.PluginDescriptorValidator;
 import com.example.platform.extension.app.PluginHealthRegistry;
@@ -24,30 +25,40 @@ class CapabilityV16ContractTest {
     @Test
     void platformNamespaceAccepted() {
         assertEquals("media.render", CapabilityId.of("media.render").value());
-        assertTrue(CapabilityId.of("audio.timeStretch").isPlatformReserved());
+        assertTrue(CapabilityId.of("audio.time-stretch").isPlatformReserved());
     }
 
     @Test
     void vendorReverseDnsAccepted() {
         assertTrue(CapabilityId.of("com.vendor.enhance").isVendorExtension());
         assertTrue(CapabilityId.of("org.example.special").isVendorExtension());
+        // structural validation: NO hardcoded TLD allowlist (C16-CORR-1)
+        assertTrue(CapabilityId.of("de.vendor.effect").isVendorExtension());
+        assertTrue(CapabilityId.of("uk.co.vendor.pack").isVendorExtension());
+        assertTrue(CapabilityId.of("company.example.render").isVendorExtension());
+        assertTrue(CapabilityId.of("eu.example.tool").isVendorExtension());
     }
 
     @Test
     void vendorSquattingPlatformRejected() {
-        // platform namespace is reserved: a vendor cannot use a platform prefix as its own
+        // platform namespace is reserved: anything under a platform prefix is a
+        // platform-owned capability id (structural rule, C16-CORR-1)
         assertTrue(CapabilityId.of("media.render.vendor").isPlatformReserved());
         assertFalse(CapabilityId.of("media.render.vendor").isVendorExtension());
-        // unknown/undefined prefixes (squatting attempts) fail closed
-        assertFalse(CapabilityNamespaceValidator.isValid("vendor.media.render"));
-        assertFalse(CapabilityNamespaceValidator.isValid("myplugin.render"));
-        assertThrows(IllegalArgumentException.class, () -> CapabilityId.of("vendor.media.render"));
+        assertTrue(CapabilityId.of("timeline.thirdparty.bar").isPlatformReserved());
+        // a vendor namespace cannot masquerade as a platform id; vendor ids live
+        // in their own reverse-DNS namespace (distinct structural classes)
+        assertTrue(CapabilityId.of("vendor.media.render").isVendorExtension());
+        assertFalse(CapabilityId.of("vendor.media.render").isPlatformReserved());
+        // malformed vendor id still rejected
+        assertFalse(CapabilityNamespaceValidator.isValid("vendor..render"));
+        assertThrows(IllegalArgumentException.class, () -> CapabilityId.of("vendor..render"));
     }
 
     @Test
     void malformedRejected() {
         assertFalse(CapabilityNamespaceValidator.isValid("bare"));
-        assertFalse(CapabilityNamespaceValidator.isValid("com.vendor"));
+        assertTrue(CapabilityNamespaceValidator.isValid("com.vendor")); // 2 segments = structurally valid vendor
         assertFalse(CapabilityNamespaceValidator.isValid("media."));
         assertFalse(CapabilityNamespaceValidator.isValid("media..x"));
         assertFalse(CapabilityNamespaceValidator.isValid(".media.render"));
@@ -64,7 +75,7 @@ class CapabilityV16ContractTest {
     @Test
     void contractVersionParseAndCompare() {
         assertEquals(ContractVersion.of(1, 0), ContractVersion.parse("1.0"));
-        assertEquals(ContractVersion.of(1, 0), ContractVersion.parse("1")); // legacy single-segment
+        assertEquals(ContractVersion.of(1, 0), ContractVersion.parse("1.0")); // legacy single-segment
         assertTrue(ContractVersion.parse("1.5").compareTo(ContractVersion.parse("1.4")) > 0);
         assertThrows(IllegalArgumentException.class, () -> ContractVersion.parse("a.b"));
         assertThrows(IllegalArgumentException.class, () -> ContractVersion.parse("1.2.3"));
@@ -94,10 +105,10 @@ class CapabilityV16ContractTest {
     @Test
     void requirementRequiredVsOptional() {
         CapabilityRequirement req = CapabilityRequirement.of(
-                CapabilityId.of("audio.timeStretch"),
+                CapabilityId.of("audio.time-stretch"),
                 ContractVersionRange.exactly(ContractVersion.of(1, 0)));
         CapabilityRequirement opt = CapabilityRequirement.optional(
-                CapabilityId.of("audio.noiseReduction"),
+                CapabilityId.of("audio.noise-reduction"),
                 ContractVersionRange.exactly(ContractVersion.of(1, 0)));
         assertTrue(req.required());
         assertFalse(opt.required());
@@ -120,13 +131,13 @@ class CapabilityV16ContractTest {
     @Test
     void implementationIdentityIndependentOfPluginCapabilityTuple() {
         CapabilityImplementation impl = CapabilityImplementation.of(
-                CapabilityImplementationId.of("plugin::audio.timeStretch@1.0"),
-                "plugin-x", CapabilityId.of("audio.timeStretch"),
+                CapabilityImplementationId.of("plugin::audio.time-stretch@1.0"),
+                "plugin-x", CapabilityId.of("audio.time-stretch"),
                 ContractVersion.of(1, 0), "2.3.0");
         assertEquals("2.3.0", impl.implementationVersion());
         assertEquals(ContractVersion.of(1, 0), impl.contractVersion());
         assertNotEquals(impl.implementationId(),
-                CapabilityImplementationId.of("plugin-x/audio.timeStretch"));
+                CapabilityImplementationId.of("plugin-x/audio.time-stretch"));
     }
 
     @Test
@@ -160,9 +171,15 @@ class CapabilityV16ContractTest {
                 new com.example.platform.extension.app.PluginDescriptorValidator(),
                 new com.example.platform.extension.app.PluginHealthRegistry());
         impl.register(descriptor("vendorplugin.b", "1.0.0", List.of("video.encode@1.0")));
-        PluginRegistryPort port = impl;
+        // capability consumers depend on CapabilityRegistryPort (C16-CORR-3)
+        CapabilityRegistryPort port = impl;
         assertEquals(1, port.findCapabilityImplementations(CapabilityId.of("video.encode")).size());
-        assertEquals(0, port.findCapabilityImplementations(CapabilityId.of("audio.timeStretch")).size());
+        assertEquals(0, port.findCapabilityImplementations(CapabilityId.of("audio.time-stretch")).size());
+        assertEquals(1, port.findImplementationsForContractVersion(
+                CapabilityId.of("video.encode"), ContractVersion.of(1, 0)).size());
+        // plugin container concern stays on PluginRegistryPort
+        PluginRegistryPort pluginPort = impl;
+        assertEquals("vendorplugin.b", pluginPort.enumerate().get(0).pluginId());
     }
 
     // ---- G/H. Multi-axis lifecycle separation (R4) ----
@@ -191,7 +208,7 @@ class CapabilityV16ContractTest {
     void missingRequiredDependencyFailsClosed() {
         var result = CapabilityDependencyValidator.validate(
                 List.of(CapabilityRequirement.of(
-                        CapabilityId.of("audio.noiseReduction"),
+                        CapabilityId.of("audio.noise-reduction"),
                         ContractVersionRange.exactly(ContractVersion.of(1, 0)))),
                 Set.of(CapabilityId.of("media.render")),
                 id -> ContractVersion.of(1, 0));
@@ -215,11 +232,63 @@ class CapabilityV16ContractTest {
     void optionalMissingAllowed() {
         var result = CapabilityDependencyValidator.validate(
                 List.of(CapabilityRequirement.optional(
-                        CapabilityId.of("audio.noiseReduction"),
+                        CapabilityId.of("audio.noise-reduction"),
                         ContractVersionRange.exactly(ContractVersion.of(1, 0)))),
                 Set.of(CapabilityId.of("media.render")),
                 id -> ContractVersion.of(1, 0));
         assertTrue(result.isValid());
+    }
+
+    // ---- C16-CORR-4: multi-hop dependency cycle detection ----
+    private static java.util.function.Function<CapabilityId, List<CapabilityId>> edges(
+            String... spec) {
+        java.util.Map<CapabilityId, List<CapabilityId>> m = new java.util.HashMap<>();
+        for (String s : spec) {
+            String[] parts = s.split(">");
+            m.put(CapabilityId.of(parts[0]),
+                    parts.length > 1 ? java.util.Arrays.stream(parts[1].split(","))
+                            .map(CapabilityId::of).toList() : List.of());
+        }
+        return id -> m.getOrDefault(id, List.of());
+    }
+
+    private static Set<CapabilityId> ids(String... names) {
+        return java.util.Arrays.stream(names).map(CapabilityId::of).collect(java.util.stream.Collectors.toSet());
+    }
+
+    @Test
+    void selfCycleRejected() {
+        assertTrue(CapabilityDependencyValidator.hasCycle(ids("media.a"), edges("media.a>media.a")));
+    }
+
+    @Test
+    void twoNodeCycleRejected() {
+        assertTrue(CapabilityDependencyValidator.hasCycle(ids("media.a", "media.b"), edges("media.a>media.b", "media.b>media.a")));
+    }
+
+    @Test
+    void threeNodeCycleRejected() {
+        assertTrue(CapabilityDependencyValidator.hasCycle(
+                ids("media.a", "media.b", "media.c"), edges("media.a>media.b", "media.b>media.c", "media.c>media.a")));
+    }
+
+    @Test
+    void acyclicChainAccepted() {
+        assertFalse(CapabilityDependencyValidator.hasCycle(
+                ids("media.a", "media.b", "media.c"), edges("media.a>media.b", "media.b>media.c")));
+    }
+
+    @Test
+    void diamondGraphAccepted() {
+        assertFalse(CapabilityDependencyValidator.hasCycle(
+                ids("media.a", "media.b", "media.c", "media.d"), edges("media.a>media.b", "media.a>media.c", "media.b>media.d", "media.c>media.d")));
+    }
+
+    @Test
+    void cycleDetectionFollowsRequiredEdgesOnly() {
+        // edge leaving the node set is ignored (optional/foreign dependency)
+        assertFalse(CapabilityDependencyValidator.hasCycle(
+                ids("media.a", "media.b"), edges("media.a>media.b", "media.b>render.encode")));
     }
 
     // ---- K. Entitlement leakage ----

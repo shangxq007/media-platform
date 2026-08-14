@@ -13,7 +13,7 @@
 * `c.e.p.e.app.ExtensionRouter`
 * `c.e.p.e.app.PluginHealthRegistry`
 * `c.e.p.e.app.PluginMatcher`
-* `c.e.p.e.api.port.PluginRegistryPort` (via `c.e.p.e.app.PluginRegistryImpl`)
+* `c.e.p.e.api.port.PluginRegistryPort`, `c.e.p.e.api.port.CapabilityRegistryPort` (via `c.e.p.e.app.PluginRegistryImpl`)
 * `c.e.p.e.app.SandboxExecutionService`
 
 _Others_

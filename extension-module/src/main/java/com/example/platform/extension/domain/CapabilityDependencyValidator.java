@@ -76,23 +76,51 @@ public final class CapabilityDependencyValidator {
         return new DependencyValidation(failures);
     }
 
-    /** Detect an obvious direct requirement cycle (A requires B, B requires A). */
-    public static boolean hasDirectCycle(
-            List<CapabilityRequirement> requirements,
-            java.util.function.Function<CapabilityId, List<CapabilityId>> requires) {
-        for (CapabilityRequirement a : requirements) {
-            for (CapabilityId b : requires.apply(a.capabilityId())) {
-                for (CapabilityRequirement r : requirements) {
-                    if (r.capabilityId().equals(b)) {
-                        for (CapabilityId a2 : requires.apply(b)) {
-                            if (a2.equals(a.capabilityId())) {
-                                return true;
-                            }
-                        }
-                    }
+    /** Detect ANY required-dependency cycle (self, 2-node, 3-node, arbitrary)
+     *  using DFS with a visiting set (C16-CORR-4). Follows required edges only. */
+    public static boolean hasCycle(
+            Set<CapabilityId> nodes,
+            java.util.function.Function<CapabilityId, List<CapabilityId>> requiredEdges) {
+        java.util.Map<CapabilityId, Integer> state = new java.util.HashMap<>();
+        // 0 = unvisited, 1 = visiting (on current DFS path), 2 = done
+        for (CapabilityId node : nodes) {
+            if (state.getOrDefault(node, 0) == 0) {
+                if (dfs(node, nodes, requiredEdges, state)) {
+                    return true;
                 }
             }
         }
         return false;
+    }
+
+    private static boolean dfs(
+            CapabilityId node,
+            Set<CapabilityId> nodes,
+            java.util.function.Function<CapabilityId, List<CapabilityId>> requiredEdges,
+            java.util.Map<CapabilityId, Integer> state) {
+        state.put(node, 1);
+        for (CapabilityId next : requiredEdges.apply(node)) {
+            if (!nodes.contains(next)) {
+                continue; // only required edges among the validated graph participate
+            }
+            int nextState = state.getOrDefault(next, 0);
+            if (nextState == 1) {
+                return true; // back edge -> cycle
+            }
+            if (nextState == 0 && dfs(next, nodes, requiredEdges, state)) {
+                return true;
+            }
+        }
+        state.put(node, 2);
+        return false;
+    }
+
+    /** Detect an obvious direct requirement cycle (A requires B, B requires A). */
+    public static boolean hasDirectCycle(
+            List<CapabilityRequirement> requirements,
+            java.util.function.Function<CapabilityId, List<CapabilityId>> requires) {
+        return hasCycle(
+                requirements.stream().map(CapabilityRequirement::capabilityId).collect(java.util.stream.Collectors.toSet()),
+                requires);
     }
 }

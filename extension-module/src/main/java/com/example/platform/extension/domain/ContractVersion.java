@@ -24,19 +24,19 @@ public record ContractVersion(int major, int minor) {
         return new ContractVersion(major, minor);
     }
 
-    /** Parses {@code "major.minor"} or legacy single-segment {@code "major"} (= major.0). */
+    /** Parses canonical {@code "major.minor"} only; anything else fails closed (C16-CORR-2). */
     public static ContractVersion parse(String s) {
         Objects.requireNonNull(s, "s");
         String[] parts = s.split("\\.");
-        if (parts.length < 1 || parts.length > 2) {
-            throw new IllegalArgumentException("contract version must be major or major.minor: " + s);
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("contract version must be major.minor (e.g. 1.0): " + s);
         }
         try {
             int major = Integer.parseInt(parts[0]);
-            int minor = parts.length == 2 ? Integer.parseInt(parts[1]) : 0;
+            int minor = Integer.parseInt(parts[1]);
             return new ContractVersion(major, minor);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("contract version must be numeric: " + s, e);
+            throw new IllegalArgumentException("contract version must be numeric major.minor: " + s, e);
         }
     }
 

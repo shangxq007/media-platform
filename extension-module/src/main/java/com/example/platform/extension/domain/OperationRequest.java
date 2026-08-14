@@ -10,7 +10,7 @@ package com.example.platform.extension.domain;
  * stable IDs and value types.</p>
  *
  * @param requiredCapabilityId              required capability ID (e.g. {@code media.render})
- * @param requiredCapabilityContractVersion required capability contract version (e.g. {@code "1"})
+ * @param requiredCapabilityContractVersion required capability contract version (e.g. {@code "1.0"})
  * @param handledObjectTypeId               required handled-object type ID (e.g. {@code RenderExecutionPlan})
  * @param tenantEnablementContext           policy-port result (nullable; default-enabled for trusted internal)
  * @param selectionPolicyContext            explicit plugin ID/version override (nullable)

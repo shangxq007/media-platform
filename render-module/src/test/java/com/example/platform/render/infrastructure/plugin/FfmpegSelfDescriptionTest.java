@@ -68,10 +68,10 @@ class FfmpegSelfDescriptionTest {
     @Test
     void mediaRenderAndSubtitleBurnInDiscoverable() {
         contributor.registerSelfDescription();
-        assertEquals(1, registry.findCapabilityCandidates("media.render", "1").size());
-        assertEquals(1, registry.findCapabilityCandidates("subtitle.burn-in", "1").size());
+        assertEquals(1, registry.findCapabilityCandidates("media.render", "1.0").size());
+        assertEquals(1, registry.findCapabilityCandidates("subtitle.burn-in", "1.0").size());
         assertEquals("media.render.ffmpeg",
-                registry.findCapabilityCandidates("media.render", "1").get(0).pluginId());
+                registry.findCapabilityCandidates("media.render", "1.0").get(0).pluginId());
     }
 
     @Test

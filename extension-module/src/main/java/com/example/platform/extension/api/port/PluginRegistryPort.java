@@ -1,8 +1,5 @@
 package com.example.platform.extension.api.port;
 
-import com.example.platform.extension.domain.CapabilityId;
-import com.example.platform.extension.domain.CapabilityImplementation;
-import com.example.platform.extension.domain.CapabilityImplementationId;
 import com.example.platform.extension.domain.PluginDescriptor;
 import com.example.platform.extension.domain.PluginHealth;
 import java.util.List;
@@ -64,27 +61,4 @@ public interface PluginRegistryPort {
      * @return health state (UNKNOWN when never evaluated)
      */
     PluginHealth healthOf(String pluginId);
-
-    // #16 (R2/R3): capability implementation-level queries. The registry contract
-    // (CapabilityRegistry) is the architecture authority; PluginRegistryPort is its
-    // read contract and PluginRegistryImpl the current implementation.
-
-    /**
-     * All registered capability implementations providing {@code capabilityId}
-     * (deterministic order by implementation id). One plugin may provide
-     * multiple distinct implementations of the same capability.
-     *
-     * @param capabilityId typed capability id
-     * @return immutable implementation list
-     */
-    List<CapabilityImplementation> findCapabilityImplementations(CapabilityId capabilityId);
-
-    /**
-     * Lookup by independent implementation identity (NOT the (plugin, capability)
-     * tuple — see {@link CapabilityImplementationId}).
-     *
-     * @param implementationId independent implementation id
-     * @return implementation if registered
-     */
-    Optional<CapabilityImplementation> findImplementationById(CapabilityImplementationId implementationId);
 }

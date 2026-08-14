@@ -57,13 +57,13 @@ class PluginSelectionAmbiguityTest {
 
     @Test
     void materialAmbiguityFailsInsteadOfSilentSelection() {
-        registry.register(plugin("media.render.aaa", "media.render", "1"));
-        registry.register(plugin("media.render.bbb", "media.render", "1"));
+        registry.register(plugin("media.render.aaa", "media.render", "1.0"));
+        registry.register(plugin("media.render.bbb", "media.render", "1.0"));
         // Both candidates eligible, equal priority, distinct stable IDs:
         // material ambiguity MUST terminate with AMBIGUOUS_SELECTION_FAILURE,
         // not first-registration-wins.
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> matcher.select(OperationRequest.of("media.render", "1", "RenderExecutionPlan")));
+                () -> matcher.select(OperationRequest.of("media.render", "1.0", "RenderExecutionPlan")));
         assertTrue(ex.getMessage().startsWith(PluginMatcher.MTC_AMBIGUOUS));
     }
 
@@ -71,22 +71,22 @@ class PluginSelectionAmbiguityTest {
     void ambiguityIndependentOfRegistrationOrder() {
         // Registration order reversed: same outcome (ambiguity), same candidate
         // presentation order (stable identity ordering).
-        registry.register(plugin("media.render.bbb", "media.render", "1"));
-        registry.register(plugin("media.render.aaa", "media.render", "1"));
+        registry.register(plugin("media.render.bbb", "media.render", "1.0"));
+        registry.register(plugin("media.render.aaa", "media.render", "1.0"));
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> matcher.select(OperationRequest.of("media.render", "1", "RenderExecutionPlan")));
+                () -> matcher.select(OperationRequest.of("media.render", "1.0", "RenderExecutionPlan")));
         assertTrue(ex.getMessage().startsWith(PluginMatcher.MTC_AMBIGUOUS));
-        var candidates = matcher.match(OperationRequest.of("media.render", "1", "RenderExecutionPlan"));
+        var candidates = matcher.match(OperationRequest.of("media.render", "1.0", "RenderExecutionPlan"));
         assertEquals("media.render.aaa", candidates.get(0).pluginId());
         assertEquals("media.render.bbb", candidates.get(1).pluginId());
     }
 
     @Test
     void explicitRequestResolvesAmbiguity() {
-        registry.register(plugin("media.render.aaa", "media.render", "1"));
-        registry.register(plugin("media.render.bbb", "media.render", "1"));
+        registry.register(plugin("media.render.aaa", "media.render", "1.0"));
+        registry.register(plugin("media.render.bbb", "media.render", "1.0"));
         OperationRequest request = new OperationRequest(
-                "media.render", "1", "RenderExecutionPlan", null,
+                "media.render", "1.0", "RenderExecutionPlan", null,
                 new OperationRequest.SelectionPolicyContext("media.render.bbb", "1.0.0"));
         var selected = matcher.select(request);
         assertEquals("media.render.bbb", selected.pluginId());
@@ -94,29 +94,29 @@ class PluginSelectionAmbiguityTest {
 
     @Test
     void noFirstBeanOrClasspathOrFilesystemSelection() {
-        registry.register(plugin("media.render.aaa", "media.render", "1"));
-        registry.register(plugin("media.render.bbb", "media.render", "1"));
+        registry.register(plugin("media.render.aaa", "media.render", "1.0"));
+        registry.register(plugin("media.render.bbb", "media.render", "1.0"));
         // select() must not pick by any order other than the frozen pipeline;
         // with material ambiguity it must fail (proven above). The candidate
         // list is stable-ID ordered, never classpath/filesystem/bean ordered.
-        var candidates = matcher.match(OperationRequest.of("media.render", "1", "RenderExecutionPlan"));
+        var candidates = matcher.match(OperationRequest.of("media.render", "1.0", "RenderExecutionPlan"));
         assertEquals(candidates.stream().map(r -> r.pluginId()).sorted().toList(),
                 candidates.stream().map(r -> r.pluginId()).toList());
     }
 
     @Test
     void singleCandidateSelectsDeterministically() {
-        registry.register(plugin("media.render.only", "media.render", "1"));
-        var selected = matcher.select(OperationRequest.of("media.render", "1", "RenderExecutionPlan"));
+        registry.register(plugin("media.render.only", "media.render", "1.0"));
+        var selected = matcher.select(OperationRequest.of("media.render", "1.0", "RenderExecutionPlan"));
         assertEquals("media.render.only", selected.pluginId());
     }
 
     @Test
     void stableDiagnostics() {
-        registry.register(plugin("media.render.aaa", "media.render", "1"));
-        registry.register(plugin("media.render.bbb", "media.render", "1"));
+        registry.register(plugin("media.render.aaa", "media.render", "1.0"));
+        registry.register(plugin("media.render.bbb", "media.render", "1.0"));
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> matcher.select(OperationRequest.of("media.render", "1", "RenderExecutionPlan")));
+                () -> matcher.select(OperationRequest.of("media.render", "1.0", "RenderExecutionPlan")));
         // Stable machine-readable outcome code is the message prefix.
         assertTrue(ex.getMessage().contains(PluginMatcher.MTC_AMBIGUOUS));
         assertTrue(ex.getMessage().contains("media.render.aaa"));

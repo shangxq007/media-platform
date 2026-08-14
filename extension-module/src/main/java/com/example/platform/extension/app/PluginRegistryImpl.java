@@ -1,5 +1,6 @@
 package com.example.platform.extension.app;
 
+import com.example.platform.extension.api.port.CapabilityRegistryPort;
 import com.example.platform.extension.api.port.PluginRegistryPort;
 import com.example.platform.extension.domain.CapabilityDescriptor;
 import com.example.platform.extension.domain.CapabilityId;
@@ -36,7 +37,7 @@ import org.springframework.stereotype.Service;
  * copies; descriptors are immutable records.</p>
  */
 @Service
-public class PluginRegistryImpl implements PluginRegistryPort {
+public class PluginRegistryImpl implements PluginRegistryPort, CapabilityRegistryPort {
 
     private final PluginDescriptorValidator validator;
     private final PluginHealthRegistry healthRegistry;
@@ -116,6 +117,20 @@ public class PluginRegistryImpl implements PluginRegistryPort {
     @Override
     public Optional<CapabilityImplementation> findImplementationById(CapabilityImplementationId implementationId) {
         return Optional.ofNullable(implementations.get(implementationId));
+    }
+
+    @Override
+    public List<CapabilityImplementation> findImplementationsForContractVersion(
+            CapabilityId capabilityId, ContractVersion contractVersion) {
+        List<CapabilityImplementation> result = new ArrayList<>();
+        for (CapabilityImplementation impl : implementations.values()) {
+            if (impl.capabilityId().equals(capabilityId)
+                    && impl.contractVersion().equals(contractVersion)) {
+                result.add(impl);
+            }
+        }
+        result.sort(Comparator.comparing(i -> i.implementationId().value()));
+        return List.copyOf(result);
     }
 
     @Override

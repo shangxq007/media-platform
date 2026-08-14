@@ -65,3 +65,29 @@ Hermes; harness evidence continues accumulating from #15 sample).
 
 ## Blockers
 0. NEXT: Roadmap #17.
+
+## Greenfield canonicalization correction (ROADMAP_16_GREENFIELD_CANONICALIZATION_CORRECTION_V1)
+
+The original candidate (0174c61e/65c2d95a) passed FCV and was preserved unchanged.
+Bounded greenfield corrections were applied BEFORE canonical mainline integration:
+
+- C16-CORR-1: CapabilityId = typed namespaced stable identifier (NOT universally
+  reverse-DNS). Platform reserved namespaces (media./timeline./audio./video./subtitle./
+  render.) own their prefixes; vendor extensions use reverse-DNS namespaces with
+  STRUCTURAL validation — the hardcoded vendor TLD allowlist (com/org/net/io/dev) was
+  removed. Platform segments allow hyphens (subtitle.burn-in); vendor segments strict
+  lower-case (no hyphen), first segment letter, >= 2 segments.
+- C16-CORR-2: ContractVersion canonical syntax = major.minor ONLY. Legacy single-segment
+  "1" support RETIRED (no external/persisted compatibility evidence — all literals were
+  internal test fixtures, migrated to 1.0). COMPATIBILITY_EVIDENCE_FOUND = NO.
+- C16-CORR-3: CapabilityRegistryPort = CAPABILITY-FACING registry authority contract
+  (implementation lookup by CapabilityId / implementation id / contract version).
+  PluginRegistryPort reduced to plugin package/container concern. PluginRegistryImpl
+  implements BOTH ports. Capability consumers depend on CapabilityRegistryPort.
+- C16-CORR-4: CapabilityDependencyValidator cycle detection generalized to multi-hop
+  required-dependency DFS (self / 2-node / 3-node / arbitrary cycles rejected;
+  acyclic chain + diamond accepted; optional/foreign edges excluded).
+
+Final verification: targeted tests 26 (CapabilityV16ContractTest incl. cycle matrix),
+extension-module 315 tests PASS, drift 53/53, Modulith ModularityTest PASS,
+full suite (see FCV evidence), bootJar PASS, pfirr1RemediationCheck PASS.

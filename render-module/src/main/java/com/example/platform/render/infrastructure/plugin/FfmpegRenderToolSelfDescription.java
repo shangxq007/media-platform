@@ -52,7 +52,7 @@ public class FfmpegRenderToolSelfDescription {
     public static final String VENDOR = "media-platform";
     public static final String CAPABILITY_MEDIA_RENDER = "media.render";
     public static final String CAPABILITY_SUBTITLE_BURN_IN = "subtitle.burn-in";
-    public static final String CAPABILITY_CONTRACT_VERSION = "1";
+    public static final String CAPABILITY_CONTRACT_VERSION = "1.0"; // canonical major.minor (C16-CORR-2)
     public static final String HANDLED_OBJECT_RENDER_EXECUTION_PLAN = "RenderExecutionPlan";
     public static final String HANDLED_OBJECT_SCHEMA_VERSION = "1";
     public static final String FFMPEG_TOOL_KEY = "ffmpeg";

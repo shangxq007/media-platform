@@ -120,7 +120,7 @@ class PluginCapabilityRegistryBoundaryTest {
                 "health must be eligible (HEALTHY when ffmpeg present, else UNKNOWN): " + health.state());
 
         // Matching deterministic: media.render + RenderExecutionPlan query.
-        OperationRequest request = OperationRequest.of("media.render", "1", "RenderExecutionPlan");
+        OperationRequest request = OperationRequest.of("media.render", "1.0", "RenderExecutionPlan");
         List<PluginSelectionResult> first = matcher.match(request);
         List<PluginSelectionResult> second = matcher.match(request);
         assertEquals(first, second, "matching must be deterministic");

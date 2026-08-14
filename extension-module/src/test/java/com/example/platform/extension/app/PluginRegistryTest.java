@@ -43,7 +43,7 @@ class PluginRegistryTest {
         return new PluginDescriptor(
                 id, version, "1", "media-platform",
                 List.of(new CapabilityDescriptor(
-                        "media.render", "1", "render", "RenderExecutionPlan",
+                        "media.render", "1.0", "render", "RenderExecutionPlan",
                         "ArtifactReference", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
                 List.of(new HandledObjectDescriptor(
                         "RenderExecutionPlan", "1",
@@ -106,7 +106,7 @@ class PluginRegistryTest {
     void capabilityCandidateQuery() {
         registry.register(plugin("media.render.ffmpeg", "1.0.0"));
         registry.register(plugin("media.render.other", "1.0.0"));
-        var candidates = registry.findCapabilityCandidates("media.render", "1");
+        var candidates = registry.findCapabilityCandidates("media.render", "1.0");
         assertEquals(2, candidates.size());
         assertEquals(List.of("media.render.ffmpeg", "media.render.other"),
                 candidates.stream().map(PluginDescriptor::pluginId).toList());

@@ -275,15 +275,30 @@ else
     fail "AudioMix missing from TimelineDocument canonical content"
 fi
 
-# T16 Gate 1 (R1/C16): CapabilityId namespace validator present; vendor cannot squat platform
-if grep -q 'PLATFORM_RESERVED_PREFIXES' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java && grep -q 'CapabilityNamespaceValidator' extension-module/src/main/java/com/example/platform/extension/app/PluginDescriptorValidator.java; then
-    pass "capability namespace validation enforced"
+# T16 Gate 1 (R1/C16 + C16-CORR-1): typed namespaced CapabilityId; STRUCTURAL vendor
+# validation (no hardcoded TLD allowlist); squatting/malformed fail closed
+if grep -q 'PLATFORM_RESERVED_PREFIXES' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java && grep -q 'CapabilityNamespaceValidator' extension-module/src/main/java/com/example/platform/extension/app/PluginDescriptorValidator.java && grep -q 'reverse-DNS' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityNamespaceValidator.java && ! grep -q 'VENDOR_PREFIXES = List.of\("com\."' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java; then
+    pass "capability namespace validation enforced (structural, no TLD allowlist)"
 else
-    fail "capability namespace validation missing"
+    fail "capability namespace validation missing or TLD allowlist present"
+fi
+
+# T16 Gate 3b (C16-CORR-3): CapabilityRegistryPort exists as capability-facing authority
+if grep -q 'interface CapabilityRegistryPort' extension-module/src/main/java/com/example/platform/extension/api/port/CapabilityRegistryPort.java && grep -q 'implements PluginRegistryPort, CapabilityRegistryPort' extension-module/src/main/java/com/example/platform/extension/app/PluginRegistryImpl.java; then
+    pass "capability-facing registry contract authority (CapabilityRegistryPort)"
+else
+    fail "CapabilityRegistryPort authority missing"
+fi
+
+# T16 Gate 6 (C16-CORR-2): canonical contract version major.minor only; single-segment rejected
+if grep -q 'major.minor' extension-module/src/main/java/com/example/platform/extension/domain/ContractVersion.java && grep -q 'parts.length != 2' extension-module/src/main/java/com/example/platform/extension/domain/ContractVersion.java; then
+    pass "contract version canonical major.minor enforced"
+else
+    fail "contract version canonical syntax missing"
 fi
 
 # T16 Gate 2 (R2/C5): independent CapabilityImplementationId (not the (plugin, capability) tuple)
-if grep -q 'record CapabilityImplementationId' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityImplementationId.java && grep -q 'findCapabilityImplementations' extension-module/src/main/java/com/example/platform/extension/api/port/PluginRegistryPort.java; then
+if grep -q 'record CapabilityImplementationId' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityImplementationId.java && grep -q 'findCapabilityImplementations' extension-module/src/main/java/com/example/platform/extension/api/port/CapabilityRegistryPort.java; then
     pass "independent implementation identity + registry queries"
 else
     fail "capability implementation identity missing"

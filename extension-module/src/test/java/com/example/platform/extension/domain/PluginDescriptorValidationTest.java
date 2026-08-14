@@ -34,7 +34,7 @@ class PluginDescriptorValidationTest {
 
     private static CapabilityDescriptor capability(String id) {
         return new CapabilityDescriptor(
-                id, "1", "render", "RenderExecutionPlan", "ArtifactReference",
+                        id, "1.0", "render", "RenderExecutionPlan", "ArtifactReference",
                 CapabilityDescriptor.InvocationMode.SYNC_ONLY);
     }
 
