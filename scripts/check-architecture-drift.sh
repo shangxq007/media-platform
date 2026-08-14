@@ -275,6 +275,41 @@ else
     fail "AudioMix missing from TimelineDocument canonical content"
 fi
 
+# T16 Gate 1 (R1/C16): CapabilityId namespace validator present; vendor cannot squat platform
+if grep -q 'PLATFORM_RESERVED_PREFIXES' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java && grep -q 'CapabilityNamespaceValidator' extension-module/src/main/java/com/example/platform/extension/app/PluginDescriptorValidator.java; then
+    pass "capability namespace validation enforced"
+else
+    fail "capability namespace validation missing"
+fi
+
+# T16 Gate 2 (R2/C5): independent CapabilityImplementationId (not the (plugin, capability) tuple)
+if grep -q 'record CapabilityImplementationId' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityImplementationId.java && grep -q 'findCapabilityImplementations' extension-module/src/main/java/com/example/platform/extension/api/port/PluginRegistryPort.java; then
+    pass "independent implementation identity + registry queries"
+else
+    fail "capability implementation identity missing"
+fi
+
+# T16 Gate 3 (R3/C10): registry contract authority (interface) separate from PluginRegistryImpl
+if grep -q 'interface PluginRegistryPort' extension-module/src/main/java/com/example/platform/extension/api/port/PluginRegistryPort.java; then
+    pass "registry contract interface is authority"
+else
+    fail "registry contract interface missing"
+fi
+
+# T16 Gate 4 (C17): no entitlement/commercial fields in capability canonical contract types
+if grep -rq 'proOnly\|enterpriseOnly\|remainingQuota\|subscriptionSku' extension-module/src/main/java/com/example/platform/extension/domain/Capability*.java extension-module/src/main/java/com/example/platform/extension/domain/ContractVersion*.java 2>/dev/null; then
+    fail "entitlement leakage into capability contract"
+else
+    pass "no entitlement leakage in capability contract"
+fi
+
+# T16 Gate 5 (R4/C13): multi-axis lifecycle — contract lifecycle and registration availability are DISTINCT types
+if grep -q 'enum CapabilityContractLifecycle' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityContractLifecycle.java && grep -q 'enum RegistrationAvailability' extension-module/src/main/java/com/example/platform/extension/domain/RegistrationAvailability.java; then
+    pass "multi-axis lifecycle separated (contract vs registration availability)"
+else
+    fail "multi-axis lifecycle separation missing"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

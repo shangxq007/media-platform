@@ -1,6 +1,7 @@
 package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.CapabilityDescriptor;
+import com.example.platform.extension.domain.CapabilityNamespaceValidator;
 import com.example.platform.extension.domain.ExtensionTrustLevel;
 import com.example.platform.extension.domain.HandledObjectDescriptor;
 import com.example.platform.extension.domain.PermissionDescriptor;
@@ -115,6 +116,13 @@ public class PluginDescriptorValidator {
                 if (!seenCapabilityIds.add(capability.capabilityId())) {
                     issues.add(PluginDescriptorValidationIssue.error(
                             PluginDiagnosticCode.PLG_006,
+                            "capabilities[" + capability.capabilityId() + "].capabilityId",
+                            issues.size() + 1));
+                }
+                // #16 (R1): namespace validation (platform-reserved vs vendor reverse-DNS)
+                if (!CapabilityNamespaceValidator.isValid(capability.capabilityId())) {
+                    issues.add(PluginDescriptorValidationIssue.error(
+                            PluginDiagnosticCode.PLG_017,
                             "capabilities[" + capability.capabilityId() + "].capabilityId",
                             issues.size() + 1));
                 }

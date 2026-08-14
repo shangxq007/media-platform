@@ -2,6 +2,10 @@ package com.example.platform.extension.app;
 
 import com.example.platform.extension.api.port.PluginRegistryPort;
 import com.example.platform.extension.domain.CapabilityDescriptor;
+import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.extension.domain.CapabilityImplementation;
+import com.example.platform.extension.domain.CapabilityImplementationId;
+import com.example.platform.extension.domain.ContractVersion;
 import com.example.platform.extension.domain.PluginDescriptor;
 import com.example.platform.extension.domain.PluginDescriptorValidationIssue;
 import com.example.platform.extension.domain.PluginDiagnosticCode;
@@ -38,6 +42,7 @@ public class PluginRegistryImpl implements PluginRegistryPort {
     private final PluginHealthRegistry healthRegistry;
     private final ConcurrentMap<String, PluginDescriptor> byId = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, PluginDescriptor> byIdAndVersion = new ConcurrentHashMap<>();
+    private final ConcurrentMap<CapabilityImplementationId, CapabilityImplementation> implementations = new ConcurrentHashMap<>();
 
     @Autowired
     public PluginRegistryImpl(PluginDescriptorValidator validator, PluginHealthRegistry healthRegistry) {
@@ -71,8 +76,46 @@ public class PluginRegistryImpl implements PluginRegistryPort {
                     PluginDiagnosticCode.PLG_015, "pluginId", 1));
         }
         byIdAndVersion.put(keyVersioned, descriptor);
+        // #16 (R2): derive capability implementations from validated descriptors.
+        // Implementation id is INDEPENDENT of the (plugin, capability) tuple —
+        // it is derived deterministically (pluginId + capabilityId + contract
+        // version) so the same plugin may register multiple distinct
+        // implementations of the same capability over time. Duplicate
+        // implementation identity fails closed (PLG-016).
+        for (CapabilityDescriptor capability : descriptor.capabilities()) {
+            CapabilityImplementationId implId = CapabilityImplementationId.of(
+                    descriptor.pluginId() + "::" + capability.capabilityId()
+                            + "@" + capability.capabilityContractVersion());
+            CapabilityImplementation impl = CapabilityImplementation.of(
+                    implId, descriptor.pluginId(),
+                    CapabilityId.of(capability.capabilityId()),
+                    ContractVersion.parse(capability.capabilityContractVersion()),
+                    descriptor.pluginVersion());
+            CapabilityImplementation previousImpl = implementations.putIfAbsent(implId, impl);
+            if (previousImpl != null) {
+                return List.of(PluginDescriptorValidationIssue.error(
+                        PluginDiagnosticCode.PLG_018, "capabilityImplementationId", 1));
+            }
+        }
         healthRegistry.touch(descriptor.pluginId());
         return List.of();
+    }
+
+    @Override
+    public List<CapabilityImplementation> findCapabilityImplementations(CapabilityId capabilityId) {
+        List<CapabilityImplementation> result = new ArrayList<>();
+        for (CapabilityImplementation impl : implementations.values()) {
+            if (impl.capabilityId().equals(capabilityId)) {
+                result.add(impl);
+            }
+        }
+        result.sort(Comparator.comparing(i -> i.implementationId().value()));
+        return List.copyOf(result);
+    }
+
+    @Override
+    public Optional<CapabilityImplementation> findImplementationById(CapabilityImplementationId implementationId) {
+        return Optional.ofNullable(implementations.get(implementationId));
     }
 
     @Override

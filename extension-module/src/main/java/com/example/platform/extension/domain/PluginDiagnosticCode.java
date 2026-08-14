@@ -25,6 +25,10 @@ public enum PluginDiagnosticCode {
     PLG_013("PLG-013", "GUARANTEE_ILLEGAL", "guarantees", "guarantee declaration is illegal (platform authority cannot be granted)"),
     PLG_014("PLG-014", "IMPLEMENTATION_UNAVAILABLE", "providerImplementation", "provider implementation is not available"),
     PLG_015("PLG-015", "DUPLICATE_PLUGIN", "pluginId", "plugin id is already registered"),
+    PLG_018("PLG-018", "CAPABILITY_IMPLEMENTATION_DUPLICATE", "capabilityImplementationId",
+            "capability implementation id is already registered"),
+    PLG_017("PLG-017", "CAPABILITY_NAMESPACE_INVALID", "capabilities",
+            "capability id violates the platform-reserved / vendor reverse-DNS namespace rules"),
     PLG_016("PLG-016", "TRUST_REJECTED", "runtimeRequirements.trustLevel", "trust level is not accepted for registration");
 
     private final String code;
