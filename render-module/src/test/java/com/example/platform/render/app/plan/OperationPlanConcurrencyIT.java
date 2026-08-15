@@ -90,7 +90,10 @@ class OperationPlanConcurrencyIT {
                     head_revision_id varchar(64),
                     version bigint not null default 0,
                     updated_at timestamp not null default current_timestamp,
-                    primary key (project_id, ref_id)
+                    primary key (project_id, ref_id),
+                    constraint fk_timeline_revision_ref_head
+                        foreign key (head_revision_id) references timeline_revision(id)
+                        deferrable initially deferred
                 )""");
         dsl.execute("""
                 create table apply_command (
@@ -117,9 +120,9 @@ class OperationPlanConcurrencyIT {
     void resetState() {
         // isolate tests from each other: reset head + remove child revisions/commands
         dsl.execute("delete from apply_command");
-        dsl.execute("delete from timeline_revision where id <> 'trevR100'");
         dsl.execute("update timeline_revision_ref set head_revision_id = 'trevR100', version = 0 "
                 + "where project_id = ? and ref_id = 'main'", PROJECT);
+        dsl.execute("delete from timeline_revision where id <> 'trevR100'");
     }
 
     @AfterAll
@@ -168,10 +171,12 @@ class OperationPlanConcurrencyIT {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
             Future<?> f1 = pool.submit(() -> {
+                OperationPlanApplyService svc = new OperationPlanApplyService(
+                        DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword()));
                 ready.countDown();
                 go.await();
                 try {
-                    service.apply(planA, new ApplyContext("cmd-A", new TargetRevisionRef("main"),
+                    svc.apply(planA, new ApplyContext("cmd-A", new TargetRevisionRef("main"),
                             "trevR100", "p-a", auth(planA, "p-a", "main")), PROJECT);
                     success.incrementAndGet();
                 } catch (PlanException e) {
@@ -184,10 +189,12 @@ class OperationPlanConcurrencyIT {
                 return null;
             });
             Future<?> f2 = pool.submit(() -> {
+                OperationPlanApplyService svc = new OperationPlanApplyService(
+                        DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword()));
                 ready.countDown();
                 go.await();
                 try {
-                    service.apply(planB, new ApplyContext("cmd-B", new TargetRevisionRef("main"),
+                    svc.apply(planB, new ApplyContext("cmd-B", new TargetRevisionRef("main"),
                             "trevR100", "p-b", auth(planB, "p-b", "main")), PROJECT);
                     success.incrementAndGet();
                 } catch (PlanException e) {
@@ -350,6 +357,52 @@ class OperationPlanConcurrencyIT {
         String head = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
                 + "where project_id = ? and ref_id = 'main'", PROJECT).get(0, String.class);
         assertEquals(result.newRevisionId(), head, "head must advance to the new revision");
+    }
+
+
+    @Test
+    void headFkIsActiveDeferredConstraint_commitCatchesMissingRevision() {
+        // EV1: FK is DEFERRABLE INITIALLY DEFERRED — CAS may write a not-yet-inserted
+        // revision id inside the transaction, but COMMIT MUST fail if the revision
+        // INSERT is omitted (constraint proven active, not absent).
+        org.jooq.exception.DataAccessException ex = assertThrows(
+                org.jooq.exception.DataAccessException.class, () -> dsl.transaction(tx -> {
+                    tx.dsl().execute("update timeline_revision_ref set head_revision_id = 'trevGHOST', version = version + 1 "
+                            + "where project_id = ? and ref_id = 'main'", PROJECT);
+                }));
+        Throwable cause = ex;
+        boolean fkViolation = false;
+        while (cause != null) {
+            String m = cause.getMessage() == null ? "" : cause.getMessage();
+            if (m.contains("fk_timeline_revision_ref_head") || m.contains("foreign key")) {
+                fkViolation = true;
+                break;
+            }
+            cause = cause.getCause();
+        }
+        assertTrue(fkViolation, "commit must fail with the head FK violation (cause chain): " + ex.getMessage());
+        // rolled back: head still points at R100
+        String head = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
+                + "where project_id = ? and ref_id = 'main'", PROJECT).get(0, String.class);
+        assertEquals("trevR100", head, "rollback must restore original head");
+    }
+
+    @Test
+    void headFkDeferred_allowsCasBeforeInsert_thenInsert() {
+        // EV1: valid apply order inside one transaction — CAS writes new id, INSERT
+        // follows, COMMIT validates FK successfully.
+        String revId = "trevFKOK" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        dsl.transaction(tx -> {
+            tx.dsl().execute("update timeline_revision_ref set head_revision_id = ?, version = version + 1 "
+                    + "where project_id = ? and ref_id = 'main' and head_revision_id = 'trevR100'", revId, PROJECT);
+            tx.dsl().execute("insert into timeline_revision (id, project_id, revision_number, content_hash, source, created_at) "
+                    + "values (?, ?, 2, 'h', 'ev1-probe', current_timestamp)", revId, PROJECT);
+        });
+        String head = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
+                + "where project_id = ? and ref_id = 'main'", PROJECT).get(0, String.class);
+        assertEquals(revId, head, "head must point at the inserted revision");
+        Integer revs = dsl.fetchOne("select count(*) from timeline_revision where id = ?", revId).get(0, Integer.class);
+        assertEquals(1, revs);
     }
 
 }
