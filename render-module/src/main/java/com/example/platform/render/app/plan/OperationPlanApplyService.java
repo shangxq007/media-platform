@@ -162,7 +162,7 @@ public class OperationPlanApplyService {
                                 String revisionId) {
         // authoritative canonical payload: candidate Timeline canonical serialization
         String canonicalJson = serializeCanonical(plan.candidateTimeline());
-        int revisionNumber = nextRevisionNumber(tx, projectId);
+        long revisionNumber = allocateRevisionNumber(tx, projectId);
         int rows = tx.execute("""
                 insert into timeline_revision
                     (id, project_id, tenant_id, parent_revision_id, revision_number, snapshot_id,
@@ -177,6 +177,11 @@ public class OperationPlanApplyService {
         if (rows != 1) {
             throw new PlanException(PlanErrorCode.PERSISTENCE_FAILURE, "revision insert failed");
         }
+        // RCI3: ordered parent edge is the single graph authority (order 0)
+        tx.execute("""
+                insert into timeline_revision_parent (project_id, revision_id, parent_revision_id, parent_order)
+                values (?, ?, ?, 0)
+                """, projectId, revisionId, plan.baseRevisionId());
     }
 
     private String snapshotId(String projectId, String canonicalJson) {
@@ -184,11 +189,17 @@ public class OperationPlanApplyService {
         return "snap_" + sha256(projectId + canonicalJson).substring(0, 24);
     }
 
-    private int nextRevisionNumber(DSLContext tx, String projectId) {
-        var rec = tx.fetchOne("select coalesce(max(revision_number), 0) from timeline_revision where project_id = ?",
-                projectId);
-        Integer max = rec.get(0, Integer.class);
-        return (max == null ? 0 : max) + 1;
+    /** RCI2: atomic project-scoped allocation (UPDATE ... RETURNING), never MAX+1. */
+    private static long allocateRevisionNumber(DSLContext tx, String projectId) {
+        var rec = tx.fetchOne("update project_revision_counter set next_revision_number = "
+                + "next_revision_number + 1 where project_id = ? returning next_revision_number", projectId);
+        if (rec == null) {
+            tx.execute("insert into project_revision_counter (project_id, next_revision_number) values (?, 2) "
+                    + "on conflict (project_id) do nothing", projectId);
+            rec = tx.fetchOne("update project_revision_counter set next_revision_number = "
+                    + "next_revision_number + 1 where project_id = ? returning next_revision_number", projectId);
+        }
+        return rec.get(0, Long.class);
     }
 
     private String serializeCanonical(com.example.platform.render.domain.timeline.canonical.TimelineDocument doc) {
@@ -213,8 +224,8 @@ public class OperationPlanApplyService {
     private void insertCommand(DSLContext tx, String id, String planDigest, String fingerprint, String status, String projectId) {
         tx.execute("""
                 insert into apply_command (apply_command_id, plan_digest, fingerprint, status,
-                    project_id)
-                values (?, ?, ?, ?, ?)
+                    project_id, command_domain)
+                values (?, ?, ?, ?, ?, 'OPERATION_PLAN')
                 """, id, planDigest, fingerprint, status, projectId);
     }
 

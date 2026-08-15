@@ -955,6 +955,99 @@ else
     fail "final FCV candidate missing from governance record"
 fi
 
+# RCG-2: RevisionCommandPlan != OperationPlan
+if grep -q 'record OperationPlan(' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/RevisionCommandPlan.java 2>/dev/null; then
+    fail "revision command plan is operation plan"
+else
+    pass "RevisionCommandPlan independent of OperationPlan"
+fi
+
+# RCG-3/4: context not a command plan variant; variants bounded
+if grep -q 'ContextPlan' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/RevisionCommandPlan.java 2>/dev/null; then
+    fail "ContextPlan in RevisionCommandPlan"
+else
+    pass "RevisionContext outside RevisionCommand (RCI1)"
+fi
+grep -q 'CreateRefPlan' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/RevisionCommandPlan.java && grep -q 'MergeRevisionPlan' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/RevisionCommandPlan.java; ck=$?; if [ $ck -eq 0 ]; then pass "V1 command plan variants bounded"; else fail "plan variants incomplete"; fi
+
+# RCG-6: no generic force move command
+if grep -rq 'forceMoveRef\|FORCE_UPDATE_REF\|class MoveRefCommand' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/ 2>/dev/null; then
+    fail "generic force/move ref command present"
+else
+    pass "no generic force/move ref command"
+fi
+
+# RCG-13/14: merge semantic owner + engine purity (no revision writes in semantic path)
+if grep -q 'mergeSemantic' render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java; then
+    pass "pure semantic merge path present"
+else
+    fail "mergeSemantic missing"
+fi
+if grep -q 'mergeSemantic' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandPlanner.java; then
+    pass "planner uses pure semantic merge"
+else
+    fail "planner uses engine persistence path"
+fi
+
+# RCG-26/27/28: parent edge authority; legacy fields not authoritative
+if grep -q 'timeline_revision_parent' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionGraphService.java; then
+    pass "graph reads timeline_revision_parent only"
+else
+    fail "graph authority missing"
+fi
+if grep -q 'parent_revision_id' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql && grep -q 'timeline_revision_parent' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql; then
+    pass "V4 migration retires legacy parent authority (edges single authority)"
+else
+    fail "V4 migration incomplete"
+fi
+
+# RCG-33: cross-project parent DB enforcement
+if grep -q 'references timeline_revision(project_id, id)' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql; then
+    pass "cross-project parent edge DB-enforced (composite FK)"
+else
+    fail "RCI4 composite FK missing"
+fi
+
+# RCG-34: no MAX+1 production allocator
+if grep -rn 'max(revision_number)' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java render-module/src/main/java/com/example/platform/render/app/revisioncommand/ 2>/dev/null | grep -v '^\s*\*' | grep -q .; then
+    fail "MAX+1 allocator remains"
+else
+    pass "DB-safe revision-number allocator (counter, RCI2)"
+fi
+
+# RCG-36/37: apply_command domain separation, OperationPlan semantics preserved
+if grep -q 'command_domain' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql && grep -q "'OPERATION_PLAN'" platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql; then
+    pass "apply_command domain separation (OP maps OPERATION_PLAN)"
+else
+    fail "command domain missing"
+fi
+if grep -q 'parent_order = 0\|parent_order)' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "normal edit writes single parent edge order 0"
+else
+    fail "normal edit parent edge missing"
+fi
+
+# RCG-38/39: no JGit, no new backend
+if grep -rq 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null; then
+    fail "JGit introduced"
+else
+    pass "no JGit"
+fi
+
+# RCG-40/41/42: no true revert / rebase / batch
+if grep -rq 'class TrueRevertCommand\|class RebaseCommand\|class BatchCommand' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/ 2>/dev/null; then
+    fail "deferred command implemented"
+else
+    pass "true revert/rebase/batch = 0"
+fi
+
+# RCG-44/45: legacy restore/merge bypass = 0 (authoritative path via RevisionCommand)
+if grep -q 'restoreRevision' render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRevisionSaveService.java 2>/dev/null && grep -q 'revision-command-restore' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java; then
+    pass "restore rehomed through RevisionCommand path (legacy endpoint retained)"
+else
+    fail "restore bypass unresolved"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

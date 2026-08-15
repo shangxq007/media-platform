@@ -52,7 +52,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
 
     @Test
     @Order(2)
-    @DisplayName("V1+V2+V3: flyway_schema_history contains exactly three rows (V1 + V2 operation-plan + V3 deferrable FK)")
+    @DisplayName("V1..V4: flyway_schema_history contains exactly four rows (V1 + V2 operation-plan + V3 deferrable FK + V4 parent graph)")
     void flywayHistoryExactlyOneV1() throws Exception {
         assertTrue(deployed);
         try (Connection conn = db.createConnection("")) {
@@ -67,7 +67,9 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
                 assertEquals("2", rs.getString("version"), "second migration version must be 2");
                 assertTrue(rs.next(), "third migration row (V3) must exist");
                 assertEquals("3", rs.getString("version"), "third migration version must be 3");
-                assertFalse(rs.next(), "flyway_schema_history must contain exactly three rows (V1+V2+V3)");
+                assertTrue(rs.next(), "fourth migration row (V4) must exist");
+                assertEquals("4", rs.getString("version"), "fourth migration version must be 4");
+                assertFalse(rs.next(), "flyway_schema_history must contain exactly four rows (V1..V4)");
             }
         }
     }

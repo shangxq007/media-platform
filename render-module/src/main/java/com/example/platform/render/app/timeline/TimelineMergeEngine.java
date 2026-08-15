@@ -118,6 +118,104 @@ public class TimelineMergeEngine {
         return merge(request, Map.of());
     }
 
+    /**
+     * RCI5 (TIMELINE_MERGE_ENGINE_IS_PURE_SEMANTIC_MERGE_AUTHORITY_V1):
+     * compute-only semantic merge — loads BASE/OURS/THEIRS, runs the canonical
+     * gate, preview, planner and returns the merged canonical payload or typed
+     * conflicts. ZERO persistence: no revision row, no snapshot write, no ref
+     * update, no ApplyCommandId, no parent edge, no @Transactional. Graph
+     * mechanics (merge-base) are owned by RevisionGraphService, never here.
+     */
+    public TimelineMergeResult mergeSemantic(TimelineMergeRequest request) {
+        try {
+            String contextTenant = TenantGuard.requireTenantId();
+            String effectiveTenant = request.effectiveTenant();
+            if (effectiveTenant == null || effectiveTenant.isBlank()) {
+                effectiveTenant = contextTenant;
+            } else {
+                TenantGuard.assertSameTenant(effectiveTenant);
+            }
+            requireNotBlank(request.projectId(), "projectId");
+            requireNotBlank(request.baseRevisionId(), "baseRevisionId");
+            requireNotBlank(request.sourceRevisionId(), "sourceRevisionId");
+
+            var baseRevision = loadRevision(request.baseRevisionId());
+            var sourceRevision = loadRevision(request.sourceRevisionId());
+            var targetRevision = loadRevision(request.targetRevisionId());
+
+            assertProjectAndTenant(request.projectId(), contextTenant, baseRevision);
+            assertProjectAndTenant(request.projectId(), contextTenant, sourceRevision);
+            assertProjectAndTenant(request.projectId(), contextTenant, targetRevision);
+
+            String basePayload = loadPayload(baseRevision, contextTenant);
+            String sourcePayload = loadPayload(sourceRevision, contextTenant);
+            String targetPayload = loadPayload(targetRevision, contextTenant);
+
+            TimelineCandidate baseCandidate = canonicalGate(request.projectId(), basePayload);
+            TimelineCandidate sourceCandidate = canonicalGate(request.projectId(), sourcePayload);
+            TimelineCandidate targetCandidate = canonicalGate(request.projectId(), targetPayload);
+
+            CanonicalTimelineSnapshot baseSnapshot =
+                    TimelineSnapshotConverter.toSnapshot(baseCandidate, request.baseRevisionId());
+            CanonicalTimelineSnapshot sourceSnapshot =
+                    TimelineSnapshotConverter.toSnapshot(sourceCandidate, request.sourceRevisionId());
+            CanonicalTimelineSnapshot targetSnapshot =
+                    TimelineSnapshotConverter.toSnapshot(targetCandidate, request.targetRevisionId());
+
+            TimelineMergePreviewRequest previewRequest = new TimelineMergePreviewRequest(
+                    new TimelineMergePreviewRequestId("merge-" + request.baseRevisionId()
+                            + "-" + request.sourceRevisionId() + "-" + request.targetRevisionId()),
+                    baseSnapshot, sourceSnapshot, targetSnapshot,
+                    TimelineMergePreviewMode.DIFF_AND_CONFLICTS,
+                    TimelineMergePreviewPolicy.CONSERVATIVE, Map.of());
+            previewService.preview(previewRequest);
+
+            TimelineNonConflictingMergePlan plan = mergePlanner.plan(new TimelineMergePlanRequest(
+                    new TimelineMergePlanRequestId("plan-" + request.baseRevisionId()
+                            + "-" + request.sourceRevisionId() + "-" + request.targetRevisionId()),
+                    baseSnapshot, sourceSnapshot, targetSnapshot,
+                    TimelineMergePlanPolicy.CONSERVATIVE, Map.of()));
+
+            List<TimelineMergePlanOperation> allOps = plan.operations() != null ? plan.operations() : List.of();
+            List<TimelineMergePlanOperation> conflictOps = allOps.stream()
+                    .filter(op -> op.status() == TimelineMergePlanOperationStatus.CONFLICT_REQUIRES_MANUAL_REVIEW)
+                    .toList();
+            if (!conflictOps.isEmpty()) {
+                return conflictResult(request, toInternalConflicts(conflictOps));
+            }
+            List<TimelineChangeOperation> applyOps = allOps.stream()
+                    .filter(op -> op.status() == TimelineMergePlanOperationStatus.SAFE_TO_APPLY_LATER)
+                    .map(TimelineMergePlanOperation::operation)
+                    .toList();
+            if (applyOps.isEmpty()) {
+                return noOpResult(request);
+            }
+            TimelinePatch patch = new TimelinePatch(
+                    new TimelinePatchId("patch-" + request.baseRevisionId()),
+                    request.baseRevisionId(),
+                    List.copyOf(applyOps),
+                    null, Map.of());
+            TimelinePatchApplicationResult application = patchApplier.apply(baseSnapshot, patch);
+            if (application.status() != com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationStatus.APPLIED
+                    && application.status() != com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationStatus.NO_OP) {
+                return new TimelineMergeResult(TimelineMergeResult.MergeStatus.FAILED,
+                        request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
+                        null, List.of(), List.of(), TimelineMergeSummary.empty(),
+                        "Canonical merge application failed", null);
+            }
+            String mergedPayload = toInternalPayload(targetPayload,
+                    application.patchedSnapshot(), request.targetRevisionId());
+            canonicalGate(request.projectId(), mergedPayload);
+            return new TimelineMergeResult(TimelineMergeResult.MergeStatus.MERGED,
+                    request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
+                    null, List.of(), List.of(), TimelineMergeSummary.empty(), null, mergedPayload);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("semantic merge failed", e);
+        }
+    }
+
     @Transactional
     public TimelineMergeResult merge(
             TimelineMergeRequest request,

@@ -106,10 +106,31 @@ class OperationPlanConcurrencyIT {
                     result_status varchar(16),
                     project_id varchar(64),
                     created_at timestamp not null default current_timestamp,
-                    completed_at timestamp
+                    completed_at timestamp,
+                    command_domain varchar(32) not null default 'OPERATION_PLAN'
                 )""");
+        dsl.execute("create unique index ux_timeline_revision_project_id on timeline_revision(project_id, id)");
+        dsl.execute("""
+                create table timeline_revision_parent (
+                    project_id varchar(64) not null,
+                    revision_id varchar(64) not null,
+                    parent_revision_id varchar(64) not null,
+                    parent_order int not null,
+                    primary key (revision_id, parent_order),
+                    constraint ux_timeline_revision_parent_pair unique (revision_id, parent_revision_id),
+                    constraint ck_timeline_revision_parent_order_nonnegative check (parent_order >= 0),
+                    constraint ck_timeline_revision_parent_no_self check (revision_id <> parent_revision_id),
+                    constraint fk_timeline_revision_parent_revision
+                        foreign key (revision_id) references timeline_revision(id),
+                    constraint fk_timeline_revision_parent_parent
+                        foreign key (project_id, parent_revision_id)
+                        references timeline_revision(project_id, id)
+                )""");
+        dsl.execute("create table project_revision_counter (project_id varchar(64) primary key, next_revision_number bigint not null)");
+        dsl.execute("create table timeline_snapshot (id varchar(64) primary key, payload text)");
         service = new OperationPlanApplyService(dsl);
-        // seed base revision R100 + head row
+        // seed base revision R100 + head row + counter
+        dsl.execute("insert into project_revision_counter (project_id, next_revision_number) values (?, 2)", PROJECT);
         dsl.execute("insert into timeline_revision (id, project_id, revision_number, content_hash, source, created_at) "
                 + "values ('trevR100', ?, 1, 'h-base', 'seed', current_timestamp)", PROJECT);
         dsl.execute("insert into timeline_revision_ref (project_id, ref_id, head_revision_id) values (?, 'main', 'trevR100')",
@@ -122,7 +143,9 @@ class OperationPlanConcurrencyIT {
         dsl.execute("delete from apply_command");
         dsl.execute("update timeline_revision_ref set head_revision_id = 'trevR100', version = 0 "
                 + "where project_id = ? and ref_id = 'main'", PROJECT);
+        dsl.execute("delete from timeline_revision_parent");
         dsl.execute("delete from timeline_revision where id <> 'trevR100'");
+        dsl.execute("update project_revision_counter set next_revision_number = 2 where project_id = ?", PROJECT);
     }
 
     @AfterAll
