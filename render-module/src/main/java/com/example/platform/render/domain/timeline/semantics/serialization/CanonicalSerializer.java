@@ -4,6 +4,8 @@ import com.example.platform.render.domain.timeline.semantics.automation.Automati
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.FreezeTemporalMapping;
 import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
 import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
 
@@ -112,9 +114,20 @@ public final class CanonicalSerializer {
         strField(sb, "timelineEnd", clip.timelineRange().end().toString(), false);
         strField(sb, "sourceStart", clip.sourceRange().start().toString(), false);
         strField(sb, "sourceEnd", clip.sourceRange().end().toString(), false);
-        // Exact rational playback rate (CANONICAL_TIMELINE_SERIALIZATION_V2: no double fields).
-        strField(sb, "playbackRate",
-                clip.playbackRate().numerator() + "/" + clip.playbackRate().denominator(), false);
+        // TemporalMapping canonical serialization (TM20): typed discriminator +
+        // exact rationals + explicit direction; never "IDENTITY" (R1).
+        sb.append("\"temporalMapping\":{");
+        if (clip.temporalMapping() instanceof ConstantRateTemporalMapping cm) {
+            sb.append("\"kind\":\"CONSTANT_RATE\",\"rate\":\"")
+                    .append(cm.rate().numerator()).append('/').append(cm.rate().denominator())
+                    .append("\",\"direction\":\"").append(cm.direction().name()).append('"');
+        } else if (clip.temporalMapping() instanceof FreezeTemporalMapping fm) {
+            sb.append("\"kind\":\"FREEZE\",\"sourcePosition\":\"")
+                    .append(fm.sourcePosition().toString()).append('"');
+        } else {
+            throw new IllegalStateException("unsupported TemporalMapping subtype");
+        }
+        sb.append('}');
         appendMediaStreamSourceBinding(sb, clip.sourceBinding());
     }
 

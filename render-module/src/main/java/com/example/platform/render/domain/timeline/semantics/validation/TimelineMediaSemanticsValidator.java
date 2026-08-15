@@ -2,6 +2,8 @@ package com.example.platform.render.domain.timeline.semantics.validation;
 
 import com.example.platform.render.domain.timeline.semantics.automation.Automation;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.FreezeTemporalMapping;
 import com.example.platform.render.domain.timeline.semantics.error.TimelineError;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
 import com.example.platform.shared.time.MediaTime;
@@ -84,15 +86,40 @@ public final class TimelineMediaSemanticsValidator {
                     .actual("start=" + clip.timelineRange().start() + ", end=" + clip.timelineRange().end())
                     .build());
             }
-            // Validate playback rate > 0
-            if (clip.playbackRate().numerator() <= 0) {
-                errors.add(TimelineError.Error.builder(TimelineError.ErrorCode.TIMELINE_PLAYBACK_RATE_INVALID)
-                    .entityId(clip.clipId())
-                    .entityType("CLIP")
-                    .parameter("playbackRate")
-                    .expected("> 0")
-                    .actual(String.valueOf(clip.playbackRate().doubleValue()))
-                    .build());
+            // TemporalMapping structural validation (TM23, fail-closed): constant-rate
+            // positive rate + direction + exact duration consistency; freeze position
+            // within source window. MediaClip constructor already enforces these;
+            // this validator reports them as structured Timeline errors.
+            if (clip.temporalMapping() instanceof ConstantRateTemporalMapping cm) {
+                if (cm.rate().numerator() <= 0 || cm.rate().denominator() <= 0) {
+                    errors.add(TimelineError.Error.builder(TimelineError.ErrorCode.TIMELINE_PLAYBACK_RATE_INVALID)
+                        .entityId(clip.clipId())
+                        .entityType("CLIP")
+                        .parameter("rate")
+                        .expected("> 0")
+                        .actual(cm.rate().numerator() + "/" + cm.rate().denominator())
+                        .build());
+                }
+                if (!clip.hasValidConstantRateDuration()) {
+                    errors.add(TimelineError.Error.builder(TimelineError.ErrorCode.TIMELINE_DURATION_INCONSISTENT)
+                        .entityId(clip.clipId())
+                        .entityType("CLIP")
+                        .parameter("constantRateDurationConsistency")
+                        .expected("sourceDuration x rate == timeline occupied duration")
+                        .actual("source=" + clip.sourceDuration() + " timeline=" + clip.timelineDuration()
+                                + " rate=" + cm.rate().numerator() + "/" + cm.rate().denominator())
+                        .build());
+                }
+            } else if (clip.temporalMapping() instanceof FreezeTemporalMapping fm) {
+                if (!clip.sourceRange().contains(fm.sourcePosition())) {
+                    errors.add(TimelineError.Error.builder(TimelineError.ErrorCode.TIMELINE_FREEZE_POSITION_INVALID)
+                        .entityId(clip.clipId())
+                        .entityType("CLIP")
+                        .parameter("freezeSourcePosition")
+                        .expected("within source window")
+                        .actual(fm.sourcePosition().toString())
+                        .build());
+                }
             }
         }
     }

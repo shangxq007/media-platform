@@ -3,6 +3,8 @@ package com.example.platform.render.domain.timeline.semantics.projection;
 import com.example.platform.render.testsupport.TestSourceBindings;
 
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
@@ -98,7 +100,7 @@ class RelationProjectionsTest {
             new MediaClip.TimeRange(
                 MediaTime.ofRational(sStart, 1),
                 MediaTime.ofRational(sEnd, 1)),
-            new MediaClip.Rational(1, 1),
+            ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD),
             TestSourceBindings.of("asset-" + id, "stream-1", "artifact-1",
                 new MediaClip.TimeRange(
                     MediaTime.ofRational(sStart, 1),

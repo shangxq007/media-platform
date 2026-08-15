@@ -442,6 +442,94 @@ else
     pass "single-segment ContractVersion support absent"
 fi
 
+# TMG-1/2: no IdentityTemporalMapping subtype, no IDENTITY discriminator (R1 hard gate)
+if grep -rq 'class IdentityTemporalMapping\|record IdentityTemporalMapping\|interface IdentityTemporalMapping' render-module/src/main 2>/dev/null; then
+    fail "IdentityTemporalMapping subtype present (R1 violation)"
+else
+    pass "no IdentityTemporalMapping subtype"
+fi
+if grep -q '"kind":"IDENTITY"\|kind.*"IDENTITY"' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/CanonicalSerializer.java 2>/dev/null; then
+    fail "IDENTITY discriminator present (R1 violation)"
+else
+    pass "no IDENTITY discriminator"
+fi
+
+# TMG-3: identity canonicalizes to ConstantRate 1/1 FORWARD
+if grep -q 'ConstantRateTemporalMapping identity()' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/ConstantRateTemporalMapping.java; then
+    pass "identity factory present (normalized 1/1 FORWARD)"
+else
+    fail "identity factory missing"
+fi
+
+# TMG-4: positive rational rate + explicit direction
+if grep -q 'record ConstantRateTemporalMapping' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/ConstantRateTemporalMapping.java && grep -q 'enum PlaybackDirection' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/PlaybackDirection.java; then
+    pass "constant-rate + direction model"
+else
+    fail "constant-rate/direction model missing"
+fi
+
+# TMG-5: legacy playbackRate retired
+if grep -rq 'playbackRate' render-module/src/main --include='*.java' 2>/dev/null | grep -v 'TIMELINE_PLAYBACK_RATE_INVALID\|MediaClip.java' | grep -qv 'playbackRate' ; then
+    N=$(grep -r 'playbackRate' render-module/src/main --include='*.java' 2>/dev/null | grep -vc 'TIMELINE_PLAYBACK_RATE_INVALID\|MediaClip.java')
+    fail "legacy playbackRate refs remain ($N)"
+else
+    pass "legacy playbackRate retired"
+fi
+
+# TMG-6/7: sourceRange sole authority, no duplication in TemporalMapping
+if grep -q 'sourceRange' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java; then
+    pass "sourceRange authority in binding"
+else
+    fail "sourceRange authority missing"
+fi
+if grep -q 'sourceRange\|sourceStart\|sourceEnd' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/ConstantRateTemporalMapping.java; then
+    fail "sourceRange duplicated into TemporalMapping"
+else
+    pass "no duplicated sourceRange in TemporalMapping"
+fi
+
+# TMG-8: constant-rate duration consistency fail-closed
+if grep -q 'constant-rate duration mismatch' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaClip.java; then
+    pass "duration consistency fail-closed"
+else
+    fail "duration consistency missing"
+fi
+
+# TMG-9: freeze = exact source position (no rate=0, no fake range)
+if grep -q 'record FreezeTemporalMapping' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/FreezeTemporalMapping.java; then
+    pass "freeze = exact source position"
+else
+    fail "freeze model missing"
+fi
+
+# TMG-10: serialization/hash participation
+if grep -q 'temporalMapping' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/CanonicalSerializer.java; then
+    pass "temporalMapping in canonical serialization"
+else
+    fail "temporalMapping serialization missing"
+fi
+
+# TMG-12: no float rate/time in canonical model
+if grep -rq 'double rate\|float rate' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/ 2>/dev/null; then
+    fail "float rate in canonical model"
+else
+    pass "no float rate in canonical temporal model"
+fi
+
+# TMG-14: audio non-identity fail-closed guard
+if grep -q 'requireAudioIdentity' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/TemporalAudioExecutionGuard.java; then
+    pass "audio non-identity fail-closed guard"
+else
+    fail "audio guard missing"
+fi
+
+# TMG-15/16/18: no piecewise/relationship/operation/dual model
+if grep -rq 'PiecewiseTemporalMapping\|class AudioTemporalBehavior\|LegacyPlaybackRate\|TemporalMappingV2' render-module/src/main 2>/dev/null; then
+    fail "forbidden temporal foundation type present"
+else
+    pass "no piecewise/audio-behavior/legacy dual model"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

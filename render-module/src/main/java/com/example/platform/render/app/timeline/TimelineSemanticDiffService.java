@@ -181,8 +181,8 @@ public class TimelineSemanticDiffService {
         if (!jsonFieldEquals(oldE, newE, "timelineRange") || !jsonFieldEquals(oldE, newE, "sourceRange")) {
             out.add(SemanticChange.of(SemanticChangeType.CLIP_RANGE_CHANGED, ref, "clip range changed"));
         }
-        if (!jsonFieldEquals(oldE, newE, "speed")) {
-            out.add(SemanticChange.of(SemanticChangeType.CLIP_SPEED_CHANGED, ref, "clip speed changed"));
+        if (!jsonFieldEquals(oldE, newE, "temporalMapping")) {
+            out.add(SemanticChange.of(SemanticChangeType.CLIP_SPEED_CHANGED, ref, "clip temporal mapping changed"));
         }
         if (!jsonFieldEquals(oldE, newE, "effects")) {
             out.add(SemanticChange.of(SemanticChangeType.CLIP_EFFECT_CHANGED, ref, "clip effects changed"));

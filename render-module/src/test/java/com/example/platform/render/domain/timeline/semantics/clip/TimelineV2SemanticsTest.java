@@ -2,7 +2,8 @@ package com.example.platform.render.domain.timeline.semantics.clip;
 
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
-import com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational;
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip.TimeRange;
 import com.example.platform.render.domain.timeline.semantics.serialization.CanonicalSerializer;
 import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
@@ -37,10 +38,15 @@ class TimelineV2SemanticsTest {
     }
 
     private static MediaClip clip(String id, MediaStreamSourceBinding binding, long tStart, long tEnd) {
+        // R3 consistency: rate = sourceDuration / timelineDuration (exact rational)
+        MediaTime srcDur = binding.sourceRange().duration();
+        MediaTime tlDur = new TimeRange(MediaTime.ofRational(tStart, 1), MediaTime.ofRational(tEnd, 1)).duration();
+        long rateNum = srcDur.ticks() * tlDur.timeScale();
+        long rateDen = srcDur.timeScale() * tlDur.ticks();
         return new MediaClip(id, "track-1",
                 new TimeRange(MediaTime.ofRational(tStart, 1), MediaTime.ofRational(tEnd, 1)),
                 binding.sourceRange(),
-                new Rational(1, 1),
+                ConstantRateTemporalMapping.of(rateNum, rateDen, PlaybackDirection.FORWARD),
                 binding);
     }
 
@@ -144,12 +150,17 @@ class TimelineV2SemanticsTest {
         String h2 = CanonicalSerializer.digest(model(clip("c1", b, 0, 10)));
         assertEquals(h1, h2, "same semantic content -> same hash");
 
-        // playbackRate encoded exactly (num/den), never double
+        // TemporalMapping encoded exactly (kind + normalized rational rate + direction)
+        TimeRange fastSource = new TimeRange(MediaTime.ZERO, MediaTime.ofRational(300000, 1001));
+        MediaStreamSourceBinding fastBinding = binding("a", "s", "x", fastSource);
         MediaClip rateClip = new MediaClip("c1", "track-1",
                 new TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
-                range, new Rational(30000, 1001), b);
+                fastSource,
+                ConstantRateTemporalMapping.of(30000, 1001, PlaybackDirection.FORWARD), fastBinding);
         String hr = CanonicalSerializer.serialize(model(rateClip));
-        assertTrue(hr.contains("\"playbackRate\":\"30000/1001\""), "exact rational playback rate");
-        assertFalse(hr.contains("doubleValue") && hr.contains("30.0"), "no double playback rate");
+        assertTrue(hr.contains("\"kind\":\"CONSTANT_RATE\""), "typed discriminator");
+        assertTrue(hr.contains("30000/1001"), "exact rational rate");
+        assertTrue(hr.contains("\"direction\":\"FORWARD\""), "explicit direction");
+        assertFalse(hr.contains("IDENTITY"), "no IDENTITY discriminator");
     }
 }

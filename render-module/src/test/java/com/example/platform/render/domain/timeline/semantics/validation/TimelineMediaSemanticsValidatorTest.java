@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.semantics.validation;
 
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.render.testsupport.TestSourceBindings;
 
 import com.example.platform.render.domain.timeline.semantics.automation.Automation;
@@ -30,7 +32,7 @@ class TimelineMediaSemanticsValidatorTest {
             new MediaClip.TimeRange(
                 MediaTime.ofRational(sourceStart, 1),
                 MediaTime.ofRational(sourceEnd, 1)),
-            new MediaClip.Rational(rateNum, rateDen),
+            ConstantRateTemporalMapping.of(rateNum, rateDen, PlaybackDirection.FORWARD),
             TestSourceBindings.of("asset-" + id, "stream-1", "artifact-1",
                 new MediaClip.TimeRange(
                     MediaTime.ofRational(sourceStart, 1),
@@ -85,7 +87,7 @@ class TimelineMediaSemanticsValidatorTest {
     @Test
     @DisplayName("Overlapping clips in same track are detected")
     void overlappingClips() {
-        MediaClip clip1 = clip("clip-1", "track-1", 0, 6, 0, 10, 2, 1);
+        MediaClip clip1 = clip("clip-1", "track-1", 0, 6, 0, 12, 2, 1);
         MediaClip clip2 = clip("clip-2", "track-1", 5, 10, 0, 10, 2, 1);
 
         TimelineSemanticModel model = new TimelineSemanticModel(

@@ -8,6 +8,8 @@ import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
 import com.example.platform.render.domain.timeline.canonical.TrackType;
 import com.example.platform.render.domain.timeline.semantics.automation.Automation;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.render.domain.timeline.semantics.clip.TimelineSourceBinding;
 import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
@@ -31,11 +33,17 @@ import static org.junit.jupiter.api.Assertions.*;
 class TimelineV2SourceKindHashTest {
 
     private static MediaClip clip(MediaStreamSourceBinding binding) {
+        // R3: rate = sourceDuration / placement duration (exact)
+        MediaTime srcDur = binding.sourceRange().duration();
+        MediaTime tlDur = new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(5, 1)).duration();
         return new MediaClip(
                 "c1", "track-1",
                 new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(5, 1)),
                 binding.sourceRange(),
-                new MediaClip.Rational(1, 1), binding);
+                ConstantRateTemporalMapping.of(
+                        srcDur.ticks() * tlDur.timeScale(),
+                        srcDur.timeScale() * tlDur.ticks(), PlaybackDirection.FORWARD),
+                binding);
     }
 
     private static TimelineSemanticModel model(MediaStreamSourceBinding binding) {

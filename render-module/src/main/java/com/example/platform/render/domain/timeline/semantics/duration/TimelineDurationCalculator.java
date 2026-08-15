@@ -182,7 +182,7 @@ public final class TimelineDurationCalculator {
 
         List<MediaClip> newClips = timeline.clips().stream()
             .map(c -> c.clipId().equals(clipId)
-                ? new MediaClip(c.clipId(), c.trackId(), newRange, c.sourceRange(), c.playbackRate(), c.sourceBinding())
+                ? new MediaClip(c.clipId(), c.trackId(), newRange, c.sourceRange(), c.temporalMapping(), c.sourceBinding())
                 : c)
             .toList();
 

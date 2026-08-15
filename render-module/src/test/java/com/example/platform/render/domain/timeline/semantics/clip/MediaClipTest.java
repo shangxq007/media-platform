@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.semantics.clip;
 
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.render.testsupport.TestSourceBindings;
 import com.example.platform.shared.time.MediaTime;
 import org.junit.jupiter.api.DisplayName;
@@ -21,7 +23,7 @@ class MediaClipTest {
             "clip-1", "track-1",
             new MediaClip.TimeRange(t0, t1),
             new MediaClip.TimeRange(s0, s1),
-            new MediaClip.Rational(2, 1),
+            ConstantRateTemporalMapping.of(2, 1, PlaybackDirection.FORWARD),
             TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
                 new MediaClip.TimeRange(s0, s1))
         );
@@ -39,11 +41,11 @@ class MediaClipTest {
             "clip-1", "track-1",
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
-            new MediaClip.Rational(2, 1),
+            ConstantRateTemporalMapping.of(2, 1, PlaybackDirection.FORWARD),
             TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)))
         );
-        assertTrue(clip.hasValidFixedRateDuration());
+        assertTrue(clip.hasValidConstantRateDuration());
     }
 
     @Test
@@ -53,7 +55,7 @@ class MediaClipTest {
             new MediaClip("clip-1", "track-1",
                 new MediaClip.TimeRange(MediaTime.ofRational(5, 1), MediaTime.ZERO),
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
-                new MediaClip.Rational(1, 1),
+                ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD),
                 TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
                     new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1))))
         );
@@ -66,7 +68,7 @@ class MediaClipTest {
             new MediaClip("clip-1", "track-1",
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
                 new MediaClip.TimeRange(MediaTime.ofRational(10, 1), MediaTime.ZERO),
-                new MediaClip.Rational(1, 1),
+                ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD),
                 TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
                     new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1))))
         );
@@ -79,7 +81,7 @@ class MediaClipTest {
             new MediaClip("clip-1", "track-1",
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
-                new MediaClip.Rational(0, 1),
+                ConstantRateTemporalMapping.of(0, 1, PlaybackDirection.FORWARD),
                 TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
                     new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1))))
         );
@@ -92,7 +94,7 @@ class MediaClipTest {
             "clip-1", "track-1",
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(5, 1)),
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
-            new MediaClip.Rational(2, 1),
+            ConstantRateTemporalMapping.of(2, 1, PlaybackDirection.FORWARD),
             TestSourceBindings.of("asset-ref", "stream-1", "artifact-1",
                 new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)))
         );

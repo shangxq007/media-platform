@@ -1,5 +1,9 @@
 package com.example.platform.render.domain.timeline.semantics.clip;
 
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.FreezeTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.render.domain.timeline.semantics.temporal.TemporalMapping;
 import com.example.platform.shared.time.MediaTime;
 
 import java.util.Objects;
@@ -20,7 +24,7 @@ public final class MediaClip {
     private final String trackId;
     private final TimeRange timelineRange;
     private final TimeRange sourceRange;
-    private final Rational playbackRate;
+    private final TemporalMapping temporalMapping;
     private final MediaStreamSourceBinding sourceBinding;
 
     public MediaClip(
@@ -28,13 +32,13 @@ public final class MediaClip {
             String trackId,
             TimeRange timelineRange,
             TimeRange sourceRange,
-            Rational playbackRate,
+            TemporalMapping temporalMapping,
             MediaStreamSourceBinding sourceBinding) {
         this.clipId = Objects.requireNonNull(clipId, "clipId");
         this.trackId = Objects.requireNonNull(trackId, "trackId");
         this.timelineRange = Objects.requireNonNull(timelineRange, "timelineRange");
         this.sourceRange = Objects.requireNonNull(sourceRange, "sourceRange");
-        this.playbackRate = Objects.requireNonNull(playbackRate, "playbackRate");
+        this.temporalMapping = Objects.requireNonNull(temporalMapping, "temporalMapping");
         this.sourceBinding = Objects.requireNonNull(sourceBinding, "sourceBinding");
         validate();
     }
@@ -53,11 +57,22 @@ public final class MediaClip {
             throw new IllegalArgumentException(
                     "clip sourceRange must equal sourceBinding.sourceRange (single authority)");
         }
-        if (playbackRate.numerator() <= 0) {
-            throw new IllegalArgumentException("playbackRate must be > 0");
-        }
-        if (playbackRate.denominator() <= 0) {
-            throw new IllegalArgumentException("playbackRate denominator must be > 0");
+        if (temporalMapping instanceof ConstantRateTemporalMapping cm) {
+            // R3 exact invariant: sourceDuration == timelineOccupiedDuration x rate
+            // (no tolerance, no repair, no coercion)
+            MediaTime expected = sourceDuration().multiplyRational(
+                    cm.rate().denominator(), cm.rate().numerator());
+            if (!timelineDuration().isEqualTo(expected)) {
+                throw new IllegalArgumentException(
+                        "constant-rate duration mismatch: sourceDuration x rate must equal "
+                                + "timeline occupied duration (got source=" + sourceDuration()
+                                + " timeline=" + timelineDuration() + " rate=" + cm.rate() + ")");
+            }
+        } else if (temporalMapping instanceof FreezeTemporalMapping fm) {
+            if (!sourceRange.contains(fm.sourcePosition())) {
+                throw new IllegalArgumentException(
+                        "freeze sourcePosition must lie within the selected source window");
+            }
         }
     }
 
@@ -65,7 +80,7 @@ public final class MediaClip {
     public String trackId() { return trackId; }
     public TimeRange timelineRange() { return timelineRange; }
     public TimeRange sourceRange() { return sourceRange; }
-    public Rational playbackRate() { return playbackRate; }
+    public TemporalMapping temporalMapping() { return temporalMapping; }
     public MediaStreamSourceBinding sourceBinding() { return sourceBinding; }
 
     /**
@@ -101,9 +116,12 @@ public final class MediaClip {
      * Returns true if this clip has valid fixed-rate duration relationship.
      * timelineDuration == sourceDuration / playbackRate
      */
-    public boolean hasValidFixedRateDuration() {
+    public boolean hasValidConstantRateDuration() {
+        if (!(temporalMapping instanceof ConstantRateTemporalMapping cm)) {
+            return false;
+        }
         MediaTime expected = sourceDuration().multiplyRational(
-            playbackRate.denominator(), playbackRate.numerator());
+            cm.rate().denominator(), cm.rate().numerator());
         return timelineDuration().isEqualTo(expected);
     }
 
@@ -112,10 +130,17 @@ public final class MediaClip {
      */
     public MediaTime timelineToSourceTime(MediaTime timelineTime) {
         MediaTime offset = timelineTime.subtract(timelineRange.start());
-        // source offset = timeline offset * playbackRate
-        MediaTime sourceOffset = offset.multiplyRational(
-            playbackRate.numerator(), playbackRate.denominator());
-        return sourceRange.start().add(sourceOffset);
+        if (temporalMapping instanceof ConstantRateTemporalMapping cm) {
+            // source offset = timeline offset * rate magnitude
+            MediaTime sourceOffset = offset.multiplyRational(
+                    cm.rate().numerator(), cm.rate().denominator());
+            if (cm.direction() == PlaybackDirection.REVERSE) {
+                return sourceRange.end().subtract(sourceOffset);
+            }
+            return sourceRange.start().add(sourceOffset);
+        }
+        // FreezeTemporalMapping: any local time maps to the frozen source position
+        return ((FreezeTemporalMapping) temporalMapping).sourcePosition();
     }
 
     /**

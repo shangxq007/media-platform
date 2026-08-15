@@ -1,6 +1,8 @@
 package com.example.platform.render.domain.timeline.semantics.duration;
 
 import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
 import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
@@ -15,13 +17,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class TimelineDurationCalculatorTest {
 
     private static MediaClip clip(String id, long tStart, long tEnd, long sStart, long sEnd) {
+        // R3 consistency: rate = sourceDuration / timelineDuration (exact)
+        long srcTicks = (sEnd - sStart), tlTicks = (tEnd - tStart);
         return new MediaClip(
             id, "track-1",
             new MediaClip.TimeRange(
                 MediaTime.ofRational(tStart, 1), MediaTime.ofRational(tEnd, 1)),
             new MediaClip.TimeRange(
                 MediaTime.ofRational(sStart, 1), MediaTime.ofRational(sEnd, 1)),
-            new MediaClip.Rational(1, 1),
+            ConstantRateTemporalMapping.of(srcTicks, tlTicks, PlaybackDirection.FORWARD),
             TestSourceBindings.of("asset-" + id, "stream-1", "artifact-1",
                 new MediaClip.TimeRange(
                     MediaTime.ofRational(sStart, 1),
@@ -96,10 +100,16 @@ class TimelineDurationCalculatorTest {
         );
 
         // Modify clip1 to end at 8
+        // R3: modified placement 8s with same source window -> rate must be
+        // sourceDuration / 8 (exact); mapping is re-derived, never silently repaired
+        MediaTime srcDur = clip1.sourceRange().duration();
         MediaClip modifiedClip1 = new MediaClip(
             "c1", "track-1",
             new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(8, 1)),
-            clip1.sourceRange(), clip1.playbackRate(), clip1.sourceBinding()
+            clip1.sourceRange(),
+            ConstantRateTemporalMapping.of(
+                srcDur.ticks(), 8L * srcDur.timeScale(), PlaybackDirection.FORWARD),
+            clip1.sourceBinding()
         );
 
         TimelineSemanticModel after = new TimelineSemanticModel(
