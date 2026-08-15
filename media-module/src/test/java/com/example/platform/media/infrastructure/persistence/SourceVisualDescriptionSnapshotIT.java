@@ -68,7 +68,7 @@ class SourceVisualDescriptionSnapshotIT {
                 )""");
         dsl.execute("""
                 create table source_visual_description_snapshot (
-                    media_stream_id varchar(64) primary key,
+                    media_stream_id varchar(64) not null,
                     media_asset_id   varchar(64) not null,
                     artifact_id      varchar(64) not null,
                     canonical_payload text not null,
@@ -76,6 +76,31 @@ class SourceVisualDescriptionSnapshotIT {
                     constraint fk_source_visual_snapshot_stream
                         foreign key (media_stream_id) references media_stream(id)
                 )""");
+        dsl.execute("alter table source_visual_description_snapshot "
+                + "add constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id)");
+        dsl.execute("""
+                create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$
+                begin
+                    if new.media_stream_id is distinct from old.media_stream_id
+                       or new.media_asset_id is distinct from old.media_asset_id
+                       or new.artifact_id is distinct from old.artifact_id
+                       or new.canonical_payload is distinct from old.canonical_payload then
+                        raise exception 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE';
+                    end if;
+                    return new;
+                end;
+                $$ language plpgsql""");
+        dsl.execute("create trigger trg_svd_snapshot_immutable before update on "
+                + "source_visual_description_snapshot for each row "
+                + "execute function trg_fn_svd_snapshot_immutable()");
+        dsl.execute("create table artifact (id varchar(64) primary key)");
+        dsl.execute("create table media_asset_artifact (media_asset_id varchar(64) not null, "
+                + "artifact_id varchar(64) not null, relationship varchar(16) not null, "
+                + "constraint pk_maa primary key (media_asset_id, artifact_id, relationship), "
+                + "constraint fk_maa_artifact foreign key (artifact_id) references artifact(id))");
+        dsl.execute("insert into artifact (id) values ('artifact-v1'), ('artifact-v2')");
+        dsl.execute("insert into media_asset_artifact (media_asset_id, artifact_id, relationship) "
+                + "values ('asset-1', 'artifact-v1', 'SOURCE_MEDIA'), ('asset-1', 'artifact-v2', 'DERIVED_MEDIA')");
         dsl.execute("insert into media_stream (id, media_asset_id, stream_index, stream_kind) "
                 + "values ('stream-1', 'asset-1', 0, 'VIDEO')");
         dsl.execute("insert into media_stream (id, media_asset_id, stream_index, stream_kind) "
@@ -116,7 +141,7 @@ class SourceVisualDescriptionSnapshotIT {
     void exactRoundtripS1EqualsS2() {
         SourceVisualDescription s1 = sample();
         repo.save(ASSET, STREAM, ARTIFACT_V1, s1);
-        Optional<SourceVisualDescription> loaded = repo.findByStreamId(STREAM);
+        Optional<SourceVisualDescription> loaded = repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1);
         assertTrue(loaded.isPresent());
         assertEquals(s1, loaded.get(), "S1 == S2 exact semantic equality");
     }
@@ -125,7 +150,7 @@ class SourceVisualDescriptionSnapshotIT {
     void historicalReloadDoesNotInvokeNormalizerOrProvider() {
         SourceVisualDescription s1 = sample();
         repo.save(ASSET, STREAM, ARTIFACT_V1, s1);
-        Optional<SourceVisualDescription> loaded = repo.findByStreamId(STREAM);
+        Optional<SourceVisualDescription> loaded = repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1);
         assertEquals(s1, loaded.get());
         // structural proof: the snapshot repository has zero probe/normalizer/ffprobe refs
         String src = loadRepoSource();
@@ -145,7 +170,9 @@ class SourceVisualDescriptionSnapshotIT {
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
         repo.save(ASSET, STREAM, artifactV2, s2);
-        assertEquals(s2, repo.findByStreamId(STREAM).orElseThrow());
+        assertEquals(s2, repo.findByStreamAndArtifact(STREAM, artifactV2).orElseThrow());
+        // old snapshot for X must survive the Y insert (F2 coexistence)
+        assertEquals(sample(), repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow());
     }
 
     @Test
@@ -158,7 +185,7 @@ class SourceVisualDescriptionSnapshotIT {
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
         repo.save(ASSET, STREAM, ARTIFACT_V1, s);
-        SourceVisualDescription loaded = repo.findByStreamId(STREAM).orElseThrow();
+        SourceVisualDescription loaded = repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow();
         assertEquals(profile, loaded.colorDescription());
         ColorDescription.ProfileBasedColorDescription p =
                 (ColorDescription.ProfileBasedColorDescription) loaded.colorDescription();
@@ -184,9 +211,11 @@ class SourceVisualDescriptionSnapshotIT {
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
         repo.save(ASSET, STREAM, ARTIFACT_V1, unspecified);
-        assertEquals(unspecified, repo.findByStreamId(STREAM).orElseThrow());
-        repo.save(ASSET, STREAM, ARTIFACT_V1, unknown);
-        assertEquals(unknown, repo.findByStreamId(STREAM).orElseThrow());
+        assertEquals(unspecified, repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow());
+        assertThrows(IllegalStateException.class,
+                () -> repo.save(ASSET, STREAM, ARTIFACT_V1, unknown),
+                "same exact content key with different description must fail closed");
+        assertEquals(unspecified, repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow());
         assertNotEquals(unspecified, unknown, "UNSPECIFIED != UNKNOWN after roundtrip");
     }
 
@@ -201,7 +230,7 @@ class SourceVisualDescriptionSnapshotIT {
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
         repo.save(ASSET, STREAM, ARTIFACT_V1, s);
-        SourceVisualDescription loaded = repo.findByStreamId(STREAM).orElseThrow();
+        SourceVisualDescription loaded = repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow();
         assertEquals(PixelAspectRatio.of(64, 45), loaded.pixelAspectRatio());
         assertEquals(Rational.of(64, 45), loaded.pixelAspectRatio().value());
     }
@@ -216,7 +245,7 @@ class SourceVisualDescriptionSnapshotIT {
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
         repo.save(ASSET, STREAM, ARTIFACT_V1, noHdr);
-        assertTrue(repo.findByStreamId(STREAM).orElseThrow().staticHdrMetadata().isEmpty());
+        assertTrue(repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow().staticHdrMetadata().isEmpty());
         SourceVisualDescription clOnly = new SourceVisualDescription(
                 new EncodedRasterExtent(640, 480), PixelAspectRatio.square(),
                 RasterSampleDescription.rgb(8, false),
@@ -225,8 +254,10 @@ class SourceVisualDescriptionSnapshotIT {
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(),
                 Optional.of(StaticHdrMetadata.of(new ContentLightMetadata(Rational.of(1000, 1), Rational.of(400, 1)))));
-        repo.save(ASSET, STREAM, ARTIFACT_V1, clOnly);
-        SourceVisualDescription loaded = repo.findByStreamId(STREAM).orElseThrow();
+        com.example.platform.shared.identity.ArtifactId artifactV2 =
+                new com.example.platform.shared.identity.ArtifactId("artifact-v2");
+        repo.save(ASSET, STREAM, artifactV2, clOnly);
+        SourceVisualDescription loaded = repo.findByStreamAndArtifact(STREAM, artifactV2).orElseThrow();
         assertTrue(loaded.staticHdrMetadata().isPresent());
         assertTrue(loaded.staticHdrMetadata().get().contentLight().isPresent());
         assertTrue(loaded.staticHdrMetadata().get().masteringDisplay().isEmpty());
@@ -247,7 +278,7 @@ class SourceVisualDescriptionSnapshotIT {
 
     @Test
     void nonVisualStreamNoFakeDescription() {
-        assertTrue(repo.findByStreamId(new MediaStreamId("stream-audio")).isEmpty());
+        assertTrue(repo.findByStreamAndArtifact(new MediaStreamId("stream-audio"), new com.example.platform.shared.identity.ArtifactId("artifact-audio")).isEmpty());
     }
 
     private static String loadRepoSource() {

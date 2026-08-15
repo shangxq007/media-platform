@@ -72,7 +72,7 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
             }
         }
 
-        assertEquals(6, versions.size(),
+        assertEquals(7, versions.size(),
                 "Expected exactly V1+V2 applied migrations in the shared runtime, got: " + versions);
         assertEquals("1", versions.get(0), "first applied migration must be version 1");
         assertEquals("V1__initial_schema.sql", scripts.get(0),
@@ -82,6 +82,7 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
         assertEquals("4", versions.get(3), "fourth applied migration must be version 4 (RC parent graph)");
         assertEquals("5", versions.get(4), "fifth applied migration must be version 5 (CIP2 source visual snapshot)");
         assertEquals("6", versions.get(5), "sixth applied migration must be version 6 (CIP2D ownership constraints)");
+        assertEquals("7", versions.get(6), "seventh applied migration must be version 7 (CIP2F content-version)");
         assertFalse(scripts.contains("V7__user_workflow_definition_v1.sql"),
                 "No leaked V7 migration must be present");
     }

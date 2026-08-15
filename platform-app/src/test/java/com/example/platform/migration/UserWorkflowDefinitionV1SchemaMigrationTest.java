@@ -52,7 +52,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
 
     @Test
     @Order(2)
-    @DisplayName("V1..V6: flyway_schema_history contains exactly six rows (V1..V5 + V6 ownership constraints)")
+    @DisplayName("V1..V7: flyway_schema_history contains exactly seven rows (V1..V6 + V7 content-version)")
     void flywayHistoryExactlyOneV1() throws Exception {
         assertTrue(deployed);
         try (Connection conn = db.createConnection("")) {
@@ -73,7 +73,9 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
                 assertEquals("5", rs.getString("version"), "fifth migration version must be 5");
                 assertTrue(rs.next(), "sixth migration row (V6) must exist");
                 assertEquals("6", rs.getString("version"), "sixth migration version must be 6");
-                assertFalse(rs.next(), "flyway_schema_history must contain exactly six rows (V1..V6)");
+                assertTrue(rs.next(), "seventh migration row (V7) must exist");
+                assertEquals("7", rs.getString("version"), "seventh migration version must be 7");
+                assertFalse(rs.next(), "flyway_schema_history must contain exactly seven rows (V1..V7)");
             }
         }
     }

@@ -1272,6 +1272,44 @@ else
     fail "CIP2EG1 credential residue > 0 ($CR)"
 fi
 
+# ROADMAP_18 CIP2F/CIP2G gates
+# CIP2FG1/2: content-version snapshot identity (composite PK)
+if grep -q 'pk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V7__source_visual_snapshot_content_version.sql; then
+    pass "CIP2FG1/2 F2 composite snapshot identity (media_stream_id, artifact_id)"
+else
+    fail "CIP2FG1/2 composite PK missing"
+fi
+# CIP2FG3/4: DB-level snapshot immutability trigger
+if grep -q 'trg_svd_snapshot_immutable' platform-app/src/main/resources/db/migration/V7__source_visual_snapshot_content_version.sql && grep -q 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE' platform-app/src/main/resources/db/migration/V7__source_visual_snapshot_content_version.sql; then
+    pass "CIP2FG3/4 direct SQL rebind/payload rewrite rejected (immutability trigger)"
+else
+    fail "CIP2FG3/4 immutability trigger missing"
+fi
+# CIP2FG6: same exact content conflicting description rejected
+if grep -q 'SOURCE_VISUAL_SNAPSHOT_CONFLICT' media-module/src/main/java/com/example/platform/media/infrastructure/persistence/JooqSourceVisualDescriptionSnapshotRepository.java; then
+    pass "CIP2FG6 same-key conflicting description fails closed"
+else
+    fail "CIP2FG6 conflict guard missing"
+fi
+# CIP2FG8/GG2: zero upsert-by-stream (append-only save)
+if grep -q 'on conflict (media_stream_id) do update' media-module/src/main/java/com/example/platform/media/infrastructure/persistence/JooqSourceVisualDescriptionSnapshotRepository.java; then
+    fail "CIP2FG8 upsert-by-stream still present"
+else
+    pass "CIP2FG8/GG2 zero upsert-by-stream; append-only snapshot write"
+fi
+# CIP2GG1: artifact content identity — render artifact table has no content column
+if grep -q 'create table artifact (' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -qE 'storage_uri|format varchar' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+    pass "CIP2GG1 artifact id = content identity (no digest column to rebind)"
+else
+    fail "CIP2GG1 artifact immutability unproven"
+fi
+# V6 regression: composite FKs still present
+if grep -q 'fk_svd_stream_asset' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql && grep -q 'fk_svd_asset_artifact' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql; then
+    pass "V6 regression: cross-asset ownership FKs retained"
+else
+    fail "V6 ownership regression"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

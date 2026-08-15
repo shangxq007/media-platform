@@ -61,10 +61,27 @@ class SourceVisualOwnershipIntegrityIT {
                 + "constraint pk_maa primary key (media_asset_id, artifact_id, relationship), "
                 + "constraint fk_maa_media_asset foreign key (media_asset_id) references media_asset(id), "
                 + "constraint fk_maa_artifact foreign key (artifact_id) references artifact(id))");
-        dsl.execute("create table source_visual_description_snapshot (media_stream_id varchar(64) primary key, "
+        dsl.execute("create table source_visual_description_snapshot (media_stream_id varchar(64) not null, "
                 + "media_asset_id varchar(64) not null, artifact_id varchar(64) not null, "
                 + "canonical_payload text not null, created_at timestamp not null default current_timestamp, "
                 + "constraint fk_source_visual_snapshot_stream foreign key (media_stream_id) references media_stream(id))");
+        dsl.execute("alter table source_visual_description_snapshot "
+                + "add constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id)");
+        dsl.execute("""
+                create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$
+                begin
+                    if new.media_stream_id is distinct from old.media_stream_id
+                       or new.media_asset_id is distinct from old.media_asset_id
+                       or new.artifact_id is distinct from old.artifact_id
+                       or new.canonical_payload is distinct from old.canonical_payload then
+                        raise exception 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE';
+                    end if;
+                    return new;
+                end;
+                $$ language plpgsql""");
+        dsl.execute("create trigger trg_svd_snapshot_immutable before update on "
+                + "source_visual_description_snapshot for each row "
+                + "execute function trg_fn_svd_snapshot_immutable()");
         // V6 constraints
         dsl.execute("alter table media_stream add constraint uq_ms_id_asset unique (id, media_asset_id)");
         dsl.execute("alter table media_asset_artifact add constraint uq_maa_asset_artifact unique (media_asset_id, artifact_id)");
@@ -76,10 +93,12 @@ class SourceVisualOwnershipIntegrityIT {
         dsl.execute("insert into media_asset (id) values ('asset-A'), ('asset-B')");
         dsl.execute("insert into media_stream (id, media_asset_id, stream_index, stream_kind) "
                 + "values ('stream-A', 'asset-A', 0, 'VIDEO'), ('stream-B', 'asset-B', 0, 'VIDEO')");
-        dsl.execute("insert into artifact (id) values ('artifact-X'), ('artifact-Y')");
-        // artifact-X belongs to asset-A (SOURCE_MEDIA), artifact-Y to asset-B
+        dsl.execute("insert into artifact (id) values ('artifact-X'), ('artifact-Y'), ('artifact-Z')");
+        // asset-A owns artifact-X and artifact-Y (two content versions);
+        // asset-B owns artifact-Z (used for cross-asset negative tests)
         dsl.execute("insert into media_asset_artifact (media_asset_id, artifact_id, relationship) "
-                + "values ('asset-A', 'artifact-X', 'SOURCE_MEDIA'), ('asset-B', 'artifact-Y', 'SOURCE_MEDIA')");
+                + "values ('asset-A', 'artifact-X', 'SOURCE_MEDIA'), ('asset-A', 'artifact-Y', 'SOURCE_MEDIA'), "
+                + "('asset-B', 'artifact-Z', 'SOURCE_MEDIA')");
     }
 
     @AfterAll
@@ -92,6 +111,63 @@ class SourceVisualOwnershipIntegrityIT {
     @BeforeEach
     void resetState() {
         dsl.execute("delete from source_visual_description_snapshot");
+    }
+
+    @Test
+    void v7DirectSqlArtifactRebindRejected() {
+        dsl.execute("insert into source_visual_description_snapshot "
+                + "(media_stream_id, media_asset_id, artifact_id, canonical_payload) values (?, ?, ?, ?)",
+                STREAM_A.value(), "asset-A", "artifact-X", payload());
+        // direct SQL rebind S from artifact-X to artifact-Y must be rejected by the
+        // immutability trigger (CIP2F: no historical rebind)
+        org.jooq.exception.DataAccessException ex = assertThrows(
+                org.jooq.exception.DataAccessException.class,
+                () -> dsl.execute("update source_visual_description_snapshot "
+                        + "set artifact_id = ? where media_stream_id = ?",
+                        "artifact-Y", STREAM_A.value()));
+        assertTrue(ex.getMessage().contains("SOURCE_VISUAL_SNAPSHOT_IMMUTABLE"),
+                "trigger must reject semantic rebind, got: " + ex.getMessage());
+    }
+
+    @Test
+    void v7DirectSqlPayloadRewriteRejected() {
+        dsl.execute("insert into source_visual_description_snapshot "
+                + "(media_stream_id, media_asset_id, artifact_id, canonical_payload) values (?, ?, ?, ?)",
+                STREAM_A.value(), "asset-A", "artifact-X", payload());
+        String different = "format=source-visual-v1\nextent=640x480\npar=1/1\n"
+                + "sample=RGB|INTERLEAVED|8|NONE|UNSPECIFIED|false\n"
+                + "color=parametric|wellknown:BT709|BT709|BT709|LIMITED\nalpha=NO_ALPHA\n"
+                + "orient=NORMAL\nscan=progressive\nhdr=absent\n";
+        org.jooq.exception.DataAccessException ex = assertThrows(
+                org.jooq.exception.DataAccessException.class,
+                () -> dsl.execute("update source_visual_description_snapshot "
+                        + "set canonical_payload = ? where media_stream_id = ?",
+                        different, STREAM_A.value()));
+        assertTrue(ex.getMessage().contains("SOURCE_VISUAL_SNAPSHOT_IMMUTABLE"),
+                "trigger must reject payload rewrite, got: " + ex.getMessage());
+    }
+
+    @Test
+    void v7MultiArtifactSnapshotsCoexist() {
+        dsl.execute("insert into source_visual_description_snapshot "
+                + "(media_stream_id, media_asset_id, artifact_id, canonical_payload) values (?, ?, ?, ?)",
+                STREAM_A.value(), "asset-A", "artifact-X", payload());
+        String other = "format=source-visual-v1\nextent=3840x2160\npar=1/1\n"
+                + "sample=RGB|INTERLEAVED|10|NONE|UNSPECIFIED|false\n"
+                + "color=parametric|wellknown:BT2020|PQ|BT2020_NCL|LIMITED\nalpha=NO_ALPHA\n"
+                + "orient=NORMAL\nscan=progressive\nhdr=absent\n";
+        // artifact-Y already linked to asset-A -> second content version snapshot
+        dsl.execute("insert into source_visual_description_snapshot "
+                + "(media_stream_id, media_asset_id, artifact_id, canonical_payload) values (?, ?, ?, ?)",
+                STREAM_A.value(), "asset-A", "artifact-Y", other);
+        assertEquals(2, dsl.fetchOne("select count(*) from source_visual_description_snapshot "
+                + "where media_stream_id = ?", STREAM_A.value()).get(0, Long.class),
+                "F2: two artifact snapshots for one stream must coexist");
+        // X snapshot unchanged
+        String x = dsl.fetchOne("select canonical_payload from source_visual_description_snapshot "
+                + "where media_stream_id = ? and artifact_id = ?", STREAM_A.value(), "artifact-X")
+                .get(0, String.class);
+        assertEquals(payload(), x, "snapshot X unchanged after Y insert");
     }
 
     private static String payload() {
@@ -116,10 +192,10 @@ class SourceVisualOwnershipIntegrityIT {
 
     @Test
     void d2ArtifactOfAnotherAssetRejected() {
-        // stream-A (asset-A) with artifact-Y (belongs to asset-B) must be rejected
+        // stream-A (asset-A) with artifact-Z (belongs to asset-B) must be rejected
         expectReject(() -> dsl.execute("insert into source_visual_description_snapshot "
                 + "(media_stream_id, media_asset_id, artifact_id, canonical_payload) values (?, ?, ?, ?)",
-                STREAM_A.value(), "asset-A", "artifact-Y", payload()), "D2");
+                STREAM_A.value(), "asset-A", "artifact-Z", payload()), "D2");
     }
 
     @Test
@@ -153,10 +229,10 @@ class SourceVisualOwnershipIntegrityIT {
         Long count = dsl.fetchOne("select count(*) from source_visual_description_snapshot "
                 + "where media_stream_id = ?", STREAM_A.value()).get(0, Long.class);
         assertEquals(1, count, "valid ownership insert must succeed");
-        // artifact-Y for stream-B also valid
+        // artifact-Z for stream-B also valid
         dsl.execute("insert into source_visual_description_snapshot "
                 + "(media_stream_id, media_asset_id, artifact_id, canonical_payload) values (?, ?, ?, ?)",
-                STREAM_B.value(), "asset-B", "artifact-Y", payload());
+                STREAM_B.value(), "asset-B", "artifact-Z", payload());
         assertEquals(2, dsl.fetchOne("select count(*) from source_visual_description_snapshot")
                 .get(0, Long.class));
     }
@@ -174,6 +250,6 @@ class SourceVisualOwnershipIntegrityIT {
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
         repo.save(new MediaAssetId("asset-A"), STREAM_A, new com.example.platform.shared.identity.ArtifactId("artifact-X"), s1);
-        assertEquals(s1, repo.findByStreamId(STREAM_A).orElseThrow());
+        assertEquals(s1, repo.findByStreamAndArtifact(STREAM_A, new com.example.platform.shared.identity.ArtifactId("artifact-X")).orElseThrow());
     }
 }

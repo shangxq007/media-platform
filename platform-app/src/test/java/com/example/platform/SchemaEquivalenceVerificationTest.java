@@ -68,7 +68,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertTrue(result.migrationsExecuted >= 1, "At least one migration should execute");
 
         var info = flyway.info();
-        assertEquals(6, info.all().length, "Expected V1..V6 migrations (V2 op-plan; V3 deferrable FK; V4 parent graph; V5 source visual snapshot; V6 ownership constraints)");
+        assertEquals(7, info.all().length, "Expected V1..V7 migrations (V2 op-plan; V3 deferrable FK; V4 parent graph; V5 snapshot; V6 ownership; V7 content-version)");
         assertEquals("1", info.all()[0].getVersion().getVersion());
         assertEquals("V1__initial_schema.sql", info.all()[0].getScript());
         deployed = true;
@@ -288,7 +288,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
                 .defaultSchema(SCHEMA)
                 .load();
         var info = flyway.info();
-        assertEquals(6, info.all().length, "Only V1..V6 should be active");
+        assertEquals(7, info.all().length, "Only V1..V7 should be active");
         assertEquals("1", info.all()[0].getVersion().getVersion());
     }
 

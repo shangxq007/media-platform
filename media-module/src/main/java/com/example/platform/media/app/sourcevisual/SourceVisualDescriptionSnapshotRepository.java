@@ -16,16 +16,18 @@ import java.util.Optional;
 public interface SourceVisualDescriptionSnapshotRepository {
 
     /**
-     * Persist canonical snapshot for one visual stream. artifactId is the
-     * immutable content pin (new content version = new ArtifactId). Same
-     * transaction boundary as Media source identity persistence.
+     * Append exact content-version snapshot (CIP2F F2: one logical stream may
+     * be interpreted from multiple immutable artifact content versions).
+     * Conflicting duplicate for the same (stream, artifact) key fails closed;
+     * identical payload for the same key is accepted idempotently.
      */
     void save(MediaAssetId mediaAssetId, MediaStreamId streamId, ArtifactId artifactId,
               SourceVisualDescription description);
 
     /**
-     * Load the exact persisted canonical snapshot. MUST NOT invoke provider
-     * probe or normalizer. Empty = non-visual stream or not yet ingested.
+     * Load the exact persisted canonical snapshot for one exact content
+     * version. MUST NOT invoke provider probe or normalizer. Empty =
+     * non-visual stream or that content version not yet ingested.
      */
-    Optional<SourceVisualDescription> findByStreamId(MediaStreamId streamId);
+    Optional<SourceVisualDescription> findByStreamAndArtifact(MediaStreamId streamId, ArtifactId artifactId);
 }
