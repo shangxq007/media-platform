@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":extension-module")) // OM: ContractVersion reuse (no cycle: extension -> shared-kernel/billing)
     implementation(project(":media-module")) // MCMV2-C: Media Canonical Model (frozen direction: Render -> Media)
     implementation(project(":audio-module")) // AUDIO_V2: canonical Audio Mix authority (frozen direction: Render -> Audio)
+    implementation(project(":font-text-module")) // ROADMAP_19: canonical Font/Text value semantics (frozen direction: Render -> FontText)
     implementation(project(":notification-module")) // NotificationEventPublisher rehomed to notification (K2)
     api(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))

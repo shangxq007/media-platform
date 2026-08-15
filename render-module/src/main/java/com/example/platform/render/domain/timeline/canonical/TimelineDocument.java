@@ -3,6 +3,7 @@ package com.example.platform.render.domain.timeline.canonical;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.render.domain.timeline.semantics.relationship.SemanticRelationship;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Objects;
@@ -34,12 +35,20 @@ public class TimelineDocument {
     @JsonProperty("semanticRelationships")
     private final List<SemanticRelationship> semanticRelationships;
 
+    /**
+     * ROADMAP_19 (C34/C54): authored TextElements. NON_EMPTY inclusion keeps
+     * pre-#19 documents byte- and hash-stable (no empty textElements key).
+     */
+    @JsonProperty("textElements")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private final List<TextElement> textElements;
+
     /** Convenience constructor: document without audio mix / relationships. */
     public TimelineDocument(
             String schemaVersion,
             List<TimelineTrack> tracks,
             TimelineMetadata metadata) {
-        this(schemaVersion, tracks, metadata, AudioMix.EMPTY, List.of());
+        this(schemaVersion, tracks, metadata, AudioMix.EMPTY, List.of(), List.of());
     }
 
     /** Convenience constructor: document with audio mix, no relationships. */
@@ -48,7 +57,17 @@ public class TimelineDocument {
             List<TimelineTrack> tracks,
             TimelineMetadata metadata,
             AudioMix audioMix) {
-        this(schemaVersion, tracks, metadata, audioMix, List.of());
+        this(schemaVersion, tracks, metadata, audioMix, List.of(), List.of());
+    }
+
+    /** Convenience constructor: document with audio mix + relationships. */
+    public TimelineDocument(
+            String schemaVersion,
+            List<TimelineTrack> tracks,
+            TimelineMetadata metadata,
+            AudioMix audioMix,
+            List<SemanticRelationship> semanticRelationships) {
+        this(schemaVersion, tracks, metadata, audioMix, semanticRelationships, List.of());
     }
 
     @JsonCreator
@@ -57,7 +76,8 @@ public class TimelineDocument {
             @JsonProperty("tracks") List<TimelineTrack> tracks,
             @JsonProperty("metadata") TimelineMetadata metadata,
             @JsonProperty("audioMix") AudioMix audioMix,
-            @JsonProperty("semanticRelationships") List<SemanticRelationship> semanticRelationships) {
+            @JsonProperty("semanticRelationships") List<SemanticRelationship> semanticRelationships,
+            @JsonProperty("textElements") List<TextElement> textElements) {
         if (schemaVersion == null || schemaVersion.isBlank()) {
             throw new IllegalArgumentException("schemaVersion must not be blank");
         }
@@ -71,6 +91,9 @@ public class TimelineDocument {
         this.semanticRelationships = semanticRelationships != null
                 ? semanticRelationships.stream().sorted(RELATIONSHIP_ORDER).toList()
                 : List.of();
+        this.textElements = textElements != null
+                ? textElements.stream().sorted(TEXT_ELEMENT_ORDER).toList()
+                : List.of();
     }
 
     /** Deterministic relationship ordering: kind, then semantic identity key. */
@@ -81,6 +104,10 @@ public class TimelineDocument {
                             ? s.identityKey()
                             : ((com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship) r).groupId().value());
 
+    /** ROADMAP_19 (C51): deterministic TextElement compositing order by id. */
+    private static final java.util.Comparator<TextElement> TEXT_ELEMENT_ORDER =
+            java.util.Comparator.comparing((TextElement e) -> e.id().value());
+
     public static final String CURRENT_SCHEMA_VERSION = "timeline-1.0";
 
     public String getSchemaVersion() { return schemaVersion; }
@@ -88,4 +115,5 @@ public class TimelineDocument {
     public TimelineMetadata getMetadata() { return metadata; }
     public AudioMix getAudioMix() { return audioMix; }
     public List<SemanticRelationship> getSemanticRelationships() { return semanticRelationships; }
+    public List<TextElement> getTextElements() { return textElements; }
 }

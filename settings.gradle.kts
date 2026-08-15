@@ -42,6 +42,7 @@ include(
     "media-execution-plan-module",
     "media-module",
     "color-image-module",
+    "font-text-module",
     "audio-module",
 )
 

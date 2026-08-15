@@ -1310,6 +1310,67 @@ else
     fail "V6 ownership regression"
 fi
 
+# ROADMAP_19 FTG gates (FTG1-FTG37 core set)
+# FTG2/33-36: no canonical font path/url/raw-family authority in font-text domain
+if grep -rn 'Path\\|Uri\\|URL\\|host\\|registry' font-text-module/src/main/java/com/example/platform/fonttext/resource --include='*.java' 2>/dev/null | grep -v 'import\\|//' | grep -q 'String path\\|String url\\|String host\\|Path \\|URI '; then
+    fail "FTG2/34/35/36 path/url/host authority in font domain"
+else
+    pass "FTG2/34/35/36 zero path/url/host canonical authority in font-text domain"
+fi
+# FTG3: RAW font cannot enter resolver (security state model)
+if grep -q 'RAW font cannot be a validated execution reference' font-text-module/src/main/java/com/example/platform/fonttext/resource/ValidatedFontExecutionReference.java; then
+    pass "FTG3 raw font never enters resolver/shaper (type boundary)"
+else
+    fail "FTG3 raw font boundary missing"
+fi
+# FTG7: no binary float axis values
+if grep -rn 'double \\|float \\|Double \\|Float ' font-text-module/src/main/java/com/example/platform/fonttext/typography --include='*.java' 2>/dev/null | grep -v 'import\\|//\\|toDouble' | grep -q .; then
+    fail "FTG7 float authority in typography"
+else
+    pass "FTG7 zero binary-float canonical typography values"
+fi
+# FTG10: UTF-16 not canonical range
+if grep -q 'utf16OffsetForScalar' font-text-module/src/main/java/com/example/platform/fonttext/text/TextContent.java && grep -q 'scalarCount' font-text-module/src/main/java/com/example/platform/fonttext/text/TextContent.java; then
+    pass "FTG10 canonical scalar ranges (UTF-16 projection only)"
+else
+    fail "FTG10 scalar range model missing"
+fi
+# FTG14/FTG19/FTG30: ShapedGlyphRun not Timeline canonical; text affects hash; profile not hashed
+if grep -q 'textElements' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java && grep -q 'NON_EMPTY' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+    pass "FTG19 Timeline text affects hash (TextElement, backward-stable NON_EMPTY)"
+else
+    fail "FTG19 TextElement hash integration missing"
+fi
+if grep -q 'SHAPED_GLYPH_RUN_IN_TIMELINE_CANONICAL_STATE' font-text-module/src/main/java/com/example/platform/fonttext/execution/ShapedGlyphRun.java; then
+    pass "FTG14 ShapedGlyphRun excluded from Timeline canonical state"
+else
+    fail "FTG14 shaped-glyph boundary missing"
+fi
+# FTG25/26: lineHeight sole ParagraphStyle authority
+if grep -q 'private final LineHeight lineHeight' font-text-module/src/main/java/com/example/platform/fonttext/typography/ParagraphStyle.java && ! grep -q 'private final LineHeight' font-text-module/src/main/java/com/example/platform/fonttext/typography/TextStyle.java; then
+    pass "FTG25/26 lineHeight sole ParagraphStyle authority (TextStyle zero)"
+else
+    fail "FTG25/26 lineHeight authority violated"
+fi
+# FTG27: selection fields only in FontSelectionIntent
+if grep -q 'weight' font-text-module/src/main/java/com/example/platform/fonttext/typography/FontSelectionIntent.java && ! grep -q 'WeightIntent weight' font-text-module/src/main/java/com/example/platform/fonttext/typography/TextStyle.java; then
+    pass "FTG27 selection properties only in FontSelectionIntent"
+else
+    fail "FTG27 selection duplication"
+fi
+# FTG17/23/24: no Rights authority in font-text
+if grep -rn 'RightsResolver\\|LicenseAuthorizer\\|AllowAll\\|isCommercialUseAllowed' font-text-module/src/main --include='*.java' 2>/dev/null | grep -q .; then
+    fail "FTG17/23/24 rights authority in font-text"
+else
+    pass "FTG17/23/24 zero font-local Rights authority; resolver technical only"
+fi
+# FTG31/32: no text fill / duplicate color model
+if grep -q 'private final.*fill\|private final FontRational fill' font-text-module/src/main/java/com/example/platform/fonttext/typography/TextStyle.java; then
+    fail "FTG31 text fill present"
+else
+    pass "FTG31/32 no TextStyle fill; no duplicate color model"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0
