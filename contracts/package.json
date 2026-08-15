@@ -1,0 +1,14 @@
+{
+  "name": "media-platform-contract-governance",
+  "private": true,
+  "version": "1.0.0",
+  "description": "VERSION_COMPATIBILITY_GOVERNANCE_FOUNDATION_V1: pinned HTTP API contract governance tooling (OpenAPI 3.1 + Spectral + oasdiff). Tool versions are PINNED — no mutable 'latest'.",
+  "scripts": {
+    "spectral:lint": "spectral lint contracts/http/media-api/openapi.yaml --ruleset contracts/governance/api-style.yaml",
+    "oasdiff:breaking": "oasdiff breaking contracts/http/media-api/openapi.base.yaml contracts/http/media-api/openapi.candidate.yaml",
+    "oasdiff:negative": "oasdiff breaking contracts/http/media-api/openapi.base.yaml contracts/http/media-api/openapi.breaking.yaml || echo NEGATIVE_FIXTURE_BREAKING_DETECTED"
+  },
+  "devDependencies": {
+    "@stoplight/spectral-cli": "6.14.3"
+  }
+}

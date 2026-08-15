@@ -26,6 +26,8 @@ System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="")
 
 }
 
+Rel(PlatformApplication.PlatformApplication.SecretsConfigAccess, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.SecretsConfigAccess, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "listens to", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SecretsConfigAccess, "uses", $techn="", $tags="", $link="")
@@ -33,8 +35,6 @@ Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.Platfo
 Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.Storage, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Storage, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Storage, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.SecretsConfigAccess, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.SecretsConfigAccess, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes

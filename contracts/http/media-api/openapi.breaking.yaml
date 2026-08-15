@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: media-api
+  version: 3.2.0
+  x-lifecycle: STABLE
+  x-contract-id: media-api
+  description: >
+    VERSION_COMPATIBILITY_GOVERNANCE_FOUNDATION_V1 baseline. The OpenAPI document
+    is authority for the EXTERNAL HTTP TRANSPORT CONTRACT only — it is NOT Media
+    domain schema, Timeline canonical schema, capability semantic authority or
+    revision authority (TRANSPORT_SCHEMA_IS_A_PROJECTION_NOT_DOMAIN_AUTHORITY_V1).
+servers:
+  - url: /api
+paths:
+  /render/jobs/{jobId}:
+    get:
+      operationId: getRenderJob
+      summary: Query a render job (transport projection of render execution state)
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Render job projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RenderJob"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Error"
+  /timeline/revisions/{revisionId}:
+    get:
+      operationId: getTimelineRevision
+      summary: Fetch an immutable Timeline revision (composition projection)
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Timeline revision projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimelineRevision"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Error"
+  /media/assets/{assetId}:
+    get:
+      operationId: getMediaAsset
+      summary: Media asset projection (media-domain logical source)
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Media asset projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaAsset"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Error"
+components:
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      x-error-shape: consistent
+    RenderJob:
+      type: object
+      required: [jobId]
+      properties:
+        jobId:
+          type: string
+        revisionId:
+          type: string
+    TimelineRevision:
+      type: object
+      required: [revisionId, schemaVersion]
+      properties:
+        revisionId:
+          type: string
+        schemaVersion:
+          type: string
+        tracks:
+          type: array
+          items:
+            type: object
+    MediaAsset:
+      type: object
+      required: [assetId]
+      properties:
+        assetId:
+          type: string
+        streamId:
+          type: string

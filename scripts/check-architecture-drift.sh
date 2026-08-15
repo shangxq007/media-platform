@@ -374,6 +374,74 @@ else
     pass "TemporalMapping not implemented (deferred)"
 fi
 
+# VG-1: ReleaseVersion typed E.R.P, distinct from contract versions
+if grep -q 'record ReleaseVersion' shared-kernel/src/main/java/com/example/platform/shared/version/ReleaseVersion.java && grep -q 'EPOCH.RELEASE.PATCH' shared-kernel/src/main/java/com/example/platform/shared/version/ReleaseVersion.java; then
+    pass "ReleaseVersion typed E.R.P"
+else
+    fail "ReleaseVersion missing"
+fi
+
+# VG-2: contract/format versions use E.R (no PATCH)
+if grep -q 'record CanonicalFormatVersion' shared-kernel/src/main/java/com/example/platform/shared/version/CanonicalFormatVersion.java && grep -q 'EPOCH.RELEASE' shared-kernel/src/main/java/com/example/platform/shared/version/CanonicalFormatVersion.java; then
+    pass "CanonicalFormatVersion typed E.R"
+else
+    fail "CanonicalFormatVersion missing"
+fi
+
+# VG-3: VersionRange typed + numeric
+if grep -q 'record VersionRange' shared-kernel/src/main/java/com/example/platform/shared/version/VersionRange.java; then
+    pass "typed VersionRange present"
+else
+    fail "VersionRange missing"
+fi
+
+# VG-5: lifecycle explicit, not version-parity
+if grep -q 'enum Lifecycle' shared-kernel/src/main/java/com/example/platform/shared/version/Lifecycle.java && grep -q 'DRAFT' shared-kernel/src/main/java/com/example/platform/shared/version/Lifecycle.java; then
+    pass "explicit lifecycle model"
+else
+    fail "lifecycle model missing"
+fi
+
+# VG-6: ReleaseChannel distinct type
+if grep -q 'enum ReleaseChannel' shared-kernel/src/main/java/com/example/platform/shared/version/ReleaseChannel.java; then
+    pass "release channel explicit"
+else
+    fail "release channel missing"
+fi
+
+# VG-8/9: execution provenance pins resolved versions
+if grep -q 'record ExecutionProvenance' shared-kernel/src/main/java/com/example/platform/shared/version/ExecutionProvenance.java; then
+    pass "execution provenance contract"
+else
+    fail "execution provenance missing"
+fi
+
+# VG-10: ApiContract independent from platform release
+if grep -q 'record ApiContract' shared-kernel/src/main/java/com/example/platform/shared/version/ApiContract.java; then
+    pass "API contract lifecycle governance"
+else
+    fail "API contract governance missing"
+fi
+
+# VG-12: HTTP breaking change machine-gated (oasdiff gate present)
+if grep -q 'oasdiff breaking' scripts/check-api-contract-governance.sh; then
+    pass "breaking-change machine gate (oasdiff)"
+else
+    fail "breaking-change gate missing"
+fi
+
+# VG-13/14/15: legacy compatibility code = 0 (grep negative)
+if grep -rq 'class VersionV1\|class LegacyVersion\|VersionParityCompat' shared-kernel/src/main 2>/dev/null; then
+    fail "legacy version compatibility code present"
+else
+    pass "zero legacy version compatibility code"
+fi
+if grep -rq 'parse("1")\s*;' extension-module/src/main/java/com/example/platform/extension/domain/ContractVersion.java 2>/dev/null; then
+    fail "single-segment contract version compatibility present"
+else
+    pass "single-segment ContractVersion support absent"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

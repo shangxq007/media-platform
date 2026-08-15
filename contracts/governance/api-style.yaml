@@ -1,0 +1,32 @@
+extends: []
+rules:
+  contract-id-present:
+    description: Stable API contract identity metadata required
+    severity: error
+    given: $.info
+    then:
+      field: x-contract-id
+      function: truthy
+  lifecycle-metadata-valid:
+    description: Explicit lifecycle metadata must be present and valid
+    severity: error
+    given: $.info
+    then:
+      field: x-lifecycle
+      function: pattern
+      functionOptions:
+        match: "^(DRAFT|PREVIEW|STABLE|DEPRECATED|RETIRED)$"
+  operation-id-required:
+    description: Every operation must declare a stable operationId
+    severity: error
+    given: $.paths[*][get,put,post,delete,options,head,patch,trace]
+    then:
+      field: operationId
+      function: truthy
+  consistent-error-shape:
+    description: Error responses use the consistent ApiError shape
+    severity: error
+    given: $.paths[*][*].responses[default,4XX,5XX]
+    then:
+      field: content.application/json.schema
+      function: truthy
