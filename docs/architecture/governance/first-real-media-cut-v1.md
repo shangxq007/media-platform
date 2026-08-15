@@ -11,6 +11,9 @@ authority: existing canonical stack (Media V2 + Timeline V2 + Audio V2 + Capabil
 
 ## Base
 - FIRST_REAL_MEDIA_CUT_BASE_SHA = d77fe84d1b292b4ba75bc710c255b88a077fdb0c
+- FIRST_REAL_MEDIA_CUT_IMPLEMENTATION_SHA = a1c3d328e55f97cb9f5e05cb078ac53471ce2407
+- FIRST_REAL_MEDIA_CUT_IMPLEMENTATION_TREE = 66088428d025c3fb6484f06231c584f92dee244b
+- FIRST_REAL_MEDIA_CUT_PUBLICATION_SHA = (see git log)
   (VCG post-close correction; contains #13-#17 + VERSION_COMPATIBILITY_GOVERNANCE)
 - VCG_POST_CLOSE_FINALIZATION = PASS (ReleaseVersion E.R.P verified; /api/vN routes = 0;
   credential residue = 0; OASDIFF_CHECKSUM_PIN = NO — non-blocking hardening observation)
