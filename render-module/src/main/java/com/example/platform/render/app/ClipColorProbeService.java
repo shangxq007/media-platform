@@ -27,14 +27,11 @@ public class ClipColorProbeService {
 
     private final TimelineScriptParser timelineScriptParser;
     private final FfprobeMediaProbeExecutor mediaProbeService;
-    private final TimelineColorMetadataService timelineColorMetadataService;
 
     public ClipColorProbeService(TimelineScriptParser timelineScriptParser,
-                                   FfprobeMediaProbeExecutor mediaProbeService,
-                                   TimelineColorMetadataService timelineColorMetadataService) {
+                                   FfprobeMediaProbeExecutor mediaProbeService) {
         this.timelineScriptParser = timelineScriptParser;
         this.mediaProbeService = mediaProbeService;
-        this.timelineColorMetadataService = timelineColorMetadataService;
     }
 
     public ClipProbeResult probeAndEnrichTimeline(String timelineJson, String probeJobIdPrefix) {
@@ -62,10 +59,7 @@ public class ClipColorProbeService {
             probedByPath.put(normalized, result.color());
         }
 
-        String enriched = mergeClipMetadata(timelineJson, spec, probedByPath);
-        enriched = probedByPath.isEmpty()
-                ? enriched
-                : timelineColorMetadataService.mergeProbeMetadata(enriched, aggregateColor(probedByPath));
+        String enriched = timelineJson;
         return new ClipProbeResult(true, enriched, probedByPath.size(), warnings);
     }
 
@@ -94,47 +88,6 @@ public class ClipColorProbeService {
         return paths;
     }
 
-    private String mergeClipMetadata(String timelineJson, TimelineSpec spec,
-                                     Map<String, ColorProbeMetadata> probedByPath) {
-        try {
-            JsonNode root = MAPPER.readTree(timelineJson);
-            if (!root.isObject() || !root.has("tracks")) {
-                return timelineJson;
-            }
-            ObjectNode rootObj = (ObjectNode) root;
-            for (JsonNode trackNode : root.get("tracks")) {
-                if (!trackNode.has("clips")) {
-                    continue;
-                }
-                for (JsonNode clipNode : trackNode.get("clips")) {
-                    if (!clipNode.isObject()) {
-                        continue;
-                    }
-                    ObjectNode clipObj = (ObjectNode) clipNode;
-                    String uri = resolveClipUri(clipObj);
-                    if (uri == null) {
-                        continue;
-                    }
-                    ColorProbeMetadata color = probedByPath.get(normalizeUri(uri));
-                    if (color == null) {
-                        continue;
-                    }
-                    ObjectNode assetRef = clipObj.has("assetRef") && clipObj.get("assetRef").isObject()
-                            ? (ObjectNode) clipObj.get("assetRef")
-                            : clipObj.putObject("assetRef");
-                    ObjectNode meta = assetRef.has("metadata") && assetRef.get("metadata").isObject()
-                            ? (ObjectNode) assetRef.get("metadata")
-                            : assetRef.putObject("metadata");
-                    for (Map.Entry<String, String> e : color.toTimelineMetadata().entrySet()) {
-                        meta.put(e.getKey(), e.getValue());
-                    }
-                }
-            }
-            return MAPPER.writeValueAsString(rootObj);
-        } catch (Exception e) {
-            return timelineJson;
-        }
-    }
 
     private static String resolveClipUri(JsonNode clipNode) {
         if (clipNode.has("assetRef") && clipNode.get("assetRef").has("storageUri")) {
@@ -150,11 +103,10 @@ public class ClipColorProbeService {
     }
 
     private static ColorProbeMetadata aggregateColor(Map<String, ColorProbeMetadata> probed) {
-        boolean hdr = probed.values().stream().anyMatch(ColorProbeMetadata::hdr);
         return probed.values().stream().findFirst()
                 .map(c -> new ColorProbeMetadata(
                         c.colorSpace(), c.colorPrimaries(), c.colorTransfer(), c.colorRange(),
-                        c.pixelFormat(), hdr))
+                        c.pixelFormat()))
                 .orElse(ColorProbeMetadata.empty());
     }
 

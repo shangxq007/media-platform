@@ -21,6 +21,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":color-image-module"))
     // MCMV2-C: Media Canonical Model V2 domain module.
     // Dependency direction (frozen): Media Canonical Model ← Timeline/Render/Workflow/AI/
     // Delivery/Adapters. media-module MUST NOT depend on render-module/artifact-module/

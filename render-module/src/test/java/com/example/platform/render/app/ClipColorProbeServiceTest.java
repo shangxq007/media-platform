@@ -19,12 +19,11 @@ class ClipColorProbeServiceTest {
         when(probeService.probeAbsolute(anyString(), anyString()))
                 .thenReturn(new MediaProbeResult("j", true, "/tmp/a.mp4", 1000, 5000,
                         1920, 1080, "h264", "aac", 30, 0, 2, 44100, List.of(), "",
-                        new ColorProbeMetadata("bt709", "bt709", "bt709", "tv", "yuv420p", false)));
+                        new ColorProbeMetadata("bt709", "bt709", "bt709", "tv", "yuv420p")));
 
         ClipColorProbeService service = new ClipColorProbeService(
                 new TimelineScriptParser(),
-                probeService,
-                new TimelineColorMetadataService());
+                probeService);
 
         String timeline = """
                 {
@@ -38,6 +37,7 @@ class ClipColorProbeServiceTest {
                 service.probeAndEnrichTimeline(timeline, "probe");
         assertTrue(result.success());
         assertEquals(1, result.clipsProbed());
-        assertTrue(result.timelineJson().contains("platform.color.space"));
+        // ROADMAP_18: source color metadata stays Media-owned; zero Timeline leakage
+        assertFalse(result.timelineJson().contains("platform.color."));
     }
 }

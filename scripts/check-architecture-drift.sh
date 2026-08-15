@@ -277,7 +277,7 @@ fi
 
 # T16 Gate 1 (R1/C16 + C16-CORR-1): typed namespaced CapabilityId; STRUCTURAL vendor
 # validation (no hardcoded TLD allowlist); squatting/malformed fail closed
-if grep -q 'PLATFORM_RESERVED_PREFIXES' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java && grep -q 'CapabilityNamespaceValidator' extension-module/src/main/java/com/example/platform/extension/app/PluginDescriptorValidator.java && grep -q 'reverse-DNS' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityNamespaceValidator.java && ! grep -q 'VENDOR_PREFIXES = List.of\("com\."' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java; then
+if grep -q 'PLATFORM_RESERVED_PREFIXES' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java && grep -q 'CapabilityNamespaceValidator' extension-module/src/main/java/com/example/platform/extension/app/PluginDescriptorValidator.java && grep -q 'reverse-DNS' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityNamespaceValidator.java && ! grep -q 'VENDOR_PREFIXES' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java; then
     pass "capability namespace validation enforced (structural, no TLD allowlist)"
 else
     fail "capability namespace validation missing or TLD allowlist present"
@@ -1091,6 +1091,56 @@ if grep -q 'mergeSemantic' render-module/src/main/java/com/example/platform/rend
     pass "merge engine purity preserved"
 else
     fail "engine purity lost"
+fi
+
+# ROADMAP_18 CIG gates
+CIM="color-image-module/src/main/java/com/example/platform/colorimage"
+if [ -d "$CIM" ]; then
+    pass "CIG1 color-image-module exists"
+else
+    fail "CIG1 color-image-module missing"
+fi
+# CIG2: no outward dependencies (module has empty dependencies block)
+if grep -q 'implementation(project(' color-image-module/build.gradle.kts; then
+    fail "CIG2 color-image-module outward dependency"
+else
+    pass "CIG2 zero outward domain dependencies"
+fi
+# CIG3: sealed ColorDescription
+grep -q 'sealed interface ColorDescription' "$CIM/ColorDescription.java"; ck3=$?; if [ $ck3 -eq 0 ]; then pass "CIG3 sealed root"; else fail "CIG3 not sealed"; fi
+# CIG4: profile variant inside ColorDescription
+grep -q 'ProfileBasedColorDescription' "$CIM/ColorDescription.java"; ck4=$?; if [ $ck4 -eq 0 ]; then pass "CIG4 profile is ColorDescription variant"; else fail "CIG4"; fi
+# CIG5/CIG6: SourceVisualDescription single color field, no sibling profile
+grep -q 'ColorDescription colorDescription' "$CIM/SourceVisualDescription.java"; ck5=$?; if [ $ck5 -eq 0 ]; then pass "CIG5 single color authority"; else fail "CIG5"; fi
+if grep -q 'profileColorDescription\|ProfileBasedColorDescription profile' "$CIM/SourceVisualDescription.java"; then fail "CIG6 profile sibling present"; else pass "CIG6 no profile sibling"; fi
+# CIG7/CIG8: profile format + digest required
+grep -q 'profileFormat' "$CIM/ColorDescription.java"; ck7=$?; if [ $ck7 -eq 0 ]; then pass "CIG7 ProfileFormat required"; else fail "CIG7"; fi
+grep -q 'ColorProfileContentDigest' "$CIM/ColorDescription.java"; ck8=$?; if [ $ck8 -eq 0 ]; then pass "CIG8 digest required"; else fail "CIG8"; fi
+# CIG11: explicit alpha presence
+grep -q 'alphaComponentPresent' "$CIM/RasterSampleDescription.java"; ck11=$?; if [ $ck11 -eq 0 ]; then pass "CIG11 explicit alpha presence"; else fail "CIG11"; fi
+# CIG12: alpha consistency enforced
+grep -q 'INCONSISTENT_ALPHA_DESCRIPTION' "$CIM/SourceVisualDescription.java"; ck12=$?; if [ $ck12 -eq 0 ]; then pass "CIG12 alpha consistency enforced"; else fail "CIG12"; fi
+# CIG13: static HDR non-empty
+grep -q 'must contain at least one semantic component' "$CIM/StaticHdrMetadata.java"; ck13=$?; if [ $ck13 -eq 0 ]; then pass "CIG13 static HDR non-empty"; else fail "CIG13"; fi
+# CIG14: HDR boolean authority = 0 (ColorProbeMetadata has no hdr)
+if grep -q 'boolean hdr' render-module/src/main/java/com/example/platform/render/infrastructure/ColorProbeMetadata.java; then fail "CIG14 hdr boolean remains"; else pass "CIG14 hdr boolean deleted"; fi
+# CIG15: raw String color authority removed from ColorProbeMetadata
+if grep -q 'toTimelineMetadata' render-module/src/main/java/com/example/platform/render/infrastructure/ColorProbeMetadata.java; then fail "CIG15 toTimelineMetadata remains"; else pass "CIG15 Timeline leakage removed"; fi
+# CIG16: silent inference removed
+if grep -q 'inferFromPixelFormat' render-module/src/main/java/com/example/platform/render/ -r; then fail "CIG16 inferFromPixelFormat remains"; else pass "CIG16 silent pix_fmt inference deleted"; fi
+# CIG17: no platform.color.* writes into Timeline
+if grep -rq 'platform.color.' render-module/src/main/java/com/example/platform/render/app/; then fail "CIG17 platform.color.* leakage"; else pass "CIG17 zero source-color Timeline writes"; fi
+# CIG20: canonical float/double authority = 0 in color-image module
+F=$(grep -rn 'double\|float' "$CIM" --include='*.java' 2>/dev/null | grep -v 'toDouble\|doubleValue' | grep -vE 'binary float conversion|float conversion' | grep -vE '^[^:]+:[0-9]+: (\*|/|$)' | wc -l || true)
+if [ "$F" = "0" ]; then pass "CIG20 zero float/double authority in canonical module"; else fail "CIG20 float/double present ($F)"; fi
+# CIG21/22/23: dynamic HDR / clean aperture / ICC execution = 0
+if grep -rn 'DynamicHdrMetadata\|CleanAperture\|LittleCMS' "$CIM" --include='*.java' 2>/dev/null | grep -vE '^[^:]+:[0-9]+: (\*|/|$)' | grep -q .; then fail "CIG21-23 scope leak"; else pass "CIG21-23 dynamic HDR/clean aperture/ICC execution = 0"; fi
+# CIG30: SourceBinding unchanged (no source technical metadata fields added)
+SB="render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java"
+if [ -f "$SB" ] && ! grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata|profileDigest|colorSpace' "$SB"; then
+    pass "CIG30 SourceBinding unchanged (no source metadata god object)"
+else
+    fail "CIG30 SourceBinding gained source technical metadata"
 fi
 
 if [ $FAILED -eq 0 ]; then

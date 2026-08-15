@@ -41,6 +41,7 @@ include(
     "artifact-module",
     "media-execution-plan-module",
     "media-module",
+    "color-image-module",
     "audio-module",
 )
 

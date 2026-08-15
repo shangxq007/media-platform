@@ -5,7 +5,6 @@ import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.render.app.ClipColorProbeService;
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.app.NleLayerCatalogService;
-import com.example.platform.render.app.TimelineColorMetadataService;
 import com.example.platform.render.app.TimelinePatchService;
 import com.example.platform.render.app.timeline.IncrementalPlanExplainer;
 import com.example.platform.render.app.timeline.IncrementalRenderPlanService;
@@ -77,7 +76,6 @@ public class McpMediaToolsController {
     private final TimelineScriptParser timelineScriptParser;
     private final RenderPlannerService renderPlannerService;
     private final TimelinePatchService timelinePatchService;
-    private final TimelineColorMetadataService timelineColorMetadataService;
     private final PipelinePlanPersistenceService pipelinePlanPersistence;
     private final ClipColorProbeService clipColorProbeService;
     private final AafConversionService aafConversionService;
@@ -102,7 +100,6 @@ public class McpMediaToolsController {
                                    TimelineScriptParser timelineScriptParser,
                                    RenderPlannerService renderPlannerService,
                                    TimelinePatchService timelinePatchService,
-                                   TimelineColorMetadataService timelineColorMetadataService,
                                    PipelinePlanPersistenceService pipelinePlanPersistence,
                                    ClipColorProbeService clipColorProbeService,
                                    AafConversionService aafConversionService,
@@ -126,7 +123,6 @@ public class McpMediaToolsController {
         this.timelineScriptParser = timelineScriptParser;
         this.renderPlannerService = renderPlannerService;
         this.timelinePatchService = timelinePatchService;
-        this.timelineColorMetadataService = timelineColorMetadataService;
         this.pipelinePlanPersistence = pipelinePlanPersistence;
         this.clipColorProbeService = clipColorProbeService;
         this.aafConversionService = aafConversionService;
@@ -307,8 +303,7 @@ public class McpMediaToolsController {
                 : mediaProbeService.probe(request.jobId(), request.path());
         Map<String, Object> body = probeBody(result);
         if (request.mergeTimelineMetadata() && request.timelineJson() != null && result.color() != null) {
-            body.put("timelineJson", timelineColorMetadataService.mergeProbeMetadata(
-                    request.timelineJson(), result.color()));
+            
         }
         if (request.probeTimelineClips() && request.timelineJson() != null) {
             ClipColorProbeService.ClipProbeResult clipResult =
@@ -742,8 +737,8 @@ public class McpMediaToolsController {
                 "transfer", color.colorTransfer(),
                 "range", color.colorRange(),
                 "pixelFormat", color.pixelFormat(),
-                "hdr", color.hdr()));
-        body.put("timelineColorMetadata", color.toTimelineMetadata());
+                "hdr", deriveHdrProjection(color)));
+        // source color metadata stays Media-owned; no Timeline leakage (ROADMAP_18)
         return body;
     }
 
@@ -886,4 +881,11 @@ public class McpMediaToolsController {
     public record AafConversionStatusRequest(String conversionId) {}
 
     public record DiffTimelinesRequest(String oldTimelineJson, String newTimelineJson) {}
+
+    /** ROADMAP_18 (CI27): UI projection only — derived from transfer/primaries, never canonical authority. */
+    private static boolean deriveHdrProjection(com.example.platform.render.infrastructure.ColorProbeMetadata color) {
+        String transfer = color.colorTransfer() == null ? "" : color.colorTransfer().toLowerCase(java.util.Locale.ROOT);
+        return transfer.contains("smpte2084") || transfer.contains("arib-std-b67");
+    }
+
 }
