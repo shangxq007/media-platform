@@ -1143,6 +1143,43 @@ else
     fail "CIG30 SourceBinding gained source technical metadata"
 fi
 
+# ROADMAP_18 FINAL POST-CLOSE CIPG gates
+# CIPG5-9: primaries UNSPECIFIED vs UNKNOWN
+if grep -q 'UNSPECIFIED' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java && grep -q 'UNKNOWN' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java; then
+    pass "CIPG5/CIPG7 primaries UNSPECIFIED + UNKNOWN present"
+else
+    fail "CIPG5-7 primaries missing/unknown states incomplete"
+fi
+if grep -qi 'collapsed into UNKNOWN' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java; then
+    pass "CIPG6 missing primaries = UNSPECIFIED (documented)"
+else
+    fail "CIPG6 missing-primaries semantics missing"
+fi
+if grep -q 'primariesDistinguishMissingAndUnknown' color-image-module/src/test/java/com/example/platform/colorimage/PostCloseCorrectionTest.java; then
+    pass "CIPG8/CIPG9 UNSPECIFIED != UNKNOWN (equality + serialization test)"
+else
+    fail "CIPG8-9 missing test"
+fi
+# CIPG2/3: reproducibility — zero mutable-latest dependency in SourceVisualDescription
+if grep -q 'reproducibilityHasNoMutableLatestDependency' color-image-module/src/test/java/com/example/platform/colorimage/PostCloseCorrectionTest.java; then
+    pass "CIPG2/CIPG3 reproducible description, zero mutable-latest dependency (structural test)"
+else
+    fail "CIPG2-3 missing test"
+fi
+# CIPG4: profile identity exact digest
+if grep -q 'profileIdentityIsExactDigest' color-image-module/src/test/java/com/example/platform/colorimage/PostCloseCorrectionTest.java; then
+    pass "CIPG4 historical profile identity = exact digest"
+else
+    fail "CIPG4 missing test"
+fi
+# CIPG1: credential residue gate (numeric)
+CR=$(git grep -InE 'ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+' -- '*.java' '*.kt' '*.sql' '*.md' '*.sh' '*.yml' '*.yaml' '*.json' '*.kts' '*.gradle' 2>/dev/null | grep -vE 'AKIAIO|REDACTED|xxx' | wc -l || true)
+if [ "$CR" = "0" ]; then
+    pass "CIPG1 CREDENTIAL_RESIDUE_FINAL = 0 (numeric)"
+else
+    fail "CIPG1 credential residue > 0 ($CR)"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

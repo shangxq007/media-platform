@@ -9,7 +9,9 @@ public sealed interface ColorPrimaries {
     /** Well-known registry values (typed, code-owned). */
     enum WellKnown implements ColorPrimaries {
         BT709, BT2020, DCI_P3, DISPLAY_P3, SMPTE_C, NTSC1953, EBU3213, GENERIC_FILM,
-        /** provider reported an unsupported/unknown id — typed UNKNOWN, not a string. */
+        /** source/provider did not specify primaries — NEVER collapsed into UNKNOWN (CIP3). */
+        UNSPECIFIED,
+        /** provider explicitly reported an unknown/unknown-coded primaries state. */
         UNKNOWN
     }
 
