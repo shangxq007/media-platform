@@ -1180,6 +1180,55 @@ else
     fail "CIPG1 credential residue > 0 ($CR)"
 fi
 
+# ROADMAP_18 CIP2 gates
+# CIP2G1: durable snapshot persistence exists
+if [ -f platform-app/src/main/resources/db/migration/V5__source_visual_description_snapshot.sql ] && [ -f media-module/src/main/java/com/example/platform/media/app/sourcevisual/SourceVisualDescriptionSnapshotRepository.java ]; then
+    pass "CIP2G1 durable snapshot persistence exists"
+else
+    fail "CIP2G1 durable persistence missing"
+fi
+# CIP2G2/G3: historical reload path has no normalizer/probe dependency
+if grep -q 'ffprobe\|Probe\|Normalizer' media-module/src/main/java/com/example/platform/media/app/sourcevisual/SourceVisualDescriptionCodec.java media-module/src/main/java/com/example/platform/media/infrastructure/persistence/JooqSourceVisualDescriptionSnapshotRepository.java 2>/dev/null; then
+    fail "CIP2G2/G3 normalizer/probe dependency in reload path"
+else
+    pass "CIP2G2/G3 historical reload: zero normalizer/probe dependency"
+fi
+# CIP2G4: immutable content binding (artifact_id column)
+if grep -q 'artifact_id' platform-app/src/main/resources/db/migration/V5__source_visual_description_snapshot.sql; then
+    pass "CIP2G4 immutable content binding (artifact content version)"
+else
+    fail "CIP2G4 artifact binding missing"
+fi
+# CIP2G5/6: SourceBinding unchanged + no Timeline leakage
+if grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java; then
+    fail "CIP2G5 SourceBinding changed"
+else
+    pass "CIP2G5 SourceBinding unchanged"
+fi
+if grep -rq 'platform.color.' render-module/src/main --include='*.java'; then
+    fail "CIP2G6 Timeline leakage"
+else
+    pass "CIP2G6 zero Timeline source metadata leakage"
+fi
+# CIP2G9: color-image-module persistence dependency = 0
+if grep -q 'implementation(project(' color-image-module/build.gradle.kts; then
+    fail "CIP2G9 color-image outward dependency"
+else
+    pass "CIP2G9 color-image-module zero outward dependency"
+fi
+# CIP2G13: UNSPECIFIED/UNKNOWN retained
+if grep -q 'UNSPECIFIED' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java && grep -q 'UNKNOWN' color-image-module/src/main/java/com/example/platform/colorimage/ColorPrimaries.java; then
+    pass "CIP2G13 primaries UNSPECIFIED/UNKNOWN retained"
+else
+    fail "CIP2G13 primaries states lost"
+fi
+# CIP2G14: no float DB conversion
+if grep -q 'double precision\|::double\|float8' platform-app/src/main/resources/db/migration/V5__source_visual_description_snapshot.sql; then
+    fail "CIP2G14 float DB conversion"
+else
+    pass "CIP2G14 zero Rational float DB conversion"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

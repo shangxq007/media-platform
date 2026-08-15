@@ -72,7 +72,7 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
             }
         }
 
-        assertEquals(4, versions.size(),
+        assertEquals(5, versions.size(),
                 "Expected exactly V1+V2 applied migrations in the shared runtime, got: " + versions);
         assertEquals("1", versions.get(0), "first applied migration must be version 1");
         assertEquals("V1__initial_schema.sql", scripts.get(0),
@@ -80,6 +80,7 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
         assertEquals("2", versions.get(1), "second applied migration must be version 2 (OPTM V2)");
         assertEquals("3", versions.get(2), "third applied migration must be version 3 (EV1 deferrable FK)");
         assertEquals("4", versions.get(3), "fourth applied migration must be version 4 (RC parent graph)");
+        assertEquals("5", versions.get(4), "fifth applied migration must be version 5 (CIP2 source visual snapshot)");
         assertFalse(scripts.contains("V7__user_workflow_definition_v1.sql"),
                 "No leaked V7 migration must be present");
     }
