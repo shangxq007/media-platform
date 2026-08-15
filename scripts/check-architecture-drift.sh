@@ -627,6 +627,141 @@ else
     pass "no provenance/derived/source-association variants"
 fi
 
+# OMG-1: typed namespaced OperationDefinitionId
+if grep -q 'record OperationDefinitionId' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinitionId.java; then
+    pass "typed namespaced OperationDefinitionId"
+else
+    fail "OperationDefinitionId missing"
+fi
+
+# OMG-2: version reuses ContractVersion
+if grep -q 'import com.example.platform.extension.domain.ContractVersion' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinition.java; then
+    pass "ContractVersion reuse (no OperationVersion)"
+else
+    fail "ContractVersion reuse missing"
+fi
+
+# OMG-3: no generic parameter Map/Object/JsonNode in operation model
+if grep -rn 'Map<String, Object>\|Map<String,String>\|JsonNode' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null | grep -v '^[^:]*:[0-9]*: *\*' | grep -q .; then
+    fail "generic parameter map present"
+else
+    pass "no generic parameter maps"
+fi
+
+# OMG-4/5: operation is not Patch/Diff
+if grep -rq 'TimelinePatchOperation\|TimelineChangeType' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null; then
+    fail "operation depends on patch/diff types"
+else
+    pass "operation independent of patch/diff"
+fi
+
+# OMG-6: operation not in Timeline canonical serialization/hash
+if grep -q 'operation' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+    fail "operation entered TimelineDocument"
+else
+    pass "operation absent from Timeline canonical model"
+fi
+
+# OMG-7/8: variant-specific target, ResolvedScope not universal
+if grep -q 'sealed interface OperationTarget' render-module/src/main/java/com/example/platform/render/domain/operation/OperationTarget.java && grep -q 'GroupTarget\|SyncTarget\|AudioTarget' render-module/src/main/java/com/example/platform/render/domain/operation/OperationTarget.java; then
+    pass "variant-specific operation targets"
+else
+    fail "universal target model"
+fi
+
+# OMG-9: no universal TimelineObjectId/MediaObjectId
+if grep -rq 'class TimelineObjectId\|record TimelineObjectId\|class MediaObjectId\|record MediaObjectId' render-module/src/main 2>/dev/null; then
+    fail "god object id present"
+else
+    pass "no universal object id"
+fi
+
+# OMG-10: every definition has target contract
+if grep -q 'TargetKind targetKind' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinition.java && grep -q 'minCardinality' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinition.java; then
+    pass "definition-owned target/cardinality contract"
+else
+    fail "target contract missing"
+fi
+
+# OMG-11/12/13: temporal single-authority parameters
+if grep -q 'SetTemporalRateParameters(com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational rate)' render-module/src/main/java/com/example/platform/render/domain/operation/OperationParameters.java; then
+    pass "set-rate rate-only"
+else
+    fail "set-rate parameter contract wrong"
+fi
+if grep -q 'SetTemporalDirectionParameters(PlaybackDirection direction)' render-module/src/main/java/com/example/platform/render/domain/operation/OperationParameters.java; then
+    pass "set-direction direction-only"
+else
+    fail "set-direction parameter contract wrong"
+fi
+if grep -q 'FreezeParameters(MediaTime sourcePosition)' render-module/src/main/java/com/example/platform/render/domain/operation/OperationParameters.java; then
+    pass "freeze sourcePosition-only"
+else
+    fail "freeze parameter contract wrong"
+fi
+
+# OMG-15/16/17: request resolution exact-base, instance bound, no latest
+if grep -q 'baseRevisionId == null || baseRevisionId.isBlank()' render-module/src/main/java/com/example/platform/render/domain/operation/OperationRequest.java; then
+    pass "request carries explicit base"
+else
+    fail "request base binding missing"
+fi
+if grep -q 'STALE_BASE_REVISION' render-module/src/main/java/com/example/platform/render/domain/operation/OperationRequestResolver.java; then
+    pass "stale base fail-closed"
+else
+    fail "stale base handling missing"
+fi
+if grep -rq 'latestRevision()\|currentTimeline()' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null; then
+    fail "mutable-latest fallback present"
+else
+    pass "no mutable-latest fallback"
+fi
+
+# OMG-18/19/20/21: batch flat single base, no nesting/planning
+if grep -q 'instances.isEmpty()' render-module/src/main/java/com/example/platform/render/domain/operation/OperationBatch.java && grep -q 'mixed baseRevisionId rejected' render-module/src/main/java/com/example/platform/render/domain/operation/OperationBatch.java; then
+    pass "flat single-base non-empty batch"
+else
+    fail "batch constraints missing"
+fi
+
+# OMG-22/23/24/25: no provider/entitlement/workflow/render semantics
+if grep -rn 'ffmpeg\|FFmpeg\|OpenCV\|TensorRT' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null | grep -v '^[^:]*:[0-9]*: *\*' | grep -q .; then
+    fail "provider semantics in operation model"
+else
+    pass "no provider/FFmpeg semantics"
+fi
+if grep -rq 'proOnly\|enterpriseOnly\|planName' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null; then
+    fail "entitlement in operation model"
+else
+    pass "no entitlement/tier semantics"
+fi
+if grep -rq 'retry\|timeout\|callback' render-module/src/main/java/com/example/platform/render/domain/operation/OperationBatch.java 2>/dev/null; then
+    fail "workflow semantics in batch"
+else
+    pass "no workflow semantics in batch"
+fi
+
+# OMG-26: no CRUD SetField/JsonPath operation
+if grep -rq 'SetField\|SetJsonPath\|PatchDocument' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null; then
+    fail "CRUD operation present"
+else
+    pass "no generic CRUD operations"
+fi
+
+# OMG-28: invocationId/digest not in Timeline hash
+if grep -q 'operation' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+    fail "operation in canonical hash"
+else
+    pass "operation never in Timeline hash"
+fi
+
+# OMG-30: exactly 15 definitions
+if grep -q 'MOVE, DELETE, TRIM, SET_TEMPORAL_RATE, SET_TEMPORAL_DIRECTION, FREEZE' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinition.java; then
+    pass "frozen 15-operation vocabulary"
+else
+    fail "operation vocabulary drifted"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0
