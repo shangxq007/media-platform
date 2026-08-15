@@ -16,7 +16,7 @@ import java.util.List;
  * REST API for Productization features.
  */
 @RestController
-@RequestMapping("/api/v1/product")
+@RequestMapping("/api/product")
 public class ProductizationApi {
 
     private final ProductWorkspaceService workspaceService;

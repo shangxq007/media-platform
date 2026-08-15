@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/render/projects/{projectId}/timeline/revisions")
+@RequestMapping("/api/render/projects/{projectId}/timeline/revisions")
 @Tag(name = "Timeline Revisions", description = "Domain version control for project timelines")
 public class TimelineRevisionController {
 

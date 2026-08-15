@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/me/shared-resources")
+@RequestMapping("/api/me/shared-resources")
 public class CollaborationController {
 
     private final SharedResourceService sharedResourceService;

@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * </ul>
  */
 @RestController
-@RequestMapping("/api/v1/identity")
+@RequestMapping("/api/identity")
 public class ProjectExportController {
 
     private static final Pattern SAFE_FILENAME = Pattern.compile("[^a-zA-Z0-9._-]");

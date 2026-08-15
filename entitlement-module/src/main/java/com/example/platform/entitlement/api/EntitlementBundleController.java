@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/admin/entitlements/bundles")
+@RequestMapping("/api/admin/entitlements/bundles")
 public class EntitlementBundleController {
 
     private final EntitlementBundleService bundleService;

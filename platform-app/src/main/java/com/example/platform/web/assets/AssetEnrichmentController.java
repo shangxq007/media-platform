@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/projects/{projectId}/assets/{assetId}")
+@RequestMapping("/api/projects/{projectId}/assets/{assetId}")
 @Tag(name = "Asset Enrichment", description = "AI enrichment pipeline for media assets")
 public class AssetEnrichmentController {
 

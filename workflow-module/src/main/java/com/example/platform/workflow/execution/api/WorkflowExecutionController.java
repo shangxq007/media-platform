@@ -23,7 +23,7 @@ import com.example.platform.billing.usage.CanonicalActorRef;
  * routes. Authorization via APPD canonical actions (UWE-ADR-023).
  */
 @RestController
-@RequestMapping("/api/v1/tenants/{tenantId}/workflow-executions")
+@RequestMapping("/api/tenants/{tenantId}/workflow-executions")
 public class WorkflowExecutionController {
 
     private final WorkflowExecutionService service;

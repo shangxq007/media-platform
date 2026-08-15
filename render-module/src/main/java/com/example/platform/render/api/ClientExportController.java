@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/v1/render/client-exports")
+@RequestMapping("/api/render/client-exports")
 public class ClientExportController {
 
     private final ClientExportService clientExportService;

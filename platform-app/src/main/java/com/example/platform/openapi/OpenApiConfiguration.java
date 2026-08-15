@@ -60,7 +60,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("web-api")
                 .displayName("Web API (JWT/Session)")
-                .pathsToMatch("/api/v1/render/jobs/**", "/api/v1/prompts/**", "/api/v1/tenants/**", "/api/v1/artifacts/**")
+                .pathsToMatch("/api/render/jobs/**", "/api/prompts/**", "/api/tenants/**", "/api/artifacts/**")
                 .build();
     }
 
@@ -69,7 +69,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("mcp-api")
                 .displayName("MCP / OpenAPI API (API Key/OAuth2)")
-                .pathsToMatch("/api/v1/mcp/**")
+                .pathsToMatch("/api/mcp/**")
                 .build();
     }
 
@@ -78,7 +78,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("public-v1")
                 .displayName("Public API v1")
-                .pathsToMatch("/api/v1/extensions/**", "/api/v1/audit/**", "/api/v1/internal/**")
+                .pathsToMatch("/api/extensions/**", "/api/audit/**", "/api/internal/**")
                 .build();
     }
 
@@ -87,7 +87,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("render")
                 .displayName("Render Pipeline")
-                .pathsToMatch("/api/v1/tenants/**/render-jobs/**", "/api/v1/artifacts/**")
+                .pathsToMatch("/api/tenants/**/render-jobs/**", "/api/artifacts/**")
                 .build();
     }
 
@@ -96,7 +96,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("prompt")
                 .displayName("Prompt Engineering")
-                .pathsToMatch("/api/v1/prompts/**")
+                .pathsToMatch("/api/prompts/**")
                 .build();
     }
 
@@ -105,7 +105,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("cost")
                 .displayName("Cost & Entitlement")
-                .pathsToMatch("/api/v1/billing/**", "/api/v1/entitlements/**")
+                .pathsToMatch("/api/billing/**", "/api/entitlements/**")
                 .build();
     }
 
@@ -114,7 +114,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("monitoring")
                 .displayName("Monitoring & Feedback")
-                .pathsToMatch("/api/v1/audit/**", "/api/v1/feedback/**")
+                .pathsToMatch("/api/audit/**", "/api/feedback/**")
                 .build();
     }
 
@@ -123,7 +123,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("worker")
                 .displayName("Remote Worker")
-                .pathsToMatch("/api/v1/remote-worker/**")
+                .pathsToMatch("/api/remote-worker/**")
                 .build();
     }
 
@@ -132,7 +132,7 @@ public class OpenApiConfiguration {
         return GroupedOpenApi.builder()
                 .group("internal")
                 .displayName("Internal")
-                .pathsToMatch("/api/v1/internal/**")
+                .pathsToMatch("/api/internal/**")
                 .build();
     }
 
@@ -152,7 +152,7 @@ public class OpenApiConfiguration {
                         .title("Media Platform API")
                         .version(defaultApiVersion)
                         .description("Media Platform - Render Pipeline, Prompt Engineering, Cost Control, Monitoring & Feedback. "
-                                + "Web APIs (JWT) at /api/v1/render/jobs, /api/v1/prompts; MCP APIs (API Key) at /api/v1/mcp/*")
+                                + "Web APIs (JWT) at /api/render/jobs, /api/prompts; MCP APIs (API Key) at /api/mcp/*")
                         .contact(new io.swagger.v3.oas.models.info.Contact()
                                 .name("Platform Team")
                                 .email("platform@example.com"))

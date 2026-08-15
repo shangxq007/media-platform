@@ -41,7 +41,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 @Tag(name = "Render Jobs", description = "渲染作业与增量渲染 REST API")
 public class RenderController {
     private static final Logger log = LoggerFactory.getLogger(RenderController.class);

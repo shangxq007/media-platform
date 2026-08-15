@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/workspaces/{workspaceId}/entitlements/pool")
+@RequestMapping("/api/workspaces/{workspaceId}/entitlements/pool")
 public class WorkspaceEntitlementPoolController {
 
     private final WorkspaceEntitlementPoolService poolService;

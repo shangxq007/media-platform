@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/admin/entitlements/grants")
+@RequestMapping("/api/admin/entitlements/grants")
 public class EntitlementGrantController {
 
     private final EntitlementService entitlementService;

@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/projects/{projectId}/assets/{assetId}/semantic-metadata")
+@RequestMapping("/api/projects/{projectId}/assets/{assetId}/semantic-metadata")
 @Tag(name = "Asset Semantic Metadata", description = "AI enrichment metadata for assets")
 public class AssetSemanticMetadataController {
 

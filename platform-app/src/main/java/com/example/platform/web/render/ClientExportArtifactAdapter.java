@@ -24,7 +24,7 @@ public class ClientExportArtifactAdapter implements ClientExportArtifactPort {
             long durationSeconds) {
         ArtifactCatalogEntry artifact = artifactCatalogService.registerArtifact(
                 sessionId, projectId, storageUri, format, resolution, durationSeconds);
-        String downloadPath = "/api/v1/render/client-exports/" + sessionId + "/download";
+        String downloadPath = "/api/render/client-exports/" + sessionId + "/download";
         return new RegisteredArtifact(artifact.id(), storageUri, downloadPath);
     }
 
@@ -41,7 +41,7 @@ public class ClientExportArtifactAdapter implements ClientExportArtifactPort {
         ArtifactCatalogEntry artifact = artifactCatalogService.registerArtifact(
                 sessionId, projectId, storageUri, format, resolution, durationSeconds,
                 sizeBytes, checksum);
-        String downloadPath = "/api/v1/render/client-exports/" + sessionId + "/download";
+        String downloadPath = "/api/render/client-exports/" + sessionId + "/download";
         return new RegisteredArtifact(artifact.id(), storageUri, downloadPath);
     }
 }

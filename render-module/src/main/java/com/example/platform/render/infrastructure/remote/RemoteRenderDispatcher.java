@@ -71,7 +71,7 @@ public class RemoteRenderDispatcher {
             throw new IllegalStateException("Failed to serialize job request", e);
         }
 
-        String targetUrl = worker.address() + "/api/v1/remote-worker/workers/" + worker.workerId() + "/jobs";
+        String targetUrl = worker.address() + "/api/remote-worker/workers/" + worker.workerId() + "/jobs";
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(targetUrl))

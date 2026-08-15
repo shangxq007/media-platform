@@ -99,6 +99,6 @@ public class AssetService {
         Asset asset = getById(projectId, assetId);
         // In production: generate signed URL from storage service
         // For now, return the storage key as a reference
-        return "/api/v1/projects/" + projectId + "/assets/" + assetId + "/raw";
+        return "/api/projects/" + projectId + "/assets/" + assetId + "/raw";
     }
 }

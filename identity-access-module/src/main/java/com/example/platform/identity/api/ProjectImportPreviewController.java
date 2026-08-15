@@ -26,7 +26,7 @@ import java.util.Map;
  * </ul>
  */
 @RestController
-@RequestMapping("/api/v1/identity")
+@RequestMapping("/api/identity")
 public class ProjectImportPreviewController {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectImportPreviewController.class);

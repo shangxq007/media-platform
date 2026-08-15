@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1/admin/navigation")
+@RequestMapping("/api/admin/navigation")
 @Tag(name = "Route Management API", description = "Admin API for managing frontend route definitions and navigation policies")
 public class RouteManagementController {
 

@@ -115,12 +115,12 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     void removedRoutes_authorizedReturn404() throws Exception {
         String admin = jwtHelper.adminToken();
         String[][] routes = {
-            {"GET", "/api/v1/render/jobs/rj1"},
-            {"GET", "/api/v1/render/jobs"},
-            {"POST", "/api/v1/render/jobs"},
-            {"POST", "/api/v1/render/jobs/submit"},
-            {"POST", "/api/v1/render/jobs/rj1/retry"},
-            {"POST", "/api/v1/tenants/t1/projects/p1/render-jobs/rj1/execute-local"},
+            {"GET", "/api/render/jobs/rj1"},
+            {"GET", "/api/render/jobs"},
+            {"POST", "/api/render/jobs"},
+            {"POST", "/api/render/jobs/submit"},
+            {"POST", "/api/render/jobs/rj1/retry"},
+            {"POST", "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local"},
         };
         for (String[] route : routes) {
             HttpResponse<String> response;
@@ -140,10 +140,10 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @Test
     void anonymousAdmin_reads_rejected() throws Exception {
         String[] adminPaths = {
-            "/api/v1/admin/feature-flags",
-            "/api/v1/admin/billing/plans",
-            "/api/v1/admin/delivery/destinations",
-            "/api/v1/identity/admin/tenants",
+            "/api/admin/feature-flags",
+            "/api/admin/billing/plans",
+            "/api/admin/delivery/destinations",
+            "/api/identity/admin/tenants",
         };
         for (String path : adminPaths) {
             HttpResponse<String> response = httpGet(path, null);
@@ -157,9 +157,9 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @Test
     void anonymousAdmin_mutations_rejected() throws Exception {
         String[][] mutations = {
-            {"POST", "/api/v1/admin/feature-flags"},
-            {"PUT", "/api/v1/admin/notifications/events/test"},
-            {"POST", "/api/v1/admin/notifications/deliveries/d1/retry"},
+            {"POST", "/api/admin/feature-flags"},
+            {"PUT", "/api/admin/notifications/events/test"},
+            {"POST", "/api/admin/notifications/deliveries/d1/retry"},
         };
         for (String[] mutation : mutations) {
             HttpResponse<String> response = httpPost(mutation[1], null, "{}");
@@ -176,9 +176,9 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     void nonAdmin_reads_rejectedByAuthorization() throws Exception {
         String nonAdmin = jwtHelper.nonAdminToken();
         String[] adminPaths = {
-            "/api/v1/admin/feature-flags",
-            "/api/v1/admin/billing/plans",
-            "/api/v1/admin/platform/readiness",
+            "/api/admin/feature-flags",
+            "/api/admin/billing/plans",
+            "/api/admin/platform/readiness",
         };
         for (String path : adminPaths) {
             HttpResponse<String> response = httpGet(path, nonAdmin);
@@ -194,8 +194,8 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     void nonAdmin_mutations_rejectedByAuthorization() throws Exception {
         String nonAdmin = jwtHelper.nonAdminToken();
         String[][] mutations = {
-            {"POST", "/api/v1/admin/feature-flags"},
-            {"PUT", "/api/v1/admin/notifications/events/test"},
+            {"POST", "/api/admin/feature-flags"},
+            {"PUT", "/api/admin/notifications/events/test"},
         };
         for (String[] mutation : mutations) {
             HttpResponse<String> response;
@@ -217,7 +217,7 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @Test
     void authorizedAdmin_read_reachesBoundary() throws Exception {
         String admin = jwtHelper.adminToken();
-        HttpResponse<String> response = httpGet("/api/v1/admin/feature-flags", admin);
+        HttpResponse<String> response = httpGet("/api/admin/feature-flags", admin);
         int status = response.statusCode();
         evidence.append(String.format("ADMIN_READ /admin/feature-flags: %d%n", status));
         // Should reach handler (200 or 404 for empty list, not 401/403)
@@ -229,7 +229,7 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     void authorizedAdmin_mutation_invalidInput_returns400() throws Exception {
         String admin = jwtHelper.adminToken();
         // Empty body {} should fail Bean Validation (missing flagKey, flagType)
-        HttpResponse<String> response = httpPost("/api/v1/admin/feature-flags", admin, "{}");
+        HttpResponse<String> response = httpPost("/api/admin/feature-flags", admin, "{}");
         int status = response.statusCode();
         evidence.append(String.format("ADMIN_MUTATION_INVALID /admin/feature-flags: %d%n", status));
         // Invalid input should return 400 (validation failure), not 500
@@ -241,7 +241,7 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
 
     @Test
     void identityAdminTenants_anonymous_rejected() throws Exception {
-        HttpResponse<String> response = httpGet("/api/v1/identity/admin/tenants", null);
+        HttpResponse<String> response = httpGet("/api/identity/admin/tenants", null);
         int status = response.statusCode();
         evidence.append(String.format("IDENTITY_ADMIN_ANON: %d%n", status));
         Assertions.assertTrue(status == 401 || status == 403,
@@ -251,7 +251,7 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @Test
     void identityAdminTenants_nonAdmin_rejected() throws Exception {
         String nonAdmin = jwtHelper.nonAdminToken();
-        HttpResponse<String> response = httpGet("/api/v1/identity/admin/tenants", nonAdmin);
+        HttpResponse<String> response = httpGet("/api/identity/admin/tenants", nonAdmin);
         int status = response.statusCode();
         evidence.append(String.format("IDENTITY_ADMIN_NONADMIN: %d%n", status));
         Assertions.assertEquals(403, status,
@@ -261,7 +261,7 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @Test
     void identityAdminTenants_admin_reachesBoundary() throws Exception {
         String admin = jwtHelper.adminToken();
-        HttpResponse<String> response = httpGet("/api/v1/identity/admin/tenants", admin);
+        HttpResponse<String> response = httpGet("/api/identity/admin/tenants", admin);
         int status = response.statusCode();
         evidence.append(String.format("IDENTITY_ADMIN_ADMIN: %d%n", status));
         // Should reach handler (200 or 404), not 401/403
@@ -292,7 +292,7 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     void spaFallback_notBackend() throws Exception {
         String admin = jwtHelper.adminToken();
         String[] paths = {
-            "/api/v1/does-not-exist",
+            "/api/does-not-exist",
             "/dev/does-not-exist",
             "/admin/does-not-exist",
         };
@@ -309,7 +309,7 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @Test
     void canonicalRoutes_accessible() throws Exception {
         String admin = jwtHelper.adminToken();
-        HttpResponse<String> response = httpGet("/api/v1/tenants/t1/projects/p1/render-jobs", admin);
+        HttpResponse<String> response = httpGet("/api/tenants/t1/projects/p1/render-jobs", admin);
         evidence.append(String.format("CANONICAL_LIST: %d%n", response.statusCode()));
         Assertions.assertTrue(response.statusCode() == 200 || response.statusCode() == 404,
             "Canonical list should reach handler: got " + response.statusCode());
@@ -320,7 +320,7 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @Test
     void errorResponses_noSecretsExposed() throws Exception {
         // Check that 401/403 responses don't expose stack traces or internal details
-        HttpResponse<String> anonResponse = httpGet("/api/v1/admin/feature-flags", null);
+        HttpResponse<String> anonResponse = httpGet("/api/admin/feature-flags", null);
         String body = anonResponse.body();
         evidence.append(String.format("ANON_ERROR_BODY_LENGTH: %d%n", body.length()));
 

@@ -66,7 +66,7 @@ import org.springframework.web.bind.annotation.RestController;
  * MCP+ fine-grained media tools (whitelist; no arbitrary shell).
  */
 @RestController
-@RequestMapping({"/api/v1/media/tools", "/api/v1/mcp/media/tools"})
+@RequestMapping({"/api/media/tools", "/api/mcp/media/tools"})
 @Tag(name = "MCP Media Tools", description = "细粒度 MCP 媒体工具")
 public class McpMediaToolsController {
 
@@ -767,7 +767,7 @@ public class McpMediaToolsController {
 
     private String resolveSource(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/api/v1/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
+        return path.startsWith("/api/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
     }
 
     public record ProbeRequest(

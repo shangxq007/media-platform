@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/policy/governance")
+@RequestMapping("/api/policy/governance")
 public class PolicyController {
     private final PolicyGovernanceService service;
 

@@ -50,7 +50,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Order(3)
     FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration() {
         FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(this);
-        registration.addUrlPatterns("/api/v1/*");
+        registration.addUrlPatterns("/api/*");
         registration.setOrder(3);
         registration.setEnabled(true);
         return registration;
@@ -59,12 +59,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final Set<String> WEB_API_PREFIXES = Set.of(
-            "/api/v1/render/jobs",
-            "/api/v1/render/projects",
-            "/api/v1/prompts",
-            "/api/v1/tenants",
-            "/api/v1/artifacts",
-            "/api/v1/web/"
+            "/api/render/jobs",
+            "/api/render/projects",
+            "/api/prompts",
+            "/api/tenants",
+            "/api/artifacts",
+            "/api/web/"
     );
 
     @Override

@@ -23,7 +23,7 @@ class RequestSourceAuditInterceptorTest {
     @Test
     void shouldResolveWebSource() {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
         when(request.getMethod()).thenReturn("POST");
 
         HttpServletResponse response = mock(HttpServletResponse.class);
@@ -31,13 +31,13 @@ class RequestSourceAuditInterceptorTest {
         assertTrue(interceptor.preHandle(request, response, null));
         verify(request).setAttribute("request.source", "WEB");
         verify(auditPort).record(eq("USER"), eq("REQUEST_RECEIVED"), eq("API_REQUEST"),
-                eq("http_request"), eq("POST /api/v1/render/jobs"), any());
+                eq("http_request"), eq("POST /api/render/jobs"), any());
     }
 
     @Test
     void shouldResolveMcpSource() {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/mcp/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/mcp/render/jobs");
         when(request.getMethod()).thenReturn("GET");
 
         HttpServletResponse response = mock(HttpServletResponse.class);
@@ -49,7 +49,7 @@ class RequestSourceAuditInterceptorTest {
     @Test
     void shouldUseExistingSourceAttribute() {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
         when(request.getMethod()).thenReturn("POST");
         when(request.getAttribute("request.source")).thenReturn("MCP");
 
@@ -62,20 +62,20 @@ class RequestSourceAuditInterceptorTest {
     @Test
     void shouldSanitizeUuidsInPath() {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs/550e8400-e29b-41d4-a716-446655440000");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs/550e8400-e29b-41d4-a716-446655440000");
         when(request.getMethod()).thenReturn("GET");
 
         HttpServletResponse response = mock(HttpServletResponse.class);
 
         assertTrue(interceptor.preHandle(request, response, null));
         verify(auditPort).record(any(), eq("REQUEST_RECEIVED"), eq("API_REQUEST"),
-                eq("http_request"), eq("GET /api/v1/render/jobs/{id}"), any());
+                eq("http_request"), eq("GET /api/render/jobs/{id}"), any());
     }
 
     @Test
     void shouldReturnTrue() {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
         when(request.getMethod()).thenReturn("GET");
         HttpServletResponse response = mock(HttpServletResponse.class);
 

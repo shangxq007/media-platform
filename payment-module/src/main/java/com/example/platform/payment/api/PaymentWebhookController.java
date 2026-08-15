@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/webhooks/payments")
+@RequestMapping("/api/webhooks/payments")
 public class PaymentWebhookController {
     private final PaymentGatewayService paymentGatewayService;
 

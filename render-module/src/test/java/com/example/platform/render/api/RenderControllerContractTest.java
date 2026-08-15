@@ -179,7 +179,7 @@ class RenderControllerContractTest {
         @DisplayName("GET /render/jobs/{jobId}/artifacts delegates to orchestrator")
         void getArtifactsDelegates() {
             fakeOrchestrator.artifacts.put("rj-1", List.of(
-                    new ArtifactInfoResponse("art-1", "rj-1", "proj-1", "/api/v1/downloads/art-1",
+                    new ArtifactInfoResponse("art-1", "rj-1", "proj-1", "/api/downloads/art-1",
                             "video/mp4", "1920x1080", 1024L, Instant.now())));
 
             List<ArtifactInfoResponse> result = controller.getArtifacts("rj-1");
@@ -315,7 +315,7 @@ class RenderControllerContractTest {
         @DisplayName("ArtifactInfoResponse uses API download paths, not storage internals")
         void artifactResponseUsesApiPaths() {
             ArtifactInfoResponse artifact = new ArtifactInfoResponse(
-                    "art-1", "rj-1", "proj-1", "/api/v1/downloads/art-1",
+                    "art-1", "rj-1", "proj-1", "/api/downloads/art-1",
                     "video/mp4", "1920x1080", 1024L, Instant.now());
 
             assertNotNull(artifact.storageUri());

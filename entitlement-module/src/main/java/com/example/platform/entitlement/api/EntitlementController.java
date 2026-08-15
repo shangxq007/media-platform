@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 public class EntitlementController {
     private final EntitlementService entitlementService;
     private final EntitlementPolicyService entitlementPolicyService;

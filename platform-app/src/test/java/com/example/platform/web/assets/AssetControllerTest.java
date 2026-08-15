@@ -66,12 +66,12 @@ class AssetControllerTest {
 
     @Test
     void shouldGetPreviewUrl() {
-        when(assetService.getPreviewUrl("proj-1", "a1")).thenReturn("/api/v1/projects/proj-1/assets/a1/raw");
+        when(assetService.getPreviewUrl("proj-1", "a1")).thenReturn("/api/projects/proj-1/assets/a1/raw");
 
         ResponseEntity<Map<String, String>> response = controller.getPreviewUrl("proj-1", "a1");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("/api/v1/projects/proj-1/assets/a1/raw", response.getBody().get("previewUrl"));
+        assertEquals("/api/projects/proj-1/assets/a1/raw", response.getBody().get("previewUrl"));
     }
 
     @Test

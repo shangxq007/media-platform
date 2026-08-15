@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/admin/tenants/{tenantId}/ai")
+@RequestMapping("/api/admin/tenants/{tenantId}/ai")
 @Tag(name = "Tenant AI", description = "Per-tenant LiteLLM virtual key management")
 public class TenantAiAdminController {
 

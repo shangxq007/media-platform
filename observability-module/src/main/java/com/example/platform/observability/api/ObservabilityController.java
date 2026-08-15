@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/observability")
+@RequestMapping("/api/observability")
 public class ObservabilityController {
     private final ObservabilityOverviewService service;
 

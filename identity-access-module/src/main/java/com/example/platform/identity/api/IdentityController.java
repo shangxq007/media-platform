@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/identity/access")
+@RequestMapping("/api/identity/access")
 public class IdentityController {
     private final IdentityAccessService service;
 

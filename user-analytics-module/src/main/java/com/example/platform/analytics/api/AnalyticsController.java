@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1/analytics")
+@RequestMapping("/api/analytics")
 public class AnalyticsController {
 
     private final BehaviorEventService eventService;

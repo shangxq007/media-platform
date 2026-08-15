@@ -32,7 +32,7 @@ class SecurityFilterChainConfigTest {
         var registration = config.mcpApiKeyAuthFilterRegistration();
 
         assertNotNull(registration);
-        assertArrayEquals(new String[]{"/api/v1/mcp/*"}, registration.getUrlPatterns().toArray());
+        assertArrayEquals(new String[]{"/api/mcp/*"}, registration.getUrlPatterns().toArray());
         assertEquals(1, registration.getOrder());
     }
 }

@@ -46,7 +46,7 @@ public class SecurityFilterChainConfig {
             return null;
         }
         FilterRegistrationBean<ApiKeyAuthFilter> registration = new FilterRegistrationBean<>(apiKeyAuthFilter);
-        registration.addUrlPatterns("/api/v1/mcp/*");
+        registration.addUrlPatterns("/api/mcp/*");
         registration.setOrder(1);
         return registration;
     }

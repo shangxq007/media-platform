@@ -56,8 +56,8 @@ public class RequestSourceAuditInterceptor implements HandlerInterceptor {
         if (existing != null) return existing;
 
         String path = request.getRequestURI();
-        if (path.startsWith("/api/v1/mcp/")) return "MCP";
-        if (path.startsWith("/api/v1/")) return "WEB";
+        if (path.startsWith("/api/mcp/")) return "MCP";
+        if (path.startsWith("/api/")) return "WEB";
         return "UNKNOWN";
     }
 

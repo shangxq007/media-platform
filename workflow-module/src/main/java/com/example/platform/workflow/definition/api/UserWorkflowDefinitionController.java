@@ -47,9 +47,9 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * W2 V1 public API — exactly the 9 frozen routes under /api/v1
+ * W2 V1 public API — exactly the 9 frozen routes under /api
  * (public-api-contract.tsv). Route convention matches render-module
- * RenderController (/api/v1 + /tenants/{tenantId}/...). Domain entities are
+ * RenderController (/api + /tenants/{tenantId}/...). Domain entities are
  * never exposed directly; DTOs only. Errors render as ProblemDetail with the
  * frozen WORKFLOW-<status>-<seq> errorCode property (platform GlobalException
  * Handler response shape).
@@ -72,7 +72,7 @@ import java.util.Optional;
  * treated as SYSTEM.</p>
  */
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 public class UserWorkflowDefinitionController {
 
     /** Frozen W2 permission keys (authorization-contract.tsv). */

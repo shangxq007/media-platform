@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/federation/query")
+@RequestMapping("/api/federation/query")
 public class FederationQueryController {
     private final FederationQueryService service;
 

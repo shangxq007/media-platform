@@ -16,11 +16,11 @@ public final class SecurityHttpRules {
         auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/api/v1/webhooks/**").permitAll()
-                .requestMatchers("/api/v1/mcp/**").authenticated()
-                .requestMatchers("/api/v1/dev/auth/**").permitAll()
-                .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers("/api/v1/**").authenticated()
+                .requestMatchers("/api/webhooks/**").permitAll()
+                .requestMatchers("/api/mcp/**").authenticated()
+                .requestMatchers("/api/dev/auth/**").permitAll()
+                .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll();
     }
 }

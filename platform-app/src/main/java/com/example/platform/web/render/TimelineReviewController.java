@@ -26,7 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/render/projects/{projectId}/timeline/reviews")
+@RequestMapping("/api/render/projects/{projectId}/timeline/reviews")
 @Tag(name = "Timeline Reviews", description = "Review workflow for timeline revisions")
 public class TimelineReviewController {
 

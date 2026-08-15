@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/artifact/catalog")
+@RequestMapping("/api/artifact/catalog")
 public class ArtifactController {
     private final ArtifactCatalogService service;
 

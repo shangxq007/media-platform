@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/audit/compliance")
+@RequestMapping("/api/audit/compliance")
 public class AuditController {
     private final AuditService service;
 

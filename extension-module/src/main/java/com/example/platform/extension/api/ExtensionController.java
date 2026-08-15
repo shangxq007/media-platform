@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/extensions")
+@RequestMapping("/api/extensions")
 public class ExtensionController {
 
     private final ExtensionRegistryService registryService;

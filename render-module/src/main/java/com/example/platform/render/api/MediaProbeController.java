@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * observations are never exposed as canonical media truth.
  */
 @RestController
-@RequestMapping("/api/v1/render/media-probe")
+@RequestMapping("/api/render/media-probe")
 public class MediaProbeController {
 
     private final MediaAssetProbeService probeService;

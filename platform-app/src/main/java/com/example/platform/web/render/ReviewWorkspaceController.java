@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/reviews")
+@RequestMapping("/api/reviews")
 @Tag(name = "Review Workspace", description = "Aggregated review workspace APIs for frontend")
 public class ReviewWorkspaceController {
 

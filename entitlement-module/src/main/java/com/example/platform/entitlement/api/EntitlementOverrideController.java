@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/admin/entitlements/overrides")
+@RequestMapping("/api/admin/entitlements/overrides")
 public class EntitlementOverrideController {
 
     private final EntitlementOverrideService overrideService;

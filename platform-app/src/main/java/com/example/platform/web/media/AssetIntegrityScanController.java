@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/media/assets/integrity")
+@RequestMapping("/api/media/assets/integrity")
 @Tag(name = "Asset Integrity", description = "Timeline + catalog integrity scan (problematic data AST-*)")
 public class AssetIntegrityScanController {
 

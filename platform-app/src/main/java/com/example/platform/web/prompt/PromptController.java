@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController("multiPathPromptController")
-@RequestMapping({"/api/v1/prompts", "/api/v1/mcp/prompts"})
+@RequestMapping({"/api/prompts", "/api/mcp/prompts"})
 @Tag(name = "Prompt API", description = "Prompt 模板接口 — Web 端使用 JWT 鉴权，MCP 端使用 API Key 鉴权")
 public class PromptController {
 
@@ -105,7 +105,7 @@ public class PromptController {
 
     private CallerContext buildCallerContext(HttpServletRequest req) {
         String path = req.getRequestURI();
-        String source = path.startsWith("/api/v1/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
+        String source = path.startsWith("/api/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
         String authType = source.equals(CallerContext.SOURCE_MCP) ? CallerContext.AUTH_API_KEY : CallerContext.AUTH_JWT;
         String userId = getUserId(req, source);
         String tenantId = getTenantId(req, source);

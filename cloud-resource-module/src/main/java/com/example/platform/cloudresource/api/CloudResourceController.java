@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/cloud-resources")
+@RequestMapping("/api/cloud-resources")
 public class CloudResourceController {
 
     private final CloudResourceCatalogService cloudResourceCatalogService;

@@ -50,7 +50,7 @@ public class SecurityConfiguration {
     FilterRegistrationBean<ApiKeyAuthFilter> apiKeyAuthFilterRegistration(
             ApiKeyAuthFilter apiKeyAuthFilter) {
         FilterRegistrationBean<ApiKeyAuthFilter> registration = new FilterRegistrationBean<>(apiKeyAuthFilter);
-        registration.addUrlPatterns("/api/v1/*");
+        registration.addUrlPatterns("/api/*");
         registration.setOrder(1);
         registration.setEnabled(identityProperties.isApiKeyAuthEnabled());
         return registration;

@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/timelines/{projectId}")
+@RequestMapping("/api/timelines/{projectId}")
 @Tag(name = "Timeline Workbench", description = "Aggregated workbench APIs for frontend consumption")
 public class TimelineWorkbenchController {
 

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/render")
+@RequestMapping("/api/render")
 @Tag(name = "Render", description = "Video rendering and export presets/profiles")
 public class RenderPresetController {
 

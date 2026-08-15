@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Pre-deploy / post-deploy readiness snapshot (Temporal namespace, R2 cache, storage).
  */
 @RestController
-@RequestMapping("/api/v1/admin/platform")
+@RequestMapping("/api/admin/platform")
 @Tag(name = "Platform Admin", description = "部署就绪与集成验收")
 public class PlatformDeploymentReadinessController {
 

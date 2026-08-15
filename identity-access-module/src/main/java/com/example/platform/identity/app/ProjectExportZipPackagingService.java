@@ -256,8 +256,8 @@ public class ProjectExportZipPackagingService {
         sb.append("- checksums/: SHA-256 checksums for all entries\n");
 
         sb.append("\n## Import\n\n");
-        sb.append("Use `POST /api/v1/identity/tenants/{tenantId}/project-imports/preview` to preview import.\n");
-        sb.append("Use `POST /api/v1/identity/tenants/{tenantId}/project-imports` to execute import.\n");
+        sb.append("Use `POST /api/identity/tenants/{tenantId}/project-imports/preview` to preview import.\n");
+        sb.append("Use `POST /api/identity/tenants/{tenantId}/project-imports` to execute import.\n");
 
         return sb.toString();
     }

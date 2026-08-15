@@ -18,7 +18,7 @@
   },
   "admin": {
     "mappingCount": 68,
-    "adminPathMatcher": "/api/v1/admin/**",
+    "adminPathMatcher": "/api/admin/**",
     "requiredAuthority": "ROLE_ADMIN",
     "anonymousRead2xx": 0,
     "anonymousMutation2xx": 0,
@@ -62,7 +62,7 @@
     "unapprovedCrossTenantExposure": false
   },
   "p3Issues": [
-    "/api/v1/identity/admin/tenants is admin-like but outside /api/v1/admin/** path"
+    "/api/identity/admin/tenants is admin-like but outside /api/v1/admin/** path"
   ],
   "recommendedNextTask": "BACKEND-INTEGRITY-PROVIDER-REGISTRATION-VALIDATION.0"
 }

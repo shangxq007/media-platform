@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * REST API for raw media upload.
  *
- * <p>Endpoint: {@code POST /api/v1/tenants/{tenantId}/projects/{projectId}/upload/raw-media}
+ * <p>Endpoint: {@code POST /api/tenants/{tenantId}/projects/{projectId}/upload/raw-media}
  *
  * <p>Accepts {@code multipart/form-data} with:
  * <ul>
@@ -30,7 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>Safety: no storage references, signed URLs, or internal paths exposed.
  */
 @RestController
-@RequestMapping("/api/v1/tenants/{tenantId}/projects/{projectId}/upload")
+@RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/upload")
 @Tag(name = "Upload API", description = "Raw media upload")
 public class RawMediaUploadController {
 

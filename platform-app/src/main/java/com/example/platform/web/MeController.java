@@ -23,7 +23,7 @@ import java.time.Instant;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1/me")
+@RequestMapping("/api/me")
 public class MeController {
 
     private static final Logger log = LoggerFactory.getLogger(MeController.class);
@@ -305,7 +305,7 @@ public class MeController {
 
     private CallerContext buildCallerContext(HttpServletRequest req) {
         String path = req.getRequestURI();
-        String source = path.startsWith("/api/v1/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
+        String source = path.startsWith("/api/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
         String authType = source.equals(CallerContext.SOURCE_MCP) ? CallerContext.AUTH_API_KEY : CallerContext.AUTH_JWT;
         Object subject = req.getAttribute("jwt.subject");
         String userId = subject != null ? subject.toString() : "anonymous";

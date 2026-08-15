@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/admin/billing")
+@RequestMapping("/api/admin/billing")
 public class PricingRuleController {
 
     private final PricingRuleService pricingRuleService;

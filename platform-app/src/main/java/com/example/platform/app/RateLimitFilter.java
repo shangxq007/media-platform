@@ -38,7 +38,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Order(2)
     FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
         FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(this);
-        registration.addUrlPatterns("/api/v1/*");
+        registration.addUrlPatterns("/api/*");
         registration.setOrder(2);
         registration.setEnabled(identityProperties.isRateLimitEnabled());
         return registration;

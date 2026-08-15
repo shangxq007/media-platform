@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/datasources")
+@RequestMapping("/api/datasources")
 public class DataSourceController {
 
     private final NamedDataSourceRegistry namedDataSourceRegistry;

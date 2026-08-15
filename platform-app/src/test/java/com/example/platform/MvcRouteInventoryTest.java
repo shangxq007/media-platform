@@ -47,7 +47,7 @@ class MvcRouteInventoryTest extends PostgresTestContainerSupport {
         Files.writeString(Path.of("/tmp/mvc-route-inventory.txt"), sb.toString());
 
         // AR-W2-PTEH / public-api-contract.tsv: the W2 V1 public surface exposes
-        // exactly nine frozen routes under /api/v1/tenants/{tenantId}/workflow-definitions.
+        // exactly nine frozen routes under /api/tenants/{tenantId}/workflow-definitions.
         // Counted as the nine handler methods on UserWorkflowDefinitionController — the
         // authoritative signal for the frozen route surface (public-api-contract.tsv).
         long w2Routes = handlerMethods.values().stream()

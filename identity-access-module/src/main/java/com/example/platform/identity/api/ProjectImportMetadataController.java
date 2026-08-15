@@ -21,7 +21,7 @@ import java.util.Optional;
  * Does not modify runtime state or fetch any external resources.
  */
 @RestController
-@RequestMapping("/api/v1/identity")
+@RequestMapping("/api/identity")
 public class ProjectImportMetadataController {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectImportMetadataController.class);

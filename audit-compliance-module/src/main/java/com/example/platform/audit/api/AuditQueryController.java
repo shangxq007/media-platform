@@ -22,7 +22,7 @@ import java.util.Map;
  * Requires ADMIN role (OAuth2 ROLE_ADMIN or Legacy JWT roles containing ADMIN).
  */
 @RestController
-@RequestMapping("/api/v1/audit/admin")
+@RequestMapping("/api/audit/admin")
 public class AuditQueryController {
 
     private static final Logger log = LoggerFactory.getLogger(AuditQueryController.class);

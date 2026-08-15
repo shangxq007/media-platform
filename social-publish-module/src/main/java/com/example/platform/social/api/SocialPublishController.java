@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/social")
+@RequestMapping("/api/social")
 @Tag(name = "Social Publish", description = "Social media publishing, scheduling, and analytics")
 public class SocialPublishController {
     private static final Logger log = LoggerFactory.getLogger(SocialPublishController.class);
@@ -54,7 +54,7 @@ public class SocialPublishController {
     public List<ConnectedPlatformResponse> getConnectedPlatforms(
             @RequestHeader("X-User-ID") String userId) {
         String tenantId = requireTenantId();
-        log.info("GET /api/v1/social/platforms tenant={}", tenantId);
+        log.info("GET /api/social/platforms tenant={}", tenantId);
         return platformAuthService.getConnectedPlatforms(tenantId, userId);
     }
 
@@ -71,7 +71,7 @@ public class SocialPublishController {
             @PathVariable String platform,
             @RequestParam(required = false) String authCode) {
         String tenantId = requireTenantId();
-        log.info("POST /api/v1/social/platforms/{}/connect tenant={}", platform, tenantId);
+        log.info("POST /api/social/platforms/{}/connect tenant={}", platform, tenantId);
         return platformAuthService.connectPlatform(tenantId, userId, platform, authCode);
     }
 
@@ -87,7 +87,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @PathVariable String platform) {
         String tenantId = requireTenantId();
-        log.info("DELETE /api/v1/social/platforms/{} tenant={}", platform, tenantId);
+        log.info("DELETE /api/social/platforms/{} tenant={}", platform, tenantId);
         platformAuthService.disconnectPlatform(tenantId, userId, platform);
         return ResponseEntity.noContent().build();
     }
@@ -104,7 +104,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @Valid @RequestBody CreatePostRequest request) {
         String tenantId = requireTenantId();
-        log.info("POST /api/v1/social/posts tenant={} platform={}", tenantId, request.platformType());
+        log.info("POST /api/social/posts tenant={} platform={}", tenantId, request.platformType());
         return publishService.createPost(tenantId, userId, request);
     }
 
@@ -120,7 +120,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
-        log.info("POST /api/v1/social/posts/{}/publish tenant={}", postId, tenantId);
+        log.info("POST /api/social/posts/{}/publish tenant={}", postId, tenantId);
         return publishService.publishNow(tenantId, userId, postId);
     }
 
@@ -138,7 +138,7 @@ public class SocialPublishController {
             @PathVariable("id") String postId,
             @Valid @RequestBody SchedulePostRequest request) {
         String tenantId = requireTenantId();
-        log.info("POST /api/v1/social/posts/{}/schedule tenant={}", postId, tenantId);
+        log.info("POST /api/social/posts/{}/schedule tenant={}", postId, tenantId);
         return publishService.schedulePost(tenantId, userId, postId, request);
     }
 
@@ -154,7 +154,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
-        log.info("DELETE /api/v1/social/posts/{}/schedule tenant={}", postId, tenantId);
+        log.info("DELETE /api/social/posts/{}/schedule tenant={}", postId, tenantId);
         publishService.cancelScheduled(tenantId, userId, postId);
         return ResponseEntity.noContent().build();
     }
@@ -171,7 +171,7 @@ public class SocialPublishController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         String tenantId = requireTenantId();
-        log.info("GET /api/v1/social/posts tenant={} page={} size={}", tenantId, page, size);
+        log.info("GET /api/social/posts tenant={} page={} size={}", tenantId, page, size);
         return publishService.getPosts(tenantId, userId, page, size);
     }
 
@@ -187,7 +187,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
-        log.info("GET /api/v1/social/posts/{} tenant={}", postId, tenantId);
+        log.info("GET /api/social/posts/{} tenant={}", postId, tenantId);
         return publishService.getPost(tenantId, userId, postId);
     }
 
@@ -203,7 +203,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
-        log.info("POST /api/v1/social/posts/{}/retry tenant={}", postId, tenantId);
+        log.info("POST /api/social/posts/{}/retry tenant={}", postId, tenantId);
         return publishService.retryPost(tenantId, userId, postId);
     }
 
@@ -219,7 +219,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
-        log.info("DELETE /api/v1/social/posts/{} tenant={}", postId, tenantId);
+        log.info("DELETE /api/social/posts/{} tenant={}", postId, tenantId);
         publishService.deletePost(tenantId, userId, postId);
         return ResponseEntity.noContent().build();
     }
@@ -234,7 +234,7 @@ public class SocialPublishController {
     public List<PublishPostResponse> getDrafts(
             @RequestHeader("X-User-ID") String userId) {
         String tenantId = requireTenantId();
-        log.info("GET /api/v1/social/drafts tenant={}", tenantId);
+        log.info("GET /api/social/drafts tenant={}", tenantId);
         return publishService.getDrafts(tenantId, userId);
     }
 
@@ -250,7 +250,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @Valid @RequestBody CreatePostRequest request) {
         String tenantId = requireTenantId();
-        log.info("POST /api/v1/social/drafts tenant={} platform={}", tenantId, request.platformType());
+        log.info("POST /api/social/drafts tenant={} platform={}", tenantId, request.platformType());
         return publishService.saveDraft(tenantId, userId, request);
     }
 
@@ -264,7 +264,7 @@ public class SocialPublishController {
     public OverviewAnalyticsResponse getOverviewAnalytics(
             @RequestHeader("X-User-ID") String userId) {
         String tenantId = requireTenantId();
-        log.info("GET /api/v1/social/analytics/overview tenant={}", tenantId);
+        log.info("GET /api/social/analytics/overview tenant={}", tenantId);
         return analyticsService.getOverviewAnalytics(tenantId, userId);
     }
 
@@ -280,7 +280,7 @@ public class SocialPublishController {
             @RequestHeader("X-User-ID") String userId,
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
-        log.info("GET /api/v1/social/analytics/posts/{} tenant={}", postId, tenantId);
+        log.info("GET /api/social/analytics/posts/{} tenant={}", postId, tenantId);
         return analyticsService.getPostAnalytics(tenantId, userId, postId);
     }
 }

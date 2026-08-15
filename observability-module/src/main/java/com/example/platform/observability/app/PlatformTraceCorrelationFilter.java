@@ -22,7 +22,7 @@ public class PlatformTraceCorrelationFilter extends OncePerRequestFilter {
     @Order(0)
     FilterRegistrationBean<PlatformTraceCorrelationFilter> platformTraceCorrelationFilterRegistration() {
         FilterRegistrationBean<PlatformTraceCorrelationFilter> registration = new FilterRegistrationBean<>(this);
-        registration.addUrlPatterns("/api/v1/*");
+        registration.addUrlPatterns("/api/*");
         registration.setOrder(0);
         registration.setEnabled(true);
         return registration;

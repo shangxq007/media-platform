@@ -28,7 +28,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.DeliveryPol
 
 
 @RestController
-@RequestMapping("/api/v1/tenants/{tenantId}")
+@RequestMapping("/api/tenants/{tenantId}")
 @Tag(name = "Delivery", description = "渲染成品出站交付")
 public class DeliveryController {
 

@@ -116,7 +116,7 @@ class AssetServiceTest {
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(asset));
 
         String url = assetService.getPreviewUrl("proj-1", "asset-1");
-        assertEquals("/api/v1/projects/proj-1/assets/asset-1/raw", url);
+        assertEquals("/api/projects/proj-1/assets/asset-1/raw", url);
     }
 
     private static Asset testAsset(String id, String tenantId, String projectId, String key,

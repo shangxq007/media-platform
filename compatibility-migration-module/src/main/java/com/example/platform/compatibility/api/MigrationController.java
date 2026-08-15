@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1/internal/migrations")
+@RequestMapping("/api/internal/migrations")
 public class MigrationController {
 
     private final MigrationService migrationService;

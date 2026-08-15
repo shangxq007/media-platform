@@ -20,7 +20,7 @@ import java.time.Instant;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1/billing/me")
+@RequestMapping("/api/billing/me")
 public class MeBillingController {
 
     private final SubscriptionBillingService subscriptionBillingService;

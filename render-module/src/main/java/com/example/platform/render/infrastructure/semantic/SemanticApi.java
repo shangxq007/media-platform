@@ -15,7 +15,7 @@ import java.util.Map;
  * of render job execution.
  */
 @RestController
-@RequestMapping("/api/v1/semantic")
+@RequestMapping("/api/semantic")
 public class SemanticApi {
 
     private static final Logger log = LoggerFactory.getLogger(SemanticApi.class);

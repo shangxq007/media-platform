@@ -30,7 +30,7 @@ import org.jooq.impl.DSL;
 
 
 @RestController
-@RequestMapping("/api/v1/admin/delivery")
+@RequestMapping("/api/admin/delivery")
 @Tag(name = "Delivery Admin", description = "平台运维：渲染成品出站交付（需 ADMIN 角色）")
 public class DeliveryAdminController {
 

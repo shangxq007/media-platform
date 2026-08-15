@@ -9,7 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/ai")
+@RequestMapping("/api/ai")
 public class AiController {
     private final AiGatewayService service;
 

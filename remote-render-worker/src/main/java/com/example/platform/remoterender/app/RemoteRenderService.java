@@ -130,7 +130,7 @@ public class RemoteRenderService {
                     job.errorMessage() != null ? job.errorMessage().replace("\"", "'") : "");
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(callbackUrl + "/api/v1/remote-worker/jobs/" + job.jobId() + "/callback"))
+                    .uri(URI.create(callbackUrl + "/api/remote-worker/jobs/" + job.jobId() + "/callback"))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(payload))
                     .timeout(Duration.ofSeconds(5))

@@ -13,7 +13,7 @@
     "internalDetailExposed": false
   },
   "identityAdminRoute": {
-    "path": "/api/v1/identity/admin/tenants",
+    "path": "/api/identity/admin/tenants",
     "controller": "TenantProjectController",
     "module": "identity-access-module",
     "classification": "CANONICAL_IDENTITY_ADMIN_RESOURCE",

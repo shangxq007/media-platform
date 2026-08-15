@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/effect-packs")
+@RequestMapping("/api/effect-packs")
 @Tag(name = "Effect Packs", description = "特效包目录与管理")
 public class EffectPackController {
 

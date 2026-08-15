@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
 
-    private static final String BASE = "/api/v1/tenants/tenant-a/workflow-definitions";
+    private static final String BASE = "/api/tenants/tenant-a/workflow-definitions";
     private static final Pattern ID_PATTERN = Pattern.compile("\"definitionId\":\"([^\"]+)\"");
     private static final Pattern VERSION_PATTERN = Pattern.compile("\"versionNumber\":([0-9]+)");
     private static final Pattern OPT_VERSION_PATTERN = Pattern.compile("\"optimisticVersion\":([0-9]+)");
@@ -87,7 +87,7 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
     }
 
     private String createDefinition(String tenant, String name, String body) throws Exception {
-        HttpResponse<String> r = send("POST", "/api/v1/tenants/" + tenant + "/workflow-definitions", body);
+        HttpResponse<String> r = send("POST", "/api/tenants/" + tenant + "/workflow-definitions", body);
         assertEquals(201, r.statusCode(), r.body());
         Matcher m = ID_PATTERN.matcher(r.body());
         assertTrue(m.find(), r.body());
@@ -144,7 +144,7 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
     @Test
     void tenantIsolationReturns404WithoutExistenceLeak() throws Exception {
         String id = createDefinition("tenant-a", "wf", validBody("wf"));
-        HttpResponse<String> r = send("GET", "/api/v1/tenants/tenant-b/workflow-definitions/" + id, null);
+        HttpResponse<String> r = send("GET", "/api/tenants/tenant-b/workflow-definitions/" + id, null);
         assertEquals(404, r.statusCode());
         assertTrue(r.body().contains("WORKFLOW-404-001"), r.body());
     }

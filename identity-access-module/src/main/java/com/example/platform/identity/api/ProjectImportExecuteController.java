@@ -23,7 +23,7 @@ import java.util.*;
  * </ul>
  */
 @RestController
-@RequestMapping("/api/v1/identity")
+@RequestMapping("/api/identity")
 public class ProjectImportExecuteController {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectImportExecuteController.class);

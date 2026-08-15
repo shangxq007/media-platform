@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/render/timeline-snapshots")
+@RequestMapping("/api/render/timeline-snapshots")
 @Tag(name = "Timeline Snapshots", description = "Persist editor timelines for render jobs")
 public class TimelineSnapshotController {
 

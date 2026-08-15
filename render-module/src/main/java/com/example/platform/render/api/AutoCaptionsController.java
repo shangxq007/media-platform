@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/render/auto-captions")
+@RequestMapping("/api/render/auto-captions")
 public class AutoCaptionsController {
 
     private final AutoCaptionsService autoCaptionsService;

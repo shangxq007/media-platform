@@ -50,32 +50,32 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void removedRoute_executeLocal_returns404() throws Exception {
-        assertRemovedRoute("POST", "/api/v1/tenants/t1/projects/p1/render-jobs/rj1/execute-local");
+        assertRemovedRoute("POST", "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local");
     }
 
     @Test
     void removedRoute_retry_returns404() throws Exception {
-        assertRemovedRoute("POST", "/api/v1/render/jobs/rj1/retry");
+        assertRemovedRoute("POST", "/api/render/jobs/rj1/retry");
     }
 
     @Test
     void removedRoute_oldCreateAlias_returns404() throws Exception {
-        assertRemovedRoute("POST", "/api/v1/render/jobs");
+        assertRemovedRoute("POST", "/api/render/jobs");
     }
 
     @Test
     void removedRoute_oldSubmitAlias_returns404() throws Exception {
-        assertRemovedRoute("POST", "/api/v1/render/jobs/submit");
+        assertRemovedRoute("POST", "/api/render/jobs/submit");
     }
 
     @Test
     void removedRoute_oldDetailAlias_returns404() throws Exception {
-        assertRemovedRoute("GET", "/api/v1/render/jobs/rj1");
+        assertRemovedRoute("GET", "/api/render/jobs/rj1");
     }
 
     @Test
     void removedRoute_oldListAlias_returns404() throws Exception {
-        assertRemovedRoute("GET", "/api/v1/render/jobs");
+        assertRemovedRoute("GET", "/api/render/jobs");
     }
 
     // ========== Canonical RenderJob routes ==========
@@ -83,7 +83,7 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
     @Test
     void canonicalCreate_isRegistered() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + "/api/v1/tenants/t1/projects/p1/render-jobs"))
+            .uri(URI.create(baseUrl + "/api/tenants/t1/projects/p1/render-jobs"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString("{\"timelineSnapshotId\":\"snap1\",\"profile\":\"default_1080p\"}"))
             .build();
@@ -94,14 +94,14 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void canonicalStatus_isRegistered() throws Exception {
-        HttpResponse<String> response = httpGetReq("/api/v1/tenants/t1/projects/p1/render-jobs/nonexistent");
+        HttpResponse<String> response = httpGetReq("/api/tenants/t1/projects/p1/render-jobs/nonexistent");
         evidence.append(String.format("CANONICAL_STATUS: %d%n", response.statusCode()));
         // 404 for nonexistent resource is OK — route is registered
     }
 
     @Test
     void canonicalList_isRegistered() throws Exception {
-        HttpResponse<String> response = httpGetReq("/api/v1/tenants/t1/projects/p1/render-jobs");
+        HttpResponse<String> response = httpGetReq("/api/tenants/t1/projects/p1/render-jobs");
         evidence.append(String.format("CANONICAL_LIST: %d%n", response.statusCode()));
     }
 
@@ -110,7 +110,7 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
     @Test
     void cancelRoute_isRegistered() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + "/api/v1/render/jobs/nonexistent/cancel?tenantId=t1"))
+            .uri(URI.create(baseUrl + "/api/render/jobs/nonexistent/cancel?tenantId=t1"))
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -121,7 +121,7 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void statusHistory_isRegistered() throws Exception {
-        HttpResponse<String> response = httpGetReq("/api/v1/render/jobs/nonexistent/status-history?tenantId=t1");
+        HttpResponse<String> response = httpGetReq("/api/render/jobs/nonexistent/status-history?tenantId=t1");
         evidence.append(String.format("STATUS_HISTORY: %d%n", response.statusCode()));
     }
 
@@ -129,19 +129,19 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void jobArtifacts_isRegistered() throws Exception {
-        HttpResponse<String> response = httpGetReq("/api/v1/render/jobs/nonexistent/artifacts");
+        HttpResponse<String> response = httpGetReq("/api/render/jobs/nonexistent/artifacts");
         evidence.append(String.format("JOB_ARTIFACTS: %d%n", response.statusCode()));
     }
 
     @Test
     void jobArtifactContent_isRegistered() throws Exception {
-        HttpResponse<String> response = httpGetReq("/api/v1/render/jobs/nonexistent/artifacts/aid1/content");
+        HttpResponse<String> response = httpGetReq("/api/render/jobs/nonexistent/artifacts/aid1/content");
         evidence.append(String.format("JOB_ARTIFACT_CONTENT: %d%n", response.statusCode()));
     }
 
     @Test
     void jobArtifactAccess_isRegistered() throws Exception {
-        HttpResponse<String> response = httpGetReq("/api/v1/render/jobs/nonexistent/artifacts/aid1/access");
+        HttpResponse<String> response = httpGetReq("/api/render/jobs/nonexistent/artifacts/aid1/access");
         evidence.append(String.format("JOB_ARTIFACT_ACCESS: %d%n", response.statusCode()));
     }
 
@@ -172,9 +172,9 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
         // With security disabled, admin routes are accessible. Record for documentation.
         // Full admin security validation requires app.security.enabled=true.
         String[] adminPaths = {
-            "/api/v1/admin/feature-flags",
-            "/api/v1/admin/billing/plans",
-            "/api/v1/admin/delivery/destinations",
+            "/api/admin/feature-flags",
+            "/api/admin/billing/plans",
+            "/api/admin/delivery/destinations",
         };
         for (String path : adminPaths) {
             HttpResponse<String> response = httpGetReq(path);
@@ -183,7 +183,7 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
         }
         // Admin mutation test
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + "/api/v1/admin/feature-flags"))
+            .uri(URI.create(baseUrl + "/api/admin/feature-flags"))
             .POST(HttpRequest.BodyPublishers.noBody())
             .header("Content-Type", "application/json")
             .build();
@@ -197,7 +197,7 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
     void spaFallback_onlyHandlesAppNamespace() throws Exception {
         // /app/something should get SPA fallback (forward to index.html)
         // /api/something unknown should get 404
-        HttpResponse<String> apiUnknown = httpGetReq("/api/v1/nonexistent-path");
+        HttpResponse<String> apiUnknown = httpGetReq("/api/nonexistent-path");
         evidence.append(String.format("UNKNOWN_API: %d%n", apiUnknown.statusCode()));
         Assertions.assertEquals(404, apiUnknown.statusCode(),
             "Unknown API path should return 404, not SPA HTML");

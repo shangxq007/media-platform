@@ -88,7 +88,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldSkipNonWebPaths() {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/mcp/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/mcp/render/jobs");
 
         assertTrue(filter.shouldNotFilter(request));
     }
@@ -96,7 +96,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldNotSkipWebPaths() {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
 
         assertFalse(filter.shouldNotFilter(request));
     }
@@ -104,7 +104,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldNotSkipPromptPaths() {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/prompts/templates");
+        when(request.getRequestURI()).thenReturn("/api/prompts/templates");
 
         assertFalse(filter.shouldNotFilter(request));
     }
@@ -112,7 +112,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldRejectMissingToken() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
         when(request.getHeader("Authorization")).thenReturn(null);
 
         StringWriter sw = new StringWriter();
@@ -129,7 +129,7 @@ class JwtAuthFilterTest {
     @Test
     void shouldRejectMalformedToken() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
         when(request.getHeader("Authorization")).thenReturn("NotBearer token123");
 
         StringWriter sw = new StringWriter();
@@ -146,7 +146,7 @@ class JwtAuthFilterTest {
     void shouldAcceptValidToken() throws Exception {
         String token = createToken("user-1", "tenant-1", List.of("USER"));
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
 
         StringWriter sw = new StringWriter();
@@ -173,7 +173,7 @@ class JwtAuthFilterTest {
                 .compact();
 
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
         when(request.getHeader("Authorization")).thenReturn("Bearer " + expiredToken);
 
         StringWriter sw = new StringWriter();
@@ -191,7 +191,7 @@ class JwtAuthFilterTest {
     void shouldClearTenantContextAfterFilter() throws Exception {
         String token = createToken("user-1", "tenant-1", List.of("USER"));
         HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getRequestURI()).thenReturn("/api/v1/render/jobs");
+        when(request.getRequestURI()).thenReturn("/api/render/jobs");
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
 
         HttpServletResponse response = mock(HttpServletResponse.class);

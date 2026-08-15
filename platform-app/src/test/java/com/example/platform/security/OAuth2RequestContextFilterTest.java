@@ -44,7 +44,7 @@ class OAuth2RequestContextFilterTest {
                 .build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
 
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/me/dashboard");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/me/dashboard");
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/remote-worker")
+@RequestMapping("/api/remote-worker")
 public class RemoteWorkerController {
 
     private static final Logger log = LoggerFactory.getLogger(RemoteWorkerController.class);

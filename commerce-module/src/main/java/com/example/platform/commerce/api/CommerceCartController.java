@@ -7,7 +7,7 @@ import com.example.platform.commerce.domain.CommerceCart;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/commerce/carts")
+@RequestMapping("/api/commerce/carts")
 public class CommerceCartController {
 
     private final CommerceCartService cartService;

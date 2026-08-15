@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/billing")
+@RequestMapping("/api/billing")
 public class UsageBillingController {
 
     private final UsageMeteringService usageMeteringService;

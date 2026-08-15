@@ -198,7 +198,7 @@ public class ClientExportService {
 
         String storageUri = buildTenantPath(session).resolve(sessionId).resolve("output." + session.format()).toString();
         String artifactId = null;
-        String downloadPath = "/api/v1/render/client-exports/" + sessionId + "/download";
+        String downloadPath = "/api/render/client-exports/" + sessionId + "/download";
 
         if (registerArtifact && artifactPort.isPresent()) {
             var registered = artifactPort.get().register(

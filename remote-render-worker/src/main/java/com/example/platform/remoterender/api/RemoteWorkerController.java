@@ -15,7 +15,7 @@ import java.util.Map;
  * REST API for remote render worker operations.
  */
 @RestController
-@RequestMapping("/api/v1/remote-worker")
+@RequestMapping("/api/remote-worker")
 public class RemoteWorkerController {
 
     private static final Logger log = LoggerFactory.getLogger(RemoteWorkerController.class);

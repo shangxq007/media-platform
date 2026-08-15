@@ -20,7 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 @Tag(name = "Notifications", description = "Notification subscriptions, delivery, preferences, and inbox")
 public class NotificationController {
     private final NotificationEventPublisher publisher;

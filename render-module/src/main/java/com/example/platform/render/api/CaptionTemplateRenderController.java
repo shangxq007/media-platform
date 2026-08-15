@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
  * <p>Internal-safe API boundary. Does not expose provider/backend/storage internals.</p>
  */
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 public class CaptionTemplateRenderController {
 
     private static final Logger log = LoggerFactory.getLogger(CaptionTemplateRenderController.class);

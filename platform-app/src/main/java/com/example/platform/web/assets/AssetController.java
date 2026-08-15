@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
  * Storage keys are validated via {@link com.example.platform.storage.contract.StorageKeyPolicy}.
  */
 @RestController
-@RequestMapping("/api/v1/projects/{projectId}/assets")
+@RequestMapping("/api/projects/{projectId}/assets")
 @Tag(name = "Asset API", description = "Project asset management")
 public class AssetController {
 

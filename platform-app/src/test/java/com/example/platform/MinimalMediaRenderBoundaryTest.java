@@ -136,7 +136,7 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
 
         // Start
         HttpResponse<String> startResp = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                "/api/tenants/" + tenantId + "/projects/" + projectId
                         + "/render-jobs/" + jobId + "/start", null);
         evidence.append(String.format("START_HTTP: %d%n", startResp.statusCode()));
 
@@ -161,7 +161,7 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
 
         // Status API
         HttpResponse<String> statusResp = httpGet(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                "/api/tenants/" + tenantId + "/projects/" + projectId
                         + "/render-jobs/" + jobId);
         JsonNode statusNode = mapper.readTree(statusResp.body());
         String apiStatus = statusNode.get("status").asText();
@@ -186,8 +186,8 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
     @Test
     void removedRoutes_404() throws Exception {
         HttpResponse<String> execLocal = httpPost(
-                "/api/v1/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
-        HttpResponse<String> retry = httpPost("/api/v1/render/jobs/rj1/retry", null);
+                "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
+        HttpResponse<String> retry = httpPost("/api/render/jobs/rj1/retry", null);
         evidence.append(String.format("EXECUTE_LOCAL: %d%n", execLocal.statusCode()));
         evidence.append(String.format("RETRY: %d%n", retry.statusCode()));
         Assertions.assertEquals(404, execLocal.statusCode());
@@ -198,13 +198,13 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
 
     private String createTenant(String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
-        HttpResponse<String> resp = httpPost("/api/v1/identity/tenants", body);
+        HttpResponse<String> resp = httpPost("/api/identity/tenants", body);
         return mapper.readTree(resp.body()).get("id").asText();
     }
 
     private String createProject(String tenantId, String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
-        HttpResponse<String> resp = httpPost("/api/v1/identity/tenants/" + tenantId + "/projects", body);
+        HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
         return mapper.readTree(resp.body()).get("id").asText();
     }
 
@@ -213,7 +213,7 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
                 "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
                 projectId);
         HttpResponse<String> resp = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
+                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
         return mapper.readTree(resp.body()).get("id").asText();
     }
 

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/admin/shared-resources")
+@RequestMapping("/api/admin/shared-resources")
 public class SharedResourceAdminController {
 
     private final SharedResourceService sharedResourceService;

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/billing/cycles")
+@RequestMapping("/api/billing/cycles")
 public class BillingCycleController {
 
     private final BillingCycleService billingCycleService;

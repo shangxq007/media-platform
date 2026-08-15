@@ -71,7 +71,7 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
         String jobId = createRenderJob(tenantId, projectId);
 
         HttpResponse<String> response = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                "/api/tenants/" + tenantId + "/projects/" + projectId
                         + "/render-jobs/" + jobId + "/start", null);
         evidence.append(String.format("S1_START_ROUTE: %d%n", response.statusCode()));
         Assertions.assertNotEquals(404, response.statusCode(),
@@ -84,7 +84,7 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
         String projectId = createProject(tenantId, "create-route-project");
 
         HttpResponse<String> response = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs",
+                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs",
                 "{\"timelineSnapshotId\":\"snap1\",\"profile\":\"default_1080p\"}");
         evidence.append(String.format("S1_CREATE_ROUTE: %d%n", response.statusCode()));
         Assertions.assertNotEquals(404, response.statusCode(),
@@ -137,7 +137,7 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
     @Test
     void executeLocal_remains404() throws Exception {
         HttpResponse<String> response = httpPost(
-                "/api/v1/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
+                "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
         evidence.append(String.format("REMOVED_EXECUTELocal: %d%n", response.statusCode()));
         Assertions.assertEquals(404, response.statusCode(), "execute-local should remain 404");
     }
@@ -145,20 +145,20 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
     @Test
     void retry_remains404() throws Exception {
         HttpResponse<String> response = httpPost(
-                "/api/v1/render/jobs/rj1/retry", null);
+                "/api/render/jobs/rj1/retry", null);
         evidence.append(String.format("REMOVED_RETRY: %d%n", response.statusCode()));
         Assertions.assertEquals(404, response.statusCode(), "retry should remain 404");
     }
 
     private String createTenant(String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
-        HttpResponse<String> resp = httpPost("/api/v1/identity/tenants", body);
+        HttpResponse<String> resp = httpPost("/api/identity/tenants", body);
         return jsonMapper.readTree(resp.body()).get("id").asText();
     }
 
     private String createProject(String tenantId, String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
-        HttpResponse<String> resp = httpPost("/api/v1/identity/tenants/" + tenantId + "/projects", body);
+        HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
         return jsonMapper.readTree(resp.body()).get("id").asText();
     }
 
@@ -167,7 +167,7 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
                 "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
                 projectId);
         HttpResponse<String> resp = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
+                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
         return jsonMapper.readTree(resp.body()).get("id").asText();
     }
 

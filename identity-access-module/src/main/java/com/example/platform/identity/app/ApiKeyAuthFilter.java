@@ -19,12 +19,12 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final Set<String> PROTECTED_PREFIXES = Set.of(
-            "/api/v1/extensions",
-            "/api/v1/audit",
-            "/api/v1/outbox",
-            "/api/v1/render",
-            "/api/v1/storage",
-            "/api/v1/identity"
+            "/api/extensions",
+            "/api/audit",
+            "/api/outbox",
+            "/api/render",
+            "/api/storage",
+            "/api/identity"
     );
 
     private final IdentityAccessService identityAccessService;

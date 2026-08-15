@@ -17,7 +17,7 @@ import java.util.Map;
  * REST API for prompt template management.
  */
 @RestController
-@RequestMapping("/api/v1/prompts")
+@RequestMapping("/api/prompts")
 public class PromptController {
 
     private final PromptTemplateService templateService;

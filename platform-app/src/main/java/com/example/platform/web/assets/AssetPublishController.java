@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/projects/{projectId}/assets/{assetId}")
+@RequestMapping("/api/projects/{projectId}/assets/{assetId}")
 @Tag(name = "Asset Review & Publish", description = "Review and publish workflow for assets")
 public class AssetPublishController {
 

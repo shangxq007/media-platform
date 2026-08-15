@@ -28,7 +28,7 @@ public class PlatformRequestContextFilter extends OncePerRequestFilter {
     @Order(1)
     FilterRegistrationBean<PlatformRequestContextFilter> platformRequestContextFilterRegistration() {
         FilterRegistrationBean<PlatformRequestContextFilter> registration = new FilterRegistrationBean<>(this);
-        registration.addUrlPatterns("/api/v1/*");
+        registration.addUrlPatterns("/api/*");
         registration.setOrder(1);
         registration.setEnabled(true);
         return registration;

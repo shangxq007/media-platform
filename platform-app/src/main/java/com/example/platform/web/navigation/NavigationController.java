@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api")
 @Tag(name = "Navigation API", description = "Dynamic navigation and route visibility evaluation")
 public class NavigationController {
 
@@ -85,7 +85,7 @@ public class NavigationController {
 
     private CallerContext buildCallerContext(HttpServletRequest req) {
         String path = req.getRequestURI();
-        String source = path.startsWith("/api/v1/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
+        String source = path.startsWith("/api/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
         String authType = source.equals(CallerContext.SOURCE_MCP) ? CallerContext.AUTH_API_KEY : CallerContext.AUTH_JWT;
         String userId = getUserId(req, source);
         String tenantId = getTenantId(req, source);

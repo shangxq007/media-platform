@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/commerce")
+@RequestMapping("/api/commerce")
 public class CommerceController {
     private final CheckoutOrchestrator checkoutOrchestrator;
 

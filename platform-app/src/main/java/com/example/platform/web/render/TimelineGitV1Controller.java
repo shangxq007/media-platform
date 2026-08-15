@@ -43,7 +43,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/timeline-git")
+@RequestMapping("/api/timeline-git")
 @Tag(name = "Timeline Git V1", description = "Immutable revision history and render pinning")
 public class TimelineGitV1Controller {
 

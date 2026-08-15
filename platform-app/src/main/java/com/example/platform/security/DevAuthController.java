@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  * and is never enabled in production. The "tenant-1" default is a development convenience.
  */
 @RestController
-@RequestMapping("/api/v1/dev/auth")
+@RequestMapping("/api/dev/auth")
 @ConditionalOnProperty(name = "app.security.dev-auth-endpoint", havingValue = "true", matchIfMissing = false)
 public class DevAuthController {
 

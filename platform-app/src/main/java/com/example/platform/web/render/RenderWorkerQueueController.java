@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/render/worker-queue")
+@RequestMapping("/api/render/worker-queue")
 @ConditionalOnProperty(prefix = "app.render.worker-queue", name = "enabled", havingValue = "true")
 public class RenderWorkerQueueController {
 

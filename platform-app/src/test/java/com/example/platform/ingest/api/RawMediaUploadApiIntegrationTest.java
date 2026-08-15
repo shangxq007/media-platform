@@ -134,14 +134,14 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
     }
 
     private String createTenant(String name) throws Exception {
-        HttpResponse<String> response = postJson("/api/v1/identity/tenants", "{\"name\":\"" + name + "\"}");
+        HttpResponse<String> response = postJson("/api/identity/tenants", "{\"name\":\"" + name + "\"}");
         Assertions.assertEquals(200, response.statusCode(), response.body());
         return mapper.readTree(response.body()).get("id").asText();
     }
 
     private String createProject(String tenantId, String name) throws Exception {
         String body = "{\"name\":\"" + name + "\",\"description\":\"F1 integration test\"}";
-        HttpResponse<String> response = postJson("/api/v1/identity/tenants/" + tenantId + "/projects", body);
+        HttpResponse<String> response = postJson("/api/identity/tenants/" + tenantId + "/projects", body);
         Assertions.assertEquals(200, response.statusCode(), response.body());
         return mapper.readTree(response.body()).get("id").asText();
     }
@@ -160,7 +160,7 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
         String boundary = "----f1UploadBoundary" + System.nanoTime();
         byte[] body = multipartBody(boundary, payload, filename, contentType, displayName);
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                .uri(URI.create(baseUrl + "/api/tenants/" + tenantId + "/projects/" + projectId
                         + "/upload/raw-media"))
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body))

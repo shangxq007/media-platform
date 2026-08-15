@@ -63,7 +63,7 @@ class AuditPortAdapterTest {
     void recordDerivesActorIdFromMdcPrincipal() {
         MDC.put("principal", "user-123");
         adapter.record("USER", "REQUEST_RECEIVED", "API_REQUEST",
-                "http_request", "GET /api/v1/me", Map.of());
+                "http_request", "GET /api/me", Map.of());
 
         ArgumentCaptor<String> actorIdCaptor = ArgumentCaptor.forClass(String.class);
         verify(auditService).record(any(), actorIdCaptor.capture(), any(), any(), any(), any(), any());
@@ -276,7 +276,7 @@ class AuditPortAdapterTest {
     void parseCategoryApiRequest() {
         TenantContext.set("tenant-a");
         adapter.record("USER", "REQUEST_RECEIVED", "API_REQUEST",
-                "http_request", "GET /api/v1/me", Map.of());
+                "http_request", "GET /api/me", Map.of());
 
         ArgumentCaptor<AuditCategory> categoryCaptor = ArgumentCaptor.forClass(AuditCategory.class);
         verify(auditService).record(any(), any(), any(), any(), any(), any(), categoryCaptor.capture());

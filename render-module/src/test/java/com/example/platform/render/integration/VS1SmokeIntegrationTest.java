@@ -365,7 +365,7 @@ class VS1SmokeIntegrationTest {
         @DisplayName("ArtifactInfoResponse uses API download path")
         void artifactResponseUsesApiPath() {
             ArtifactInfoResponse artifact = new ArtifactInfoResponse(
-                    "art-1", "rj-1", "proj-1", "/api/v1/downloads/art-1",
+                    "art-1", "rj-1", "proj-1", "/api/downloads/art-1",
                     "video/mp4", "1920x1080", 10485760L, Instant.now());
 
             assertNotNull(artifact.storageUri());

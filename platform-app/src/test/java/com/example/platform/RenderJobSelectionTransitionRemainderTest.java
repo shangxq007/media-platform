@@ -69,7 +69,7 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
     void canonicalCreate_validRequest_succeeds() throws Exception {
         // First create a tenant
         String tenantBody = "{\"name\":\"test-tenant-" + System.nanoTime() + "\"}";
-        HttpResponse<String> tenantResp = httpPost("/api/v1/identity/tenants", tenantBody);
+        HttpResponse<String> tenantResp = httpPost("/api/identity/tenants", tenantBody);
         evidence.append(String.format("TENANT_CREATE: %d%n", tenantResp.statusCode()));
         // 200 or 201
         Assertions.assertTrue(tenantResp.statusCode() >= 200 && tenantResp.statusCode() < 300,
@@ -82,7 +82,7 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
         // Create a project
         String projectBody = "{\"name\":\"test-project-" + System.nanoTime() + "\",\"description\":\"test\"}";
         HttpResponse<String> projectResp = httpPost(
-                "/api/v1/identity/tenants/" + tenantId + "/projects", projectBody);
+                "/api/identity/tenants/" + tenantId + "/projects", projectBody);
         evidence.append(String.format("PROJECT_CREATE: %d%n", projectResp.statusCode()));
         Assertions.assertTrue(projectResp.statusCode() >= 200 && projectResp.statusCode() < 300,
                 "Project create should succeed: " + projectResp.statusCode());
@@ -96,7 +96,7 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
                 "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
                 projectId);
         HttpResponse<String> jobResp = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", jobBody);
+                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", jobBody);
         evidence.append(String.format("E2_CREATE_HTTP: %d%n", jobResp.statusCode()));
         Assertions.assertTrue(jobResp.statusCode() >= 200 && jobResp.statusCode() < 300,
                 "RenderJob create should succeed: " + jobResp.statusCode());
@@ -120,7 +120,7 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
         // Start the same Job
         HttpResponse<String> startResp = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                "/api/tenants/" + tenantId + "/projects/" + projectId
                         + "/render-jobs/" + jobId + "/start", null);
         evidence.append(String.format("E5_START_HTTP: %d%n", startResp.statusCode()));
         JsonNode startNode = mapper.readTree(startResp.body());
@@ -137,7 +137,7 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
         // Status API
         HttpResponse<String> statusResp = httpGet(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                "/api/tenants/" + tenantId + "/projects/" + projectId
                         + "/render-jobs/" + jobId);
         evidence.append(String.format("E13_STATUS_HTTP: %d%n", statusResp.statusCode()));
         JsonNode statusNode = mapper.readTree(statusResp.body());
@@ -164,14 +164,14 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
     @Test
     void executeLocal_remains404() throws Exception {
         HttpResponse<String> response = httpPost(
-                "/api/v1/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
+                "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
         evidence.append(String.format("REMOVED_EXECUTELocal: %d%n", response.statusCode()));
         Assertions.assertEquals(404, response.statusCode());
     }
 
     @Test
     void retry_remains404() throws Exception {
-        HttpResponse<String> response = httpPost("/api/v1/render/jobs/rj1/retry", null);
+        HttpResponse<String> response = httpPost("/api/render/jobs/rj1/retry", null);
         evidence.append(String.format("REMOVED_RETRY: %d%n", response.statusCode()));
         Assertions.assertEquals(404, response.statusCode());
     }
@@ -192,7 +192,7 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
         // Issue two concurrent start requests
         ExecutorService executor = Executors.newFixedThreadPool(2);
-        String startPath = "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+        String startPath = "/api/tenants/" + tenantId + "/projects/" + projectId
                 + "/render-jobs/" + jobId + "/start";
         CyclicBarrier barrier = new CyclicBarrier(2);
 
@@ -240,13 +240,13 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
         // First start
         HttpResponse<String> resp1 = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                "/api/tenants/" + tenantId + "/projects/" + projectId
                         + "/render-jobs/" + jobId + "/start", null);
         evidence.append(String.format("REPEAT_START_1: %d%n", resp1.statusCode()));
 
         // Second start
         HttpResponse<String> resp2 = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId
+                "/api/tenants/" + tenantId + "/projects/" + projectId
                         + "/render-jobs/" + jobId + "/start", null);
         evidence.append(String.format("REPEAT_START_2: %d%n", resp2.statusCode()));
 
@@ -260,13 +260,13 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
     private String createTenant(String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
-        HttpResponse<String> resp = httpPost("/api/v1/identity/tenants", body);
+        HttpResponse<String> resp = httpPost("/api/identity/tenants", body);
         return mapper.readTree(resp.body()).get("id").asText();
     }
 
     private String createProject(String tenantId, String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
-        HttpResponse<String> resp = httpPost("/api/v1/identity/tenants/" + tenantId + "/projects", body);
+        HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
         return mapper.readTree(resp.body()).get("id").asText();
     }
 
@@ -275,7 +275,7 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
                 "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
                 projectId);
         HttpResponse<String> resp = httpPost(
-                "/api/v1/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
+                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
         return mapper.readTree(resp.body()).get("id").asText();
     }
 
