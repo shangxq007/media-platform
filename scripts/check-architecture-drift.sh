@@ -1229,6 +1229,49 @@ else
     pass "CIP2G14 zero Rational float DB conversion"
 fi
 
+# ROADMAP_18 CIP2D/CIP2E gates
+# CIP2DG1-7: DB-enforced ownership (V6 composite FKs)
+if grep -q 'fk_svd_stream_asset' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql && grep -q 'fk_svd_asset_artifact' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql; then
+    pass "CIP2DG1/2/3/4 DB-enforced stream+artifact ownership (composite FKs)"
+else
+    fail "CIP2DG1-4 ownership FKs missing"
+fi
+if grep -q 'uq_ms_id_asset' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql && grep -q 'uq_maa_asset_artifact' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql; then
+    pass "CIP2DG1/5/6/7 composite-FK prerequisite UNIQUE keys present"
+else
+    fail "CIP2DG5-7 UNIQUE prerequisites missing"
+fi
+# CIP2DG8: artifact digest immutability — no Java content_digest UPDATE path
+if grep -rn 'set(.*CONTENT_DIGEST\|set(.*contentDigest' media-module/src platform-app/src/main/java --include='*.java' 2>/dev/null | grep -q .; then
+    fail "CIP2DG8 content digest update path exists"
+else
+    pass "CIP2DG8 ARTIFACT_ID_CONTENT_REBINDABLE = NO (zero digest update paths)"
+fi
+# CIP2DG10: historical renormalization still zero
+if grep -q 'ffprobe\|Probe\|Normalizer' media-module/src/main/java/com/example/platform/media/app/sourcevisual/SourceVisualDescriptionCodec.java media-module/src/main/java/com/example/platform/media/infrastructure/persistence/JooqSourceVisualDescriptionSnapshotRepository.java 2>/dev/null; then
+    fail "CIP2DG10 normalizer/probe in reload path"
+else
+    pass "CIP2DG10 zero renormalization (unchanged)"
+fi
+# CIP2DG11/12: SourceBinding/Timeline unchanged
+if grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java; then
+    fail "CIP2DG11 SourceBinding changed"
+else
+    pass "CIP2DG11 SourceBinding unchanged"
+fi
+if grep -rq 'platform.color.' render-module/src/main --include='*.java'; then
+    fail "CIP2DG12 Timeline leakage"
+else
+    pass "CIP2DG12 zero Timeline leakage"
+fi
+# CIP2EG1/2: credential numeric zero evidence
+CR=$(git grep -InE 'ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+' -- '*.java' '*.kt' '*.sql' '*.md' '*.sh' '*.yml' '*.yaml' '*.json' '*.kts' '*.gradle' 2>/dev/null | grep -vE 'AKIAIO|REDACTED|xxx' | wc -l || true)
+if [ "$CR" = "0" ]; then
+    pass "CIP2EG1 CREDENTIAL_RESIDUE_FINAL = 0 (numeric)"
+else
+    fail "CIP2EG1 credential residue > 0 ($CR)"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0
