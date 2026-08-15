@@ -72,12 +72,12 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
             }
         }
 
-        assertEquals(1, versions.size(),
-                "Expected exactly one applied migration in the shared runtime, got: " + versions);
-        assertEquals("1", versions.get(0), "The single applied migration must be version 1");
+        assertEquals(2, versions.size(),
+                "Expected exactly V1+V2 applied migrations in the shared runtime, got: " + versions);
+        assertEquals("1", versions.get(0), "first applied migration must be version 1");
         assertEquals("V1__initial_schema.sql", scripts.get(0),
-                "The single applied migration script must be V1__initial_schema.sql");
-        assertFalse(versions.contains("2"), "No version-2+ migration must be present");
+                "first applied migration script must be V1__initial_schema.sql");
+        assertEquals("2", versions.get(1), "second applied migration must be version 2 (OPTM V2)");
         assertFalse(scripts.contains("V7__user_workflow_definition_v1.sql"),
                 "No leaked V7 migration must be present");
     }

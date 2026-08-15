@@ -68,7 +68,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertTrue(result.migrationsExecuted >= 1, "At least one migration should execute");
 
         var info = flyway.info();
-        assertEquals(1, info.all().length, "Expected exactly 1 migration");
+        assertEquals(2, info.all().length, "Expected V1+V2 migrations (V2 adds operation-plan transaction tables)");
         assertEquals("1", info.all()[0].getVersion().getVersion());
         assertEquals("V1__initial_schema.sql", info.all()[0].getScript());
         deployed = true;
@@ -85,6 +85,8 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
 
         // Canonical tables that must exist
         assertTrue(tables.contains("notification_preference"), "notification_preference required");
+        assertTrue(tables.contains("timeline_revision_ref"), "timeline_revision_ref required (OPTM V2)");
+        assertTrue(tables.contains("apply_command"), "apply_command required (OPTM V2)");
         assertTrue(tables.contains("notification_channel_binding"), "notification_channel_binding required");
         assertTrue(tables.contains("notification_delivery"), "notification_delivery required");
         assertTrue(tables.contains("notification_template"), "notification_template required");
@@ -286,7 +288,7 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
                 .defaultSchema(SCHEMA)
                 .load();
         var info = flyway.info();
-        assertEquals(1, info.all().length, "Only V1 should be active");
+        assertEquals(2, info.all().length, "Only V1+V2 should be active");
         assertEquals("1", info.all()[0].getVersion().getVersion());
     }
 

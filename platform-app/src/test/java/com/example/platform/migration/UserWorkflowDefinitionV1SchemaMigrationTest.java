@@ -52,7 +52,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
 
     @Test
     @Order(2)
-    @DisplayName("V1: flyway_schema_history contains exactly one row, version 1, script V1__initial_schema.sql")
+    @DisplayName("V1+V2: flyway_schema_history contains exactly two rows (V1 + V2 operation-plan transaction)")
     void flywayHistoryExactlyOneV1() throws Exception {
         assertTrue(deployed);
         try (Connection conn = db.createConnection("")) {
@@ -60,10 +60,12 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
                  ResultSet rs = stmt.executeQuery(
                          "select version, script from flyway_schema_history order by installed_rank")) {
                 assertTrue(rs.next(), "flyway_schema_history must contain at least one row");
-                assertEquals("1", rs.getString("version"), "active Flyway version must be 1");
+                assertEquals("1", rs.getString("version"), "first migration version must be 1");
                 assertEquals("V1__initial_schema.sql", rs.getString("script"),
                         "script must be the canonical consolidated V1");
-                assertFalse(rs.next(), "flyway_schema_history must contain exactly one row");
+                assertTrue(rs.next(), "second migration row (V2) must exist");
+                assertEquals("2", rs.getString("version"), "second migration version must be 2");
+                assertFalse(rs.next(), "flyway_schema_history must contain exactly two rows (V1+V2)");
             }
         }
     }

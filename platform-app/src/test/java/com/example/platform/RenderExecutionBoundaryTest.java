@@ -166,9 +166,9 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
         for (Map<String, Object> m : migrations) {
             evidence.append(String.format("FLYWAY: V%s - %s [%s]%n", m.get("version"), m.get("description"), m.get("script")));
         }
-        // Greenfield baseline: exactly one V1 migration before first release
-        Assertions.assertEquals(1, migrations.size(),
-                "Greenfield baseline must contain exactly one V1 migration");
+        // Greenfield baseline: exactly V1+V2 migrations before first release
+        Assertions.assertEquals(2, migrations.size(),
+                "Greenfield baseline must contain exactly V1+V2 migrations");
         Map<String, Object> singleMigration = migrations.get(0);
         Assertions.assertEquals("1", String.valueOf(singleMigration.get("version")),
                 "Only V1 may be active before first release");
