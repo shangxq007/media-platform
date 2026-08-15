@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.canonical;
 
+import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.render.domain.timeline.semantics.temporal.TemporalMapping;
 import com.example.platform.shared.time.MediaTime;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -58,6 +60,25 @@ public class TimelineClip {
     @JsonDeserialize(using = MediaTimeJsonCodec.Deserializer.class)
     private final MediaTime trimEnd;
 
+    @JsonProperty("temporalMapping")
+    private final TemporalMapping temporalMapping;
+
+    /** Convenience constructor: identity temporal mapping (1/1 FORWARD). */
+    public TimelineClip(
+            String clipId,
+            String mediaAssetId,
+            String mediaStreamId,
+            String artifactId,
+            String contentDigest,
+            MediaTime startTime,
+            MediaTime endTime,
+            MediaTime trimStart,
+            MediaTime trimEnd,
+            String sourceKind) {
+        this(clipId, mediaAssetId, mediaStreamId, artifactId, contentDigest,
+                startTime, endTime, trimStart, trimEnd, sourceKind, null);
+    }
+
     @JsonCreator
     public TimelineClip(
             @JsonProperty("clipId") String clipId,
@@ -69,7 +90,8 @@ public class TimelineClip {
             @JsonProperty("endTime") MediaTime endTime,
             @JsonProperty("trimStart") MediaTime trimStart,
             @JsonProperty("trimEnd") MediaTime trimEnd,
-            @JsonProperty("sourceKind") String sourceKind) {
+            @JsonProperty("sourceKind") String sourceKind,
+            @JsonProperty("temporalMapping") TemporalMapping temporalMapping) {
         if (clipId == null || clipId.isBlank()) {
             throw new IllegalArgumentException("clipId must not be blank");
         }
@@ -87,9 +109,14 @@ public class TimelineClip {
         this.endTime = endTime != null ? endTime : MediaTime.ZERO;
         this.trimStart = trimStart != null ? trimStart : MediaTime.ZERO;
         this.trimEnd = trimEnd != null ? trimEnd : MediaTime.ZERO;
+        this.temporalMapping = temporalMapping != null
+                ? temporalMapping
+                : ConstantRateTemporalMapping.of(1, 1,
+                        com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection.FORWARD);
     }
 
     public TimelineClipId getClipId() { return clipId; }
+    public TemporalMapping getTemporalMapping() { return temporalMapping; }
     public String getSourceKind() { return sourceKind; }
     public String getMediaAssetId() { return mediaAssetId; }
     public String getMediaStreamId() { return mediaStreamId; }

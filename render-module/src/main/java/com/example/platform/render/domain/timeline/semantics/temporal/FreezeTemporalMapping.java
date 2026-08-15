@@ -1,6 +1,9 @@
 package com.example.platform.render.domain.timeline.semantics.temporal;
 
+import com.example.platform.render.domain.timeline.canonical.MediaTimeJsonCodec;
 import com.example.platform.shared.time.MediaTime;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Objects;
 
 /**
@@ -15,7 +18,10 @@ import java.util.Objects;
  * <p>Video: holds the defined source visual sample/frame. Audio freeze is NOT
  * inferred (audio non-identity execution fails closed, R4).
  */
-public record FreezeTemporalMapping(MediaTime sourcePosition) implements TemporalMapping {
+public record FreezeTemporalMapping(
+        @JsonSerialize(using = MediaTimeJsonCodec.Serializer.class)
+        @JsonDeserialize(using = MediaTimeJsonCodec.Deserializer.class)
+        MediaTime sourcePosition) implements TemporalMapping {
 
     public FreezeTemporalMapping {
         Objects.requireNonNull(sourcePosition, "sourcePosition");

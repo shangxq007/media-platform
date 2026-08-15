@@ -1,0 +1,67 @@
+package com.example.platform.render.domain.plan;
+
+import com.example.platform.render.domain.timeline.canonical.TimelineClip;
+import com.example.platform.render.domain.timeline.canonical.TimelineClipId;
+import com.example.platform.render.domain.timeline.semantics.relationship.GroupId;
+import com.example.platform.render.domain.timeline.semantics.relationship.SemanticRelationship;
+
+import java.util.Set;
+
+/**
+ * OPERATION_PLAN_TRANSACTION_MODEL_V1 (PT8/§12): typed planned semantic changes
+ * and secondary consequences. Deterministic, explicit affected entities,
+ * previewable, primary/secondary distinguishable. No generic field paths, no
+ * JsonNode, no Map<String,Object>.
+ */
+public sealed interface PlannedChange permits
+        PlannedChange.ClipRemoved,
+        PlannedChange.ClipReplaced,
+        PlannedChange.RelationshipRemoved,
+        PlannedChange.RelationshipAdded,
+        PlannedChange.GroupMembershipUpdated,
+        PlannedChange.AudioMixReplaced {
+
+    boolean primary();
+
+    /** DELETE: remove clip. */
+    record ClipRemoved(TimelineClipId clipId) implements PlannedChange {
+        public boolean primary() {
+            return true;
+        }
+    }
+
+    /** MOVE/TRIM/SET_RATE/SET_DIRECTION/FREEZE: replace clip with new canonical state. */
+    record ClipReplaced(TimelineClipId clipId, TimelineClip newClip) implements PlannedChange {
+        public boolean primary() {
+            return true;
+        }
+    }
+
+    /** DELETE secondary consequence: remove Sync/Group relationship. */
+    record RelationshipRemoved(String relationshipIdentity) implements PlannedChange {
+        public boolean primary() {
+            return false;
+        }
+    }
+
+    /** GROUP/SYNC create: add relationship. */
+    record RelationshipAdded(SemanticRelationship relationship) implements PlannedChange {
+        public boolean primary() {
+            return true;
+        }
+    }
+
+    /** DELETE secondary: group membership updated (members after deletion). */
+    record GroupMembershipUpdated(GroupId groupId, Set<TimelineClipId> remainingMembers) implements PlannedChange {
+        public boolean primary() {
+            return false;
+        }
+    }
+
+    /** AUDIO operations: replaced canonical AudioMix. */
+    record AudioMixReplaced(String summary) implements PlannedChange {
+        public boolean primary() {
+            return true;
+        }
+    }
+}

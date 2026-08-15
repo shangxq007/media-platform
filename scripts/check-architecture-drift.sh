@@ -762,6 +762,145 @@ else
     fail "operation vocabulary drifted"
 fi
 
+# OPTG-2: OperationPlan != TimelinePatch (no patch list as plan model)
+if grep -q 'List<TimelinePatchOperation> operations' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlan.java 2>/dev/null; then
+    fail "plan modeled as patch list"
+else
+    pass "plan is semantic transition model, not patch list"
+fi
+
+# OPTG-4: plan immutable record
+if grep -q 'record OperationPlan(' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlan.java; then
+    pass "immutable OperationPlan record"
+else
+    fail "plan not immutable"
+fi
+
+# OPTG-5/6: digest deterministic, excludes principal/auth/target ref
+if grep -q 'operation-plan-format-v1' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlan.java && grep -q 'baseRevisionId' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanDigest.java; then
+    pass "deterministic domain-separated PlanDigest"
+else
+    fail "PlanDigest missing"
+fi
+if grep -rn 'principal' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanDigest.java | grep -vE '^[0-9]*: *[*]' | grep -q .; then
+    fail "principal in PlanDigest"
+else
+    pass "PlanDigest excludes principal/auth/target ref"
+fi
+
+# OPTG-7: candidate hash via TimelineContentDigester
+if grep -q 'new TimelineContentDigester()' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanner.java; then
+    pass "candidate hash uses TimelineContentDigester"
+else
+    fail "candidate hash authority wrong"
+fi
+
+# OPTG-11: parent = plan.baseRevisionId (single parent)
+if grep -q 'plan.baseRevisionId()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'parent_revision_id' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "normal edit parent = plan base"
+else
+    fail "parent semantics wrong"
+fi
+
+# OPTG-14/15: database-enforced CAS (conditional update affected rows)
+if grep -q 'where project_id = ? and ref_id = ? and head_revision_id = ?' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "database-enforced CAS conditional update"
+else
+    fail "CAS mechanism missing"
+fi
+if grep -q 'select head' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    fail "check-then-act CAS"
+else
+    pass "no check-then-act CAS"
+fi
+
+# OPTG-16/17: authorization binds plan digest + apply context
+if grep -q 'authorization().planDigest().equals(plan.planDigest())' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "authorization binds exact PlanDigest"
+else
+    fail "authorization plan binding missing"
+fi
+if grep -q 'AUTHORIZATION_CONTEXT_MISMATCH' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "authorization binds exact apply context"
+else
+    fail "authorization context binding missing"
+fi
+
+# OPTG-18: AuthorizationDecision immutable record
+if grep -q 'record AuthorizationDecision(' render-module/src/main/java/com/example/platform/render/domain/plan/AuthorizationDecision.java; then
+    pass "immutable AuthorizationDecision"
+else
+    fail "authorization not immutable"
+fi
+
+# OPTG-21/22: durable ApplyCommandId, not canonical semantics
+if grep -q 'apply_command' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "durable ApplyCommandId authority"
+else
+    fail "durable idempotency missing"
+fi
+if grep -q 'apply_command' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java 2>/dev/null; then
+    fail "ApplyCommandId in canonical model"
+else
+    pass "ApplyCommandId not canonical Timeline semantics"
+fi
+
+# OPTG-23: semantic no-op creates no revision
+if grep -q 'noOp()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'ApplyResult.NO_OP' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "semantic NO_OP no revision"
+else
+    fail "NO_OP handling missing"
+fi
+
+# OPTG-24: no independent generic JSON patch canonical write endpoints
+if grep -q 'JsonNode' platform-app/src/main/java/com/example/platform/web/render/TimelineGitV1Controller.java 2>/dev/null; then
+    fail "generic JSON patch endpoint"
+else
+    pass "no generic JSON patch write endpoints"
+fi
+
+# OPTG-26: no JGit introduced
+if grep -rq 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null; then
+    fail "JGit introduced"
+else
+    pass "no JGit dependency"
+fi
+
+# OPTG-27/28: no revision command / merge folded in
+if grep -rq 'class MergeCommand\|class RevertCommand\|class BranchCommand' render-module/src/main/java/com/example/platform/render/domain/plan/ 2>/dev/null; then
+    fail "revision command implemented"
+else
+    pass "no revision command implementation"
+fi
+
+# OPTG-32: delete consequences explicit in planner
+if grep -q 'RelationshipRemoved(s.identityKey())' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanner.java && grep -q 'remaining.size() < 2' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanner.java; then
+    pass "delete sync/group consequences planner-owned"
+else
+    fail "delete consequences missing"
+fi
+
+# OPTG-33: trim invalid sync -> reject
+if grep -q 'SYNC_ANCHOR_INVALIDATED' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanner.java; then
+    pass "trim invalid sync anchor -> reject"
+else
+    fail "trim sync policy missing"
+fi
+
+# OPTG-34: set-rate unsupported audio -> reject
+if grep -q 'UNSUPPORTED_AUDIO_TEMPORAL_BEHAVIOR' render-module/src/main/java/com/example/platform/render/domain/plan/PlanErrorCode.java; then
+    pass "set-rate audio consequence typed"
+else
+    fail "audio temporal consequence missing"
+fi
+
+# OPTG-37: plan/preview/authorization same digest
+if grep -q 'planDigest' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanPreview.java && grep -q 'planDigest' render-module/src/main/java/com/example/platform/render/domain/plan/AuthorizationDecision.java; then
+    pass "preview/authorization bind plan digest"
+else
+    fail "same-plan binding missing"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0
