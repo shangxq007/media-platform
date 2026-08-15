@@ -62,3 +62,28 @@ PiecewiseTemporalMapping/variable retime; AudioTemporalBehavior/pitch policy;
 RenderExtent (#20); temporal capabilities; Operations; Semantic Relationship/
 Selection; MEDIA_TEST_CORPUS baseline. Blockers = 0. Escalation = NONE.
 NEXT_ACTION = SEMANTIC_RELATIONSHIP_SELECTION_FOUNDATION_V1_DECISION_RECOVERY.
+
+## TEMPORAL_MAPPING_POST_CLOSE_FINALIZATION (2026-08-15)
+
+A. TEMPORAL_MAPPING_SEMANTIC_OWNER = TIMELINE. Physical module = render-module
+domain/timeline/semantics/temporal (Timeline domain packages have lived under
+render-module/domain/timeline since #14; zero FFmpeg/infrastructure imports —
+grep verified 0). RENDER_CONSUMES = YES (FFmpegCommandFactory projects canonical
+state). TEMPORAL_MAPPING_DEPENDS_ON_RENDER = NO.
+
+B. CANONICAL_FORMAT_GREENFIELD_EXCEPTION = accepted under
+PRE_SCHEMA_EVOLUTION_GREENFIELD_FORMAT_MUTATION_V1: before CANONICAL_SCHEMA_EVOLUTION_V1
+is established, an unshipped current canonical format MAY be directly canonicalized
+without old-format compatibility iff COMPATIBILITY_EVIDENCE_FOUND = NO. After Schema
+Evolution: the same CanonicalFormatVersion MUST NOT acquire incompatible byte
+semantics; historical bytes stay readable under declared version; semantic migration
+creates new revision state, never rewrites history. (playbackRate -> temporalMapping
+format mutation occurred under this policy.)
+
+C. TEMPORAL_DIFF_SEMANTIC_CLASSIFICATION = corrected: TimelineSemanticDiffService now
+classifies TemporalMapping changes with typed detail — TEMPORAL_MAPPING_KIND_CHANGED /
+TEMPORAL_MAPPING_DIRECTION_CHANGED / FREEZE_POSITION_CHANGED; only a pure rate change
+reports CLIP_SPEED_CHANGED. Covered by TemporalMappingDiffClassificationTest (5).
+
+D. CREDENTIAL_RESIDUE_FINAL = 0 (verified: no askpass residue, no token patterns,
+no untracked sensitive material).

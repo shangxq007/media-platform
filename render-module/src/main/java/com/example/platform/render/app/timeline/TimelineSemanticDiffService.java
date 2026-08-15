@@ -182,7 +182,7 @@ public class TimelineSemanticDiffService {
             out.add(SemanticChange.of(SemanticChangeType.CLIP_RANGE_CHANGED, ref, "clip range changed"));
         }
         if (!jsonFieldEquals(oldE, newE, "temporalMapping")) {
-            out.add(SemanticChange.of(SemanticChangeType.CLIP_SPEED_CHANGED, ref, "clip temporal mapping changed"));
+            classifyTemporalMappingChange(oldE.path("temporalMapping"), newE.path("temporalMapping"), ref, out);
         }
         if (!jsonFieldEquals(oldE, newE, "effects")) {
             out.add(SemanticChange.of(SemanticChangeType.CLIP_EFFECT_CHANGED, ref, "clip effects changed"));
@@ -210,6 +210,40 @@ public class TimelineSemanticDiffService {
             out.add(SemanticChange.of(SemanticChangeType.LAYER_CONTENT_CHANGED, ref, "layer changed"));
         }
         return out;
+    }
+
+    /**
+     * TEMPORAL_MAPPING_POST_CLOSE (assertion C): TemporalMapping changes are
+     * classified with typed semantic detail — never all collapsed into a pure
+     * speed change. kind/direction/freeze-position each get their own type;
+     * only a pure rate change reports CLIP_SPEED_CHANGED.
+     */
+    static void classifyTemporalMappingChange(JsonNode oldM, JsonNode newM, EntityRef ref,
+                                              List<SemanticChange> out) {
+        String oldKind = oldM.path("kind").asText("");
+        String newKind = newM.path("kind").asText("");
+        if (!oldKind.equals(newKind)) {
+            out.add(SemanticChange.of(SemanticChangeType.TEMPORAL_MAPPING_KIND_CHANGED, ref,
+                    "temporal mapping kind changed: " + oldKind + " -> " + newKind));
+            return;
+        }
+        if ("CONSTANT_RATE".equals(newKind)) {
+            if (!nodesEqual(oldM.path("direction"), newM.path("direction"))) {
+                out.add(SemanticChange.of(SemanticChangeType.TEMPORAL_MAPPING_DIRECTION_CHANGED, ref,
+                        "temporal mapping direction changed: " + oldM.path("direction").asText("")
+                                + " -> " + newM.path("direction").asText("")));
+            }
+            if (!nodesEqual(oldM.path("rate"), newM.path("rate"))) {
+                out.add(SemanticChange.of(SemanticChangeType.CLIP_SPEED_CHANGED, ref,
+                        "temporal mapping rate changed: " + oldM.path("rate").asText("")
+                                + " -> " + newM.path("rate").asText("")));
+            }
+        } else if ("FREEZE".equals(newKind)) {
+            if (!nodesEqual(oldM.path("sourcePosition"), newM.path("sourcePosition"))) {
+                out.add(SemanticChange.of(SemanticChangeType.FREEZE_POSITION_CHANGED, ref,
+                        "freeze source position changed"));
+            }
+        }
     }
 
     private static boolean jsonFieldEquals(JsonNode oldE, JsonNode newE, String field) {
