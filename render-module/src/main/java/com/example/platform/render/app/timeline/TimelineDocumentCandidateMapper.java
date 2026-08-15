@@ -71,7 +71,7 @@ final class TimelineDocumentCandidateMapper {
     }
 
     private static TimelineCandidate.Clip mapClip(TimelineClip clip) {
-        String clipId = clip.getClipId();
+        String clipId = clip.getClipId().value();
         if (clipId == null || clipId.isBlank() || !clipId.equals(clipId.strip())) {
             throw new TimelineCanonicalRejectionException(new TimelineCanonicalRejectionException.AdapterDiagnostic(
                     TimelineCanonicalRejectionException.Code.TIMELINE_CLIP_ID_INVALID,

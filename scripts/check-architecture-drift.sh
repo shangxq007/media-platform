@@ -530,6 +530,103 @@ else
     pass "no piecewise/audio-behavior/legacy dual model"
 fi
 
+# SRG-1: TimelineClip canonical identity typed TimelineClipId
+if grep -q 'private final TimelineClipId clipId' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineClip.java; then
+    pass "TimelineClipId typed canonical identity"
+else
+    fail "TimelineClipId missing"
+fi
+
+# SRG-2/27: no raw String endpoint/identity authority (field declaration only;
+# @JsonCreator String params are the allowed boundary conversion)
+if grep -q 'private final String clipId' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineClip.java; then
+    fail "raw String clipId remains"
+else
+    pass "no raw String clip identity"
+fi
+
+# SRG-3: no universal TimelineObjectId
+if grep -rq 'class TimelineObjectId\|record TimelineObjectId' render-module/src/main 2>/dev/null; then
+    fail "universal TimelineObjectId present"
+else
+    pass "no universal TimelineObjectId"
+fi
+
+# SRG-4: sealed root permits exactly Sync + Group
+if grep -q 'sealed interface SemanticRelationship permits' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SemanticRelationship.java; then
+    pass "sealed SemanticRelationship root"
+else
+    fail "SemanticRelationship root missing"
+fi
+
+# SRG-6/7: sync normalized pair + anchor moves with endpoint
+if grep -q 'identityKey' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SyncRelationship.java && grep -q 'a.compareTo(b)' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SyncRelationship.java; then
+    pass "sync normalized endpoint identity"
+else
+    fail "sync normalization missing"
+fi
+
+# SRG-9/10: GroupId typed stable, independent of members
+if grep -q 'record GroupId' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/GroupId.java; then
+    pass "typed GroupId"
+else
+    fail "GroupId missing"
+fi
+
+# SRG-11/12: group members TimelineClipId, flat
+if grep -q 'Set<TimelineClipId> members' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/GroupRelationship.java; then
+    pass "typed group members"
+else
+    fail "group member type wrong"
+fi
+
+# SRG-13/14: relationships revisioned with Timeline + hash participation
+if grep -q 'semanticRelationships' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+    pass "relationships in Timeline revision content"
+else
+    fail "relationship revision integration missing"
+fi
+
+# SRG-16: sync anchors object-local MediaTime
+if grep -q 'MediaTime localAnchorA' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SyncRelationship.java; then
+    pass "exact object-local sync anchors"
+else
+    fail "sync anchor model wrong"
+fi
+
+# SRG-17: sync has no sourceRange/temporal fields
+if grep -q 'sourceRange\|playbackRate\|direction' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SyncRelationship.java; then
+    fail "sync carries forbidden temporal/source fields"
+else
+    pass "sync contains no temporal/source semantics"
+fi
+
+# SRG-19: no generic attribute map
+if grep -rq 'Map<String, Object> attributes' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/ 2>/dev/null; then
+    fail "generic attribute map present"
+else
+    pass "no generic relationship attribute map"
+fi
+
+# SRG-23/24: scope resolution revision-bound, no latest
+if grep -q 'baseRevisionId' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/selection/ResolvedScope.java && grep -q 'revision-bound' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/selection/ResolvedScope.java; then
+    pass "revision-bound scope resolution"
+else
+    fail "scope resolution not revision-bound"
+fi
+if grep -rq 'latestRevision()\|currentTimeline()' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/selection/ScopeResolver.java 2>/dev/null; then
+    fail "mutable-latest fallback present"
+else
+    pass "no mutable-latest fallback"
+fi
+
+# SRG-21: no provenance relationship variant
+if grep -rq 'DerivedRelationship\|SourceAssociationRelationship\|LinkedRelationship' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/ 2>/dev/null; then
+    fail "forbidden relationship variant present"
+else
+    pass "no provenance/derived/source-association variants"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

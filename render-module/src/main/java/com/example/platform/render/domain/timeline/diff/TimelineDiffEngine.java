@@ -1,5 +1,6 @@
 package com.example.platform.render.domain.timeline.diff;
 
+import com.example.platform.render.domain.timeline.canonical.TimelineClipId;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
@@ -144,18 +145,18 @@ public final class TimelineDiffEngine {
             List<TimelineChange> changes) {
 
         // Build clip indices per track
-        Map<String, Map<String, IndexedClip>> baseClipsByTrack = indexClipsByTrack(baseTracks);
-        Map<String, Map<String, IndexedClip>> targetClipsByTrack = indexClipsByTrack(targetTracks);
+        Map<String, Map<TimelineClipId, IndexedClip>> baseClipsByTrack = indexClipsByTrack(baseTracks);
+        Map<String, Map<TimelineClipId, IndexedClip>> targetClipsByTrack = indexClipsByTrack(targetTracks);
 
         // Collect all clip IDs across all tracks
-        TreeMap<String, ClipLocation> allClips = new TreeMap<>();
-        for (Map.Entry<String, Map<String, IndexedClip>> e : baseClipsByTrack.entrySet()) {
-            for (Map.Entry<String, IndexedClip> ce : e.getValue().entrySet()) {
+        TreeMap<TimelineClipId, ClipLocation> allClips = new TreeMap<>();
+        for (Map.Entry<String, Map<TimelineClipId, IndexedClip>> e : baseClipsByTrack.entrySet()) {
+            for (Map.Entry<TimelineClipId, IndexedClip> ce : e.getValue().entrySet()) {
                 allClips.put(ce.getKey(), new ClipLocation(e.getKey(), ce.getValue(), null, null));
             }
         }
-        for (Map.Entry<String, Map<String, IndexedClip>> e : targetClipsByTrack.entrySet()) {
-            for (Map.Entry<String, IndexedClip> ce : e.getValue().entrySet()) {
+        for (Map.Entry<String, Map<TimelineClipId, IndexedClip>> e : targetClipsByTrack.entrySet()) {
+            for (Map.Entry<TimelineClipId, IndexedClip> ce : e.getValue().entrySet()) {
                 ClipLocation loc = allClips.get(ce.getKey());
                 if (loc == null) {
                     allClips.put(ce.getKey(), new ClipLocation(null, null, e.getKey(), ce.getValue()));
@@ -166,8 +167,8 @@ public final class TimelineDiffEngine {
             }
         }
 
-        for (Map.Entry<String, ClipLocation> entry : allClips.entrySet()) {
-            String clipId = entry.getKey();
+        for (Map.Entry<TimelineClipId, ClipLocation> entry : allClips.entrySet()) {
+            TimelineClipId clipId = entry.getKey();
             ClipLocation loc = entry.getValue();
 
             IndexedClip baseClip = loc.base != null ? loc.base : null;
@@ -177,10 +178,10 @@ public final class TimelineDiffEngine {
 
             if (baseClip == null) {
                 // Clip added
-                changes.add(TimelineChange.added(EntityKind.CLIP, clipId, targetClip.position));
+                changes.add(TimelineChange.added(EntityKind.CLIP, clipId.value(), targetClip.position));
             } else if (targetClip == null) {
                 // Clip removed
-                changes.add(TimelineChange.removed(EntityKind.CLIP, clipId, baseClip.position));
+                changes.add(TimelineChange.removed(EntityKind.CLIP, clipId.value(), baseClip.position));
             } else {
                 // Clip exists in both - check for move or property change
                 boolean trackChanged = !Objects.equals(baseTrackId, targetTrackId);
@@ -189,19 +190,19 @@ public final class TimelineDiffEngine {
 
                 if (trackChanged) {
                     // Clip moved to different track
-                    changes.add(TimelineChange.moved(clipId, baseTrackId, targetTrackId));
+                    changes.add(TimelineChange.moved(clipId.value(), baseTrackId, targetTrackId));
                     // Also report property changes alongside move
                     if (propertyChanged) {
-                        addClipPropertyChanges(clipId, baseClip.clip, targetClip.clip, changes);
+                        addClipPropertyChanges(clipId.value(), baseClip.clip, targetClip.clip, changes);
                     }
                 } else if (propertyChanged) {
                     // Same track, properties changed
-                    addClipPropertyChanges(clipId, baseClip.clip, targetClip.clip, changes);
+                    addClipPropertyChanges(clipId.value(), baseClip.clip, targetClip.clip, changes);
                 }
 
                 if (reordered && !trackChanged) {
                     // Same track, reordered
-                    changes.add(TimelineChange.reordered(EntityKind.CLIP, clipId, targetClip.position));
+                    changes.add(TimelineChange.reordered(EntityKind.CLIP, clipId.value(), targetClip.position));
                 }
             }
         }
@@ -239,10 +240,10 @@ public final class TimelineDiffEngine {
                 && Objects.equals(a.getTrimEnd(), b.getTrimEnd());
     }
 
-    private static Map<String, Map<String, IndexedClip>> indexClipsByTrack(Map<String, IndexedTrack> tracks) {
-        Map<String, Map<String, IndexedClip>> index = new LinkedHashMap<>();
+    private static Map<String, Map<TimelineClipId, IndexedClip>> indexClipsByTrack(Map<String, IndexedTrack> tracks) {
+        Map<String, Map<TimelineClipId, IndexedClip>> index = new LinkedHashMap<>();
         for (Map.Entry<String, IndexedTrack> e : tracks.entrySet()) {
-            Map<String, IndexedClip> clips = new LinkedHashMap<>();
+            Map<TimelineClipId, IndexedClip> clips = new LinkedHashMap<>();
             List<TimelineClip> clipList = e.getValue().track.clips();
             for (int i = 0; i < clipList.size(); i++) {
                 clips.put(clipList.get(i).getClipId(), new IndexedClip(clipList.get(i), i));

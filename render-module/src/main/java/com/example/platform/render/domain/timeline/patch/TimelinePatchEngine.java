@@ -1,5 +1,6 @@
 package com.example.platform.render.domain.timeline.patch;
 
+import com.example.platform.render.domain.timeline.canonical.TimelineClipId;
 import com.example.platform.render.domain.timeline.canonical.TimelineClip;
 import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
 import com.example.platform.shared.time.MediaTime;
@@ -31,7 +32,7 @@ public final class TimelinePatchEngine {
     public static PatchApplicationResult apply(TimelineDocument base, TimelinePatch patch) {
         // Build indices for O(1) lookup
         Map<String, IndexedTrack> trackIndex = new LinkedHashMap<>();
-        Map<String, IndexedClip> clipIndex = new LinkedHashMap<>();
+        Map<TimelineClipId, IndexedClip> clipIndex = new LinkedHashMap<>();
         indexDocument(base, trackIndex, clipIndex);
 
         // Preflight validation
@@ -65,7 +66,7 @@ public final class TimelinePatchEngine {
             TimelinePatchOperation op,
             List<TimelineTrack> tracks,
             Map<String, IndexedTrack> trackIndex,
-            Map<String, IndexedClip> clipIndex) {
+            Map<TimelineClipId, IndexedClip> clipIndex) {
 
         if (op instanceof TimelinePatchOperation.AddTrack add) {
             return applyAddTrack(add, tracks);
@@ -149,8 +150,8 @@ public final class TimelinePatchEngine {
         return result;
     }
 
-    private static List<TimelineTrack> applyRemoveClip(TimelinePatchOperation.RemoveClip op, List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<String, IndexedClip> clipIndex) {
-        IndexedClip clipIdx = clipIndex.get(op.clipId());
+    private static List<TimelineTrack> applyRemoveClip(TimelinePatchOperation.RemoveClip op, List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<TimelineClipId, IndexedClip> clipIndex) {
+        IndexedClip clipIdx = clipIndex.get(new TimelineClipId(op.clipId()));
         if (clipIdx == null) throw new PatchExecutionException("Clip not found: " + op.clipId());
         if (!clipIdx.trackId().equals(op.expectedTrackId())) {
             throw new PatchExecutionException("Clip " + op.clipId() + " not in expected track: " + op.expectedTrackId());
@@ -165,8 +166,8 @@ public final class TimelinePatchEngine {
         return result;
     }
 
-    private static List<TimelineTrack> applyUpdateClipProperty(TimelinePatchOperation.UpdateClipProperty op, List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<String, IndexedClip> clipIndex) {
-        IndexedClip clipIdx = clipIndex.get(op.clipId());
+    private static List<TimelineTrack> applyUpdateClipProperty(TimelinePatchOperation.UpdateClipProperty op, List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<TimelineClipId, IndexedClip> clipIndex) {
+        IndexedClip clipIdx = clipIndex.get(new TimelineClipId(op.clipId()));
         if (clipIdx == null) throw new PatchExecutionException("Clip not found: " + op.clipId());
         IndexedTrack trackIdx = trackIndex.get(clipIdx.trackId());
         TimelineTrack track = trackIdx.track();
@@ -183,19 +184,19 @@ public final class TimelinePatchEngine {
             throw new PatchExecutionException("Precondition failed for clip " + op.clipId() + " property " + op.property() + ": expected " + op.expectedBefore() + ", actual " + currentValue);
         }
         TimelineClip updated = switch (op.property()) {
-            case "mediaAssetId" -> new TimelineClip(clip.getClipId(), op.newValue(),
+            case "mediaAssetId" -> new TimelineClip(clip.getClipId().value(), op.newValue(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                     clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind());
-            case "startTime" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
+            case "startTime" -> new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                     parseMediaTime(op.newValue()), clip.getEndTime(), clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind());
-            case "endTime" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
+            case "endTime" -> new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                     clip.getStartTime(), parseMediaTime(op.newValue()), clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind());
-            case "trimStart" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
+            case "trimStart" -> new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                     clip.getStartTime(), clip.getEndTime(), parseMediaTime(op.newValue()), clip.getTrimEnd(), clip.getSourceKind());
-            case "trimEnd" -> new TimelineClip(clip.getClipId(), clip.getMediaAssetId(),
+            case "trimEnd" -> new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(),
                     clip.getMediaStreamId(), clip.getArtifactId(), clip.getContentDigest(),
                     clip.getStartTime(), clip.getEndTime(), clip.getTrimStart(), parseMediaTime(op.newValue()), clip.getSourceKind());
             default -> throw new PatchExecutionException("Unknown clip property: " + op.property());
@@ -208,8 +209,8 @@ public final class TimelinePatchEngine {
         return result;
     }
 
-    private static List<TimelineTrack> applyMoveClip(TimelinePatchOperation.MoveClip op, List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<String, IndexedClip> clipIndex) {
-        IndexedClip clipIdx = clipIndex.get(op.clipId());
+    private static List<TimelineTrack> applyMoveClip(TimelinePatchOperation.MoveClip op, List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<TimelineClipId, IndexedClip> clipIndex) {
+        IndexedClip clipIdx = clipIndex.get(new TimelineClipId(op.clipId()));
         if (clipIdx == null) throw new PatchExecutionException("Clip not found: " + op.clipId());
         if (!clipIdx.trackId().equals(op.expectedSourceTrackId())) {
             throw new PatchExecutionException("Clip " + op.clipId() + " not in expected source track: " + op.expectedSourceTrackId());
@@ -236,8 +237,8 @@ public final class TimelinePatchEngine {
         return result;
     }
 
-    private static List<TimelineTrack> applyReorderClip(TimelinePatchOperation.ReorderClip op, List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<String, IndexedClip> clipIndex) {
-        IndexedClip clipIdx = clipIndex.get(op.clipId());
+    private static List<TimelineTrack> applyReorderClip(TimelinePatchOperation.ReorderClip op, List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<TimelineClipId, IndexedClip> clipIndex) {
+        IndexedClip clipIdx = clipIndex.get(new TimelineClipId(op.clipId()));
         if (clipIdx == null) throw new PatchExecutionException("Clip not found: " + op.clipId());
         if (!clipIdx.trackId().equals(op.trackId())) {
             throw new PatchExecutionException("Clip " + op.clipId() + " not in track: " + op.trackId());
@@ -270,7 +271,7 @@ public final class TimelinePatchEngine {
         return MediaTime.ofRational(num, den);
     }
 
-    private static void indexDocument(TimelineDocument doc, Map<String, IndexedTrack> trackIndex, Map<String, IndexedClip> clipIndex) {
+    private static void indexDocument(TimelineDocument doc, Map<String, IndexedTrack> trackIndex, Map<TimelineClipId, IndexedClip> clipIndex) {
         int ti = 0;
         for (TimelineTrack track : doc.getTracks()) {
             trackIndex.put(track.trackId(), new IndexedTrack(track, ti));
@@ -283,7 +284,7 @@ public final class TimelinePatchEngine {
         }
     }
 
-    private static void rebuildIndices(List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<String, IndexedClip> clipIndex) {
+    private static void rebuildIndices(List<TimelineTrack> tracks, Map<String, IndexedTrack> trackIndex, Map<TimelineClipId, IndexedClip> clipIndex) {
         trackIndex.clear();
         clipIndex.clear();
         int ti = 0;
@@ -298,11 +299,11 @@ public final class TimelinePatchEngine {
         }
     }
 
-    private static List<PatchError> preflight(TimelinePatch patch, Map<String, IndexedTrack> trackIndex, Map<String, IndexedClip> clipIndex) {
+    private static List<PatchError> preflight(TimelinePatch patch, Map<String, IndexedTrack> trackIndex, Map<TimelineClipId, IndexedClip> clipIndex) {
         List<PatchError> errors = new ArrayList<>();
         Set<String> operationIds = new HashSet<>();
         Set<String> addedTrackIds = new HashSet<>();
-        Set<String> addedClipIds = new HashSet<>();
+        Set<TimelineClipId> addedClipIds = new HashSet<>();
         Set<String> removedEntityIds = new HashSet<>();
 
         for (TimelinePatchOperation op : patch.operations()) {
@@ -343,21 +344,21 @@ public final class TimelinePatchEngine {
                         errors.add(new PatchError(PatchErrorCode.TIMELINE_PATCH_TARGET_NOT_FOUND, "Target track not found: " + add.targetTrackId(), add.operationId(), add.targetTrackId()));
                     }
                     if (clipIndex.containsKey(add.clip().getClipId()) || !addedClipIds.add(add.clip().getClipId())) {
-                        errors.add(new PatchError(PatchErrorCode.TIMELINE_PATCH_TARGET_ALREADY_EXISTS, "Clip already exists: " + add.clip().getClipId(), add.operationId(), add.clip().getClipId()));
+                        errors.add(new PatchError(PatchErrorCode.TIMELINE_PATCH_TARGET_ALREADY_EXISTS, "Clip already exists: " + add.clip().getClipId(), add.operationId(), add.clip().getClipId().value()));
                     }
                 }
                 case TimelinePatchOperation.RemoveClip remove -> {
-                    if (!clipIndex.containsKey(remove.clipId()) || !removedEntityIds.add("clip:" + remove.clipId())) {
+                    if (!clipIndex.containsKey(new TimelineClipId(remove.clipId())) || !removedEntityIds.add("clip:" + remove.clipId())) {
                         errors.add(new PatchError(PatchErrorCode.TIMELINE_PATCH_TARGET_NOT_FOUND, "Clip not found: " + remove.clipId(), remove.operationId(), remove.clipId()));
                     }
                 }
                 case TimelinePatchOperation.UpdateClipProperty update -> {
-                    if (!clipIndex.containsKey(update.clipId()) || removedEntityIds.contains("clip:" + update.clipId())) {
+                    if (!clipIndex.containsKey(new TimelineClipId(update.clipId())) || removedEntityIds.contains("clip:" + update.clipId())) {
                         errors.add(new PatchError(PatchErrorCode.TIMELINE_PATCH_TARGET_NOT_FOUND, "Clip not found: " + update.clipId(), update.operationId(), update.clipId()));
                     }
                 }
                 case TimelinePatchOperation.MoveClip move -> {
-                    if (!clipIndex.containsKey(move.clipId()) || removedEntityIds.contains("clip:" + move.clipId())) {
+                    if (!clipIndex.containsKey(new TimelineClipId(move.clipId())) || removedEntityIds.contains("clip:" + move.clipId())) {
                         errors.add(new PatchError(PatchErrorCode.TIMELINE_PATCH_TARGET_NOT_FOUND, "Clip not found: " + move.clipId(), move.operationId(), move.clipId()));
                     }
                     if (!trackIndex.containsKey(move.targetTrackId()) || removedEntityIds.contains("track:" + move.targetTrackId())) {
@@ -365,7 +366,7 @@ public final class TimelinePatchEngine {
                     }
                 }
                 case TimelinePatchOperation.ReorderClip reorder -> {
-                    if (!clipIndex.containsKey(reorder.clipId()) || removedEntityIds.contains("clip:" + reorder.clipId())) {
+                    if (!clipIndex.containsKey(new TimelineClipId(reorder.clipId())) || removedEntityIds.contains("clip:" + reorder.clipId())) {
                         errors.add(new PatchError(PatchErrorCode.TIMELINE_PATCH_TARGET_NOT_FOUND, "Clip not found: " + reorder.clipId(), reorder.operationId(), reorder.clipId()));
                     }
                     if (!trackIndex.containsKey(reorder.trackId()) || removedEntityIds.contains("track:" + reorder.trackId())) {

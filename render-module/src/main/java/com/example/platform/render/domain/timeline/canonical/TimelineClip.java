@@ -21,7 +21,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 public class TimelineClip {
 
     @JsonProperty("clipId")
-    private final String clipId;
+    private final TimelineClipId clipId;
 
     @JsonProperty("sourceKind")
     private final String sourceKind;
@@ -77,7 +77,7 @@ public class TimelineClip {
         // canonical adapter (TimelineDocumentCandidateMapper) owns the frozen
         // TimelineCanonicalRejectionException(TIMELINE_SOURCE_REF_INVALID) error
         // contract for invalid source references.
-        this.clipId = clipId;
+        this.clipId = new TimelineClipId(clipId);
         this.sourceKind = sourceKind != null ? sourceKind : "MEDIA_STREAM";
         this.mediaAssetId = mediaAssetId;
         this.mediaStreamId = mediaStreamId;
@@ -89,7 +89,7 @@ public class TimelineClip {
         this.trimEnd = trimEnd != null ? trimEnd : MediaTime.ZERO;
     }
 
-    public String getClipId() { return clipId; }
+    public TimelineClipId getClipId() { return clipId; }
     public String getSourceKind() { return sourceKind; }
     public String getMediaAssetId() { return mediaAssetId; }
     public String getMediaStreamId() { return mediaStreamId; }

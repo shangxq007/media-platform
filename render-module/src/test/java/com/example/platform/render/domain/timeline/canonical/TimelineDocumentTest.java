@@ -24,8 +24,8 @@ class TimelineDocumentTest {
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));
 
         assertEquals("track-1", doc.getTracks().get(0).trackId());
-        assertEquals("clip-1", doc.getTracks().get(0).clips().get(0).getClipId());
-        assertEquals("clip-2", doc.getTracks().get(0).clips().get(1).getClipId());
+        assertEquals("clip-1", doc.getTracks().get(0).clips().get(0).getClipId().value());
+        assertEquals("clip-2", doc.getTracks().get(0).clips().get(1).getClipId().value());
     }
 
     @Test

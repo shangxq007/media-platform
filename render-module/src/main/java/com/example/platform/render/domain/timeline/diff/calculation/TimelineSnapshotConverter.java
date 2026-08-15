@@ -103,7 +103,7 @@ public final class TimelineSnapshotConverter {
                     duration = end;
                 }
                 clips.add(new CanonicalTimelineClipSnapshot(
-                        clip.getClipId(),
+                        clip.getClipId().value(),
                         clip.getMediaAssetId(),
                         start,
                         clipDuration,

@@ -94,7 +94,7 @@ class TimelinePatchEngineTest {
         assertTrue(result.isSuccess());
         List<TimelineTrack> tracks = ((PatchApplicationResult.Success) result).document().getTracks();
         assertEquals(1, tracks.get(0).clips().size());
-        assertEquals("clip-1", tracks.get(0).clips().get(0).getClipId());
+        assertEquals("clip-1", tracks.get(0).clips().get(0).getClipId().value());
     }
 
     @Test
@@ -143,7 +143,7 @@ class TimelinePatchEngineTest {
         List<TimelineTrack> tracks = ((PatchApplicationResult.Success) result).document().getTracks();
         assertEquals(0, tracks.get(0).clips().size());
         assertEquals(1, tracks.get(1).clips().size());
-        assertEquals("clip-1", tracks.get(1).clips().get(0).getClipId());
+        assertEquals("clip-1", tracks.get(1).clips().get(0).getClipId().value());
     }
 
     @Test
@@ -164,9 +164,9 @@ class TimelinePatchEngineTest {
 
         assertTrue(result.isSuccess());
         List<TimelineClip> clips = ((PatchApplicationResult.Success) result).document().getTracks().get(0).clips();
-        assertEquals("clip-3", clips.get(0).getClipId());
-        assertEquals("clip-1", clips.get(1).getClipId());
-        assertEquals("clip-2", clips.get(2).getClipId());
+        assertEquals("clip-3", clips.get(0).getClipId().value());
+        assertEquals("clip-1", clips.get(1).getClipId().value());
+        assertEquals("clip-2", clips.get(2).getClipId().value());
     }
 
     @Test
