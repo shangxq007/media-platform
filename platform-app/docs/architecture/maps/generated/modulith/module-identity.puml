@@ -27,11 +27,6 @@ System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="")
 
 }
 
-Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.Storage, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Entitlement, "uses", $techn="", $tags="", $link="")
@@ -39,6 +34,11 @@ Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.
 Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Storage, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Storage, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Storage, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Entitlement, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.SharedKernel, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.Storage, "uses", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes
