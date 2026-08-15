@@ -28,6 +28,7 @@ public record FreezeTemporalMapping(
     }
 
     @Override
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public Kind kind() {
         return Kind.FREEZE;
     }

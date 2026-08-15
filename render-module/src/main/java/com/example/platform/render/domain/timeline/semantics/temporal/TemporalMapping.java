@@ -1,5 +1,8 @@
 package com.example.platform.render.domain.timeline.semantics.temporal;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 /**
  * TEMPORAL_MAPPING_FOUNDATION_V1 (TM7/TM30): canonical Timeline traversal
  * semantics — HOW object-local playback time maps to source time.
@@ -16,6 +19,11 @@ package com.example.platform.render.domain.timeline.semantics.temporal;
  * <p>Exact rational time only; no floating point, no provider/filter syntax
  * (TM3, TM20).
  */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = ConstantRateTemporalMapping.class, name = "CONSTANT_RATE"),
+        @JsonSubTypes.Type(value = FreezeTemporalMapping.class, name = "FREEZE")
+})
 public sealed interface TemporalMapping permits
         ConstantRateTemporalMapping,
         FreezeTemporalMapping {
