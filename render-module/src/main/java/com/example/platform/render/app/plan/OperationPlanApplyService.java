@@ -42,8 +42,12 @@ public class OperationPlanApplyService {
     }
 
     public static String fingerprint(String planDigest, TargetRevisionRef ref, String expectedHead,
-                                     String projectId) {
-        return sha256(planDigest + "|" + ref.refId() + "|" + expectedHead + "|" + projectId);
+                                     String projectId, String principalRef) {
+        // OPC2: bind principal identity so a durable command cannot be replayed across a
+        // different principal / authorization context. Policy version is intentionally
+        // EXCLUDED: a completed command must remain replayable as its original historical
+        // result even if policy changes later.
+        return sha256(planDigest + "|" + projectId + "|" + ref.refId() + "|" + expectedHead + "|" + principalRef);
     }
 
     public ApplyResult apply(OperationPlan plan, ApplyContext context, String projectId) {
@@ -74,7 +78,8 @@ public class OperationPlanApplyService {
             throw new PlanException(PlanErrorCode.AUTHORIZATION_DENIED, "authorization denied");
         }
         // 3. durable idempotency (unique ApplyCommandId; fingerprint mismatch fails)
-        String fp = fingerprint(plan.planDigest(), context.targetRef(), context.expectedHeadRevisionId(), projectId);
+        String fp = fingerprint(plan.planDigest(), context.targetRef(), context.expectedHeadRevisionId(),
+                projectId, context.principalRef());
         var existing = findCommand(tx, context.applyCommandId());
         if (existing != null) {
             if (!existing.fingerprint().equals(fp)) {
@@ -85,21 +90,33 @@ public class OperationPlanApplyService {
         }
         // 4. reserve command row (status IN_PROGRESS) — same transaction
         insertCommand(tx, context.applyCommandId(), plan.planDigest(), fp, "IN_PROGRESS", projectId);
-        // 5. database-enforced head CAS (conditional update; rows==1 required)
-        int casRows = casHead(tx, projectId, context.targetRef().refId(), context.expectedHeadRevisionId(), plan);
-        if (casRows != 1) {
-            throw new PlanException(PlanErrorCode.STALE_TARGET_REF,
-                    "expected head " + context.expectedHeadRevisionId() + " no longer current for ref "
-                            + context.targetRef().refId());
-        }
         if (plan.noOp()) {
+            // 5b. NO_OP first execution: validate exact expected head (OPC1) — head unchanged
+            int casRows = casHead(tx, projectId, context.targetRef().refId(),
+                    context.expectedHeadRevisionId(), null);
+            if (casRows != 1) {
+                throw new PlanException(PlanErrorCode.STALE_TARGET_REF,
+                        "expected head " + context.expectedHeadRevisionId() + " no longer current for ref "
+                                + context.targetRef().refId() + " (no-op still requires exact head)");
+            }
             updateCommand(tx, context.applyCommandId(), "COMPLETED", null, plan.baseContentHash(),
                     ApplyResult.NO_OP, projectId);
             return ApplyResult.noOp(plan.planDigest(), context.applyCommandId(), plan.baseRevisionId(),
                     plan.baseContentHash(), context.targetRef().refId());
         }
-        // 6. insert immutable revision (parent = plan.baseRevisionId exactly)
-        String newRevisionId = insertRevision(tx, plan, projectId, context);
+        // 5. database-enforced head CAS with the new head FIRST (conditional update;
+        //    rows==1 required; loser's transaction rolls back before any insert, so no
+        //    revision_number uniqueness race)
+        String newRevisionId = newRevisionId();
+        int casRows = casHead(tx, projectId, context.targetRef().refId(),
+                context.expectedHeadRevisionId(), newRevisionId);
+        if (casRows != 1) {
+            throw new PlanException(PlanErrorCode.STALE_TARGET_REF,
+                    "expected head " + context.expectedHeadRevisionId() + " no longer current for ref "
+                            + context.targetRef().refId());
+        }
+        // 6. insert immutable revision (parent = plan.baseRevisionId exactly); failure rolls back CAS
+        insertRevision(tx, plan, projectId, context, newRevisionId);
         // 7. durable result
         updateCommand(tx, context.applyCommandId(), "COMPLETED", newRevisionId, plan.candidateContentHash(),
                 ApplyResult.APPLIED, projectId);
@@ -110,25 +127,42 @@ public class OperationPlanApplyService {
         return result;
     }
 
-    /** Database-enforced CAS: UPDATE timeline_revision_ref SET head WHERE head = expected. */
-    private int casHead(DSLContext tx, String projectId, String refId, String expectedHead, OperationPlan plan) {
-        int rows = tx.execute("""
+    /**
+     * Database-enforced expected-head validation (OPI1 + OPC1).
+     * Normal apply: conditional UPDATE advances head; affected rows == 1 => ADVANCED,
+     * 0 => STALE_TARGET_REF.
+     * NO_OP first execution (OPC1): same conditional UPDATE but WITHOUT advancing the
+     * head (version bump only). A no-op relative to R100 is NOT a no-op relative to a
+     * moved current head R101 — the exact expected head must still match, else
+     * STALE_TARGET_REF. Completed durable replays never reach this path (they return
+     * the original durable result before the transaction begins).
+     */
+    private int casHead(DSLContext tx, String projectId, String refId, String expectedHead,
+                         String newRevisionId) {
+        if (newRevisionId == null) {
+            // NO_OP first execution: validate exact expected head WITHOUT advancing (OPC1)
+            return tx.execute("""
+                    update timeline_revision_ref
+                    set version = version + 1, updated_at = current_timestamp
+                    where project_id = ? and ref_id = ? and head_revision_id = ?
+                    """, projectId, refId, expectedHead);
+        }
+        return tx.execute("""
                 update timeline_revision_ref
                 set head_revision_id = ?, version = version + 1, updated_at = current_timestamp
                 where project_id = ? and ref_id = ? and head_revision_id = ?
-                """, plan.noOp() ? expectedHead : null, projectId, refId, expectedHead);
-        if (plan.noOp()) {
-            // NO_OP: head stays unchanged (no-op CAS is a no-op check — rows may be 0 if ref missing, that's fine)
-            return 1;
-        }
-        return rows;
+                """, newRevisionId, projectId, refId, expectedHead);
     }
 
-    private String insertRevision(DSLContext tx, OperationPlan plan, String projectId, ApplyContext context) {
+    private String newRevisionId() {
+        return "trev" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 24);
+    }
+
+    private void insertRevision(DSLContext tx, OperationPlan plan, String projectId, ApplyContext context,
+                                String revisionId) {
         // authoritative canonical payload: candidate Timeline canonical serialization
         String canonicalJson = serializeCanonical(plan.candidateTimeline());
         int revisionNumber = nextRevisionNumber(tx, projectId);
-        String revisionId = "trev" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 24);
         int rows = tx.execute("""
                 insert into timeline_revision
                     (id, project_id, tenant_id, parent_revision_id, revision_number, snapshot_id,
@@ -143,7 +177,6 @@ public class OperationPlanApplyService {
         if (rows != 1) {
             throw new PlanException(PlanErrorCode.PERSISTENCE_FAILURE, "revision insert failed");
         }
-        return revisionId;
     }
 
     private String snapshotId(String projectId, String canonicalJson) {

@@ -257,4 +257,99 @@ class OperationPlanConcurrencyIT {
                         "trevNOPE", "p-x", auth(plan, "p-x", "main")), PROJECT));
         assertEquals(PlanErrorCode.STALE_TARGET_REF, ex.code());
     }
+
+    @Test
+    void noOpStaleHeadRejected_firstExecution() {
+        // OPC1 CASE B: plan is no-op vs R100 but head moved to R101 before first apply
+        TimelineDocument base = baseDoc();
+        String baseHash = new TimelineContentDigester().digest(base);
+        OperationPlanner planner = new OperationPlanner();
+        OperationPlan noOpPlan = planner.plan(instance(baseHash, MediaTime.ZERO), base); // move delta 0 => no-op
+        assertTrue(noOpPlan.noOp());
+        // head still R100 -> NO_OP success (CASE A)
+        ApplyResult ok = service.apply(noOpPlan, new ApplyContext("cmd-noop-ok", new TargetRevisionRef("main"),
+                "trevR100", "p-x", auth(noOpPlan, "p-x", "main")), PROJECT);
+        assertEquals(ApplyResult.NO_OP, ok.status());
+        // move head to R101
+        TimelineDocument base2 = baseDoc();
+        String baseHash2 = new TimelineContentDigester().digest(base2);
+        OperationPlan movePlan = planner.plan(instance(baseHash2, MediaTime.ofRational(1, 1)), base2);
+        service.apply(movePlan, new ApplyContext("cmd-move-1", new TargetRevisionRef("main"),
+                "trevR100", "p-x", auth(movePlan, "p-x", "main")), PROJECT);
+        // new NO_OP command, expected head R100, current R101 -> STALE_TARGET_REF
+        OperationPlan noOp2 = planner.plan(instance(baseHash2, MediaTime.ZERO), base2);
+        assertTrue(noOp2.noOp());
+        PlanException ex = assertThrows(PlanException.class, () ->
+                service.apply(noOp2, new ApplyContext("cmd-noop-stale", new TargetRevisionRef("main"),
+                        "trevR100", "p-x", auth(noOp2, "p-x", "main")), PROJECT));
+        assertEquals(PlanErrorCode.STALE_TARGET_REF, ex.code());
+    }
+
+    @Test
+    void completedNoOpReplayAfterHeadMove_returnsOriginalResult() {
+        // OPC1 CASE C: completed durable no-op replays original NO_OP after head moves
+        TimelineDocument base = baseDoc();
+        String baseHash = new TimelineContentDigester().digest(base);
+        OperationPlanner planner = new OperationPlanner();
+        OperationPlan noOpPlan = planner.plan(instance(baseHash, MediaTime.ZERO), base);
+        ApplyContext ctx = new ApplyContext("cmd-noop-done", new TargetRevisionRef("main"),
+                "trevR100", "p-x", auth(noOpPlan, "p-x", "main"));
+        ApplyResult first = service.apply(noOpPlan, ctx, PROJECT);
+        assertEquals(ApplyResult.NO_OP, first.status());
+        // move head
+        OperationPlan movePlan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
+        service.apply(movePlan, new ApplyContext("cmd-move-2", new TargetRevisionRef("main"),
+                "trevR100", "p-x", auth(movePlan, "p-x", "main")), PROJECT);
+        // replay completed command -> original NO_OP, NOT stale
+        ApplyResult replay = service.apply(noOpPlan, ctx, PROJECT);
+        assertEquals(ApplyResult.NO_OP, replay.status());
+    }
+
+    @Test
+    void idempotencyReplayRejectsDifferentPrincipal() {
+        // OPC2 CASE B: Bob cannot replay Alice's completed command
+        TimelineDocument base = baseDoc();
+        String baseHash = new TimelineContentDigester().digest(base);
+        OperationPlanner planner = new OperationPlanner();
+        OperationPlan plan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
+        ApplyContext alice = new ApplyContext("cmd-alice-1", new TargetRevisionRef("main"),
+                "trevR100", "alice", auth(plan, "alice", "main"));
+        ApplyResult first = service.apply(plan, alice, PROJECT);
+        assertEquals(ApplyResult.APPLIED, first.status());
+        PlanException ex = assertThrows(PlanException.class, () ->
+                service.apply(plan, new ApplyContext("cmd-alice-1", new TargetRevisionRef("main"),
+                        "trevR100", "bob", auth(plan, "bob", "main")), PROJECT));
+        assertEquals(PlanErrorCode.IDEMPOTENCY_KEY_CONFLICT, ex.code());
+    }
+
+    @Test
+    void idempotencyReplayRejectsDifferentTargetRef() {
+        // OPC2 CASE C: same plan/principal, different target ref -> conflict
+        TimelineDocument base = baseDoc();
+        String baseHash = new TimelineContentDigester().digest(base);
+        OperationPlanner planner = new OperationPlanner();
+        OperationPlan plan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
+        ApplyContext ctx = new ApplyContext("cmd-ref-1", new TargetRevisionRef("main"),
+                "trevR100", "alice", auth(plan, "alice", "main"));
+        service.apply(plan, ctx, PROJECT);
+        PlanException ex = assertThrows(PlanException.class, () ->
+                service.apply(plan, new ApplyContext("cmd-ref-1", new TargetRevisionRef("other"),
+                        "trevR100", "alice", auth(plan, "alice", "other")), PROJECT));
+        assertEquals(PlanErrorCode.IDEMPOTENCY_KEY_CONFLICT, ex.code());
+    }
+
+    @Test
+    void headAdvancesToNewRevisionOnApply() {
+        // regression: CAS must set head to the new revision (not null)
+        TimelineDocument base = baseDoc();
+        String baseHash = new TimelineContentDigester().digest(base);
+        OperationPlanner planner = new OperationPlanner();
+        OperationPlan plan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
+        ApplyResult result = service.apply(plan, new ApplyContext("cmd-head-1", new TargetRevisionRef("main"),
+                "trevR100", "alice", auth(plan, "alice", "main")), PROJECT);
+        String head = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
+                + "where project_id = ? and ref_id = 'main'", PROJECT).get(0, String.class);
+        assertEquals(result.newRevisionId(), head, "head must advance to the new revision");
+    }
+
 }

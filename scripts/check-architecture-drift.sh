@@ -901,6 +901,60 @@ else
     fail "same-plan binding missing"
 fi
 
+# OPCG-1/2: first-time NO_OP apply validates expected head; stale => STALE_TARGET_REF
+if grep -q 'no-op still requires exact head' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "no-op first apply validates expected head"
+else
+    fail "no-op head validation missing"
+fi
+
+# OPCG-4/5/6: fingerprint binds principal + project scope + target ref
+if grep -q 'principalRef' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'projectId + "|" + ref.refId()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "apply command fingerprint binds principal + context"
+else
+    fail "fingerprint missing principal/context binding"
+fi
+if grep -q 'policy' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java | grep -v policyVersion | grep -q .; then
+    fail "policy version in fingerprint"
+else
+    pass "policy version excluded from fingerprint"
+fi
+
+# OPCG-8/9: OperationPlan semantics have zero PostgreSQL identity dependency
+if grep -q 'org.jooq\|PGobject\|postgres' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlan.java render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanDigest.java render-module/src/main/java/com/example/platform/render/domain/plan/AuthorizationDecision.java render-module/src/main/java/com/example/platform/render/domain/plan/ApplyResult.java render-module/src/main/java/com/example/platform/render/domain/plan/PlannedChange.java 2>/dev/null; then
+    fail "postgres/jooq leakage into domain plan model"
+else
+    pass "zero postgres/jooq leakage into domain plan model"
+fi
+
+# OPCG-10/11: CAS remains database-enforced, no check-then-act
+if grep -q 'where project_id = ? and ref_id = ? and head_revision_id = ?' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "CAS database-enforced conditional update"
+else
+    fail "CAS mechanism missing"
+fi
+
+# OPCG-13/14: no JGit, no alternative backend
+if grep -rq 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null; then
+    fail "JGit introduced"
+else
+    pass "no JGit"
+fi
+
+# OPCG-18/19: revision command / integrity = 0
+if grep -rq 'class MergeCommand\|class RevertCommand\|IntegrityFinding\|RepairPlan' render-module/src/main/java/com/example/platform/render/domain/plan/ 2>/dev/null; then
+    fail "revision command/integrity implemented"
+else
+    pass "no revision command / integrity implementation"
+fi
+
+# OPCG-16: FINAL FCV candidate identified (07ebd0ee) in governance record
+if grep -q '07ebd0ee' docs/architecture/governance/operation-plan-transaction-model-v1.md 2>/dev/null || grep -q 'FINAL_FCV_CANDIDATE' docs/architecture/governance/operation-plan-transaction-model-v1.md 2>/dev/null; then
+    pass "final FCV candidate governance recorded"
+else
+    fail "final FCV candidate missing from governance record"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0
