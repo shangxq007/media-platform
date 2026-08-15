@@ -53,6 +53,7 @@ public final class TimelineDiffEngine {
 
         // AUDIO_V2 (A13): document-level canonical audio mix semantic diff
         diffAudioMix(base, target, changes);
+        diffSemanticRelationships(base, target, changes);
 
         // Deterministic ordering
         changes.sort(TimelineDiffEngine::compareChanges);
@@ -84,6 +85,88 @@ public final class TimelineDiffEngine {
             index.put(track.trackId(), new IndexedTrack(track, i));
         }
         return index;
+    }
+
+    /**
+     * SEMANTIC_RELATIONSHIP_SELECTION_POST_CLOSE: typed semantic relationship
+     * diff. Sync matched by normalized endpoint identity; Group matched by
+     * GroupId. Hash change alone is never treated as semantic diff.
+     */
+    private static void diffSemanticRelationships(TimelineDocument base, TimelineDocument target,
+                                                  List<TimelineChange> changes) {
+        if (base == null || target == null) {
+            return;
+        }
+        java.util.Map<String, com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship> baseSync =
+                new java.util.LinkedHashMap<>();
+        java.util.Map<String, com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship> baseGroups =
+                new java.util.LinkedHashMap<>();
+        for (var rel : base.getSemanticRelationships()) {
+            if (rel instanceof com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship s) {
+                baseSync.put(s.identityKey(), s);
+            } else if (rel instanceof com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship g) {
+                baseGroups.put(g.groupId().value(), g);
+            }
+        }
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (var rel : target.getSemanticRelationships()) {
+            if (rel instanceof com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship s) {
+                seen.add(s.identityKey());
+                com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship b = baseSync.get(s.identityKey());
+                if (b == null) {
+                    changes.add(TimelineChange.relationshipChanged(ChangeType.RELATIONSHIP_ADDED, s.identityKey(), "relationship", "ABSENT", "SYNC"));
+                } else {
+                    diffSyncAnchors(b, s, changes);
+                }
+            } else if (rel instanceof com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship g) {
+                seen.add("G:" + g.groupId().value());
+                com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship b = baseGroups.get(g.groupId().value());
+                if (b == null) {
+                    changes.add(TimelineChange.relationshipChanged(ChangeType.RELATIONSHIP_ADDED, "G:" + g.groupId().value(), "relationship", "ABSENT", "GROUP"));
+                } else {
+                    diffGroupMembers(b, g, changes);
+                }
+            }
+        }
+        for (var entry : baseSync.entrySet()) {
+            if (!seen.contains(entry.getKey())) {
+                changes.add(TimelineChange.relationshipChanged(ChangeType.RELATIONSHIP_REMOVED, entry.getKey(), "relationship", "SYNC", "ABSENT"));
+            }
+        }
+        for (var entry : baseGroups.entrySet()) {
+            if (!seen.contains("G:" + entry.getKey())) {
+                changes.add(TimelineChange.relationshipChanged(ChangeType.RELATIONSHIP_REMOVED, "G:" + entry.getKey(), "relationship", "GROUP", "ABSENT"));
+            }
+        }
+    }
+
+    private static void diffSyncAnchors(com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship b,
+                                        com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship t,
+                                        List<TimelineChange> changes) {
+        if (!b.localAnchorA().equals(t.localAnchorA())) {
+            changes.add(TimelineChange.relationshipChanged(ChangeType.SYNC_ANCHOR_CHANGED, t.identityKey(), "sync.anchorA",
+                    b.localAnchorA().toString(), t.localAnchorA().toString()));
+        }
+        if (!b.localAnchorB().equals(t.localAnchorB())) {
+            changes.add(TimelineChange.relationshipChanged(ChangeType.SYNC_ANCHOR_CHANGED, t.identityKey(), "sync.anchorB",
+                    b.localAnchorB().toString(), t.localAnchorB().toString()));
+        }
+    }
+
+    private static void diffGroupMembers(com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship b,
+                                         com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship t,
+                                         List<TimelineChange> changes) {
+        String gid = "G:" + t.groupId().value();
+        for (var m : t.members()) {
+            if (!b.members().contains(m)) {
+                changes.add(TimelineChange.relationshipChanged(ChangeType.GROUP_MEMBER_ADDED, gid, "group.member", "ABSENT", m.value()));
+            }
+        }
+        for (var m : b.members()) {
+            if (!t.members().contains(m)) {
+                changes.add(TimelineChange.relationshipChanged(ChangeType.GROUP_MEMBER_REMOVED, gid, "group.member", m.value(), "ABSENT"));
+            }
+        }
     }
 
     private static void diffAudioMix(TimelineDocument base, TimelineDocument target, List<TimelineChange> changes) {
@@ -286,6 +369,9 @@ public final class TimelineDiffEngine {
             case CLIP_MOVED -> 3;
             case TRACK_REORDERED, CLIP_REORDERED, REORDERED -> 4;
             case AUDIO_MIX_CHANGED -> 5;
+            case RELATIONSHIP_ADDED, GROUP_MEMBER_ADDED -> 6;
+            case RELATIONSHIP_REMOVED, GROUP_MEMBER_REMOVED -> 7;
+            case SYNC_ANCHOR_CHANGED -> 8;
         };
     }
 

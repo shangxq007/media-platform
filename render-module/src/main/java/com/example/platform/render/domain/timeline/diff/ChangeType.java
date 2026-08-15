@@ -24,5 +24,12 @@ public enum ChangeType {
     REORDERED,
 
     // AUDIO_V2 (A13): document-level canonical audio mix semantic change
-    AUDIO_MIX_CHANGED
+    AUDIO_MIX_CHANGED,
+
+    // SEMANTIC_RELATIONSHIP_SELECTION_POST_CLOSE: typed relationship semantic diff
+    RELATIONSHIP_ADDED,
+    RELATIONSHIP_REMOVED,
+    SYNC_ANCHOR_CHANGED,
+    GROUP_MEMBER_ADDED,
+    GROUP_MEMBER_REMOVED
 }

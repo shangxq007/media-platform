@@ -61,6 +61,12 @@ public final class TimelineChange {
         return new TimelineChange(type, kind, entityId, null, null, null, newPosition);
     }
 
+    /** Typed relationship semantic change (SEMANTIC_RELATIONSHIP_SELECTION_POST_CLOSE). */
+    public static TimelineChange relationshipChanged(ChangeType type, String entityId,
+                                                     String property, String before, String after) {
+        return new TimelineChange(type, EntityKind.CLIP, entityId, property, before, after, 0);
+    }
+
     public static TimelineChange moved(String entityId, String fromTrackId, String toTrackId) {
         return new TimelineChange(ChangeType.CLIP_MOVED, EntityKind.CLIP, entityId, "trackId", fromTrackId, toTrackId, -1);
     }
