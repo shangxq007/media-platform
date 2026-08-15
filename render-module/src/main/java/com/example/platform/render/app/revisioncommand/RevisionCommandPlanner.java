@@ -60,9 +60,18 @@ public class RevisionCommandPlanner {
                                          String targetRefId, String targetOursRevisionId) {
         assertRevision(projectId, sourceRevisionId);
         assertRevision(projectId, targetOursRevisionId);
+        // RCP1 CASE A: exact same frozen revision merge => semantic NO_OP (candidate
+        // hash == target hash drives the apply NO_OP path; expected head still checked
+        // on first execution). CASE B (same ref, inconsistent frozen revisions) is a
+        // resolution-layer malformed request, not this equality.
         if (sourceRevisionId.equals(targetOursRevisionId)) {
-            throw new RevisionCommandException(RevisionCommandErrorCode.INVALID_PARENT_SET,
-                    "self merge resolves to same revision — malformed request");
+            TimelineDocument ours = loadRevisionTimeline(projectId, targetOursRevisionId);
+            String sameHash = digester.digest(ours);
+            String digest = RevisionCommandPlanDigest.merge(projectId, sourceRevisionId, targetRefId,
+                    targetOursRevisionId, targetOursRevisionId, sameHash, false);
+            return new RevisionCommandPlan.MergeRevisionPlan(projectId, sourceRevisionId,
+                    new RevisionRef(projectId, targetRefId), targetOursRevisionId, targetOursRevisionId,
+                    sameHash, false, "{}", digest);
         }
         String mergeBase = graph.findBestMergeBase(projectId, targetOursRevisionId, sourceRevisionId);
         // RCI5: pure semantic engine path (zero persistence)

@@ -405,4 +405,130 @@ class RevisionCommandConcurrencyIT {
                 .get(0, String.class);
         assertEquals("REVISION_COMMAND", domain);
     }
+
+    // ---- RCP1: exact same revision merge => NO_OP ----
+    @Test
+    void mergeExactSameRevisionIsNoOp() {
+        RevisionCommandPlan.MergeRevisionPlan plan = new RevisionCommandPlan.MergeRevisionPlan(P1,
+                "trevR100", new RevisionRef(P1, "main"), "trevR100", "trevR100",
+                "h100", false, "{}",
+                RevisionCommandPlanDigest.merge(P1, "trevR100", "main", "trevR100", "trevR100", "h100", false));
+        assertEquals("NO_OP", applyService.merge(plan, "cmd-rcp1-1", "alice", P1));
+        assertEquals("trevR100", headOf(P1, "main"), "no ref movement");
+        Integer revs = dsl.fetchOne("select count(*) from timeline_revision").get(0, Integer.class);
+        assertEquals(4, revs, "no new revision");
+        Integer edges = dsl.fetchOne("select count(*) from timeline_revision_parent").get(0, Integer.class);
+        assertEquals(1, edges, "no new parent edges");
+    }
+
+    @Test
+    void mergeSameRevisionStaleHeadRejects() {
+        // same-revision plan but expected head moved before first apply => STALE_TARGET_REF, not NO_OP
+        RevisionCommandPlan.MergeRevisionPlan plan = new RevisionCommandPlan.MergeRevisionPlan(P1,
+                "trevR90", new RevisionRef(P1, "main"), "trevR90", "trevR90",
+                "h90", false, "{}",
+                RevisionCommandPlanDigest.merge(P1, "trevR90", "main", "trevR90", "trevR90", "h90", false));
+        // main head is R100, expected R90 => stale
+        RevisionCommandException ex = assertThrows(RevisionCommandException.class,
+                () -> applyService.merge(plan, "cmd-rcp1-2", "alice", P1));
+        assertEquals(RevisionCommandErrorCode.STALE_TARGET_REF, ex.code());
+    }
+
+    @Test
+    void mergeSameRevisionDurableReplay() {
+        RevisionCommandPlan.MergeRevisionPlan plan = new RevisionCommandPlan.MergeRevisionPlan(P1,
+                "trevR100", new RevisionRef(P1, "main"), "trevR100", "trevR100",
+                "h100", false, "{}",
+                RevisionCommandPlanDigest.merge(P1, "trevR100", "main", "trevR100", "trevR100", "h100", false));
+        assertEquals("NO_OP", applyService.merge(plan, "cmd-rcp1-3", "alice", P1));
+        // head moves later; retry same completed command => replay original NO_OP
+        RevisionCommandPlan.RestoreRevisionPlan mv = new RevisionCommandPlan.RestoreRevisionPlan(P1,
+                "trevR50", new RevisionRef(P1, "main"), "trevR100", "h50x",
+                RevisionCommandPlanDigest.restore(P1, "trevR50", "main", "trevR100", "h50x"));
+        assertTrue(applyService.restore(mv, "cmd-rcp1-mv", "alice", P1).startsWith("APPLIED:"));
+        assertEquals("NO_OP", applyService.merge(plan, "cmd-rcp1-3", "alice", P1),
+                "completed durable replay returns original result");
+    }
+
+    // ---- RCP2: frozen source pin survives source ref movement ----
+    @Test
+    void frozenMergePlanUsesPinnedSourceAfterRefMove() {
+        // feature -> R90; plan pins source R90; move feature to R50 via restore; apply old plan
+        RevisionCommandPlan.MergeRevisionPlan plan = new RevisionCommandPlan.MergeRevisionPlan(P1,
+                "trevR90", new RevisionRef(P1, "main"), "trevR100", "trevR100",
+                "hmerged", false, "{}",
+                RevisionCommandPlanDigest.merge(P1, "trevR90", "main", "trevR100", "trevR100", "hmerged", false));
+        // source ref (feature) advances: restore R50 onto feature (head R90 -> new revision)
+        RevisionCommandPlan.RestoreRevisionPlan featMove = new RevisionCommandPlan.RestoreRevisionPlan(P1,
+                "trevR50", new RevisionRef(P1, "feature"), "trevR90", "h50y",
+                RevisionCommandPlanDigest.restore(P1, "trevR50", "feature", "trevR90", "h50y"));
+        String newFeatHead = applyService.restore(featMove, "cmd-rcp2-mv", "alice", P1)
+                .substring("APPLIED:".length());
+        assertNotEquals("trevR90", newFeatHead, "feature advanced");
+        // apply OLD frozen plan: must use pinned R90, succeed, parents [R100, R90]
+        String result = applyService.merge(plan, "cmd-rcp2-1", "alice", P1);
+        assertTrue(result.startsWith("APPLIED:"), "old frozen plan still applies: " + result);
+        String mergeRev = result.substring("APPLIED:".length());
+        var parents = dsl.fetch("select parent_revision_id from timeline_revision_parent "
+                + "where revision_id = ? order by parent_order", mergeRev).map(r -> r.get(0, String.class));
+        assertEquals(List.of("trevR100", "trevR90"), parents,
+                "parent[1] = pinned R90, NOT the moved feature head");
+    }
+
+    // ---- RCP3: counter bootstrap atomic + above historical max ----
+    @Test
+    void counterMigrationInitializationAboveHistoricalMax() {
+        // project-2: max revision_number = 7; counter next = 8 => first allocation 8 > 7
+        Long next = dsl.fetchOne("select next_revision_number from project_revision_counter where project_id = ?", P2)
+                .get(0, Long.class);
+        assertTrue(next > 7, "counter starts above historical max: " + next);
+    }
+
+    @Test
+    void concurrentFirstAllocationBootstrap() throws Exception {
+        // brand-new project p3: counter row ABSENT; two concurrent first allocations must
+        // both succeed via atomic INSERT...ON CONFLICT DO NOTHING + UPDATE...RETURNING
+        dsl.execute("delete from project_revision_counter where project_id = 'p3'");
+        CountDownLatch go = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        java.util.concurrent.ConcurrentLinkedQueue<Long> allocated = new java.util.concurrent.ConcurrentLinkedQueue<>();
+        try {
+            Future<?> f1 = pool.submit(() -> {
+                go.await();
+                var d = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+                Long n = d.transactionResult(tx -> {
+                    tx.dsl().execute("insert into project_revision_counter (project_id, next_revision_number) "
+                            + "values ('p3', 1) on conflict (project_id) do nothing");
+                    return tx.dsl().fetchOne("update project_revision_counter set next_revision_number = "
+                            + "next_revision_number + 1 where project_id = 'p3' returning next_revision_number")
+                            .get(0, Long.class);
+                });
+                allocated.add(n);
+                return null;
+            });
+            Future<?> f2 = pool.submit(() -> {
+                go.await();
+                var d = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+                Long n = d.transactionResult(tx -> {
+                    tx.dsl().execute("insert into project_revision_counter (project_id, next_revision_number) "
+                            + "values ('p3', 1) on conflict (project_id) do nothing");
+                    return tx.dsl().fetchOne("update project_revision_counter set next_revision_number = "
+                            + "next_revision_number + 1 where project_id = 'p3' returning next_revision_number")
+                            .get(0, Long.class);
+                });
+                allocated.add(n);
+                return null;
+            });
+            go.countDown();
+            f1.get();
+            f2.get();
+        } finally {
+            pool.shutdown();
+        }
+        assertEquals(2, allocated.size(), "both first allocations succeed");
+        assertEquals(2, allocated.stream().distinct().count(), "distinct revision numbers");
+        Long rows = dsl.fetchOne("select count(*) from project_revision_counter where project_id = 'p3'").get(0, Long.class);
+        assertEquals(1, rows, "exactly one counter row (atomic bootstrap)");
+    }
+
 }

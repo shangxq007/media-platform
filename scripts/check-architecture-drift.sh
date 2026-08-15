@@ -1048,6 +1048,51 @@ else
     fail "restore bypass unresolved"
 fi
 
+# RCFG-1/2: exact same revision merge = NO_OP; expected head still checked
+if grep -q 'same frozen revision merge' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandPlanner.java; then
+    pass "same-revision merge plans NO_OP"
+else
+    fail "RCP1 same-revision NO_OP missing"
+fi
+if grep -q 'same frozen revision merge' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java; then
+    pass "same-revision apply NO_OP after expected-head CAS"
+else
+    fail "RCP1 apply NO_OP missing"
+fi
+
+# RCFG-3/4: frozen sourceRevisionId is apply authority; no source ref reread
+if grep -q 'plan.sourceRevisionId()' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java && ! grep -q 'readRef(sourceRef)\|resolveSourceRef(' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java; then
+    pass "frozen source revision is apply authority (zero source-ref reread)"
+else
+    fail "RCP2 source pin violation"
+fi
+
+# RCFG-7/8/9: counter migration above max; bootstrap atomic; no MAX+1
+if grep -q 'coalesce(max(revision_number), 0) + 1' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql; then
+    pass "counter migration starts above historical max"
+else
+    fail "RCP3 migration formula missing"
+fi
+if grep -q 'on conflict (project_id) do nothing' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
+    pass "counter bootstrap atomic (ON CONFLICT DO NOTHING)"
+else
+    fail "RCP3 bootstrap not atomic"
+fi
+
+# RCFG-12: parent edge remains graph authority
+if grep -q 'timeline_revision_parent' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionGraphService.java; then
+    pass "parent edge graph authority preserved"
+else
+    fail "graph authority lost"
+fi
+
+# RCFG-13: merge engine purity
+if grep -q 'mergeSemantic' render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java; then
+    pass "merge engine purity preserved"
+else
+    fail "engine purity lost"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

@@ -106,15 +106,16 @@ public class RevisionCommandApplyService {
         return dsl.transactionResult(tx -> {
             String domain = "REVISION_COMMAND";
             String fp = fingerprint(domain, plan.planDigest(), projectId, plan.targetRef().refId(), principal);
-            var existing = tx.dsl().fetchOne("select plan_digest from apply_command where apply_command_id = ?",
+            var existing = tx.dsl().fetchOne("select plan_digest, result_revision_id, result_status "
+                            + "from apply_command where apply_command_id = ?",
                     applyCommandId);
             if (existing != null) {
                 if (!existing.get(0, String.class).equals(plan.planDigest())) {
                     throw new RevisionCommandException(RevisionCommandErrorCode.IDEMPOTENCY_KEY_CONFLICT,
                             "ApplyCommandId reused with different command plan");
                 }
-                return existing.get(1, String.class) != null
-                        ? "APPLIED:" + existing.get(1, String.class) : "NO_OP";
+                String rev = existing.get(1, String.class);
+                return rev != null ? "APPLIED:" + rev : "NO_OP";
             }
             // expected-head CAS (version bump only for no-op validation)
             int cas = tx.dsl().execute("update timeline_revision_ref set version = version + 1, "
@@ -173,15 +174,16 @@ public class RevisionCommandApplyService {
         return dsl.transactionResult(tx -> {
             String domain = "REVISION_COMMAND";
             String fp = fingerprint(domain, plan.planDigest(), projectId, plan.targetRef().refId(), principal);
-            var existing = tx.dsl().fetchOne("select plan_digest from apply_command where apply_command_id = ?",
+            var existing = tx.dsl().fetchOne("select plan_digest, result_revision_id, result_status "
+                            + "from apply_command where apply_command_id = ?",
                     applyCommandId);
             if (existing != null) {
                 if (!existing.get(0, String.class).equals(plan.planDigest())) {
                     throw new RevisionCommandException(RevisionCommandErrorCode.IDEMPOTENCY_KEY_CONFLICT,
                             "ApplyCommandId reused with different command plan");
                 }
-                return existing.get(1, String.class) != null
-                        ? "APPLIED:" + existing.get(1, String.class) : "NO_OP";
+                String rev = existing.get(1, String.class);
+                return rev != null ? "APPLIED:" + rev : "NO_OP";
             }
             if (plan.conflict()) {
                 throw new RevisionCommandException(RevisionCommandErrorCode.MERGE_CONFLICT,
@@ -195,6 +197,15 @@ public class RevisionCommandApplyService {
             if (cas != 1) {
                 throw new RevisionCommandException(RevisionCommandErrorCode.STALE_TARGET_REF,
                         "target head moved: " + plan.targetRef().refId());
+            }
+            // RCP1: exact same frozen revision merge is a semantic NO_OP — no revision,
+            // no parent edges, no head movement; expected head validated above.
+            if (plan.sourceRevisionId().equals(plan.targetOursRevisionId())) {
+                tx.dsl().execute("insert into apply_command (apply_command_id, plan_digest, fingerprint, status, "
+                                + "result_status, project_id, command_domain) "
+                                + "values (?, ?, ?, 'COMPLETED', 'NO_OP', ?, 'REVISION_COMMAND')",
+                        applyCommandId, plan.planDigest(), fp, projectId);
+                return "NO_OP";
             }
             String targetHash = tx.dsl().fetchOne("select content_hash from timeline_revision where id = ?",
                     plan.targetOursRevisionId()).get(0, String.class);
