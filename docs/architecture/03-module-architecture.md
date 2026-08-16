@@ -47,7 +47,6 @@ graph TD
         OUTBOX["outbox-event-module"]
         UA["user-analytics-module"]
         CLOUD["cloud-resource-module"]
-        MIG["compatibility-migration-module"]
         CFG["config-module"]
         SEC["secrets-config-module"]
         DS["datasource-module"]

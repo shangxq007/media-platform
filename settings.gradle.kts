@@ -33,7 +33,6 @@ include(
     "sandbox-worker",
     "federation-query-module",
     "user-analytics-module",
-    "compatibility-migration-module",
     "remote-render-worker",
     "social-publish-module",
     "typed-schema-module",

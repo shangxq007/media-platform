@@ -44,7 +44,6 @@ owner: platform
 | sandbox-worker | `sandbox-worker` | — | 14% | ⚠️ Disabled (preview) | Separate deployable |
 | federation-query-module | `federation-query-module` | CLOSED | 40% | ⚠️ Disabled (preview) | GraphQL gateway, highest fan-in (12 deps) |
 | user-analytics-module | `user-analytics-module` | CLOSED | — | ✅ Stable | User analytics |
-| compatibility-migration-module | `compatibility-migration-module` | CLOSED | 5% | ⚠️ Low coverage | Migration helpers |
 | remote-render-worker | `remote-render-worker` | — | 13% | ✅ Stable | Separate deployable |
 | social-publish-module | `social-publish-module` | CLOSED | 3% | ⚠️ Missing package-info | No `@ApplicationModule` declaration |
 | product-layer-module | `product-layer-module` | CLOSED | — | ✅ Stable | Product layer |
@@ -61,7 +60,7 @@ owner: platform
 | ✅ Stable | 16 | shared-kernel, platform-app, render-module, notification-module, storage-module, prompt-module, extension-module, datasource-module, observability-module, audit-compliance-module, identity-access-module, billing-module, entitlement-module, policy-governance-module, artifact-catalog-module, user-analytics-module, remote-render-worker, product-layer-module |
 | ⚠️ Disabled (preview) | 9 | workflow-module, delivery-module, outbox-event-module, scheduler-module, commerce-module, payment-module, sandbox-runtime-module, sandbox-worker, federation-query-module |
 | ⚠️ Isolated | 2 | ai-module, spring-ai-adapter |
-| ⚠️ Low Coverage | 4 | quota-billing-module, config-module, compatibility-migration-module, cloud-resource-module |
+| ⚠️ Low Coverage | 3 | quota-billing-module, config-module, cloud-resource-module |
 | ⚠️ Structural Issue | 1 | social-publish-module (missing `@ApplicationModule`) |
 
 ### Test Coverage Distribution
@@ -71,7 +70,7 @@ owner: platform
 | > 40% | policy-governance (51%), platform-app (42%), federation-query (40%) |
 | 20–40% | identity-access (34%), render-module (26%) |
 | 10–20% | scheduler (14%), sandbox-worker (14%), remote-render-worker (13%), quota-billing (13%), cloud-resource (11%) |
-| < 10% | payment (10%), compatibility-migration (5%), social-publish (3%) |
+| < 10% | payment (10%), social-publish (3%) |
 | 0% | config-module |
 
 ---

@@ -104,7 +104,6 @@ owner: platform
 | Module | Coverage | Notes |
 |--------|----------|-------|
 | social-publish-module | 3% | 1 test file |
-| compatibility-migration-module | 5% | 1 test file |
 | payment-module | 10% | 3 test files |
 | cloud-resource-module | 11% | 1 test file |
 | quota-billing-module | 13% | 1 test file |

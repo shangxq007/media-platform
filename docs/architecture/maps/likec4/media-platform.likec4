@@ -137,7 +137,7 @@ model {
     }
 
     pmprCandidates = container 'PMPR CANDIDATES' {
-      description 'artifact-catalog-module, quota-billing-module, product-layer-module, compatibility-migration-module — CURRENT elements with PMPR governance; NOT prematurely removed'
+      description 'artifact-catalog-module, quota-billing-module, product-layer-module — CURRENT elements with PMPR governance; NOT prematurely removed'
     }
 
     scheduler = container 'Scheduler' {

@@ -95,7 +95,7 @@ class ArtifactAuthorityTest {
     @Test
     void a1r104NoNewRetirementCandidateDependencies() {
         List<String> candidates = List.of("quota-billing-module", "product-layer-module",
-                "compatibility-migration-module", "sandbox-runtime-module");
+                "sandbox-runtime-module");
         Path build = repoRoot().resolve("artifact-module/build.gradle.kts");
         try {
             String content = Files.readString(build);

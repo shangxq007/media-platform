@@ -144,7 +144,6 @@ platform/
 ├── cloud-resource-module/   # 云资源目录
 ├── user-analytics-module/   # 用户分析（行为/画像/分群）
 ├── social-publish-module/   # 社交发布
-├── compatibility-migration-module/ # 兼容迁移（9 个 schema 族）
 ├── frontend/                # Vue 3 前端（构建到 platform-app static）
 └── platform-app/src/main/resources/db/migration/ # Flyway 迁移
 ```

@@ -164,11 +164,6 @@ User behavior analytics and segmentation.
 
 **Dependencies:** `shared-kernel`
 
-## compatibility-migration-module
-
-**Status:** ✅ Implemented
-
-Schema migration support for 9 schema families.
 
 | Feature | Status | Notes |
 |---------|--------|-------|

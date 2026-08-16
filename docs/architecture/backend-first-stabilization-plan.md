@@ -66,7 +66,7 @@ Reference: [platform-fact-gathering-report.md](./platform-fact-gathering-report.
 | Status | Items |
 |--------|-------|
 | Zero-test modules | `config-module` (0 tests) |
-| Near-zero | `frontend` (1 test), `social-publish-module` (1 test), `compatibility-migration-module` (1 test) |
+| Near-zero | `frontend` (1 test), `social-publish-module` (1 test) |
 | Low coverage | `payment-module` (10%), `scheduler-module` (14%), `quota-billing-module` (13%) |
 | Pre-existing failure | `RenderNatronEffectsIT` — requires Natron binary not installed |
 

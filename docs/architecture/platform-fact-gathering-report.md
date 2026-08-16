@@ -94,7 +94,6 @@ This report is a comprehensive factual scan of the media-platform repository, pr
 | `sandbox-worker` | Sandbox worker process | *(none)* | Separate deployable |
 | `federation-query-module` | GraphQL federation/gateway | 12 modules | Highest fan-in |
 | `user-analytics-module` | User analytics | shared-kernel, identity-access | |
-| `compatibility-migration-module` | Migration helpers | shared-kernel, policy, extension, audit, outbox, scheduler | |
 | `remote-render-worker` | Remote render worker | shared-kernel, render, storage, ai | Separate deployable |
 | `social-publish-module` | Social media publishing | shared-kernel | No `package-info.java` |
 
@@ -292,7 +291,6 @@ This report is a comprehensive factual scan of the media-platform repository, pr
 | identity | entitlement, artifact-catalog, storage | ent: yes; artifact/storage: registered debt |
 | entitlement | policy-governance | Yes |
 | delivery | storage, secrets-config | Yes |
-| compatibility | policy, extension, audit, outbox, scheduler | Yes |
 | user-analytics | identity-access | Yes |
 
 ---
@@ -423,7 +421,6 @@ Hardcoded discount type switch, security regex patterns, language set switches, 
 | config-module | 4 | 0 | 0% | **CRITICAL** |
 | frontend | N/A | 1 | ~0% | **CRITICAL** |
 | social-publish-module | 29 | 1 | 3% | HIGH |
-| compatibility-migration-module | 19 | 1 | 5% | HIGH |
 | payment-module | 30 | 3 | 10% | HIGH |
 | cloud-resource-module | 9 | 1 | 11% | HIGH |
 | sandbox-worker | 7 | 1 | 14% | HIGH |

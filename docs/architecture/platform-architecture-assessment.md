@@ -99,8 +99,7 @@ Core Domain Modules (12):
 ├── extension-module (plugin system)
 ├── sandbox-runtime-module (code execution)
 ├── datasource-module (data access)
-├── federation-query-module (GraphQL)
-└── compatibility-migration-module (legacy support)
+└── federation-query-module (GraphQL)
 
 Commerce & Billing Modules (6):
 ├── commerce-module (catalog)

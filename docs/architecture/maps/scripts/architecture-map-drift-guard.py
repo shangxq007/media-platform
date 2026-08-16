@@ -51,8 +51,9 @@ aggregate_covered = {
     "storage-provider-opendal", "identity-access-module", "policy-governance-module",
     "shared-kernel", "scheduler-module", "outbox-event-module", "delivery-module",
     "billing-module", "entitlement-module", "quota-billing-module",
-    "product-layer-module", "compatibility-migration-module", "extension-module",
+    "product-layer-module", "extension-module",
     "workflow-module", "artifact-module", "sandbox-runtime-module", "render-module",
+    "media-module", "audio-module", "color-image-module", "font-text-module",  # R18/R19 pure value domains (LikeC4 Media/Text aggregates)
     "ai-module", "storage-module", "platform-app", "sandbox-worker", "remote-render-worker",
     "media-platform"  # system boundary itself
 }
@@ -63,7 +64,7 @@ represented = {
     "ai-module", "storage-module", "sandbox-runtime-module", "scheduler-module",
     "outbox-event-module", "billing-module", "artifact-module", "entitlement-module",
     "quota-billing-module", "product-layer-module",
-    "compatibility-migration-module", "shared-kernel",
+    "shared-kernel",
 }
 # Explicitly intentionally omitted (tooling-only, no architecture value):
 intentionally_omitted = {
@@ -122,7 +123,7 @@ for forbidden in ["Workflow -> ProviderExtensionSPI", "Workflow -> SandboxExecut
         failures.append(f"FORBIDDEN workflow edge present: {forbidden}")
 
 # ── 7. PMPR candidates not prematurely removed ──
-pmpn_candidates = ["quota-billing-module", "product-layer-module", "compatibility-migration-module"]
+pmpn_candidates = ["quota-billing-module", "product-layer-module"]
 for c in pmpn_candidates:
     if c not in likec4 and "PMPR CANDIDATES" not in likec4:
         failures.append(f"PMPR candidate missing representation: {c}")

@@ -83,7 +83,6 @@ graph TB
         OUTBOX["outbox-event-module"]
         UA["user-analytics-module"]
         CLOUD["cloud-resource-module"]
-        MIG["compatibility-migration-module"]
         SP["social-publish-module"]
         PL["product-layer-module"]
     end

@@ -37,8 +37,7 @@
 | 28 | `sandbox-worker` | — | — | ✅ Stable | Separate deployable |
 | 29 | `federation-query-module` | 101 | 43 | ⚠️ Mixed | Stub core, full GraphQL + NLQ |
 | 30 | `user-analytics-module` | — | — | ✅ Stable | User analytics |
-| 31 | `compatibility-migration-module` | — | — | ✅ Stable | Schema migration helpers |
-| 32 | `remote-render-worker` | 7 | — | ✅ Stable | Separate render worker |
+| 31 | `remote-render-worker` | 7 | — | ✅ Stable | Separate render worker |
 | 33 | `social-publish-module` | 29 | 1 | ⚠️ Partial | Service layer, stub adapters |
 | 34 | `product-layer-module` | — | — | ✅ Stable | Product layer abstraction |
 | 35 | `spring-ai-adapter` | 2 | 0 | ⚠️ Broken | Compilation error (TenantLitellmKeyService) |

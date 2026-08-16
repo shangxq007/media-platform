@@ -66,7 +66,6 @@ graph TB
             OUTBOX["outbox-event-module"]
             UA["user-analytics-module"]
             CLOUD["cloud-resource-module"]
-            MIG["compatibility-migration-module"]
         end
     end
 
