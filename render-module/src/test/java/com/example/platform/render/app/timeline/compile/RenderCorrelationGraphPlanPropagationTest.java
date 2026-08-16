@@ -1,6 +1,8 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import com.example.platform.render.app.timeline.compile.audit.*;
 
 import com.example.platform.render.domain.compile.*;
@@ -162,8 +164,9 @@ class RenderCorrelationGraphPlanPropagationTest {
     private PlanBasedTimelineRevisionRenderService createPlanBasedService() {
         TimelineExtensionsReader extReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extReader);
-        InternalTimelineWriter writer = new InternalTimelineWriter(extReader);
-        TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, writer);
+        TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extReader);
+        TimelineImportService importService = new TimelineImportService();
+        TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
 
         ProcessToolRunner toolRunner = new ProcessToolRunner() {

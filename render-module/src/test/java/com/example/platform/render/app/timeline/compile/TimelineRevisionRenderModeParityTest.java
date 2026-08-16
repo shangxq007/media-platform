@@ -1,6 +1,8 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.compile.audit.*;
 
@@ -204,8 +206,9 @@ class TimelineRevisionRenderModeParityTest {
     private TimelineRevisionRenderService createLegacyService() {
         TimelineExtensionsReader extReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extReader);
-        InternalTimelineWriter writer = new InternalTimelineWriter(extReader);
-        TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, writer);
+        TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extReader);
+        TimelineImportService importService = new TimelineImportService();
+        TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
         RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
@@ -219,8 +222,9 @@ class TimelineRevisionRenderModeParityTest {
     private PlanBasedTimelineRevisionRenderService createPlanBasedService() {
         TimelineExtensionsReader extReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extReader);
-        InternalTimelineWriter writer = new InternalTimelineWriter(extReader);
-        TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, writer);
+        TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extReader);
+        TimelineImportService importService = new TimelineImportService();
+        TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
         RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));

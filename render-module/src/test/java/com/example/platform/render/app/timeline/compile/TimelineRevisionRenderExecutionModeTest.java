@@ -1,6 +1,8 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
@@ -90,8 +92,9 @@ class TimelineRevisionRenderExecutionModeTest {
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         parser = new TimelineScriptParser(extensionsReader);
-        InternalTimelineWriter writer = new InternalTimelineWriter(extensionsReader);
-        mapper = new TimelineRenderJobMapper(parser, writer);
+        TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extensionsReader);
+        TimelineImportService importService = new TimelineImportService();
+        mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
 
         revisionRepo = new InMemoryTimelineRevisionRepository();
         snapshotService = new InMemoryTimelineSnapshotService();

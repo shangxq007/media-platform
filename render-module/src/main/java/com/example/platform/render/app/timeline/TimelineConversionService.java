@@ -1,24 +1,37 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
- * Converts editor / OTIO / legacy timeline JSON into Internal Timeline Schema 1.0.
+ * GCR-1 CORRECTION V2: application boundary coordinator for canonical Timeline
+ * import.
+ *
+ * <p>Resolves editor / OTIO / legacy JSON into the render interchange model
+ * ({@link TimelineSpec}), maps it through the boundary adapter into the typed
+ * Timeline-owned import contract, and DELEGATES all canonical construction to
+ * {@link TimelineImportService} (timeline-module). This class performs no
+ * canonical construction, no schema acceptance, and no serialization decisions:
+ * RENDER_TO_CANONICAL_TIMELINE_CONVERSION_AUTHORITY = 0.</p>
  */
 @Service
 public class TimelineConversionService {
 
     private final TimelineSpecResolver timelineSpecResolver;
-    private final InternalTimelineWriter internalTimelineWriter;
+    private final TimelineSpecImportAdapter importAdapter;
+    private final TimelineImportService timelineImportService;
 
     public TimelineConversionService(
-            TimelineSpecResolver timelineSpecResolver, InternalTimelineWriter internalTimelineWriter) {
+            TimelineSpecResolver timelineSpecResolver,
+            TimelineSpecImportAdapter importAdapter,
+            TimelineImportService timelineImportService) {
         this.timelineSpecResolver = timelineSpecResolver;
-        this.internalTimelineWriter = internalTimelineWriter;
+        this.importAdapter = importAdapter;
+        this.timelineImportService = timelineImportService;
     }
 
     public String ensureInternalTimelineJson(String timelineJson) {
@@ -32,7 +45,7 @@ public class TimelineConversionService {
         if (spec.isEmpty()) {
             throw new IllegalArgumentException("Unable to parse timeline JSON into TimelineSpec");
         }
-        return internalTimelineWriter.toJson(spec.get());
+        return timelineImportService.importTimeline(importAdapter.toRequest(spec.get()));
     }
 
     public PreviewResult preview(String timelineJson) {

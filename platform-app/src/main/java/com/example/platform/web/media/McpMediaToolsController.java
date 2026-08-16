@@ -13,7 +13,9 @@ import com.example.platform.timeline.app.TimelineCanonicalizer;
 import com.example.platform.timeline.app.TimelineSemanticDiffService;
 import com.example.platform.render.app.timeline.InternalTimelineAdapter;
 import com.example.platform.timeline.app.InternalTimelineJson;
-import com.example.platform.render.app.timeline.InternalTimelineWriter;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
+import com.example.platform.timeline.app.InternalTimelineValidationService;
+import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.SegmentPlanFilter;
 import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.domain.planning.IncrementalRenderPlan;
@@ -21,7 +23,7 @@ import com.example.platform.render.domain.planning.RenderImpactResult;
 import com.example.platform.render.domain.planning.ReusableArtifact;
 import com.example.platform.timeline.internal.SemanticDiffResult;
 import com.example.platform.render.app.aaf.AafConversionService;
-import com.example.platform.render.app.TimelineValidationService;
+
 import com.example.platform.render.domain.standards.AafTimelineAdapter;
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
@@ -31,7 +33,6 @@ import com.example.platform.render.domain.interchange.OpenTimelineioAdapter;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineOutputSpec;
 import com.example.platform.render.domain.interchange.TimelineSpec;
-import com.example.platform.render.domain.legacy.TimelineValidationResult;
 import com.example.platform.render.domain.standards.EdlTimelineAdapter;
 import com.example.platform.render.domain.standards.FcpXmlTimelineAdapter;
 import com.example.platform.render.domain.standards.SrtSubtitleAdapter;
@@ -72,7 +73,7 @@ public class McpMediaToolsController {
     private static final Logger log = LoggerFactory.getLogger(McpMediaToolsController.class);
 
     private final FfprobeMediaProbeExecutor mediaProbeService;
-    private final TimelineValidationService timelineValidationService;
+    private final InternalTimelineValidationService timelineValidationService;
     private final TimelineScriptParser timelineScriptParser;
     private final RenderPlannerService renderPlannerService;
     private final TimelinePatchService timelinePatchService;
@@ -89,14 +90,15 @@ public class McpMediaToolsController {
     private final IncrementalPlanExplainer incrementalPlanExplainer;
     private final IncrementalRenderPlanService incrementalRenderPlanService;
     private final InternalTimelineAdapter internalTimelineAdapter;
-    private final InternalTimelineWriter internalTimelineWriter;
+    private final TimelineSpecImportAdapter timelineSpecImportAdapter;
+    private final TimelineImportService timelineImportService;
     private final TimelineSpecResolver timelineSpecResolver;
     private final Optional<RenderOrchestratorPort> renderOrchestratorPort;
     private final TimelineSnapshotService timelineSnapshotService;
     private final SegmentPlanFilter segmentPlanFilter;
 
     public McpMediaToolsController(FfprobeMediaProbeExecutor mediaProbeService,
-                                   TimelineValidationService timelineValidationService,
+                                   InternalTimelineValidationService timelineValidationServiceParam,
                                    TimelineScriptParser timelineScriptParser,
                                    RenderPlannerService renderPlannerService,
                                    TimelinePatchService timelinePatchService,
@@ -113,13 +115,14 @@ public class McpMediaToolsController {
                                    IncrementalPlanExplainer incrementalPlanExplainer,
                                    IncrementalRenderPlanService incrementalRenderPlanService,
                                    InternalTimelineAdapter internalTimelineAdapter,
-                                   InternalTimelineWriter internalTimelineWriter,
+                                   TimelineSpecImportAdapter timelineSpecImportAdapter,
+                                   TimelineImportService timelineImportService,
                                    TimelineSpecResolver timelineSpecResolver,
                                    Optional<RenderOrchestratorPort> renderOrchestratorPort,
                                    TimelineSnapshotService timelineSnapshotService,
                                    SegmentPlanFilter segmentPlanFilter) {
         this.mediaProbeService = mediaProbeService;
-        this.timelineValidationService = timelineValidationService;
+        this.timelineValidationService = timelineValidationServiceParam;
         this.timelineScriptParser = timelineScriptParser;
         this.renderPlannerService = renderPlannerService;
         this.timelinePatchService = timelinePatchService;
@@ -136,7 +139,8 @@ public class McpMediaToolsController {
         this.incrementalPlanExplainer = incrementalPlanExplainer;
         this.incrementalRenderPlanService = incrementalRenderPlanService;
         this.internalTimelineAdapter = internalTimelineAdapter;
-        this.internalTimelineWriter = internalTimelineWriter;
+        this.timelineSpecImportAdapter = timelineSpecImportAdapter;
+        this.timelineImportService = timelineImportService;
         this.timelineSpecResolver = timelineSpecResolver;
         this.renderOrchestratorPort = renderOrchestratorPort;
         this.timelineSnapshotService = timelineSnapshotService;
@@ -450,7 +454,8 @@ public class McpMediaToolsController {
     @Operation(summary = "校验 Internal Timeline JSON")
     public ResponseEntity<Map<String, Object>> validateTimeline(
             @RequestBody TimelineJsonRequest request) {
-        TimelineValidationResult result = timelineValidationService.validateJson(request.timelineJson());
+        InternalTimelineValidationService.InternalTimelineValidationResult result =
+                timelineValidationService.validate(request.timelineJson());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("valid", result.valid());
         body.put("errors", result.errors());
@@ -462,7 +467,8 @@ public class McpMediaToolsController {
     @Operation(summary = "OTIO JSON → Internal Timeline Schema 1.0")
     public ResponseEntity<Map<String, Object>> importOtio(@RequestBody OtioJsonRequest request) {
         var imported = OpenTimelineioAdapter.importWithReport(request.otioJson());
-        String timelineJson = internalTimelineWriter.toJson(imported.timeline(), imported.extensions());
+        String timelineJson = timelineImportService.importTimeline(
+                timelineSpecImportAdapter.toRequest(imported.timeline(), imported.extensions()));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timelineId", imported.timeline().id());
         body.put("schemaVersion", "1.0");
@@ -603,7 +609,7 @@ public class McpMediaToolsController {
     @Operation(summary = "EDL → Internal Timeline Schema 1.0")
     public ResponseEntity<Map<String, Object>> importEdl(@RequestBody EdlImportRequest request) {
         TimelineSpec spec = EdlTimelineAdapter.parse(request.edlContent(), request.defaultMediaUri());
-        String timelineJson = internalTimelineWriter.toJson(spec);
+        String timelineJson = timelineImportService.importTimeline(timelineSpecImportAdapter.toRequest(spec));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timelineId", spec.id());
         body.put("schemaVersion", "1.0");
@@ -689,7 +695,7 @@ public class McpMediaToolsController {
     @Operation(summary = "FCPXML → Internal Timeline Schema 1.0")
     public ResponseEntity<Map<String, Object>> importFcpxml(@RequestBody FcpXmlRequest request) {
         TimelineSpec spec = FcpXmlTimelineAdapter.parse(request.fcpxml());
-        String timelineJson = internalTimelineWriter.toJson(spec);
+        String timelineJson = timelineImportService.importTimeline(timelineSpecImportAdapter.toRequest(spec));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timelineId", spec.id());
         body.put("schemaVersion", "1.0");
@@ -761,7 +767,7 @@ public class McpMediaToolsController {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timelineId", spec.id());
         body.put("schemaVersion", InternalTimelineJson.SCHEMA_V1);
-        body.put("timelineJson", internalTimelineWriter.toJson(spec));
+        body.put("timelineJson", timelineImportService.importTimeline(timelineSpecImportAdapter.toRequest(spec)));
         body.put("duration", spec.computeDuration());
         return body;
     }

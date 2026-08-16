@@ -2,6 +2,8 @@ package com.example.platform.render.app.timeline;
 
 
 import com.example.platform.shared.time.FrameRate;
+import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,8 +43,9 @@ class TimelineRenderJobMapperTest {
     void setUp() {
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extensionsReader);
-        InternalTimelineWriter writer = new InternalTimelineWriter(extensionsReader);
-        mapper = new TimelineRenderJobMapper(parser, writer);
+        TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extensionsReader);
+        TimelineImportService importService = new TimelineImportService();
+        mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
     }
 
     // --- Valid input ---

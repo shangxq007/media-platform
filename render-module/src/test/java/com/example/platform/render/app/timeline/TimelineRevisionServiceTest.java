@@ -1,6 +1,8 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineCanonicalizer;import com.example.platform.timeline.app.TimelineContentHasher;import com.example.platform.timeline.app.TimelineRevisionDiffService;import com.example.platform.timeline.app.TimelineRevisionService;import com.example.platform.timeline.app.TimelineSemanticDiffService;
+import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,7 +13,6 @@ import static org.mockito.Mockito.when;
 
 import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.render.app.TimelineValidationService;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.example.platform.render.domain.interchange.TimelineOutputSpec;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
@@ -34,6 +35,8 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     private static DSLContext dsl;
     private TimelineRevisionService revisionService;
     private TimelineSnapshotService snapshotService;
+    private TimelineSpecImportAdapter importAdapter;
+    private TimelineImportService importService;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -55,8 +58,9 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
         TimelineCanonicalizer canonicalizer = new TimelineCanonicalizer();
         TimelineSpecResolver resolver =
                 new TimelineSpecResolver(TimelineTestSupport.internalTimelineAdapter(), new TimelineScriptParser());
-        InternalTimelineWriter writer = new InternalTimelineWriter(new TimelineExtensionsReader());
-        TimelineConversionService conversionService = new TimelineConversionService(resolver, writer);
+        importAdapter = new TimelineSpecImportAdapter(new TimelineExtensionsReader());
+        importService = new TimelineImportService();
+        TimelineConversionService conversionService = new TimelineConversionService(resolver, importAdapter, importService);
         revisionService = new TimelineRevisionService(
                 new TimelineRevisionRepository(dsl),
                 snapshotService,
@@ -70,15 +74,14 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     @Test
     void recordsRevisionChainAndRestore() {
         TimelineSpec spec = TimelineSpec.create("tl-rev", "Rev", TimelineOutputSpec.mp4_1080p30());
-        InternalTimelineWriter writer = new InternalTimelineWriter(new TimelineExtensionsReader());
-        String v1 = writer.toJson(spec);
+        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
 
         String snap1 = snapshotService.save("prj-rev", "ten-1", v1, "internal-1.0");
         TimelineRevisionService.RevisionInfo r1 =
                 revisionService.recordRevision("prj-rev", "ten-1", v1, "sync", null, null, "initial");
 
         TimelineSpec spec2 = TimelineSpec.create("tl-rev", "Rev2", TimelineOutputSpec.mp4_1080p30());
-        String v2 = writer.toJson(spec2);
+        String v2 = importService.importTimeline(importAdapter.toRequest(spec2));
         String snap2 = snapshotService.save("prj-rev", "ten-1", v2, "internal-1.0");
         TimelineRevisionService.RevisionInfo r2 =
                 revisionService.recordRevision("prj-rev", "ten-1", v2, "sync", null, null, "edit");
@@ -96,8 +99,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     @Test
     void previewPatchReplayRequiresStoredOps() {
         TimelineSpec spec = TimelineSpec.create("tl-patch", "Patch", TimelineOutputSpec.mp4_1080p30());
-        InternalTimelineWriter writer = new InternalTimelineWriter(new TimelineExtensionsReader());
-        String v1 = writer.toJson(spec);
+        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
         String snap1 = snapshotService.save("prj-patch", "ten-1", v1, "internal-1.0");
         TimelineRevisionService.RevisionInfo head =
                 revisionService.recordRevision("prj-patch", "ten-1", v1, "sync", null, null, "base");
@@ -109,13 +111,12 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     @Test
     void listHistoryFiltersBySourceAndAuthor() {
         TimelineSpec spec = TimelineSpec.create("tl-filter", "F", TimelineOutputSpec.mp4_1080p30());
-        InternalTimelineWriter writer = new InternalTimelineWriter(new TimelineExtensionsReader());
-        String v1 = writer.toJson(spec);
+        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
         String snap1 = snapshotService.save("prj-filter", "ten-1", v1, "internal-1.0");
         revisionService.recordRevision("prj-filter", "ten-1", v1, "sync", "alice", null, "alice edit");
 
         TimelineSpec spec2 = TimelineSpec.create("tl-filter-2", "F2", TimelineOutputSpec.mp4_1080p30());
-        String v2 = writer.toJson(spec2);
+        String v2 = importService.importTimeline(importAdapter.toRequest(spec2));
         String snap2 = snapshotService.save("prj-filter", "ten-1", v2, "internal-1.0");
         revisionService.recordRevision("prj-filter", "ten-1", v2, "ai-adopt", "bob", null, "bob adopt");
 
@@ -127,11 +128,11 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     @Test
     void listFacetsReturnsSourcesAndAuthors() {
         TimelineSpec spec = TimelineSpec.create("tl-facet", "F", TimelineOutputSpec.mp4_1080p30());
-        String v1 = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
+        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
         String snap1 = snapshotService.save("prj-facet", "ten-1", v1, "internal-1.0");
         revisionService.recordRevision("prj-facet", "ten-1", v1, "sync", "alice", null, "a");
         TimelineSpec spec2 = TimelineSpec.create("tl-facet-2", "F2", TimelineOutputSpec.mp4_1080p30());
-        String v2 = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec2);
+        String v2 = importService.importTimeline(importAdapter.toRequest(spec2));
         String snap2 = snapshotService.save("prj-facet", "ten-1", v2, "internal-1.0");
         revisionService.recordRevision("prj-facet", "ten-1", v2, "ai-adopt", "bob", null, "b");
 
@@ -144,7 +145,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     @Test
     void updateAnnotationPersistsMessage() {
         TimelineSpec spec = TimelineSpec.create("tl-note", "Note", TimelineOutputSpec.mp4_1080p30());
-        String v1 = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
+        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
         String snap1 = snapshotService.save("prj-note", "ten-1", v1, "internal-1.0");
         TimelineRevisionService.RevisionInfo head =
                 revisionService.recordRevision("prj-note", "ten-1", v1, "sync", null, null, "before");
@@ -163,7 +164,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     @Test
     void previewPatchStepsReturnsEmptyWhenNoOps() {
         TimelineSpec spec = TimelineSpec.create("tl-steps", "Steps", TimelineOutputSpec.mp4_1080p30());
-        String v1 = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
+        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
         String snap1 = snapshotService.save("prj-steps", "ten-1", v1, "internal-1.0");
         TimelineRevisionService.RevisionInfo head =
                 revisionService.recordRevision("prj-steps", "ten-1", v1, "sync", null, null, "base");

@@ -34,7 +34,6 @@ _Services_
 * `c.e.p.r.api.port.RenderWorkflowResumePort` (via `c.e.p.r.app.RenderWorkflowResumeService`)
 * `c.e.p.r.app.StaleRenderJobCompensationService`
 * `c.e.p.r.app.TimelineExecutorService`
-* `c.e.p.r.app.TimelineValidationService`
 * `c.e.p.r.app.aaf.AafConversionService`
 * `c.e.p.r.app.cache.RenderCacheCleanupService`
 * `c.e.p.r.app.cache.RenderCachePresignService`
@@ -56,8 +55,6 @@ _Services_
 * `c.e.p.r.app.timeline.IncrementalRenderPlanService`
 * `c.e.p.r.app.timeline.InternalTimelineAdapter`
 * `c.e.p.r.app.timeline.InternalTimelineToEditorConverter`
-* `c.e.p.r.app.timeline.InternalTimelineValidationService`
-* `c.e.p.r.app.timeline.InternalTimelineWriter`
 * `c.e.p.r.app.timeline.MezzanineCachePublisher`
 * `c.e.p.r.app.timeline.RenderArtifactRegistry`
 * `c.e.p.r.app.timeline.RenderCacheArtifactFetcher`
@@ -143,6 +140,7 @@ _Others_
 * `c.e.p.r.app.timeline.TimelineAssetGcScheduler`
 * `c.e.p.r.app.timeline.TimelineAssetUriResolver`
 * `c.e.p.r.app.timeline.TimelineMergeConfiguration`
+* `c.e.p.r.app.timeline.TimelineSpecImportAdapter`
 * `c.e.p.r.domain.RenderJobStateMachine`
 * `c.e.p.r.domain.StateMachineTraceEmitter`
 * `c.e.p.r.infrastructure.RenderEnvironmentChecker` (via `c.e.p.r.infrastructure.DefaultRenderEnvironmentChecker`)
@@ -196,6 +194,7 @@ _Others_
 * `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
 * `c.e.p.m.app.MediaProbeService` (in Media)
 * `c.e.p.o.coordination.ExecutionBackendRegistry` (in Outbox & Events)
+* `c.e.p.t.app.TimelineImportService` (in Timeline)
 * `c.e.p.t.app.TimelinePatchService` (in Timeline)
 * `c.e.p.t.app.TimelineSemanticDiffService` (in Timeline)
 * `c.e.p.t.app.TimelineCanonicalizer` (in Timeline)

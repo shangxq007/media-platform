@@ -1,27 +1,30 @@
-package com.example.platform.render.app;
+package com.example.platform.timeline.app;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.app.timeline.InternalTimelineValidationService;
 import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
-class TimelineValidationServiceTest {
+/**
+ * GCR-1 CORRECTION V2: timeline-owned canonical validation authority tests
+ * (moved from the render-side TimelineValidationServiceTest — validation now
+ * lives in timeline-module and is the sole production canonical validator).
+ */
+class InternalTimelineValidationServiceTest {
 
-    private final TimelineValidationService service =
-            new TimelineValidationService(new InternalTimelineValidationService());
+    private final InternalTimelineValidationService service = new InternalTimelineValidationService();
 
     @Test
     void rejectsEmptyJson() {
-        assertFalse(service.validateJson("").valid());
+        assertFalse(service.validate("").valid());
     }
 
     @Test
     void validatesV1Sample() throws Exception {
         String json = Files.readString(FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json"));
-        assertTrue(service.validateJson(json).valid());
+        assertTrue(service.validate(json).valid());
     }
 
     @Test
@@ -29,6 +32,6 @@ class TimelineValidationServiceTest {
         String json = """
                 {"id":"tl-1","tracks":[{"type":"VIDEO","clips":[]}],"outputSpec":{"format":"mp4"}}
                 """;
-        assertFalse(service.validateJson(json).valid());
+        assertFalse(service.validate(json).valid());
     }
 }

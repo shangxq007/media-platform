@@ -1,17 +1,10 @@
-package com.example.platform.render.app.timeline;
+package com.example.platform.timeline.app;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
-import com.example.platform.render.domain.planning.ExternalRenderNode;
-import com.example.platform.render.domain.planning.FinalComposerHint;
-import com.example.platform.render.domain.legacy.TimelineClip;
-import com.example.platform.render.domain.legacy.TimelineClipEffect;
-import com.example.platform.render.domain.interchange.TimelineExtensions;
-import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
-import com.example.platform.render.domain.interchange.TimelineOutputSpec;
-import com.example.platform.render.domain.interchange.TimelineSpec;
-import com.example.platform.render.domain.interchange.TimelineTextOverlay;
-import com.example.platform.render.domain.legacy.TimelineTrack;
 import com.example.platform.shared.time.FrameRate;
+import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,120 +16,129 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 
 /**
- * Writes {@link TimelineSpec} (+ extensions) as Internal Timeline Schema 1.0 JSON.
+ * GCR-1 CORRECTION V2: Timeline-owned canonical constructor for Internal Timeline
+ * Schema 1.0 documents.
+ *
+ * <p>This service is the SOLE production canonical construction / authoring write
+ * authority: it maps a typed {@link TimelineImportRequest} (adapted from
+ * external/editor/OTIO/legacy representations by the render boundary adapter)
+ * into canonical internal-1.0 JSON, canonicalizes deterministically
+ * ({@link InternalTimelineJson#deepCanonicalize}) and runs the E1b canonical gate
+ * (internal-1.0 -&gt; {@link TimelineCandidate} -&gt; {@link TimelineCanonicalValidator}
+ * -&gt; {@link TimelineCanonicalNormalizer}) before returning. No production code
+ * outside timeline-module constructs canonical internal Timeline documents.</p>
+ *
+ * <p>Pure construction + validation: no repository, no network, no current-time
+ * access, no randomness. Deterministic output for identical input.</p>
  */
 @Service
-public class InternalTimelineWriter {
+public class TimelineImportService {
 
-    private final TimelineExtensionsReader extensionsReader;
-
-    public InternalTimelineWriter(TimelineExtensionsReader extensionsReader) {
-        this.extensionsReader = extensionsReader;
-    }
-
-    public String toJson(TimelineSpec spec) {
-        return toJson(spec, extensionsReader.fromSpec(spec));
-    }
-
-    public String toJson(TimelineSpec spec, TimelineExtensions extensions) {
+    /** Build the canonical Internal Timeline Schema 1.0 JSON for the given import request. */
+    public String importTimeline(TimelineImportRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("TimelineImportRequest is required");
+        }
+        ObjectNode root = buildDocument(request);
+        String canonical;
         try {
-            // C1-CNM1: exact rational rate from the output spec; the (int)
-            // double-fps cast is eliminated. Wire rate{num,den} preserves the
-            // denominator end-to-end (den=1 only when the source rate is
-            // integer).
-            FrameRate rate = spec.outputSpec() != null && spec.outputSpec().frameRate() != null
-                    ? spec.outputSpec().frameRate() : FrameRate.of(30, 1);
-            // Integer fps convenience for the legacy spec model (used only for
-            // coarse helpers that carry it; all canonical frame emission uses
-            // the exact rational rate). Fractional rates never silently
-            // truncate: intFps() throws for den != 1, so fall back to 30 only
-            // for the non-authoritative int carrier used by display helpers.
-            int fps = 30;
-            try {
-                fps = rate.intFps();
-            } catch (ArithmeticException fractionalRate) {
-                fps = 30;
-            }
-            ObjectNode root = InternalTimelineJson.mapper().createObjectNode();
-            root.put("schemaVersion", InternalTimelineJson.SCHEMA_V1);
-            root.put("id", spec.id());
-            root.put("name", spec.name() != null ? spec.name() : spec.id());
-            int revision = 1;
-            if (spec.metadata() != null && spec.metadata().containsKey("revision")) {
-                try {
-                    revision = Integer.parseInt(spec.metadata().get("revision"));
-                } catch (NumberFormatException ignored) {
-                    revision = 1;
-                }
-            }
-            root.put("revision", revision);
-
-            root.set("project", buildProject(spec, fps, rate));
-            root.set("assetRegistry", buildAssetRegistry(spec, fps, rate));
-            ObjectNode composition = buildComposition(spec, fps, rate);
-            root.set("composition", composition);
-            root.set("styles", buildStyles(spec, extensions));
-            root.set("templates", buildTemplates(spec, extensions));
-            root.set("renderGraph", buildRenderGraph(spec, extensions, fps, rate, composition));
-            root.set("outputs", buildOutputs(spec));
-            if (!extensions.packagingHints().isEmpty()) {
-                ObjectNode packaging = InternalTimelineJson.mapper().createObjectNode();
-                packaging.put("id", "packaging");
-                extensions.packagingHints().forEach(packaging::put);
-                root.set("packaging", packaging);
-            }
-
-            root.set("metadata", buildMetadata(spec, extensions));
-            if (spec.metadata() != null && spec.metadata().containsKey("tenantId")) {
-                root.put("tenantId", spec.metadata().get("tenantId"));
-            }
-
-            return InternalTimelineJson.write(InternalTimelineJson.deepCanonicalize(root));
+            canonical = InternalTimelineJson.write(InternalTimelineJson.deepCanonicalize(root));
         } catch (Exception e) {
             throw new IllegalStateException("Failed to write Internal Timeline 1.0 JSON", e);
         }
+        // E1b canonical gate — the constructed document must be a valid canonical
+        // internal-1.0 document before it may leave the import authority.
+        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map("import", canonical);
+        TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
+        if (validation.hasFatalErrors()) {
+            throw new TimelineCanonicalRejectionException(validation.diagnostics());
+        }
+        TimelineCanonicalNormalizer.normalize(candidate)
+                .orElseThrow(() -> new TimelineCanonicalRejectionException(validation.diagnostics()));
+        return canonical;
     }
 
-    private ObjectNode buildProject(TimelineSpec spec, int fps, FrameRate rate) {
+    private ObjectNode buildDocument(TimelineImportRequest request) {
+        FrameRate rate = request.output() != null && request.output().frameRate() != null
+                ? request.output().frameRate() : FrameRate.of(30, 1);
+        // Integer fps convenience for the legacy spec model (used only for
+        // coarse helpers that carry it; all canonical frame emission uses
+        // the exact rational rate). Fractional rates never silently
+        // truncate: intFps() throws for den != 1, so fall back to 30 only
+        // for the non-authoritative int carrier used by display helpers.
+        int fps = 30;
+        try {
+            fps = rate.intFps();
+        } catch (ArithmeticException fractionalRate) {
+            fps = 30;
+        }
+        ObjectNode root = InternalTimelineJson.mapper().createObjectNode();
+        root.put("schemaVersion", InternalTimelineJson.SCHEMA_V1);
+        root.put("id", request.id());
+        root.put("name", request.name() != null ? request.name() : request.id());
+        root.put("revision", request.revision());
+
+        root.set("project", buildProject(request, fps, rate));
+        root.set("assetRegistry", buildAssetRegistry(request, fps, rate));
+        ObjectNode composition = buildComposition(request, fps, rate);
+        root.set("composition", composition);
+        root.set("styles", buildStyles(request));
+        root.set("templates", buildTemplates(request));
+        root.set("renderGraph", buildRenderGraph(request, fps, rate, composition));
+        root.set("outputs", buildOutputs(request));
+        if (request.packagingHints() != null && !request.packagingHints().isEmpty()) {
+            ObjectNode packaging = InternalTimelineJson.mapper().createObjectNode();
+            packaging.put("id", "packaging");
+            request.packagingHints().forEach(packaging::put);
+            root.set("packaging", packaging);
+        }
+
+        root.set("metadata", buildMetadata(request));
+        if (request.metadata() != null && request.metadata().containsKey("tenantId")) {
+            root.put("tenantId", request.metadata().get("tenantId"));
+        }
+        return root;
+    }
+
+    private ObjectNode buildProject(TimelineImportRequest request, int fps, FrameRate rate) {
         ObjectNode project = InternalTimelineJson.mapper().createObjectNode();
-        project.put("id", spec.id() + "_project");
-        TimelineOutputSpec out = spec.outputSpec();
-        int w = out != null ? out.width() : 1920;
-        int h = out != null ? out.height() : 1080;
+        project.put("id", request.id() + "_project");
+        int w = request.output() != null && request.output().width() > 0 ? request.output().width() : 1920;
+        int h = request.output() != null && request.output().height() > 0 ? request.output().height() : 1080;
         project.put("width", w);
         project.put("height", h);
         project.set("frameRate", rationalRate(rate.numerator().intValueExact(), rate.denominator()));
-        double durationSec = spec.computeDuration() > 0 ? spec.computeDuration() : 30;
+        double durationSec = request.durationSec() > 0 ? request.durationSec() : 30;
         project.set("duration", frameRange(0, durationSec, rate));
         return project;
     }
 
-    private ObjectNode buildAssetRegistry(TimelineSpec spec, int fps, FrameRate rate) {
+    private ObjectNode buildAssetRegistry(TimelineImportRequest request, int fps, FrameRate rate) {
         ObjectNode registry = InternalTimelineJson.mapper().createObjectNode();
         ObjectNode assets = InternalTimelineJson.mapper().createObjectNode();
         Set<String> seen = new LinkedHashSet<>();
-        if (spec.tracks() != null) {
-            for (TimelineTrack track : spec.tracks()) {
+        if (request.tracks() != null) {
+            for (TimelineImportRequest.ImportTrack track : request.tracks()) {
                 if (track.clips() == null) {
                     continue;
                 }
-                for (TimelineClip clip : track.clips()) {
-                    if (clip.assetRef() == null || clip.assetRef().assetId() == null) {
+                for (TimelineImportRequest.ImportClip clip : track.clips()) {
+                    if (clip.assetId() == null) {
                         continue;
                     }
-                    String assetId = clip.assetRef().assetId();
+                    String assetId = clip.assetId();
                     if (!seen.add(assetId)) {
                         continue;
                     }
                     ObjectNode ast = InternalTimelineJson.mapper().createObjectNode();
                     ast.put("id", assetId);
-                    ast.put("kind", track.type() == TimelineTrack.TrackType.AUDIO ? "AUDIO" : "VIDEO");
-                    ast.put("uri", clip.assetRef().storageUri() != null
-                            ? clip.assetRef().storageUri() : "asset://" + assetId);
+                    ast.put("kind", "AUDIO".equals(track.type()) ? "AUDIO" : "VIDEO");
+                    ast.put("uri", clip.storageUri() != null
+                            ? clip.storageUri() : "asset://" + assetId);
                     ObjectNode probe = InternalTimelineJson.mapper().createObjectNode();
-                    probe.put("width", clip.assetRef().width() > 0 ? clip.assetRef().width() : 1920);
-                    probe.put("height", clip.assetRef().height() > 0 ? clip.assetRef().height() : 1080);
-                    probe.set("duration", frameRange(0, clip.clipDuration(), rate));
+                    probe.put("width", clip.width() > 0 ? clip.width() : 1920);
+                    probe.put("height", clip.height() > 0 ? clip.height() : 1080);
+                    probe.set("duration", frameRange(0, clip.clipDurationSec(), rate));
                     ast.set("probe", probe);
                     assets.set(assetId, ast);
                 }
@@ -146,28 +148,27 @@ public class InternalTimelineWriter {
         return registry;
     }
 
-    private ObjectNode buildComposition(TimelineSpec spec, int fps, FrameRate rate) {
+    private ObjectNode buildComposition(TimelineImportRequest request, int fps, FrameRate rate) {
         ObjectNode composition = InternalTimelineJson.mapper().createObjectNode();
         ArrayNode tracks = InternalTimelineJson.mapper().createArrayNode();
-        if (spec.tracks() != null) {
-            for (TimelineTrack track : spec.tracks()) {
+        if (request.tracks() != null) {
+            for (TimelineImportRequest.ImportTrack track : request.tracks()) {
                 ObjectNode trk = InternalTimelineJson.mapper().createObjectNode();
                 trk.put("id", track.id());
-                trk.put("type", track.type().name());
+                trk.put("type", track.type());
                 trk.put("role", "primary");
-                trk.put("zIndex", track.layer());
+                trk.put("zIndex", track.zIndex());
                 ArrayNode clips = InternalTimelineJson.mapper().createArrayNode();
                 if (track.clips() != null) {
-                    for (TimelineClip clip : track.clips()) {
+                    for (TimelineImportRequest.ImportClip clip : track.clips()) {
                         ObjectNode clipNode = InternalTimelineJson.mapper().createObjectNode();
                         clipNode.put("id", clip.id());
-                        String assetId = clip.assetRef() != null && clip.assetRef().assetId() != null
-                                ? clip.assetRef().assetId() : "ast_" + clip.id();
+                        String assetId = clip.assetId() != null ? clip.assetId() : "ast_" + clip.id();
                         clipNode.put("assetId", assetId);
                         clipNode.set("timelineRange",
-                                frameRange(clip.timelineStart(), clip.clipDuration(), rate));
+                                frameRange(clip.timelineStartSec(), clip.clipDurationSec(), rate));
                         clipNode.set("sourceRange",
-                                frameRange(clip.assetInPoint(), clip.assetOutPoint() - clip.assetInPoint(), rate));
+                                frameRange(clip.assetInSec(), clip.assetOutSec() - clip.assetInSec(), rate));
                         clipNode.set("speed", InternalTimelineJson.mapper().createObjectNode()
                                 .put("factor", 1.0));
                         if (clip.effects() != null && !clip.effects().isEmpty()) {
@@ -182,7 +183,7 @@ public class InternalTimelineWriter {
         }
         composition.set("tracks", tracks);
 
-        if (spec.textOverlays() != null && !spec.textOverlays().isEmpty()) {
+        if (request.textOverlays() != null && !request.textOverlays().isEmpty()) {
             ArrayNode subtitleTracks = InternalTimelineJson.mapper().createArrayNode();
             ObjectNode subTrack = InternalTimelineJson.mapper().createObjectNode();
             subTrack.put("id", "sub_imported");
@@ -190,14 +191,14 @@ public class InternalTimelineWriter {
             subTrack.put("format", "INTERNAL");
             subTrack.put("styleId", "style_ass_main");
             ArrayNode cues = InternalTimelineJson.mapper().createArrayNode();
-            for (TimelineTextOverlay overlay : spec.textOverlays()) {
+            for (TimelineImportRequest.ImportTextOverlay overlay : request.textOverlays()) {
                 ObjectNode cue = InternalTimelineJson.mapper().createObjectNode();
                 cue.put("id", overlay.id());
                 cue.put("text", overlay.text());
                 if (overlay.fontFamily() != null) {
                     cue.put("fontFamily", overlay.fontFamily().value());
                 }
-                cue.set("timelineRange", frameRange(overlay.startTime(), overlay.duration(), rate));
+                cue.set("timelineRange", frameRange(overlay.startTimeSec(), overlay.durationSec(), rate));
                 cues.add(cue);
             }
             subTrack.set("cues", cues);
@@ -207,28 +208,42 @@ public class InternalTimelineWriter {
         return composition;
     }
 
-    private ObjectNode buildRenderGraph(TimelineSpec spec, TimelineExtensions extensions, int fps, FrameRate rate,
-                                          ObjectNode composition) {
+    private ObjectNode buildRenderGraph(TimelineImportRequest request, int fps, FrameRate rate,
+                                        ObjectNode composition) {
         ObjectNode graph = InternalTimelineJson.mapper().createObjectNode();
-        graph.put("finalComposer", extensions.finalComposer() != null
-                ? extensions.finalComposer().name().toLowerCase()
-                : FinalComposerHint.AUTO.name().toLowerCase());
+        graph.put("finalComposer", request.finalComposer() != null && !request.finalComposer().isBlank()
+                ? request.finalComposer().toLowerCase()
+                : "auto");
 
-        if (!extensions.externalRenderNodes().isEmpty()) {
+        if (request.externalRenderNodes() != null && !request.externalRenderNodes().isEmpty()) {
             ArrayNode nodes = InternalTimelineJson.mapper().createArrayNode();
-            for (ExternalRenderNode node : extensions.externalRenderNodes()) {
+            for (TimelineImportRequest.ImportExternalRenderNode node : request.externalRenderNodes()) {
                 nodes.add(buildExternalRenderNode(node, fps, rate));
             }
             graph.set("externalRenderNodes", nodes);
         }
 
-        ArrayNode layers = buildLayers(spec, fps, rate, composition);
+        ArrayNode layers = request.renderGraphLayers() != null && request.renderGraphLayers().isArray()
+                ? (ArrayNode) request.renderGraphLayers().deepCopy()
+                : InternalTimelineJson.mapper().createArrayNode();
+        syncSubtitleLayersFromComposition(layers, composition, fps, rate);
+        if (request.textOverlays() != null && !request.textOverlays().isEmpty()
+                && !layerExists(layers, "layer_sub_imported")) {
+            ObjectNode subLayer = InternalTimelineJson.mapper().createObjectNode();
+            subLayer.put("id", "layer_sub_imported");
+            subLayer.put("kind", "SUBTITLE");
+            subLayer.put("subtitleTrackId", "sub_imported");
+            subLayer.put("zIndex", 200);
+            subLayer.set("render", defaultLayerRender("libass", "LAYER"));
+            layers.add(subLayer);
+        }
         if (!layers.isEmpty()) {
             graph.set("layers", layers);
         }
-        ObjectNode segmentPolicy = readPreservedObject(spec, SegmentTimelinePlanner.META_SEGMENT_POLICY);
-        if (segmentPolicy == null && spec.metadata() != null
-                && "true".equals(spec.metadata().get("platform.segmentPolicyEnabled"))) {
+        ObjectNode segmentPolicy = request.segmentPolicy() != null && request.segmentPolicy().isObject()
+                ? (ObjectNode) request.segmentPolicy().deepCopy()
+                : null;
+        if (segmentPolicy == null && request.segmentPolicyEnabled()) {
             segmentPolicy = InternalTimelineJson.mapper().createObjectNode();
             segmentPolicy.put("enabled", true);
             ObjectNode segDur = InternalTimelineJson.mapper().createObjectNode();
@@ -243,7 +258,8 @@ public class InternalTimelineWriter {
         return graph;
     }
 
-    private ObjectNode buildExternalRenderNode(ExternalRenderNode node, int fps, FrameRate rate) {
+    private ObjectNode buildExternalRenderNode(TimelineImportRequest.ImportExternalRenderNode node,
+                                               int fps, FrameRate rate) {
         ObjectNode n = InternalTimelineJson.mapper().createObjectNode();
         n.put("id", node.id());
         n.put("backend", node.backend());
@@ -256,7 +272,7 @@ public class InternalTimelineWriter {
         if (node.attachToClipId() != null) {
             n.put("attachToClipId", node.attachToClipId());
         }
-        n.set("timelineRange", frameRange(node.timelineStart(), node.duration(), rate));
+        n.set("timelineRange", frameRange(node.timelineStartSec(), node.durationSec(), rate));
         Map<String, Object> params = node.params() != null ? new LinkedHashMap<>(node.params()) : new LinkedHashMap<>();
         if (params.containsKey("dependsOn")) {
             n.set("dependsOn", InternalTimelineJson.mapper().valueToTree(params.remove("dependsOn")));
@@ -287,25 +303,6 @@ public class InternalTimelineWriter {
         render.set("cachePolicy", cache);
         n.set("render", render);
         return n;
-    }
-
-    private ArrayNode buildLayers(TimelineSpec spec, int fps, FrameRate rate, ObjectNode composition) {
-        ArrayNode layers = readPreservedArray(spec, InternalTimelineJson.META_RENDER_GRAPH_LAYERS);
-        if (layers == null) {
-            layers = InternalTimelineJson.mapper().createArrayNode();
-        }
-        syncSubtitleLayersFromComposition(layers, composition, fps, rate);
-        if (spec.textOverlays() != null && !spec.textOverlays().isEmpty()
-                && !layerExists(layers, "layer_sub_imported")) {
-            ObjectNode subLayer = InternalTimelineJson.mapper().createObjectNode();
-            subLayer.put("id", "layer_sub_imported");
-            subLayer.put("kind", "SUBTITLE");
-            subLayer.put("subtitleTrackId", "sub_imported");
-            subLayer.put("zIndex", 200);
-            subLayer.set("render", defaultLayerRender("libass", "LAYER"));
-            layers.add(subLayer);
-        }
-        return layers;
     }
 
     private void syncSubtitleLayersFromComposition(ArrayNode layers, ObjectNode composition, int fps, FrameRate rate) {
@@ -383,28 +380,25 @@ public class InternalTimelineWriter {
         return false;
     }
 
-    private ObjectNode buildStyles(TimelineSpec spec, TimelineExtensions extensions) {
-        ObjectNode styles = readPreservedObject(spec, InternalTimelineJson.META_STYLES);
-        if (styles == null) {
-            styles = InternalTimelineJson.mapper().createObjectNode();
-        }
-        if (spec.textOverlays() != null && !spec.textOverlays().isEmpty() && !styles.has("style_ass_main")) {
+    private ObjectNode buildStyles(TimelineImportRequest request) {
+        ObjectNode styles = request.styles() != null && request.styles().isObject()
+                ? (ObjectNode) request.styles().deepCopy()
+                : InternalTimelineJson.mapper().createObjectNode();
+        if (request.textOverlays() != null && !request.textOverlays().isEmpty() && !styles.has("style_ass_main")) {
             ObjectNode style = InternalTimelineJson.mapper().createObjectNode();
             style.put("id", "style_ass_main");
             style.put("engine", "libass");
-            // ROADMAP_19: no implicit font default; typed FontSelectionIntent is sole authority
             styles.set("style_ass_main", style);
         }
         return styles;
     }
 
-    private ObjectNode buildTemplates(TimelineSpec spec, TimelineExtensions extensions) {
-        ObjectNode templates = readPreservedObject(spec, InternalTimelineJson.META_TEMPLATES);
-        if (templates == null) {
-            templates = InternalTimelineJson.mapper().createObjectNode();
-        }
-        if (extensions.externalRenderNodes() != null) {
-            for (ExternalRenderNode node : extensions.externalRenderNodes()) {
+    private ObjectNode buildTemplates(TimelineImportRequest request) {
+        ObjectNode templates = request.templates() != null && request.templates().isObject()
+                ? (ObjectNode) request.templates().deepCopy()
+                : InternalTimelineJson.mapper().createObjectNode();
+        if (request.externalRenderNodes() != null) {
+            for (TimelineImportRequest.ImportExternalRenderNode node : request.externalRenderNodes()) {
                 String tplId = resolveTemplateId(node);
                 if (templates.has(tplId)) {
                     continue;
@@ -415,14 +409,15 @@ public class InternalTimelineWriter {
         return templates;
     }
 
-    private static String resolveTemplateId(ExternalRenderNode node) {
+    private static String resolveTemplateId(TimelineImportRequest.ImportExternalRenderNode node) {
         if (node.templateId() != null && !node.templateId().isBlank()) {
             return node.templateId().startsWith("tpl_") ? node.templateId() : "tpl_" + node.templateId();
         }
         return "tpl_" + node.backend() + "_" + node.id();
     }
 
-    private ObjectNode buildTemplateEntry(ExternalRenderNode node, String tplId, ObjectNode templatesRoot) {
+    private ObjectNode buildTemplateEntry(TimelineImportRequest.ImportExternalRenderNode node, String tplId,
+                                          ObjectNode templatesRoot) {
         ObjectNode tpl;
         if (templatesRoot != null && templatesRoot.has(tplId) && templatesRoot.get(tplId).isObject()) {
             tpl = (ObjectNode) templatesRoot.get(tplId).deepCopy();
@@ -439,18 +434,18 @@ public class InternalTimelineWriter {
         }
         Map<String, Object> params = node.params() != null ? node.params() : Map.of();
         switch (node.backend()) {
-            case ExternalRenderNode.BACKEND_REMOTION -> {
+            case "remotion" -> {
                 copyParam(tpl, params, "compositionId");
                 copyParam(tpl, params, "projectDir");
                 if (params.containsKey("props")) {
                     tpl.set("paramSchema", InternalTimelineJson.mapper().createObjectNode().put("props", "object"));
                 }
             }
-            case ExternalRenderNode.BACKEND_BLENDER -> {
+            case "blender" -> {
                 copyParam(tpl, params, "blendUri");
                 tpl.put("allowScripts", false);
             }
-            case ExternalRenderNode.BACKEND_NATRON -> {
+            case "natron" -> {
                 if (!tpl.has("graphId") && node.graphId() != null) {
                     tpl.put("graphId", node.graphId());
                 }
@@ -473,33 +468,12 @@ public class InternalTimelineWriter {
         }
     }
 
-    private static ObjectNode readPreservedObject(TimelineSpec spec, String metadataKey) {
-        JsonNode node = readPreservedJson(spec, metadataKey);
-        return node != null && node.isObject() ? (ObjectNode) node.deepCopy() : null;
-    }
-
-    private static ArrayNode readPreservedArray(TimelineSpec spec, String metadataKey) {
-        JsonNode node = readPreservedJson(spec, metadataKey);
-        return node != null && node.isArray() ? (ArrayNode) node.deepCopy() : null;
-    }
-
-    private static JsonNode readPreservedJson(TimelineSpec spec, String metadataKey) {
-        if (spec.metadata() == null || !spec.metadata().containsKey(metadataKey)) {
-            return null;
-        }
-        try {
-            return InternalTimelineJson.mapper().readTree(spec.metadata().get(metadataKey));
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private ObjectNode buildMetadata(TimelineSpec spec, TimelineExtensions extensions) {
+    private ObjectNode buildMetadata(TimelineImportRequest request) {
         ObjectNode metadata = InternalTimelineJson.mapper().createObjectNode();
         metadata.put("platform.source", "InternalTimelineWriter");
-        metadata.put("platform.otio.roundTrip.lossy", String.valueOf(extensions.otioExportLossy()));
-        if (spec.metadata() != null) {
-            spec.metadata().forEach((key, value) -> {
+        metadata.put("platform.otio.roundTrip.lossy", String.valueOf(request.otioExportLossy()));
+        if (request.metadata() != null) {
+            request.metadata().forEach((key, value) -> {
                 if (key.startsWith("platform.")) {
                     metadata.put(key, value);
                 }
@@ -519,10 +493,10 @@ public class InternalTimelineWriter {
         return render;
     }
 
-    private static ArrayNode buildClipEffects(List<TimelineClipEffect> effects) {
+    private static ArrayNode buildClipEffects(List<TimelineImportRequest.ImportClipEffect> effects) {
         ArrayNode arr = InternalTimelineJson.mapper().createArrayNode();
         int idx = 0;
-        for (TimelineClipEffect effect : effects) {
+        for (TimelineImportRequest.ImportClipEffect effect : effects) {
             ObjectNode fx = InternalTimelineJson.mapper().createObjectNode();
             fx.put("id", effect.id() != null ? effect.id() : "fx_" + (++idx));
             fx.put("effectKey", effect.effectKey());
@@ -534,17 +508,17 @@ public class InternalTimelineWriter {
         return arr;
     }
 
-    private ArrayNode buildOutputs(TimelineSpec spec) {
+    private ArrayNode buildOutputs(TimelineImportRequest request) {
         ArrayNode outputs = InternalTimelineJson.mapper().createArrayNode();
-        if (spec.outputSpec() == null) {
+        if (request.output() == null) {
             return outputs;
         }
         ObjectNode out = InternalTimelineJson.mapper().createObjectNode();
         out.put("id", "out_main");
-        out.put("format", spec.outputSpec().format());
-        out.put("container", spec.outputSpec().format());
-        out.put("width", spec.outputSpec().width());
-        out.put("height", spec.outputSpec().height());
+        out.put("format", request.output().format());
+        out.put("container", request.output().format());
+        out.put("width", request.output().width());
+        out.put("height", request.output().height());
         outputs.add(out);
         return outputs;
     }
@@ -557,15 +531,12 @@ public class InternalTimelineWriter {
     }
 
     /**
-     * Legacy spec -&gt; wire range. Double seconds (legacy spec model) are
-     * projected to frames with EXPLICIT round-half-up at this input boundary;
-     * the emitted wire rate is the EXACT rational project rate (num/den
-     * preserved — never den=1 reconstruction).
+     * Legacy input boundary: double seconds (import contract) -&gt; frame at the
+     * EXACT rational rate with explicit round-half-up; the emitted wire rate is
+     * the EXACT rational project rate (num/den preserved — never den=1
+     * reconstruction).
      */
     private static ObjectNode frameRange(double startSec, double durationSec, FrameRate rate) {
-        // Legacy input boundary: double seconds (spec model) -> frame at the
-        // EXACT rational rate. frame = round(seconds * num / den); the rate
-        // num/den is preserved in the wire (never an int-fps projection).
         int startFrame = (int) Math.round(startSec * rate.numerator().doubleValue() / rate.denominator());
         int durationFrames = Math.max(1, (int) Math.round(durationSec * rate.numerator().doubleValue() / rate.denominator()));
         ObjectNode rateNode = rationalRate(rate.numerator().intValueExact(), rate.denominator());

@@ -12,7 +12,8 @@ import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.app.timeline.InternalTimelineToEditorConverter;
-import com.example.platform.render.app.timeline.InternalTimelineWriter;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
+import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.RenderTimelinePayloadCodec;
 import com.example.platform.timeline.app.ProductCurrentRevisionService;
 import com.example.platform.timeline.app.TimelineCanonicalizer;
@@ -28,8 +29,6 @@ import com.example.platform.timeline.app.TimelineRevisionService;
 import com.example.platform.timeline.app.TimelineSemanticDiffService;
 import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.app.timeline.TimelineTestSupport;
-import com.example.platform.render.app.TimelineValidationService;
-import com.example.platform.render.app.timeline.InternalTimelineValidationService;
 import com.example.platform.render.app.timeline.compile.ArtifactGraphCompiler;
 import com.example.platform.render.app.timeline.compile.CapabilityGraphCompiler;
 import com.example.platform.render.app.timeline.compile.LocalExecutionPlanRunner;
@@ -318,10 +317,11 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
     private TimelineRevisionService buildTimelineRevisionService(DSLContext dsl, TimelineSnapshotService snapshotService) {
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extensionsReader);
-        InternalTimelineWriter writer = new InternalTimelineWriter(extensionsReader);
+        TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extensionsReader);
+        TimelineImportService importService = new TimelineImportService();
         TimelineCanonicalizer canonicalizer = new TimelineCanonicalizer();
         TimelineSpecResolver resolver = new TimelineSpecResolver(TimelineTestSupport.internalTimelineAdapter(), parser);
-        TimelineConversionService conversionService = new TimelineConversionService(resolver, writer);
+        TimelineConversionService conversionService = new TimelineConversionService(resolver, importAdapter, importService);
         TimelinePatchService patchService = new TimelinePatchService(canonicalizer);
         return new TimelineRevisionService(
                 new TimelineRevisionRepository(dsl), snapshotService,
@@ -335,8 +335,9 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
     private PlanBasedTimelineRevisionRenderService buildPlanBasedRenderService() {
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extensionsReader);
-        InternalTimelineWriter writer = new InternalTimelineWriter(extensionsReader);
-        TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, writer);
+        TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extensionsReader);
+        TimelineImportService importService = new TimelineImportService();
+        TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
         RenderInputMaterializationService materializationService =
                 new RenderInputMaterializationService(storageRuntime, productRuntime);
         RenderOutputRegistrationService registrationService = new RenderOutputRegistrationService(

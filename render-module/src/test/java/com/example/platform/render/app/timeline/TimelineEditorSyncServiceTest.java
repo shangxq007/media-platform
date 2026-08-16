@@ -1,6 +1,8 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -27,16 +29,19 @@ class TimelineEditorSyncServiceTest {
 
     @Mock
     private TimelineRevisionService revisionService;
+    private TimelineSpecImportAdapter importAdapter;
+    private TimelineImportService importService;
 
     private TimelineEditorSyncService syncService;
 
     @BeforeEach
     void setUp() {
-        InternalTimelineWriter writer = new InternalTimelineWriter(new TimelineExtensionsReader());
+        importAdapter = new TimelineSpecImportAdapter(new TimelineExtensionsReader());
+        importService = new TimelineImportService();
         TimelineSpecResolver resolver =
                 new TimelineSpecResolver(TimelineTestSupport.internalTimelineAdapter(), new TimelineScriptParser());
         syncService = new TimelineEditorSyncService(
-                new TimelineConversionService(resolver, writer),
+                new TimelineConversionService(resolver, importAdapter, importService),
                 new InternalTimelineToEditorConverter(),
                 snapshotService,
                 resolver,
@@ -46,7 +51,7 @@ class TimelineEditorSyncServiceTest {
     @Test
     void pushPersistsInternalSnapshotWhenRequested() {
         TimelineSpec spec = TimelineSpec.create("tl-push", "Push", TimelineOutputSpec.mp4_1080p30());
-        String internal = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
+        String internal = importService.importTimeline(importAdapter.toRequest(spec));
         when(revisionService.recordRevision(
                         eq("prj_1"), eq("ten_1"), anyString(), eq("push"), isNull(), isNull(), isNull()))
                 .thenReturn(new TimelineRevisionService.RevisionInfo(
@@ -84,7 +89,7 @@ class TimelineEditorSyncServiceTest {
     @Test
     void pullLatestUsesRevisionHeadWhenPresent() {
         TimelineSpec spec = TimelineSpec.create("tl-pull", "Pull", TimelineOutputSpec.mp4_1080p30());
-        String internal = new InternalTimelineWriter(new TimelineExtensionsReader()).toJson(spec);
+        String internal = importService.importTimeline(importAdapter.toRequest(spec));
         when(revisionService.backfillHeadFromLatestSnapshot("prj_2", null)).thenReturn(Optional.empty());
         when(revisionService.findHead("prj_2"))
                 .thenReturn(Optional.of(new TimelineRevisionService.RevisionInfo(

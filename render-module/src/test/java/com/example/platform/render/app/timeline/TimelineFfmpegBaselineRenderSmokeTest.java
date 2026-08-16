@@ -1,6 +1,8 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
+import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import com.example.platform.render.app.output.RenderProductProvenance;
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
@@ -93,8 +95,9 @@ class TimelineFfmpegBaselineRenderSmokeTest {
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extensionsReader);
-        InternalTimelineWriter writer = new InternalTimelineWriter(extensionsReader);
-        mapper = new TimelineRenderJobMapper(parser, writer);
+        TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extensionsReader);
+        TimelineImportService importService = new TimelineImportService();
+        mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
     }
 
     // ─── Real FFmpeg/libass baseline render smoke ───

@@ -56,11 +56,15 @@ public class TimelineRenderJobMapper {
     );
 
     private final TimelineScriptParser parser;
-    private final InternalTimelineWriter writer;
+    private final TimelineSpecImportAdapter importAdapter;
+    private final com.example.platform.timeline.app.TimelineImportService timelineImportService;
 
-    public TimelineRenderJobMapper(TimelineScriptParser parser, InternalTimelineWriter writer) {
+    public TimelineRenderJobMapper(TimelineScriptParser parser,
+                                   TimelineSpecImportAdapter importAdapter,
+                                   com.example.platform.timeline.app.TimelineImportService timelineImportService) {
         this.parser = parser;
-        this.writer = writer;
+        this.importAdapter = importAdapter;
+        this.timelineImportService = timelineImportService;
     }
 
     /**
@@ -197,8 +201,8 @@ public class TimelineRenderJobMapper {
             }
         }
 
-        // Serialize to Internal Timeline JSON for the prompt field
-        String timelineJson = writer.toJson(spec);
+        // Serialize to Internal Timeline JSON via the Timeline-owned canonical constructor
+        String timelineJson = timelineImportService.importTimeline(importAdapter.toRequest(spec));
 
         // Validate that the serialized JSON is valid timeline JSON
         if (!parser.isTimelineJson(timelineJson)) {

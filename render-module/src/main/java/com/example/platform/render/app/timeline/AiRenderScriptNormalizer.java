@@ -14,16 +14,19 @@ public class AiRenderScriptNormalizer {
 
     private final TimelineSpecResolver timelineSpecResolver;
     private final InternalTimelineAdapter internalTimelineAdapter;
-    private final InternalTimelineWriter internalTimelineWriter;
+    private final TimelineSpecImportAdapter timelineSpecImportAdapter;
+    private final com.example.platform.timeline.app.TimelineImportService timelineImportService;
     private final InternalTimelineMetadataEnricher metadataEnricher;
 
     public AiRenderScriptNormalizer(TimelineSpecResolver timelineSpecResolver,
                                     InternalTimelineAdapter internalTimelineAdapter,
-                                    InternalTimelineWriter internalTimelineWriter,
+                                    TimelineSpecImportAdapter timelineSpecImportAdapter,
+                                    com.example.platform.timeline.app.TimelineImportService timelineImportService,
                                     InternalTimelineMetadataEnricher metadataEnricher) {
         this.timelineSpecResolver = timelineSpecResolver;
         this.internalTimelineAdapter = internalTimelineAdapter;
-        this.internalTimelineWriter = internalTimelineWriter;
+        this.timelineSpecImportAdapter = timelineSpecImportAdapter;
+        this.timelineImportService = timelineImportService;
         this.metadataEnricher = metadataEnricher;
     }
 
@@ -44,14 +47,16 @@ public class AiRenderScriptNormalizer {
         }
         var fromJson = internalTimelineAdapter.toSpec(trimmed);
         if (fromJson.isPresent()) {
-            String json = internalTimelineWriter.toJson(enrichMetadata(fromJson.get(), context, trimmed, "normalized"));
+            String json = timelineImportService.importTimeline(
+                    timelineSpecImportAdapter.toRequest(enrichMetadata(fromJson.get(), context, trimmed, "normalized")));
             return metadataEnricher.enrichJson(json, context, "normalized");
         }
         if (looksLikeJson(trimmed)) {
             return trimmed;
         }
         return metadataEnricher.enrichJson(
-                internalTimelineWriter.toJson(buildPromptPlaceholder(context, trimmed)),
+                timelineImportService.importTimeline(
+                        timelineSpecImportAdapter.toRequest(buildPromptPlaceholder(context, trimmed))),
                 context,
                 "prompt-placeholder");
     }

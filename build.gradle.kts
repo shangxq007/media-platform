@@ -470,9 +470,13 @@ tasks.register("verifyC1Cnm1RedGates") {
         require(fr.contains("gcd") || fr.contains("normalize")) { "FAIL: FrameRate gcd normalization missing" }
 
         // ── RED-02: no live double->integer fps truncation ──
-        val writer = file("render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineWriter.java")
+        // GCR-1 CORRECTION V2: canonical construction authority moved to
+        // timeline-module TimelineImportService (render InternalTimelineWriter deleted).
+        val writer = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineImportService.java")
         val w = writer.readText()
-        require(!w.contains("(int) spec.outputSpec().frameRate()")) { "FAIL: (int) doubleFps truncation in writer" }
+        require(!w.contains("(int) spec.outputSpec().frameRate()") && !w.contains("(int) request.output().frameRate()")) {
+            "FAIL: (int) doubleFps truncation in canonical import service"
+        }
         val mapper = file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderJobMapper.java")
         require(!mapper.readText().contains("(int) output.frameRate()")) { "FAIL: (int) doubleFps truncation in render mapper" }
 
@@ -501,7 +505,7 @@ tasks.register("verifyC1Cnm1RedGates") {
         require(e.contains("clip.effects()") && e.contains("node.set(\"effects\"")) { "FAIL: engine effect re-emit missing" }
 
         // ── RED-07: no unjustified canonical binary-float authorities ──
-        require(!w.contains("double fps =") && !w.contains("(int) fps")) { "FAIL: canonical double fps residue in writer" }
+        require(!w.contains("double fps =") && !w.contains("(int) fps")) { "FAIL: canonical double fps residue in canonical import service" }
 
         // ── RED-09: no dual parser / legacy rate compatibility path ──
         val parser = file("render-module/src/main/java/com/example/platform/render/domain/interchange/TimelineScriptParser.java")
@@ -590,6 +594,7 @@ tasks.register("jooqFoundationCheck") {
         "verifyJooqNamedInterfacePreservation",
         "verifyP1ProductLayerRetirement",
         "verifyC1TimelineMergeConvergence",
+        "verifyGcr1CorrectionV2IngressAuthority",
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
@@ -889,5 +894,87 @@ tasks.register("verifyR1RenderCanonicalizationReissue") {
         }
 
         println("OK: R1-REISSUE-RED-01..06 verified (canonicalized render authority; no mock/noop/dead/test-only residue; single Timeline merge engine; universe=${mergeFiles.size} files)")
+    }
+}
+
+tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
+    group = "verification"
+    description = "GCR-1 CORRECTION V2: render owns zero canonical Timeline ingress authority (validation / authoring write / import conversion); Timeline-owned constructor + validator are the sole authorities; manifest matches final reality"
+    doLast {
+        val renderTimelineDir = file("render-module/src/main/java/com/example/platform/render/app/timeline")
+        val renderAppDir = file("render-module/src/main/java/com/example/platform/render/app")
+        val timelineAppDir = file("timeline-module/src/main/java/com/example/platform/timeline/app")
+
+        // ── Render-owned canonical validation authority must be 0 ──
+        require(!file(renderTimelineDir.resolve("InternalTimelineValidationService.java")).exists()) {
+            "FAIL: render InternalTimelineValidationService still exists (validation authority outside timeline)"
+        }
+        require(!file(renderAppDir.resolve("TimelineValidationService.java")).exists()) {
+            "FAIL: render TimelineValidationService still exists (validation authority outside timeline)"
+        }
+        // ── Render-owned canonical authoring/write authority must be 0 ──
+        require(!file(renderTimelineDir.resolve("InternalTimelineWriter.java")).exists()) {
+            "FAIL: render InternalTimelineWriter still exists (authoring/write authority outside timeline)"
+        }
+        // No production class outside timeline-module may construct canonical
+        // internal-1.0 documents (deepCanonicalize is the canonicalization marker).
+        val outsideMain = listOf(
+            file("render-module/src/main"),
+            file("platform-app/src/main"),
+            file("operation-module/src/main"),
+            file("media-module/src/main"),
+            file("workflow-module/src/main")
+        )
+        val canonicalizeHits = outsideMain.flatMap { dir ->
+            if (!dir.exists()) emptyList()
+            else dir.walkTopDown().filter { it.isFile && it.extension == "java" }
+                .filter { it.readText().contains("InternalTimelineJson.deepCanonicalize") }
+                .map { it.path }
+                .toList()
+        }
+        require(canonicalizeHits.isEmpty()) {
+            "FAIL: canonical internal-1.0 construction outside timeline-module: $canonicalizeHits"
+        }
+
+        // ── Timeline-owned authorities must exist ──
+        require(file(timelineAppDir.resolve("TimelineImportService.java")).exists()) {
+            "FAIL: TimelineImportService missing (canonical constructor authority)"
+        }
+        require(file(timelineAppDir.resolve("TimelineImportRequest.java")).exists()) {
+            "FAIL: TimelineImportRequest missing (typed Timeline-owned import contract)"
+        }
+        require(file(timelineAppDir.resolve("InternalTimelineValidationService.java")).exists()) {
+            "FAIL: timeline InternalTimelineValidationService missing (sole canonical validator)"
+        }
+        // Boundary adapter allowed at render (mechanical mapping only)
+        require(file(renderTimelineDir.resolve("TimelineSpecImportAdapter.java")).exists()) {
+            "FAIL: TimelineSpecImportAdapter missing (render boundary adapter)"
+        }
+        // TimelineImportService must not reference render-domain types
+        val importSrc = file(timelineAppDir.resolve("TimelineImportService.java")).readText()
+        require(!importSrc.contains("com.example.platform.render.")) {
+            "FAIL: TimelineImportService depends on render-domain types"
+        }
+        val requestSrc = file(timelineAppDir.resolve("TimelineImportRequest.java")).readText()
+        require(!requestSrc.contains("com.example.platform.render.")) {
+            "FAIL: TimelineImportRequest depends on render-domain types"
+        }
+
+        // ── Timeline -> Render dependency must stay 0 ──
+        val timelineBuild = file("timeline-module/build.gradle.kts").readText()
+        require(!timelineBuild.contains("project(\":render-module\")")) {
+            "FAIL: timeline-module depends on render-module"
+        }
+
+        // ── Conversion coordinator delegates (no writer-backed construction) ──
+        val conversion = file(renderTimelineDir.resolve("TimelineConversionService.java")).readText()
+        require(conversion.contains("TimelineImportService") && conversion.contains("importTimeline")) {
+            "FAIL: TimelineConversionService does not delegate canonical construction to TimelineImportService"
+        }
+        require(!conversion.contains("InternalTimelineWriter")) {
+            "FAIL: TimelineConversionService still references render writer"
+        }
+
+        println("OK: GCR-1 CORRECTION V2 ingress authority verified (render validation/write/conversion authority = 0; timeline sole constructor+validator; adapter boundary; no timeline->render dep)")
     }
 }
