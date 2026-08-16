@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.internal.EntityKind;
-import com.example.platform.render.domain.timeline.internal.EntityRef;
-import com.example.platform.render.domain.timeline.internal.TimelineComment;
+import com.example.platform.timeline.internal.EntityKind;
+import com.example.platform.timeline.internal.EntityRef;
+import com.example.platform.timeline.internal.TimelineComment;
 import com.example.platform.shared.Ids;
 import java.time.OffsetDateTime;
 import java.util.List;

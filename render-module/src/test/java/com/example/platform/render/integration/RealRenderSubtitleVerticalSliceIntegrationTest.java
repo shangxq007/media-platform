@@ -45,11 +45,11 @@ import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
-import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
-import com.example.platform.render.domain.timeline.canonical.TrackType;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.ffmpeg.FFmpegCommandFactory;
 import com.example.platform.render.infrastructure.ffmpeg.FFmpegRenderProvider;
@@ -163,7 +163,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         snapshotService = new TimelineSnapshotService(dsl);
         ProductCurrentRevisionService currentRevisionService = new ProductCurrentRevisionService(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
-                new com.example.platform.render.domain.timeline.canonical.TimelineContentDigester(), snapshotService);
+                new com.example.platform.timeline.canonical.TimelineContentDigester(), snapshotService);
         revisionService = buildTimelineRevisionService(dsl, snapshotService);
         ProductRepository productRepo = new ProductRepository(dsl);
         ProductDependencyRepository depRepo = new ProductDependencyRepository(dsl);

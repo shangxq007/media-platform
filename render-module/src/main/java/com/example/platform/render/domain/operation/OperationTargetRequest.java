@@ -1,8 +1,8 @@
 package com.example.platform.render.domain.operation;
 
 import com.example.platform.audio.domain.mix.AudioMixInput;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupId;
-import com.example.platform.render.domain.timeline.semantics.selection.SelectionSpec;
+import com.example.platform.timeline.semantics.relationship.GroupId;
+import com.example.platform.timeline.semantics.selection.SelectionSpec;
 
 /**
  * OPERATION_MODEL_FOUNDATION_V1 (OIR1/OIR4): requested target semantics —
@@ -53,7 +53,7 @@ public sealed interface OperationTargetRequest permits
     }
 
     /** ROADMAP_19 (C37): Text operation target — exact authored TextElement. */
-    record TextElementTargetRequest(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+    record TextElementTargetRequest(com.example.platform.timeline.canonical.TextElementId textElementId)
             implements OperationTargetRequest {
         public TextElementTargetRequest {
             if (textElementId == null) {

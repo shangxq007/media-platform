@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.internal.ReviewDecision;
+import com.example.platform.timeline.internal.ReviewDecision;
 import com.example.platform.shared.Ids;
 import java.time.OffsetDateTime;
 import java.util.List;

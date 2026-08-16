@@ -8,10 +8,10 @@ import com.example.platform.render.app.timeline.TimelineReviewRepository;
 import com.example.platform.render.app.timeline.TimelineReviewService;
 import com.example.platform.render.app.timeline.ReviewDecisionService;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
-import com.example.platform.render.domain.timeline.internal.EntityKind;
-import com.example.platform.render.domain.timeline.internal.EntityRef;
-import com.example.platform.render.domain.timeline.internal.TimelineComment;
-import com.example.platform.render.domain.timeline.internal.ReviewDecision;
+import com.example.platform.timeline.internal.EntityKind;
+import com.example.platform.timeline.internal.EntityRef;
+import com.example.platform.timeline.internal.TimelineComment;
+import com.example.platform.timeline.internal.ReviewDecision;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -42,7 +42,7 @@ class TimelineReviewControllerTest {
     void shouldCreateReview() {
         var body = new TimelineReviewController.CreateReviewRequest(
                 "trev_001", "user_1", "Review Title", "Review Description");
-        var review = com.example.platform.render.domain.timeline.internal.TimelineReview.create(
+        var review = com.example.platform.timeline.internal.TimelineReview.create(
                 "rvw_001", "proj_1", "tenant_1", "trev_001", "user_1", "Review Title", "Review Description");
 
         when(reviewService.createReview(any(), any(), any(), any(), any())).thenReturn(review);

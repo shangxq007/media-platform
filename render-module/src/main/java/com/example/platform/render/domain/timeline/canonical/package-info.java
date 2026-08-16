@@ -1,4 +1,4 @@
 /**
  * Canonical Timeline models - immutable, strongly typed, schema-versioned.
  */
-package com.example.platform.render.domain.timeline.canonical;
+package com.example.platform.timeline.canonical;

@@ -1,6 +1,6 @@
-package com.example.platform.render.domain.timeline.semantics.temporal;
+package com.example.platform.timeline.semantics.temporal;
 
-import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
+import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.render.testsupport.TestSourceBindings;
 import com.example.platform.shared.time.MediaTime;
 import org.junit.jupiter.api.Test;

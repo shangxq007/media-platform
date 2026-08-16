@@ -1,0 +1,23 @@
+package com.example.platform.timeline.diff;
+
+/**
+ * Scope of a timeline change operation.
+ * Internal domain model.
+ */
+public enum TimelineChangeScope {
+    TIMELINE,
+    TRACK,
+    CLIP,
+    ASSET_BINDING,
+    TEXT_OVERLAY,
+    CAPTION,
+    WATERMARK,
+    TEXT_ELEMENT,
+    TEMPLATE_APPLICATION,
+    COMPOSITE_TEMPLATE,
+    WORKFLOW_STEP,
+    OUTPUT_PROFILE,
+    METADATA,
+    ARTIFACT_DAG,
+    PRODUCT_LINEAGE
+}

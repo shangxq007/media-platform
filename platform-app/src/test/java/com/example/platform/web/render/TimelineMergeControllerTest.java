@@ -6,8 +6,16 @@ import static org.mockito.Mockito.*;
 import com.example.platform.render.app.timeline.TimelineMergeEngine;
 import com.example.platform.render.app.timeline.TimelineRevisionService;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
-import com.example.platform.render.domain.timeline.internal.*;
-import com.example.platform.render.domain.timeline.internal.TimelineMergeResult.MergeStatus;
+import com.example.platform.render.domain.timeline.internal.*; // render-kept internal types only
+import com.example.platform.timeline.internal.EntityKind;
+import com.example.platform.timeline.internal.EntityRef;
+import com.example.platform.timeline.internal.SemanticChange;
+import com.example.platform.timeline.internal.SemanticChangeType;
+import com.example.platform.timeline.internal.TimelineConflict;
+import com.example.platform.timeline.internal.TimelineConflictType;
+import com.example.platform.timeline.internal.TimelineMergeResult;
+import com.example.platform.timeline.internal.TimelineMergeResult.MergeStatus;
+import com.example.platform.timeline.internal.TimelineMergeSummary;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

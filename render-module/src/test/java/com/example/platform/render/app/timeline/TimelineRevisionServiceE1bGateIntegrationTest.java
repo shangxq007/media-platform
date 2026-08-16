@@ -5,7 +5,7 @@ import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.app.TimelineValidationService;
 import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
 import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineDiagnostic;
+import com.example.platform.timeline.canonicalmodel.TimelineDiagnostic;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
@@ -138,10 +138,10 @@ class TimelineRevisionServiceE1bGateIntegrationTest extends PostgresTestContaine
         List<TimelineDiagnostic> diagnostics = ex.diagnostics();
         assertFalse(diagnostics.isEmpty(), "rejection must carry canonical diagnostics");
         assertTrue(diagnostics.stream().anyMatch(d ->
-                        d.code() == com.example.platform.render.domain.timeline.canonicalmodel.TimelineDiagnosticCode.TIMELINE_TRACK_ID_DUPLICATE),
+                        d.code() == com.example.platform.timeline.canonicalmodel.TimelineDiagnosticCode.TIMELINE_TRACK_ID_DUPLICATE),
                 "duplicate track diagnostic must be present");
         assertTrue(diagnostics.stream().anyMatch(d ->
-                        d.code() == com.example.platform.render.domain.timeline.canonicalmodel.TimelineDiagnosticCode.TIMELINE_CLIP_ID_DUPLICATE),
+                        d.code() == com.example.platform.timeline.canonicalmodel.TimelineDiagnosticCode.TIMELINE_CLIP_ID_DUPLICATE),
                 "duplicate clip diagnostic must be present");
 
         // ZERO writes.

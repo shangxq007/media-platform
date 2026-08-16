@@ -18,11 +18,11 @@ import com.example.platform.fonttext.typography.TextStyleRun;
 import com.example.platform.render.domain.plan.OperationPlan;
 import com.example.platform.render.domain.plan.OperationPlanDigest;
 import com.example.platform.render.domain.plan.PlannedChange;
-import com.example.platform.render.domain.timeline.canonical.TextElement;
-import com.example.platform.render.domain.timeline.canonical.TextElementId;
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TextElement;
+import com.example.platform.timeline.canonical.TextElementId;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
 
 import java.util.ArrayList;
 import java.util.List;

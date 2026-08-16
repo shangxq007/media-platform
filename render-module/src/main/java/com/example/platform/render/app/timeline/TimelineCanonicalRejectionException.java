@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineDiagnostic;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineModelPath;
+import com.example.platform.timeline.canonicalmodel.TimelineDiagnostic;
+import com.example.platform.timeline.canonicalmodel.TimelineModelPath;
 import java.util.List;
 import java.util.Objects;
 

@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalProfile;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.shared.time.MediaTime;
 import org.junit.jupiter.api.Test;
 

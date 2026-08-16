@@ -2,11 +2,11 @@ package com.example.platform.render.app.timeline;
 import com.example.platform.shared.time.MediaTime;
 
 import com.example.platform.render.app.TimelineSnapshotService;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
-import com.example.platform.render.domain.timeline.diff.merge.preview.TimelineMergePreviewService;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
-import com.example.platform.render.domain.timeline.internal.TimelineMergeRequest;
-import com.example.platform.render.domain.timeline.internal.TimelineMergeResult;
+import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
+import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
+import com.example.platform.timeline.internal.TimelineMergeRequest;
+import com.example.platform.timeline.internal.TimelineMergeResult;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,11 +55,11 @@ class TimelineRepeatedMergeStabilityTest {
         snapshotService = mock(TimelineSnapshotService.class);
         currentRevisionService = mock(ProductCurrentRevisionService.class);
         TimelineMergePreviewService previewService = new TimelineMergePreviewService(
-                new com.example.platform.render.domain.timeline.diff.merge.TimelineMergeConflictDetector());
+                new com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector());
         TimelineNonConflictingMergePlanner planner = new TimelineNonConflictingMergePlanner(previewService);
         engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
                 previewService, planner,
-                new com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplier(),
+                new com.example.platform.timeline.diff.application.TimelinePatchApplier(),
                 mapper);
     }
 
@@ -215,7 +215,7 @@ class TimelineRepeatedMergeStabilityTest {
         assertEquals("c1", candidate.tracks().get(0).clips().get(0).clipId());
         // C1-CNM1: conversion yields the same exact frame back (exact rational
         // MediaTime -> frame @ rate; no integer-ms step).
-        var snap = com.example.platform.render.domain.timeline.diff.calculation.TimelineSnapshotConverter
+        var snap = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
                 .toSnapshot(candidate, "rev-merged");
         var start = snap.tracks().get(0).clips().get(0).start();
         var rate = snap.tracks().get(0).clips().get(0).rate();

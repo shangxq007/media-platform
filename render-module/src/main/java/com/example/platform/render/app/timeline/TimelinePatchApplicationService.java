@@ -1,14 +1,14 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.patch.PatchApplicationResult;
-import com.example.platform.render.domain.timeline.patch.PatchErrorCode;
-import com.example.platform.render.domain.timeline.patch.PatchError;
-import com.example.platform.render.domain.timeline.patch.TimelinePatch;
-import com.example.platform.render.domain.timeline.patch.TimelinePatchEngine;
-import com.example.platform.render.domain.timeline.version.TimelineConflictException;
-import com.example.platform.render.domain.timeline.version.TimelineRevision;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.patch.PatchApplicationResult;
+import com.example.platform.timeline.patch.PatchErrorCode;
+import com.example.platform.timeline.patch.PatchError;
+import com.example.platform.timeline.patch.TimelinePatch;
+import com.example.platform.timeline.patch.TimelinePatchEngine;
+import com.example.platform.timeline.version.TimelineConflictException;
+import com.example.platform.timeline.version.TimelineRevision;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

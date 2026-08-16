@@ -9,22 +9,22 @@ import com.example.platform.render.domain.operation.OperationDefinition;
 import com.example.platform.render.domain.operation.OperationInstance;
 import com.example.platform.render.domain.operation.OperationParameters;
 import com.example.platform.render.domain.operation.OperationTarget;
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineClipId;
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
-import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
-import com.example.platform.render.domain.timeline.canonical.TrackType;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupId;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship;
-import com.example.platform.render.domain.timeline.semantics.relationship.SemanticRelationship;
-import com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship;
-import com.example.platform.render.domain.timeline.semantics.selection.ResolvedScope;
-import com.example.platform.render.domain.timeline.semantics.selection.SelectionSpec;
-import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
-import com.example.platform.render.domain.timeline.semantics.temporal.FreezeTemporalMapping;
-import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineClipId;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.semantics.relationship.GroupId;
+import com.example.platform.timeline.semantics.relationship.GroupRelationship;
+import com.example.platform.timeline.semantics.relationship.SemanticRelationship;
+import com.example.platform.timeline.semantics.relationship.SyncRelationship;
+import com.example.platform.timeline.semantics.selection.ResolvedScope;
+import com.example.platform.timeline.semantics.selection.SelectionSpec;
+import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.shared.time.MediaTime;
 import org.junit.jupiter.api.Test;
 
@@ -126,7 +126,7 @@ class OperationPlanTransactionTest {
         TimelineDocument base = doc(clip("clip-a", 0, 4));
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.SET_TEMPORAL_RATE,
-                new OperationParameters.SetTemporalRateParameters(new com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational(2, 1)),
+                new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(2, 1)),
                 clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
         var replaced = plan.plannedChanges().stream().filter(c -> c instanceof PlannedChange.ClipReplaced)
                 .map(c -> (PlannedChange.ClipReplaced) c).findFirst().orElseThrow();
@@ -146,7 +146,7 @@ class OperationPlanTransactionTest {
         TimelineDocument base = doc(frozen);
         String baseHash = new TimelineContentDigester().digest(base);
         assertThrows(PlanException.class, () -> PLANNER.plan(instance(OperationDefinition.V1.SET_TEMPORAL_RATE,
-                new OperationParameters.SetTemporalRateParameters(new com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational(2, 1)),
+                new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(2, 1)),
                 clipTarget(TimelineClipId.of("clip-a")), baseHash), base));
     }
 

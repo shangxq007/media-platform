@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
-import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineSnapshot;
-import com.example.platform.render.domain.timeline.diff.calculation.TimelineSnapshotConverter;
+import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.timeline.diff.calculation.CanonicalTimelineSnapshot;
+import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import com.fasterxml.jackson.databind.JsonNode;

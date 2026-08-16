@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.patch.PatchError;
+import com.example.platform.timeline.patch.PatchError;
 
 /**
  * Result of patch application.

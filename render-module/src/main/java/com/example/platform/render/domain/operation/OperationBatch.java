@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.operation;
 
 import com.example.platform.extension.domain.ContractVersion;
-import com.example.platform.render.domain.timeline.semantics.selection.ResolvedScope;
+import com.example.platform.timeline.semantics.selection.ResolvedScope;
 
 import java.util.List;
 

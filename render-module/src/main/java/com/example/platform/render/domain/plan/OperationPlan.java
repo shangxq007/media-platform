@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.plan;
 
 import com.example.platform.render.domain.operation.OperationInstance;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineDocument;
 
 import java.util.List;
 

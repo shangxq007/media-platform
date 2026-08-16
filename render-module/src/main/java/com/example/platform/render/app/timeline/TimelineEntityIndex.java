@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.internal.EntityKind;
-import com.example.platform.render.domain.timeline.internal.EntityRef;
+import com.example.platform.timeline.internal.EntityKind;
+import com.example.platform.timeline.internal.EntityRef;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.LinkedHashMap;
 import java.util.Map;

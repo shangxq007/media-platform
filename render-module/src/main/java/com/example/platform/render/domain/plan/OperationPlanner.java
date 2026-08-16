@@ -5,19 +5,19 @@ import com.example.platform.audio.domain.mix.AudioRoute;
 import com.example.platform.render.domain.operation.OperationInstance;
 import com.example.platform.render.domain.operation.OperationParameters;
 import com.example.platform.render.domain.operation.OperationTarget;
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineClipId;
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship;
-import com.example.platform.render.domain.timeline.semantics.relationship.SemanticRelationship;
-import com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship;
-import com.example.platform.render.domain.timeline.semantics.selection.ResolvedScope;
-import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
-import com.example.platform.render.domain.timeline.semantics.temporal.FreezeTemporalMapping;
-import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
-import com.example.platform.render.domain.timeline.semantics.temporal.TemporalMapping;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineClipId;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.semantics.relationship.GroupRelationship;
+import com.example.platform.timeline.semantics.relationship.SemanticRelationship;
+import com.example.platform.timeline.semantics.relationship.SyncRelationship;
+import com.example.platform.timeline.semantics.selection.ResolvedScope;
+import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.semantics.temporal.TemporalMapping;
 import com.example.platform.shared.time.MediaTime;
 
 import java.util.ArrayList;
@@ -104,7 +104,7 @@ public final class OperationPlanner {
     private static TimelineDocument rebuild(List<TimelineTrack> tracks, AudioMix audioMix,
                                             List<SemanticRelationship> rels) {
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, tracks,
-                com.example.platform.render.domain.timeline.canonical.TimelineMetadata.empty(),
+                com.example.platform.timeline.canonical.TimelineMetadata.empty(),
                 audioMix, rels);
     }
 

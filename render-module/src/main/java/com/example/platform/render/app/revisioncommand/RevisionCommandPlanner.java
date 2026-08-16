@@ -5,11 +5,11 @@ import com.example.platform.render.domain.revisioncommand.RevisionCommandExcepti
 import com.example.platform.render.domain.revisioncommand.RevisionCommandPlan;
 import com.example.platform.render.domain.revisioncommand.RevisionCommandPlanDigest;
 import com.example.platform.render.domain.revisioncommand.RevisionRef;
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.render.app.timeline.TimelineMergeEngine;
-import com.example.platform.render.domain.timeline.internal.TimelineMergeRequest;
-import com.example.platform.render.domain.timeline.internal.TimelineMergeResult;
+import com.example.platform.timeline.internal.TimelineMergeRequest;
+import com.example.platform.timeline.internal.TimelineMergeResult;
 import org.jooq.DSLContext;
 
 /**

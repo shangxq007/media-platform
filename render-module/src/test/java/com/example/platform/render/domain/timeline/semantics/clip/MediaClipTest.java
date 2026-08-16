@@ -1,7 +1,7 @@
-package com.example.platform.render.domain.timeline.semantics.clip;
+package com.example.platform.timeline.semantics.clip;
 
-import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
-import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.render.testsupport.TestSourceBindings;
 import com.example.platform.shared.time.MediaTime;
 import org.junit.jupiter.api.DisplayName;

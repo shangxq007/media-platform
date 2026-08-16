@@ -1,13 +1,13 @@
-package com.example.platform.render.domain.timeline.semantics.projection;
+package com.example.platform.timeline.semantics.projection;
 
 import com.example.platform.render.testsupport.TestSourceBindings;
 
-import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
-import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
-import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
-import com.example.platform.render.domain.timeline.semantics.effect.EffectInstance;
+import com.example.platform.timeline.semantics.clip.MediaClip;
+import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
+import com.example.platform.timeline.semantics.transition.TransitionInstance;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

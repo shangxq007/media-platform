@@ -299,8 +299,8 @@ class CompositeTemplateDomainTest {
     @Test
     @DisplayName("CompositeTemplateDiff can represent child template change")
     void compositeDiffRepresentsChange() {
-        com.example.platform.render.domain.timeline.diff.CompositeTemplateDiff diff =
-                new com.example.platform.render.domain.timeline.diff.CompositeTemplateDiff(
+        com.example.platform.timeline.diff.CompositeTemplateDiff diff =
+                new com.example.platform.timeline.diff.CompositeTemplateDiff(
                         "comp-1",
                         List.of(CaptionTemplateProfile.TEMPLATE_ID, WatermarkTemplateProfile.TEMPLATE_ID),
                         List.of(), Map.of());

@@ -1,9 +1,9 @@
 package com.example.platform.render.domain.plan;
 
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineClipId;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupId;
-import com.example.platform.render.domain.timeline.semantics.relationship.SemanticRelationship;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineClipId;
+import com.example.platform.timeline.semantics.relationship.GroupId;
+import com.example.platform.timeline.semantics.relationship.SemanticRelationship;
 
 import java.util.Set;
 
@@ -69,19 +69,19 @@ public sealed interface PlannedChange permits
     }
 
     /** ROADMAP_19 (C37): TextElement added to Timeline composition. */
-    record TextElementAdded(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+    record TextElementAdded(com.example.platform.timeline.canonical.TextElementId textElementId)
             implements PlannedChange {
         @Override public boolean primary() { return true; }
     }
 
     /** ROADMAP_19 (C37): TextElement removed from Timeline composition. */
-    record TextElementRemoved(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+    record TextElementRemoved(com.example.platform.timeline.canonical.TextElementId textElementId)
             implements PlannedChange {
         @Override public boolean primary() { return true; }
     }
 
     /** ROADMAP_19 (C37): existing TextElement semantically replaced. */
-    record TextElementReplaced(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+    record TextElementReplaced(com.example.platform.timeline.canonical.TextElementId textElementId)
             implements PlannedChange {
         @Override public boolean primary() { return true; }
     }

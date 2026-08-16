@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.version.TimelineConflictException;
+import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.UUID;
@@ -38,7 +38,7 @@ class ProductCurrentRevisionServiceIntegrationTest extends PostgresTestContainer
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         currentRevisionService = new ProductCurrentRevisionService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new com.example.platform.render.domain.timeline.canonical.TimelineContentDigester());
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new com.example.platform.timeline.canonical.TimelineContentDigester());
     }
 
     @Test

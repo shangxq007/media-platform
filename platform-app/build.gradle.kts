@@ -6,6 +6,7 @@ dependencies {
     implementation(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))
     implementation(project(":render-module"))
+    implementation(project(":timeline-module"))
     implementation(project(":font-text-module"))
     implementation(project(":notification-module"))
     implementation(project(":ai-module"))

@@ -5,18 +5,18 @@ import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioMute;
 import com.example.platform.audio.domain.mix.StereoBalance;
 import com.example.platform.extension.domain.ContractVersion;
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineClipId;
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
-import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
-import com.example.platform.render.domain.timeline.canonical.TrackType;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupId;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship;
-import com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship;
-import com.example.platform.render.domain.timeline.semantics.selection.SelectionSpec;
-import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineClipId;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.semantics.relationship.GroupId;
+import com.example.platform.timeline.semantics.relationship.GroupRelationship;
+import com.example.platform.timeline.semantics.relationship.SyncRelationship;
+import com.example.platform.timeline.semantics.selection.SelectionSpec;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.shared.time.MediaTime;
 import org.junit.jupiter.api.Test;
 
@@ -95,7 +95,7 @@ class OperationModelTest {
     void requestResolvesToRevisionBoundInstance() throws Exception {
         OperationInstance inst = OperationRequestResolver.resolve(
                 req(OperationDefinition.V1.SET_TEMPORAL_RATE, clipTarget(TimelineClipId.of("clip-a")),
-                        new OperationParameters.SetTemporalRateParameters(new com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational(2, 1))),
+                        new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(2, 1))),
                 base());
         assertEquals(REV, inst.baseRevisionId());
         assertEquals(HASH, inst.baseContentHash());
@@ -145,7 +145,7 @@ class OperationModelTest {
     // ---- TEMPORAL SINGLE AUTHORITY ----
     @Test
     void setRateContainsOnlyRate() {
-        var params = new OperationParameters.SetTemporalRateParameters(new com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational(2, 1));
+        var params = new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(2, 1));
         assertNotNull(params.rate());
     }
 
@@ -178,8 +178,8 @@ class OperationModelTest {
     // ---- PARAMETER DIGEST ----
     @Test
     void digestDeterministicAndDomainSeparated() {
-        var r1 = new OperationParameters.SetTemporalRateParameters(new com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational(2, 1));
-        var r2 = new OperationParameters.SetTemporalRateParameters(new com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational(4, 2));
+        var r1 = new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(2, 1));
+        var r2 = new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(4, 2));
         String d1 = ParameterDigest.compute(OperationDefinition.V1.SET_TEMPORAL_RATE.definitionId(),
                 OperationDefinition.V1.SET_TEMPORAL_RATE.version(), r1);
         String d2 = ParameterDigest.compute(OperationDefinition.V1.SET_TEMPORAL_RATE.definitionId(),
@@ -187,7 +187,7 @@ class OperationModelTest {
         assertEquals(d1, d2, "normalized 2/1 == 4/2");
         String d3 = ParameterDigest.compute(OperationDefinition.V1.SET_TEMPORAL_RATE.definitionId(),
                 OperationDefinition.V1.SET_TEMPORAL_RATE.version(),
-                new OperationParameters.SetTemporalRateParameters(new com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational(3, 1)));
+                new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(3, 1)));
         assertNotEquals(d1, d3, "different rate -> different digest");
         // domain separation: same structural value under different definition
         String d4 = ParameterDigest.compute(OperationDefinition.V1.SET_TEMPORAL_DIRECTION.definitionId(),
@@ -201,7 +201,7 @@ class OperationModelTest {
     void batchRequiresSingleBaseAndNonEmpty() {
         OperationInstance inst = new OperationInstance(OperationDefinition.V1.DELETE.definitionId(),
                 ContractVersion.of(1, 0), REV, HASH,
-                new OperationTarget.ResolvedClipScopeTarget(new com.example.platform.render.domain.timeline.semantics.selection.ResolvedScope(
+                new OperationTarget.ResolvedClipScopeTarget(new com.example.platform.timeline.semantics.selection.ResolvedScope(
                         REV, HASH, List.of(TimelineClipId.of("clip-a")), SelectionSpec.ExpansionPolicy.EXACT)),
                 new OperationParameters.NoParameters(), "digest", null);
         assertThrows(IllegalArgumentException.class, () -> new OperationBatch(List.of(), REV, HASH));

@@ -3,10 +3,10 @@ package com.example.platform.render.app.timeline;
 import com.example.platform.render.app.TimelinePatchService;
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.app.TimelineSnapshotService.SnapshotInfo;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalNormalizer;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineValidationResult;
+import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.platform.render.domain.timeline.internal.SemanticDiffResult;
+import com.example.platform.timeline.internal.SemanticDiffResult;
 /**
  * Domain version control for Internal Timeline: revision chain per project with snapshot blobs.
  */

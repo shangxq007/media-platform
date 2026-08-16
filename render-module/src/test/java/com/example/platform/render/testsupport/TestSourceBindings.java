@@ -2,8 +2,8 @@ package com.example.platform.render.testsupport;
 
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
-import com.example.platform.render.domain.timeline.semantics.clip.MediaClip.TimeRange;
-import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
+import com.example.platform.timeline.semantics.clip.MediaClip.TimeRange;
+import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.storage.contract.ContentDigest;

@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.internal.ReviewDecision;
-import com.example.platform.render.domain.timeline.internal.TimelineReview;
-import com.example.platform.render.domain.timeline.internal.TimelineReview.ReviewStatus;
+import com.example.platform.timeline.internal.ReviewDecision;
+import com.example.platform.timeline.internal.TimelineReview;
+import com.example.platform.timeline.internal.TimelineReview.ReviewStatus;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;

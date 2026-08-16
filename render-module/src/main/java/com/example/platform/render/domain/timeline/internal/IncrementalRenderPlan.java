@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.internal;
 
+import com.example.platform.timeline.internal.SemanticDiffResult;
+
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import java.util.List;
 import java.util.Map;

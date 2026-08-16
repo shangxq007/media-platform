@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.internal.EntityKind;
-import com.example.platform.render.domain.timeline.internal.EntityRef;
-import com.example.platform.render.domain.timeline.internal.SemanticChange;
-import com.example.platform.render.domain.timeline.internal.SemanticChangeType;
+import com.example.platform.timeline.internal.EntityKind;
+import com.example.platform.timeline.internal.EntityRef;
+import com.example.platform.timeline.internal.SemanticChange;
+import com.example.platform.timeline.internal.SemanticChangeType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

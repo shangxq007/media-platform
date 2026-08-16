@@ -3,9 +3,9 @@ package com.example.platform.render.domain.operation;
 import com.example.platform.audio.domain.mix.AudioGain;
 import com.example.platform.audio.domain.mix.AudioMute;
 import com.example.platform.audio.domain.mix.StereoBalance;
-import com.example.platform.render.domain.timeline.canonical.TimelineClipId;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupId;
-import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.canonical.TimelineClipId;
+import com.example.platform.timeline.semantics.relationship.GroupId;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.shared.time.MediaTime;
 
 import java.util.List;
@@ -69,7 +69,7 @@ public sealed interface OperationParameters permits
     }
 
     /** SET_TEMPORAL_RATE (OIR2): positive exact Rational rate ONLY — no direction. */
-    record SetTemporalRateParameters(com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational rate)
+    record SetTemporalRateParameters(com.example.platform.timeline.semantics.clip.MediaClip.Rational rate)
             implements OperationParameters {
         public SetTemporalRateParameters {
             if (rate == null) {
@@ -182,51 +182,51 @@ public sealed interface OperationParameters permits
     }
 
     /** REMOVE_TEXT_ELEMENT: exact TextElementId target. */
-    record RemoveTextElementParameters(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+    record RemoveTextElementParameters(com.example.platform.timeline.canonical.TextElementId textElementId)
             implements OperationParameters {
     }
 
     /** REPLACE_TEXT_CONTENT: canonical authored Unicode content replacement (scalar-validated). */
     record ReplaceTextContentParameters(
-            com.example.platform.render.domain.timeline.canonical.TextElementId textElementId,
+            com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.text.TextContent content) implements OperationParameters {
     }
 
     /** SET_TEXT_STYLE_RANGE: scalar TextRange + canonical TextStyle (no lineHeight/fill by construction). */
     record SetTextStyleRangeParameters(
-            com.example.platform.render.domain.timeline.canonical.TextElementId textElementId,
+            com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.text.TextRange range,
             com.example.platform.fonttext.typography.TextStyle style) implements OperationParameters {
     }
 
     /** SET_PARAGRAPH_STYLE: sole lineHeight/baseDirection/alignment authority. */
     record SetParagraphStyleParameters(
-            com.example.platform.render.domain.timeline.canonical.TextElementId textElementId,
+            com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.typography.ParagraphStyle paragraphStyle) implements OperationParameters {
     }
 
     /** SET_FONT_SELECTION: updates FontSelectionIntent (sole selection authority) over a scalar range. */
     record SetFontSelectionParameters(
-            com.example.platform.render.domain.timeline.canonical.TextElementId textElementId,
+            com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.text.TextRange range,
             com.example.platform.fonttext.typography.FontSelectionIntent fontSelection) implements OperationParameters {
     }
 
     /** SET_FONT_FALLBACK_POLICY: explicit ordered canonical fallback intent. */
     record SetFontFallbackPolicyParameters(
-            com.example.platform.render.domain.timeline.canonical.TextElementId textElementId,
+            com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.resolution.FontFallbackPolicy fallbackPolicy) implements OperationParameters {
     }
 
     /** SET_VARIABLE_FONT_AXIS: updates FontSelectionIntent explicit axis overrides (exact Rational). */
     record SetVariableFontAxisParameters(
-            com.example.platform.render.domain.timeline.canonical.TextElementId textElementId,
+            com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.typography.VariationCoordinate coordinate) implements OperationParameters {
     }
 
     /** SET_TEXT_LAYOUT: authored layout intent (TextFrame) only; zero glyph geometry. */
     record SetTextLayoutParameters(
-            com.example.platform.render.domain.timeline.canonical.TextElementId textElementId,
+            com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.typography.TextFrame frame) implements OperationParameters {
     }
 }

@@ -1,9 +1,10 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplier;
-import com.example.platform.render.domain.timeline.diff.merge.TimelineMergeConflictDetector;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
-import com.example.platform.render.domain.timeline.diff.merge.preview.TimelineMergePreviewService;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.diff.application.TimelinePatchApplier;
+import com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector;
+import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -44,5 +45,10 @@ public class TimelineMergeConfiguration {
     @Bean
     TimelinePatchApplier timelinePatchApplier() {
         return new TimelinePatchApplier();
+    }
+
+    @Bean
+    TimelineContentDigester timelineContentDigester() {
+        return new TimelineContentDigester();
     }
 }

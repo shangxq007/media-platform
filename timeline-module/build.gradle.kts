@@ -24,10 +24,9 @@ dependencies {
     implementation(project(":media-module"))
     implementation(project(":audio-module"))
     implementation(project(":font-text-module"))
-    implementation(project(":color-image-module"))
-    implementation(project(":artifact-module"))
     // storage-module contract only: ContentDigest pin semantics in
     // MediaStreamSourceBinding (same pattern as artifact-module).
+    // ArtifactId used by source bindings lives in shared-kernel (shared.identity).
     implementation(project(":storage-module"))
     // Jackson: canonical serialization visibility (records with @JsonCreator/
     // @JsonValue/@JsonSerialize) + TimelineDocumentJsonSerializer (databind).

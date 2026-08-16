@@ -289,8 +289,8 @@ class WorkflowDryRunPlannerTest {
     @Test
     @DisplayName("WorkflowApplyTemplateStepDiff bridge is compatible")
     void diffBridgeCompatible() {
-        com.example.platform.render.domain.timeline.diff.WorkflowApplyTemplateStepDiff diff =
-                new com.example.platform.render.domain.timeline.diff.WorkflowApplyTemplateStepDiff(
+        com.example.platform.timeline.diff.WorkflowApplyTemplateStepDiff diff =
+                new com.example.platform.timeline.diff.WorkflowApplyTemplateStepDiff(
                         "step-1", "app-1", List.of(), Map.of());
         assertEquals("step-1", diff.workflowStepId());
     }

@@ -8,21 +8,21 @@ import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
 import com.example.platform.render.app.timeline.TimelinePatchApplicationService;
 import com.example.platform.render.app.timeline.TimelineRevisionSaveService;
 import com.example.platform.render.app.timeline.TimelineSemanticDiffV1Service;
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
-import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
-import com.example.platform.render.domain.timeline.canonical.TrackType;
-import com.example.platform.render.domain.timeline.diff.ChangeSummary;
-import com.example.platform.render.domain.timeline.diff.TimelineChange;
-import com.example.platform.render.domain.timeline.diff.TimelineChangeSet;
-import com.example.platform.render.domain.timeline.patch.PatchError;
-import com.example.platform.render.domain.timeline.patch.PatchErrorCode;
-import com.example.platform.render.domain.timeline.patch.PatchExecutionException;
-import com.example.platform.render.domain.timeline.patch.TimelinePatch;
-import com.example.platform.render.domain.timeline.version.TimelineConflictException;
-import com.example.platform.render.domain.timeline.version.TimelineRevision;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.diff.ChangeSummary;
+import com.example.platform.timeline.diff.TimelineChange;
+import com.example.platform.timeline.diff.TimelineChangeSet;
+import com.example.platform.timeline.patch.PatchError;
+import com.example.platform.timeline.patch.PatchErrorCode;
+import com.example.platform.timeline.patch.PatchExecutionException;
+import com.example.platform.timeline.patch.TimelinePatch;
+import com.example.platform.timeline.version.TimelineConflictException;
+import com.example.platform.timeline.version.TimelineRevision;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
@@ -144,9 +144,9 @@ public class TimelineGitV1Controller {
         return ResponseEntity.ok(DiffResponse.from(changeSet));
     }
 
-    @ExceptionHandler(com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.TimelineDiffException.class)
+    @ExceptionHandler(com.example.platform.timeline.diff.TimelineDiffErrors.TimelineDiffException.class)
     public ResponseEntity<DiffError> handleDiffError(
-            com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.TimelineDiffException ex) {
+            com.example.platform.timeline.diff.TimelineDiffErrors.TimelineDiffException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new DiffError(ex.getErrorCode(), ex.getMessage()));
     }
@@ -368,17 +368,17 @@ public class TimelineGitV1Controller {
             TrackDto track,
             ClipDto clip) {
 
-        com.example.platform.render.domain.timeline.patch.TimelinePatchOperation toOperation() {
+        com.example.platform.timeline.patch.TimelinePatchOperation toOperation() {
             return switch (kind()) {
-                case "ADD_TRACK" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.AddTrack(operationId(), track().toTrack(), targetPosition());
-                case "REMOVE_TRACK" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.RemoveTrack(operationId(), trackId());
-                case "UPDATE_TRACK_PROPERTY" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.UpdateTrackProperty(operationId(), trackId(), property(), expectedBefore(), newValue());
-                case "REORDER_TRACK" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.ReorderTrack(operationId(), trackId(), targetPosition());
-                case "ADD_CLIP" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.AddClip(operationId(), targetTrackId(), clip().toClip(), targetPosition());
-                case "REMOVE_CLIP" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.RemoveClip(operationId(), clipId(), expectedTrackId());
-                case "UPDATE_CLIP_PROPERTY" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.UpdateClipProperty(operationId(), clipId(), property(), expectedBefore(), newValue());
-                case "MOVE_CLIP" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.MoveClip(operationId(), clipId(), expectedSourceTrackId(), targetTrackId(), targetPosition());
-                case "REORDER_CLIP" -> new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.ReorderClip(operationId(), clipId(), trackId(), targetPosition());
+                case "ADD_TRACK" -> new com.example.platform.timeline.patch.TimelinePatchOperation.AddTrack(operationId(), track().toTrack(), targetPosition());
+                case "REMOVE_TRACK" -> new com.example.platform.timeline.patch.TimelinePatchOperation.RemoveTrack(operationId(), trackId());
+                case "UPDATE_TRACK_PROPERTY" -> new com.example.platform.timeline.patch.TimelinePatchOperation.UpdateTrackProperty(operationId(), trackId(), property(), expectedBefore(), newValue());
+                case "REORDER_TRACK" -> new com.example.platform.timeline.patch.TimelinePatchOperation.ReorderTrack(operationId(), trackId(), targetPosition());
+                case "ADD_CLIP" -> new com.example.platform.timeline.patch.TimelinePatchOperation.AddClip(operationId(), targetTrackId(), clip().toClip(), targetPosition());
+                case "REMOVE_CLIP" -> new com.example.platform.timeline.patch.TimelinePatchOperation.RemoveClip(operationId(), clipId(), expectedTrackId());
+                case "UPDATE_CLIP_PROPERTY" -> new com.example.platform.timeline.patch.TimelinePatchOperation.UpdateClipProperty(operationId(), clipId(), property(), expectedBefore(), newValue());
+                case "MOVE_CLIP" -> new com.example.platform.timeline.patch.TimelinePatchOperation.MoveClip(operationId(), clipId(), expectedSourceTrackId(), targetTrackId(), targetPosition());
+                case "REORDER_CLIP" -> new com.example.platform.timeline.patch.TimelinePatchOperation.ReorderClip(operationId(), clipId(), trackId(), targetPosition());
                 default -> throw new IllegalArgumentException("Unknown operation kind: " + kind());
             };
         }

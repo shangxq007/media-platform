@@ -1,12 +1,12 @@
-package com.example.platform.render.domain.timeline.semantics.clip;
+package com.example.platform.timeline.semantics.clip;
 
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
-import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
-import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
-import com.example.platform.render.domain.timeline.semantics.clip.MediaClip.TimeRange;
-import com.example.platform.render.domain.timeline.semantics.serialization.CanonicalSerializer;
-import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
+import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.semantics.clip.MediaClip.TimeRange;
+import com.example.platform.timeline.semantics.serialization.CanonicalSerializer;
+import com.example.platform.timeline.semantics.validation.TimelineSemanticModel;
 import com.example.platform.render.testsupport.TestSourceBindings;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;

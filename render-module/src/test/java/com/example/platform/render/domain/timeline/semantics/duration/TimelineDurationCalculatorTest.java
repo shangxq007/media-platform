@@ -1,11 +1,11 @@
-package com.example.platform.render.domain.timeline.semantics.duration;
+package com.example.platform.timeline.semantics.duration;
 
-import com.example.platform.render.domain.timeline.semantics.clip.MediaClip;
-import com.example.platform.render.domain.timeline.semantics.temporal.ConstantRateTemporalMapping;
-import com.example.platform.render.domain.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.semantics.clip.MediaClip;
+import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.render.domain.timeline.semantics.transition.TransitionInstance;
-import com.example.platform.render.domain.timeline.semantics.validation.TimelineSemanticModel;
+import com.example.platform.timeline.semantics.transition.TransitionInstance;
+import com.example.platform.timeline.semantics.validation.TimelineSemanticModel;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

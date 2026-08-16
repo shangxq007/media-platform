@@ -202,7 +202,7 @@ public class OperationPlanApplyService {
         return rec.get(0, Long.class);
     }
 
-    private String serializeCanonical(com.example.platform.render.domain.timeline.canonical.TimelineDocument doc) {
+    private String serializeCanonical(com.example.platform.timeline.canonical.TimelineDocument doc) {
         try {
             return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(doc);
         } catch (Exception e) {

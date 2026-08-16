@@ -2,15 +2,15 @@ package com.example.platform.render.app.timeline;
 
 import com.example.platform.shared.time.MediaTime;
 
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
-import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
-import com.example.platform.render.domain.timeline.canonical.TrackType;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineDiagnosticCode;
-import com.example.platform.render.domain.timeline.version.TimelineRevision;
-import com.example.platform.render.domain.timeline.version.TimelineConflictException;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.canonicalmodel.TimelineDiagnosticCode;
+import com.example.platform.timeline.version.TimelineRevision;
+import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.Duration;
@@ -235,11 +235,11 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         insertProduct(productId);
         var base = saveService.saveRevision(productId, null, createSampleDocument(), "user-1");
 
-        var patch = new com.example.platform.render.domain.timeline.patch.TimelinePatch(
+        var patch = new com.example.platform.timeline.patch.TimelinePatch(
                 "1.0", "patch-" + java.util.UUID.randomUUID(), productId,
                 base.revisionId(), base.contentDigest(), base.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new com.example.platform.render.domain.timeline.patch.TimelinePatchOperation.AddTrack(
+                List.of(new com.example.platform.timeline.patch.TimelinePatchOperation.AddTrack(
                         "op1", new TimelineTrack("track-2", "V2", TrackType.VIDEO, List.of()), 1)),
                 null, null);
 
@@ -249,7 +249,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
 
         assertTrue(result.isFailure(), "pre-existing payload limitation must be unchanged");
         assertTrue(result instanceof com.example.platform.render.app.timeline.PatchApplyResult.Failure f
-                && f.error().code() == com.example.platform.render.domain.timeline.patch.PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
+                && f.error().code() == com.example.platform.timeline.patch.PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
                 "expected TIMELINE_PATCH_PAYLOAD_INVALID (base document not loadable)");
         long rows = dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);

@@ -387,16 +387,17 @@ tasks.register("verifyC1TimelineMergeConvergence") {
     doLast {
         val appDir = file("render-module/src/main/java/com/example/platform/render/app/timeline")
         val domainDir = file("render-module/src/main/java/com/example/platform/render/domain/timeline")
+        val timelineDomainDir = file("timeline-module/src/main/java/com/example/platform/timeline")
         // C1-RED-01/10: exactly one production merge authority; legacy Stack A merge machinery absent
         require(!file(appDir.resolve("TimelineMergeService.java")).exists()) { "FAIL: legacy TimelineMergeService still exists" }
         require(file(appDir.resolve("TimelineMergeEngine.java")).exists()) { "FAIL: canonical TimelineMergeEngine missing" }
         require(!file(appDir.resolve("TimelineConflictDetector.java")).exists()) { "FAIL: legacy entity-level ConflictDetector still exists" }
         require(!file(appDir.resolve("TimelineConflictResolver.java")).exists()) { "FAIL: legacy entity-level Resolver still exists" }
-        // C1-RED-02: no third stack — canonical diff/merge authority confined to domain/timeline/diff
-        require(file(domainDir.resolve("diff/TimelineDiffEngine.java")).exists()) { "FAIL: canonical TimelineDiffEngine missing" }
+        // C1-RED-02: no third stack — canonical diff/merge authority confined to timeline-module diff (GCR-1: moved out of render)
+        require(file(timelineDomainDir.resolve("diff/TimelineDiffEngine.java")).exists()) { "FAIL: canonical TimelineDiffEngine missing" }
         // C1-RED-03/04: typed path primitives present
-        require(file(domainDir.resolve("diff/TimelineChangePath.java")).exists()) { "FAIL: typed TimelineChangePath missing" }
-        require(file(domainDir.resolve("diff/merge/TimelineMergeConflictDetector.java")).exists()) { "FAIL: domain conflict detector missing" }
+        require(file(timelineDomainDir.resolve("diff/TimelineChangePath.java")).exists()) { "FAIL: typed TimelineChangePath missing" }
+        require(file(timelineDomainDir.resolve("diff/merge/TimelineMergeConflictDetector.java")).exists()) { "FAIL: domain conflict detector missing" }
         // C1-RED-05/06: behavioral proofs must exist (JUnit)
         val engineTest = file("render-module/src/test/java/com/example/platform/render/app/timeline/TimelineMergeEngineTest.java")
         require(engineTest.exists()) { "FAIL: TimelineMergeEngineTest missing (C1-RED-05/06 behavioral proof)" }
@@ -461,7 +462,7 @@ tasks.register("verifyC1Cnm1RedGates") {
     description = "C1-CNM1-RED-01..13: fail-closed architecture gates (exact rational rate, no double->int truncation, no integer-ms canonical authority, fractional roundtrip, drift-free, effect preservation, field/identity preservation, no dual parser, sole merge authority, schema/module zero-delta, R1 quarantine)"
     doLast {
         // ── RED-01: fractional FrameRate denominator preserved end-to-end ──
-        val frameRate = file("render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/time/FrameRate.java")
+        val frameRate = file("shared-kernel/src/main/java/com/example/platform/shared/time/FrameRate.java")
         require(frameRate.exists()) { "FAIL: FrameRate domain type missing" }
         val fr = frameRate.readText()
         require(fr.contains("BigInteger numerator")) { "FAIL: FrameRate must be exact rational (BigInteger)" }
@@ -480,7 +481,7 @@ tasks.register("verifyC1Cnm1RedGates") {
         val e = engine.readText()
         require(!e.contains("millisToFrame") && !e.contains("mediaTimeToMillis")) { "FAIL: integer-ms authority in merge engine" }
         require(!e.contains("TimelineTimeQuantization")) { "FAIL: retired quantization authority referenced in engine" }
-        val converter = file("render-module/src/main/java/com/example/platform/render/domain/timeline/diff/calculation/TimelineSnapshotConverter.java")
+        val converter = file("timeline-module/src/main/java/com/example/platform/timeline/diff/calculation/TimelineSnapshotConverter.java")
         val c = converter.readText()
         require(c.contains("MediaTime") && !c.contains("TimelineTimeQuantization")) { "FAIL: converter must be exact MediaTime, no quantization" }
 
@@ -533,7 +534,7 @@ tasks.register("verifyC1Cnm1Red14") {
     group = "verification"
     description = "C1-CNM1-RED-14: cross-language canonical rate wire contract — every production consumer enforces one bounded exact domain; invalid/out-of-range/zero-denominator inputs are REJECTED, never narrowed or defaulted; adapter/parser path parity; validation precedes narrowing"
     doLast {
-        val codec = file("render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/time/CanonicalFrameRateCodec.java")
+        val codec = file("shared-kernel/src/main/java/com/example/platform/shared/time/CanonicalFrameRateCodec.java")
         require(codec.exists()) { "FAIL: canonical rate codec missing" }
         val cc = codec.readText()
         require(cc.contains("int32 wire domain") || cc.contains("Integer.MAX_VALUE")) { "FAIL: codec must enforce int32 wire bound" }
@@ -869,7 +870,7 @@ tasks.register("verifyR1RenderCanonicalizationReissue") {
         }
 
         // ── R1-REISSUE-RED-06: render owns no canonical Timeline merge authority ──
-        val renderTimelineRoot = file("render-module/src/main/java/com/example/platform/render/domain/timeline/diff")
+        val renderTimelineRoot = file("timeline-module/src/main/java/com/example/platform/timeline/diff")
         require(renderTimelineRoot.exists()) {
             "FAIL R1-REISSUE-RED-06: canonical Timeline diff/merge domain must exist"
         }

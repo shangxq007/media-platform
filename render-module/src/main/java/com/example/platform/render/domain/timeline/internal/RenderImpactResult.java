@@ -1,5 +1,7 @@
 package com.example.platform.render.domain.timeline.internal;
 
+import com.example.platform.timeline.internal.EntityRef;
+import com.example.platform.timeline.internal.SemanticDiffResult;
 import java.util.List;
 import java.util.Set;
 

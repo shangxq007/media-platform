@@ -19,7 +19,7 @@ import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.domain.timeline.internal.IncrementalRenderPlan;
 import com.example.platform.render.domain.timeline.internal.RenderImpactResult;
 import com.example.platform.render.domain.timeline.internal.ReusableArtifact;
-import com.example.platform.render.domain.timeline.internal.SemanticDiffResult;
+import com.example.platform.timeline.internal.SemanticDiffResult;
 import com.example.platform.render.app.aaf.AafConversionService;
 import com.example.platform.render.app.TimelineValidationService;
 import com.example.platform.render.domain.timeline.standards.AafTimelineAdapter;

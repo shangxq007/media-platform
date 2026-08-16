@@ -1,11 +1,11 @@
 package com.example.platform.render.domain.operation;
 
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupRelationship;
-import com.example.platform.render.domain.timeline.semantics.relationship.SemanticRelationship;
-import com.example.platform.render.domain.timeline.semantics.relationship.SyncRelationship;
-import com.example.platform.render.domain.timeline.semantics.selection.ScopeResolver;
-import com.example.platform.render.domain.timeline.semantics.selection.SelectionSpec;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.semantics.relationship.GroupRelationship;
+import com.example.platform.timeline.semantics.relationship.SemanticRelationship;
+import com.example.platform.timeline.semantics.relationship.SyncRelationship;
+import com.example.platform.timeline.semantics.selection.ScopeResolver;
+import com.example.platform.timeline.semantics.selection.SelectionSpec;
 
 import java.util.Objects;
 
@@ -135,7 +135,7 @@ public final class OperationRequestResolver {
         throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE, "unresolved target kind");
     }
 
-    static boolean groupExists(TimelineDocument doc, com.example.platform.render.domain.timeline.semantics.relationship.GroupId gid) {
+    static boolean groupExists(TimelineDocument doc, com.example.platform.timeline.semantics.relationship.GroupId gid) {
         for (SemanticRelationship rel : doc.getSemanticRelationships()) {
             if (rel instanceof GroupRelationship g && g.groupId().equals(gid)) {
                 return true;

@@ -2,15 +2,15 @@ package com.example.platform.render.app.timeline;
 
 import com.example.platform.shared.time.MediaTime;
 
-import com.example.platform.render.domain.timeline.canonical.TimelineClip;
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.canonical.TimelineMetadata;
-import com.example.platform.render.domain.timeline.canonical.TimelineTrack;
-import com.example.platform.render.domain.timeline.canonical.TrackType;
-import com.example.platform.render.domain.timeline.diff.TimelineChangeSet;
-import com.example.platform.render.domain.timeline.diff.TimelineDiffErrors;
-import com.example.platform.render.domain.timeline.version.TimelineRevision;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.diff.TimelineChangeSet;
+import com.example.platform.timeline.diff.TimelineDiffErrors;
+import com.example.platform.timeline.version.TimelineRevision;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;

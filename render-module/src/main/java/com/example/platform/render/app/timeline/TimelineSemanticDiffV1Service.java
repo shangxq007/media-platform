@@ -1,11 +1,11 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.canonical.TimelineContentDigester;
-import com.example.platform.render.domain.timeline.canonical.TimelineDocument;
-import com.example.platform.render.domain.timeline.diff.TimelineChangeSet;
-import com.example.platform.render.domain.timeline.diff.TimelineDiffEngine;
-import com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.TimelineDiffException;
-import com.example.platform.render.domain.timeline.version.TimelineRevision;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.diff.TimelineChangeSet;
+import com.example.platform.timeline.diff.TimelineDiffEngine;
+import com.example.platform.timeline.diff.TimelineDiffErrors.TimelineDiffException;
+import com.example.platform.timeline.version.TimelineRevision;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,21 +56,21 @@ public class TimelineSemanticDiffV1Service {
         // Load revisions
         TimelineRevision baseRevision = revisionSaveService.findById(baseRevisionId);
         if (baseRevision == null) {
-            throw new com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.RevisionNotFoundException(baseRevisionId);
+            throw new com.example.platform.timeline.diff.TimelineDiffErrors.RevisionNotFoundException(baseRevisionId);
         }
 
         TimelineRevision targetRevision = revisionSaveService.findById(targetRevisionId);
         if (targetRevision == null) {
-            throw new com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.RevisionNotFoundException(targetRevisionId);
+            throw new com.example.platform.timeline.diff.TimelineDiffErrors.RevisionNotFoundException(targetRevisionId);
         }
 
         // Validate product isolation
         if (!productId.equals(baseRevision.productId())) {
-            throw new com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.CrossProductException(
+            throw new com.example.platform.timeline.diff.TimelineDiffErrors.CrossProductException(
                     productId, baseRevision.productId());
         }
         if (!productId.equals(targetRevision.productId())) {
-            throw new com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.CrossProductException(
+            throw new com.example.platform.timeline.diff.TimelineDiffErrors.CrossProductException(
                     productId, targetRevision.productId());
         }
 
@@ -78,7 +78,7 @@ public class TimelineSemanticDiffV1Service {
         String baseSchema = baseRevision.timelineSchemaVersion();
         String targetSchema = targetRevision.timelineSchemaVersion();
         if (!baseSchema.equals(targetSchema)) {
-            throw new com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.SchemaIncompatibleException(
+            throw new com.example.platform.timeline.diff.TimelineDiffErrors.SchemaIncompatibleException(
                     baseSchema, targetSchema);
         }
 
@@ -86,14 +86,14 @@ public class TimelineSemanticDiffV1Service {
         if (baseRevision.canonicalTimeline() != null) {
             String baseDigest = contentDigester.digest(baseRevision.canonicalTimeline());
             if (!baseDigest.equals(baseRevision.contentDigest())) {
-                throw new com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.DigestMismatchException(
+                throw new com.example.platform.timeline.diff.TimelineDiffErrors.DigestMismatchException(
                         "Base revision digest mismatch: expected " + baseRevision.contentDigest() + ", computed " + baseDigest);
             }
         }
         if (targetRevision.canonicalTimeline() != null) {
             String targetDigest = contentDigester.digest(targetRevision.canonicalTimeline());
             if (!targetDigest.equals(targetRevision.contentDigest())) {
-                throw new com.example.platform.render.domain.timeline.diff.TimelineDiffErrors.DigestMismatchException(
+                throw new com.example.platform.timeline.diff.TimelineDiffErrors.DigestMismatchException(
                         "Target revision digest mismatch: expected " + targetRevision.contentDigest() + ", computed " + targetDigest);
             }
         }

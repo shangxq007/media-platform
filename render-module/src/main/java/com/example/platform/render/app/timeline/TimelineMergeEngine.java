@@ -1,46 +1,46 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.app.TimelineSnapshotService;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCandidate;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalNormalizer;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineCanonicalValidator;
-import com.example.platform.render.domain.timeline.canonicalmodel.TimelineValidationResult;
+import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.render.domain.timeline.diff.TimelineChangeOperation;
-import com.example.platform.render.domain.timeline.diff.TimelinePatch;
-import com.example.platform.render.domain.timeline.diff.TimelinePatchId;
-import com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationResult;
-import com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationStatus;
-import com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplier;
-import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineClipSnapshot;
-import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineSnapshot;
-import com.example.platform.render.domain.timeline.diff.calculation.CanonicalTimelineTrackSnapshot;
-import com.example.platform.render.domain.timeline.diff.calculation.TimelineSnapshotConverter;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineMergePlanOperation;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineMergePlanOperationStatus;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineMergePlanOperationSource;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineMergePlanRequest;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineMergePlanRequestId;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineMergePlanPolicy;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineNonConflictingMergePlan;
-import com.example.platform.render.domain.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
-import com.example.platform.render.domain.timeline.diff.merge.preview.TimelineMergePreviewRequest;
-import com.example.platform.render.domain.timeline.diff.merge.preview.TimelineMergePreviewRequestId;
-import com.example.platform.render.domain.timeline.diff.merge.preview.TimelineMergePreviewMode;
-import com.example.platform.render.domain.timeline.diff.merge.preview.TimelineMergePreviewPolicy;
-import com.example.platform.render.domain.timeline.diff.merge.preview.TimelineMergePreviewService;
-import com.example.platform.render.domain.timeline.internal.EntityKind;
-import com.example.platform.render.domain.timeline.internal.EntityRef;
-import com.example.platform.render.domain.timeline.internal.SemanticChange;
-import com.example.platform.render.domain.timeline.internal.SemanticChangeType;
-import com.example.platform.render.domain.timeline.internal.TimelineConflict;
-import com.example.platform.render.domain.timeline.internal.TimelineConflictType;
-import com.example.platform.render.domain.timeline.internal.TimelineMergeRequest;
-import com.example.platform.render.domain.timeline.internal.TimelineMergeResult;
-import com.example.platform.render.domain.timeline.internal.TimelineMergeSummary;
-import com.example.platform.render.domain.timeline.internal.TimelineResolutionIntent;
-import com.example.platform.render.domain.timeline.version.TimelineConflictException;
+import com.example.platform.timeline.diff.TimelineChangeOperation;
+import com.example.platform.timeline.diff.TimelinePatch;
+import com.example.platform.timeline.diff.TimelinePatchId;
+import com.example.platform.timeline.diff.application.TimelinePatchApplicationResult;
+import com.example.platform.timeline.diff.application.TimelinePatchApplicationStatus;
+import com.example.platform.timeline.diff.application.TimelinePatchApplier;
+import com.example.platform.timeline.diff.calculation.CanonicalTimelineClipSnapshot;
+import com.example.platform.timeline.diff.calculation.CanonicalTimelineSnapshot;
+import com.example.platform.timeline.diff.calculation.CanonicalTimelineTrackSnapshot;
+import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
+import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanOperation;
+import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanOperationStatus;
+import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanOperationSource;
+import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanRequest;
+import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanRequestId;
+import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanPolicy;
+import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlan;
+import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewRequest;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewRequestId;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewMode;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewPolicy;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
+import com.example.platform.timeline.internal.EntityKind;
+import com.example.platform.timeline.internal.EntityRef;
+import com.example.platform.timeline.internal.SemanticChange;
+import com.example.platform.timeline.internal.SemanticChangeType;
+import com.example.platform.timeline.internal.TimelineConflict;
+import com.example.platform.timeline.internal.TimelineConflictType;
+import com.example.platform.timeline.internal.TimelineMergeRequest;
+import com.example.platform.timeline.internal.TimelineMergeResult;
+import com.example.platform.timeline.internal.TimelineMergeSummary;
+import com.example.platform.timeline.internal.TimelineResolutionIntent;
+import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.ErrorCode;
@@ -196,8 +196,8 @@ public class TimelineMergeEngine {
                     List.copyOf(applyOps),
                     null, Map.of());
             TimelinePatchApplicationResult application = patchApplier.apply(baseSnapshot, patch);
-            if (application.status() != com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationStatus.APPLIED
-                    && application.status() != com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationStatus.NO_OP) {
+            if (application.status() != com.example.platform.timeline.diff.application.TimelinePatchApplicationStatus.APPLIED
+                    && application.status() != com.example.platform.timeline.diff.application.TimelinePatchApplicationStatus.NO_OP) {
                 return new TimelineMergeResult(TimelineMergeResult.MergeStatus.FAILED,
                         request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
                         null, List.of(), List.of(), TimelineMergeSummary.empty(),
@@ -330,8 +330,8 @@ public class TimelineMergeEngine {
                     List.copyOf(applyOps),
                     null, Map.of());
             TimelinePatchApplicationResult application = patchApplier.apply(baseSnapshot, patch);
-            if (application.status() != com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationStatus.APPLIED
-                    && application.status() != com.example.platform.render.domain.timeline.diff.application.TimelinePatchApplicationStatus.NO_OP) {
+            if (application.status() != com.example.platform.timeline.diff.application.TimelinePatchApplicationStatus.APPLIED
+                    && application.status() != com.example.platform.timeline.diff.application.TimelinePatchApplicationStatus.NO_OP) {
                 return new TimelineMergeResult(TimelineMergeResult.MergeStatus.FAILED,
                         request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
                         null, List.of(), List.of(), TimelineMergeSummary.empty(),
@@ -478,7 +478,7 @@ public class TimelineMergeEngine {
         // payloads (preserved target/source-side, never semantically merged).
         if (clip.effects() != null && !clip.effects().isEmpty()) {
             ArrayNode effects = mapper.createArrayNode();
-            for (com.example.platform.render.domain.timeline.canonicalmodel.TimelineClipEffect fx : clip.effects()) {
+            for (com.example.platform.timeline.canonicalmodel.TimelineClipEffect fx : clip.effects()) {
                 ObjectNode fxNode = mapper.createObjectNode();
                 if (fx.id() != null) {
                     fxNode.put("id", fx.id());

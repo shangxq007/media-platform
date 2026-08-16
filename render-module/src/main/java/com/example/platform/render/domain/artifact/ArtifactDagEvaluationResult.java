@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.artifact;
 
-import com.example.platform.render.domain.timeline.diff.ArtifactDAGImpact;
+import com.example.platform.timeline.diff.ArtifactDAGImpact;
 import java.util.List;
 import java.util.Map;
 

@@ -1,8 +1,8 @@
 package com.example.platform.render.domain.operation;
 
 import com.example.platform.audio.domain.mix.AudioMixInput;
-import com.example.platform.render.domain.timeline.semantics.relationship.GroupId;
-import com.example.platform.render.domain.timeline.semantics.selection.ResolvedScope;
+import com.example.platform.timeline.semantics.relationship.GroupId;
+import com.example.platform.timeline.semantics.selection.ResolvedScope;
 
 /**
  * OPERATION_MODEL_FOUNDATION_V1 (OIR1): resolved typed Operation target.

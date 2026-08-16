@@ -5,7 +5,7 @@ import com.example.platform.media.app.MediaStreamRepository;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStream;
 import com.example.platform.media.domain.stream.MediaStreamId;
-import com.example.platform.render.domain.timeline.semantics.clip.MediaStreamSourceBinding;
+import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
