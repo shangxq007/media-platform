@@ -19,7 +19,13 @@ public final class SrtSubtitleAdapter {
     private SrtSubtitleAdapter() {
     }
 
-    public static List<TimelineTextOverlay> parse(String srtContent) {
+    public static List<TimelineTextOverlay> parse(String srtContent,
+            com.example.platform.fonttext.typography.FontFamilyName fontFamily) {
+        if (srtContent == null || srtContent.isBlank()) {
+            return List.of();
+        }
+        java.util.Objects.requireNonNull(fontFamily,
+                "SRT import font policy required: SRT carries no font semantics (ROADMAP_19 CORR-2)");
         List<TimelineTextOverlay> overlays = new ArrayList<>();
         if (srtContent == null || srtContent.isBlank()) {
             return overlays;
@@ -45,7 +51,8 @@ public final class SrtSubtitleAdapter {
                     overlays.add(new TimelineTextOverlay(
                             "srt-" + (++index),
                             text.toString(),
-                            new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"),
+                            java.util.Objects.requireNonNull(fontFamily,
+                                    "SRT import font policy required: SRT carries no font semantics (ROADMAP_19 CORR-2)"),
                             24,
                             "#FFFFFF",
                             "center",

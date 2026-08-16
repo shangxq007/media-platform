@@ -42,14 +42,20 @@ public record TimelineTextOverlay(
         if (startTime < 0) {
             throw new IllegalArgumentException("startTime must be non-negative");
         }
+        if (fontFamily == null) {
+            throw new IllegalArgumentException(
+                    "fontFamily is required: no implicit font default (ROADMAP_19 CORR-2)");
+        }
     }
 
     /**
-     * Creates a simple text overlay.
+     * ROADMAP_19 CORR-2: projection-only convenience constructor. Font
+     * selection is an explicit caller input — NEVER invented here.
      */
-    public static TimelineTextOverlay of(String id, String text, double startTime, double duration) {
-        return new TimelineTextOverlay(id, text,
-                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24, "#FFFFFF",
+    public static TimelineTextOverlay of(String id, String text,
+                                         com.example.platform.fonttext.typography.FontFamilyName fontFamily,
+                                         double startTime, double duration) {
+        return new TimelineTextOverlay(id, text, fontFamily, 24, "#FFFFFF",
                 "center", "bottom", startTime, duration, null);
     }
 }

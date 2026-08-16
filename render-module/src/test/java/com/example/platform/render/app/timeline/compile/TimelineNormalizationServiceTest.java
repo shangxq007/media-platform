@@ -218,7 +218,8 @@ class TimelineNormalizationServiceTest {
     @Test
     @DisplayName("Text overlays normalize to caption layers")
     void textOverlaysNormalizeToCaptionLayers() {
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World", 1.0, 3.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         TimelineSpec spec = new TimelineSpec("tl-1", "Test", null,
                 List.of(createTrack("trk-1")), List.of(overlay),
                 TimelineOutputSpec.mp4_1080p30(), 5.0, Map.of());

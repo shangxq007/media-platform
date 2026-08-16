@@ -37,7 +37,8 @@ class SubtitleBurnInProductizationTest {
         String srt = "1\n00:00:01,000 --> 00:00:04,000\nHello World\n\n"
                 + "2\n00:00:05,000 --> 00:00:08,000\nSecond cue\n";
 
-        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse(srt);
+        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse(srt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(2, overlays.size());
         assertEquals("Hello World", overlays.get(0).text());
@@ -49,7 +50,8 @@ class SubtitleBurnInProductizationTest {
     @Test
     void srtInputWritesSanitizedAss() throws IOException {
         String srt = "1\n00:00:01,000 --> 00:00:04,000\nHello World\n";
-        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse(srt);
+        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse(srt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         Path assPath = tempDir.resolve("output.ass");
         LibassAssFileWriter writer = new LibassAssFileWriter();
@@ -73,7 +75,8 @@ class SubtitleBurnInProductizationTest {
                 + "00:00:05.000 --> 00:00:08.000\n"
                 + "Second WebVTT cue\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(2, overlays.size());
         assertEquals("Hello WebVTT", overlays.get(0).text());
@@ -83,7 +86,8 @@ class SubtitleBurnInProductizationTest {
     @Test
     void webvttInputWritesSanitizedAss() throws IOException {
         String vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:04.000\nHello WebVTT\n";
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         Path assPath = tempDir.resolve("output.ass");
         LibassAssFileWriter writer = new LibassAssFileWriter();
@@ -109,7 +113,8 @@ class SubtitleBurnInProductizationTest {
     @Test
     void maliciousAssTextWritesSafeAss() throws IOException {
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "{\\pos(0,0)}Evil{\\fnMaliciousFont}", 1.0, 3.0)
+TimelineTextOverlay.of("1", "{\\pos(0,0)}Evil{\\fnMaliciousFont}",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0)
         );
 
         Path assPath = tempDir.resolve("safe.ass");
@@ -146,7 +151,8 @@ class SubtitleBurnInProductizationTest {
     @Test
     void assWriterUsesDefaultFont() throws IOException {
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "Test", 1.0, 3.0)
+TimelineTextOverlay.of("1", "Test",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0)
         );
 
         Path assPath = tempDir.resolve("default-font.ass");
@@ -195,7 +201,8 @@ class SubtitleBurnInProductizationTest {
         // Step 1: Parse SRT
         String srt = "1\n00:00:01,000 --> 00:00:04,000\nHello World\n\n"
                 + "2\n00:00:05,000 --> 00:00:08,000\n{\\pos(0,0)}Malicious Text\n";
-        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse(srt);
+        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse(srt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
         assertEquals(2, overlays.size());
 
         // Step 2: Write ASS (sanitized)
@@ -217,7 +224,8 @@ class SubtitleBurnInProductizationTest {
     void fullPipelineWebVttToAss() throws IOException {
         // Step 1: Parse WebVTT
         String vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:04.000\nHello WebVTT\n";
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
         assertEquals(1, overlays.size());
 
         // Step 2: Write ASS (sanitized)
@@ -234,25 +242,27 @@ class SubtitleBurnInProductizationTest {
 
     @Test
     void emptySrtReturnsEmptyOverlays() {
-        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse("");
+        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse("", null);
         assertTrue(overlays.isEmpty());
     }
 
     @Test
     void nullSrtReturnsEmptyOverlays() {
-        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse(null);
+        List<TimelineTextOverlay> overlays = SrtSubtitleAdapter.parse(null,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
         assertTrue(overlays.isEmpty());
     }
 
     @Test
     void emptyWebVttReturnsEmptyOverlays() {
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse("");
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse("", null);
         assertTrue(overlays.isEmpty());
     }
 
     @Test
     void nullWebVttReturnsEmptyOverlays() {
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(null);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(null,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
         assertTrue(overlays.isEmpty());
     }
 

@@ -42,8 +42,10 @@ class LibassAssFileWriterTest {
     @Test
     void writesDialogueRows(@TempDir Path tempDir) throws IOException {
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "Hello", 1.0, 3.0),
-                TimelineTextOverlay.of("2", "World", 5.0, 2.0)
+                TimelineTextOverlay.of("1", "Hello",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0),
+                TimelineTextOverlay.of("2", "World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 5.0, 2.0)
         );
 
         Path target = tempDir.resolve("test.ass");
@@ -59,7 +61,8 @@ class LibassAssFileWriterTest {
     @Test
     void escapesMaliciousText(@TempDir Path tempDir) throws IOException {
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "{\\pos(0,0)}Malicious", 1.0, 3.0)
+                TimelineTextOverlay.of("1", "{\\pos(0,0)}Malicious",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0)
         );
 
         Path target = tempDir.resolve("test.ass");
@@ -74,7 +77,8 @@ class LibassAssFileWriterTest {
     @Test
     void preservesUnicode(@TempDir Path tempDir) throws IOException {
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "你好世界 🎉", 1.0, 3.0)
+                TimelineTextOverlay.of("1", "你好世界 🎉",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0)
         );
 
         Path target = tempDir.resolve("test.ass");
@@ -88,7 +92,8 @@ class LibassAssFileWriterTest {
     @Test
     void handlesMultiLineCue(@TempDir Path tempDir) throws IOException {
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "Line one\nLine two", 1.0, 3.0)
+                TimelineTextOverlay.of("1", "Line one\nLine two",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0)
         );
 
         Path target = tempDir.resolve("test.ass");
@@ -104,7 +109,8 @@ class LibassAssFileWriterTest {
     @Test
     void commasDoNotCorruptFields(@TempDir Path tempDir) throws IOException {
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "Hello, World!", 1.0, 3.0)
+                TimelineTextOverlay.of("1", "Hello, World!",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0)
         );
 
         Path target = tempDir.resolve("test.ass");
@@ -119,10 +125,14 @@ class LibassAssFileWriterTest {
     @Test
     void skipsNullAndBlankText(@TempDir Path tempDir) throws IOException {
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", null, 1.0, 3.0),
-                TimelineTextOverlay.of("2", "", 2.0, 3.0),
-                TimelineTextOverlay.of("3", "   ", 3.0, 3.0),
-                TimelineTextOverlay.of("4", "Valid", 4.0, 3.0)
+                TimelineTextOverlay.of("1", null,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0),
+                TimelineTextOverlay.of("2", "",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 2.0, 3.0),
+                TimelineTextOverlay.of("3", "   ",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 3.0, 3.0),
+                TimelineTextOverlay.of("4", "Valid",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 4.0, 3.0)
         );
 
         Path target = tempDir.resolve("test.ass");

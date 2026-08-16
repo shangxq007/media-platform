@@ -68,7 +68,8 @@ class TimelineEffectApiProductizationTest {
                 "tr-1", "Video 1", TimelineTrack.TrackType.VIDEO,
                 0, List.of(clip), false, false);
 
-        TimelineTextOverlay subtitle = TimelineTextOverlay.of("sub-1", "Hello World", 1.0, 3.0);
+        TimelineTextOverlay subtitle = TimelineTextOverlay.of("sub-1", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
 
         TimelineSpec timeline = new TimelineSpec(
@@ -165,7 +166,8 @@ class TimelineEffectApiProductizationTest {
 
     @Test
     void textOverlayWithEmptyTextRejected() {
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("ov-1", "", 0.0, 5.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("ov-1", "",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0.0, 5.0);
         TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
 
         TimelineSpec timeline = new TimelineSpec(

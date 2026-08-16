@@ -227,7 +227,8 @@ class RenderExecutionPlanCompilerTest {
     @Test
     @DisplayName("Caption overlay includes PREPARE_PROVIDER_DOCUMENT step")
     void captionOverlayIncludesDocumentPrep() {
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello", 1.0, 3.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         TimelineSpec spec = new TimelineSpec("tl-cap", "Test", null,
                 List.of(createSingleTrack()), List.of(overlay),
                 TimelineOutputSpec.mp4_1080p30(), 5.0, Map.of());

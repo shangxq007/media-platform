@@ -268,8 +268,8 @@ class TimelineFfmpegBaselineRenderSmokeTest {
                 List.of(clip), false, false);
 
         // Add text overlay so mapper detects subtitles
-        TimelineTextOverlay overlay = TimelineTextOverlay.of(
-                "ov_r2_001", "Hello from libass", 0.5, 2.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("ov_r2_001", "Hello from libass",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0.5, 2.0);
 
         TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "640x360", FrameRate.of(30, 1), "h264", 2000,
                 TimelineAudioSpec.aacDefault(), "yuv420p");

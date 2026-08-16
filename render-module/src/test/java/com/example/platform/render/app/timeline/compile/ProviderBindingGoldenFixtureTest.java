@@ -116,7 +116,8 @@ class ProviderBindingGoldenFixtureTest {
     @Test
     @DisplayName("Golden: single clip + caption → subtitle burn-in bound to ffmpeg")
     void goldenCaptionOverlayBound() {
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World", 1.0, 3.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         TimelineSpec spec = new TimelineSpec("tl-golden-cap", "Test", null,
                 List.of(createSingleTrack()), List.of(overlay),
                 TimelineOutputSpec.mp4_1080p30(), 5.0, Map.of());

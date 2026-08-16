@@ -40,7 +40,8 @@ class LibassSubtitleCompositorTest {
     void missingInputVideoReturnsFailed() {
         var compositor = new LibassSubtitleCompositor(null);
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "Hello", 1.0, 3.0));
+TimelineTextOverlay.of("1", "Hello",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0));
         TimelineSpec spec = new TimelineSpec(null, null, null, List.of(), overlays, null, 0, Map.of());
 
         var result = compositor.applyTextOverlays(
@@ -75,7 +76,8 @@ class LibassSubtitleCompositorTest {
 
         var compositor = new LibassSubtitleCompositor(mockRunner);
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "Hello", 1.0, 3.0));
+TimelineTextOverlay.of("1", "Hello",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0));
         TimelineSpec spec = new TimelineSpec(null, null, null, List.of(), overlays, null, 0, Map.of());
 
         Path outputVideo = tempDir.resolve("output.mp4");
@@ -120,7 +122,8 @@ class LibassSubtitleCompositorTest {
             fail("Could not set ffmpegBinary: " + e.getMessage());
         }
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "Test", 1.0, 2.0));
+TimelineTextOverlay.of("1", "Test",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 2.0));
         TimelineSpec spec = new TimelineSpec(null, null, null, List.of(), overlays, null, 0, Map.of());
 
         compositor.applyTextOverlays(inputVideo, tempDir.resolve("output.mp4"), spec);
@@ -160,7 +163,8 @@ class LibassSubtitleCompositorTest {
 
         var compositor = new LibassSubtitleCompositor(mockRunner);
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "Test", 1.0, 2.0));
+TimelineTextOverlay.of("1", "Test",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 2.0));
         TimelineSpec spec = new TimelineSpec(null, null, null, List.of(), overlays, null, 0, Map.of());
 
         var result = compositor.applyTextOverlays(inputVideo, tempDir.resolve("output.mp4"), spec);
@@ -189,7 +193,8 @@ class LibassSubtitleCompositorTest {
         var compositor = new LibassSubtitleCompositor(mockRunner);
         // Malicious text with ASS override injection
         List<TimelineTextOverlay> overlays = List.of(
-                TimelineTextOverlay.of("1", "{\\pos(0,0)}{\\fnEvilFont}Hello", 1.0, 3.0));
+TimelineTextOverlay.of("1", "{\\pos(0,0)}{\\fnEvilFont}Hello",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0));
         TimelineSpec spec = new TimelineSpec(null, null, null, List.of(), overlays, null, 0, Map.of());
 
         compositor.applyTextOverlays(inputVideo, tempDir.resolve("output.mp4"), spec);

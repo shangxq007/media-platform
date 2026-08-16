@@ -97,7 +97,8 @@ class ProviderBindingCompilerTest {
     @Test
     @DisplayName("Caption overlay → subtitle burn-in bound")
     void captionOverlayBound() {
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World", 1.0, 3.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         LogicalCapabilityGraph capGraph = compileCapGraphWithOverlays(List.of(overlay));
 
         ProviderBindingPlan plan = compiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
@@ -241,7 +242,8 @@ class ProviderBindingCompilerTest {
                         List.of("VIDEO_DECODE", "VIDEO_ENCODE", "CONTAINER_MUX"),
                         List.of("SUBTITLE_BURN_IN"));
 
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World", 1.0, 3.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         LogicalCapabilityGraph capGraph = compileCapGraphWithOverlays(List.of(overlay));
 
         ProviderBindingPlan plan = compiler.compile(capGraph, List.of(ffmpegExcluded), "PRODUCTION");

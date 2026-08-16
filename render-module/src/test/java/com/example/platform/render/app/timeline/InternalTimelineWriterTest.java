@@ -31,7 +31,8 @@ class InternalTimelineWriterTest {
     @Test
     void writesSubtitleStylesLayersAndClipEffects() {
         TimelineSpec base = TimelineSpec.create("tl-rich", "Rich", TimelineOutputSpec.mp4_1080p30());
-        var overlay = TimelineTextOverlay.of("cue1", "Hello", 1.0, 2.0);
+        var overlay = TimelineTextOverlay.of("cue1", "Hello",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 2.0);
         TimelineSpec spec = new TimelineSpec(
                 base.id(), base.name(), base.description(), base.tracks(),
                 List.of(overlay), base.outputSpec(), 3.0, Map.of("platform.import.source", "test"));

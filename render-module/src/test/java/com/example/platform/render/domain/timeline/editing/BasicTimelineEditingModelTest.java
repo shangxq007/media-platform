@@ -225,8 +225,10 @@ class BasicTimelineEditingModelTest {
 
     @Test @DisplayName("Duplicate caption ids rejected")
     void duplicateCaptionIdsRejected() {
-        TimelineTextOverlay c1 = TimelineTextOverlay.of("cap-1", "Hello", 0, 5);
-        TimelineTextOverlay c2 = TimelineTextOverlay.of("cap-1", "World", 5, 5);
+        TimelineTextOverlay c1 = TimelineTextOverlay.of("cap-1", "Hello",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0, 5);
+        TimelineTextOverlay c2 = TimelineTextOverlay.of("cap-1", "World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 5, 5);
         TimelineSpec tl = new TimelineSpec("t1", "Test", null,
                 List.of(TimelineTrack.of("tr1", "V1", TimelineTrack.TrackType.VIDEO)),
                 List.of(c1, c2), TimelineOutputSpec.mp4_1080p30(), 0, Map.of());

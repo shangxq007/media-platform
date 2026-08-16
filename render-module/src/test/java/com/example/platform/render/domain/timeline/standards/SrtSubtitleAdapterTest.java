@@ -17,7 +17,8 @@ class SrtSubtitleAdapterTest {
                 00:00:04,000 --> 00:00:06,000
                 Second line
                 """;
-        var overlays = SrtSubtitleAdapter.parse(srt);
+        var overlays = SrtSubtitleAdapter.parse(srt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
         assertEquals(2, overlays.size());
         assertEquals("Hello world", overlays.get(0).text());
         assertEquals(1.0, overlays.get(0).startTime(), 0.01);

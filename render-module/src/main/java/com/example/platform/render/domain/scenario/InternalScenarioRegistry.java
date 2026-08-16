@@ -71,7 +71,8 @@ public final class InternalScenarioRegistry {
         TimelineClip clip = TimelineClip.of("clip-1", asset, 0.0, 0.0, 10.0);
         TimelineTrack track = new TimelineTrack("track-1", "Main Video", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
-        TimelineTextOverlay caption = TimelineTextOverlay.of("caption-1", "Hello World", 0.0, 5.0);
+        TimelineTextOverlay caption = TimelineTextOverlay.of("caption-1", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0.0, 5.0);
         TimelineSpec timeline = new TimelineSpec(
                 "sc002-tl", "caption-timeline", "Caption overlay test",
                 List.of(track), List.of(caption),
@@ -201,7 +202,8 @@ public final class InternalScenarioRegistry {
         TimelineClip clip = new TimelineClip("clip-1", asset, 0.0, 0.0, 10.0, 10.0, effects);
         TimelineTrack track = new TimelineTrack("track-1", "Main Video", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
-        TimelineTextOverlay caption = TimelineTextOverlay.of("caption-1", "Test", 0.0, 5.0);
+        TimelineTextOverlay caption = TimelineTextOverlay.of("caption-1", "Test",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0.0, 5.0);
         Map<String, String> metadata = Map.of("watermark.placement", "top-left");
         TimelineSpec timeline = new TimelineSpec(
                 "sc006-tl", "full-render-timeline", "Full render plan composition test",
@@ -336,7 +338,8 @@ public final class InternalScenarioRegistry {
         TimelineClip clip2 = new TimelineClip("clip-2", asset2, 5.0, 0.0, 5.0, 5.0, effects1);
         TimelineTrack track = new TimelineTrack("track-1", "Main Video", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip1, clip2), false, false);
-        TimelineTextOverlay caption = TimelineTextOverlay.of("caption-1", "Full Flow", 0.0, 10.0);
+        TimelineTextOverlay caption = TimelineTextOverlay.of("caption-1", "Full Flow",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0.0, 10.0);
         Map<String, String> metadata = Map.of(
                 "watermark.placement", "bottom-right",
                 "watermark.opacity", "0.3");

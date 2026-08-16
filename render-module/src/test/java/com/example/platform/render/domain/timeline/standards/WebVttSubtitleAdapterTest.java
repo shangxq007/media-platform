@@ -16,7 +16,8 @@ class WebVttSubtitleAdapterTest {
                 + "00:00:05.000 --> 00:00:08.000\n"
                 + "Second cue\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(2, overlays.size());
         assertEquals("Hello World", overlays.get(0).text());
@@ -33,7 +34,8 @@ class WebVttSubtitleAdapterTest {
                 + "00:00:01.000 --> 00:00:04.000\n"
                 + "Text with ID\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(1, overlays.size());
         assertEquals("Text with ID", overlays.get(0).text());
@@ -47,7 +49,8 @@ class WebVttSubtitleAdapterTest {
                 + "Line two\n"
                 + "Line three\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(1, overlays.size());
         assertTrue(overlays.get(0).text().contains("Line one"));
@@ -60,7 +63,8 @@ class WebVttSubtitleAdapterTest {
                 + "00:00:01.000 --> 00:00:04.000\n"
                 + "BOM test\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(1, overlays.size());
         assertEquals("BOM test", overlays.get(0).text());
@@ -68,13 +72,13 @@ class WebVttSubtitleAdapterTest {
 
     @Test
     void parseNullReturnsEmpty() {
-        assertTrue(WebVttSubtitleAdapter.parse(null).isEmpty());
+        assertTrue(WebVttSubtitleAdapter.parse(null, null).isEmpty());
     }
 
     @Test
     void parseBlankReturnsEmpty() {
-        assertTrue(WebVttSubtitleAdapter.parse("").isEmpty());
-        assertTrue(WebVttSubtitleAdapter.parse("   ").isEmpty());
+        assertTrue(WebVttSubtitleAdapter.parse("", null).isEmpty());
+        assertTrue(WebVttSubtitleAdapter.parse("   ", null).isEmpty());
     }
 
     @Test
@@ -85,7 +89,8 @@ class WebVttSubtitleAdapterTest {
                 + "00:00:01.000 --> 00:00:04.000\n"
                 + "Valid cue\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(1, overlays.size());
         assertEquals("Valid cue", overlays.get(0).text());
@@ -99,7 +104,8 @@ class WebVttSubtitleAdapterTest {
                 + "00:00:01.000 --> 00:00:04.000\n"
                 + "Real cue\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(1, overlays.size());
         assertEquals("Real cue", overlays.get(0).text());
@@ -111,7 +117,8 @@ class WebVttSubtitleAdapterTest {
                 + "00:00:01.000 --> 00:00:04.000\n"
                 + "<b>Bold</b> and <i>italic</i>\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(1, overlays.size());
         assertTrue(overlays.get(0).text().contains("<b>Bold</b>"));
@@ -120,8 +127,10 @@ class WebVttSubtitleAdapterTest {
     @Test
     void exportRoundtrip() {
         List<TimelineTextOverlay> input = List.of(
-                TimelineTextOverlay.of("1", "Hello", 1.0, 3.0),
-                TimelineTextOverlay.of("2", "World", 5.0, 3.0)
+                TimelineTextOverlay.of("1", "Hello",
+                        new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0),
+                TimelineTextOverlay.of("2", "World",
+                        new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 5.0, 3.0)
         );
 
         String exported = WebVttSubtitleAdapter.toWebVtt(input, "en");
@@ -132,7 +141,8 @@ class WebVttSubtitleAdapterTest {
         assertTrue(exported.contains("World"));
 
         // Re-parse
-        List<TimelineTextOverlay> reparsed = WebVttSubtitleAdapter.parse(exported);
+        List<TimelineTextOverlay> reparsed = WebVttSubtitleAdapter.parse(exported,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
         assertEquals(2, reparsed.size());
         assertEquals("Hello", reparsed.get(0).text());
         assertEquals("World", reparsed.get(1).text());
@@ -141,7 +151,8 @@ class WebVttSubtitleAdapterTest {
     @Test
     void exportWithoutLanguage() {
         List<TimelineTextOverlay> input = List.of(
-                TimelineTextOverlay.of("1", "Test", 0.0, 2.0)
+TimelineTextOverlay.of("1", "Test",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0.0, 2.0)
         );
 
         String exported = WebVttSubtitleAdapter.toWebVtt(input, null);
@@ -156,7 +167,8 @@ class WebVttSubtitleAdapterTest {
                 + "00:00:01.000 --> 00:00:04.000\n"
                 + "你好世界\n";
 
-        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt);
+        List<TimelineTextOverlay> overlays = WebVttSubtitleAdapter.parse(vtt,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"));
 
         assertEquals(1, overlays.size());
         assertEquals("你好世界", overlays.get(0).text());

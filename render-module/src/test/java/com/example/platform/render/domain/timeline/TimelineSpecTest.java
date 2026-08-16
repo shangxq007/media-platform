@@ -119,7 +119,8 @@ class TimelineSpecTest {
 
     @Test
     void shouldRejectTextOverlayWithEmptyText() {
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("ov-1", "", 0.0, 5.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("ov-1", "",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0.0, 5.0);
         TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
 
         TimelineSpec timeline = new TimelineSpec(

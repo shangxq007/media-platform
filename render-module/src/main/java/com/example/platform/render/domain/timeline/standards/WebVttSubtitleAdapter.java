@@ -17,7 +17,13 @@ public final class WebVttSubtitleAdapter {
     private WebVttSubtitleAdapter() {
     }
 
-    public static List<TimelineTextOverlay> parse(String vttContent) {
+    public static List<TimelineTextOverlay> parse(String vttContent,
+            com.example.platform.fonttext.typography.FontFamilyName fontFamily) {
+        if (vttContent == null || vttContent.isBlank()) {
+            return List.of();
+        }
+        java.util.Objects.requireNonNull(fontFamily,
+                "WebVTT import font policy required: WebVTT carries no font semantics (ROADMAP_19 CORR-2)");
         List<TimelineTextOverlay> overlays = new ArrayList<>();
         if (vttContent == null || vttContent.isBlank()) {
             return overlays;
@@ -52,8 +58,8 @@ public final class WebVttSubtitleAdapter {
                 text.append(lines[i].trim());
             }
             if (!text.isEmpty()) {
-                overlays.add(TimelineTextOverlay.of("vtt-" + (++index), text.toString(), start,
-                        Math.max(0.1, end - start)));
+                overlays.add(TimelineTextOverlay.of("vtt-" + (++index), text.toString(), fontFamily,
+                        start, Math.max(0.1, end - start)));
             }
         }
         return overlays;

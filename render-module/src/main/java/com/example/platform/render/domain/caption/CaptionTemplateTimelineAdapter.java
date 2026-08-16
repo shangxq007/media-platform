@@ -79,10 +79,12 @@ public class CaptionTemplateTimelineAdapter {
     }
 
     private TimelineTextOverlay toTextOverlay(CaptionSegmentSpec seg, CaptionStyleSpec style) {
+        if (style.font() == null || style.font().family() == null) {
+            throw new IllegalArgumentException(
+                    "caption template font family required: no implicit font default (ROADMAP_19 CORR-2)");
+        }
         com.example.platform.fonttext.typography.FontFamilyName fontFamily =
-                new com.example.platform.fonttext.typography.FontFamilyName(
-                        style.font() != null && style.font().family() != null
-                                ? style.font().family() : "DejaVu Sans");
+                new com.example.platform.fonttext.typography.FontFamilyName(style.font().family());
         int fontSize = style.fontSize() > 0 ? style.fontSize() : 24;
         String color = style.font() != null && style.font().color() != null
                 ? style.font().color() : "#FFFFFF";

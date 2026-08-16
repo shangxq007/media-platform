@@ -176,7 +176,8 @@ public class InternalTimelineAdapter {
                 String cueId = cue.path("id").asText(trackId + "_cue");
                 double start = rangeStartSec(cue.path("timelineRange"), fps);
                 double duration = rangeDurationSec(cue.path("timelineRange"), fps);
-                overlays.add(TimelineTextOverlay.of(cueId, cue.path("text").asText(""), start, duration));
+                overlays.add(TimelineTextOverlay.of(cueId, cue.path("text").asText(""),
+                        new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), start, duration));
             }
         }
         return overlays;

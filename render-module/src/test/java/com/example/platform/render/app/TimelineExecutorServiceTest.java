@@ -30,7 +30,8 @@ class TimelineExecutorServiceTest {
 
     @Test
     void textOverlaysAddLibassStage() {
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("t1", "Hello", 0, 5);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("t1", "Hello",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0, 5);
         TimelineSpec spec = new TimelineSpec("tl-l", "Libass", null,
                 List.of(TimelineTrack.of("v1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(overlay), TimelineOutputSpec.mp4_1080p30(), 5, Map.of());

@@ -89,7 +89,8 @@ class TimelineCompileGoldenFixtureTest {
     @Test
     @DisplayName("Golden: single video clip with caption placeholder")
     void goldenSingleClipWithCaption() {
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World", 1.0, 3.0);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         TimelineSpec spec = new TimelineSpec("tl-golden-caption", "Golden Caption", null,
                 List.of(createVideoTrack("trk-1")), List.of(overlay),
                 TimelineOutputSpec.mp4_1080p30(), 5.0, Map.of());

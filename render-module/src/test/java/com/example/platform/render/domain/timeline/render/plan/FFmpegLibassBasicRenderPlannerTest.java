@@ -262,7 +262,8 @@ class FFmpegLibassBasicRenderPlannerTest {
     @Test @DisplayName("Caption overlays produce APPLY_CAPTION_OVERLAY steps")
     void captionOverlaysProduceSteps() {
         TimelineOutputSpec output = TimelineOutputSpec.mp4_1080p30();
-        TimelineTextOverlay overlay = TimelineTextOverlay.of("cap-1", "Hello World", 0, 5);
+        TimelineTextOverlay overlay = TimelineTextOverlay.of("cap-1", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0, 5);
         TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
                 List.of(TimelineTrack.of("track-1", "Video", TimelineTrack.TrackType.VIDEO)),
                 List.of(overlay), output, 10, Map.<String,String>of());

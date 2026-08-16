@@ -43,7 +43,7 @@ public class TimelinePatchApplier {
                 current.id(), base.revisionId() + "+patched", current.duration(),
                 current.tracks(), current.captions(), current.watermarks(),
                 current.templateApplications(), current.workflowSteps(),
-                current.outputProfile(), current.safeMetadata(), List.of());
+                current.outputProfile(), current.safeMetadata(), current.textElements());
         return TimelinePatchApplicationResult.applied(patched);
     }
 
@@ -355,7 +355,7 @@ public class TimelinePatchApplier {
         }
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), meta, List.of()));
+                s.workflowSteps(), s.outputProfile(), meta, s.textElements()));
     }
 
     // --- Helpers ---
@@ -486,7 +486,7 @@ public class TimelinePatchApplier {
     private CanonicalTimelineSnapshot withTracks(CanonicalTimelineSnapshot s, List<CanonicalTimelineTrackSnapshot> tracks) {
         return new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 tracks, s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), List.of());
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements());
     }
 
     private CanonicalTimelineSnapshot withUpdatedTrack(CanonicalTimelineSnapshot s, String trackId, CanonicalTimelineTrackSnapshot updated) {

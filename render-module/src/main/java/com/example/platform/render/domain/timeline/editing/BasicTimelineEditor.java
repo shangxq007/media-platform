@@ -297,7 +297,8 @@ public final class BasicTimelineEditor {
         double startTime = getDouble(params, "startTime", 0);
         double duration = getDouble(params, "duration", 5);
 
-        TimelineTextOverlay newCaption = TimelineTextOverlay.of(captionId, text, startTime, duration);
+        TimelineTextOverlay newCaption = TimelineTextOverlay.of(captionId, text,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), startTime, duration);
         List<TimelineTextOverlay> overlays = new ArrayList<>(
                 timeline.textOverlays() != null ? timeline.textOverlays() : List.of());
         overlays.add(newCaption);

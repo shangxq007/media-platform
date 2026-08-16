@@ -56,8 +56,8 @@ public final class TimelineCoreSmokeFixture {
      */
     public static TimelineSpec createVideoWithSubtitleTimeline() {
         TimelineSpec base = createMinimalVideoTimeline();
-        TimelineTextOverlay subtitle = TimelineTextOverlay.of(
-                "sub_001", "Hello World", 1.0, 5.0);
+        TimelineTextOverlay subtitle = TimelineTextOverlay.of("sub_001", "Hello World",
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 5.0);
         return new TimelineSpec(
                 base.id(), base.name(), base.description(),
                 base.tracks(), List.of(subtitle), base.outputSpec(),
