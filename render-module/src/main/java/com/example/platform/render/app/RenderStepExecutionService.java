@@ -6,7 +6,7 @@ import com.example.platform.billing.usage.UsageQuantity;
 import com.example.platform.billing.usage.UsageRecord;
 import com.example.platform.billing.usage.UsageRecordEmissionPort;
 import com.example.platform.billing.usage.UsageUnit;
-import com.example.platform.render.domain.RenderPlan;
+import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderStep;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Service for executing individual {@link RenderStep} instances within a {@link RenderPlan}.
+ * Service for executing individual {@link RenderStep} instances within a {@link RenderJobPlan}.
  *
  * <p>This service manages step lifecycle: transitioning from PENDING → RUNNING → COMPLETED/FAILED.
  * Actual tool execution is delegated to the appropriate provider (FFmpeg, MLT, GPAC)
@@ -57,8 +57,8 @@ public class RenderStepExecutionService {
      * @return the updated plan
      * @throws IllegalStateException if no pending step exists or the plan is done
      */
-    public RenderPlan executeNextStep(String planId) {
-        RenderPlan plan = planService.findById(planId)
+    public RenderJobPlan executeNextStep(String planId) {
+        RenderJobPlan plan = planService.findById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
 
         if (plan.isDone()) {
@@ -124,7 +124,7 @@ public class RenderStepExecutionService {
      * @param stepId the step ID
      * @return the updated plan
      */
-    public RenderPlan cancelStep(String planId, String stepId) {
+    public RenderJobPlan cancelStep(String planId, String stepId) {
         RenderStep active = activeSteps.get(stepId);
         if (active == null) {
             throw new IllegalArgumentException("Step is not currently running: " + stepId);
@@ -133,7 +133,7 @@ public class RenderStepExecutionService {
         RenderStep cancelled = active.markCancelled();
         activeSteps.remove(stepId);
 
-        RenderPlan plan = planService.findById(planId)
+        RenderJobPlan plan = planService.findById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("Plan not found: " + planId));
         return planService.save(plan.withStep(cancelled));
     }
@@ -155,7 +155,7 @@ public class RenderStepExecutionService {
      * @param step      the step (its {@link RenderStep#duration() duration} is the measured fact)
      * @param attempt   the attempt number for this step execution
      */
-    void emitStepUsage(RenderPlan plan, RenderStep step, int attempt) {
+    void emitStepUsage(RenderJobPlan plan, RenderStep step, int attempt) {
         if (emissionPort == null) {
             return;
         }

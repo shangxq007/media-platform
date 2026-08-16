@@ -13,7 +13,7 @@ public interface RenderPlanner {
      * @param job the render job
      * @return the render plan
      */
-    RenderPlan plan(RenderJob job);
+    ProviderRenderPlan plan(RenderJob job);
 
     /**
      * Select the best provider for a given capability and job.

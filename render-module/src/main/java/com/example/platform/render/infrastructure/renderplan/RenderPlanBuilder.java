@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * RenderPlan Builder - converts Timeline to RenderPlan IR.
+ * RenderPlanIr Builder - converts Timeline to RenderPlanIr IR.
  * 
  * <p>Creates deterministic DAG from timeline data.
  */
@@ -20,33 +20,33 @@ public class RenderPlanBuilder {
     /**
      * Build a render plan from timeline data.
      */
-    public RenderPlan buildFromTimeline(String jobId, TimelineData timeline) {
+    public RenderPlanIr buildFromTimeline(String jobId, TimelineData timeline) {
         log.info("Building render plan for job {}", jobId);
 
-        RenderPlan plan = RenderPlan.create(jobId);
+        RenderPlanIr plan = RenderPlanIr.create(jobId);
 
         // Process clips
         for (TimelineClip clip : timeline.clips()) {
-            RenderPlan.RenderNode clipNode = createClipNode(clip);
+            RenderPlanIr.RenderNode clipNode = createClipNode(clip);
             plan = plan.addNode(clipNode);
         }
 
         // Process transitions
         for (TimelineTransition transition : timeline.transitions()) {
-            RenderPlan.RenderNode transitionNode = createTransitionNode(transition);
+            RenderPlanIr.RenderNode transitionNode = createTransitionNode(transition);
             plan = plan.addNode(transitionNode);
 
             // Add edges from source clips to transition
             for (String sourceClipId : transition.sourceClipIds()) {
-                plan = plan.addEdge(RenderPlan.RenderEdge.data(sourceClipId, transitionNode.id()));
+                plan = plan.addEdge(RenderPlanIr.RenderEdge.data(sourceClipId, transitionNode.id()));
             }
 
             // Add edge from transition to output
-            plan = plan.addEdge(RenderPlan.RenderEdge.data(transitionNode.id(), "output"));
+            plan = plan.addEdge(RenderPlanIr.RenderEdge.data(transitionNode.id(), "output"));
         }
 
         // Create output node
-        RenderPlan.RenderNode outputNode = RenderPlan.RenderNode.output(
+        RenderPlanIr.RenderNode outputNode = RenderPlanIr.RenderNode.output(
                 "output",
                 calculateInputHash(plan),
                 Map.of("format", "mp4", "resolution", "1920x1080")
@@ -58,7 +58,7 @@ public class RenderPlanBuilder {
             boolean hasTransition = timeline.transitions().stream()
                     .anyMatch(t -> t.sourceClipIds().contains(clip.id()));
             if (!hasTransition) {
-                plan = plan.addEdge(RenderPlan.RenderEdge.data(clip.id(), "output"));
+                plan = plan.addEdge(RenderPlanIr.RenderEdge.data(clip.id(), "output"));
             }
         }
 
@@ -69,8 +69,8 @@ public class RenderPlanBuilder {
     /**
      * Create a clip node from timeline clip.
      */
-    private RenderPlan.RenderNode createClipNode(TimelineClip clip) {
-        return RenderPlan.RenderNode.clip(
+    private RenderPlanIr.RenderNode createClipNode(TimelineClip clip) {
+        return RenderPlanIr.RenderNode.clip(
                 clip.id(),
                 clip.sourceUri(),
                 Map.of(
@@ -84,8 +84,8 @@ public class RenderPlanBuilder {
     /**
      * Create a transition node from timeline transition.
      */
-    private RenderPlan.RenderNode createTransitionNode(TimelineTransition transition) {
-        return RenderPlan.RenderNode.transition(
+    private RenderPlanIr.RenderNode createTransitionNode(TimelineTransition transition) {
+        return RenderPlanIr.RenderNode.transition(
                 transition.id(),
                 calculateTransitionInputHash(transition),
                 Map.of(
@@ -98,9 +98,9 @@ public class RenderPlanBuilder {
     /**
      * Calculate input hash for the plan.
      */
-    private String calculateInputHash(RenderPlan plan) {
+    private String calculateInputHash(RenderPlanIr plan) {
         StringBuilder sb = new StringBuilder();
-        for (RenderPlan.RenderNode node : plan.nodes()) {
+        for (RenderPlanIr.RenderNode node : plan.nodes()) {
             if (node.inputHash() != null) {
                 sb.append(node.inputHash());
             }

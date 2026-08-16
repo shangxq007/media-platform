@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * Server-side render execution plan (DAG) derived from Internal Timeline JSON.
  *
- * <p>Distinct from {@link com.example.platform.render.domain.RenderPlan} which tracks
+ * <p>Distinct from {@link com.example.platform.render.domain.RenderJobPlan} which tracks
  * job step execution state.</p>
  */
 public record PipelineExecutionPlan(

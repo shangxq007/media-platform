@@ -37,7 +37,7 @@ public class ToolRouter {
     /**
      * Get the appropriate tool for a node type.
      */
-    public RenderTool getTool(RenderPlan.ToolType toolType) {
+    public RenderTool getTool(RenderPlanIr.ToolType toolType) {
         return switch (toolType) {
             case FFMPEG -> ffmpegTool;
             case MLT -> mltTool;
@@ -48,7 +48,7 @@ public class ToolRouter {
     /**
      * Get tool for a node type.
      */
-    public RenderTool getToolForNode(RenderPlan.NodeType nodeType) {
+    public RenderTool getToolForNode(RenderPlanIr.NodeType nodeType) {
         return switch (nodeType) {
             case CLIP, AUDIO, OUTPUT -> ffmpegTool;
             case TRANSITION -> mltTool;

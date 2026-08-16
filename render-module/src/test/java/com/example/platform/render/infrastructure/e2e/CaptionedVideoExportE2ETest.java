@@ -93,7 +93,7 @@ class CaptionedVideoExportE2ETest {
         assertFalse(preflightResult.fontAssetIds().isEmpty());
         assertTrue(preflightResult.productionSafe());
 
-        RenderPlan plan = planner.plan(job);
+        ProviderRenderPlan plan = planner.plan(job);
         assertNotNull(plan);
         assertFalse(plan.steps().isEmpty());
         assertTrue(plan.steps().size() >= 2);
@@ -241,7 +241,7 @@ class CaptionedVideoExportE2ETest {
 
         OTIOTimelineSummary summary = otioCompiler.compile(otioJson, metadata);
         RenderJob job = otioCompiler.generateRenderJob(summary, "production");
-        RenderPlan plan = planner.plan(job);
+        ProviderRenderPlan plan = planner.plan(job);
 
         assertNotNull(plan);
         for (RenderStep step : plan.steps()) {

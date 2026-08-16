@@ -1,7 +1,7 @@
 package com.example.platform.render.domain;
 
 /**
- * Status of a single {@link RenderStep} within a {@link RenderPlan}.
+ * Status of a single {@link RenderStep} within a {@link RenderJobPlan}.
  *
  * <p>Status transitions:</p>
  * <pre>

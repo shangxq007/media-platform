@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A single step within a {@link RenderPlan}.
+ * A single step within a {@link RenderJobPlan}.
  *
  * <p>Each step has a type, status, input/output artifacts, and execution metadata.
  * Steps are executed in order, and their status transitions are validated.</p>

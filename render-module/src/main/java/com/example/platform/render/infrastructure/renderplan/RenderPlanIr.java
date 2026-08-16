@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * RenderPlan IR (Intermediate Representation) - deterministic DAG for render execution.
+ * RenderPlanIr IR (Intermediate Representation) - deterministic DAG for render execution.
  * 
  * <p>Each node includes:
  * <ul>
@@ -17,7 +17,7 @@ import java.util.Map;
  *   <li>cacheable flag - whether output can be cached</li>
  * </ul>
  */
-public record RenderPlan(
+public record RenderPlanIr(
         String planId,
         String jobId,
         List<RenderNode> nodes,
@@ -29,8 +29,8 @@ public record RenderPlan(
     /**
      * Create a new render plan.
      */
-    public static RenderPlan create(String jobId) {
-        return new RenderPlan(
+    public static RenderPlanIr create(String jobId) {
+        return new RenderPlanIr(
                 "plan-" + jobId,
                 jobId,
                 List.of(),
@@ -44,20 +44,20 @@ public record RenderPlan(
     /**
      * Add a node to the plan.
      */
-    public RenderPlan addNode(RenderNode node) {
+    public RenderPlanIr addNode(RenderNode node) {
         List<RenderNode> newNodes = new java.util.ArrayList<>(nodes);
         newNodes.add(node);
         String newRootId = rootId == null ? node.id() : rootId;
-        return new RenderPlan(planId, jobId, List.copyOf(newNodes), edges, newRootId, metadata, createdAt);
+        return new RenderPlanIr(planId, jobId, List.copyOf(newNodes), edges, newRootId, metadata, createdAt);
     }
 
     /**
      * Add an edge to the plan.
      */
-    public RenderPlan addEdge(RenderEdge edge) {
+    public RenderPlanIr addEdge(RenderEdge edge) {
         List<RenderEdge> newEdges = new java.util.ArrayList<>(edges);
         newEdges.add(edge);
-        return new RenderPlan(planId, jobId, nodes, List.copyOf(newEdges), rootId, metadata, createdAt);
+        return new RenderPlanIr(planId, jobId, nodes, List.copyOf(newEdges), rootId, metadata, createdAt);
     }
 
     /**

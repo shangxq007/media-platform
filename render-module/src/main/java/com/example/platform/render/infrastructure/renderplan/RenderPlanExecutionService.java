@@ -5,9 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * RenderPlan Service - orchestrates the render pipeline.
+ * RenderPlanIr Service - orchestrates the render pipeline.
  * 
- * <p>Flow: Timeline → RenderPlan DAG → Execution Engine → Artifact
+ * <p>Flow: Timeline → RenderPlanIr DAG → Execution Engine → Artifact
  */
 @Service
 public class RenderPlanExecutionService {
@@ -28,8 +28,8 @@ public class RenderPlanExecutionService {
     public RenderPlanResult executeRender(String jobId, RenderPlanBuilder.TimelineData timeline) {
         log.info("Starting render for job {}", jobId);
 
-        // Step 1: Build RenderPlan from Timeline
-        RenderPlan plan = planBuilder.buildFromTimeline(jobId, timeline);
+        // Step 1: Build RenderPlanIr from Timeline
+        RenderPlanIr plan = planBuilder.buildFromTimeline(jobId, timeline);
         log.info("Built render plan with {} nodes", plan.size());
 
         // Step 2: Execute DAG

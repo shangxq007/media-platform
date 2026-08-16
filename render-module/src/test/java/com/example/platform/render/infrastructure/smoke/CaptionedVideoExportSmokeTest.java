@@ -123,7 +123,7 @@ class CaptionedVideoExportSmokeTest {
         assertTrue(preflightResult.passed(), "Preflight should pass: " + preflightResult.errors());
         assertTrue(preflightResult.productionSafe());
 
-        RenderPlan plan = planner.plan(job);
+        ProviderRenderPlan plan = planner.plan(job);
         assertNotNull(plan);
         assertTrue(plan.steps().size() >= 2);
 

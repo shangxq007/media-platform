@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * A render plan describes the sequence of steps required to produce a render job's output.
  */
-public record RenderPlan(
+public record RenderJobPlan(
         String id,
         String renderJobId,
         RenderProfile profile,
@@ -22,22 +22,22 @@ public record RenderPlan(
     /**
      * Creates a new render plan with the given profile and steps.
      */
-    public static RenderPlan create(String id, String renderJobId, RenderProfile profile,
+    public static RenderJobPlan create(String id, String renderJobId, RenderProfile profile,
             List<RenderStep> steps) {
         List<RenderStep> stepList = new ArrayList<>(steps);
         RenderStepStatus derivedStatus = deriveStatus(stepList);
-        return new RenderPlan(id, renderJobId, profile, stepList,
+        return new RenderJobPlan(id, renderJobId, profile, stepList,
                 derivedStatus, Instant.now(), null, null, Map.of());
     }
 
     /**
      * Creates a new render plan with parameters.
      */
-    public static RenderPlan create(String id, String renderJobId, RenderProfile profile,
+    public static RenderJobPlan create(String id, String renderJobId, RenderProfile profile,
             List<RenderStep> steps, Map<String, String> parameters) {
         List<RenderStep> stepList = new ArrayList<>(steps);
         RenderStepStatus derivedStatus = deriveStatus(stepList);
-        return new RenderPlan(id, renderJobId, profile, stepList,
+        return new RenderJobPlan(id, renderJobId, profile, stepList,
                 derivedStatus, Instant.now(), null, null, parameters);
     }
 
@@ -75,12 +75,12 @@ public record RenderPlan(
     /**
      * Returns a copy with the given step updated.
      */
-    public RenderPlan withStep(RenderStep updatedStep) {
+    public RenderJobPlan withStep(RenderStep updatedStep) {
         List<RenderStep> updatedSteps = steps.stream()
                 .map(s -> s.id().equals(updatedStep.id()) ? updatedStep : s)
                 .toList();
         RenderStepStatus newStatus = deriveStatus(updatedSteps);
-        return new RenderPlan(id, renderJobId, profile, updatedSteps, newStatus,
+        return new RenderJobPlan(id, renderJobId, profile, updatedSteps, newStatus,
                 createdAt, startedAt, completedAt, parameters);
     }
 

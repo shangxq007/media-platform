@@ -10,7 +10,7 @@ import com.example.platform.billing.usage.UsageQuantity;
 import com.example.platform.billing.usage.UsageRecord;
 import com.example.platform.billing.usage.UsageRecordEmissionPort;
 import com.example.platform.billing.usage.UsageUnit;
-import com.example.platform.render.domain.RenderPlan;
+import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStep;
 import com.example.platform.render.domain.RenderStepStatus;
@@ -57,7 +57,7 @@ class RenderUsageEmissionTest {
 
     @Test
     void stepCompletion_emitsOneDurationRecord() {
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         String stepId = plan.steps().get(0).id();
 
         service.executeNextStep(plan.id());
@@ -79,7 +79,7 @@ class RenderUsageEmissionTest {
 
     @Test
     void retryOfSameAttempt_doesNotDoubleCount() {
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         String stepId = plan.steps().get(0).id();
 
         // Same step identity + same attempt -> same idempotency key.
@@ -98,7 +98,7 @@ class RenderUsageEmissionTest {
 
     @Test
     void newAttempt_getsNewIdempotencyKey() {
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         String stepId = plan.steps().get(0).id();
         RenderStep completed = plan.steps().get(0).markRunning().markCompleted(List.of("art-1"));
 
@@ -122,7 +122,7 @@ class RenderUsageEmissionTest {
         assertNull(System.getProperty("billing.enforcement.enabled"),
                 "sanity: this unit test does not set the enforcement flag");
 
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         service.executeNextStep(plan.id());
 
         assertNotNull(captured.get(),
@@ -132,7 +132,7 @@ class RenderUsageEmissionTest {
     @Test
     void emission_skipsWhenNoTenant() {
         TenantContext.clear();
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         service.executeNextStep(plan.id());
         assertNull(captured.get(), "no usage record should be emitted without a tenant");
     }
@@ -141,7 +141,7 @@ class RenderUsageEmissionTest {
     void failedStepWithoutDuration_emitsNothing() {
         // RED-003 (no fabricated usage): emission is gated on the measured duration fact, not on
         // business success. A FAILED step that has no measurable duration (never ran) emits nothing.
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         RenderStep failedNoDuration = plan.steps().get(0).markFailed("ERR", "boom");
         service.emitStepUsage(plan, failedNoDuration, 1);
         assertNull(captured.get(), "a step with no measurable duration fact must not emit fabricated usage");
@@ -152,7 +152,7 @@ class RenderUsageEmissionTest {
         // RED-003 (fact-driven emission, AR-OBS-03 repair): a FAILED step that actually ran and has
         // a real measured duration emits exactly one canonical DURATION record — success status must
         // not suppress a genuine consumption fact.
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         String stepId = plan.steps().get(0).id();
         RenderStep failed = plan.steps().get(0).markRunning().markFailed("ERR", "boom");
 
@@ -176,7 +176,7 @@ class RenderUsageEmissionTest {
     void failedStepRetryOfSameAttempt_doesNotDoubleCount() {
         // RED-003 (idempotency on the failed path): replaying the SAME failed attempt reuses the
         // idempotency key, so it does not double count.
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         String stepId = plan.steps().get(0).id();
         RenderStep failed = plan.steps().get(0).markRunning().markFailed("ERR", "boom");
 
@@ -199,7 +199,7 @@ class RenderUsageEmissionTest {
         assertNull(System.getProperty("billing.enforcement.enabled"),
                 "sanity: this unit test does not set the enforcement flag");
 
-        RenderPlan plan = planWithOneStep();
+        RenderJobPlan plan = planWithOneStep();
         RenderStep failed = plan.steps().get(0).markRunning().markFailed("ERR", "boom");
 
         service.emitStepUsage(plan, failed, 1);
@@ -208,12 +208,12 @@ class RenderUsageEmissionTest {
                 "FAILED-step usage emission must occur even though billing.enforcement.enabled is unset (defaults false)");
     }
 
-    private RenderPlan planWithOneStep() {
+    private RenderJobPlan planWithOneStep() {
         String planId = "plan-" + System.nanoTime();
         // Leave the step PENDING: executeNextStep selects the next pending step, marks it
         // RUNNING (recording startedAt), then completes it (computing the duration fact).
         RenderStep step = RenderStep.pending("step-" + System.nanoTime(), planId, RenderStepType.FFMPEG_TRANSCODE);
-        RenderPlan plan = RenderPlan.create(planId, "job-1", RenderProfile.social1080p(), List.of(step));
+        RenderJobPlan plan = RenderJobPlan.create(planId, "job-1", RenderProfile.social1080p(), List.of(step));
         return planService.save(plan);
     }
 }

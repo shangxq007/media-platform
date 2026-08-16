@@ -6,7 +6,7 @@ import java.util.Map;
  * Render profile defining output parameters for a render job.
  *
  * <p>Profiles encapsulate resolution, codec, bitrate, and other output settings.
- * They are referenced by {@link RenderPlan} and {@link RenderStep} instances.</p>
+ * They are referenced by {@link RenderJobPlan} and {@link RenderStep} instances.</p>
  *
  * @param id          unique profile identifier (e.g., "social_1080p", "broadcast_4k")
  * @param label       human-readable display name

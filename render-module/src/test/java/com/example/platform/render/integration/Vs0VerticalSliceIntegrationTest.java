@@ -2,7 +2,7 @@ package com.example.platform.render.integration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.RenderPlan;
+import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStep;
 import com.example.platform.render.domain.RenderStepStatus;
@@ -425,14 +425,14 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
         }
     }
 
-    // ==================== Stage 6: RenderPlan State Machine ====================
+    // ==================== Stage 6: RenderJobPlan State Machine ====================
 
     @Nested
-    @DisplayName("Stage 6: RenderPlan State Machine (Product Output)")
+    @DisplayName("Stage 6: RenderJobPlan State Machine (Product Output)")
     class RenderPlanStateMachineStage {
 
         @Test
-        @DisplayName("Full VS.0 flow: Timeline edit → Caption → FFmpeg plan → RenderPlan → Step execution")
+        @DisplayName("Full VS.0 flow: Timeline edit → Caption → FFmpeg plan → RenderJobPlan → Step execution")
         void fullVs0VerticalSliceFlow() {
             // === Step 1: Caption Template (canonical TimelineDocument authoring
             // path; BasicTimelineEditor parallel mutation is DELETED) ===
@@ -462,9 +462,9 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.PLANNED, ffmpegResult.status());
             assertNotNull(ffmpegResult.plan());
 
-            // === Step 4: RenderPlan (Product Output) ===
+            // === Step 4: RenderJobPlan (Product Output) ===
             RenderProfile profile = RenderProfile.social1080p();
-            RenderPlan renderPlan = RenderPlan.create(
+            RenderJobPlan renderPlan = RenderJobPlan.create(
                     "rp-vs0-full", "rj-vs0-full", profile,
                     List.of(
                             RenderStep.pending("rs-build", "rp-vs0-full", RenderStepType.BUILD_TIMELINE),
@@ -516,9 +516,9 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
         }
 
         @Test
-        @DisplayName("RenderPlan step failure propagates to plan status")
+        @DisplayName("RenderJobPlan step failure propagates to plan status")
         void renderPlanStepFailurePropagates() {
-            RenderPlan plan = RenderPlan.create(
+            RenderJobPlan plan = RenderJobPlan.create(
                     "rp-fail", "rj-fail", RenderProfile.social720p(),
                     List.of(
                             RenderStep.pending("rs-fail-1", "rp-fail", RenderStepType.FFMPEG_TRANSCODE)
@@ -535,7 +535,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
         }
 
         @Test
-        @DisplayName("RenderPlan step retry: FAILED → PENDING transition is valid")
+        @DisplayName("RenderJobPlan step retry: FAILED → PENDING transition is valid")
         void renderPlanStepRetry() {
             RenderStep failed = RenderStep.pending("rs-retry", "rp-retry", RenderStepType.FFMPEG_TRANSCODE)
                     .markRunning()

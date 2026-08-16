@@ -2,7 +2,7 @@ package com.example.platform.render.app;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.RenderPlan;
+import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStepStatus;
 import com.example.platform.render.domain.RenderStepType;
@@ -22,7 +22,7 @@ class RenderPlanServiceTest {
     @Test
     void shouldCreateDefaultPlan() {
         RenderProfile profile = RenderProfile.social1080p();
-        RenderPlan plan = service.createDefaultPlan("rj-1", profile);
+        RenderJobPlan plan = service.createDefaultPlan("rj-1", profile);
 
         assertNotNull(plan);
         assertEquals("rj-1", plan.renderJobId());
@@ -42,7 +42,7 @@ class RenderPlanServiceTest {
                 RenderStepType.QC_PROBE,
                 RenderStepType.REGISTER_ARTIFACT
         );
-        RenderPlan plan = service.createCustomPlan("rj-2", profile, types);
+        RenderJobPlan plan = service.createCustomPlan("rj-2", profile, types);
 
         assertNotNull(plan);
         assertEquals(5, plan.steps().size());
@@ -53,7 +53,7 @@ class RenderPlanServiceTest {
     @Test
     void shouldCreateMltPlan() {
         RenderProfile profile = RenderProfile.social1080p();
-        RenderPlan plan = service.createMltPlan("rj-3", profile);
+        RenderJobPlan plan = service.createMltPlan("rj-3", profile);
 
         assertNotNull(plan);
         assertEquals(3, plan.steps().size());
@@ -63,7 +63,7 @@ class RenderPlanServiceTest {
     @Test
     void shouldCreatePackagingPlan() {
         RenderProfile profile = RenderProfile.social1080p();
-        RenderPlan plan = service.createPackagingPlan("rj-4", profile, true, true);
+        RenderJobPlan plan = service.createPackagingPlan("rj-4", profile, true, true);
 
         assertNotNull(plan);
         assertEquals(5, plan.steps().size());
@@ -77,7 +77,7 @@ class RenderPlanServiceTest {
     @Test
     void shouldCreatePackagingPlanHlsOnly() {
         RenderProfile profile = RenderProfile.social1080p();
-        RenderPlan plan = service.createPackagingPlan("rj-5", profile, true, false);
+        RenderJobPlan plan = service.createPackagingPlan("rj-5", profile, true, false);
 
         assertNotNull(plan);
         assertEquals(4, plan.steps().size());
@@ -90,7 +90,7 @@ class RenderPlanServiceTest {
     @Test
     void shouldFindPlanById() {
         RenderProfile profile = RenderProfile.social1080p();
-        RenderPlan plan = service.createDefaultPlan("rj-6", profile);
+        RenderJobPlan plan = service.createDefaultPlan("rj-6", profile);
 
         assertTrue(service.findById(plan.id()).isPresent());
         assertEquals(plan.id(), service.findById(plan.id()).get().id());
@@ -108,20 +108,20 @@ class RenderPlanServiceTest {
         service.createDefaultPlan("rj-7", profile);
         service.createDefaultPlan("rj-8", profile);
 
-        List<RenderPlan> plans = service.findByRenderJobId("rj-7");
+        List<RenderJobPlan> plans = service.findByRenderJobId("rj-7");
         assertEquals(2, plans.size());
     }
 
     @Test
     void shouldSaveUpdatedPlan() {
         RenderProfile profile = RenderProfile.social1080p();
-        RenderPlan plan = service.createDefaultPlan("rj-9", profile);
+        RenderJobPlan plan = service.createDefaultPlan("rj-9", profile);
 
         var updatedStep = plan.steps().get(0).markRunning().markCompleted(List.of("art-1"));
-        RenderPlan updated = plan.withStep(updatedStep);
+        RenderJobPlan updated = plan.withStep(updatedStep);
         service.save(updated);
 
-        RenderPlan retrieved = service.findById(plan.id()).get();
+        RenderJobPlan retrieved = service.findById(plan.id()).get();
         assertEquals(RenderStepStatus.COMPLETED, retrieved.steps().get(0).status());
     }
 }

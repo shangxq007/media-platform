@@ -1,6 +1,6 @@
 package com.example.platform.render.app.planner;
 
-import com.example.platform.render.domain.RenderPlan;
+import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStep;
 import com.example.platform.render.domain.RenderStepType;
@@ -12,12 +12,12 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * Bridges {@link PipelineExecutionPlan} to domain {@link RenderPlan} steps for job orchestration.
+ * Bridges {@link PipelineExecutionPlan} to domain {@link RenderJobPlan} steps for job orchestration.
  */
 @Service
 public class RenderPlanBridgeService {
 
-    public RenderPlan toDomainRenderPlan(String renderJobId, RenderProfile profile,
+    public RenderJobPlan toDomainRenderPlan(String renderJobId, RenderProfile profile,
                                          TimelineSpec timeline, PipelineExecutionPlan pipeline) {
         String planId = Ids.newId("rp");
         List<RenderStep> steps = new ArrayList<>();
@@ -38,7 +38,7 @@ public class RenderPlanBridgeService {
                 "pipelinePlanId", pipeline.planId(),
                 "timelineId", timeline.id(),
                 "finalComposer", pipeline.finalComposer().name().toLowerCase());
-        return RenderPlan.create(planId, renderJobId, profile, steps, params);
+        return RenderJobPlan.create(planId, renderJobId, profile, steps, params);
     }
 
     private RenderStepType mapTaskType(PipelineTask task) {

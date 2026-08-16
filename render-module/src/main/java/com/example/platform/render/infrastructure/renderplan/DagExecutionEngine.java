@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * DAG Execution Engine - executes RenderPlan with topological sort.
+ * DAG Execution Engine - executes RenderPlanIr with topological sort.
  * 
  * <p>Features:
  * <ul>
@@ -36,19 +36,19 @@ public class DagExecutionEngine {
     /**
      * Execute a render plan.
      */
-    public ExecutionResult execute(RenderPlan plan) {
+    public ExecutionResult execute(RenderPlanIr plan) {
         Instant startTime = Instant.now();
         log.info("Executing render plan {} with {} nodes", plan.planId(), plan.size());
 
         // Get topological order
-        List<RenderPlan.RenderNode> topoOrder = plan.getTopologicalOrder();
+        List<RenderPlanIr.RenderNode> topoOrder = plan.getTopologicalOrder();
         Map<String, String> nodeOutputs = new ConcurrentHashMap<>();
         List<String> executedNodes = new ArrayList<>();
         List<String> cachedNodes = new ArrayList<>();
         List<String> errors = new ArrayList<>();
 
         // Execute nodes in topological order
-        for (RenderPlan.RenderNode node : topoOrder) {
+        for (RenderPlanIr.RenderNode node : topoOrder) {
             try {
                 // Check cache
                 if (node.cacheable() && node.inputHash() != null) {
@@ -63,7 +63,7 @@ public class DagExecutionEngine {
 
                 // Get input from parent nodes
                 Map<String, String> parentOutputs = new HashMap<>();
-                for (RenderPlan.RenderNode parent : plan.getParents(node.id())) {
+                for (RenderPlanIr.RenderNode parent : plan.getParents(node.id())) {
                     String output = nodeOutputs.get(parent.id());
                     if (output != null) {
                         parentOutputs.put(parent.id(), output);
@@ -107,7 +107,7 @@ public class DagExecutionEngine {
     /**
      * Execute a single node.
      */
-    private String executeNode(RenderPlan.RenderNode node, Map<String, String> parentOutputs) {
+    private String executeNode(RenderPlanIr.RenderNode node, Map<String, String> parentOutputs) {
         // Get the appropriate tool
         ToolRouter.RenderTool tool = toolRouter.getTool(node.tool());
 

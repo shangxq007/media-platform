@@ -1,7 +1,7 @@
 package com.example.platform.render.domain;
 
 /**
- * Types of steps that can appear in a {@link RenderPlan}.
+ * Types of steps that can appear in a {@link RenderJobPlan}.
  *
  * <p>Each step type corresponds to a specific operation in the render pipeline,
  * from timeline construction through transcoding, packaging, and quality control.</p>

@@ -17,7 +17,7 @@ public class DefaultRenderPlanner implements RenderPlanner {
     }
 
     @Override
-    public RenderPlan plan(RenderJob job) {
+    public ProviderRenderPlan plan(RenderJob job) {
         return switch (job.jobType()) {
             case "captioned_video_export" -> planCaptionedVideoExport(job);
             case "hls_package_export" -> planHlsPackageExport(job);
@@ -26,7 +26,7 @@ public class DefaultRenderPlanner implements RenderPlanner {
         };
     }
 
-    private RenderPlan planCaptionedVideoExport(RenderJob job) {
+    private ProviderRenderPlan planCaptionedVideoExport(RenderJob job) {
         List<RenderStep> steps = new ArrayList<>();
         List<String> selectedProviders = new ArrayList<>();
         List<String> requiredCapabilities = new ArrayList<>();
@@ -62,11 +62,11 @@ public class DefaultRenderPlanner implements RenderPlanner {
         selectedProviders.add("ffmpeg");
         requiredCapabilities.add(Capabilities.OUTPUT_NORMALIZE);
 
-        return new RenderPlan(job.id(), steps, selectedProviders, requiredCapabilities,
+        return new ProviderRenderPlan(job.id(), steps, selectedProviders, requiredCapabilities,
                 null, "1.0.0", 0.05, 30000);
     }
 
-    private RenderPlan planHlsPackageExport(RenderJob job) {
+    private ProviderRenderPlan planHlsPackageExport(RenderJob job) {
         List<RenderStep> steps = new ArrayList<>();
         List<String> selectedProviders = new ArrayList<>();
         List<String> requiredCapabilities = new ArrayList<>();
@@ -87,11 +87,11 @@ public class DefaultRenderPlanner implements RenderPlanner {
         selectedProviders.add("gpac");
         requiredCapabilities.add(Capabilities.PACKAGE_HLS);
 
-        return new RenderPlan(job.id(), steps, selectedProviders, requiredCapabilities,
+        return new ProviderRenderPlan(job.id(), steps, selectedProviders, requiredCapabilities,
                 null, "1.0.0", 0.10, 60000);
     }
 
-    private RenderPlan planTimelineExport(RenderJob job) {
+    private ProviderRenderPlan planTimelineExport(RenderJob job) {
         List<RenderStep> steps = new ArrayList<>();
         List<String> selectedProviders = new ArrayList<>();
         List<String> requiredCapabilities = new ArrayList<>();
@@ -112,7 +112,7 @@ public class DefaultRenderPlanner implements RenderPlanner {
         selectedProviders.add("ffmpeg");
         requiredCapabilities.add(Capabilities.OUTPUT_NORMALIZE);
 
-        return new RenderPlan(job.id(), steps, selectedProviders, requiredCapabilities,
+        return new ProviderRenderPlan(job.id(), steps, selectedProviders, requiredCapabilities,
                 null, "1.0.0", 0.08, 45000);
     }
 

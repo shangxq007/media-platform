@@ -47,7 +47,7 @@ public class DefaultRenderOrchestrator implements RenderOrchestrator {
                 return RenderResult.failed(job.id(), "Font preflight failed: " + preflight.errors());
             }
 
-            RenderPlan plan = planner.plan(job);
+            ProviderRenderPlan plan = planner.plan(job);
             Map<String, RenderArtifact> artifactByStep = new LinkedHashMap<>();
 
             for (RenderStep step : plan.steps()) {
