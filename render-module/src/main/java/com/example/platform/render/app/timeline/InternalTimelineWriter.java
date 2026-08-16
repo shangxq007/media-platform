@@ -193,6 +193,9 @@ public class InternalTimelineWriter {
                 ObjectNode cue = InternalTimelineJson.mapper().createObjectNode();
                 cue.put("id", overlay.id());
                 cue.put("text", overlay.text());
+                if (overlay.fontFamily() != null) {
+                    cue.put("fontFamily", overlay.fontFamily().value());
+                }
                 cue.set("timelineRange", frameRange(overlay.startTime(), overlay.duration(), rate));
                 cues.add(cue);
             }

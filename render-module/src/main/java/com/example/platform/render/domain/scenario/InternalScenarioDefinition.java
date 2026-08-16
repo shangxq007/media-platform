@@ -1,7 +1,6 @@
 package com.example.platform.render.domain.scenario;
 
 import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.editing.TimelineEditOperation;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -19,7 +18,6 @@ public record InternalScenarioDefinition(
         String description,
         InternalScenarioStatus status,
         TimelineSpec inputTimeline,
-        List<TimelineEditOperation> editOperations,
         InternalScenarioExpectedOutcome expectedOutcome,
         Map<String, String> safetyExpectations,
         Map<String, String> safeMetadata) {
@@ -30,7 +28,6 @@ public record InternalScenarioDefinition(
         Objects.requireNonNull(category, "category");
         Objects.requireNonNull(description, "description");
         status = status == null ? InternalScenarioStatus.ACTIVE : status;
-        editOperations = editOperations == null ? List.of() : List.copyOf(editOperations);
         Objects.requireNonNull(expectedOutcome, "expectedOutcome");
         safetyExpectations = safetyExpectations == null ? Map.of() : Map.copyOf(safetyExpectations);
         safeMetadata = safeMetadata == null ? Map.of() : Map.copyOf(safeMetadata);

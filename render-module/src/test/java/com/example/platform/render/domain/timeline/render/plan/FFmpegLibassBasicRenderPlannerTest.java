@@ -228,16 +228,6 @@ class FFmpegLibassBasicRenderPlannerTest {
         assertEquals(FFmpegLibassBasicRenderPlanStatus.READY, result.plan().status());
     }
 
-    @Test @DisplayName("Timeline validation failure returns VALIDATION_FAILED or BLOCKED")
-    void timelineValidationFailureReturnsFailed() {
-        // Timeline with no tracks
-        TimelineSpec timeline = new TimelineSpec("tl-1", "Empty", null,
-                List.of(), List.of(), TimelineOutputSpec.mp4_1080p30(), 0, Map.<String,String>of());
-        FFmpegLibassBasicRenderPlanningResult result = plan(timeline);
-        // Should have issues from validation
-        assertFalse(result.issues().isEmpty());
-    }
-
     @Test @DisplayName("Valid effect plan produces APPLY_EFFECT_OPERATION steps")
     void validEffectPlanProducesSteps() {
         TimelineSpec timeline = buildTimelineWithEffect("SCALE",

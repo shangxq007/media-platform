@@ -1,7 +1,6 @@
 package com.example.platform.render.domain.scenario;
 
 import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.editing.*;
 import com.example.platform.render.domain.timeline.render.effect.*;
 import com.example.platform.render.domain.timeline.render.plan.*;
 import com.example.platform.render.domain.timeline.render.transition.*;
@@ -32,27 +31,10 @@ public final class InternalScenarioRunner {
         List<InternalScenarioIssue> issues = new ArrayList<>();
         Map<String, Object> actualProperties = new LinkedHashMap<>();
 
-        // Step 1: Build timeline from input or edit operations
+        // Step 1: Build timeline from canonical input only (ROADMAP_19 FINAL
+        // AUTHORITY: TimelineDocument is the sole authoring authority; the
+        // BasicTimelineEditor parallel mutation path is DELETED).
         TimelineSpec timeline = definition.inputTimeline();
-        if (timeline == null && !definition.editOperations().isEmpty()) {
-            TimelineEditRequest request = new TimelineEditRequest(
-                    "req-" + definition.id().value(),
-                    definition.id().value(),
-                    definition.editOperations(),
-                    Map.of());
-            TimelineEditResult editResult = BasicTimelineEditor.apply(
-                    TimelineSpec.create(definition.id().value() + "-tl",
-                            definition.name().value(), TimelineOutputSpec.mp4_1080p30()),
-                    request);
-            if (editResult.status() != TimelineEditResultStatus.APPLIED) {
-                issues.add(InternalScenarioIssue.error(
-                        InternalScenarioIssueCode.TIMELINE_EDITING_FAILED,
-                        "Edit operations failed: " + editResult.status()));
-                return buildResult(definition, InternalScenarioResultStatus.FAIL,
-                        issues, actualProperties, Collections.<InternalScenarioIssueCode>emptyList());
-            }
-            timeline = editResult.timeline();
-        }
 
         if (timeline == null) {
             issues.add(InternalScenarioIssue.error(
@@ -62,30 +44,12 @@ public final class InternalScenarioRunner {
                     issues, actualProperties, List.of());
         }
 
-        // Step 2: Validate timeline
-        List<TimelineValidationIssue> validationIssues = BasicTimelineValidator.validate(timeline);
+        // Step 2: Timeline structural invariants are enforced by the
+        // TimelineSpec compact constructor (ROADMAP_19 FINAL AUTHORITY: the
+        // BasicTimelineValidator parallel model is DELETED).
         actualProperties.put("hasVideoTrack", timeline.tracks().stream()
                 .anyMatch(t -> t.type() == TimelineTrack.TrackType.VIDEO));
         actualProperties.put("outputFormat", timeline.outputSpec() != null ? timeline.outputSpec().format() : "none");
-
-        boolean hasBlockingValidation = validationIssues.stream()
-                .anyMatch(i -> i.severity() == TimelineValidationIssueSeverity.BLOCKING);
-        boolean hasErrorValidation = validationIssues.stream()
-                .anyMatch(i -> i.severity() == TimelineValidationIssueSeverity.ERROR);
-
-        if (hasBlockingValidation || hasErrorValidation) {
-            if (definition.category() == InternalScenarioCategory.SAFETY_BOUNDARY
-                    || definition.category() == InternalScenarioCategory.OUTPUT_PROFILE) {
-                actualProperties.put("validationBlocked", true);
-            } else {
-                issues.add(InternalScenarioIssue.error(
-                        InternalScenarioIssueCode.TIMELINE_VALIDATION_FAILED,
-                        "Timeline validation failed with " + validationIssues.size() + " issues"));
-                return buildResult(definition, InternalScenarioResultStatus.FAIL,
-                        issues, actualProperties,
-                        List.of(InternalScenarioIssueCode.TIMELINE_VALIDATION_FAILED));
-            }
-        }
 
         // Step 3: Run effect planner if relevant
         FFmpegBaselineEffectPlanningResult effectResult = null;
@@ -273,7 +237,7 @@ public final class InternalScenarioRunner {
                 || Boolean.TRUE.equals(actualProperties.get("transitionBlocked"))
                 || Boolean.TRUE.equals(actualProperties.get("renderBlocked"))
                 || Boolean.TRUE.equals(actualProperties.get("renderValidationFailed"))
-                || Boolean.TRUE.equals(actualProperties.get("validationBlocked"));
+               ;
 
         if (isBlocked && expected.expectedStatus() == InternalScenarioResultStatus.BLOCKED) {
             return InternalScenarioResultStatus.BLOCKED;

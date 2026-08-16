@@ -1,7 +1,6 @@
 package com.example.platform.render.domain.timeline.render.plan;
 
 import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.editing.BasicTimelineValidator;
 import com.example.platform.render.domain.timeline.render.effect.*;
 import com.example.platform.render.domain.timeline.render.transition.*;
 import java.util.*;
@@ -141,27 +140,10 @@ public final class FFmpegLibassBasicRenderPlanner {
 
         List<FFmpegLibassBasicRenderStep> steps = new ArrayList<>();
 
-        // Validate timeline
-        var validationIssues = BasicTimelineValidator.validate(timeline);
-        boolean hasBlocking = validationIssues.stream().anyMatch(i ->
-                i.severity() == com.example.platform.render.domain.timeline.editing.TimelineValidationIssueSeverity.BLOCKING
-                        || i.severity() == com.example.platform.render.domain.timeline.editing.TimelineValidationIssueSeverity.ERROR);
-        boolean hasWarning = validationIssues.stream().anyMatch(i ->
-                i.severity() == com.example.platform.render.domain.timeline.editing.TimelineValidationIssueSeverity.WARNING);
+        // ROADMAP_19 FINAL AUTHORITY: TimelineSpec is a non-authoritative
+        // execution projection; its compact constructor enforces structural
+        // invariants. The BasicTimelineValidator parallel model is DELETED.
 
-        if (hasBlocking) {
-            issues.add(FFmpegLibassBasicRenderPlanIssue.blocking(
-                    FFmpegLibassBasicRenderPlanIssueCode.TIMELINE_VALIDATION_FAILED,
-                    "Timeline validation failed with blocking issues"));
-        } else if (hasWarning && policy.failOnTimelineWarnings()) {
-            issues.add(FFmpegLibassBasicRenderPlanIssue.error(
-                    FFmpegLibassBasicRenderPlanIssueCode.TIMELINE_VALIDATION_FAILED,
-                    "Timeline validation has warnings"));
-        } else if (hasWarning) {
-            issues.add(FFmpegLibassBasicRenderPlanIssue.warning(
-                    FFmpegLibassBasicRenderPlanIssueCode.TIMELINE_VALIDATION_FAILED,
-                    "Timeline validation has warnings (non-blocking)"));
-        }
 
         steps.add(new FFmpegLibassBasicRenderStep(
                 new FFmpegLibassBasicRenderStepId("step-" + stepSeq.incrementAndGet()),
@@ -175,7 +157,7 @@ public final class FFmpegLibassBasicRenderPlanner {
         return new FFmpegLibassBasicRenderStage(
                 new FFmpegLibassBasicRenderStageId("stage-" + stageSeq.incrementAndGet()),
                 FFmpegLibassBasicRenderStageType.VALIDATE_TIMELINE,
-                hasBlocking ? FFmpegLibassBasicRenderStageStatus.INVALID : FFmpegLibassBasicRenderStageStatus.VALID,
+                FFmpegLibassBasicRenderStageStatus.VALID,
                 steps, Map.of());
     }
 

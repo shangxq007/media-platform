@@ -39,12 +39,6 @@ import com.example.platform.render.domain.timeline.compile.executionplan.RenderE
 import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionStepStatus;
 import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionStepType;
 import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionPlanId;
-import com.example.platform.render.domain.timeline.editing.BasicTimelineEditor;
-import com.example.platform.render.domain.timeline.editing.TimelineEditOperation;
-import com.example.platform.render.domain.timeline.editing.TimelineEditOperationType;
-import com.example.platform.render.domain.timeline.editing.TimelineEditRequest;
-import com.example.platform.render.domain.timeline.editing.TimelineEditResult;
-import com.example.platform.render.domain.timeline.editing.TimelineEditResultStatus;
 import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPlanningRequest;
 import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPlanningRequestId;
 import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPlanningResult;
@@ -102,57 +96,6 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
-    }
-
-    // ==================== Stage 1: Timeline Edit ====================
-
-    @Nested
-    @DisplayName("Stage 1: Timeline Edit")
-    class TimelineEditStage {
-
-        @Test
-        @DisplayName("Timeline edit produces updated timeline with caption overlay")
-        void timelineEditProducesUpdatedTimeline() {
-            // Given: a minimal video timeline
-            TimelineSpec sourceTimeline = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-
-            // When: we add a caption via the edit model
-            TimelineEditOperation addCaption = new TimelineEditOperation(
-                    TimelineEditOperationType.ADD_CAPTION, sourceTimeline.id(),
-                    Map.of("text", "Hello World", "startTime", "1.0", "duration", "4.0"),
-                    Map.of());
-            TimelineEditRequest request = new TimelineEditRequest(
-                    "req-vs0-001", sourceTimeline.id(), List.of(addCaption), Map.of());
-
-            TimelineEditResult result = BasicTimelineEditor.apply(sourceTimeline, request);
-
-            // Then: the edit succeeds and the timeline has text overlays
-            assertEquals(TimelineEditResultStatus.APPLIED, result.status());
-            assertNotNull(result.timeline());
-            assertFalse(result.timeline().textOverlays().isEmpty(),
-                    "Edited timeline should have text overlays from ADD_CAPTION");
-            assertEquals("Hello World", result.timeline().textOverlays().get(0).text());
-        }
-
-        @Test
-        @DisplayName("Timeline edit preserves existing tracks when adding caption")
-        void timelineEditPreservesExistingTracks() {
-            TimelineSpec sourceTimeline = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-            int originalTrackCount = sourceTimeline.tracks().size();
-
-            TimelineEditOperation addCaption = new TimelineEditOperation(
-                    TimelineEditOperationType.ADD_CAPTION, sourceTimeline.id(),
-                    Map.of("text", "Subtitle", "startTime", "0.0", "duration", "5.0"),
-                    Map.of());
-            TimelineEditRequest request = new TimelineEditRequest(
-                    "req-vs0-002", sourceTimeline.id(), List.of(addCaption), Map.of());
-
-            TimelineEditResult result = BasicTimelineEditor.apply(sourceTimeline, request);
-
-            assertEquals(TimelineEditResultStatus.APPLIED, result.status());
-            assertEquals(originalTrackCount, result.timeline().tracks().size(),
-                    "Track count should be preserved after ADD_CAPTION");
-        }
     }
 
     // ==================== Stage 2: Caption Template ====================
@@ -483,19 +426,8 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
         @Test
         @DisplayName("Full VS.0 flow: Timeline edit → Caption → FFmpeg plan → RenderPlan → Step execution")
         void fullVs0VerticalSliceFlow() {
-            // === Step 1: Timeline Edit ===
-            TimelineSpec sourceTimeline = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-            TimelineEditOperation addCaption = new TimelineEditOperation(
-                    TimelineEditOperationType.ADD_CAPTION, sourceTimeline.id(),
-                    Map.of("text", "VS.0 Test Caption", "startTime", "1.0", "duration", "5.0"),
-                    Map.of());
-            TimelineEditRequest editRequest = new TimelineEditRequest(
-                    "req-vs0-full", sourceTimeline.id(), List.of(addCaption), Map.of());
-            TimelineEditResult editResult = BasicTimelineEditor.apply(sourceTimeline, editRequest);
-            assertEquals(TimelineEditResultStatus.APPLIED, editResult.status());
-            TimelineSpec editedTimeline = editResult.timeline();
-
-            // === Step 2: Caption Template ===
+            // === Step 1: Caption Template (canonical TimelineDocument authoring
+            // path; BasicTimelineEditor parallel mutation is DELETED) ===
             CaptionSegmentSpec seg = new CaptionSegmentSpec(1000, 6000, "VS.0 Test Caption");
             CaptionTemplateRenderRequest captionRequest = new CaptionTemplateRenderRequest(
                     "prj-vs0", "prod-source-004",
@@ -608,24 +540,6 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
     @Nested
     @DisplayName("Stage 7: Domain Boundary Validation")
     class DomainBoundaryValidation {
-
-        @Test
-        @DisplayName("Timeline edit does not produce raw FFmpeg commands")
-        void timelineEditNoRawCommands() {
-            TimelineSpec timeline = TimelineCoreSmokeFixture.createMinimalVideoTimeline();
-            TimelineEditOperation op = new TimelineEditOperation(
-                    TimelineEditOperationType.ADD_CAPTION, timeline.id(),
-                    Map.of("text", "Safe caption", "startTime", "0.0", "duration", "3.0"),
-                    Map.of());
-            TimelineEditResult result = BasicTimelineEditor.apply(timeline,
-                    new TimelineEditRequest("req-safe", timeline.id(), List.of(op), Map.of()));
-
-            assertEquals(TimelineEditResultStatus.APPLIED, result.status());
-            // The result timeline metadata should not contain raw commands
-            result.timeline().metadata().values().forEach(v ->
-                    assertFalse(v.contains("ffmpeg ") || v.contains("rm -") || v.contains("sudo"),
-                            "Timeline metadata should not contain raw commands"));
-        }
 
         @Test
         @DisplayName("Caption template adapter does not expose raw filtergraphs")

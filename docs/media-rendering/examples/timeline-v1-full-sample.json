@@ -238,7 +238,8 @@
               "start": { "frame": 180, "rate": { "num": 30, "den": 1 } },
               "duration": { "frame": 90, "rate": { "num": 30, "den": 1 } }
             },
-            "text": "新品发布"
+            "text": "新品发布",
+            "fontFamily": "Noto Sans SC"
           },
           {
             "id": "cue_zh_2",
@@ -247,6 +248,7 @@
               "duration": { "frame": 120, "rate": { "num": 30, "den": 1 } }
             },
             "text": "限时优惠 · 立即体验",
+            "fontFamily": "Noto Sans SC",
             "styleOverride": { "color": "#FFD700" }
           }
         ],
@@ -268,7 +270,8 @@
               "start": { "frame": 180, "rate": { "num": 30, "den": 1 } },
               "duration": { "frame": 90, "rate": { "num": 30, "den": 1 } }
             },
-            "text": "New Product Launch"
+            "text": "New Product Launch",
+            "fontFamily": "Noto Sans SC"
           }
         ],
         "delivery": { "burnIn": false, "sidecar": ["webvtt"] }
@@ -339,6 +342,7 @@
         "kind": "WATERMARK",
         "zIndex": 220,
         "text": "DEMO ONLY",
+            "fontFamily": "Noto Sans SC",
         "transform": { "x": 1680, "y": 980, "opacity": 0.4 },
         "render": { "strategy": "COMPOSE_IN_FINAL", "backendHint": "ffmpeg" }
       }

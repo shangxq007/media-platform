@@ -1,7 +1,6 @@
 package com.example.platform.render.domain.scenario;
 
 import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.editing.TimelineEditOperation;
 import com.example.platform.shared.time.FrameRate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,8 +53,7 @@ public final class InternalScenarioRegistry {
                 "Validates that a basic timeline can be created with one video track and default output profile.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.PASS,
                         List.of(),
                         Map.of("hasVideoTrack", true, "outputFormat", "mp4"),
@@ -85,8 +83,7 @@ public final class InternalScenarioRegistry {
                 "Validates caption overlay planning produces expected render steps.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.PASS,
                         List.of(),
                         Map.of("hasCaptionSteps", true, "stagesCountMin", 1),
@@ -117,8 +114,7 @@ public final class InternalScenarioRegistry {
                 "Validates watermark overlay planning from metadata produces expected render steps.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.PASS,
                         List.of(),
                         Map.of("hasWatermarkSteps", true, "stagesCountMin", 1),
@@ -150,8 +146,7 @@ public final class InternalScenarioRegistry {
                 "Validates effect planning produces expected effect operations for SCALE, CROP, OPACITY.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.PASS,
                         List.of(),
                         Map.of("effectOperationCount", 3, "hasScale", true, "hasCrop", true, "hasOpacity", true),
@@ -183,8 +178,7 @@ public final class InternalScenarioRegistry {
                 "Validates transition planning produces expected transition operations.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.PASS,
                         List.of(),
                         Map.of("transitionOperationCountMin", 1, "hasCrossfade", true),
@@ -217,8 +211,7 @@ public final class InternalScenarioRegistry {
                 "Validates full render plan composition with effects, captions, watermarks, and output encoding.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.PASS,
                         List.of(),
                         Map.of("stagesCountMin", 5, "hasEffectStage", true, "hasCaptionStage", true,
@@ -249,8 +242,7 @@ public final class InternalScenarioRegistry {
                 "Validates that arbitrary filtergraph effects are blocked by effect planning.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.BLOCKED,
                         List.of(InternalScenarioIssueCode.FORBIDDEN_EFFECT_NOT_BLOCKED),
                         Map.of(),
@@ -282,8 +274,7 @@ public final class InternalScenarioRegistry {
                 "Validates that user-defined transition graphs are blocked by transition planning.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.BLOCKED,
                         List.of(InternalScenarioIssueCode.FORBIDDEN_TRANSITION_NOT_BLOCKED),
                         Map.of(),
@@ -314,8 +305,7 @@ public final class InternalScenarioRegistry {
                 "Validates that unsupported output container is blocked by render planning.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.BLOCKED,
                         List.of(InternalScenarioIssueCode.OUTPUT_PROFILE_INVALID),
                         Map.of(),
@@ -355,8 +345,7 @@ public final class InternalScenarioRegistry {
                 "Validates the full planning flow: timeline editing → effect planning → transition planning → render plan.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
-                List.of(),
-                new InternalScenarioExpectedOutcome(
+                                new InternalScenarioExpectedOutcome(
                         InternalScenarioResultStatus.PASS,
                         List.of(),
                         Map.of("stagesCountMin", 8, "hasEffectOperations", true,
