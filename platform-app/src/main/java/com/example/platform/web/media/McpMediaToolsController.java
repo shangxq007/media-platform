@@ -557,7 +557,13 @@ public class McpMediaToolsController {
     @PostMapping("/import_srt")
     @Operation(summary = "SRT → Internal Timeline Schema 1.0（含字幕轨）")
     public ResponseEntity<Map<String, Object>> importSrt(@RequestBody SubtitleTextRequest request) {
-        var overlays = SrtSubtitleAdapter.parse(request.content());
+        if (request.fontFamily() == null || request.fontFamily().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "fontFamily is required: SRT carries no font semantics; "
+                            + "an explicit import font policy must be supplied (ROADMAP_19 CORR-2)"));
+        }
+        var overlays = SrtSubtitleAdapter.parse(request.content(),
+                new com.example.platform.fonttext.typography.FontFamilyName(request.fontFamily()));
         TimelineSpec base = TimelineSpec.create("tl-srt-import", "SRT Import", TimelineOutputSpec.mp4_1080p30());
         double duration = overlays.stream()
                 .mapToDouble(o -> o.startTime() + o.duration())
@@ -861,7 +867,7 @@ public class McpMediaToolsController {
         }
     }
 
-    public record SubtitleTextRequest(String content) {}
+    public record SubtitleTextRequest(String content, String fontFamily) {}
 
     public record EdlImportRequest(String edlContent, String defaultMediaUri) {}
 

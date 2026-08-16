@@ -68,6 +68,9 @@ class ModularityTest {
         // semantics for the Timeline-owned TextElement (frozen direction:
         // Render -> FontText; pure domain, zero outward deps).
         "render' depends on module 'fonttext",
+        // ROADMAP_19 CORR-2: web MCP controller supplies explicit SRT import font
+        // policy (application-layer); font-text value semantics consumed at API boundary.
+        "web' depends on module 'fonttext",
         // K2 (K2-11): NotificationEventPublisher rehomed from shared-kernel to notification;
         // outbox implements the notification publisher port (outbox -> notification, leaf owner).
         "outbox' depends on non-exposed type com.example.platform.notification.app.NotificationEventPublisher",
