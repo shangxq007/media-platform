@@ -212,13 +212,33 @@ class CaptionTemplateRenderContractTest {
     @DisplayName("Oversized font fails")
     void oversizedFontFails() {
         CaptionStyleSpec style = new CaptionStyleSpec(
-                CaptionPlacement.BOTTOM_CENTER, FontStyleSpec.defaults(),
+                CaptionPlacement.BOTTOM_CENTER, new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                 300, 2, 1.4, "center");
         CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
                 "proj-1", "prod-1",
                 List.of(new CaptionSegmentSpec(0, 1000, "Hi")),
                 new CaptionTemplateSpec(null, "test", style), null, Map.of());
         assertFalse(validator.validate(request).valid());
+    }
+
+    @Test
+    @DisplayName("Missing font family fails closed (no invented default)")
+    void missingFontFamilyFailsClosed() {
+        // ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION:
+        // a style with no explicit font family must be rejected — never
+        // silently defaulted to an invented platform font.
+        CaptionStyleSpec style = new CaptionStyleSpec(
+                CaptionPlacement.BOTTOM_CENTER,
+                new FontStyleSpec(null, 400, "#FFFFFF", "#000000", 2, null),
+                24, 2, 1.4, "center");
+        CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
+                "proj-1", "prod-1",
+                List.of(new CaptionSegmentSpec(0, 1000, "Hi")),
+                new CaptionTemplateSpec(null, "test", style), null, Map.of());
+        CaptionTemplateValidationResult result = validator.validate(request);
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("Font family is required")),
+                "Expected explicit font-family requirement, got: " + result.errors());
     }
 
     @Test
@@ -289,12 +309,16 @@ class CaptionTemplateRenderContractTest {
     }
 
     @Test
-    @DisplayName("Default template uses default style")
+    @DisplayName("Default template carries NO invented font family")
     void defaultTemplate() {
+        // ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION:
+        // the default style must NOT invent a platform font — family stays
+        // null so consumers without explicit selection fail closed.
         CaptionTemplateSpec template = CaptionTemplateSpec.defaults();
         assertNull(template.templateId());
         assertEquals(CaptionPlacement.BOTTOM_CENTER, template.style().placement());
-        assertEquals("DejaVu Sans", template.style().font().family());
+        assertNull(template.style().font().family(),
+                "default style must not invent a font family");
     }
 
     @Test

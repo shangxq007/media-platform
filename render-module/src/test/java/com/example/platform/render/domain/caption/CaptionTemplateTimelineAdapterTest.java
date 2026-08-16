@@ -45,7 +45,7 @@ class CaptionTemplateTimelineAdapterTest {
                 "proj-1", "prod-source-1",
                 List.of(new CaptionSegmentSpec(0, 3000, "Hello"),
                         new CaptionSegmentSpec(3000, 6000, "World")),
-                null, null, Map.of());
+                explicitTemplate(), null, Map.of());
 
         TimelineSpec spec = adapter.adapt(request);
 
@@ -61,7 +61,7 @@ class CaptionTemplateTimelineAdapterTest {
         CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
                 "proj-1", "prod-source-1",
                 List.of(new CaptionSegmentSpec(1000, 4000, "Test")),
-                null, null, Map.of());
+                explicitTemplate(), null, Map.of());
 
         TimelineSpec spec = adapter.adapt(request);
 
@@ -70,14 +70,16 @@ class CaptionTemplateTimelineAdapterTest {
     }
 
     @Test
-    @DisplayName("Default style applied when no template")
-    void defaultStyleApplied() {
-        CaptionTemplateRenderRequest request = minimalRequest();
-        TimelineSpec spec = adapter.adapt(request);
-
-        assertEquals("DejaVu Sans", spec.textOverlays().get(0).fontFamily().value());
-        assertEquals(24, spec.textOverlays().get(0).fontSize());
-        assertEquals("#FFFFFF", spec.textOverlays().get(0).color());
+    @DisplayName("Missing template font fails closed (no invented default)")
+    void missingTemplateFontFailsClosed() {
+        // ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION:
+        // a request without explicit font selection must be rejected by the
+        // adapter — never silently rendered with an invented platform font.
+        CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
+                "proj-1", "prod-source-1",
+                List.of(new CaptionSegmentSpec(0, 3000, "Hello")),
+                null, null, Map.of());
+        assertThrows(IllegalArgumentException.class, () -> adapter.adapt(request));
     }
 
     @Test
@@ -107,7 +109,7 @@ class CaptionTemplateTimelineAdapterTest {
         CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
                 "proj-1", "prod-source-1",
                 List.of(new CaptionSegmentSpec(0, 2000, "Test")),
-                null, profile, Map.of());
+                explicitTemplate(), profile, Map.of());
 
         TimelineSpec spec = adapter.adapt(request);
 
@@ -146,7 +148,7 @@ class CaptionTemplateTimelineAdapterTest {
                 "proj-1", "prod-source-1",
                 List.of(new CaptionSegmentSpec(0, 5000, "A"),
                         new CaptionSegmentSpec(5000, 10000, "B")),
-                null, null, Map.of());
+                explicitTemplate(), null, Map.of());
 
         TimelineSpec spec = adapter.adapt(request);
 
@@ -155,10 +157,18 @@ class CaptionTemplateTimelineAdapterTest {
 
     // --- Helpers ---
 
+    private CaptionTemplateSpec explicitTemplate() {
+        // EXPLICIT fixture font selection (no implicit default):
+        return new CaptionTemplateSpec(null, "inline",
+                new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                        new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                        24, 2, 1.4, "center"));
+    }
+
     private CaptionTemplateRenderRequest minimalRequest() {
         return new CaptionTemplateRenderRequest(
                 "proj-1", "prod-source-1",
                 List.of(new CaptionSegmentSpec(0, 3000, "Hello World")),
-                null, null, Map.of());
+                explicitTemplate(), null, Map.of());
     }
 }

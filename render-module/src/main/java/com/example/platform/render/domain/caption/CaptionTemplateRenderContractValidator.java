@@ -125,7 +125,11 @@ public class CaptionTemplateRenderContractValidator {
     private void validateStyle(CaptionStyleSpec style, List<String> errors) {
         // Font
         if (style.font() != null) {
-            if (style.font().family() != null && !ALLOWED_FONTS.contains(style.font().family())) {
+            // ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION:
+            // missing font family fails closed — no invented font default.
+            if (style.font().family() == null || style.font().family().isBlank()) {
+                errors.add("Font family is required; no implicit font default");
+            } else if (!ALLOWED_FONTS.contains(style.font().family())) {
                 errors.add("Font family not allowed: " + style.font().family());
             }
             if (style.font().outlineWidth() < 0 || style.font().outlineWidth() > MAX_OUTLINE_WIDTH) {

@@ -20,19 +20,15 @@ class AssStyleMapperTest {
         mapper = new AssStyleMapper();
     }
 
-    // --- 1. Default style maps correctly ---
+    // --- 1. Missing font selection fails closed (no invented default) ---
 
     @Test
-    @DisplayName("Default template maps to safe ASS style with default values")
-    void defaultTemplateMapsToSafeAssStyle() {
-        AssStyleParams params = mapper.mapToAssStyle(null);
-
-        assertEquals("DejaVu Sans", params.fontFamily());
-        assertEquals(24, params.fontSize());
-        assertEquals(0, params.bold());
-        assertEquals(2, params.alignment()); // bottom-center
-        assertEquals(2, params.outlineWidth());
-        assertTrue(params.isWithinBounds(), "Default params must be within bounds");
+    @DisplayName("Missing template font fails closed instead of inventing DejaVu")
+    void missingTemplateFontFailsClosed() {
+        // ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION:
+        // a template with no explicit font selection must NOT silently
+        // fall back to an invented platform font.
+        assertThrows(IllegalStateException.class, () -> mapper.mapToAssStyle(null));
     }
 
     // --- 2. Color conversion: hex #RRGGBB → ASS &H00BBGGRR ---
@@ -124,7 +120,7 @@ class AssStyleMapperTest {
     @DisplayName("Bottom-center placement with center align → ASS alignment 2")
     void bottomCenterAlignment() {
         CaptionStyleSpec style = new CaptionStyleSpec(
-                CaptionPlacement.BOTTOM_CENTER, FontStyleSpec.defaults(),
+                CaptionPlacement.BOTTOM_CENTER, new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                 24, 2, 1.4, "center");
         AssStyleParams params = mapper.mapToAssStyle(new CaptionTemplateSpec("t1", "test", style));
         assertEquals(2, params.alignment());
@@ -134,7 +130,7 @@ class AssStyleMapperTest {
     @DisplayName("Top-center placement with center align → ASS alignment 8")
     void topCenterAlignment() {
         CaptionStyleSpec style = new CaptionStyleSpec(
-                CaptionPlacement.TOP_CENTER, FontStyleSpec.defaults(),
+                CaptionPlacement.TOP_CENTER, new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                 24, 2, 1.4, "center");
         AssStyleParams params = mapper.mapToAssStyle(new CaptionTemplateSpec("t1", "test", style));
         assertEquals(8, params.alignment());
@@ -144,7 +140,7 @@ class AssStyleMapperTest {
     @DisplayName("Center placement with left align → ASS alignment 4")
     void centerLeftAlignment() {
         CaptionStyleSpec style = new CaptionStyleSpec(
-                CaptionPlacement.CENTER, FontStyleSpec.defaults(),
+                CaptionPlacement.CENTER, new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                 24, 2, 1.4, "left");
         AssStyleParams params = mapper.mapToAssStyle(new CaptionTemplateSpec("t1", "test", style));
         assertEquals(4, params.alignment());
@@ -154,7 +150,7 @@ class AssStyleMapperTest {
     @DisplayName("Bottom placement with right align → ASS alignment 3")
     void bottomRightAlignment() {
         CaptionStyleSpec style = new CaptionStyleSpec(
-                CaptionPlacement.BOTTOM_CENTER, FontStyleSpec.defaults(),
+                CaptionPlacement.BOTTOM_CENTER, new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                 24, 2, 1.4, "right");
         AssStyleParams params = mapper.mapToAssStyle(new CaptionTemplateSpec("t1", "test", style));
         assertEquals(3, params.alignment());
@@ -164,7 +160,7 @@ class AssStyleMapperTest {
     @DisplayName("Top placement with right align → ASS alignment 9")
     void topRightAlignment() {
         CaptionStyleSpec style = new CaptionStyleSpec(
-                CaptionPlacement.TOP_CENTER, FontStyleSpec.defaults(),
+                CaptionPlacement.TOP_CENTER, new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                 24, 2, 1.4, "right");
         AssStyleParams params = mapper.mapToAssStyle(new CaptionTemplateSpec("t1", "test", style));
         assertEquals(9, params.alignment());
@@ -176,7 +172,7 @@ class AssStyleMapperTest {
     @DisplayName("Font size clamped to minimum 8")
     void fontSizeClampedMin() {
         CaptionStyleSpec style = new CaptionStyleSpec(
-                CaptionPlacement.BOTTOM_CENTER, FontStyleSpec.defaults(),
+                CaptionPlacement.BOTTOM_CENTER, new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                 2, 2, 1.4, "center"); // below MIN_FONT_SIZE
         AssStyleParams params = mapper.mapToAssStyle(new CaptionTemplateSpec("t1", "test", style));
         assertEquals(8, params.fontSize());
@@ -187,7 +183,7 @@ class AssStyleMapperTest {
     @DisplayName("Font size clamped to maximum 200")
     void fontSizeClampedMax() {
         CaptionStyleSpec style = new CaptionStyleSpec(
-                CaptionPlacement.BOTTOM_CENTER, FontStyleSpec.defaults(),
+                CaptionPlacement.BOTTOM_CENTER, new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                 300, 2, 1.4, "center"); // above MAX_FONT_SIZE
         AssStyleParams params = mapper.mapToAssStyle(new CaptionTemplateSpec("t1", "test", style));
         assertEquals(200, params.fontSize());

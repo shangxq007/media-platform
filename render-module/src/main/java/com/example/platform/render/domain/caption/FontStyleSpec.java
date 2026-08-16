@@ -19,7 +19,13 @@ public record FontStyleSpec(
         int outlineWidth,
         String backgroundColor) {
 
+    /**
+     * ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION:
+     * NO invented font family. Family is intentionally {@code null} so any
+     * consumer without an explicit font selection fails closed instead of
+     * silently inventing a platform font.
+     */
     public static FontStyleSpec defaults() {
-        return new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null);
+        return new FontStyleSpec(null, 400, "#FFFFFF", "#000000", 2, null);
     }
 }

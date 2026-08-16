@@ -94,10 +94,15 @@ class TimelinePatchTextPreservationTest {
 
     @Test
     void finalApplyRebuildPreservesTextElements() {
-        // empty patch -> final rebuild path must still carry textElements
-        var result = applier.apply(baseSnapshot(), patch());
-        assertEquals(TimelinePatchApplicationStatus.NO_OP, result.status());
-        assertTextPreserved(result.patchedSnapshot(), "final rebuild");
+        // NON-EMPTY patch -> apply() must reach the final rebuild line
+        // `CanonicalTimelineSnapshot patched = new CanonicalTimelineSnapshot(...)`
+        // and carry textElements through reconstruction. An empty patch would
+        // short-circuit to NO_OP and never exercise the rebuild path.
+        var op = change(TimelineChangeType.TIMELINE_DURATION_CHANGED, "timeline.duration", "0", "10");
+        var result = applier.apply(baseSnapshot(), patch(op));
+        assertEquals(TimelinePatchApplicationStatus.APPLIED, result.status(),
+                "final rebuild must apply a non-empty patch");
+        assertTextPreserved(result.patchedSnapshot(), "final rebuild (non-empty patch)");
     }
 
     @Test

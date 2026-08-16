@@ -94,10 +94,15 @@ public class AssStyleMapper {
     // --- Resolution helpers ---
 
     private String resolveFontFamily(CaptionStyleSpec style) {
-        if (style.font() != null && style.font().family() != null) {
+        if (style.font() != null && style.font().family() != null
+                && !style.font().family().isBlank()) {
             return style.font().family();
         }
-        return "DejaVu Sans";
+        // ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION:
+        // no invented font family. The execution projection cannot render
+        // without an explicit font selection -> fail closed.
+        throw new IllegalStateException(
+                "No font family: caption style requires explicit font selection (no implicit default)");
     }
 
     private int resolveFontSize(CaptionStyleSpec style) {

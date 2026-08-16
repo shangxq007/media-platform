@@ -88,7 +88,7 @@ public class CaptionTemplateRenderApiMapper {
         FontStyleSpec font = FontStyleSpec.defaults();
         if (styleDto.font() != null) {
             font = new FontStyleSpec(
-                    styleDto.font().family() != null ? styleDto.font().family() : "DejaVu Sans",
+                    styleDto.font().family(),
                     styleDto.font().weight() != null ? styleDto.font().weight() : 400,
                     styleDto.font().color() != null ? styleDto.font().color() : "#FFFFFF",
                     styleDto.font().outlineColor() != null ? styleDto.font().outlineColor() : "#000000",

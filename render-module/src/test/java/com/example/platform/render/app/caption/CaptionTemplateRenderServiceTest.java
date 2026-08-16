@@ -113,7 +113,11 @@ class CaptionTemplateRenderServiceTest {
         CaptionTemplateRenderResult result = service.render(new CaptionTemplateRenderRequest(
                 "proj-1", "prod-source-1",
                 List.of(new CaptionSegmentSpec(0, 3000, "Hello World")),
-                null, null, Map.of()));
+                new CaptionTemplateSpec(null, "inline",
+                        new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of()));
         assertTrue(result.isSuccess(), "Failed: status=" + result.status()
                 + " msg=" + result.safeMessage()
                 + " errors=" + result.validationErrors());
@@ -138,7 +142,11 @@ class CaptionTemplateRenderServiceTest {
         CaptionTemplateRenderResult result = service.render(new CaptionTemplateRenderRequest(
                 "proj-1", "prod-source-1",
                 List.of(new CaptionSegmentSpec(0, 3000, "Test")),
-                null, null, Map.of()));
+                new CaptionTemplateSpec(null, "inline",
+                        new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of()));
         String s = result.toString();
         assertFalse(s.contains("bucket"));
         assertFalse(s.contains("objectKey"));
