@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.infrastructure.RenderProvider;
 import java.nio.file.Files;
 import java.nio.file.Path;

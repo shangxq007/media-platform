@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import com.example.platform.render.app.planner.PipelineTask;
 import com.example.platform.render.app.planner.PipelineTaskType;
-import com.example.platform.render.domain.timeline.FinalComposerHint;
+import com.example.platform.render.domain.planning.FinalComposerHint;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

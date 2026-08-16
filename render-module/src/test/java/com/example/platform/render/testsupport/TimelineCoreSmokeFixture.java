@@ -1,10 +1,17 @@
 package com.example.platform.render.testsupport;
 
 import com.example.platform.render.app.TimelineSnapshotService;
-import com.example.platform.render.domain.timeline.*;
+
 
 import java.util.List;
 import java.util.Map;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Canonical timeline fixture for Timeline Core Testable R1 smoke testing.
@@ -67,7 +74,7 @@ public final class TimelineCoreSmokeFixture {
     /**
      * Serializes a TimelineSpec to JSON using the same parser/writer conventions
      * as the production pipeline. Produces canonical TimelineSpec JSON that
-     * {@link com.example.platform.render.domain.timeline.TimelineScriptParser} can parse.
+     * {@link com.example.platform.render.domain.interchange.TimelineScriptParser} can parse.
      */
     public static String toJson(TimelineSpec spec) {
         com.fasterxml.jackson.databind.ObjectMapper mapper =

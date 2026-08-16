@@ -2,19 +2,25 @@ package com.example.platform.render.app;
 
 import com.example.platform.render.app.planner.FinalComposerSelector;
 import com.example.platform.render.app.planner.RenderPlannerService;
-import com.example.platform.render.domain.timeline.*;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineStickerReader;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 class TimelineExecutorServiceTest {
 
     private final TimelineExecutorService executor = new TimelineExecutorService(
             new RenderPlannerService(new TimelineExtensionsReader(), new FinalComposerSelector(),
-                    new com.example.platform.render.domain.timeline.TimelineStickerReader(),
+                    new com.example.platform.render.domain.legacy.TimelineStickerReader(),
                     new com.example.platform.render.app.timeline.SegmentTimelinePlanner()));
 
     @Test

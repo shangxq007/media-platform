@@ -1,6 +1,6 @@
 package com.example.platform.render.infrastructure.effects;
 
-import com.example.platform.render.domain.timeline.TimelineClipEffect;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
 import com.example.platform.render.infrastructure.EffectMappingService;
 import java.util.ArrayList;
 import java.util.List;

@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.shared.time.FrameRate;
-import com.example.platform.render.domain.timeline.compile.*;
+import com.example.platform.render.domain.compile.*;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +10,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineAudioSpec;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Golden fixture tests for the v0 compile pipeline:

@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.TimelineValidationResult;
+import com.example.platform.render.domain.legacy.TimelineValidationResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;

@@ -6,10 +6,10 @@ import com.example.platform.render.app.timeline.SegmentArtifactUploadService;
 import com.example.platform.render.app.timeline.SegmentCachePublisher;
 import com.example.platform.render.app.timeline.SegmentTimelinePlanner;
 import com.example.platform.render.app.planner.PipelineTask;
-import com.example.platform.render.domain.timeline.TimelineSegment;
-import com.example.platform.render.domain.timeline.TimelineExtensions;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineSegment;
+import com.example.platform.render.domain.interchange.TimelineExtensions;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -97,18 +97,18 @@ public class PipelineDagExecutorService {
         int concerns = 0;
 
         long videoTracks = timeline.tracks().stream()
-                .filter(t -> t.type() == com.example.platform.render.domain.timeline.TimelineTrack.TrackType.VIDEO)
+                .filter(t -> t.type() == com.example.platform.render.domain.legacy.TimelineTrack.TrackType.VIDEO)
                 .count();
         if (videoTracks >= 2) concerns++;
 
         boolean hasAudioTracks = timeline.tracks().stream()
-                .anyMatch(t -> t.type() == com.example.platform.render.domain.timeline.TimelineTrack.TrackType.AUDIO
+                .anyMatch(t -> t.type() == com.example.platform.render.domain.legacy.TimelineTrack.TrackType.AUDIO
                         && !t.muted() && t.clips() != null && !t.clips().isEmpty());
         if (hasAudioTracks && videoTracks >= 1) concerns++;
 
         boolean hasSubtitles = (timeline.textOverlays() != null && !timeline.textOverlays().isEmpty())
                 || timeline.tracks().stream().anyMatch(t ->
-                        t.type() == com.example.platform.render.domain.timeline.TimelineTrack.TrackType.SUBTITLE);
+                        t.type() == com.example.platform.render.domain.legacy.TimelineTrack.TrackType.SUBTITLE);
         if (hasSubtitles) concerns++;
 
         boolean hasEffects = timeline.tracks().stream()

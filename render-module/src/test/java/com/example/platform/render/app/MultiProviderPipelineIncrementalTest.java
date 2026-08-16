@@ -11,10 +11,10 @@ import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import com.example.platform.render.app.planner.PipelineTask;
 import com.example.platform.render.app.planner.PipelineTaskType;
 import com.example.platform.render.app.planner.RenderPlannerService;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineStickerReader;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineStickerReader;
 import com.example.platform.render.infrastructure.*;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,7 +54,7 @@ class MultiProviderPipelineIncrementalTest {
                 timelineExecutor,
                 new SegmentStitchComposeService(
                         mock(com.example.platform.extension.app.ProcessToolRunner.class),
-                        new com.example.platform.render.domain.timeline.TimelineScriptParser(),
+                        new com.example.platform.render.domain.interchange.TimelineScriptParser(),
                         new com.example.platform.render.infrastructure.mlt.MltProjectXmlBuilder(),
                         new com.example.platform.render.infrastructure.mlt.MLTCommandFactory(),
                         Optional.empty(),
@@ -79,7 +79,7 @@ class MultiProviderPipelineIncrementalTest {
         PipelineExecutionPlan plan = new PipelineExecutionPlan(
                 "pep-inc",
                 timeline.id(),
-                com.example.platform.render.domain.timeline.FinalComposerHint.FFMPEG,
+                com.example.platform.render.domain.planning.FinalComposerHint.FFMPEG,
                 List.of(
                         PipelineTask.of("effects", "effects", PipelineTaskType.EFFECTS, "javacv",
                                 List.of(), effectParams),

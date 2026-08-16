@@ -9,7 +9,7 @@ import com.example.platform.render.domain.render.local.LocalRenderExecutionReque
 import com.example.platform.render.domain.render.local.LocalRenderSmokeIssue;
 import com.example.platform.render.domain.render.local.LocalRenderSmokeIssueCode;
 import com.example.platform.render.domain.render.local.LocalRenderSmokePolicy;
-import com.example.platform.render.domain.timeline.render.plan.*;
+import com.example.platform.render.domain.plan.*;
 
 import java.nio.file.Path;
 import java.util.*;

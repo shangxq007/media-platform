@@ -4,7 +4,7 @@ import com.example.platform.render.app.cache.RenderCacheTenantGuard;
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
 import com.example.platform.render.app.planner.PipelineTask;
-import com.example.platform.render.domain.timeline.internal.ReusableArtifact;
+import com.example.platform.render.domain.planning.ReusableArtifact;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

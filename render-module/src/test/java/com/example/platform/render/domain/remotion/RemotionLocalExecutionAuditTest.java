@@ -2,7 +2,7 @@ package com.example.platform.render.domain.remotion;
 
 import com.example.platform.render.app.timeline.compile.RenderCorrelationContext;
 import com.example.platform.render.app.timeline.compile.audit.*;
-import com.example.platform.render.domain.timeline.compile.remotion.*;
+import com.example.platform.render.domain.compile.remotion.*;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;

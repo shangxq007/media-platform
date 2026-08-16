@@ -3,8 +3,8 @@ package com.example.platform.render.app.timeline;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import org.junit.jupiter.api.Test;
 
 class AiTimelineEditResponseParserTest {

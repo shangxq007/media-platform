@@ -115,7 +115,7 @@ public class FfmpegRenderToolSelfDescription {
         HandledObjectDescriptor handledObject = new HandledObjectDescriptor(
                 HANDLED_OBJECT_RENDER_EXECUTION_PLAN,
                 HANDLED_OBJECT_SCHEMA_VERSION,
-                "com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionPlan",
+                "com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan",
                 List.of("profile", "timelineSnapshotId"),
                 List.of(),
                 HandledObjectDescriptor.TenantBehavior.TENANT_SCOPED);

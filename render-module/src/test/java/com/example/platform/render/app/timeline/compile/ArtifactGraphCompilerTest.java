@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.compile.*;
+
+import com.example.platform.render.domain.compile.*;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;

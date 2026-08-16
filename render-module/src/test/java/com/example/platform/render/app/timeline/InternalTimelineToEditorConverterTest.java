@@ -2,10 +2,10 @@ package com.example.platform.render.app.timeline;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;

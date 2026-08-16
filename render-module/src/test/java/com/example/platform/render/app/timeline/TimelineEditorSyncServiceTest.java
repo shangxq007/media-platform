@@ -6,10 +6,10 @@ import static org.mockito.Mockito.*;
 
 import com.example.platform.render.app.TimelineSnapshotService;
 import com.example.platform.render.app.TimelineSnapshotService.SnapshotInfo;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;

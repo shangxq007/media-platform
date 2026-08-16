@@ -1,6 +1,6 @@
 package com.example.platform.render.api.dto;
 
-import com.example.platform.render.domain.timeline.internal.ReusableArtifact;
+import com.example.platform.render.domain.planning.ReusableArtifact;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;

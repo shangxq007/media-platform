@@ -2,12 +2,12 @@ package com.example.platform.render.app.planner;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.FinalComposerHint;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineStickerReader;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTrack;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
+import com.example.platform.render.domain.planning.FinalComposerHint;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.legacy.TimelineStickerReader;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineTrack;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.internal.DirtyScope;
+import com.example.platform.render.domain.planning.DirtyScope;
 import com.example.platform.timeline.internal.EntityRef;
-import com.example.platform.render.domain.timeline.internal.IncrementalTask;
-import com.example.platform.render.domain.timeline.internal.RenderImpactResult;
+import com.example.platform.render.domain.planning.IncrementalTask;
+import com.example.platform.render.domain.planning.RenderImpactResult;
 import com.example.platform.timeline.internal.SemanticChange;
 import com.example.platform.timeline.internal.SemanticChangeType;
 import com.example.platform.timeline.internal.SemanticDiffResult;

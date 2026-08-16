@@ -1,10 +1,18 @@
-package com.example.platform.render.domain.timeline.render.plan;
+package com.example.platform.render.domain.plan;
 
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.shared.time.FrameRate;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineAudioSpec;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Tests for FFmpeg/libass Basic Timeline Render Planner.

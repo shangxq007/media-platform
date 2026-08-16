@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.TimelineSegment;
+import com.example.platform.render.domain.legacy.TimelineSegment;
 import com.example.platform.render.infrastructure.RenderCacheProperties;
 import java.util.LinkedHashMap;
 import java.util.List;

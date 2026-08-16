@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.example.platform.render.infrastructure.effects.EffectProviderRouter;

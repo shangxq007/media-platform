@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.example.platform.render.app.timeline.InternalTimelineValidationService;
 import com.example.platform.render.app.timeline.TimelineCanonicalizer;
 import com.example.platform.render.app.timeline.TimelineTestSupport;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;

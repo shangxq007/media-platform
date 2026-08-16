@@ -1,9 +1,17 @@
 package com.example.platform.render.domain.scenario;
 
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.shared.time.FrameRate;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.example.platform.render.domain.interchange.TimelineAudioSpec;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Registry of all internal scenario definitions.

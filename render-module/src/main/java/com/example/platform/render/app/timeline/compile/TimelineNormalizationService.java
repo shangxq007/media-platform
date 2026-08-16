@@ -1,14 +1,14 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.domain.timeline.TimelineAssetRef;
-import com.example.platform.render.domain.timeline.TimelineClip;
-import com.example.platform.render.domain.timeline.TimelineClipEffect;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
 import com.example.platform.shared.time.FrameRate;
-import com.example.platform.render.domain.timeline.TimelineTrack;
-import com.example.platform.render.domain.timeline.compile.*;
+import com.example.platform.render.domain.legacy.TimelineTrack;
+import com.example.platform.render.domain.compile.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;

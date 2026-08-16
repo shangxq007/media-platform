@@ -4,7 +4,7 @@ import com.example.platform.render.domain.RenderPlan;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStep;
 import com.example.platform.render.domain.RenderStepType;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.shared.Ids;
 import java.util.ArrayList;
 import java.util.List;

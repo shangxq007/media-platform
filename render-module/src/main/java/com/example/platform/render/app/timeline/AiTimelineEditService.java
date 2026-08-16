@@ -3,7 +3,7 @@ package com.example.platform.render.app.timeline;
 import com.example.platform.ai.api.AiGatewayPort;
 import com.example.platform.ai.domain.ChatResult;
 import com.example.platform.render.app.TimelinePatchService;
-import com.example.platform.render.domain.timeline.TimelinePlatformMetadata;
+import com.example.platform.render.domain.legacy.TimelinePlatformMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

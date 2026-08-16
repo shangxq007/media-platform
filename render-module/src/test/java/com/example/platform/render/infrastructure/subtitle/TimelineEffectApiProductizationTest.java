@@ -2,13 +2,22 @@ package com.example.platform.render.infrastructure.subtitle;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.render.app.EffectTimelineInspector;
 import com.example.platform.render.infrastructure.EffectMappingService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.legacy.TimelineSticker;
+import com.example.platform.render.domain.legacy.TimelineTrack;
+import com.example.platform.render.domain.legacy.TimelineValidationResult;
 
 /**
  * End-to-end characterization tests for timeline/effect API productization.

@@ -1,10 +1,10 @@
 package com.example.platform.render.infrastructure.ofx;
 
-import com.example.platform.render.domain.timeline.TimelineClip;
-import com.example.platform.render.domain.timeline.TimelineClipEffect;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTrack;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 import com.example.platform.render.infrastructure.ffmpeg.FfmpegDualInputOverlayService;
 import com.example.platform.render.infrastructure.libass.LibassSubtitleCompositor;
 import com.example.platform.render.infrastructure.popcornfx.PopcornFxAssetResolver;

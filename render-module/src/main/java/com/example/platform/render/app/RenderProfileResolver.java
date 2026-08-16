@@ -1,8 +1,8 @@
 package com.example.platform.render.app;
 
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.example.platform.render.infrastructure.effects.EffectProviderRouter;
 import com.example.platform.render.infrastructure.natron.NatronRenderProviderProperties;

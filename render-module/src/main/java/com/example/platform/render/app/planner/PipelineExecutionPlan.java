@@ -1,6 +1,6 @@
 package com.example.platform.render.app.planner;
 
-import com.example.platform.render.domain.timeline.FinalComposerHint;
+import com.example.platform.render.domain.planning.FinalComposerHint;
 import java.util.List;
 import java.util.Map;
 

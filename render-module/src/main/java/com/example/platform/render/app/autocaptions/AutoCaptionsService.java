@@ -1,7 +1,7 @@
 package com.example.platform.render.app.autocaptions;
 
 import com.example.platform.ai.api.video.SpeechToTextPort;
-import com.example.platform.render.domain.timeline.TimelineTextOverlay;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
 import com.example.platform.shared.Ids;
 import java.util.ArrayList;
 import java.util.List;

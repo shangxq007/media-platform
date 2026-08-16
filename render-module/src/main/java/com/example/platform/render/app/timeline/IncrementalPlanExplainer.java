@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.internal.IncrementalTask;
-import com.example.platform.render.domain.timeline.internal.RenderImpactResult;
+import com.example.platform.render.domain.planning.IncrementalTask;
+import com.example.platform.render.domain.planning.RenderImpactResult;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

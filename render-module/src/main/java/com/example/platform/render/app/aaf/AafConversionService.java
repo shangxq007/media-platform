@@ -1,7 +1,7 @@
 package com.example.platform.render.app.aaf;
 
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.standards.AafTimelineAdapter;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.standards.AafTimelineAdapter;
 import com.example.platform.shared.Ids;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

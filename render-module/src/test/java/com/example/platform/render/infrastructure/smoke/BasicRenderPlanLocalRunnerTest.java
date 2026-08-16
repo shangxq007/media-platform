@@ -1,8 +1,8 @@
 package com.example.platform.render.infrastructure.smoke;
 
 import com.example.platform.render.domain.render.local.*;
-import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.render.plan.*;
+
+import com.example.platform.render.domain.plan.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

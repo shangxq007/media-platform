@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.domain.timeline.compile.ArtifactNodeType;
-import com.example.platform.render.domain.timeline.compile.binding.*;
-import com.example.platform.render.domain.timeline.compile.executionplan.*;
+import com.example.platform.render.domain.compile.ArtifactNodeType;
+import com.example.platform.render.domain.compile.binding.*;
+import com.example.platform.render.domain.compile.executionplan.*;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import java.util.ArrayList;
 import java.util.HashSet;

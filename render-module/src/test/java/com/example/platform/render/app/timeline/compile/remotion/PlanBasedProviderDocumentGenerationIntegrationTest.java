@@ -1,15 +1,15 @@
 package com.example.platform.render.app.timeline.compile.remotion;
 
-import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.compile.*;
-import com.example.platform.render.domain.timeline.compile.execution.*;
-import com.example.platform.render.domain.timeline.compile.executionplan.*;
-import com.example.platform.render.domain.timeline.compile.remotion.*;
+
+import com.example.platform.render.domain.compile.*;
+import com.example.platform.render.domain.compile.execution.*;
+import com.example.platform.render.domain.compile.executionplan.*;
+import com.example.platform.render.domain.compile.remotion.*;
 import com.example.platform.render.app.timeline.compile.*;
 import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
-import com.example.platform.render.domain.timeline.compile.binding.*;
+import com.example.platform.render.domain.compile.binding.*;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;

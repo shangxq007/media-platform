@@ -2,11 +2,11 @@ package com.example.platform.render.app.timeline;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.OpenTimelineioAdapter;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTextOverlay;
+import com.example.platform.render.domain.interchange.OpenTimelineioAdapter;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

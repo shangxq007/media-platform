@@ -1,9 +1,15 @@
-package com.example.platform.render.domain.timeline.render.transition;
+package com.example.platform.render.domain.transition;
 
-import com.example.platform.render.domain.timeline.*;
+
 import java.util.*;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Tests for FFmpeg Baseline Transition Planning.

@@ -1,14 +1,14 @@
 package com.example.platform.render.app.timeline.compile.remotion;
 
-import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.compile.*;
-import com.example.platform.render.domain.timeline.compile.execution.*;
-import com.example.platform.render.domain.timeline.compile.executionplan.*;
-import com.example.platform.render.domain.timeline.compile.remotion.*;
+
+import com.example.platform.render.domain.compile.*;
+import com.example.platform.render.domain.compile.execution.*;
+import com.example.platform.render.domain.compile.executionplan.*;
+import com.example.platform.render.domain.compile.remotion.*;
 import com.example.platform.render.app.timeline.compile.RenderPlanPolicyGuard;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
-import com.example.platform.render.domain.timeline.compile.binding.*;
+import com.example.platform.render.domain.compile.binding.*;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
@@ -208,7 +208,7 @@ class RemotionExecutionDocumentGenerationFlowTest {
         RenderExecutionStep exec = new RenderExecutionStep(
                 "s1", RenderExecutionStepType.EXECUTE_PROVIDER,
                 RenderExecutionStepStatus.PENDING, "n1",
-                com.example.platform.render.domain.timeline.compile.ArtifactNodeType.FINAL_RENDER,
+                com.example.platform.render.domain.compile.ArtifactNodeType.FINAL_RENDER,
                 "remotion", remotionRef, null, List.of(), false,
                 ExecutionEnvironmentTarget.LOCAL, "Remotion exec", Map.of());
         RenderExecutionPlan plan = new RenderExecutionPlan(

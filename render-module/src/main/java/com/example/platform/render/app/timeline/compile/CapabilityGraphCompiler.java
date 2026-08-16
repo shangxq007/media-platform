@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.domain.timeline.compile.*;
+import com.example.platform.render.domain.compile.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;

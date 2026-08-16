@@ -3,7 +3,7 @@ package com.example.platform.render.infrastructure.vapoursynth;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.infrastructure.ExternalRenderScriptParser;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;

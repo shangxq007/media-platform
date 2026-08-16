@@ -1,11 +1,13 @@
 package com.example.platform.render.domain.scenario;
 
-import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.render.effect.*;
-import com.example.platform.render.domain.timeline.render.plan.*;
-import com.example.platform.render.domain.timeline.render.transition.*;
+
+import com.example.platform.render.domain.effect.*;
+import com.example.platform.render.domain.plan.*;
+import com.example.platform.render.domain.transition.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Internal scenario runner. Pure, side-effect-free.

@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.infrastructure.MediaProbeResult;
 import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;

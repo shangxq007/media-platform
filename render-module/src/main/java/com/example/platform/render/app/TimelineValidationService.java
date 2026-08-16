@@ -2,7 +2,7 @@ package com.example.platform.render.app;
 
 import com.example.platform.render.app.timeline.InternalTimelineJson;
 import com.example.platform.render.app.timeline.InternalTimelineValidationService;
-import com.example.platform.render.domain.timeline.TimelineValidationResult;
+import com.example.platform.render.domain.legacy.TimelineValidationResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;

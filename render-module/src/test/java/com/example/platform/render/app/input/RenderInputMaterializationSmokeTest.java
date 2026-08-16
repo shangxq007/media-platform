@@ -8,7 +8,7 @@ import com.example.platform.render.app.timeline.InternalTimelineWriter;
 import com.example.platform.render.app.timeline.TimelineRenderJobMapper;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
@@ -28,6 +28,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineAudioSpec;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Backend R4 — Render Input Materialization Smoke Test.

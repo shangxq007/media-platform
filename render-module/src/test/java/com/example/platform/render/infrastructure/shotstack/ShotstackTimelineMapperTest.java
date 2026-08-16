@@ -3,7 +3,7 @@ package com.example.platform.render.infrastructure.shotstack;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

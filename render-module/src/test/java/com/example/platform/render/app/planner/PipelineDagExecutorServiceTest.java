@@ -5,10 +5,10 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.render.app.MultiProviderPipelineService;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineStickerReader;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.legacy.TimelineStickerReader;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import java.util.Map;

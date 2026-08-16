@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.internal.IncrementalRenderPlan;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.planning.IncrementalRenderPlan;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;

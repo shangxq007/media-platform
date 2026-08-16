@@ -4,9 +4,9 @@ import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.app.timeline.compile.RenderPlanPolicyGuard;
-import com.example.platform.render.domain.timeline.compile.executionplan.*;
-import com.example.platform.render.domain.timeline.compile.binding.*;
-import com.example.platform.render.domain.timeline.compile.ArtifactNodeType;
+import com.example.platform.render.domain.compile.executionplan.*;
+import com.example.platform.render.domain.compile.binding.*;
+import com.example.platform.render.domain.compile.ArtifactNodeType;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
@@ -39,9 +39,9 @@ class RemotionLocalExecutionRunnerTest {
     @Test
     @DisplayName("Unsupported document is rejected")
     void unsupportedDocumentRejected() {
-        var docResult = new com.example.platform.render.domain.timeline.compile.remotion.ProviderExecutionDocumentGenerationResult(
+        var docResult = new com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationResult(
                 "doc-1", "draft-1", "ffmpeg", "FFMPEG_COMMAND_PLAN",
-                com.example.platform.render.domain.timeline.compile.remotion.ProviderExecutionDocumentGenerationStatus.REJECTED_UNSUPPORTED,
+                com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationStatus.REJECTED_UNSUPPORTED,
                 false, false, List.of("Unsupported"), null, Map.of());
         RemotionLocalExecutionRequest request = new RemotionLocalExecutionRequest(
                 docResult, null, null, null, null, null, Map.of());

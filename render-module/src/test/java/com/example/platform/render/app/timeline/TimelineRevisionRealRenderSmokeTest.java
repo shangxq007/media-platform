@@ -13,7 +13,7 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
@@ -34,6 +34,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
  * R8: Local real-render smoke harness proving the full R6.1 + R7 backend chain

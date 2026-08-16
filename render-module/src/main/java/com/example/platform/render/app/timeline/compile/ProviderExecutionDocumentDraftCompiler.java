@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.domain.timeline.compile.binding.*;
-import com.example.platform.render.domain.timeline.compile.execution.*;
+import com.example.platform.render.domain.compile.binding.*;
+import com.example.platform.render.domain.compile.execution.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;

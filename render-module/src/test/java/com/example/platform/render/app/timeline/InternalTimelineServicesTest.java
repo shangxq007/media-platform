@@ -3,7 +3,7 @@ package com.example.platform.render.app.timeline;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.timeline.internal.SemanticChangeType;
-import com.example.platform.render.domain.timeline.internal.DirtyScope;
+import com.example.platform.render.domain.planning.DirtyScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.example.platform.shared.test.FixturePath;

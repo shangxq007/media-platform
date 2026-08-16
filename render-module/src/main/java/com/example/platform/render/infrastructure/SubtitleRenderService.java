@@ -2,7 +2,7 @@ package com.example.platform.render.infrastructure;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.infrastructure.libass.LibassAssFileWriter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

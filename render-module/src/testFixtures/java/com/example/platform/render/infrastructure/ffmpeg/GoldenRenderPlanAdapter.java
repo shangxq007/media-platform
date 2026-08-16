@@ -133,7 +133,7 @@ public class GoldenRenderPlanAdapter {
 
     public static FFmpegRenderProvider createLocalProvider(Path storageRoot, ProcessToolRunner toolRunner) {
         FFmpegCommandFactory commandFactory = new FFmpegCommandFactory();
-        var parser = new com.example.platform.render.domain.timeline.TimelineScriptParser();
+        var parser = new com.example.platform.render.domain.interchange.TimelineScriptParser();
         var assetResolver = new com.example.platform.render.infrastructure.media.MediaAssetResolver(
                 storageRoot.toString(), java.util.Optional.empty());
         FFmpegRenderProvider provider = new FFmpegRenderProvider(toolRunner, commandFactory, parser, assetResolver);

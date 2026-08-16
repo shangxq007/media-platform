@@ -13,8 +13,8 @@ import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.compile.*;
+
+import com.example.platform.render.domain.compile.*;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
@@ -35,6 +35,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
  * Smoke test for plan-based TimelineRevision rendering through LocalExecutionPlanRunner.

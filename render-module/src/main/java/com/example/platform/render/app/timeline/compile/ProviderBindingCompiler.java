@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.domain.timeline.compile.*;
-import com.example.platform.render.domain.timeline.compile.binding.*;
+import com.example.platform.render.domain.compile.*;
+import com.example.platform.render.domain.compile.binding.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;

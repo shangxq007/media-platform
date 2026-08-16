@@ -43,8 +43,8 @@ import com.example.platform.render.app.timeline.compile.audit.RenderAuditEventSi
 import com.example.platform.render.app.timeline.compile.audit.RenderAuditRecorder;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineMetadata;
@@ -260,7 +260,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 java.util.List.of(), com.example.platform.extension.domain.ToolSandboxPolicy.defaults()));
         ProcessToolRunner runner = new DefaultProcessToolRunner(registry);
         FFmpegRenderProvider provider = new FFmpegRenderProvider(runner, new FFmpegCommandFactory(),
-                new TimelineScriptParser(new com.example.platform.render.domain.timeline.TimelineExtensionsReader()),
+                new TimelineScriptParser(new com.example.platform.render.domain.interchange.TimelineExtensionsReader()),
                 new MediaAssetResolver("/tmp/platform", Optional.empty()));
         provider.setStorageRoot(storageRoot.toString());
 

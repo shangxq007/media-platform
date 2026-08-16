@@ -2,7 +2,7 @@ package com.example.platform.render.infrastructure.timeline;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import org.junit.jupiter.api.Test;
 
 class EditorTimelineConverterTest {

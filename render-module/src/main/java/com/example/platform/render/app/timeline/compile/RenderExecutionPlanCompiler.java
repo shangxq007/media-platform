@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.domain.timeline.compile.ArtifactNodeType;
-import com.example.platform.render.domain.timeline.compile.binding.*;
-import com.example.platform.render.domain.timeline.compile.execution.*;
-import com.example.platform.render.domain.timeline.compile.executionplan.*;
+import com.example.platform.render.domain.compile.ArtifactNodeType;
+import com.example.platform.render.domain.compile.binding.*;
+import com.example.platform.render.domain.compile.execution.*;
+import com.example.platform.render.domain.compile.executionplan.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

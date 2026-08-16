@@ -2,7 +2,7 @@ package com.example.platform.render.app;
 
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import com.example.platform.render.app.planner.RenderPlannerService;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

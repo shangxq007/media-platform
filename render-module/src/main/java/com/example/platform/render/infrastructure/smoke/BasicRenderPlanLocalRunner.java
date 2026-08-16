@@ -1,7 +1,7 @@
 package com.example.platform.render.infrastructure.smoke;
 
 import com.example.platform.render.domain.render.local.*;
-import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPlan;
+import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlan;
 
 import java.io.IOException;
 import java.nio.file.Files;

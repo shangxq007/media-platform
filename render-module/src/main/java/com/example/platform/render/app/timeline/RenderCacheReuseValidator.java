@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.infrastructure.RenderCacheProperties;
 import java.util.Optional;
 import org.slf4j.Logger;

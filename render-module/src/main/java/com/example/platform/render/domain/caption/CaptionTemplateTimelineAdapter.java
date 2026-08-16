@@ -1,11 +1,18 @@
 package com.example.platform.render.domain.caption;
 
-import com.example.platform.render.domain.timeline.*;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
+import com.example.platform.render.domain.interchange.TimelineAudioSpec;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Adapts a validated CaptionTemplateRenderRequest into a TimelineSpec

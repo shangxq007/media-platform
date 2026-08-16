@@ -2,7 +2,7 @@ package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.app.output.RenderProductProvenance;
-import com.example.platform.render.domain.timeline.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -10,6 +10,11 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Maps a {@link TimelineSpec} or timeline JSON to a {@link SubmitRenderJobRequest}

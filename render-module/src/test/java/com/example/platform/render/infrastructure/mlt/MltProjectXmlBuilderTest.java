@@ -2,8 +2,8 @@ package com.example.platform.render.infrastructure.mlt;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

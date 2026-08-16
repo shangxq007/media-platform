@@ -3,9 +3,9 @@ package com.example.platform.render.infrastructure.ffmpeg;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTrack;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.shared.test.FixturePath;
 import org.junit.jupiter.api.BeforeEach;
@@ -117,7 +117,7 @@ class GoldenRenderE2ETest {
                 java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
 
         // Diagnostic: try parsing the timeline
-        var diagParser = new com.example.platform.render.domain.timeline.TimelineScriptParser();
+        var diagParser = new com.example.platform.render.domain.interchange.TimelineScriptParser();
         var diagParsed = diagParser.parse(timelineJson);
         Files.writeString(Path.of("/tmp/golden-render-diag.txt"),
                 "parseResult=" + diagParsed.isPresent() + "\n",
@@ -169,7 +169,7 @@ class GoldenRenderE2ETest {
         assertFalse(timelineJson.isBlank());
 
         // Verify it can be parsed
-        var parser = new com.example.platform.render.domain.timeline.TimelineScriptParser();
+        var parser = new com.example.platform.render.domain.interchange.TimelineScriptParser();
         var parsed = parser.parse(timelineJson);
         assertTrue(parsed.isPresent(), "Timeline JSON should be parseable");
 
@@ -208,7 +208,7 @@ class GoldenRenderE2ETest {
         System.out.println("[Golden] multi-clip JSON=" + timelineJson.substring(0, Math.min(300, timelineJson.length())));
 
         // Verify parseable
-        var parser = new com.example.platform.render.domain.timeline.TimelineScriptParser();
+        var parser = new com.example.platform.render.domain.interchange.TimelineScriptParser();
         var parsed = parser.parse(timelineJson);
         assertTrue(parsed.isPresent(), "Timeline JSON should be parseable");
         var clips = parser.videoClipsInOrder(parsed.get());

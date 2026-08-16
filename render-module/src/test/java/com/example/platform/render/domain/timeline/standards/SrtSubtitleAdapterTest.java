@@ -1,4 +1,4 @@
-package com.example.platform.render.domain.timeline.standards;
+package com.example.platform.render.domain.standards;
 
 import static org.junit.jupiter.api.Assertions.*;
 

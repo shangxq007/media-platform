@@ -81,7 +81,7 @@ class FfmpegSelfDescriptionTest {
         assertEquals(1, descriptor.handledObjects().size());
         assertEquals("RenderExecutionPlan", descriptor.handledObjects().get(0).objectTypeId());
         assertEquals("1", descriptor.handledObjects().get(0).schemaVersion());
-        assertEquals("com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionPlan",
+        assertEquals("com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan",
                 descriptor.handledObjects().get(0).javaBoundaryType());
     }
 

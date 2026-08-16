@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.infrastructure.RenderCacheProperties;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;

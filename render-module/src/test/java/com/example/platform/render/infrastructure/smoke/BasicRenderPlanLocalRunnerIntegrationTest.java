@@ -1,9 +1,9 @@
 package com.example.platform.render.infrastructure.smoke;
 
 import com.example.platform.render.domain.render.local.*;
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.shared.time.FrameRate;
-import com.example.platform.render.domain.timeline.render.plan.*;
+import com.example.platform.render.domain.plan.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -16,6 +16,12 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.*;
+import com.example.platform.render.domain.interchange.TimelineAudioSpec;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Integration test for the BasicRenderPlan-to-local-runner bridge.

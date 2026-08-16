@@ -7,9 +7,9 @@ import static org.mockito.Mockito.*;
 import com.example.platform.render.app.planner.FinalComposerSelector;
 import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
 import com.example.platform.render.app.planner.RenderPlannerService;
-import com.example.platform.render.domain.timeline.internal.IncrementalRenderPlan;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.planning.IncrementalRenderPlan;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.infrastructure.RenderCacheProperties;
 import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
@@ -37,7 +37,7 @@ class IncrementalRenderHashInvalidationTest {
         InternalTimelineAdapter adapter = TimelineTestSupport.internalTimelineAdapter(extensionsReader);
         RenderPlannerService planner = new RenderPlannerService(
                 extensionsReader, new FinalComposerSelector(),
-                new com.example.platform.render.domain.timeline.TimelineStickerReader(),
+                new com.example.platform.render.domain.legacy.TimelineStickerReader(),
                 new SegmentTimelinePlanner());
 
         PipelinePlanPersistenceService persistence = mock(PipelinePlanPersistenceService.class);

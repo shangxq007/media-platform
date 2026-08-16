@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.render.app.timeline.compile.audit.*;
-import com.example.platform.render.domain.timeline.*;
-import com.example.platform.render.domain.timeline.compile.*;
+
+import com.example.platform.render.domain.compile.*;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
@@ -17,7 +17,7 @@ import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.render.domain.timeline.compile.executionplan.*;
+import com.example.platform.render.domain.compile.executionplan.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
@@ -34,6 +34,9 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
  * Tests for graph/plan ID propagation, localExecutionRunId, and outputProductId correlation.
@@ -234,9 +237,9 @@ class RenderCorrelationGraphPlanPropagationTest {
     }
 
     private RenderExecutionPlan createSimplePlan() {
-        var ffmpegRef = new com.example.platform.render.domain.timeline.compile.binding.BoundProviderRef(
+        var ffmpegRef = new com.example.platform.render.domain.compile.binding.BoundProviderRef(
                 "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0", true, true, "6.1", 0);
-        var nodeType = com.example.platform.render.domain.timeline.compile.ArtifactNodeType.FINAL_RENDER;
+        var nodeType = com.example.platform.render.domain.compile.ArtifactNodeType.FINAL_RENDER;
         var exec = new RenderExecutionStep("step-exec", RenderExecutionStepType.EXECUTE_PROVIDER,
                 RenderExecutionStepStatus.PENDING, "node-1", nodeType,
                 "ffmpeg", ffmpegRef, null, List.of(), false,

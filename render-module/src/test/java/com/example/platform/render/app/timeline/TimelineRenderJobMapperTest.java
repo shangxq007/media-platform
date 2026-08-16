@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +10,14 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineAudioSpec;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineAssetRef;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 
 /**
  * Tests for {@link TimelineRenderJobMapper} covering all fail-closed validation rules.

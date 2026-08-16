@@ -29,7 +29,7 @@ class MltRenderProviderTest {
         xmlBuilder = new MltProjectXmlBuilder();
         commandFactory = new MLTCommandFactory();
         provider = new MltRenderProvider(mockToolRunner, xmlBuilder, commandFactory,
-                new com.example.platform.render.domain.timeline.TimelineScriptParser());
+                new com.example.platform.render.domain.interchange.TimelineScriptParser());
         // Set storageRoot since @Value is not processed in unit tests
         provider.setStorageRoot(tempDir.toString());
         // Default mock behavior for successful execution

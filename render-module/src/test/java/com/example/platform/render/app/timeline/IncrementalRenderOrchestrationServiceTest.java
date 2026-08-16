@@ -9,8 +9,8 @@ import com.example.platform.render.app.planner.RenderPlannerService;
 import static com.example.platform.render.app.timeline.RenderCacheTestSupport.testCacheReuseValidator;
 
 import com.example.platform.render.infrastructure.RenderCacheProperties;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineStickerReader;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.legacy.TimelineStickerReader;
 import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,7 +45,7 @@ class IncrementalRenderOrchestrationServiceTest {
                 new SegmentTimelinePlanner(), new RenderCacheUriResolver(new RenderCacheProperties()),
                 new SegmentPlanFilter(),
                 testCacheReuseValidator());
-        TimelineSpecResolver resolver = new TimelineSpecResolver(adapter, new com.example.platform.render.domain.timeline.TimelineScriptParser());
+        TimelineSpecResolver resolver = new TimelineSpecResolver(adapter, new com.example.platform.render.domain.interchange.TimelineScriptParser());
         orchestration = new IncrementalRenderOrchestrationService(planService, resolver, baseJobTimelineLoader);
         Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         sampleJson = Files.readString(path);
@@ -58,7 +58,7 @@ class IncrementalRenderOrchestrationServiceTest {
         String patched = sampleJson.replace("\"segmentDurationSec\": 4", "\"segmentDurationSec\": 6");
         var spec = new TimelineSpecResolver(
                 TimelineTestSupport.internalTimelineAdapter(),
-                new com.example.platform.render.domain.timeline.TimelineScriptParser())
+                new com.example.platform.render.domain.interchange.TimelineScriptParser())
                 .resolve(patched)
                 .orElseThrow();
 
@@ -77,7 +77,7 @@ class IncrementalRenderOrchestrationServiceTest {
         when(baseJobTimelineLoader.loadInternalTimelineJson(any(), any())).thenReturn(Optional.empty());
         var spec = new TimelineSpecResolver(
                 TimelineTestSupport.internalTimelineAdapter(),
-                new com.example.platform.render.domain.timeline.TimelineScriptParser())
+                new com.example.platform.render.domain.interchange.TimelineScriptParser())
                 .resolve(sampleJson)
                 .orElseThrow();
         assertTrue(orchestration.tryResolve(

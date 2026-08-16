@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.MediaAssetErrors;
 import com.example.platform.shared.web.PlatformException;

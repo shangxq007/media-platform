@@ -12,16 +12,16 @@ import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.TimelineRevisionService;
 import com.example.platform.render.domain.product.Product;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.compile.ArtifactDependencyGraph;
-import com.example.platform.render.domain.timeline.compile.LogicalCapabilityGraph;
-import com.example.platform.render.domain.timeline.compile.NormalizedTimeline;
-import com.example.platform.render.domain.timeline.compile.binding.ProviderBindingPlan;
-import com.example.platform.render.domain.timeline.compile.execution.ProviderExecutionDocumentDraft;
-import com.example.platform.render.domain.timeline.compile.executionplan.ExecutionEnvironmentTarget;
-import com.example.platform.render.domain.timeline.compile.executionplan.ExecutionPolicy;
-import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionPlan;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.compile.ArtifactDependencyGraph;
+import com.example.platform.render.domain.compile.LogicalCapabilityGraph;
+import com.example.platform.render.domain.compile.NormalizedTimeline;
+import com.example.platform.render.domain.compile.binding.ProviderBindingPlan;
+import com.example.platform.render.domain.compile.execution.ProviderExecutionDocumentDraft;
+import com.example.platform.render.domain.compile.executionplan.ExecutionEnvironmentTarget;
+import com.example.platform.render.domain.compile.executionplan.ExecutionPolicy;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
@@ -67,7 +67,7 @@ public class PlanBasedTimelineRevisionRenderService {
     private final RenderToolCapabilityInventory toolInventory;
     private final Path storageRoot;
     private final RenderAuditRecorder auditRecorder;
-    private final com.example.platform.render.domain.timeline.compile.remotion.ProviderExecutionDocumentGenerationService docGenerationService;
+    private final com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationService docGenerationService;
 
     @Autowired
     public PlanBasedTimelineRevisionRenderService(
@@ -138,7 +138,7 @@ public class PlanBasedTimelineRevisionRenderService {
         this.toolInventory = toolInventory;
         this.storageRoot = storageRoot;
         this.auditRecorder = auditRecorder;
-        this.docGenerationService = new com.example.platform.render.domain.timeline.compile.remotion.ProviderExecutionDocumentGenerationService();
+        this.docGenerationService = new com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationService();
     }
 
     /**

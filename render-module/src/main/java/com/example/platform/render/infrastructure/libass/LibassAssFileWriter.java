@@ -1,6 +1,6 @@
 package com.example.platform.render.infrastructure.libass;
 
-import com.example.platform.render.domain.timeline.TimelineTextOverlay;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

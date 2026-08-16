@@ -2,7 +2,7 @@ package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.render.app.timeline.compile.audit.*;
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 import com.example.platform.render.app.TimelineSnapshotService;
@@ -31,6 +31,9 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
  * LEGACY vs PLAN_BASED parity tests.

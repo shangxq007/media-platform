@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 
 /** Shared fixtures for timeline unit tests. */

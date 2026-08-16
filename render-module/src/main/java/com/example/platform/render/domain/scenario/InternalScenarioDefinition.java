@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.scenario;
 
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;

@@ -1,6 +1,6 @@
 package com.example.platform.render.infrastructure.popcornfx;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;

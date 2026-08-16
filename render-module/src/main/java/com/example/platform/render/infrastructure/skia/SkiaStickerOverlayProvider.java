@@ -1,8 +1,8 @@
 package com.example.platform.render.infrastructure.skia;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineStickerReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineStickerReader;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderCapability;
 import com.example.platform.shared.Ids;
@@ -82,7 +82,7 @@ public class SkiaStickerOverlayProvider implements RenderProvider {
             return libass;
         }
         for (var track : spec.tracks()) {
-            if (track.type() != com.example.platform.render.domain.timeline.TimelineTrack.TrackType.VIDEO) {
+            if (track.type() != com.example.platform.render.domain.legacy.TimelineTrack.TrackType.VIDEO) {
                 continue;
             }
             for (var clip : track.clips()) {

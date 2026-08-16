@@ -1,10 +1,10 @@
 package com.example.platform.render.infrastructure;
 
-import com.example.platform.render.domain.timeline.FinalComposerHint;
-import com.example.platform.render.domain.timeline.TimelineExtensions;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTrack;
-import com.example.platform.render.domain.timeline.TimelineClipEffect;
+import com.example.platform.render.domain.planning.FinalComposerHint;
+import com.example.platform.render.domain.interchange.TimelineExtensions;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineTrack;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

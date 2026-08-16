@@ -1,0 +1,70 @@
+package com.example.platform.render.domain.interchange;
+
+/**
+ * Text overlay specification for a timeline.
+ *
+ * <p>Text overlays are rendered on top of video tracks at a specific position
+ * and time range.</p>
+ *
+ * <p>ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION: TimelineTextOverlay
+ * is a RENDER_PROJECTION_DTO. Its fontFamily is derived projection data from
+ * the authored FontSelectionIntent (canonical typography authority). It is not
+ * an input to canonical authoring and is never a source-of-truth font-selection
+ * authority; creation occurs only after canonical authoring/resolution or from
+ * an explicit external import policy.</p>
+ *
+ * @param id            unique overlay identifier
+ * @param text          the text content to render (plain text, max 500 chars)
+ * @param fontFamily    render-projection font family (FontFamilyName), derived
+ *                      from authored FontSelectionIntent — never an independent
+ *                      authoring font-selection authority
+ * @param fontSize      font size in points (8-160)
+ * @param color         text color (e.g., "#FFFFFF")
+ * @param positionX     horizontal position (pixels or percentage)
+ * @param positionY     vertical position (pixels or percentage)
+ * @param startTime     start time on the timeline in seconds (>= 0)
+ * @param duration      duration in seconds (> 0)
+ * @param backgroundColor background color (null = transparent)
+ */
+public record TimelineTextOverlay(
+        String id,
+        String text,
+        com.example.platform.fonttext.typography.FontFamilyName fontFamily,
+        int fontSize,
+        String color,
+        String positionX,
+        String positionY,
+        double startTime,
+        double duration,
+        String backgroundColor) {
+
+    public TimelineTextOverlay {
+        if (text != null && text.length() > 500) {
+            throw new IllegalArgumentException("Text overlay text exceeds max length (500 chars)");
+        }
+        if (fontSize < 8 || fontSize > 160) {
+            throw new IllegalArgumentException("fontSize must be between 8 and 160");
+        }
+        if (duration <= 0) {
+            throw new IllegalArgumentException("duration must be positive");
+        }
+        if (startTime < 0) {
+            throw new IllegalArgumentException("startTime must be non-negative");
+        }
+        if (fontFamily == null) {
+            throw new IllegalArgumentException(
+                    "fontFamily is required: no implicit font default (ROADMAP_19 CORR-2)");
+        }
+    }
+
+    /**
+     * ROADMAP_19 CORR-2: projection-only convenience constructor. Font
+     * selection is an explicit caller input — NEVER invented here.
+     */
+    public static TimelineTextOverlay of(String id, String text,
+                                         com.example.platform.fonttext.typography.FontFamilyName fontFamily,
+                                         double startTime, double duration) {
+        return new TimelineTextOverlay(id, text, fontFamily, 24, "#FFFFFF",
+                "center", "bottom", startTime, duration, null);
+    }
+}

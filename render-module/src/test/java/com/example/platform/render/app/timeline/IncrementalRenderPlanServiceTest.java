@@ -8,9 +8,9 @@ import com.example.platform.render.app.planner.RenderPlannerService;
 import static com.example.platform.render.app.timeline.RenderCacheTestSupport.testCacheReuseValidator;
 
 import com.example.platform.render.infrastructure.RenderCacheProperties;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineStickerReader;
-import com.example.platform.render.domain.timeline.internal.IncrementalRenderPlan;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.legacy.TimelineStickerReader;
+import com.example.platform.render.domain.planning.IncrementalRenderPlan;
 import com.example.platform.shared.test.FixturePath;
 import java.nio.file.Files;
 import java.nio.file.Path;

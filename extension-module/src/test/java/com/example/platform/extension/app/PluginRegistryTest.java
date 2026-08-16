@@ -47,7 +47,7 @@ class PluginRegistryTest {
                         "ArtifactReference", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
                 List.of(new HandledObjectDescriptor(
                         "RenderExecutionPlan", "1",
-                        "com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionPlan",
+                        "com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan",
                         List.of("profile", "timelineSnapshotId"), List.of(),
                         HandledObjectDescriptor.TenantBehavior.TENANT_SCOPED)),
                 InvocationContract.syncOnlyDefault(),

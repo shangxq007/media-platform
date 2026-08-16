@@ -2,9 +2,9 @@ package com.example.platform.render.domain.remotion;
 
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.app.timeline.compile.RenderPlanPolicyGuard;
-import com.example.platform.render.domain.timeline.compile.executionplan.*;
-import com.example.platform.render.domain.timeline.compile.binding.*;
-import com.example.platform.render.domain.timeline.compile.ArtifactNodeType;
+import com.example.platform.render.domain.compile.executionplan.*;
+import com.example.platform.render.domain.compile.binding.*;
+import com.example.platform.render.domain.compile.ArtifactNodeType;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import java.util.List;

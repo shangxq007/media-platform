@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Converts editor timeline JSON (Pinia {@code timelineStore}) into OTIO-style JSON
- * consumed by {@link com.example.platform.render.domain.timeline.TimelineScriptParser}.
+ * consumed by {@link com.example.platform.render.domain.interchange.TimelineScriptParser}.
  */
 @Component
 public class EditorTimelineConverter {

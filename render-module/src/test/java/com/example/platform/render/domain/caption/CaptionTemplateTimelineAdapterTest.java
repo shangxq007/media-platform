@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.caption;
 
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.shared.time.FrameRate;
 import java.util.List;
 import java.util.Map;
@@ -136,7 +136,7 @@ class CaptionTemplateTimelineAdapterTest {
 
         assertFalse(spec.tracks().isEmpty());
         assertEquals(TimelineSpec.create("t", "n",
-                com.example.platform.render.domain.timeline.TimelineOutputSpec.mp4_1080p30())
+                com.example.platform.render.domain.interchange.TimelineOutputSpec.mp4_1080p30())
                 .tracks().get(0).type(),
                 spec.tracks().get(0).type());
     }

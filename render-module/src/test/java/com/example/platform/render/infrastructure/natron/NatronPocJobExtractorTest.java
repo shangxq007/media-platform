@@ -3,7 +3,7 @@ package com.example.platform.render.infrastructure.natron;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;

@@ -14,7 +14,7 @@ import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.render.domain.timeline.*;
+
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
@@ -35,6 +35,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
  * Tests for TimelineRevision render execution mode switching.

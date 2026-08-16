@@ -1,10 +1,10 @@
 package com.example.platform.render.infrastructure.natron;
 
-import com.example.platform.render.domain.timeline.TimelineClip;
-import com.example.platform.render.domain.timeline.TimelineClipEffect;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTrack;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;

@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.shared.time.CanonicalFrameRateCodec;
-import com.example.platform.render.domain.timeline.SegmentPolicy;
-import com.example.platform.render.domain.timeline.TimelineSegment;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.planning.SegmentPolicy;
+import com.example.platform.render.domain.legacy.TimelineSegment;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.timeline.internal.SemanticChangeType;
 import com.example.platform.timeline.internal.SemanticDiffResult;
 import com.fasterxml.jackson.databind.JsonNode;

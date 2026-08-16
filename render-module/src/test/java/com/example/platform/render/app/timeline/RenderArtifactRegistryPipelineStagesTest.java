@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
-import com.example.platform.render.domain.timeline.internal.ReusableArtifact;
+import com.example.platform.render.domain.planning.ReusableArtifact;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

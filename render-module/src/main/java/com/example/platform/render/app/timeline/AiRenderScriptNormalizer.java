@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -61,10 +61,10 @@ public class AiRenderScriptNormalizer {
         Map<String, String> meta = new LinkedHashMap<>(spec.metadata() != null ? spec.metadata() : Map.of());
         meta.putAll(metadataEnricher.toMetadataMap(context, source));
         if (raw.length() > 500) {
-            meta.put(com.example.platform.render.domain.timeline.TimelinePlatformMetadata.AI_PROMPT_EXCERPT,
+            meta.put(com.example.platform.render.domain.legacy.TimelinePlatformMetadata.AI_PROMPT_EXCERPT,
                     raw.substring(0, 500));
         } else {
-            meta.put(com.example.platform.render.domain.timeline.TimelinePlatformMetadata.AI_PROMPT_EXCERPT, raw);
+            meta.put(com.example.platform.render.domain.legacy.TimelinePlatformMetadata.AI_PROMPT_EXCERPT, raw);
         }
         return new TimelineSpec(
                 spec.id(),
@@ -82,7 +82,7 @@ public class AiRenderScriptNormalizer {
         String id = "tl-ai-" + projectId;
         Map<String, String> meta = new LinkedHashMap<>(metadataEnricher.toMetadataMap(context, "prompt-placeholder"));
         String excerpt = prompt.length() > 500 ? prompt.substring(0, 500) : prompt;
-        meta.put(com.example.platform.render.domain.timeline.TimelinePlatformMetadata.AI_PROMPT_EXCERPT, excerpt);
+        meta.put(com.example.platform.render.domain.legacy.TimelinePlatformMetadata.AI_PROMPT_EXCERPT, excerpt);
         TimelineSpec spec = TimelineSpec.create(id, "AI Generated", TimelineOutputSpec.mp4_1080p30());
         return new TimelineSpec(
                 spec.id(),

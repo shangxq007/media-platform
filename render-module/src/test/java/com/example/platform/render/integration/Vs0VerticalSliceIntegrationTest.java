@@ -15,35 +15,35 @@ import com.example.platform.render.domain.caption.CaptionTemplateRenderRequest;
 import com.example.platform.render.domain.caption.CaptionTemplateSpec;
 import com.example.platform.render.domain.caption.CaptionTemplateTimelineAdapter;
 import com.example.platform.render.domain.caption.FontStyleSpec;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTextOverlay;
-import com.example.platform.render.domain.timeline.TimelineTrack;
-import com.example.platform.render.domain.timeline.compile.ArtifactNodeType;
-import com.example.platform.render.domain.timeline.compile.ArtifactRequirement;
-import com.example.platform.render.domain.timeline.compile.LogicalCapabilityEdge;
-import com.example.platform.render.domain.timeline.compile.LogicalCapabilityGraph;
-import com.example.platform.render.domain.timeline.compile.LogicalCapabilityNode;
-import com.example.platform.render.domain.timeline.compile.ArtifactEdgeType;
-import com.example.platform.render.domain.timeline.compile.binding.ProviderBindingDecision;
-import com.example.platform.render.domain.timeline.compile.binding.ProviderBindingNode;
-import com.example.platform.render.domain.timeline.compile.binding.ProviderBindingPlan;
-import com.example.platform.render.domain.timeline.compile.binding.ProviderBindingPlanId;
-import com.example.platform.render.domain.timeline.compile.binding.ProviderBindingStatus;
-import com.example.platform.render.domain.timeline.compile.binding.BoundProviderRef;
-import com.example.platform.render.domain.timeline.compile.executionplan.ExecutionEnvironmentTarget;
-import com.example.platform.render.domain.timeline.compile.executionplan.ExecutionPolicy;
-import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionPlan;
-import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionPlanFailureReason;
-import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionStep;
-import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionStepStatus;
-import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionStepType;
-import com.example.platform.render.domain.timeline.compile.executionplan.RenderExecutionPlanId;
-import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPlanningRequest;
-import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPlanningRequestId;
-import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPlanningResult;
-import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPlanningResultStatus;
-import com.example.platform.render.domain.timeline.render.plan.FFmpegLibassBasicRenderPolicy;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineTrack;
+import com.example.platform.render.domain.compile.ArtifactNodeType;
+import com.example.platform.render.domain.compile.ArtifactRequirement;
+import com.example.platform.render.domain.compile.LogicalCapabilityEdge;
+import com.example.platform.render.domain.compile.LogicalCapabilityGraph;
+import com.example.platform.render.domain.compile.LogicalCapabilityNode;
+import com.example.platform.render.domain.compile.ArtifactEdgeType;
+import com.example.platform.render.domain.compile.binding.ProviderBindingDecision;
+import com.example.platform.render.domain.compile.binding.ProviderBindingNode;
+import com.example.platform.render.domain.compile.binding.ProviderBindingPlan;
+import com.example.platform.render.domain.compile.binding.ProviderBindingPlanId;
+import com.example.platform.render.domain.compile.binding.ProviderBindingStatus;
+import com.example.platform.render.domain.compile.binding.BoundProviderRef;
+import com.example.platform.render.domain.compile.executionplan.ExecutionEnvironmentTarget;
+import com.example.platform.render.domain.compile.executionplan.ExecutionPolicy;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlanFailureReason;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionStep;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionStepStatus;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionStepType;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlanId;
+import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlanningRequest;
+import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlanningRequestId;
+import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlanningResult;
+import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlanningResultStatus;
+import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPolicy;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
@@ -191,7 +191,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
                             Map.of());
 
             FFmpegLibassBasicRenderPlanningResult planResult =
-                    com.example.platform.render.domain.timeline.render.plan
+                    com.example.platform.render.domain.plan
                             .FFmpegLibassBasicRenderPlanner.plan(planRequest);
 
             // Then: the plan is successfully generated
@@ -207,7 +207,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
         @DisplayName("FFmpeg plan rejects null request")
         void ffmpegPlanRejectsNullRequest() {
             FFmpegLibassBasicRenderPlanningResult result =
-                    com.example.platform.render.domain.timeline.render.plan
+                    com.example.platform.render.domain.plan
                             .FFmpegLibassBasicRenderPlanner.plan(null);
 
             assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.FAILED, result.status());
@@ -226,7 +226,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
                             Map.of());
 
             FFmpegLibassBasicRenderPlanningResult result =
-                    com.example.platform.render.domain.timeline.render.plan
+                    com.example.platform.render.domain.plan
                             .FFmpegLibassBasicRenderPlanner.plan(request);
 
             assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.PLANNED, result.status());
@@ -457,7 +457,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
                             FFmpegLibassBasicRenderPolicy.conservative(),
                             Map.of());
             FFmpegLibassBasicRenderPlanningResult ffmpegResult =
-                    com.example.platform.render.domain.timeline.render.plan
+                    com.example.platform.render.domain.plan
                             .FFmpegLibassBasicRenderPlanner.plan(ffmpegRequest);
             assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.PLANNED, ffmpegResult.status());
             assertNotNull(ffmpegResult.plan());

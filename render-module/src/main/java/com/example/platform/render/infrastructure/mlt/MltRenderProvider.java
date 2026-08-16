@@ -6,8 +6,8 @@ import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
-import com.example.platform.render.domain.timeline.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
@@ -140,10 +140,10 @@ public class MltRenderProvider implements RenderProvider {
     }
 
     private TimelineSpec resolveTimelinePaths(TimelineSpec timeline) {
-        List<com.example.platform.render.domain.timeline.TimelineTrack> tracks = new ArrayList<>();
+        List<com.example.platform.render.domain.legacy.TimelineTrack> tracks = new ArrayList<>();
         if (timeline.tracks() != null) {
             for (var track : timeline.tracks()) {
-                List<com.example.platform.render.domain.timeline.TimelineClip> clips = new ArrayList<>();
+                List<com.example.platform.render.domain.legacy.TimelineClip> clips = new ArrayList<>();
                 if (track.clips() != null) {
                     for (var clip : track.clips()) {
                         if (clip.assetRef() == null) {
@@ -152,9 +152,9 @@ public class MltRenderProvider implements RenderProvider {
                         }
                         String uri = clip.assetRef().storageUri();
                         String local = timelineScriptParser.resolveLocalPath(uri, storageRoot);
-                        clips.add(new com.example.platform.render.domain.timeline.TimelineClip(
+                        clips.add(new com.example.platform.render.domain.legacy.TimelineClip(
                                 clip.id(),
-                                com.example.platform.render.domain.timeline.TimelineAssetRef.of(
+                                com.example.platform.render.domain.legacy.TimelineAssetRef.of(
                                         clip.assetRef().assetId(), local),
                                 clip.timelineStart(),
                                 clip.assetInPoint(),
@@ -163,7 +163,7 @@ public class MltRenderProvider implements RenderProvider {
                                 clip.effects()));
                     }
                 }
-                tracks.add(new com.example.platform.render.domain.timeline.TimelineTrack(
+                tracks.add(new com.example.platform.render.domain.legacy.TimelineTrack(
                         track.id(), track.name(), track.type(), track.layer(),
                         clips, track.muted(), track.locked()));
             }

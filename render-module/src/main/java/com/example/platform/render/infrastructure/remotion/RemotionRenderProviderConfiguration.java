@@ -1,7 +1,7 @@
 package com.example.platform.render.infrastructure.remotion;
 
 import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.render.domain.timeline.TimelineScriptParser;
+import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.infrastructure.font.RenderJobFontPreflight;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

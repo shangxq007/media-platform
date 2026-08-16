@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.remotion;
 
 import com.example.platform.render.app.timeline.compile.RenderCorrelationContext;
-import com.example.platform.render.domain.timeline.compile.remotion.ProviderExecutionDocumentGenerationResult;
+import com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationResult;
 import java.util.List;
 import java.util.Map;
 

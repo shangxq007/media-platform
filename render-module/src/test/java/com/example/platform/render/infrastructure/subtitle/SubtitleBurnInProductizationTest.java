@@ -2,13 +2,13 @@ package com.example.platform.render.infrastructure.subtitle;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTextOverlay;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
 import com.example.platform.render.infrastructure.libass.AssTextSanitizer;
 import com.example.platform.render.infrastructure.libass.LibassAssFileWriter;
 import com.example.platform.render.infrastructure.libass.LibassSubtitleCompositor;
-import com.example.platform.render.domain.timeline.standards.SrtSubtitleAdapter;
-import com.example.platform.render.domain.timeline.standards.WebVttSubtitleAdapter;
+import com.example.platform.render.domain.standards.SrtSubtitleAdapter;
+import com.example.platform.render.domain.standards.WebVttSubtitleAdapter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

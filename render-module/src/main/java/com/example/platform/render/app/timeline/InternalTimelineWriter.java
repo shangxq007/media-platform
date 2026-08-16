@@ -1,15 +1,15 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.domain.timeline.ExternalRenderNode;
-import com.example.platform.render.domain.timeline.FinalComposerHint;
-import com.example.platform.render.domain.timeline.TimelineClip;
-import com.example.platform.render.domain.timeline.TimelineClipEffect;
-import com.example.platform.render.domain.timeline.TimelineExtensions;
-import com.example.platform.render.domain.timeline.TimelineExtensionsReader;
-import com.example.platform.render.domain.timeline.TimelineOutputSpec;
-import com.example.platform.render.domain.timeline.TimelineSpec;
-import com.example.platform.render.domain.timeline.TimelineTextOverlay;
-import com.example.platform.render.domain.timeline.TimelineTrack;
+import com.example.platform.render.domain.planning.ExternalRenderNode;
+import com.example.platform.render.domain.planning.FinalComposerHint;
+import com.example.platform.render.domain.legacy.TimelineClip;
+import com.example.platform.render.domain.legacy.TimelineClipEffect;
+import com.example.platform.render.domain.interchange.TimelineExtensions;
+import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
+import com.example.platform.render.domain.interchange.TimelineOutputSpec;
+import com.example.platform.render.domain.interchange.TimelineSpec;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
+import com.example.platform.render.domain.legacy.TimelineTrack;
 import com.example.platform.shared.time.FrameRate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;

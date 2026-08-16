@@ -2,7 +2,7 @@ package com.example.platform.render.app.timeline;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.TimelineSegment;
+import com.example.platform.render.domain.legacy.TimelineSegment;
 import com.example.platform.render.infrastructure.RenderCacheProperties;
 import java.util.List;
 import java.util.Map;

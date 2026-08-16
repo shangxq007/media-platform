@@ -1,8 +1,8 @@
-package com.example.platform.render.domain.timeline.standards;
+package com.example.platform.render.domain.standards;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.render.domain.timeline.TimelineTextOverlay;
+import com.example.platform.render.domain.interchange.TimelineTextOverlay;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
