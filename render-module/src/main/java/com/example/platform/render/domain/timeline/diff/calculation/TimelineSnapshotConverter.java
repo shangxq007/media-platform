@@ -85,7 +85,8 @@ public final class TimelineSnapshotConverter {
                 List.of(),
                 List.of(),
                 null,
-                Map.of("schemaVersion", "internal-1.0"));
+                Map.of("schemaVersion", "internal-1.0"),
+                List.of());
     }
 
     public static CanonicalTimelineSnapshot toSnapshot(TimelineDocument document, String revisionId) {
@@ -127,11 +128,11 @@ public final class TimelineSnapshotConverter {
                 List.of(),
                 List.of(),
                 null,
-                Map.of("schemaVersion", document.getSchemaVersion()));
+                Map.of("schemaVersion", "document.getSchemaVersion()"),
+                document.getTextElements());
     }
 
     /**
-     * Reconstruct a {@link TimelineDocument} from a merged snapshot, using
      * {@code template} as the source for document-level fields (schema version,
      * metadata) that are outside the canonical snapshot space.
      *

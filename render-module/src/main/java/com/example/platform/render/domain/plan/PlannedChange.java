@@ -19,7 +19,10 @@ public sealed interface PlannedChange permits
         PlannedChange.RelationshipRemoved,
         PlannedChange.RelationshipAdded,
         PlannedChange.GroupMembershipUpdated,
-        PlannedChange.AudioMixReplaced {
+        PlannedChange.AudioMixReplaced,
+        PlannedChange.TextElementAdded,
+        PlannedChange.TextElementRemoved,
+        PlannedChange.TextElementReplaced {
 
     boolean primary();
 
@@ -63,5 +66,23 @@ public sealed interface PlannedChange permits
         public boolean primary() {
             return true;
         }
+    }
+
+    /** ROADMAP_19 (C37): TextElement added to Timeline composition. */
+    record TextElementAdded(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+            implements PlannedChange {
+        @Override public boolean primary() { return true; }
+    }
+
+    /** ROADMAP_19 (C37): TextElement removed from Timeline composition. */
+    record TextElementRemoved(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+            implements PlannedChange {
+        @Override public boolean primary() { return true; }
+    }
+
+    /** ROADMAP_19 (C37): existing TextElement semantically replaced. */
+    record TextElementReplaced(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+            implements PlannedChange {
+        @Override public boolean primary() { return true; }
     }
 }

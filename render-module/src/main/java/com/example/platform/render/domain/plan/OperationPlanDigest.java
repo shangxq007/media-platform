@@ -73,6 +73,9 @@ public final class OperationPlanDigest {
             case PlannedChange.GroupMembershipUpdated g -> "group(" + g.groupId().value() + ","
                     + g.remainingMembers().stream().map(m -> m.value()).sorted().toList() + ")";
             case PlannedChange.AudioMixReplaced a -> "audio(" + a.summary() + ")";
+            case PlannedChange.TextElementAdded r -> "text-add(" + r.textElementId().value() + ")";
+            case PlannedChange.TextElementRemoved r -> "text-remove(" + r.textElementId().value() + ")";
+            case PlannedChange.TextElementReplaced r -> "text-replace(" + r.textElementId().value() + ")";
         };
     }
 

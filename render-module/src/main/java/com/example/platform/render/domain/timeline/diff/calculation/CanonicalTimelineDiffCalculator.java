@@ -43,6 +43,9 @@ public class CanonicalTimelineDiffCalculator {
         // Template applications
         diffTemplateApplications(before, after, operations, opSeq);
 
+        // ROADMAP_19 (C58): authored TextElements (semantic diff; execution-only fields excluded)
+        diffTextElements(before, after, operations, opSeq);
+
         // Workflow steps
         diffWorkflowSteps(before, after, operations, opSeq);
 
@@ -251,6 +254,54 @@ public class CanonicalTimelineDiffCalculator {
                         null, afterWm.get(id).watermarkId()));
             }
         }
+    }
+
+    // --- ROADMAP_19 TextElement diff ---
+
+    private void diffTextElements(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
+                                  List<TimelineChangeOperation> ops, int[] seq) {
+        Map<String, com.example.platform.render.domain.timeline.canonical.TextElement> beforeMap =
+                toTextElementMap(before.textElements());
+        Map<String, com.example.platform.render.domain.timeline.canonical.TextElement> afterMap =
+                toTextElementMap(after.textElements());
+
+        for (String id : beforeMap.keySet()) {
+            var b = beforeMap.get(id);
+            if (!afterMap.containsKey(id)) {
+                ops.add(change(seq, TimelineChangeType.TEXT_ELEMENT_CHANGED,
+                        TimelineChangeScope.TEXT_ELEMENT, "timeline.textElements." + id,
+                        b.id().value(), null));
+            } else {
+                var a = afterMap.get(id);
+                if (!b.equals(a)) {
+                    ops.add(change(seq, TimelineChangeType.TEXT_ELEMENT_CHANGED,
+                            TimelineChangeScope.TEXT_ELEMENT, "timeline.textElements." + id,
+                            summary(b), summary(a)));
+                }
+            }
+        }
+        for (String id : afterMap.keySet()) {
+            if (!beforeMap.containsKey(id)) {
+                ops.add(change(seq, TimelineChangeType.TEXT_ELEMENT_CHANGED,
+                        TimelineChangeScope.TEXT_ELEMENT, "timeline.textElements." + id,
+                        null, afterMap.get(id).id().value()));
+            }
+        }
+    }
+
+    private static Map<String, com.example.platform.render.domain.timeline.canonical.TextElement> toTextElementMap(
+            List<com.example.platform.render.domain.timeline.canonical.TextElement> elements) {
+        java.util.LinkedHashMap<String, com.example.platform.render.domain.timeline.canonical.TextElement> m =
+                new java.util.LinkedHashMap<>();
+        for (var e : elements) {
+            m.put(e.id().value(), e);
+        }
+        return m;
+    }
+
+    private static String summary(com.example.platform.render.domain.timeline.canonical.TextElement e) {
+        return e.id().value() + ":" + e.styledText().content().scalarCount() + ":" + e.start()
+                + ":" + e.duration() + ":" + e.styledText().content().value().hashCode();
     }
 
     // --- Template application diff ---

@@ -29,16 +29,16 @@ import com.example.platform.fonttext.typography.TextStyle;
 import java.util.List;
 
 /** ROADMAP_19 test fixtures: canonical TextElement sample. */
-final class TestTextElements {
+public final class TestTextElements {
 
     private TestTextElements() {
     }
 
-    static TextElement sampleTextElement() {
+    public static TextElement sampleTextElement() {
         return textElement("elem-1");
     }
 
-    static TextElement textElement(String id) {
+    public static TextElement textElement(String id) {
         TextContent content = new TextContent("Hello 张伟 👋");
         FontContentDigest digest = FontContentDigest.ofText("inter-v1");
         ValidatedFontExecutionReference ref = new ValidatedFontExecutionReference(

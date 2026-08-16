@@ -12,6 +12,7 @@ public enum TimelineChangeScope {
     TEXT_OVERLAY,
     CAPTION,
     WATERMARK,
+    TEXT_ELEMENT,
     TEMPLATE_APPLICATION,
     COMPOSITE_TEMPLATE,
     WORKFLOW_STEP,

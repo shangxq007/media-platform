@@ -14,7 +14,8 @@ public sealed interface OperationTargetRequest permits
         OperationTargetRequest.ClipSelectionTargetRequest,
         OperationTargetRequest.GroupTargetRequest,
         OperationTargetRequest.SyncTargetRequest,
-        OperationTargetRequest.AudioTargetRequest {
+        OperationTargetRequest.AudioTargetRequest,
+        OperationTargetRequest.TextElementTargetRequest {
 
     record ClipSelectionTargetRequest(SelectionSpec selectionSpec,
                                       SelectionSpec.ExpansionPolicy expansionPolicy)
@@ -47,6 +48,16 @@ public sealed interface OperationTargetRequest permits
         public AudioTargetRequest {
             if (audioMixInput == null) {
                 throw new IllegalArgumentException("audioMixInput required");
+            }
+        }
+    }
+
+    /** ROADMAP_19 (C37): Text operation target — exact authored TextElement. */
+    record TextElementTargetRequest(com.example.platform.render.domain.timeline.canonical.TextElementId textElementId)
+            implements OperationTargetRequest {
+        public TextElementTargetRequest {
+            if (textElementId == null) {
+                throw new IllegalArgumentException("textElementId required");
             }
         }
     }

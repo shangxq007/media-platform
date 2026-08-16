@@ -26,7 +26,8 @@ public record OperationDefinition(
         CLIP_SCOPE,
         GROUP,
         SYNC,
-        AUDIO
+        AUDIO,
+        TEXT
     }
 
     public OperationDefinition {
@@ -62,11 +63,30 @@ public record OperationDefinition(
                     Lifecycle.ACTIVE, TargetKind.CLIP_SCOPE, min, max, param);
         }
 
+        // ROADMAP_19 (C37/FTG19): nine typed Text operations (frozen set, no 10th).
+        public static final OperationDefinition ADD_TEXT_ELEMENT = textDef("timeline.text.add", OperationParameters.AddTextElementParameters.class);
+        public static final OperationDefinition REMOVE_TEXT_ELEMENT = textDef("timeline.text.remove", OperationParameters.RemoveTextElementParameters.class);
+        public static final OperationDefinition REPLACE_TEXT_CONTENT = textDef("timeline.text.replace-content", OperationParameters.ReplaceTextContentParameters.class);
+        public static final OperationDefinition SET_TEXT_STYLE_RANGE = textDef("timeline.text.set-style-range", OperationParameters.SetTextStyleRangeParameters.class);
+        public static final OperationDefinition SET_PARAGRAPH_STYLE = textDef("timeline.text.set-paragraph-style", OperationParameters.SetParagraphStyleParameters.class);
+        public static final OperationDefinition SET_FONT_SELECTION = textDef("timeline.text.set-font-selection", OperationParameters.SetFontSelectionParameters.class);
+        public static final OperationDefinition SET_FONT_FALLBACK_POLICY = textDef("timeline.text.set-fallback-policy", OperationParameters.SetFontFallbackPolicyParameters.class);
+        public static final OperationDefinition SET_VARIABLE_FONT_AXIS = textDef("timeline.text.set-variable-axis", OperationParameters.SetVariableFontAxisParameters.class);
+        public static final OperationDefinition SET_TEXT_LAYOUT = textDef("timeline.text.set-layout", OperationParameters.SetTextLayoutParameters.class);
+
+        private static OperationDefinition textDef(String id, Class<? extends OperationParameters> param) {
+            return new OperationDefinition(OperationDefinitionId.of(id), ContractVersion.of(1, 0),
+                    Lifecycle.ACTIVE, TargetKind.TEXT, 1, 1, param);
+        }
+
         public static final java.util.List<OperationDefinition> ALL = java.util.List.of(
                 MOVE, DELETE, TRIM, SET_TEMPORAL_RATE, SET_TEMPORAL_DIRECTION, FREEZE,
                 SET_AUDIO_GAIN, SET_AUDIO_MUTE, SET_STEREO_BALANCE,
                 CREATE_GROUP, UPDATE_GROUP_MEMBERSHIP, REMOVE_GROUP,
-                CREATE_SYNC, UPDATE_SYNC_ANCHOR, REMOVE_SYNC);
+                CREATE_SYNC, UPDATE_SYNC_ANCHOR, REMOVE_SYNC,
+                ADD_TEXT_ELEMENT, REMOVE_TEXT_ELEMENT, REPLACE_TEXT_CONTENT,
+                SET_TEXT_STYLE_RANGE, SET_PARAGRAPH_STYLE, SET_FONT_SELECTION,
+                SET_FONT_FALLBACK_POLICY, SET_VARIABLE_FONT_AXIS, SET_TEXT_LAYOUT);
 
         private V1() {
         }
