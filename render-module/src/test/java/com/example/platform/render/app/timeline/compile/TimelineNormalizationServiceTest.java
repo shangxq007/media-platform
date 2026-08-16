@@ -235,7 +235,7 @@ class TimelineNormalizationServiceTest {
     @Test
     @DisplayName("Empty text in overlay fails closed")
     void emptyTextInOverlayFailsClosed() {
-        TimelineTextOverlay overlay = new TimelineTextOverlay("overlay-1", "", "DejaVu Sans", 24,
+        TimelineTextOverlay overlay = new TimelineTextOverlay("overlay-1", "", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24,
                 "#FFFFFF", "center", "bottom", 1.0, 3.0, null);
         TimelineSpec spec = new TimelineSpec("tl-1", "Test", null,
                 List.of(createTrack("trk-1")), List.of(overlay),

@@ -65,7 +65,7 @@ class OperationModelTest {
     // ---- DEFINITIONS ----
     @Test
     void exactlyFifteenV1Definitions() {
-        assertEquals(15, OperationDefinition.V1.ALL.size());
+        assertEquals(24, OperationDefinition.V1.ALL.size()); // 15 frozen V1 + 9 ROADMAP_19 text
         assertTrue(OperationDefinition.V1.ALL.stream().allMatch(d ->
                 d.version().equals(ContractVersion.of(1, 0)) && d.lifecycle() == OperationDefinition.Lifecycle.ACTIVE));
         assertEquals("timeline.move", OperationDefinition.V1.MOVE.definitionId().value());

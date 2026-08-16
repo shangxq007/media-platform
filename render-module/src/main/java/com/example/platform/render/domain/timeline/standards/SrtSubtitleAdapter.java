@@ -45,7 +45,7 @@ public final class SrtSubtitleAdapter {
                     overlays.add(new TimelineTextOverlay(
                             "srt-" + (++index),
                             text.toString(),
-                            "DejaVu Sans",
+                            new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"),
                             24,
                             "#FFFFFF",
                             "center",

@@ -354,7 +354,7 @@ class FFmpegLibassBasicRenderPlannerTest {
     @Test @DisplayName("Caption overlay requires text")
     void captionOverlayRequiresText() {
         TimelineTextOverlay overlay = new TimelineTextOverlay(
-                "cap-1", "", "DejaVu Sans", 24, "#FFFFFF",
+                "cap-1", "", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24, "#FFFFFF",
                 "center", "bottom", 0.0, 5.0, null);
         TimelineSpec timeline = new TimelineSpec("tl-1", "Test", null,
                 List.of(TimelineTrack.of("track-1", "Video", TimelineTrack.TrackType.VIDEO)),
@@ -368,7 +368,7 @@ class FFmpegLibassBasicRenderPlannerTest {
     void captionOverlayRequiresValidTimeRange() {
         assertThrows(IllegalArgumentException.class, () ->
                 new TimelineTextOverlay(
-                        "cap-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
+                        "cap-1", "Hello", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24, "#FFFFFF",
                         "center", "bottom", -1.0, 5.0, null));
     }
 

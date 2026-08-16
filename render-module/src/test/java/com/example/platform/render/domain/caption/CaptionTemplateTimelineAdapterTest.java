@@ -75,7 +75,7 @@ class CaptionTemplateTimelineAdapterTest {
         CaptionTemplateRenderRequest request = minimalRequest();
         TimelineSpec spec = adapter.adapt(request);
 
-        assertEquals("DejaVu Sans", spec.textOverlays().get(0).fontFamily());
+        assertEquals("DejaVu Sans", spec.textOverlays().get(0).fontFamily().value());
         assertEquals(24, spec.textOverlays().get(0).fontSize());
         assertEquals("#FFFFFF", spec.textOverlays().get(0).color());
     }
@@ -94,7 +94,7 @@ class CaptionTemplateTimelineAdapterTest {
 
         TimelineSpec spec = adapter.adapt(request);
 
-        assertEquals("Liberation Sans", spec.textOverlays().get(0).fontFamily());
+        assertEquals("Liberation Sans", spec.textOverlays().get(0).fontFamily().value());
         assertEquals(32, spec.textOverlays().get(0).fontSize());
         assertEquals("#FFFF00", spec.textOverlays().get(0).color());
         assertEquals("top", spec.textOverlays().get(0).positionY());

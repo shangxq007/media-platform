@@ -26,18 +26,6 @@ public record CanonicalTimelineSnapshot(
         Map<String, String> safeMetadata,
         List<com.example.platform.render.domain.timeline.canonical.TextElement> textElements) {
 
-    /** Backward-compatible convenience constructor: no text elements. */
-    public CanonicalTimelineSnapshot(
-            CanonicalTimelineSnapshotId id, String revisionId, MediaTime duration,
-            List<CanonicalTimelineTrackSnapshot> tracks, List<CanonicalTimelineCaptionSnapshot> captions,
-            List<CanonicalTimelineWatermarkSnapshot> watermarks,
-            List<CanonicalTimelineTemplateApplicationSnapshot> templateApplications,
-            List<CanonicalTimelineWorkflowStepSnapshot> workflowSteps,
-            CanonicalTimelineOutputProfileSnapshot outputProfile, Map<String, String> safeMetadata) {
-        this(id, revisionId, duration, tracks, captions, watermarks, templateApplications,
-                workflowSteps, outputProfile, safeMetadata, List.of());
-    }
-
     public CanonicalTimelineSnapshot {
         if (id == null) throw new IllegalArgumentException("id must not be null");
         if (revisionId == null || revisionId.isBlank())

@@ -8,7 +8,7 @@ package com.example.platform.render.domain.timeline;
  *
  * @param id            unique overlay identifier
  * @param text          the text content to render (plain text, max 500 chars)
- * @param fontFamily    font family name (e.g., "DejaVu Sans"), not a file path
+ * @param fontFamily    typed authored font family selection (FontFamilyName), never exact identity
  * @param fontSize      font size in points (8-160)
  * @param color         text color (e.g., "#FFFFFF")
  * @param positionX     horizontal position (pixels or percentage)
@@ -20,7 +20,7 @@ package com.example.platform.render.domain.timeline;
 public record TimelineTextOverlay(
         String id,
         String text,
-        String fontFamily,
+        com.example.platform.fonttext.typography.FontFamilyName fontFamily,
         int fontSize,
         String color,
         String positionX,
@@ -48,7 +48,8 @@ public record TimelineTextOverlay(
      * Creates a simple text overlay.
      */
     public static TimelineTextOverlay of(String id, String text, double startTime, double duration) {
-        return new TimelineTextOverlay(id, text, "DejaVu Sans", 24, "#FFFFFF",
+        return new TimelineTextOverlay(id, text,
+                new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24, "#FFFFFF",
                 "center", "bottom", startTime, duration, null);
     }
 }

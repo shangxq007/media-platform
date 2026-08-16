@@ -86,7 +86,7 @@ public class RemotionInputPropsGenerator {
                 captions.add(new RemotionCaptionSpec(
                         layer.layerId(), layer.text(),
                         layer.startTime(), layer.startTime() + layer.duration(),
-                        layer.fontFamily(), layer.fontSize(),
+                        layer.fontFamily() != null ? layer.fontFamily().value() : null, layer.fontSize(),
                         layer.color(), layer.positionX(), layer.positionY(),
                         layer.backgroundColor()));
             }
@@ -97,7 +97,7 @@ public class RemotionInputPropsGenerator {
         if (timeline.hasCaptions()) {
             java.util.Set<String> seen = new java.util.HashSet<>();
             for (NormalizedCaptionLayer layer : timeline.captionLayers()) {
-                String family = layer.fontFamily() != null ? layer.fontFamily() : "sans-serif";
+                String family = layer.fontFamily() != null ? layer.fontFamily().value() : "sans-serif";
                 if (seen.add(family)) {
                     fonts.add(new RemotionFontSpec(family, 400, "normal", null));
                 }

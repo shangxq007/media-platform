@@ -179,7 +179,7 @@ class TimelineEffectApiProductizationTest {
     void textOverlayWithNegativeDurationRejected() {
         assertThrows(IllegalArgumentException.class, () ->
                 new TimelineTextOverlay(
-                        "ov-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
+                        "ov-1", "Hello", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24, "#FFFFFF",
                         "center", "bottom", 0.0, -1.0, null));
     }
 

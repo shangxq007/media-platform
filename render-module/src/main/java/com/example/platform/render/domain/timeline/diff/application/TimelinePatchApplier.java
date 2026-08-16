@@ -43,7 +43,7 @@ public class TimelinePatchApplier {
                 current.id(), base.revisionId() + "+patched", current.duration(),
                 current.tracks(), current.captions(), current.watermarks(),
                 current.templateApplications(), current.workflowSteps(),
-                current.outputProfile(), current.safeMetadata());
+                current.outputProfile(), current.safeMetadata(), List.of());
         return TimelinePatchApplicationResult.applied(patched);
     }
 
@@ -78,7 +78,7 @@ public class TimelinePatchApplier {
         MediaTime val = parseMediaTime(afterVal(op), s.duration());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), val,
                 s.tracks(), s.captions(), s.watermarks(),
-                s.templateApplications(), s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
+                s.templateApplications(), s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
     }
 
     // --- Track ---
@@ -230,7 +230,7 @@ public class TimelinePatchApplier {
                 .map(c -> c.captionId().equals(capId) ? updated : c).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), captions, s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
     }
 
     // --- Watermark ---
@@ -255,7 +255,7 @@ public class TimelinePatchApplier {
                 .map(w -> w.watermarkId().equals(wmId) ? updated : w).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), wms, s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
     }
 
     // --- Template ---
@@ -279,7 +279,7 @@ public class TimelinePatchApplier {
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), apps,
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
     }
 
     private TimelinePatchApplicationResult applyTemplateProfile(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
@@ -296,7 +296,7 @@ public class TimelinePatchApplier {
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), apps,
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
     }
 
     // --- Workflow ---
@@ -314,7 +314,7 @@ public class TimelinePatchApplier {
                 .map(w -> w.workflowStepId().equals(stepId) ? updated : w).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                steps, s.outputProfile(), s.safeMetadata()));
+                steps, s.outputProfile(), s.safeMetadata(), s.textElements()));
     }
 
     // --- Output profile ---
@@ -334,7 +334,7 @@ public class TimelinePatchApplier {
                 old != null ? old.aspectRatio() : "16:9", newW, newH, Map.of());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), profile, s.safeMetadata()));
+                s.workflowSteps(), profile, s.safeMetadata(), s.textElements()));
     }
 
     // --- Metadata ---
@@ -355,7 +355,7 @@ public class TimelinePatchApplier {
         }
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), meta));
+                s.workflowSteps(), s.outputProfile(), meta, List.of()));
     }
 
     // --- Helpers ---
@@ -486,7 +486,7 @@ public class TimelinePatchApplier {
     private CanonicalTimelineSnapshot withTracks(CanonicalTimelineSnapshot s, List<CanonicalTimelineTrackSnapshot> tracks) {
         return new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 tracks, s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata());
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), List.of());
     }
 
     private CanonicalTimelineSnapshot withUpdatedTrack(CanonicalTimelineSnapshot s, String trackId, CanonicalTimelineTrackSnapshot updated) {

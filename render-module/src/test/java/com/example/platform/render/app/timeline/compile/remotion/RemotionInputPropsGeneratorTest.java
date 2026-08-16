@@ -209,7 +209,7 @@ class RemotionInputPropsGeneratorTest {
         NormalizedTrack track = new NormalizedTrack(
                 "track-1", "Video 1", NormalizedTrack.TrackType.VIDEO, 0, false, List.of(clip));
         NormalizedCaptionLayer caption = new NormalizedCaptionLayer(
-                "cap-1", "Hello World", "DejaVu Sans", 24, "#FFFFFF",
+                "cap-1", "Hello World", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24, "#FFFFFF",
                 "center", "bottom", 1.0, 3.0, null);
         return new NormalizedTimeline("tl-1", "proj-1", List.of(track), List.of(caption),
                 NormalizedOutputProfile.DEFAULT_MP4_1080P30, 5.0, Map.of());

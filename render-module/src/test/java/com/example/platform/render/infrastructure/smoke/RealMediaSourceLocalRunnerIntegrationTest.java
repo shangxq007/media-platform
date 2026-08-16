@@ -90,7 +90,7 @@ class RealMediaSourceLocalRunnerIntegrationTest {
                 "track-v1", "Video 1", TimelineTrack.TrackType.VIDEO,
                 0, List.of(clip), false, false);
         TimelineTextOverlay caption = new TimelineTextOverlay(
-                "caption-001", "Hello Real Media", "DejaVu Sans", 24,
+                "caption-001", "Hello Real Media", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24,
                 "#FFFFFF", "center", "bottom",
                 0.5, 2.0, null);
         TimelineSpec timeline = new TimelineSpec(

@@ -75,7 +75,7 @@ class CapabilityGraphCompilerTest {
     @DisplayName("Caption overlay maps to subtitle/font capabilities")
     void captionOverlayMapsToSubtitleCapabilities() {
         NormalizedCaptionLayer caption = new NormalizedCaptionLayer(
-                "cap-1", "Hello", "DejaVu Sans", 24, "#FFFFFF",
+                "cap-1", "Hello", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24, "#FFFFFF",
                 "center", "bottom", 1.0, 3.0, null);
         NormalizedTimeline timeline = createTimelineWithCaptions(List.of(caption));
         ArtifactDependencyGraph artifactGraph = artifactCompiler.compile(timeline);

@@ -40,7 +40,9 @@ public class AutoCaptionsService {
                     request.projectId(), List.of(), 0, e.getMessage());
         }
 
-        String fontFamily = request.fontFamily() != null ? request.fontFamily() : "Inter";
+        com.example.platform.fonttext.typography.FontFamilyName fontFamily =
+                java.util.Objects.requireNonNull(request.fontFamily(),
+                        "fontFamily is required (no implicit default font)");
         int fontSize = request.fontSize() > 0 ? request.fontSize() : 24;
         String fontColor = request.fontColor() != null ? request.fontColor() : "#FFFFFF";
         String posX = request.positionX() > 0 ? String.valueOf(request.positionX()) : "center";
@@ -75,7 +77,7 @@ public class AutoCaptionsService {
             String audioUri,
             String language,
             int maxSegmentDurationMs,
-            String fontFamily,
+            com.example.platform.fonttext.typography.FontFamilyName fontFamily,
             int fontSize,
             String fontColor,
             double positionX,

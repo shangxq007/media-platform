@@ -24,7 +24,7 @@ class AutoCaptionsServiceTest {
                 "tenant-1", "proj-1", "asset-1",
                 "tenant/tenant-1/workspace/ws-1/project/proj-1/assets/asset-1/audio.wav",
                 "en", 10000,
-                "Inter", 24, "#FFFFFF", 0.5, 0.9);
+                new com.example.platform.fonttext.typography.FontFamilyName("Inter"), 24, "#FFFFFF", 0.5, 0.9);
 
         AutoCaptionsService.AutoCaptionsResult result = service.generateCaptions(request);
 
@@ -36,7 +36,7 @@ class AutoCaptionsServiceTest {
         var overlay = result.overlays().get(0);
         assertNotNull(overlay.id());
         assertTrue(overlay.id().startsWith("sub_"));
-        assertEquals("Inter", overlay.fontFamily());
+        assertEquals("Inter", overlay.fontFamily().value());
         assertEquals(24, overlay.fontSize());
         assertEquals("#FFFFFF", overlay.color());
         assertEquals("0.5", overlay.positionX());
@@ -48,7 +48,7 @@ class AutoCaptionsServiceTest {
         var request = new AutoCaptionsService.AutoCaptionsRequest(
                 "tenant-1", "proj-1", "asset-1",
                 "audio.wav", "en", 10000,
-                null, 0, null, 0.5, 0.9);
+                new com.example.platform.fonttext.typography.FontFamilyName("Inter"), 0, null, 0.5, 0.9);
 
         AutoCaptionsService.AutoCaptionsResult result = service.generateCaptions(request);
 
@@ -61,7 +61,7 @@ class AutoCaptionsServiceTest {
         var request = new AutoCaptionsService.AutoCaptionsRequest(
                 "tenant-1", "proj-1", "asset-1",
                 "audio.wav", "en", 10000,
-                null, 0, null, 0, 0);
+                new com.example.platform.fonttext.typography.FontFamilyName("Inter"), 0, null, 0, 0);
 
         AutoCaptionsService.AutoCaptionsResult result = service.generateCaptions(request);
 

@@ -112,7 +112,7 @@ class VS0VerticalSliceIntegrationTest {
 
             TimelineSpec spec = captionAdapter.adapt(request);
 
-            assertEquals("Liberation Sans", spec.textOverlays().get(0).fontFamily());
+            assertEquals("Liberation Sans", spec.textOverlays().get(0).fontFamily().value());
             assertEquals(36, spec.textOverlays().get(0).fontSize());
             assertEquals("#FFFF00", spec.textOverlays().get(0).color());
             assertEquals("top", spec.textOverlays().get(0).positionY());
@@ -643,10 +643,10 @@ class VS0VerticalSliceIntegrationTest {
         TimelineTrack track = new TimelineTrack("trk-vs0-v", "Video", TimelineTrack.TrackType.VIDEO,
                 0, List.of(clip), false, false);
         TimelineTextOverlay overlay1 = new TimelineTextOverlay(
-                "ov-1", "Hello World", "DejaVu Sans", 24,
+                "ov-1", "Hello World", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24,
                 "#FFFFFF", "center", "bottom", 0.0, 3.0, null);
         TimelineTextOverlay overlay2 = new TimelineTextOverlay(
-                "ov-2", "VS.0 Integration", "DejaVu Sans", 24,
+                "ov-2", "VS.0 Integration", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24,
                 "#FFFFFF", "center", "bottom", 3.0, 3.0, null);
         return new TimelineSpec("tl-vs0", "VS.0 Test", null,
                 List.of(track), List.of(overlay1, overlay2),

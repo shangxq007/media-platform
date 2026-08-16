@@ -57,7 +57,7 @@ public class AutoCaptionsController {
                                 "text", o.text(),
                                 "startTime", o.startTime(),
                                 "duration", o.duration(),
-                                "fontFamily", o.fontFamily(),
+                                "fontFamily", o.fontFamily().value(),
                                 "fontSize", o.fontSize(),
                                 "color", o.color()))
                         .toList());
@@ -69,7 +69,7 @@ public class AutoCaptionsController {
             String audioUri,
             String language,
             int maxSegmentDurationMs,
-            String fontFamily,
+            com.example.platform.fonttext.typography.FontFamilyName fontFamily,
             int fontSize,
             String fontColor,
             double positionX,

@@ -239,7 +239,7 @@ class BasicTimelineEditingModelTest {
     void invalidCaptionTimeRangeRejected() {
         assertThrows(IllegalArgumentException.class, () ->
                 new TimelineTextOverlay("cap-1", "Hello",
-                        "DejaVu Sans", 24, "#FFFFFF", "center", "bottom", -1, 0, null));
+                        new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24, "#FFFFFF", "center", "bottom", -1, 0, null));
     }
 
     @Test @DisplayName("Invalid output profile rejected")

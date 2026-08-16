@@ -68,7 +68,7 @@ class BasicRenderPlanCaptionOverlayLocalRunnerIntegrationTest {
                 0, List.of(clip), false, false);
         // Add a caption overlay
         TimelineTextOverlay caption = new TimelineTextOverlay(
-                "caption-001", "Hello P2L.2", "DejaVu Sans", 24,
+                "caption-001", "Hello P2L.2", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24,
                 "#FFFFFF", "center", "bottom",
                 0.5, 2.0, null);
         TimelineSpec timeline = new TimelineSpec(
@@ -189,7 +189,7 @@ class BasicRenderPlanCaptionOverlayLocalRunnerIntegrationTest {
                 "track-v2", "Video 1", TimelineTrack.TrackType.VIDEO,
                 0, List.of(clip), false, false);
         TimelineTextOverlay caption = new TimelineTextOverlay(
-                "caption-002", "Test Caption", "DejaVu Sans", 24,
+                "caption-002", "Test Caption", new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 24,
                 "#FFFFFF", "center", "bottom",
                 0.0, 2.0, null);
         TimelineSpec timeline = new TimelineSpec(

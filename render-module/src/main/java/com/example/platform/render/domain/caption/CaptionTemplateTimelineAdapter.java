@@ -79,8 +79,10 @@ public class CaptionTemplateTimelineAdapter {
     }
 
     private TimelineTextOverlay toTextOverlay(CaptionSegmentSpec seg, CaptionStyleSpec style) {
-        String fontFamily = style.font() != null && style.font().family() != null
-                ? style.font().family() : "DejaVu Sans";
+        com.example.platform.fonttext.typography.FontFamilyName fontFamily =
+                new com.example.platform.fonttext.typography.FontFamilyName(
+                        style.font() != null && style.font().family() != null
+                                ? style.font().family() : "DejaVu Sans");
         int fontSize = style.fontSize() > 0 ? style.fontSize() : 24;
         String color = style.font() != null && style.font().color() != null
                 ? style.font().color() : "#FFFFFF";

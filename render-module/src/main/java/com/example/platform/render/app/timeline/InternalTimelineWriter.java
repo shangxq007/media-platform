@@ -388,7 +388,7 @@ public class InternalTimelineWriter {
             ObjectNode style = InternalTimelineJson.mapper().createObjectNode();
             style.put("id", "style_ass_main");
             style.put("engine", "libass");
-            style.put("fontFamily", "DejaVu Sans");
+            // ROADMAP_19: no implicit font default; typed FontSelectionIntent is sole authority
             styles.set("style_ass_main", style);
         }
         return styles;
