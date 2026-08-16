@@ -54,6 +54,7 @@ aggregate_covered = {
     "product-layer-module", "extension-module",
     "workflow-module", "artifact-module", "sandbox-runtime-module", "render-module",
     "media-module", "audio-module", "color-image-module", "font-text-module",  # R18/R19 pure value domains (LikeC4 Media/Text aggregates)
+    "timeline-module", "operation-module",  # GCR-1 canonical semantic modules (LikeC4 Timeline/Operation aggregates)
     "ai-module", "storage-module", "platform-app", "sandbox-worker", "remote-render-worker",
     "media-platform"  # system boundary itself
 }

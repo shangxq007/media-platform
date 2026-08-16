@@ -87,7 +87,21 @@ class ModularityTest {
         "render' depends on module 'media",
         // AUDIO_V2 (frozen: render -> audio): TimelineDocument carries the canonical
         // AudioMix reference (A3); audio-module is pure domain with no reverse dependency.
-        "render' depends on module 'audio"
+        "render' depends on module 'audio",
+        // GCR-1 (frozen directions: Render -> Timeline -> Operation; Media/Audio/
+        // FontText -> Timeline -> Operation): the new canonical modules consume
+        // upstream value semantics. audio/fonttext/media modules are pure domain
+        // with no named-interface exposure, so Modulith reports non-exposed-type
+        // violations — same class as the pre-existing render entries above.
+        "render' depends on module 'timeline",
+        "render' depends on module 'operation",
+        "web' depends on module 'timeline",
+        "timeline' depends on non-exposed type com.example.platform.audio",
+        "timeline' depends on non-exposed type com.example.platform.fonttext",
+        "timeline' depends on non-exposed type com.example.platform.media",
+        "operation' depends on non-exposed type com.example.platform.timeline",
+        "operation' depends on non-exposed type com.example.platform.audio",
+        "operation' depends on non-exposed type com.example.platform.fonttext"
     );
 
     @Test

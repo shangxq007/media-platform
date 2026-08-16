@@ -386,7 +386,6 @@ tasks.register("verifyC1TimelineMergeConvergence") {
     description = "C1-RED: single canonical Timeline semantic merge authority (engine wired, legacy merge residue 0)"
     doLast {
         val appDir = file("render-module/src/main/java/com/example/platform/render/app/timeline")
-        val domainDir = file("render-module/src/main/java/com/example/platform/render/domain/timeline")
         val timelineDomainDir = file("timeline-module/src/main/java/com/example/platform/timeline")
         // C1-RED-01/10: exactly one production merge authority; legacy Stack A merge machinery absent
         require(!file(appDir.resolve("TimelineMergeService.java")).exists()) { "FAIL: legacy TimelineMergeService still exists" }
@@ -504,7 +503,7 @@ tasks.register("verifyC1Cnm1RedGates") {
         require(!w.contains("double fps =") && !w.contains("(int) fps")) { "FAIL: canonical double fps residue in writer" }
 
         // ── RED-09: no dual parser / legacy rate compatibility path ──
-        val parser = file("render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineScriptParser.java")
+        val parser = file("render-module/src/main/java/com/example/platform/render/domain/interchange/TimelineScriptParser.java")
         val p = parser.readText()
         require(p.contains("parseFrameRateNode")) { "FAIL: exact rational rate parse missing" }
         require(!p.contains("treeToValue(output, TimelineOutputSpec.class)")) { "FAIL: legacy blind treeToValue rate parse" }
@@ -548,7 +547,7 @@ tasks.register("verifyC1Cnm1Red14") {
         require(!adapter.contains("rate.get(\"num\").asInt") && !adapter.contains("rate.get(\"den\").asInt")) {
             "FAIL: adapter must not use asInt as rate validator"
         }
-        val parser = file("render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineScriptParser.java").readText()
+        val parser = file("render-module/src/main/java/com/example/platform/render/domain/interchange/TimelineScriptParser.java").readText()
         require(parser.contains("CanonicalFrameRateCodec.parse")) { "FAIL: script parser must parse rate via codec" }
         require(parser.contains("InvalidCanonicalRateException")) { "FAIL: script parser must propagate invalid-rate rejection" }
         require(!parser.contains("asLong(0)") || !parser.contains("parseFrameRateNode")) { "note: parser rate reads must be codec-bounded" }
@@ -558,7 +557,7 @@ tasks.register("verifyC1Cnm1Red14") {
             "render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineAdapter.java",
             "render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineToEditorConverter.java",
             "render-module/src/main/java/com/example/platform/render/app/timeline/SegmentTimelinePlanner.java",
-            "render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineExtensionsReader.java")) {
+            "render-module/src/main/java/com/example/platform/render/domain/interchange/TimelineExtensionsReader.java")) {
             val src = file(f).readText()
             require(src.contains("CanonicalFrameRateCodec.parse")) { "FAIL: $f must validate rate via codec" }
             require(!src.contains("asInt(30) / rate.get(\"den\").asInt(1)") && !src.contains("asInt(defaultFps) / rate.get(\"den\").asInt(1)")) {

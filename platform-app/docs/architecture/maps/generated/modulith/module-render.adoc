@@ -158,9 +158,6 @@ _Others_
 * `c.e.p.r.app.timeline.TimelineSourceReferenceValidator`
 * `c.e.p.r.domain.RenderJobStateMachine`
 * `c.e.p.r.domain.StateMachineTraceEmitter`
-* `c.e.p.r.domain.timeline.TimelineExtensionsReader`
-* `c.e.p.r.domain.timeline.TimelineScriptParser`
-* `c.e.p.r.domain.timeline.TimelineStickerReader`
 * `c.e.p.r.infrastructure.RenderEnvironmentChecker` (via `c.e.p.r.infrastructure.DefaultRenderEnvironmentChecker`)
 * `c.e.p.r.infrastructure.RenderOrchestrator` (via `c.e.p.r.infrastructure.DefaultRenderOrchestrator`)
 * `c.e.p.r.infrastructure.RenderPlanner` (via `c.e.p.r.infrastructure.DefaultRenderPlanner`)
@@ -212,6 +209,10 @@ _Others_
 * `c.e.p.o.coordination.ExecutionBackendRegistry` (in Outbox & Events)
 * `c.e.p.s.web.ErrorCodeRegistry` (in Shared Kernel)
 * `c.e.p.e.app.ProcessToolRunner` (in Extension)
+* `c.e.p.t.diff.merge.preview.TimelineMergePreviewService` (in Timeline)
+* `c.e.p.t.diff.merge.plan.TimelineNonConflictingMergePlanner` (in Timeline)
+* `c.e.p.t.diff.application.TimelinePatchApplier` (in Timeline)
+* `c.e.p.t.canonical.TimelineContentDigester` (in Timeline)
 * `c.e.p.m.app.MediaAssetRepository` (in Media)
 * `c.e.p.m.app.MediaStreamRepository` (in Media)
 * `c.e.p.e.runtime.PluginRuntime` (in Extension)

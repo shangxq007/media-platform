@@ -214,14 +214,14 @@ echo "--- TIMELINE_V2 SourceBinding / Exactness ---"
 
 # T14 Gate 1: no legacy mediaReference String authority in canonical Timeline domain
 # (javadoc references to the retired field are documentation, not authority)
-if grep -rn 'mediaReference' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/ render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/ --include='*.java' 2>/dev/null | grep -vE ':\s*\*|/\*|^\s*[0-9]+:\s*\*' | grep -q .; then
+if grep -rn 'mediaReference' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/ timeline-module/src/main/java/com/example/platform/timeline/semantics/serialization/ --include='*.java' 2>/dev/null | grep -vE ':\s*\*|/\*|^\s*[0-9]+:\s*\*' | grep -q .; then
     fail "legacy mediaReference String present in canonical Timeline domain"
 else
     pass "mediaReference String retired from canonical Timeline domain"
 fi
 
 # T14 Gate 2: TimelineClip must not expose legacy assetId String getter
-if grep -q 'getAssetId' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineClip.java; then
+if grep -q 'getAssetId' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClip.java; then
     fail "legacy TimelineClip.getAssetId still present"
 else
     pass "TimelineClip typed source binding fields only"
@@ -229,7 +229,7 @@ fi
 
 # T14 Gate 3: canonical serializer must not emit double PLAYBACK RATE / time fields
 # (doubleField remains legal for non-time automation keyframe values)
-if grep -q 'doubleField(sb, "playbackRate"\|playbackRate().doubleValue()' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/CanonicalSerializer.java; then
+if grep -q 'doubleField(sb, "playbackRate"\|playbackRate().doubleValue()' timeline-module/src/main/java/com/example/platform/timeline/semantics/serialization/CanonicalSerializer.java; then
     fail "double playback rate in canonical serializer"
 else
     pass "canonical serializer exact rational rate"
@@ -237,7 +237,7 @@ fi
 
 # T14 Gate 4: legacy parser alias assetRef.storageUri retired (explicit execution-only
 # storageUri reading is legal; the ALIAS that injected storageUri into mediaRef is not)
-if grep -q 'mediaRef = textOr(assetRefNode, "storageUri"' render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineScriptParser.java; then
+if grep -q 'mediaRef = textOr(assetRefNode, "storageUri"' render-module/src/main/java/com/example/platform/render/domain/interchange/TimelineScriptParser.java; then
     fail "legacy assetRef.storageUri alias still present in parser"
 else
     pass "legacy parser alias retired"
@@ -248,7 +248,7 @@ echo "Checks: $CHECKS"
 echo "Failed: $FAILED"
 
 # T15 Gate 1 (A16): legacy TimelineAudioSpec.volume/normalize retired
-if grep -q 'double volume\|boolean normalize' render-module/src/main/java/com/example/platform/render/domain/timeline/TimelineAudioSpec.java; then
+if grep -q 'double volume\|boolean normalize' render-module/src/main/java/com/example/platform/render/domain/interchange/TimelineAudioSpec.java; then
     fail "legacy TimelineAudioSpec volume/normalize still present"
 else
     pass "legacy TimelineAudioSpec volume/normalize retired"
@@ -269,7 +269,7 @@ else
 fi
 
 # T15 Gate 4 (A3/A13): AudioMix integrated into TimelineDocument canonical content
-if grep -q 'AudioMix audioMix\|getAudioMix' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+if grep -q 'AudioMix audioMix\|getAudioMix' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java; then
     pass "AudioMix in TimelineDocument canonical content"
 else
     fail "AudioMix missing from TimelineDocument canonical content"
@@ -326,14 +326,14 @@ else
 fi
 
 # T17 Gate 1 (S1): TimelineSourceBinding is the canonical source root
-if grep -q 'sealed interface TimelineSourceBinding' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/TimelineSourceBinding.java; then
+if grep -q 'sealed interface TimelineSourceBinding' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/TimelineSourceBinding.java; then
     pass "TimelineSourceBinding canonical source root"
 else
     fail "TimelineSourceBinding root missing"
 fi
 
 # T17 Gate 2 (S2): MediaStreamSourceBinding carries #14 immutable source semantics
-if grep -q 'record MediaStreamSourceBinding' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java && grep -q 'contentDigest' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java; then
+if grep -q 'record MediaStreamSourceBinding' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java && grep -q 'contentDigest' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java; then
     pass "MediaStreamSourceBinding preserves #14 semantics"
 else
     fail "MediaStreamSourceBinding missing"
@@ -347,21 +347,21 @@ else
 fi
 
 # T17 Gate 4 (S8): OTIO remains adapter/projection, not canonical authority
-if grep -q 'class OpenTimelineioAdapter' render-module/src/main/java/com/example/platform/render/domain/timeline/OpenTimelineioAdapter.java; then
+if grep -q 'class OpenTimelineioAdapter' render-module/src/main/java/com/example/platform/render/domain/interchange/OpenTimelineioAdapter.java; then
     pass "OTIO adapter boundary intact"
 else
     fail "OTIO adapter missing"
 fi
 
 # T17 Gate 5 (S12): serialization/hash source-kind aware
-if grep -q 'sourceKind' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/CanonicalSerializer.java && grep -q 'sourceKind' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineClip.java; then
+if grep -q 'sourceKind' timeline-module/src/main/java/com/example/platform/timeline/semantics/serialization/CanonicalSerializer.java && grep -q 'sourceKind' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClip.java; then
     pass "source-kind aware serialization/hash"
 else
     fail "source-kind discriminator missing"
 fi
 
 # T17 Gate 7 (S18): no universal nullable source object
-if grep -q 'permits MediaStreamSourceBinding' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/TimelineSourceBinding.java; then
+if grep -q 'permits MediaStreamSourceBinding' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/TimelineSourceBinding.java; then
     pass "sealed typed source root (no god object)"
 else
     fail "source root not sealed/typed"
@@ -448,21 +448,21 @@ if grep -rq 'class IdentityTemporalMapping\|record IdentityTemporalMapping\|inte
 else
     pass "no IdentityTemporalMapping subtype"
 fi
-if grep -q '"kind":"IDENTITY"\|kind.*"IDENTITY"' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/CanonicalSerializer.java 2>/dev/null; then
+if grep -q '"kind":"IDENTITY"\|kind.*"IDENTITY"' timeline-module/src/main/java/com/example/platform/timeline/semantics/serialization/CanonicalSerializer.java 2>/dev/null; then
     fail "IDENTITY discriminator present (R1 violation)"
 else
     pass "no IDENTITY discriminator"
 fi
 
 # TMG-3: identity canonicalizes to ConstantRate 1/1 FORWARD
-if grep -q 'ConstantRateTemporalMapping identity()' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/ConstantRateTemporalMapping.java; then
+if grep -q 'ConstantRateTemporalMapping identity()' timeline-module/src/main/java/com/example/platform/timeline/semantics/temporal/ConstantRateTemporalMapping.java; then
     pass "identity factory present (normalized 1/1 FORWARD)"
 else
     fail "identity factory missing"
 fi
 
 # TMG-4: positive rational rate + explicit direction
-if grep -q 'record ConstantRateTemporalMapping' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/ConstantRateTemporalMapping.java && grep -q 'enum PlaybackDirection' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/PlaybackDirection.java; then
+if grep -q 'record ConstantRateTemporalMapping' timeline-module/src/main/java/com/example/platform/timeline/semantics/temporal/ConstantRateTemporalMapping.java && grep -q 'enum PlaybackDirection' timeline-module/src/main/java/com/example/platform/timeline/semantics/temporal/PlaybackDirection.java; then
     pass "constant-rate + direction model"
 else
     fail "constant-rate/direction model missing"
@@ -477,47 +477,47 @@ else
 fi
 
 # TMG-6/7: sourceRange sole authority, no duplication in TemporalMapping
-if grep -q 'sourceRange' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java; then
+if grep -q 'sourceRange' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java; then
     pass "sourceRange authority in binding"
 else
     fail "sourceRange authority missing"
 fi
-if grep -q 'sourceRange\|sourceStart\|sourceEnd' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/ConstantRateTemporalMapping.java; then
+if grep -q 'sourceRange\|sourceStart\|sourceEnd' timeline-module/src/main/java/com/example/platform/timeline/semantics/temporal/ConstantRateTemporalMapping.java; then
     fail "sourceRange duplicated into TemporalMapping"
 else
     pass "no duplicated sourceRange in TemporalMapping"
 fi
 
 # TMG-8: constant-rate duration consistency fail-closed
-if grep -q 'constant-rate duration mismatch' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaClip.java; then
+if grep -q 'constant-rate duration mismatch' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaClip.java; then
     pass "duration consistency fail-closed"
 else
     fail "duration consistency missing"
 fi
 
 # TMG-9: freeze = exact source position (no rate=0, no fake range)
-if grep -q 'record FreezeTemporalMapping' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/FreezeTemporalMapping.java; then
+if grep -q 'record FreezeTemporalMapping' timeline-module/src/main/java/com/example/platform/timeline/semantics/temporal/FreezeTemporalMapping.java; then
     pass "freeze = exact source position"
 else
     fail "freeze model missing"
 fi
 
 # TMG-10: serialization/hash participation
-if grep -q 'temporalMapping' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/serialization/CanonicalSerializer.java; then
+if grep -q 'temporalMapping' timeline-module/src/main/java/com/example/platform/timeline/semantics/serialization/CanonicalSerializer.java; then
     pass "temporalMapping in canonical serialization"
 else
     fail "temporalMapping serialization missing"
 fi
 
 # TMG-12: no float rate/time in canonical model
-if grep -rq 'double rate\|float rate' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/ 2>/dev/null; then
+if grep -rq 'double rate\|float rate' timeline-module/src/main/java/com/example/platform/timeline/semantics/temporal/ 2>/dev/null; then
     fail "float rate in canonical model"
 else
     pass "no float rate in canonical temporal model"
 fi
 
 # TMG-14: audio non-identity fail-closed guard
-if grep -q 'requireAudioIdentity' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/temporal/TemporalAudioExecutionGuard.java; then
+if grep -q 'requireAudioIdentity' timeline-module/src/main/java/com/example/platform/timeline/semantics/temporal/TemporalAudioExecutionGuard.java; then
     pass "audio non-identity fail-closed guard"
 else
     fail "audio guard missing"
@@ -531,7 +531,7 @@ else
 fi
 
 # SRG-1: TimelineClip canonical identity typed TimelineClipId
-if grep -q 'private final TimelineClipId clipId' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineClip.java; then
+if grep -q 'private final TimelineClipId clipId' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClip.java; then
     pass "TimelineClipId typed canonical identity"
 else
     fail "TimelineClipId missing"
@@ -539,7 +539,7 @@ fi
 
 # SRG-2/27: no raw String endpoint/identity authority (field declaration only;
 # @JsonCreator String params are the allowed boundary conversion)
-if grep -q 'private final String clipId' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineClip.java; then
+if grep -q 'private final String clipId' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClip.java; then
     fail "raw String clipId remains"
 else
     pass "no raw String clip identity"
@@ -553,117 +553,119 @@ else
 fi
 
 # SRG-4: sealed root permits exactly Sync + Group
-if grep -q 'sealed interface SemanticRelationship permits' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SemanticRelationship.java; then
+if grep -q 'sealed interface SemanticRelationship permits' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/SemanticRelationship.java; then
     pass "sealed SemanticRelationship root"
 else
     fail "SemanticRelationship root missing"
 fi
 
 # SRG-6/7: sync normalized pair + anchor moves with endpoint
-if grep -q 'identityKey' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SyncRelationship.java && grep -q 'a.compareTo(b)' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SyncRelationship.java; then
+if grep -q 'identityKey' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/SyncRelationship.java && grep -q 'a.compareTo(b)' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/SyncRelationship.java; then
     pass "sync normalized endpoint identity"
 else
     fail "sync normalization missing"
 fi
 
 # SRG-9/10: GroupId typed stable, independent of members
-if grep -q 'record GroupId' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/GroupId.java; then
+if grep -q 'record GroupId' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/GroupId.java; then
     pass "typed GroupId"
 else
     fail "GroupId missing"
 fi
 
 # SRG-11/12: group members TimelineClipId, flat
-if grep -q 'Set<TimelineClipId> members' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/GroupRelationship.java; then
+if grep -q 'Set<TimelineClipId> members' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/GroupRelationship.java; then
     pass "typed group members"
 else
     fail "group member type wrong"
 fi
 
 # SRG-13/14: relationships revisioned with Timeline + hash participation
-if grep -q 'semanticRelationships' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+if grep -q 'semanticRelationships' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java; then
     pass "relationships in Timeline revision content"
 else
     fail "relationship revision integration missing"
 fi
 
 # SRG-16: sync anchors object-local MediaTime
-if grep -q 'MediaTime localAnchorA' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SyncRelationship.java; then
+if grep -q 'MediaTime localAnchorA' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/SyncRelationship.java; then
     pass "exact object-local sync anchors"
 else
     fail "sync anchor model wrong"
 fi
 
 # SRG-17: sync has no sourceRange/temporal fields
-if grep -q 'sourceRange\|playbackRate\|direction' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/SyncRelationship.java; then
+if grep -q 'sourceRange\|playbackRate\|direction' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/SyncRelationship.java; then
     fail "sync carries forbidden temporal/source fields"
 else
     pass "sync contains no temporal/source semantics"
 fi
 
 # SRG-19: no generic attribute map
-if grep -rq 'Map<String, Object> attributes' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/ 2>/dev/null; then
+if grep -rq 'Map<String, Object> attributes' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/ 2>/dev/null; then
     fail "generic attribute map present"
 else
     pass "no generic relationship attribute map"
 fi
 
 # SRG-23/24: scope resolution revision-bound, no latest
-if grep -q 'baseRevisionId' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/selection/ResolvedScope.java && grep -q 'revision-bound' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/selection/ResolvedScope.java; then
+if grep -q 'baseRevisionId' timeline-module/src/main/java/com/example/platform/timeline/semantics/selection/ResolvedScope.java && grep -q 'revision-bound' timeline-module/src/main/java/com/example/platform/timeline/semantics/selection/ResolvedScope.java; then
     pass "revision-bound scope resolution"
 else
     fail "scope resolution not revision-bound"
 fi
-if grep -rq 'latestRevision()\|currentTimeline()' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/selection/ScopeResolver.java 2>/dev/null; then
+if grep -rq 'latestRevision()\|currentTimeline()' timeline-module/src/main/java/com/example/platform/timeline/semantics/selection/ScopeResolver.java 2>/dev/null; then
     fail "mutable-latest fallback present"
 else
     pass "no mutable-latest fallback"
 fi
 
 # SRG-21: no provenance relationship variant
-if grep -rq 'DerivedRelationship\|SourceAssociationRelationship\|LinkedRelationship' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/relationship/ 2>/dev/null; then
+if grep -rq 'DerivedRelationship\|SourceAssociationRelationship\|LinkedRelationship' timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/ 2>/dev/null; then
     fail "forbidden relationship variant present"
 else
     pass "no provenance/derived/source-association variants"
 fi
 
 # OMG-1: typed namespaced OperationDefinitionId
-if grep -q 'record OperationDefinitionId' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinitionId.java; then
+if grep -q 'record OperationDefinitionId' operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinitionId.java; then
     pass "typed namespaced OperationDefinitionId"
 else
     fail "OperationDefinitionId missing"
 fi
 
-# OMG-2: version reuses ContractVersion
-if grep -q 'import com.example.platform.extension.domain.ContractVersion' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinition.java; then
-    pass "ContractVersion reuse (no OperationVersion)"
+# OMG-2 (GCR-1 §13): OperationDefinitionVersion is the sole definition-version
+# authority; zero extension-domain version dependency
+if grep -q 'OperationDefinitionVersion' operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java \
+    && ! grep -rq 'com.example.platform.extension' operation-module/src/main/java/com/example/platform/operation/operation/; then
+    pass "OperationDefinitionVersion sole version authority (no extension ContractVersion)"
 else
-    fail "ContractVersion reuse missing"
+    fail "OperationDefinitionVersion authority missing or extension version dependency remains"
 fi
 
 # OMG-3: no generic parameter Map/Object/JsonNode in operation model
-if grep -rn 'Map<String, Object>\|Map<String,String>\|JsonNode' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null | grep -v '^[^:]*:[0-9]*: *\*' | grep -q .; then
+if grep -rn 'Map<String, Object>\|Map<String,String>\|JsonNode' operation-module/src/main/java/com/example/platform/operation/operation/ 2>/dev/null | grep -v '^[^:]*:[0-9]*: *\*' | grep -q .; then
     fail "generic parameter map present"
 else
     pass "no generic parameter maps"
 fi
 
 # OMG-4/5: operation is not Patch/Diff
-if grep -rq 'TimelinePatchOperation\|TimelineChangeType' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null; then
+if grep -rq 'TimelinePatchOperation\|TimelineChangeType' operation-module/src/main/java/com/example/platform/operation/operation/ 2>/dev/null; then
     fail "operation depends on patch/diff types"
 else
     pass "operation independent of patch/diff"
 fi
 
 # OMG-6: operation not in Timeline canonical serialization/hash
-if grep -q 'operation' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+if grep -q 'operation' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java; then
     fail "operation entered TimelineDocument"
 else
     pass "operation absent from Timeline canonical model"
 fi
 
 # OMG-7/8: variant-specific target, ResolvedScope not universal
-if grep -q 'sealed interface OperationTarget' render-module/src/main/java/com/example/platform/render/domain/operation/OperationTarget.java && grep -q 'GroupTarget\|SyncTarget\|AudioTarget' render-module/src/main/java/com/example/platform/render/domain/operation/OperationTarget.java; then
+if grep -q 'sealed interface OperationTarget' operation-module/src/main/java/com/example/platform/operation/operation/OperationTarget.java && grep -q 'GroupTarget\|SyncTarget\|AudioTarget' operation-module/src/main/java/com/example/platform/operation/operation/OperationTarget.java; then
     pass "variant-specific operation targets"
 else
     fail "universal target model"
@@ -677,119 +679,119 @@ else
 fi
 
 # OMG-10: every definition has target contract
-if grep -q 'TargetKind targetKind' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinition.java && grep -q 'minCardinality' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinition.java; then
+if grep -q 'TargetKind targetKind' operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java && grep -q 'minCardinality' operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java; then
     pass "definition-owned target/cardinality contract"
 else
     fail "target contract missing"
 fi
 
 # OMG-11/12/13: temporal single-authority parameters
-if grep -q 'SetTemporalRateParameters(com.example.platform.render.domain.timeline.semantics.clip.MediaClip.Rational rate)' render-module/src/main/java/com/example/platform/render/domain/operation/OperationParameters.java; then
+if grep -q 'SetTemporalRateParameters(com.example.platform.timeline.semantics.clip.MediaClip.Rational rate)' operation-module/src/main/java/com/example/platform/operation/operation/OperationParameters.java; then
     pass "set-rate rate-only"
 else
     fail "set-rate parameter contract wrong"
 fi
-if grep -q 'SetTemporalDirectionParameters(PlaybackDirection direction)' render-module/src/main/java/com/example/platform/render/domain/operation/OperationParameters.java; then
+if grep -q 'SetTemporalDirectionParameters(PlaybackDirection direction)' operation-module/src/main/java/com/example/platform/operation/operation/OperationParameters.java; then
     pass "set-direction direction-only"
 else
     fail "set-direction parameter contract wrong"
 fi
-if grep -q 'FreezeParameters(MediaTime sourcePosition)' render-module/src/main/java/com/example/platform/render/domain/operation/OperationParameters.java; then
+if grep -q 'FreezeParameters(MediaTime sourcePosition)' operation-module/src/main/java/com/example/platform/operation/operation/OperationParameters.java; then
     pass "freeze sourcePosition-only"
 else
     fail "freeze parameter contract wrong"
 fi
 
 # OMG-15/16/17: request resolution exact-base, instance bound, no latest
-if grep -q 'baseRevisionId == null || baseRevisionId.isBlank()' render-module/src/main/java/com/example/platform/render/domain/operation/OperationRequest.java; then
+if grep -q 'baseRevisionId == null || baseRevisionId.isBlank()' operation-module/src/main/java/com/example/platform/operation/operation/OperationRequest.java; then
     pass "request carries explicit base"
 else
     fail "request base binding missing"
 fi
-if grep -q 'STALE_BASE_REVISION' render-module/src/main/java/com/example/platform/render/domain/operation/OperationRequestResolver.java; then
+if grep -q 'STALE_BASE_REVISION' operation-module/src/main/java/com/example/platform/operation/operation/OperationRequestResolver.java; then
     pass "stale base fail-closed"
 else
     fail "stale base handling missing"
 fi
-if grep -rq 'latestRevision()\|currentTimeline()' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null; then
+if grep -rq 'latestRevision()\|currentTimeline()' operation-module/src/main/java/com/example/platform/operation/operation/ 2>/dev/null; then
     fail "mutable-latest fallback present"
 else
     pass "no mutable-latest fallback"
 fi
 
 # OMG-18/19/20/21: batch flat single base, no nesting/planning
-if grep -q 'instances.isEmpty()' render-module/src/main/java/com/example/platform/render/domain/operation/OperationBatch.java && grep -q 'mixed baseRevisionId rejected' render-module/src/main/java/com/example/platform/render/domain/operation/OperationBatch.java; then
+if grep -q 'instances.isEmpty()' operation-module/src/main/java/com/example/platform/operation/operation/OperationBatch.java && grep -q 'mixed baseRevisionId rejected' operation-module/src/main/java/com/example/platform/operation/operation/OperationBatch.java; then
     pass "flat single-base non-empty batch"
 else
     fail "batch constraints missing"
 fi
 
 # OMG-22/23/24/25: no provider/entitlement/workflow/render semantics
-if grep -rn 'ffmpeg\|FFmpeg\|OpenCV\|TensorRT' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null | grep -v '^[^:]*:[0-9]*: *\*' | grep -q .; then
+if grep -rn 'ffmpeg\|FFmpeg\|OpenCV\|TensorRT' operation-module/src/main/java/com/example/platform/operation/operation/ 2>/dev/null | grep -v '^[^:]*:[0-9]*: *\*' | grep -q .; then
     fail "provider semantics in operation model"
 else
     pass "no provider/FFmpeg semantics"
 fi
-if grep -rq 'proOnly\|enterpriseOnly\|planName' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null; then
+if grep -rq 'proOnly\|enterpriseOnly\|planName' operation-module/src/main/java/com/example/platform/operation/operation/ 2>/dev/null; then
     fail "entitlement in operation model"
 else
     pass "no entitlement/tier semantics"
 fi
-if grep -rq 'retry\|timeout\|callback' render-module/src/main/java/com/example/platform/render/domain/operation/OperationBatch.java 2>/dev/null; then
+if grep -rq 'retry\|timeout\|callback' operation-module/src/main/java/com/example/platform/operation/operation/OperationBatch.java 2>/dev/null; then
     fail "workflow semantics in batch"
 else
     pass "no workflow semantics in batch"
 fi
 
 # OMG-26: no CRUD SetField/JsonPath operation
-if grep -rq 'SetField\|SetJsonPath\|PatchDocument' render-module/src/main/java/com/example/platform/render/domain/operation/ 2>/dev/null; then
+if grep -rq 'SetField\|SetJsonPath\|PatchDocument' operation-module/src/main/java/com/example/platform/operation/operation/ 2>/dev/null; then
     fail "CRUD operation present"
 else
     pass "no generic CRUD operations"
 fi
 
 # OMG-28: invocationId/digest not in Timeline hash
-if grep -q 'operation' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+if grep -q 'operation' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java; then
     fail "operation in canonical hash"
 else
     pass "operation never in Timeline hash"
 fi
 
 # OMG-30: exactly 15 definitions
-if grep -q 'MOVE, DELETE, TRIM, SET_TEMPORAL_RATE, SET_TEMPORAL_DIRECTION, FREEZE' render-module/src/main/java/com/example/platform/render/domain/operation/OperationDefinition.java; then
+if grep -q 'MOVE, DELETE, TRIM, SET_TEMPORAL_RATE, SET_TEMPORAL_DIRECTION, FREEZE' operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java; then
     pass "frozen 15-operation vocabulary"
 else
     fail "operation vocabulary drifted"
 fi
 
 # OPTG-2: OperationPlan != TimelinePatch (no patch list as plan model)
-if grep -q 'List<TimelinePatchOperation> operations' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlan.java 2>/dev/null; then
+if grep -q 'List<TimelinePatchOperation> operations' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlan.java 2>/dev/null; then
     fail "plan modeled as patch list"
 else
     pass "plan is semantic transition model, not patch list"
 fi
 
 # OPTG-4: plan immutable record
-if grep -q 'record OperationPlan(' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlan.java; then
+if grep -q 'record OperationPlan(' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlan.java; then
     pass "immutable OperationPlan record"
 else
     fail "plan not immutable"
 fi
 
 # OPTG-5/6: digest deterministic, excludes principal/auth/target ref
-if grep -q 'operation-plan-format-v1' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlan.java && grep -q 'baseRevisionId' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanDigest.java; then
+if grep -q 'operation-plan-format-v1' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlan.java && grep -q 'baseRevisionId' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanDigest.java; then
     pass "deterministic domain-separated PlanDigest"
 else
     fail "PlanDigest missing"
 fi
-if grep -rn 'principal' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanDigest.java | grep -vE '^[0-9]*: *[*]' | grep -q .; then
+if grep -rn 'principal' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanDigest.java | grep -vE '^[0-9]*: *[*]' | grep -q .; then
     fail "principal in PlanDigest"
 else
     pass "PlanDigest excludes principal/auth/target ref"
 fi
 
 # OPTG-7: candidate hash via TimelineContentDigester
-if grep -q 'new TimelineContentDigester()' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanner.java; then
+if grep -q 'new TimelineContentDigester()' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanner.java; then
     pass "candidate hash uses TimelineContentDigester"
 else
     fail "candidate hash authority wrong"
@@ -827,7 +829,7 @@ else
 fi
 
 # OPTG-18: AuthorizationDecision immutable record
-if grep -q 'record AuthorizationDecision(' render-module/src/main/java/com/example/platform/render/domain/plan/AuthorizationDecision.java; then
+if grep -q 'record AuthorizationDecision(' operation-module/src/main/java/com/example/platform/operation/plan/AuthorizationDecision.java; then
     pass "immutable AuthorizationDecision"
 else
     fail "authorization not immutable"
@@ -839,7 +841,7 @@ if grep -q 'apply_command' render-module/src/main/java/com/example/platform/rend
 else
     fail "durable idempotency missing"
 fi
-if grep -q 'apply_command' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java 2>/dev/null; then
+if grep -q 'apply_command' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java 2>/dev/null; then
     fail "ApplyCommandId in canonical model"
 else
     pass "ApplyCommandId not canonical Timeline semantics"
@@ -867,35 +869,35 @@ else
 fi
 
 # OPTG-27/28: no revision command / merge folded in
-if grep -rq 'class MergeCommand\|class RevertCommand\|class BranchCommand' render-module/src/main/java/com/example/platform/render/domain/plan/ 2>/dev/null; then
+if grep -rq 'class MergeCommand\|class RevertCommand\|class BranchCommand' operation-module/src/main/java/com/example/platform/operation/plan/ 2>/dev/null; then
     fail "revision command implemented"
 else
     pass "no revision command implementation"
 fi
 
 # OPTG-32: delete consequences explicit in planner
-if grep -q 'RelationshipRemoved(s.identityKey())' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanner.java && grep -q 'remaining.size() < 2' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanner.java; then
+if grep -q 'RelationshipRemoved(s.identityKey())' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanner.java && grep -q 'remaining.size() < 2' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanner.java; then
     pass "delete sync/group consequences planner-owned"
 else
     fail "delete consequences missing"
 fi
 
 # OPTG-33: trim invalid sync -> reject
-if grep -q 'SYNC_ANCHOR_INVALIDATED' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanner.java; then
+if grep -q 'SYNC_ANCHOR_INVALIDATED' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanner.java; then
     pass "trim invalid sync anchor -> reject"
 else
     fail "trim sync policy missing"
 fi
 
 # OPTG-34: set-rate unsupported audio -> reject
-if grep -q 'UNSUPPORTED_AUDIO_TEMPORAL_BEHAVIOR' render-module/src/main/java/com/example/platform/render/domain/plan/PlanErrorCode.java; then
+if grep -q 'UNSUPPORTED_AUDIO_TEMPORAL_BEHAVIOR' operation-module/src/main/java/com/example/platform/operation/plan/PlanErrorCode.java; then
     pass "set-rate audio consequence typed"
 else
     fail "audio temporal consequence missing"
 fi
 
 # OPTG-37: plan/preview/authorization same digest
-if grep -q 'planDigest' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanPreview.java && grep -q 'planDigest' render-module/src/main/java/com/example/platform/render/domain/plan/AuthorizationDecision.java; then
+if grep -q 'planDigest' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanPreview.java && grep -q 'planDigest' operation-module/src/main/java/com/example/platform/operation/plan/AuthorizationDecision.java; then
     pass "preview/authorization bind plan digest"
 else
     fail "same-plan binding missing"
@@ -921,7 +923,7 @@ else
 fi
 
 # OPCG-8/9: OperationPlan semantics have zero PostgreSQL identity dependency
-if grep -q 'org.jooq\|PGobject\|postgres' render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlan.java render-module/src/main/java/com/example/platform/render/domain/plan/OperationPlanDigest.java render-module/src/main/java/com/example/platform/render/domain/plan/AuthorizationDecision.java render-module/src/main/java/com/example/platform/render/domain/plan/ApplyResult.java render-module/src/main/java/com/example/platform/render/domain/plan/PlannedChange.java 2>/dev/null; then
+if grep -q 'org.jooq\|PGobject\|postgres' operation-module/src/main/java/com/example/platform/operation/plan/OperationPlan.java operation-module/src/main/java/com/example/platform/operation/plan/OperationPlanDigest.java operation-module/src/main/java/com/example/platform/operation/plan/AuthorizationDecision.java operation-module/src/main/java/com/example/platform/operation/plan/ApplyResult.java operation-module/src/main/java/com/example/platform/operation/plan/PlannedChange.java 2>/dev/null; then
     fail "postgres/jooq leakage into domain plan model"
 else
     pass "zero postgres/jooq leakage into domain plan model"
@@ -942,7 +944,7 @@ else
 fi
 
 # OPCG-18/19: revision command / integrity = 0
-if grep -rq 'class MergeCommand\|class RevertCommand\|IntegrityFinding\|RepairPlan' render-module/src/main/java/com/example/platform/render/domain/plan/ 2>/dev/null; then
+if grep -rq 'class MergeCommand\|class RevertCommand\|IntegrityFinding\|RepairPlan' operation-module/src/main/java/com/example/platform/operation/plan/ 2>/dev/null; then
     fail "revision command/integrity implemented"
 else
     pass "no revision command / integrity implementation"
@@ -1136,7 +1138,7 @@ if [ "$F" = "0" ]; then pass "CIG20 zero float/double authority in canonical mod
 # CIG21/22/23: dynamic HDR / clean aperture / ICC execution = 0
 if grep -rn 'DynamicHdrMetadata\|CleanAperture\|LittleCMS' "$CIM" --include='*.java' 2>/dev/null | grep -vE '^[^:]+:[0-9]+: (\*|/|$)' | grep -q .; then fail "CIG21-23 scope leak"; else pass "CIG21-23 dynamic HDR/clean aperture/ICC execution = 0"; fi
 # CIG30: SourceBinding unchanged (no source technical metadata fields added)
-SB="render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java"
+SB="timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java"
 if [ -f "$SB" ] && ! grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata|profileDigest|colorSpace' "$SB"; then
     pass "CIG30 SourceBinding unchanged (no source metadata god object)"
 else
@@ -1200,7 +1202,7 @@ else
     fail "CIP2G4 artifact binding missing"
 fi
 # CIP2G5/6: SourceBinding unchanged + no Timeline leakage
-if grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java; then
+if grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java; then
     fail "CIP2G5 SourceBinding changed"
 else
     pass "CIP2G5 SourceBinding unchanged"
@@ -1254,7 +1256,7 @@ else
     pass "CIP2DG10 zero renormalization (unchanged)"
 fi
 # CIP2DG11/12: SourceBinding/Timeline unchanged
-if grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata' render-module/src/main/java/com/example/platform/render/domain/timeline/semantics/clip/MediaStreamSourceBinding.java; then
+if grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java; then
     fail "CIP2DG11 SourceBinding changed"
 else
     pass "CIP2DG11 SourceBinding unchanged"
@@ -1336,7 +1338,7 @@ else
     fail "FTG10 scalar range model missing"
 fi
 # FTG14/FTG19/FTG30: ShapedGlyphRun not Timeline canonical; text affects hash; profile not hashed
-if grep -q 'textElements' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java && grep -q 'NON_EMPTY' render-module/src/main/java/com/example/platform/render/domain/timeline/canonical/TimelineDocument.java; then
+if grep -q 'textElements' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java && grep -q 'NON_EMPTY' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java; then
     pass "FTG19 Timeline text affects hash (TextElement, backward-stable NON_EMPTY)"
 else
     fail "FTG19 TextElement hash integration missing"
