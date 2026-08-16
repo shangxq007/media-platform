@@ -1,4 +1,4 @@
-package com.example.platform.render.domain.revisioncommand;
+package com.example.platform.timeline.revisioncommand;
 
 /**
  * REVISION_COMMAND_MODEL_V1 (RC7/RC9/RC16/RC17/RC18/RC26/RC28/RC39): sealed

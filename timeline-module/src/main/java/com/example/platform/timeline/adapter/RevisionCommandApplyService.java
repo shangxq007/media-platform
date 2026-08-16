@@ -1,8 +1,8 @@
-package com.example.platform.render.app.revisioncommand;
+package com.example.platform.timeline.adapter;
 
-import com.example.platform.render.domain.revisioncommand.RevisionCommandErrorCode;
-import com.example.platform.render.domain.revisioncommand.RevisionCommandException;
-import com.example.platform.render.domain.revisioncommand.RevisionCommandPlan;
+import com.example.platform.timeline.revisioncommand.RevisionCommandErrorCode;
+import com.example.platform.timeline.revisioncommand.RevisionCommandException;
+import com.example.platform.timeline.revisioncommand.RevisionCommandPlan;
 import org.jooq.DSLContext;
 
 import java.time.OffsetDateTime;

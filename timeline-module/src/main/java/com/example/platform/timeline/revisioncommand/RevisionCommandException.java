@@ -1,4 +1,4 @@
-package com.example.platform.render.domain.revisioncommand;
+package com.example.platform.timeline.revisioncommand;
 
 /**
  * REVISION_COMMAND_MODEL_V1: typed command exception.

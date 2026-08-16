@@ -1,10 +1,11 @@
-package com.example.platform.render.app.revisioncommand;
+package com.example.platform.timeline.app;
 
-import com.example.platform.render.domain.revisioncommand.RevisionCommandErrorCode;
-import com.example.platform.render.domain.revisioncommand.RevisionCommandException;
-import com.example.platform.render.domain.revisioncommand.RevisionCommandPlan;
-import com.example.platform.render.domain.revisioncommand.RevisionCommandPlanDigest;
-import com.example.platform.render.domain.revisioncommand.RevisionRef;
+import com.example.platform.timeline.adapter.RevisionGraphService;
+import com.example.platform.timeline.revisioncommand.RevisionCommandErrorCode;
+import com.example.platform.timeline.revisioncommand.RevisionCommandException;
+import com.example.platform.timeline.revisioncommand.RevisionCommandPlan;
+import com.example.platform.timeline.revisioncommand.RevisionCommandPlanDigest;
+import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.app.TimelineMergeEngine;

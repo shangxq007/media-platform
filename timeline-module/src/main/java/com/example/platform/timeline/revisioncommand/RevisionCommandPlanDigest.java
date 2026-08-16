@@ -1,4 +1,4 @@
-package com.example.platform.render.domain.revisioncommand;
+package com.example.platform.timeline.revisioncommand;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
