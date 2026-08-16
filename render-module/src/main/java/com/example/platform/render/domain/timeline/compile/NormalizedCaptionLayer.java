@@ -9,7 +9,7 @@ package com.example.platform.render.domain.timeline.compile;
  *
  * @param layerId          source text overlay identifier
  * @param text             text content to render
- * @param fontFamily       typed authored font family selection (FontFamilyName)
+ * @param fontFamily       render-projection font family (FontFamilyName), derived from authored FontSelectionIntent
  * @param fontSize         font size in points
  * @param color            text color (hex, e.g., "#FFFFFF")
  * @param positionX        horizontal position

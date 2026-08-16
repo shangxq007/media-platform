@@ -6,9 +6,18 @@ package com.example.platform.render.domain.timeline;
  * <p>Text overlays are rendered on top of video tracks at a specific position
  * and time range.</p>
  *
+ * <p>ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION: TimelineTextOverlay
+ * is a RENDER_PROJECTION_DTO. Its fontFamily is derived projection data from
+ * the authored FontSelectionIntent (canonical typography authority). It is not
+ * an input to canonical authoring and is never a source-of-truth font-selection
+ * authority; creation occurs only after canonical authoring/resolution or from
+ * an explicit external import policy.</p>
+ *
  * @param id            unique overlay identifier
  * @param text          the text content to render (plain text, max 500 chars)
- * @param fontFamily    typed authored font family selection (FontFamilyName), never exact identity
+ * @param fontFamily    render-projection font family (FontFamilyName), derived
+ *                      from authored FontSelectionIntent — never an independent
+ *                      authoring font-selection authority
  * @param fontSize      font size in points (8-160)
  * @param color         text color (e.g., "#FFFFFF")
  * @param positionX     horizontal position (pixels or percentage)

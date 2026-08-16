@@ -4,10 +4,19 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Internal timeline specification model.
+ * Internal timeline EXECUTION/INTERCHANGE projection model.
  *
- * <p>This is the platform's canonical timeline representation. It is a JSON-serializable
- * model that can be converted to/from other formats (e.g., OpenTimelineIO).</p>
+ * <p>ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION: TimelineSpec is
+ * NOT a canonical authoring authority. It is a render/execution projection
+ * (and interchange DTO) derived from the canonical TimelineDocument. It is
+ * not semantically edited, is not persisted as canonical Timeline revision
+ * state, is not a revision/merge/content-hash authority, is not an authoring
+ * command target, and does not own font-selection or timeline mutation
+ * semantics. Canonical authoring and mutation flow exclusively through
+ * typed OperationRequest → OperationPlan → TimelineDocument.</p>
+ *
+ * <p>It is a JSON-serializable model that can be converted to/from other
+ * formats (e.g., OpenTimelineIO).</p>
  *
  * <h3>OTIO Note</h3>
  * <p>OpenTimelineIO is an interchange format, not a renderer. The

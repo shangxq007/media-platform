@@ -11,7 +11,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * OpenTimelineIO JSON interchange (canonical model remains {@link TimelineSpec}).
+ * OpenTimelineIO JSON interchange (execution/interchange projection model:
+ * {@link TimelineSpec} is NOT a canonical authoring authority — ROADMAP_19
+ * FINAL TIMELINE AUTHORITY CANONICALIZATION).
  *
  * <p>Supports Clip, Gap, Transition, Marker, Effect, and {@code platform.*} metadata.</p>
  */

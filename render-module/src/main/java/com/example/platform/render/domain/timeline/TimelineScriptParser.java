@@ -17,8 +17,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Parses render input scripts (canonical {@link TimelineSpec} JSON or OTIO-style maps)
- * and resolves media URIs to local filesystem paths.
+ * Parses render input scripts (execution/interchange projection
+ * {@link TimelineSpec} JSON — NOT a canonical authoring authority — or
+ * OTIO-style maps) and resolves media URIs to local filesystem paths.
  */
 @Component
 public class TimelineScriptParser {
