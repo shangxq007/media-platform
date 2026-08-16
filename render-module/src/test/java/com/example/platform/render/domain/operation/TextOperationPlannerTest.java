@@ -33,7 +33,12 @@ import com.example.platform.fonttext.typography.TextStyle;
 import com.example.platform.fonttext.typography.TextStyleRun;
 import com.example.platform.fonttext.typography.VariationAxisTag;
 import com.example.platform.fonttext.typography.VariationCoordinate;
-import com.example.platform.render.domain.plan.OperationPlan;
+import com.example.platform.operation.operation.OperationDefinition;
+import com.example.platform.operation.operation.OperationParameters;
+import com.example.platform.operation.operation.OperationRequest;
+import com.example.platform.operation.operation.OperationTargetRequest;
+import com.example.platform.operation.operation.TextOperationPlanner;
+import com.example.platform.operation.plan.OperationPlan;
 import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.canonical.TextElementId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -100,7 +105,7 @@ class TextOperationPlannerTest {
     }
 
     private OperationRequest request(OperationDefinition def, OperationParameters params,
-                                     com.example.platform.render.domain.operation.OperationTargetRequest target) {
+                                     com.example.platform.operation.operation.OperationTargetRequest target) {
         return new OperationRequest(def.definitionId(), def.version(), target, params,
                 BASE_REV, BASE_HASH, null);
     }

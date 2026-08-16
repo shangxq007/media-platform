@@ -1,17 +1,17 @@
 package com.example.platform.render.app.plan;
 
-import com.example.platform.render.domain.plan.ApplyContext;
-import com.example.platform.render.domain.plan.ApplyResult;
-import com.example.platform.render.domain.plan.AuthorizationDecision;
-import com.example.platform.render.domain.plan.OperationPlan;
-import com.example.platform.render.domain.plan.OperationPlanner;
-import com.example.platform.render.domain.plan.PlanErrorCode;
-import com.example.platform.render.domain.plan.PlanException;
-import com.example.platform.render.domain.plan.TargetRevisionRef;
-import com.example.platform.render.domain.operation.OperationDefinition;
-import com.example.platform.render.domain.operation.OperationInstance;
-import com.example.platform.render.domain.operation.OperationParameters;
-import com.example.platform.render.domain.operation.OperationTarget;
+import com.example.platform.operation.plan.ApplyContext;
+import com.example.platform.operation.plan.ApplyResult;
+import com.example.platform.operation.plan.AuthorizationDecision;
+import com.example.platform.operation.plan.OperationPlan;
+import com.example.platform.operation.plan.OperationPlanner;
+import com.example.platform.operation.plan.PlanErrorCode;
+import com.example.platform.operation.plan.PlanException;
+import com.example.platform.operation.plan.TargetRevisionRef;
+import com.example.platform.operation.operation.OperationDefinition;
+import com.example.platform.operation.operation.OperationInstance;
+import com.example.platform.operation.operation.OperationParameters;
+import com.example.platform.operation.operation.OperationTarget;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -21,7 +21,7 @@ import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.selection.ResolvedScope;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
-import com.example.platform.extension.domain.ContractVersion;
+import com.example.platform.operation.operation.OperationDefinitionVersion;
 import com.example.platform.shared.time.MediaTime;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -168,7 +168,7 @@ class OperationPlanConcurrencyIT {
     }
 
     private static OperationInstance instance(String baseHash, MediaTime delta) {
-        return new OperationInstance(OperationDefinition.V1.MOVE.definitionId(), ContractVersion.of(1, 0),
+        return new OperationInstance(OperationDefinition.V1.MOVE.definitionId(), OperationDefinitionVersion.of(1, 0),
                 "trevR100", baseHash,
                 new OperationTarget.ResolvedClipScopeTarget(new ResolvedScope("trevR100", baseHash,
                         List.of(TimelineClipId.of("clip-a")), SelectionSpec.ExpansionPolicy.EXACT)),

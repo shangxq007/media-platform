@@ -1,11 +1,11 @@
 package com.example.platform.render.app.plan;
 
-import com.example.platform.render.domain.plan.ApplyContext;
-import com.example.platform.render.domain.plan.ApplyResult;
-import com.example.platform.render.domain.plan.OperationPlan;
-import com.example.platform.render.domain.plan.PlanErrorCode;
-import com.example.platform.render.domain.plan.PlanException;
-import com.example.platform.render.domain.plan.TargetRevisionRef;
+import com.example.platform.operation.plan.ApplyContext;
+import com.example.platform.operation.plan.ApplyResult;
+import com.example.platform.operation.plan.OperationPlan;
+import com.example.platform.operation.plan.PlanErrorCode;
+import com.example.platform.operation.plan.PlanException;
+import com.example.platform.operation.plan.TargetRevisionRef;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

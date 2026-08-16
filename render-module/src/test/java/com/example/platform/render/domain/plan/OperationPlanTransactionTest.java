@@ -4,11 +4,17 @@ import com.example.platform.audio.domain.mix.AudioGain;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.audio.domain.mix.AudioRoute;
-import com.example.platform.extension.domain.ContractVersion;
-import com.example.platform.render.domain.operation.OperationDefinition;
-import com.example.platform.render.domain.operation.OperationInstance;
-import com.example.platform.render.domain.operation.OperationParameters;
-import com.example.platform.render.domain.operation.OperationTarget;
+import com.example.platform.operation.operation.OperationDefinitionVersion;
+import com.example.platform.operation.operation.OperationDefinition;
+import com.example.platform.operation.operation.OperationInstance;
+import com.example.platform.operation.operation.OperationParameters;
+import com.example.platform.operation.operation.OperationTarget;
+import com.example.platform.operation.plan.AuthorizationDecision;
+import com.example.platform.operation.plan.OperationPlan;
+import com.example.platform.operation.plan.OperationPlanner;
+import com.example.platform.operation.plan.OperationPlanPreview;
+import com.example.platform.operation.plan.PlanException;
+import com.example.platform.operation.plan.PlannedChange;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -64,7 +70,7 @@ class OperationPlanTransactionTest {
 
     private static OperationInstance instance(OperationDefinition def, OperationParameters params,
                                               OperationTarget target, String baseHash) {
-        return new OperationInstance(def.definitionId(), ContractVersion.of(1, 0), REV, baseHash,
+        return new OperationInstance(def.definitionId(), OperationDefinitionVersion.of(1, 0), REV, baseHash,
                 target, params, "pd", null);
     }
 

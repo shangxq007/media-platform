@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":audio-module")) // AUDIO_V2: canonical Audio Mix authority (frozen direction: Render -> Audio)
     implementation(project(":font-text-module")) // ROADMAP_19: canonical Font/Text value semantics (frozen direction: Render -> FontText)
     api(project(":timeline-module")) // GCR-1: canonical Timeline semantics (frozen direction: Render -> Timeline)
+    api(project(":operation-module")) // GCR-1: canonical Operation semantics (frozen direction: Render -> Operation)
     implementation(project(":notification-module")) // NotificationEventPublisher rehomed to notification (K2)
     api(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))
