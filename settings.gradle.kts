@@ -43,6 +43,8 @@ include(
     "color-image-module",
     "font-text-module",
     "audio-module",
+    "timeline-module",
+    "operation-module",
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────
