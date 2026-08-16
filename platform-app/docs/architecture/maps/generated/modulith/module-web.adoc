@@ -67,7 +67,6 @@ _Others_
 * `c.e.p.r.domain.timeline.TimelineScriptParser` (in Render)
 * `c.e.p.r.app.planner.RenderPlannerService` (in Render)
 * `c.e.p.r.app.TimelinePatchService` (in Render)
-* `c.e.p.r.app.TimelineColorMetadataService` (in Render)
 * `c.e.p.r.app.planner.PipelinePlanPersistenceService` (in Render)
 * `c.e.p.r.app.ClipColorProbeService` (in Render)
 * `c.e.p.r.app.aaf.AafConversionService` (in Render)

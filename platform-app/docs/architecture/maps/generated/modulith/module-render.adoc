@@ -33,7 +33,6 @@ _Services_
 * `c.e.p.r.app.RenderWorkerQueueService`
 * `c.e.p.r.api.port.RenderWorkflowResumePort` (via `c.e.p.r.app.RenderWorkflowResumeService`)
 * `c.e.p.r.app.StaleRenderJobCompensationService`
-* `c.e.p.r.app.TimelineColorMetadataService`
 * `c.e.p.r.app.TimelineExecutorService`
 * `c.e.p.r.app.TimelinePatchService`
 * `c.e.p.r.app.TimelineSnapshotService`

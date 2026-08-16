@@ -25,11 +25,11 @@ System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="")
 
 }
 
+Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Payment, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Payment, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Payment, PlatformApplication.PlatformApplication.Commerce, "uses", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Commerce, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes
