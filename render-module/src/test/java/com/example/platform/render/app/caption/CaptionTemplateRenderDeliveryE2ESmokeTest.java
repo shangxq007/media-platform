@@ -118,7 +118,11 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
         CaptionTemplateRenderApiRequest request = new CaptionTemplateRenderApiRequest(
                 SOURCE_ASSET_ID,
                 List.of(new CaptionTemplateSegmentDto(0L, 3000L, "Hello")),
-                null, null, Map.of());
+                new CaptionTemplateDto("tpl-inline", "inline",
+                        new CaptionTemplateStyleDto("BOTTOM_CENTER",
+                                new CaptionFontStyleDto("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
         assertEquals(200, renderResponse.getStatusCode().value());
@@ -143,7 +147,11 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
         CaptionTemplateRenderApiRequest request = new CaptionTemplateRenderApiRequest(
                 SOURCE_ASSET_ID,
                 List.of(new CaptionTemplateSegmentDto(0L, 3000L, "Hello")),
-                null, null, Map.of());
+                new CaptionTemplateDto("tpl-inline", "inline",
+                        new CaptionTemplateStyleDto("BOTTOM_CENTER",
+                                new CaptionFontStyleDto("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
         String outputProductId = renderResponse.getBody().outputProductId();
@@ -164,7 +172,11 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
         CaptionTemplateRenderApiRequest request = new CaptionTemplateRenderApiRequest(
                 SOURCE_ASSET_ID,
                 List.of(new CaptionTemplateSegmentDto(0L, 3000L, "Hello")),
-                null, null, Map.of());
+                new CaptionTemplateDto("tpl-inline", "inline",
+                        new CaptionTemplateStyleDto("BOTTOM_CENTER",
+                                new CaptionFontStyleDto("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
         String outputProductId = renderResponse.getBody().outputProductId();
@@ -194,7 +206,11 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
         CaptionTemplateRenderApiRequest request = new CaptionTemplateRenderApiRequest(
                 SOURCE_ASSET_ID,
                 List.of(new CaptionTemplateSegmentDto(0L, 3000L, "Hello")),
-                null, null, Map.of());
+                new CaptionTemplateDto("tpl-inline", "inline",
+                        new CaptionTemplateStyleDto("BOTTOM_CENTER",
+                                new CaptionFontStyleDto("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
         String outputProductId = renderResponse.getBody().outputProductId();
@@ -219,7 +235,11 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
         CaptionTemplateRenderApiRequest request = new CaptionTemplateRenderApiRequest(
                 SOURCE_ASSET_ID,
                 List.of(new CaptionTemplateSegmentDto(0L, 3000L, "Hello")),
-                null, null, Map.of());
+                new CaptionTemplateDto("tpl-inline", "inline",
+                        new CaptionTemplateStyleDto("BOTTOM_CENTER",
+                                new CaptionFontStyleDto("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
         String outputProductId = renderResponse.getBody().outputProductId();

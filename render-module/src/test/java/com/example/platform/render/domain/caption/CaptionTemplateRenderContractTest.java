@@ -242,6 +242,22 @@ class CaptionTemplateRenderContractTest {
     }
 
     @Test
+    @DisplayName("Request without template style fails closed (no implicit default)")
+    void missingTemplateFailsClosed() {
+        // ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION:
+        // a request with no template style must be rejected at the contract
+        // boundary — the render projection cannot invent a font.
+        CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
+                "proj-1", "prod-1",
+                List.of(new CaptionSegmentSpec(0, 1000, "Hi")),
+                null, null, Map.of());
+        CaptionTemplateValidationResult result = validator.validate(request);
+        assertFalse(result.valid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("explicit font family")),
+                "Expected explicit template-style requirement, got: " + result.errors());
+    }
+
+    @Test
     @DisplayName("Unsupported output container fails")
     void unsupportedContainerFails() {
         CaptionOutputProfileSpec profile = new CaptionOutputProfileSpec(1920, 1080, 30, "avi");
@@ -335,6 +351,10 @@ class CaptionTemplateRenderContractTest {
         return new CaptionTemplateRenderRequest(
                 "proj-1", "prod-1",
                 List.of(new CaptionSegmentSpec(0, 3000, "Hello World")),
-                null, null, Map.of());
+                new CaptionTemplateSpec(null, "inline",
+                        new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of());
     }
 }

@@ -145,7 +145,11 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
 
             CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
                     "prj-vs0", "prod-source-002",
-                    List.of(seg), null, CaptionOutputProfileSpec.hd720p(), Map.of());
+                    List.of(seg), new CaptionTemplateSpec("tpl-inline", "inline",
+                            new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                    new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                    24, 2, 1.4, "center")),
+                    CaptionOutputProfileSpec.hd720p(), Map.of());
 
             CaptionTemplateTimelineAdapter adapter = new CaptionTemplateTimelineAdapter();
             TimelineSpec adapted = adapter.adapt(request);
@@ -169,7 +173,11 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             CaptionSegmentSpec seg = new CaptionSegmentSpec(1000, 4000, "FFmpeg test caption");
             CaptionTemplateRenderRequest captionRequest = new CaptionTemplateRenderRequest(
                     "prj-vs0", "prod-source-003",
-                    List.of(seg), null, CaptionOutputProfileSpec.hd1080p(), Map.of());
+                    List.of(seg), new CaptionTemplateSpec("tpl-inline", "inline",
+                            new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                    new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                    24, 2, 1.4, "center")),
+                    CaptionOutputProfileSpec.hd1080p(), Map.of());
 
             CaptionTemplateTimelineAdapter adapter = new CaptionTemplateTimelineAdapter();
             TimelineSpec timeline = adapter.adapt(captionRequest);
@@ -431,7 +439,11 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             CaptionSegmentSpec seg = new CaptionSegmentSpec(1000, 6000, "VS.0 Test Caption");
             CaptionTemplateRenderRequest captionRequest = new CaptionTemplateRenderRequest(
                     "prj-vs0", "prod-source-004",
-                    List.of(seg), null, CaptionOutputProfileSpec.hd1080p(), Map.of());
+                    List.of(seg), new CaptionTemplateSpec("tpl-inline", "inline",
+                            new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                    new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                    24, 2, 1.4, "center")),
+                    CaptionOutputProfileSpec.hd1080p(), Map.of());
             CaptionTemplateTimelineAdapter captionAdapter = new CaptionTemplateTimelineAdapter();
             TimelineSpec captionTimeline = captionAdapter.adapt(captionRequest);
             assertNotNull(captionTimeline);
@@ -546,7 +558,11 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
         void captionAdapterNoRawFiltergraphs() {
             CaptionSegmentSpec seg = new CaptionSegmentSpec(0, 3000, "Safe test");
             CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
-                    "prj-safe", "prod-safe", List.of(seg), null,
+                    "prj-safe", "prod-safe", List.of(seg),
+                    new CaptionTemplateSpec("tpl-inline", "inline",
+                            new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                    new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                    24, 2, 1.4, "center")),
                     CaptionOutputProfileSpec.hd1080p(), Map.of());
 
             TimelineSpec adapted = new CaptionTemplateTimelineAdapter().adapt(request);

@@ -68,8 +68,11 @@ public class CaptionTemplateRenderContractValidator {
             validateSegments(request.captionSegments(), errors);
         }
 
-        // Template/style
-        if (request.template() != null && request.template().style() != null) {
+        // Template/style: explicit font selection is required — no implicit
+        // font default (ROADMAP_19 FINAL TIMELINE AUTHORITY CANONICALIZATION).
+        if (request.template() == null || request.template().style() == null) {
+            errors.add("Caption template style with explicit font family is required; no implicit font default");
+        } else {
             validateStyle(request.template().style(), errors);
         }
 

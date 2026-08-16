@@ -625,7 +625,11 @@ class VS0VerticalSliceIntegrationTest {
                 "proj-vs0", "prod-source-vs0",
                 List.of(new CaptionSegmentSpec(0, 3000, "Hello World"),
                         new CaptionSegmentSpec(3000, 6000, "VS.0 Integration")),
-                null, CaptionOutputProfileSpec.hd1080p(), Map.of());
+                new CaptionTemplateSpec("tpl-inline", "inline",
+                        new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                CaptionOutputProfileSpec.hd1080p(), Map.of());
     }
 
     private TimelineSpec simpleVideoTimeline() {

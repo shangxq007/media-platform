@@ -227,7 +227,11 @@ class CaptionTemplateRenderE2ESmokeTest {
         CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
                 "proj-1", sourceProductId,
                 List.of(new CaptionSegmentSpec(0, 3000, "Hello World")),
-                null, null, Map.of());
+                new CaptionTemplateSpec(null, "inline",
+                        new CaptionStyleSpec(CaptionPlacement.BOTTOM_CENTER,
+                                new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
+                                24, 2, 1.4, "center")),
+                null, Map.of());
         CaptionTemplateRenderResult result = service.render(request);
         System.out.println("[E2E] result: status=" + result.status()
                 + " ready=" + result.ready()
