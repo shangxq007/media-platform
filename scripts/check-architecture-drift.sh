@@ -958,22 +958,22 @@ else
 fi
 
 # RCG-2: RevisionCommandPlan != OperationPlan
-if grep -q 'record OperationPlan(' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/RevisionCommandPlan.java 2>/dev/null; then
+if grep -q 'record OperationPlan(' timeline-module/src/main/java/com/example/platform/timeline/revisioncommand/RevisionCommandPlan.java 2>/dev/null; then
     fail "revision command plan is operation plan"
 else
     pass "RevisionCommandPlan independent of OperationPlan"
 fi
 
 # RCG-3/4: context not a command plan variant; variants bounded
-if grep -q 'ContextPlan' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/RevisionCommandPlan.java 2>/dev/null; then
+if grep -q 'ContextPlan' timeline-module/src/main/java/com/example/platform/timeline/revisioncommand/RevisionCommandPlan.java 2>/dev/null; then
     fail "ContextPlan in RevisionCommandPlan"
 else
     pass "RevisionContext outside RevisionCommand (RCI1)"
 fi
-grep -q 'CreateRefPlan' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/RevisionCommandPlan.java && grep -q 'MergeRevisionPlan' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/RevisionCommandPlan.java; ck=$?; if [ $ck -eq 0 ]; then pass "V1 command plan variants bounded"; else fail "plan variants incomplete"; fi
+grep -q 'CreateRefPlan' timeline-module/src/main/java/com/example/platform/timeline/revisioncommand/RevisionCommandPlan.java && grep -q 'MergeRevisionPlan' timeline-module/src/main/java/com/example/platform/timeline/revisioncommand/RevisionCommandPlan.java; ck=$?; if [ $ck -eq 0 ]; then pass "V1 command plan variants bounded"; else fail "plan variants incomplete"; fi
 
 # RCG-6: no generic force move command
-if grep -rq 'forceMoveRef\|FORCE_UPDATE_REF\|class MoveRefCommand' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/ 2>/dev/null; then
+if grep -rq 'forceMoveRef\|FORCE_UPDATE_REF\|class MoveRefCommand' timeline-module/src/main/java/com/example/platform/timeline/revisioncommand/ 2>/dev/null; then
     fail "generic force/move ref command present"
 else
     pass "no generic force/move ref command"
@@ -985,14 +985,14 @@ if grep -q 'mergeSemantic' timeline-module/src/main/java/com/example/platform/ti
 else
     fail "mergeSemantic missing"
 fi
-if grep -q 'mergeSemantic' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandPlanner.java; then
+if grep -q 'mergeSemantic' timeline-module/src/main/java/com/example/platform/timeline/app/RevisionCommandPlanner.java; then
     pass "planner uses pure semantic merge"
 else
     fail "planner uses engine persistence path"
 fi
 
 # RCG-26/27/28: parent edge authority; legacy fields not authoritative
-if grep -q 'timeline_revision_parent' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionGraphService.java; then
+if grep -q 'timeline_revision_parent' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionGraphService.java; then
     pass "graph reads timeline_revision_parent only"
 else
     fail "graph authority missing"
@@ -1037,33 +1037,33 @@ else
 fi
 
 # RCG-40/41/42: no true revert / rebase / batch
-if grep -rq 'class TrueRevertCommand\|class RebaseCommand\|class BatchCommand' render-module/src/main/java/com/example/platform/render/domain/revisioncommand/ 2>/dev/null; then
+if grep -rq 'class TrueRevertCommand\|class RebaseCommand\|class BatchCommand' timeline-module/src/main/java/com/example/platform/timeline/revisioncommand/ 2>/dev/null; then
     fail "deferred command implemented"
 else
     pass "true revert/rebase/batch = 0"
 fi
 
 # RCG-44/45: legacy restore/merge bypass = 0 (authoritative path via RevisionCommand)
-if grep -q 'restoreRevision' timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java 2>/dev/null && grep -q 'revision-command-restore' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java; then
+if grep -q 'restoreRevision' timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java 2>/dev/null && grep -q 'revision-command-restore' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionCommandApplyService.java; then
     pass "restore rehomed through RevisionCommand path (legacy endpoint retained)"
 else
     fail "restore bypass unresolved"
 fi
 
 # RCFG-1/2: exact same revision merge = NO_OP; expected head still checked
-if grep -q 'same frozen revision merge' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandPlanner.java; then
+if grep -q 'same frozen revision merge' timeline-module/src/main/java/com/example/platform/timeline/app/RevisionCommandPlanner.java; then
     pass "same-revision merge plans NO_OP"
 else
     fail "RCP1 same-revision NO_OP missing"
 fi
-if grep -q 'same frozen revision merge' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java; then
+if grep -q 'same frozen revision merge' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionCommandApplyService.java; then
     pass "same-revision apply NO_OP after expected-head CAS"
 else
     fail "RCP1 apply NO_OP missing"
 fi
 
 # RCFG-3/4: frozen sourceRevisionId is apply authority; no source ref reread
-if grep -q 'plan.sourceRevisionId()' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java && ! grep -q 'readRef(sourceRef)\|resolveSourceRef(' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java; then
+if grep -q 'plan.sourceRevisionId()' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionCommandApplyService.java && ! grep -q 'readRef(sourceRef)\|resolveSourceRef(' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionCommandApplyService.java; then
     pass "frozen source revision is apply authority (zero source-ref reread)"
 else
     fail "RCP2 source pin violation"
@@ -1082,7 +1082,7 @@ else
 fi
 
 # RCFG-12: parent edge remains graph authority
-if grep -q 'timeline_revision_parent' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionGraphService.java; then
+if grep -q 'timeline_revision_parent' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionGraphService.java; then
     pass "parent edge graph authority preserved"
 else
     fail "graph authority lost"
