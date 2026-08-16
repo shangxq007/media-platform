@@ -64,6 +64,10 @@ class ModularityTest {
         // from shared-kernel to billing::app — entitlement consumes the cost-facing contract at
         // the billing owner (EUMF usage/cost semantics preserved at billing).
         "entitlement' depends on named interface(s) 'billing :: app",
+        // ROADMAP_19 (C1/C34): render (Timeline) consumes font-text-module value
+        // semantics for the Timeline-owned TextElement (frozen direction:
+        // Render -> FontText; pure domain, zero outward deps).
+        "render' depends on module 'fonttext",
         // K2 (K2-11): NotificationEventPublisher rehomed from shared-kernel to notification;
         // outbox implements the notification publisher port (outbox -> notification, leaf owner).
         "outbox' depends on non-exposed type com.example.platform.notification.app.NotificationEventPublisher",
