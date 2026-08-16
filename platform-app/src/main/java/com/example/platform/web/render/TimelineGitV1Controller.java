@@ -1,13 +1,13 @@
 package com.example.platform.web.render;
 
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.render.app.timeline.PatchApplyResult;
-import com.example.platform.render.app.timeline.PatchPreviewResult;
-import com.example.platform.render.app.timeline.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.PatchApplyResult;
+import com.example.platform.timeline.app.PatchPreviewResult;
+import com.example.platform.timeline.app.ProductCurrentRevisionService;
 import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
-import com.example.platform.render.app.timeline.TimelinePatchApplicationService;
-import com.example.platform.render.app.timeline.TimelineRevisionSaveService;
-import com.example.platform.render.app.timeline.TimelineSemanticDiffV1Service;
+import com.example.platform.timeline.app.TimelinePatchApplicationService;
+import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.app.TimelineSemanticDiffV1Service;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;

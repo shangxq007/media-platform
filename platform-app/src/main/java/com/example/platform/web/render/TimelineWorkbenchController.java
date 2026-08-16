@@ -1,7 +1,8 @@
 package com.example.platform.web.render;
 
+import com.example.platform.timeline.app.TimelineRevisionService;
 import com.example.platform.render.app.timeline.*;
-import com.example.platform.render.app.timeline.TimelineRevisionService.RevisionFacets;
+import com.example.platform.timeline.app.TimelineRevisionService.RevisionFacets;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;

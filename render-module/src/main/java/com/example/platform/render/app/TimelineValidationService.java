@@ -1,6 +1,6 @@
 package com.example.platform.render.app;
 
-import com.example.platform.render.app.timeline.InternalTimelineJson;
+import com.example.platform.timeline.app.InternalTimelineJson;
 import com.example.platform.render.app.timeline.InternalTimelineValidationService;
 import com.example.platform.render.domain.legacy.TimelineValidationResult;
 import com.fasterxml.jackson.databind.JsonNode;

@@ -4,7 +4,7 @@ import com.example.platform.artifact.app.ArtifactStorageIntegrityScanner;
 import com.example.platform.artifact.app.AssetIntegrityMetrics;
 import com.example.platform.audit.app.ProblematicDataDetectionService;
 import com.example.platform.audit.domain.ProblematicDataRecord;
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.timeline.TimelineAssetIntegrityScanner;
 import com.example.platform.shared.web.TenantContext;
 import java.util.ArrayList;

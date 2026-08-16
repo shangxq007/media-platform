@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.app.PatchApplyResult;import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelinePatchApplicationService;import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.shared.time.MediaTime;
 
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -248,7 +249,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         var result = patchService.apply(patch);
 
         assertTrue(result.isFailure(), "pre-existing payload limitation must be unchanged");
-        assertTrue(result instanceof com.example.platform.render.app.timeline.PatchApplyResult.Failure f
+        assertTrue(result instanceof com.example.platform.timeline.app.PatchApplyResult.Failure f
                 && f.error().code() == com.example.platform.timeline.patch.PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
                 "expected TIMELINE_PATCH_PAYLOAD_INVALID (base document not loadable)");
         long rows = dsl.selectCount().from(TIMELINE_REVISION)

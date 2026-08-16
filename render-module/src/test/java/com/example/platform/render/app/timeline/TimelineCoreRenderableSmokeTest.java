@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.output.RenderOutputRegistrationException;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;

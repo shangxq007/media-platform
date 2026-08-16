@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.diff.application.TimelinePatchApplier;
 import com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector;

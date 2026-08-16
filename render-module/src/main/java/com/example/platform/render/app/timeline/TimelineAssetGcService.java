@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.infrastructure.TimelineAssetGcProperties;
 import com.example.platform.storage.domain.BlobStorage;
 import com.fasterxml.jackson.databind.JsonNode;

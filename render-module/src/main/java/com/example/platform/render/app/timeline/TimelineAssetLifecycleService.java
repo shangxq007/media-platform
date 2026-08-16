@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.shared.asset.StorageUriReferenceContributor;
 import com.example.platform.shared.asset.StorageUriReferenceHit;
 import com.example.platform.shared.web.ErrorCodeRegistry;

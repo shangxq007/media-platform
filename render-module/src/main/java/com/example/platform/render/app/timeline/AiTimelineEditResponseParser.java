@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.app.TimelinePatchService;
+import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.app.TimelinePatchService;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;

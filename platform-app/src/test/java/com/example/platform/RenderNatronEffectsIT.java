@@ -8,7 +8,7 @@ import com.example.platform.entitlement.app.EntitlementPolicyService;
 import com.example.platform.render.app.RenderOrchestratorService;
 import com.example.platform.render.app.RenderProfileResolver;
 import com.example.platform.render.app.RenderWorkerQueueService;
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import java.nio.file.Files;

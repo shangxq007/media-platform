@@ -1,29 +1,31 @@
 package com.example.platform.render.integration;
 
+import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineContentHasher;import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.shared.time.MediaTime;
 
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.app.ToolRegistry;
 import com.example.platform.extension.infrastructure.DefaultProcessToolRunner;
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.app.timeline.InternalTimelineToEditorConverter;
 import com.example.platform.render.app.timeline.InternalTimelineWriter;
-import com.example.platform.render.app.timeline.ProductCurrentRevisionService;
-import com.example.platform.render.app.timeline.TimelineCanonicalizer;
+import com.example.platform.render.app.timeline.RenderTimelinePayloadCodec;
+import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineCanonicalizer;
 import com.example.platform.render.app.timeline.TimelineConversionService;
 import com.example.platform.render.app.timeline.TimelineInputProductResolver;
-import com.example.platform.render.app.TimelinePatchService;
+import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.render.app.timeline.TimelineRenderJobMapper;
-import com.example.platform.render.app.timeline.TimelineRevisionDiffService;
+import com.example.platform.timeline.app.TimelineRevisionDiffService;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
-import com.example.platform.render.app.timeline.TimelineRevisionRepository;
-import com.example.platform.render.app.timeline.TimelineRevisionSaveService;
-import com.example.platform.render.app.timeline.TimelineRevisionService;
-import com.example.platform.render.app.timeline.TimelineSemanticDiffService;
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;
+import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineSemanticDiffService;
 import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.app.timeline.TimelineTestSupport;
 import com.example.platform.render.app.TimelineValidationService;
@@ -303,7 +305,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         // Canonically invalid document -> rejection -> no revision, no payload, nothing to render.
         String projectId = "prj-bad-" + java.util.UUID.randomUUID().toString().substring(0, 8);
         var invalid = createDocumentWithDuplicateTrackIds();
-        assertThrows(com.example.platform.render.app.timeline.TimelineCanonicalRejectionException.class,
+        assertThrows(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class,
                 () -> saveService.saveRevision(projectId, null, invalid, "vslice-user"));
         assertEquals(0L, dsl.selectCount()
                 .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
@@ -320,15 +322,12 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         TimelineCanonicalizer canonicalizer = new TimelineCanonicalizer();
         TimelineSpecResolver resolver = new TimelineSpecResolver(TimelineTestSupport.internalTimelineAdapter(), parser);
         TimelineConversionService conversionService = new TimelineConversionService(resolver, writer);
-        TimelinePatchService patchService = new TimelinePatchService(
-                new TimelineValidationService(new InternalTimelineValidationService()),
-                TimelineTestSupport.internalTimelineAdapter(), canonicalizer);
+        TimelinePatchService patchService = new TimelinePatchService(canonicalizer);
         return new TimelineRevisionService(
                 new TimelineRevisionRepository(dsl), snapshotService,
-                new com.example.platform.render.app.timeline.TimelineContentHasher(canonicalizer),
+                new com.example.platform.timeline.app.TimelineContentHasher(canonicalizer),
                 new TimelineRevisionDiffService(),
-                new InternalTimelineToEditorConverter(),
-                conversionService,
+                new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter()),
                 patchService,
                 new TimelineSemanticDiffService(canonicalizer));
     }
@@ -453,7 +452,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 new TimelineMetadata("Vertical Slice", "",
-                        Map.of(com.example.platform.render.app.timeline.TimelineDocumentJsonSerializer.CAPTIONS_V1_METADATA_KEY, captions)));
+                        Map.of(com.example.platform.timeline.app.TimelineDocumentJsonSerializer.CAPTIONS_V1_METADATA_KEY, captions)));
     }
 
     private TimelineDocument createDocumentWithDuplicateTrackIds() {

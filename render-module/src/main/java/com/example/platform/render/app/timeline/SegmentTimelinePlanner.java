@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.app.InternalTimelineJson;
 import com.example.platform.shared.time.CanonicalFrameRateCodec;
 import com.example.platform.render.domain.planning.SegmentPolicy;
 import com.example.platform.render.domain.legacy.TimelineSegment;

@@ -1,9 +1,10 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.app.TimelineCanonicalizer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.render.app.TimelinePatchService;
+import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.render.app.TimelineValidationService;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.fasterxml.jackson.databind.node.TextNode;
@@ -22,8 +23,6 @@ class AiTimelineProposalServiceTest {
     @BeforeEach
     void setUp() throws Exception {
         TimelinePatchService patchService = new TimelinePatchService(
-                new TimelineValidationService(new InternalTimelineValidationService()),
-                TimelineTestSupport.internalTimelineAdapter(),
                 new TimelineCanonicalizer());
         service = new AiTimelineProposalService(patchService);
         baseTimeline = loadSample();

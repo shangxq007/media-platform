@@ -1,6 +1,6 @@
 package com.example.platform.render.testsupport;
 
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 
 
 import java.util.List;

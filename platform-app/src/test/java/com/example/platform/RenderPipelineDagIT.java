@@ -6,7 +6,7 @@ import com.example.platform.identity.api.dto.CreateProjectRequest;
 import com.example.platform.identity.api.dto.CreateTenantRequest;
 import com.example.platform.render.api.RenderController;
 import com.example.platform.render.app.RenderOrchestratorService;
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.planner.PipelinePlanPersistenceService;

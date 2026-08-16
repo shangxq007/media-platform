@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline.compile;
 
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineRevisionService;
 import com.example.platform.render.app.timeline.compile.audit.*;
 
 import com.example.platform.render.domain.compile.*;
@@ -9,7 +10,7 @@ import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.extension.domain.ToolSandboxPolicy;
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
@@ -324,7 +325,7 @@ class RenderCorrelationGraphPlanPropagationTest {
 
     static class StubTimelineRevisionService extends TimelineRevisionService {
         private final InMemoryTimelineRevisionRepository repo;
-        StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null, null, null, null, null); this.repo = repo; }
+        StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null, null, null, null); this.repo = repo; }
         @Override
         public Optional<RevisionInfo> findById(String revisionId) {
             return repo.findById(revisionId).map(row -> new RevisionInfo(

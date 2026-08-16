@@ -1,6 +1,6 @@
 package com.example.platform;
 
-import com.example.platform.render.app.timeline.TimelineMergeEngine;
+import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

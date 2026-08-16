@@ -3,8 +3,8 @@ package com.example.platform.web.render;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.app.timeline.TimelineMergeEngine;
-import com.example.platform.render.app.timeline.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineMergeEngine;
+import com.example.platform.timeline.app.TimelineRevisionService;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.render.domain.planning.*; // render-kept internal types only
 import com.example.platform.timeline.internal.EntityKind;

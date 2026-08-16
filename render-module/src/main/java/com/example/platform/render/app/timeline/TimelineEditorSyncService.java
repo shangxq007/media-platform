@@ -1,8 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.app.TimelinePatchService;
-import com.example.platform.render.app.TimelineSnapshotService;
-import com.example.platform.render.app.TimelineSnapshotService.SnapshotInfo;
+import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelinePatchService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService.SnapshotInfo;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Optional;

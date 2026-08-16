@@ -386,10 +386,11 @@ tasks.register("verifyC1TimelineMergeConvergence") {
     description = "C1-RED: single canonical Timeline semantic merge authority (engine wired, legacy merge residue 0)"
     doLast {
         val appDir = file("render-module/src/main/java/com/example/platform/render/app/timeline")
+        val timelineAppDir = file("timeline-module/src/main/java/com/example/platform/timeline/app")
         val timelineDomainDir = file("timeline-module/src/main/java/com/example/platform/timeline")
         // C1-RED-01/10: exactly one production merge authority; legacy Stack A merge machinery absent
         require(!file(appDir.resolve("TimelineMergeService.java")).exists()) { "FAIL: legacy TimelineMergeService still exists" }
-        require(file(appDir.resolve("TimelineMergeEngine.java")).exists()) { "FAIL: canonical TimelineMergeEngine missing" }
+        require(file(timelineAppDir.resolve("TimelineMergeEngine.java")).exists()) { "FAIL: canonical TimelineMergeEngine missing" }
         require(!file(appDir.resolve("TimelineConflictDetector.java")).exists()) { "FAIL: legacy entity-level ConflictDetector still exists" }
         require(!file(appDir.resolve("TimelineConflictResolver.java")).exists()) { "FAIL: legacy entity-level Resolver still exists" }
         // C1-RED-02: no third stack — canonical diff/merge authority confined to timeline-module diff (GCR-1: moved out of render)
@@ -398,7 +399,7 @@ tasks.register("verifyC1TimelineMergeConvergence") {
         require(file(timelineDomainDir.resolve("diff/TimelineChangePath.java")).exists()) { "FAIL: typed TimelineChangePath missing" }
         require(file(timelineDomainDir.resolve("diff/merge/TimelineMergeConflictDetector.java")).exists()) { "FAIL: domain conflict detector missing" }
         // C1-RED-05/06: behavioral proofs must exist (JUnit)
-        val engineTest = file("render-module/src/test/java/com/example/platform/render/app/timeline/TimelineMergeEngineTest.java")
+        val engineTest = file("timeline-module/src/test/java/com/example/platform/timeline/app/TimelineMergeEngineTest.java")
         require(engineTest.exists()) { "FAIL: TimelineMergeEngineTest missing (C1-RED-05/06 behavioral proof)" }
         require(engineTest.readText().contains("sameEntityDisjointPathsBothMaterialized")) { "FAIL: disjoint-path materialization proof missing" }
         require(engineTest.readText().contains("deleteVsModifyConflict")) { "FAIL: delete-vs-modify proof missing" }
@@ -425,7 +426,7 @@ tasks.register("verifyC1CrrPayloadContract") {
     group = "verification"
     description = "C1-CRR-RED: canonical payload contract (gate domain == merge conversion domain, no bypass flag, no fallback parser)"
     doLast {
-        val engine = file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java")
+        val engine = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java")
         require(engine.exists()) { "FAIL: TimelineMergeEngine missing" }
         val engineSrc = engine.readText()
         // C1-CRR-RED-04: no production gate bypass flag
@@ -441,7 +442,7 @@ tasks.register("verifyC1CrrPayloadContract") {
         // C1-CRR-RED-06: engine remains sole semantic merge authority
         require(engineSrc.contains("class TimelineMergeEngine")) { "FAIL: TimelineMergeEngine missing" }
         // C1-CRR-RED-01/02/03: behavioral proofs must exist (JUnit, gates naturally active)
-        val regression = file("render-module/src/test/java/com/example/platform/render/app/timeline/TimelineMergePayloadContractRegressionTest.java")
+        val regression = file("timeline-module/src/test/java/com/example/platform/timeline/app/TimelineMergePayloadContractRegressionTest.java")
         require(regression.exists()) { "FAIL: payload contract regression missing" }
         val regSrc = regression.readText()
         require(regSrc.contains("productionSavedPayloadIsAcceptedByCanonicalGate")) { "FAIL: C1-CRR-RED-01 proof missing" }
@@ -476,7 +477,7 @@ tasks.register("verifyC1Cnm1RedGates") {
         require(!mapper.readText().contains("(int) output.frameRate()")) { "FAIL: (int) doubleFps truncation in render mapper" }
 
         // ── RED-03: canonical merge time path contains no integer-ms authority ──
-        val engine = file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java")
+        val engine = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java")
         val e = engine.readText()
         require(!e.contains("millisToFrame") && !e.contains("mediaTimeToMillis")) { "FAIL: integer-ms authority in merge engine" }
         require(!e.contains("TimelineTimeQuantization")) { "FAIL: retired quantization authority referenced in engine" }
@@ -495,7 +496,7 @@ tasks.register("verifyC1Cnm1RedGates") {
         require(bt.contains("24000") && bt.contains("30000") && bt.contains("60000")) { "FAIL: fractional fixtures missing" }
 
         // ── RED-06: effect preservation wiring (adapter -> converter -> engine) ──
-        val adapter = file("render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineCandidateAdapter.java")
+        val adapter = file("timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineCandidateAdapter.java")
         require(adapter.readText().contains("mapEffects")) { "FAIL: adapter effect parse missing" }
         require(e.contains("clip.effects()") && e.contains("node.set(\"effects\"")) { "FAIL: engine effect re-emit missing" }
 
@@ -542,7 +543,7 @@ tasks.register("verifyC1Cnm1Red14") {
         require(cc.contains("isIntegralNumber")) { "FAIL: codec must require exact integer JSON numbers" }
 
         // Consumers must route through the codec (no unsafe asInt narrowing on rate).
-        val adapter = file("render-module/src/main/java/com/example/platform/render/app/timeline/InternalTimelineCandidateAdapter.java").readText()
+        val adapter = file("timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineCandidateAdapter.java").readText()
         require(adapter.contains("CanonicalFrameRateCodec.parse")) { "FAIL: adapter must parse rate via codec" }
         require(!adapter.contains("rate.get(\"num\").asInt") && !adapter.contains("rate.get(\"den\").asInt")) {
             "FAIL: adapter must not use asInt as rate validator"
@@ -877,10 +878,10 @@ tasks.register("verifyR1RenderCanonicalizationReissue") {
         require(mergeFiles.isNotEmpty()) {
             "FAIL R1-REISSUE-RED-06: governed scan universe must be nonempty"
         }
-        // The C1 canonical merge engine (TimelineMergeEngine) lives in render
-        // module by architecture decision (C1 published baseline) — the gate
+        // The C1 canonical merge engine (TimelineMergeEngine) lives in
+        // timeline-module (GCR-1 CORRECTION V1: authority extraction) — the gate
         // asserts it is NOT duplicated: only one production engine source.
-        val engineSources = file("render-module/src/main/java").walkTopDown()
+        val engineSources = file("timeline-module/src/main/java").walkTopDown()
             .filter { it.isFile && it.name == "TimelineMergeEngine.java" }
             .toList()
         require(engineSources.size == 1) {

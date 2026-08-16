@@ -1,7 +1,7 @@
 package com.example.platform.render.app.planner;
 
 import com.example.platform.render.app.MultiProviderPipelineService;
-import com.example.platform.render.app.timeline.InternalTimelineJson;
+import com.example.platform.timeline.app.InternalTimelineJson;
 import com.example.platform.render.app.timeline.SegmentTimelinePlanner;
 import com.example.platform.render.domain.legacy.TimelineSegment;
 import com.example.platform.render.domain.planning.ExternalRenderNode;

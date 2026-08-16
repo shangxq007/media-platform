@@ -1,5 +1,6 @@
 package com.example.platform.render.app;
 
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.ai.api.AiGatewayPort;
 import com.example.platform.render.api.port.EffectEntitlementPort;
 import com.example.platform.render.app.cache.RenderCacheHashInvalidationNotifier;

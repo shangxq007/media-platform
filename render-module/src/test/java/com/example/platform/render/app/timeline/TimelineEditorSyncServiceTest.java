@@ -1,11 +1,12 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.app.TimelineRevisionService;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.app.TimelineSnapshotService;
-import com.example.platform.render.app.TimelineSnapshotService.SnapshotInfo;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService.SnapshotInfo;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.example.platform.render.domain.interchange.TimelineOutputSpec;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;

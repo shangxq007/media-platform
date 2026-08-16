@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineCanonicalizer;import com.example.platform.timeline.app.TimelineContentHasher;import com.example.platform.timeline.app.TimelineRevisionDiffService;import com.example.platform.timeline.app.TimelineRevisionService;import com.example.platform.timeline.app.TimelineSemanticDiffService;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,8 +9,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.render.app.TimelinePatchService;
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.app.TimelinePatchService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.TimelineValidationService;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.example.platform.render.domain.interchange.TimelineOutputSpec;
@@ -61,12 +62,8 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
                 snapshotService,
                 new TimelineContentHasher(canonicalizer),
                 new TimelineRevisionDiffService(),
-                new InternalTimelineToEditorConverter(),
-                conversionService,
-                new TimelinePatchService(
-                        new TimelineValidationService(new InternalTimelineValidationService()),
-                        TimelineTestSupport.internalTimelineAdapter(),
-                        canonicalizer),
+                new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter()),
+                new TimelinePatchService(canonicalizer),
                 new TimelineSemanticDiffService(canonicalizer));
     }
 

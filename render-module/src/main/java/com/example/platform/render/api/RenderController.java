@@ -19,7 +19,7 @@ import com.example.platform.render.app.timeline.AiTimelineEditContext;
 import com.example.platform.render.app.timeline.AiTimelineEditService;
 import com.example.platform.render.app.timeline.AiTimelineProposalService;
 import com.example.platform.render.app.timeline.TimelineConversionService;
-import com.example.platform.render.app.timeline.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionService;
 import com.example.platform.render.app.cache.RenderCacheCleanupService;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.render.app.RenderJobService;

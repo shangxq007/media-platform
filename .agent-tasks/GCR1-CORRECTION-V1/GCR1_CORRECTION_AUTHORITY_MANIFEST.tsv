@@ -1,0 +1,73 @@
+TYPE	CURRENT_MODULE	CURRENT_PACKAGE	ROLE	AUTHORITY_OWNER	FINAL_MODULE	FINAL_PACKAGE	KEEP/MOVE/SPLIT/DELETE	CALLER_COUNT	RATIONALE
+AiRenderScriptNormalizer.java	render-module	com.example.platform.render.app.timeline	RENDER_AI_CONSUMER	render	render	com.example.platform.render.app.timeline	KEEP	3	
+AiTimelineEditContext.java	render-module	com.example.platform.render.app.timeline	RENDER_AI_CONSUMER	render	render	com.example.platform.render.app.timeline	KEEP	7	
+AiTimelineEditResponseParser.java	render-module	com.example.platform.render.app.timeline	RENDER_AI_CONSUMER	render	render	com.example.platform.render.app.timeline	KEEP	3	
+AiTimelineEditService.java	render-module	com.example.platform.render.app.timeline	RENDER_AI_CONSUMER	render	render	com.example.platform.render.app.timeline	KEEP	3	
+AiTimelineProposalService.java	render-module	com.example.platform.render.app.timeline	RENDER_AI_CONSUMER	render	render	com.example.platform.render.app.timeline	KEEP	4	
+BaseJobTimelineLoader.java	render-module	com.example.platform.render.app.timeline	TIMELINE_LOADER	timeline	timeline	com.example.platform.timeline.adapter	MOVE	11	loads canonical timeline for job input resolution
+IncrementalPlanExplainer.java	render-module	com.example.platform.render.app.timeline	RENDER_AI_CONSUMER	render	render	com.example.platform.render.app.timeline	KEEP	2	
+IncrementalRenderOrchestrationService.java	render-module	com.example.platform.render.app.timeline	RENDER_INCREMENTAL	render	render	com.example.platform.render.app.timeline	KEEP	5	
+IncrementalRenderPlanService.java	render-module	com.example.platform.render.app.timeline	RENDER_INCREMENTAL	render	render	com.example.platform.render.app.timeline	KEEP	10	
+InternalTimelineAdapter.java	render-module	com.example.platform.render.app.timeline	TIMELINE_INTERNAL_ADAPTER	timeline	timeline	com.example.platform.timeline.app	MOVE	16	
+InternalTimelineAiProposals.java	render-module	com.example.platform.render.app.timeline	RENDER_AI_CONSUMER	render	render	com.example.platform.render.app.timeline	KEEP	2	
+InternalTimelineCandidateAdapter.java	render-module	com.example.platform.render.app.timeline	TIMELINE_CANDIDATE_ADAPTER	timeline	timeline	com.example.platform.timeline.app	MOVE	9	
+InternalTimelineJson.java	render-module	com.example.platform.render.app.timeline	TIMELINE_SERIALIZATION_INT1	timeline	timeline	com.example.platform.timeline.app	MOVE	34	
+InternalTimelineMetadataEnricher.java	render-module	com.example.platform.render.app.timeline	TIMELINE_AUTHORING_ENRICH	timeline	timeline	com.example.platform.timeline.app	MOVE	3	timeline metadata enrichment = authoring-side semantic work
+InternalTimelineToEditorConverter.java	render-module	com.example.platform.render.app.timeline	TIMELINE_EDITOR_PROJECTION	timeline	timeline	com.example.platform.timeline.app	MOVE	8	timeline -> editor model conversion (timeline-owned projection)
+InternalTimelineValidationService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_AUTHORING_VALIDATION	timeline	timeline	com.example.platform.timeline.app	MOVE	8	
+InternalTimelineWriter.java	render-module	com.example.platform.render.app.timeline	TIMELINE_AUTHORING_WRITE	timeline	timeline	com.example.platform.timeline.app	MOVE	26	
+MezzanineCachePublisher.java	render-module	com.example.platform.render.app.timeline	RENDER_MEZZANINE	render	render	com.example.platform.render.app.timeline	KEEP	3	
+PatchApplyResult.java	render-module	com.example.platform.render.app.timeline	TIMELINE_PATCH_RESULT	timeline	timeline	com.example.platform.timeline.app	MOVE	5	
+PatchPreviewResult.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVIEW	render	render	com.example.platform.render.app.timeline	KEEP	6	
+ProductCurrentRevisionService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVISION_LIFECYCLE	timeline	timeline	com.example.platform.timeline.app	MOVE	16	
+RenderArtifactRegistry.java	render-module	com.example.platform.render.app.timeline	RENDER_ARTIFACT	render	render	com.example.platform.render.app.timeline	KEEP	8	
+RenderCacheArtifactFetcher.java	render-module	com.example.platform.render.app.timeline	RENDER_CACHE	render	render	com.example.platform.render.app.timeline	KEEP	5	
+RenderCacheContentHasher.java	render-module	com.example.platform.render.app.timeline	TIMELINE_CONTENT_HASH	timeline	timeline	com.example.platform.timeline.app	MOVE	4	
+RenderCacheReuseValidator.java	render-module	com.example.platform.render.app.timeline	RENDER_CACHE	render	render	com.example.platform.render.app.timeline	KEEP	4	
+RenderCacheUriResolver.java	render-module	com.example.platform.render.app.timeline	RENDER_CACHE	render	render	com.example.platform.render.app.timeline	KEEP	13	
+RenderImpactAnalyzer.java	render-module	com.example.platform.render.app.timeline	RENDER_IMPACT	render	render	com.example.platform.render.app.timeline	KEEP	9	
+RenderJobRevisionPinningService.java	render-module	com.example.platform.render.app.timeline	RENDER_JOB	render	render	com.example.platform.render.app.timeline	KEEP	3	
+RenderJobStatusService.java	render-module	com.example.platform.render.app.timeline	RENDER_JOB	render	render	com.example.platform.render.app.timeline	KEEP	8	
+ReviewDecisionService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVIEW	render	render	com.example.platform.render.app.timeline	KEEP	4	
+SegmentArtifactUploadService.java	render-module	com.example.platform.render.app.timeline	RENDER_SEGMENT	render	render	com.example.platform.render.app.timeline	KEEP	4	
+SegmentCachePublisher.java	render-module	com.example.platform.render.app.timeline	RENDER_SEGMENT	render	render	com.example.platform.render.app.timeline	KEEP	5	
+SegmentPipelinePayloadBuilder.java	render-module	com.example.platform.render.app.timeline	RENDER_SEGMENT	render	render	com.example.platform.render.app.timeline	KEEP	3	
+SegmentPlanFilter.java	render-module	com.example.platform.render.app.timeline	RENDER_SEGMENT	render	render	com.example.platform.render.app.timeline	KEEP	10	
+SegmentRenderSlice.java	render-module	com.example.platform.render.app.timeline	RENDER_SEGMENT	render	render	com.example.platform.render.app.timeline	KEEP	3	
+SegmentStitchComposeService.java	render-module	com.example.platform.render.app.timeline	RENDER_SEGMENT	render	render	com.example.platform.render.app.timeline	KEEP	4	
+SegmentTimelinePlanner.java	render-module	com.example.platform.render.app.timeline	RENDER_SEGMENT	render	render	com.example.platform.render.app.timeline	KEEP	19	
+TimelineAssetGcScheduler.java	render-module	com.example.platform.render.app.timeline	TIMELINE_ASSET_LIFECYCLE	render	render	com.example.platform.render.app.timeline	KEEP	1	
+TimelineAssetGcService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_ASSET_LIFECYCLE	render	render	com.example.platform.render.app.timeline	KEEP	7	
+TimelineAssetIntegrityScanner.java	render-module	com.example.platform.render.app.timeline	TIMELINE_ASSET_LIFECYCLE	render	render	com.example.platform.render.app.timeline	KEEP	3	
+TimelineAssetLifecycleService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_ASSET_LIFECYCLE	render	render	com.example.platform.render.app.timeline	KEEP	4	
+TimelineAssetReferenceScanner.java	render-module	com.example.platform.render.app.timeline	TIMELINE_ASSET_LIFECYCLE	render	render	com.example.platform.render.app.timeline	KEEP	2	
+TimelineAssetUriResolver.java	render-module	com.example.platform.render.app.timeline	TIMELINE_ASSET_LIFECYCLE	render	render	com.example.platform.render.app.timeline	KEEP	4	
+TimelineCanonicalRejectionException.java	render-module	com.example.platform.render.app.timeline	TIMELINE_CANONICALIZATION	timeline	timeline	com.example.platform.timeline.app	MOVE	15	
+TimelineCanonicalizer.java	render-module	com.example.platform.render.app.timeline	TIMELINE_CANONICALIZATION	timeline	timeline	com.example.platform.timeline.app	MOVE	18	
+TimelineCommentService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVIEW	render	render	com.example.platform.render.app.timeline	KEEP	5	
+TimelineContentHasher.java	render-module	com.example.platform.render.app.timeline	TIMELINE_CONTENT_HASH	timeline	timeline	com.example.platform.timeline.app	MOVE	5	
+TimelineConversionService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_CONVERSION	timeline	timeline	com.example.platform.timeline.app	MOVE	10	
+TimelineDocumentCandidateMapper.java	render-module	com.example.platform.render.app.timeline	TIMELINE_CANDIDATE_MAPPER	timeline	timeline	com.example.platform.timeline.app	MOVE	4	
+TimelineDocumentJsonSerializer.java	render-module	com.example.platform.render.app.timeline	TIMELINE_SERIALIZATION	timeline	timeline	com.example.platform.timeline.app	MOVE	5	
+TimelineEditorSyncService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_EDITOR_SYNC	timeline	timeline	com.example.platform.timeline.app	MOVE	5	
+TimelineEntityIndex.java	render-module	com.example.platform.render.app.timeline	TIMELINE_ENTITY_INDEX	timeline	timeline	com.example.platform.timeline.app	MOVE	2	
+TimelineInputProductResolver.java	render-module	com.example.platform.render.app.timeline	TIMELINE_INPUT_RESOLUTION	render	render	com.example.platform.render.app.timeline	KEEP	20	
+TimelineInputProductResolverResult.java	render-module	com.example.platform.render.app.timeline	TIMELINE_INPUT_RESOLUTION	render	render	com.example.platform.render.app.timeline	KEEP	2	
+TimelineMergeConfiguration.java	render-module	com.example.platform.render.app.timeline	TIMELINE_MERGE	timeline	timeline	com.example.platform.timeline.app	MOVE	1	
+TimelineMergeEngine.java	render-module	com.example.platform.render.app.timeline	TIMELINE_MERGE	timeline	timeline	com.example.platform.timeline.app	MOVE	12	
+TimelinePatchApplicationService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_PATCH_APP	timeline	timeline	com.example.platform.timeline.app	MOVE	4	
+TimelinePatchOpsJson.java	render-module	com.example.platform.render.app.timeline	TIMELINE_PATCH_SERIALIZATION	timeline	timeline	com.example.platform.timeline.app	MOVE	3	
+TimelineRenderJobMapper.java	render-module	com.example.platform.render.app.timeline	RENDER_JOB	render	render	com.example.platform.render.app.timeline	KEEP	18	
+TimelineReviewRepository.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVIEW	render	render	com.example.platform.render.app.timeline	KEEP	12	
+TimelineReviewService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVIEW	render	render	com.example.platform.render.app.timeline	KEEP	7	
+TimelineRevisionDiffService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVISION_DIFF	timeline	timeline	com.example.platform.timeline.app	MOVE	7	
+TimelineRevisionLabelsJson.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVISION_SERIALIZATION	timeline	timeline	com.example.platform.timeline.app	MOVE	3	revision labels canonical serialization
+TimelineRevisionRenderService.java	render-module	com.example.platform.render.app.timeline	RENDER_REVISION_CONSUMER	render	render	com.example.platform.render.app.timeline	KEEP	22	render revision execution consumer (directive §10 explicit example)
+TimelineRevisionRepository.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVISION_PERSISTENCE	timeline	timeline	com.example.platform.timeline.adapter	MOVE	19	
+TimelineRevisionSaveService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVISION_PERSISTENCE	timeline	timeline	com.example.platform.timeline.adapter	MOVE	12	
+TimelineRevisionService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_REVISION_LIFECYCLE	timeline	timeline	com.example.platform.timeline.app	MOVE	24	
+TimelineSemanticDiffService.java	render-module	com.example.platform.render.app.timeline	TIMELINE_SEMANTIC_DIFF	timeline	timeline	com.example.platform.timeline.app	MOVE	15	
+TimelineSemanticDiffV1Service.java	render-module	com.example.platform.render.app.timeline	TIMELINE_SEMANTIC_DIFF	timeline	timeline	com.example.platform.timeline.app	MOVE	3	
+TimelineSourceReferenceValidator.java	render-module	com.example.platform.render.app.timeline	TIMELINE_SOURCE_VALIDATION	timeline	timeline	com.example.platform.timeline.app	MOVE	2	
+TimelineSpecResolver.java	render-module	com.example.platform.render.app.timeline	RENDER_SPEC_RESOLVER	render	render	com.example.platform.render.app.timeline	KEEP	20	
+TimelineSnapshotService.java	render-module	com.example.platform.render.app	TIMELINE_SNAPSHOT_PERSISTENCE	timeline	timeline	com.example.platform.timeline.adapter	MOVE	42	jOOQ timeline snapshot persistence (merge pipeline; directive §9 adapter-layer jOOQ documented)

@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineMergeEngine;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
 import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;

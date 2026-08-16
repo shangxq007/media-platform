@@ -1,5 +1,6 @@
 package com.example.platform.render.app;
 
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 import static org.junit.jupiter.api.Assertions.*;

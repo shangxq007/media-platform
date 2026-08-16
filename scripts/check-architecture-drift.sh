@@ -980,7 +980,7 @@ else
 fi
 
 # RCG-13/14: merge semantic owner + engine purity (no revision writes in semantic path)
-if grep -q 'mergeSemantic' render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java; then
+if grep -q 'mergeSemantic' timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java; then
     pass "pure semantic merge path present"
 else
     fail "mergeSemantic missing"
@@ -1044,7 +1044,7 @@ else
 fi
 
 # RCG-44/45: legacy restore/merge bypass = 0 (authoritative path via RevisionCommand)
-if grep -q 'restoreRevision' render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRevisionSaveService.java 2>/dev/null && grep -q 'revision-command-restore' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java; then
+if grep -q 'restoreRevision' timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java 2>/dev/null && grep -q 'revision-command-restore' render-module/src/main/java/com/example/platform/render/app/revisioncommand/RevisionCommandApplyService.java; then
     pass "restore rehomed through RevisionCommand path (legacy endpoint retained)"
 else
     fail "restore bypass unresolved"
@@ -1089,7 +1089,7 @@ else
 fi
 
 # RCFG-13: merge engine purity
-if grep -q 'mergeSemantic' render-module/src/main/java/com/example/platform/render/app/timeline/TimelineMergeEngine.java; then
+if grep -q 'mergeSemantic' timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java; then
     pass "merge engine purity preserved"
 else
     fail "engine purity lost"

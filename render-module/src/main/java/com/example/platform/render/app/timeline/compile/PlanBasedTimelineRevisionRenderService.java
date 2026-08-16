@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline.compile;
 
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.output.RenderProductProvenance;
@@ -10,7 +10,7 @@ import com.example.platform.render.app.timeline.TimelineInputProductResolver;
 import com.example.platform.render.app.timeline.TimelineRenderJobMapper;
 import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
-import com.example.platform.render.app.timeline.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionService;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;

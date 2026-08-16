@@ -1,11 +1,12 @@
 package com.example.platform.render.app.timeline.compile;
 
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineRevisionService;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.extension.domain.ToolSandboxPolicy;
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
@@ -355,7 +356,7 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         private final InMemoryTimelineRevisionRepository repo;
 
         StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) {
-            super(null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null);
             this.repo = repo;
         }
 

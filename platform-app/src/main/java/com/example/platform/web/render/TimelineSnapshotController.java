@@ -1,6 +1,6 @@
 package com.example.platform.web.render;
 
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.timeline.TimelineEditorSyncService;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.JsonNode;

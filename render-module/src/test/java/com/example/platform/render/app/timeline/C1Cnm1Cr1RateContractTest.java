@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;

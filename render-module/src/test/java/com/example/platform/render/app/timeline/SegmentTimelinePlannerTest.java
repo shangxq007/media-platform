@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.app.TimelineCanonicalizer;import com.example.platform.timeline.app.TimelineSemanticDiffService;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.shared.test.FixturePath;

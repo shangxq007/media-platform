@@ -1,7 +1,8 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.render.app.TimelinePatchService;
-import com.example.platform.render.app.TimelineSnapshotService;
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineCanonicalizer;import com.example.platform.timeline.app.TimelineContentHasher;import com.example.platform.timeline.app.TimelineRevisionDiffService;import com.example.platform.timeline.app.TimelineRevisionService;import com.example.platform.timeline.app.TimelineSemanticDiffService;
+import com.example.platform.timeline.app.TimelinePatchService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.TimelineValidationService;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
@@ -85,15 +86,12 @@ class TimelineRevisionServiceE1bGateIntegrationTest extends PostgresTestContaine
         TimelineCanonicalizer canonicalizer = new TimelineCanonicalizer();
         TimelineSpecResolver resolver = new TimelineSpecResolver(TimelineTestSupport.internalTimelineAdapter(), parser);
         TimelineConversionService conversionService = new TimelineConversionService(resolver, writer);
-        TimelinePatchService patchService = new TimelinePatchService(
-                new TimelineValidationService(new InternalTimelineValidationService()),
-                TimelineTestSupport.internalTimelineAdapter(), canonicalizer);
+        TimelinePatchService patchService = new TimelinePatchService(canonicalizer);
         revisionService = new TimelineRevisionService(
                 new TimelineRevisionRepository(dsl), snapshotService,
                 new TimelineContentHasher(canonicalizer),
                 new TimelineRevisionDiffService(),
-                new InternalTimelineToEditorConverter(),
-                conversionService,
+                new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter()),
                 patchService,
                 new TimelineSemanticDiffService(canonicalizer));
         editorSyncService = new TimelineEditorSyncService(

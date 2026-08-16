@@ -1,5 +1,6 @@
 package com.example.platform.render.app;
 
+import com.example.platform.timeline.app.InternalTimelineJson;
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.app.timeline.AiTimelineEditContext;
 import com.example.platform.render.app.timeline.AiTimelineEditService;
@@ -265,18 +266,18 @@ public class RenderJobSubmissionService {
         String timelineJson = result.timelineJson();
         if (request.targetSegmentIds() != null && !request.targetSegmentIds().isEmpty()) {
             try {
-                var node = com.example.platform.render.app.timeline.InternalTimelineJson.parse(timelineJson);
+                var node = com.example.platform.timeline.app.InternalTimelineJson.parse(timelineJson);
                 if (node.isObject()) {
                     java.util.Map<String, String> segMeta = new java.util.LinkedHashMap<>();
                     SegmentPlanFilter.embedTargetSegmentIds(segMeta, request.targetSegmentIds());
                     var doc = (com.fasterxml.jackson.databind.node.ObjectNode) node;
                     var meta = doc.has("metadata") && doc.get("metadata").isObject()
                             ? (com.fasterxml.jackson.databind.node.ObjectNode) doc.get("metadata")
-                            : com.example.platform.render.app.timeline.InternalTimelineJson.mapper()
+                            : com.example.platform.timeline.app.InternalTimelineJson.mapper()
                                     .createObjectNode();
                     segMeta.forEach(meta::put);
                     doc.set("metadata", meta);
-                    timelineJson = com.example.platform.render.app.timeline.InternalTimelineJson.write(doc);
+                    timelineJson = com.example.platform.timeline.app.InternalTimelineJson.write(doc);
                 }
             } catch (Exception e) {
                 log.warn("Could not embed targetSegmentIds: {}", e.getMessage());
