@@ -22,18 +22,22 @@ System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="")
     Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Storage, "Storage", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Timeline, "Timeline", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Typedschema, "Typedschema", $techn="Module", $descr="", $tags="", $link="")
     Component(PlatformApplication.PlatformApplication.Audio, "Audio", $techn="Module", $descr="", $tags="", $link="")
   }
 
 }
 
 Rel(PlatformApplication.PlatformApplication.Media, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Media, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Storage, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Storage, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Audio, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Fonttext, "depends on", $techn="", $tags="", $link="")
-Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Media, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Media, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Storage, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes

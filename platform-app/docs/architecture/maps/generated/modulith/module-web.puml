@@ -99,6 +99,7 @@ Rel(PlatformApplication.PlatformApplication.Storage, PlatformApplication.Platfor
 Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Fonttext, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Storage, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Web, PlatformApplication.PlatformApplication.App, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Web, PlatformApplication.PlatformApplication.Artifact, "uses", $techn="", $tags="", $link="")
 Rel(PlatformApplication.PlatformApplication.Web, PlatformApplication.PlatformApplication.AuditCompliance, "uses", $techn="", $tags="", $link="")

@@ -2,4 +2,7 @@
 |===
 |Base package
 |`com.example.platform.timeline`
+|Bean references
+|* `c.e.p.m.app.MediaAssetRepository` (in Media)
+* `c.e.p.m.app.MediaStreamRepository` (in Media)
 |===

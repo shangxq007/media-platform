@@ -40,7 +40,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.secrets",
     "com.example.platform.quota",
     "com.example.platform.web",
-    "com.example.platform.ingest"
+    "com.example.platform.ingest",
+    "com.example.platform.timeline",
+    "com.example.platform.operation"
 })
 @EnableScheduling
 @Import({DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class, FlywayConfiguration.class})
