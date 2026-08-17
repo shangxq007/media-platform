@@ -4,7 +4,7 @@ INVARIANT | DOMAIN_AUTHORITY | CURRENT_APP_VALIDATION | CURRENT_DB_CONSTRAINT | 
 ---|---|---|---|---|---|---
 timeline_revision.project_id references project | timeline | ProjectImportService/revision service (implicit) | NONE | YES | YES | ADD_FK (C5/C7 same-context ownership)
 timeline_revision.parent_revision_id references timeline_revision(id) | timeline | RevisionCommandApplyService CAS | NONE | YES | YES | ADD_FK (C5 revision DAG parent exists)
-timeline_revision.tenant_id nullable while project.tenant_id NOT NULL | timeline | N/A (redundant) | NONE | PARTIAL | NO | DELETE_LEGACY_CONSTRAINT (drop nullable tenant_id; derive via project — C7 fail-closed)
+timeline_revision tenant isolation representation | timeline | active tenant guard (TimelineRevisionRepository:132, TimelineSnapshotService, TimelineRevisionSaveService:118) | tenant_id retained (nullable) | PARTIAL | NO ADDITIONAL DB CONSTRAINT REQUIRED IN GCR5/GCR6 | KEEP / NO_CHANGE | RESOLVED_BY_ADJUDICATION_NOT_SCHEMA_CHANGE (DELETE_LEGACY_CONSTRAINT considered during initial review; superseded — ACTIVE_TENANT_GUARD_COLUMN)
 timeline_snapshot.project_id references project | timeline | N/A | NONE | YES | YES | ADD_FK (C5)
 timeline_revision.snapshot_id references timeline_snapshot(id) | timeline | recordRevision | NONE | YES | YES | ADD_FK (C5 revision→snapshot exists)
 artifact_pin.revision_id references timeline_revision(id) | artifact (pin projection) | ArtifactPinService registration | NONE (unique index only) | YES | YES | ADD_FK (C5 pin revision exists)

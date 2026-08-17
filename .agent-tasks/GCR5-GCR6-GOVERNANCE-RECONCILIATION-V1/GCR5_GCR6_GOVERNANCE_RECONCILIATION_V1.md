@@ -1,0 +1,62 @@
+# GCR5_GCR6_GOVERNANCE_RECONCILIATION_V1
+
+## REVIEW RESULT
+
+CHATGPT_GCR5_GCR6_FINAL_REVIEW = FAIL_BOUNDED_GOVERNANCE_CORRECTION_REQUIRED
+
+## BLOCKERS
+
+BLOCKER_1 = final database manifest retained FINAL_VERIFIED=PENDING
+BLOCKER_2 = conflict/constraint matrices retained stale DELETE decision for
+timeline_revision.tenant_id while frozen C7 / actual V1 / publication say KEEP
+
+## ENGINEERING STATUS (accepted, preserved, NOT rerun)
+
+CORE_IMPLEMENTATION = PASS
+SCHEMA = PASS
+JOOQ = PASS
+TESTS = PASS
+FINAL_ENGINEERING_FCV = PASS (27/27, GCR5_GCR6_DATABASE_CANONICALIZATION_FINAL_FCV)
+WHOLE_REPOSITORY = 909 suites / 7167 tests / 0 failures / 0 errors / 43 skipped
+
+## CORRECTION SCOPE
+
+EVIDENCE_RECONCILIATION_ONLY = YES
+CODE_SCHEMA_CHANGE_COUNT = 0
+PRODUCTION_CODE_CHANGE_COUNT = 0
+TEST_BEHAVIOR_CHANGE_COUNT = 0
+CONTRACT_CHANGE_COUNT = 0
+V1_CHANGED = NO
+JOOQ_CHANGED = NO
+BUILD_LOGIC_CHANGED = NO
+
+## FINAL DECISION
+
+timeline_revision.tenant_id = KEEP
+reason = ACTIVE TENANT GUARD
+(actively consumed by TimelineRevisionRepository tenant guard, TimelineSnapshotService,
+TimelineRevisionSaveService; removing it would break fail-closed tenant isolation)
+resolution = RESOLVED_BY_ADJUDICATION_NOT_SCHEMA_CHANGE
+
+## MANIFEST
+
+FINAL_VERIFIED_PENDING_BEFORE = 10
+FINAL_VERIFIED_PENDING_AFTER = 0
+All rows mapped to factual engineering evidence (FK presence in V1, guard PASS,
+legacy deletion, jOOQ parity, single V1).
+
+## FILES CORRECTED (governance/evidence only)
+
+- .agent-tasks/GCR5-GCR6-DATABASE-CANONICALIZATION/GCR5_GCR6_CONFLICT_MATRIX.md
+  (tenant_id row: DELETE → KEEP with full decision history)
+- .agent-tasks/GCR5-GCR6-DATABASE-CANONICALIZATION/GCR5_GCR6_CONSTRAINT_GAP_MATRIX.tsv
+  (tenant row: DELETE_LEGACY_CONSTRAINT → KEEP / NO_CHANGE,
+  RESOLVED_BY_ADJUDICATION_NOT_SCHEMA_CHANGE)
+- .agent-tasks/GCR5-GCR6-DATABASE-CANONICALIZATION/GCR5_GCR6_DATABASE_MANIFEST.tsv
+  (all PENDING → VERIFIED against evidence)
+- .agent-tasks/GCR5-GCR6-GOVERNANCE-RECONCILIATION-V1/GCR5_GCR6_GOVERNANCE_RECONCILIATION_V1.md
+  (this record)
+
+## FINAL EVIDENCE STATUS
+
+CONSISTENT = YES
