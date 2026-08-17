@@ -18,6 +18,9 @@ import com.example.platform.timeline.diff.application.TimelinePatchApplier;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineClipSnapshot;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineSnapshot;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineTrackSnapshot;
+import com.example.platform.timeline.diff.calculation.CanonicalTimelineTransitionSnapshot;
+import com.example.platform.timeline.diff.calculation.CanonicalTimelineAutomationSnapshot;
+import com.example.platform.timeline.diff.calculation.CanonicalTimelineAutomationKeyframe;
 import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanOperation;
 import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanOperationStatus;
@@ -440,6 +443,16 @@ public class TimelineMergeEngine {
             // C1-CNM1: merged tracks carry each clip's exact rational rate and
             // opaque effect payload; no single target-fps projection is applied.
             mergedComposition.set("tracks", tracksToJson(mergedSnapshot.tracks()));
+            // EFFECT_TRANSITION_CANONICALIZATION_V1 (second correction): merged
+            // transition/automation state is the semantic merge RESULT (not
+            // target-side preservation) — write the patched snapshot state back
+            // into the merged payload composition.
+            if (!mergedSnapshot.transitions().isEmpty()) {
+                mergedComposition.set("transitions", transitionsToJson(mergedSnapshot.transitions()));
+            }
+            if (!mergedSnapshot.automations().isEmpty()) {
+                mergedComposition.set("automations", automationsToJson(mergedSnapshot.automations()));
+            }
             // revision counter is a document-level field; the persistence layer
             // re-assigns it on insert, so leave it untouched here.
             return InternalTimelineJson.write(mergedRoot);
@@ -466,6 +479,61 @@ public class TimelineMergeEngine {
             }
             trackNode.set("clips", clips);
             out.add(trackNode);
+        }
+        return out;
+    }
+
+    /** EFFECT_TRANSITION_CANONICALIZATION_V1: merged transitions → composition JSON. */
+    private ArrayNode transitionsToJson(List<CanonicalTimelineTransitionSnapshot> transitions) {
+        ObjectMapper mapper = InternalTimelineJson.mapper();
+        ArrayNode out = mapper.createArrayNode();
+        List<CanonicalTimelineTransitionSnapshot> ordered = new ArrayList<>(transitions);
+        ordered.sort(java.util.Comparator.comparing(CanonicalTimelineTransitionSnapshot::transitionId));
+        for (CanonicalTimelineTransitionSnapshot t : ordered) {
+            ObjectNode node = mapper.createObjectNode();
+            node.put("id", t.transitionId());
+            node.put("transitionDefinitionId", t.transitionDefinitionId());
+            node.put("transitionDefinitionVersion", t.transitionDefinitionVersion());
+            node.put("outgoingClipId", t.outgoingClipId());
+            node.put("incomingClipId", t.incomingClipId());
+            node.put("mediaType", t.mediaType());
+            node.put("durationTicks", t.duration().ticks());
+            node.put("durationTimeScale", t.duration().timeScale());
+            node.put("alignment", t.alignment());
+            node.put("temporalPolicy", t.temporalPolicy());
+            if (t.parameters() != null && !t.parameters().isEmpty()) {
+                node.set("parameters", mapper.valueToTree(new java.util.TreeMap<>(t.parameters())));
+            }
+            out.add(node);
+        }
+        return out;
+    }
+
+    /** EFFECT_TRANSITION_CANONICALIZATION_V1: merged automations → composition JSON. */
+    private ArrayNode automationsToJson(List<CanonicalTimelineAutomationSnapshot> automations) {
+        ObjectMapper mapper = InternalTimelineJson.mapper();
+        ArrayNode out = mapper.createArrayNode();
+        List<CanonicalTimelineAutomationSnapshot> ordered = new ArrayList<>(automations);
+        ordered.sort(java.util.Comparator.comparing(CanonicalTimelineAutomationSnapshot::automationId));
+        for (CanonicalTimelineAutomationSnapshot c : ordered) {
+            ObjectNode node = mapper.createObjectNode();
+            node.put("automationId", c.automationId());
+            node.put("targetEntityId", c.targetEntityId());
+            node.put("parameterPath", c.parameterPath());
+            node.put("valueType", c.valueType());
+            node.put("extrapolation", c.extrapolation());
+            ArrayNode kfs = mapper.createArrayNode();
+            for (CanonicalTimelineAutomationKeyframe k : c.keyframes()) {
+                ObjectNode kf = mapper.createObjectNode();
+                kf.put("keyframeId", k.keyframeId());
+                kf.put("timeTicks", k.time().ticks());
+                kf.put("timeTimeScale", k.time().timeScale());
+                kf.put("value", k.value());
+                kf.put("interpolation", k.interpolation());
+                kfs.add(kf);
+            }
+            node.set("keyframes", kfs);
+            out.add(node);
         }
         return out;
     }

@@ -34,6 +34,11 @@ public class CanonicalTimelineDiffCalculator {
         // Tracks
         diffTracks(before, after, operations, opSeq);
 
+        // EFFECT_TRANSITION_CANONICALIZATION_V1 (second correction): first-class
+        // transitions and automations join the production merge diff path.
+        diffTransitions(before, after, operations, opSeq);
+        diffAutomations(before, after, operations, opSeq);
+
         // Captions
         diffCaptions(before, after, operations, opSeq);
 
@@ -177,10 +182,158 @@ public class CanonicalTimelineDiffCalculator {
                             TimelineChangeScope.ASSET_BINDING, clipPath + ".assetBindingId",
                             bc.assetBindingId(), ac.assetBindingId()));
                 }
-                // Effects are OPAQUE (CNM1): never diffed, never semantically
-                // merged — preserved target/source-side verbatim.
+                // EFFECT_TRANSITION_CANONICALIZATION_V1 (second correction):
+                // effects are typed authored semantics — diffed by local
+                // semantic equality (record equality covers id/effectKey/
+                // parameters). Coarse EFFECT_CHANGED op is deterministic,
+                // patchable, merge-visible and conflict-visible (non-lossy).
+                // After-state rides in safeMetadata for patch materialization.
+                if (!bc.effects().equals(ac.effects())) {
+                    Map<String, String> meta = new LinkedHashMap<>();
+                    StringBuilder sb = new StringBuilder();
+                    for (var fx : ac.effects()) {
+                        if (sb.length() > 0) sb.append('\u001f');
+                        sb.append(fx.id() == null ? "" : fx.id()).append('\u001e')
+                                .append(fx.effectKey()).append('\u001e');
+                        if (fx.parameters() != null) {
+                            sb.append(fx.parameters().entrySet().stream()
+                                    .map(e -> e.getKey() + "=" + e.getValue())
+                                    .reduce((a, b) -> a + "," + b).orElse(""));
+                        }
+                    }
+                    meta.put("effects", sb.toString());
+                    ops.add(new TimelineChangeOperation(
+                            new TimelineChangeOperationId("op-" + (++seq[0])),
+                            TimelineChangeType.EFFECT_CHANGED,
+                            TimelineChangeScope.CLIP,
+                            new TimelineChangePath(clipPath + ".effects"),
+                            TimelineChangePayload.ofString(bc.effects().toString()),
+                            TimelineChangePayload.ofString(ac.effects().toString()),
+                            meta));
+                }
             }
         }
+    }
+
+    // --- Transition / Automation diff (EFFECT_TRANSITION_CANONICALIZATION_V1) ---
+
+    private void diffTransitions(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
+                                 List<TimelineChangeOperation> ops, int[] seq) {
+        Map<String, CanonicalTimelineTransitionSnapshot> beforeTx = new java.util.LinkedHashMap<>();
+        for (var t : before.transitions()) beforeTx.put(t.transitionId(), t);
+        Map<String, CanonicalTimelineTransitionSnapshot> afterTx = new java.util.LinkedHashMap<>();
+        for (var t : after.transitions()) afterTx.put(t.transitionId(), t);
+
+        for (String id : beforeTx.keySet()) {
+            CanonicalTimelineTransitionSnapshot bt = beforeTx.get(id);
+            if (!afterTx.containsKey(id)) {
+                ops.add(change(seq, TimelineChangeType.TRANSITION_CHANGED,
+                        TimelineChangeScope.TRANSITION, "timeline.transitions." + id,
+                        bt.duration().toString(), null));
+            } else {
+                CanonicalTimelineTransitionSnapshot at = afterTx.get(id);
+                if (!bt.localSemanticsEquals(at)) {
+                    ops.add(transitionOp(seq, id, at));
+                }
+            }
+        }
+        for (String id : afterTx.keySet()) {
+            if (!beforeTx.containsKey(id)) {
+                CanonicalTimelineTransitionSnapshot at = afterTx.get(id);
+                ops.add(transitionOp(seq, id, at));
+            }
+        }
+    }
+
+    /** TRANSITION_CHANGED op with after-state reconstruction data in safeMetadata. */
+    private TimelineChangeOperation transitionOp(int[] seq, String id,
+            CanonicalTimelineTransitionSnapshot t) {
+        Map<String, String> meta = new LinkedHashMap<>();
+        meta.put("transitionDefinitionId", t.transitionDefinitionId());
+        meta.put("transitionDefinitionVersion", t.transitionDefinitionVersion());
+        meta.put("outgoingClipId", t.outgoingClipId());
+        meta.put("incomingClipId", t.incomingClipId());
+        meta.put("mediaType", t.mediaType());
+        meta.put("durationTicks", String.valueOf(t.duration().ticks()));
+        meta.put("durationTimeScale", String.valueOf(t.duration().timeScale()));
+        meta.put("alignment", t.alignment());
+        meta.put("temporalPolicy", t.temporalPolicy());
+        if (t.parameters() != null && !t.parameters().isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            t.parameters().forEach((k, v) -> {
+                if (sb.length() > 0) sb.append(',');
+                sb.append(k).append('=').append(v);
+            });
+            meta.put("parameters", sb.toString());
+        }
+        return new TimelineChangeOperation(
+                new TimelineChangeOperationId("op-" + (++seq[0])),
+                TimelineChangeType.TRANSITION_CHANGED, TimelineChangeScope.TRANSITION,
+                new TimelineChangePath("timeline.transitions." + id),
+                TimelineChangePayload.ofString(meta.getOrDefault("durationTicks", "")),
+                // afterValue = semantic signature (duration+alignment) so the
+                // merge planner distinguishes divergent two-sided edits.
+                TimelineChangePayload.ofString(meta.getOrDefault("durationTicks", "")
+                        + ":" + meta.getOrDefault("durationTimeScale", "")
+                        + ":" + meta.getOrDefault("alignment", "")),
+                meta);
+    }
+
+    private void diffAutomations(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
+                                 List<TimelineChangeOperation> ops, int[] seq) {
+        Map<String, CanonicalTimelineAutomationSnapshot> beforeAuto = new java.util.LinkedHashMap<>();
+        for (var c : before.automations()) beforeAuto.put(c.automationId(), c);
+        Map<String, CanonicalTimelineAutomationSnapshot> afterAuto = new java.util.LinkedHashMap<>();
+        for (var c : after.automations()) afterAuto.put(c.automationId(), c);
+
+        for (String id : beforeAuto.keySet()) {
+            CanonicalTimelineAutomationSnapshot bc = beforeAuto.get(id);
+            if (!afterAuto.containsKey(id)) {
+                ops.add(change(seq, TimelineChangeType.AUTOMATION_CHANGED,
+                        TimelineChangeScope.AUTOMATION, "timeline.automations." + id,
+                        String.valueOf(bc.keyframes()), null));
+            } else {
+                CanonicalTimelineAutomationSnapshot ac = afterAuto.get(id);
+                if (!bc.localSemanticsEquals(ac)) {
+                    ops.add(automationOp(seq, id, ac));
+                }
+            }
+        }
+        for (String id : afterAuto.keySet()) {
+            if (!beforeAuto.containsKey(id)) {
+                CanonicalTimelineAutomationSnapshot ac = afterAuto.get(id);
+                ops.add(automationOp(seq, id, ac));
+            }
+        }
+    }
+
+    /** AUTOMATION_CHANGED op with after-state reconstruction data in safeMetadata. */
+    private TimelineChangeOperation automationOp(int[] seq, String id,
+            CanonicalTimelineAutomationSnapshot c) {
+        Map<String, String> meta = new LinkedHashMap<>();
+        meta.put("targetEntityId", c.targetEntityId());
+        meta.put("parameterPath", c.parameterPath());
+        meta.put("valueType", c.valueType());
+        meta.put("extrapolation", c.extrapolation());
+        StringBuilder kf = new StringBuilder();
+        for (var k : c.keyframes()) {
+            if (kf.length() > 0) kf.append('\u001f');
+            kf.append(k.keyframeId()).append('\u001e')
+                    .append(k.time().ticks()).append('\u001e')
+                    .append(k.time().timeScale()).append('\u001e')
+                    .append(k.value()).append('\u001e')
+                    .append(k.interpolation());
+        }
+        meta.put("keyframes", kf.toString());
+        return new TimelineChangeOperation(
+                new TimelineChangeOperationId("op-" + (++seq[0])),
+                TimelineChangeType.AUTOMATION_CHANGED, TimelineChangeScope.AUTOMATION,
+                new TimelineChangePath("timeline.automations." + id),
+                TimelineChangePayload.ofString(meta.getOrDefault("keyframes", "")),
+                // afterValue = semantic signature (keyframes) so the merge
+                // planner distinguishes divergent two-sided edits.
+                TimelineChangePayload.ofString(meta.getOrDefault("keyframes", "")),
+                meta);
     }
 
     // --- Caption diff ---

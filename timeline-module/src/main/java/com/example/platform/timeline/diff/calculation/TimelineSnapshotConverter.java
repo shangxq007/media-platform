@@ -86,7 +86,41 @@ public final class TimelineSnapshotConverter {
                 List.of(),
                 null,
                 Map.of("schemaVersion", "internal-1.0"),
-                List.of());
+                List.of(),
+                toTransitionSnapshots(candidate.transitions()),
+                toAutomationSnapshots(candidate.automations()));
+    }
+
+    /** EFFECT_TRANSITION_CANONICALIZATION_V1: first-class transitions cross the
+     *  candidate → snapshot bridge so the production merge path sees them. */
+    static List<CanonicalTimelineTransitionSnapshot> toTransitionSnapshots(
+            List<com.example.platform.timeline.canonicalmodel.CanonicalTransition> transitions) {
+        List<CanonicalTimelineTransitionSnapshot> out = new ArrayList<>();
+        for (var tr : transitions) {
+            out.add(new CanonicalTimelineTransitionSnapshot(
+                    tr.transitionId(), tr.transitionDefinitionId(), tr.transitionDefinitionVersion(),
+                    tr.outgoingClipId(), tr.incomingClipId(), tr.mediaType(), tr.duration(),
+                    tr.alignment(), tr.temporalPolicy(), tr.parameters()));
+        }
+        return out;
+    }
+
+    /** EFFECT_TRANSITION_CANONICALIZATION_V1: automation curves cross the
+     *  candidate → snapshot bridge. */
+    static List<CanonicalTimelineAutomationSnapshot> toAutomationSnapshots(
+            List<com.example.platform.timeline.canonicalmodel.CanonicalAutomationCurve> curves) {
+        List<CanonicalTimelineAutomationSnapshot> out = new ArrayList<>();
+        for (var curve : curves) {
+            List<CanonicalTimelineAutomationKeyframe> kfs = new ArrayList<>();
+            for (var kf : curve.keyframes()) {
+                kfs.add(new CanonicalTimelineAutomationKeyframe(
+                        kf.keyframeId(), kf.time(), kf.value(), kf.interpolation()));
+            }
+            out.add(new CanonicalTimelineAutomationSnapshot(
+                    curve.automationId(), curve.targetEntityId(), curve.parameterPath(),
+                    curve.valueType(), curve.extrapolation(), kfs));
+        }
+        return out;
     }
 
     public static CanonicalTimelineSnapshot toSnapshot(TimelineDocument document, String revisionId) {

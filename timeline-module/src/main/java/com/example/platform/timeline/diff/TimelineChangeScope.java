@@ -19,5 +19,7 @@ public enum TimelineChangeScope {
     OUTPUT_PROFILE,
     METADATA,
     ARTIFACT_DAG,
+    TRANSITION,
+    AUTOMATION,
     PRODUCT_LINEAGE
 }

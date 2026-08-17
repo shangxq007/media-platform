@@ -9,10 +9,23 @@ public record TimelineCandidate(
         String timelineId,
         String projectId,
         TimelineCanonicalProfile profile,
-        List<Track> tracks) {
+        List<Track> tracks,
+        List<CanonicalTransition> transitions,
+        List<CanonicalAutomationCurve> automations) {
 
     public TimelineCandidate {
         tracks = tracks == null ? List.of() : List.copyOf(tracks);
+        transitions = transitions == null ? List.of() : List.copyOf(transitions);
+        automations = automations == null ? List.of() : List.copyOf(automations);
+    }
+
+    /** Convenience constructor without transitions/automations (structural only). */
+    public TimelineCandidate(
+            String timelineId,
+            String projectId,
+            TimelineCanonicalProfile profile,
+            List<Track> tracks) {
+        this(timelineId, projectId, profile, tracks, List.of(), List.of());
     }
 
     public static TimelineCandidate of(String timelineId, String projectId, TimelineCanonicalProfile profile,
@@ -30,7 +43,8 @@ public record TimelineCandidate(
                                         .map(clip -> new Clip(clip.clipId(), clip.sourceRef(), clip.timelineStart(),
                                                 clip.sourceStart(), clip.duration(), null))
                                         .toList()))
-                        .toList());
+                        .toList(),
+                model.transitions(), model.automations());
     }
 
     public static Track track(String trackId, TrackType type, int zOrder, Double audioGain, List<Clip> clips) {

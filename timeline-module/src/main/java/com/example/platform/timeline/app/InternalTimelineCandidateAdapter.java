@@ -6,6 +6,9 @@ import com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile;
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.timeline.canonicalmodel.TimelineModelPath;
 import com.example.platform.timeline.canonicalmodel.TimelineSourceRef;
+import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
+import com.example.platform.timeline.canonicalmodel.CanonicalAutomationCurve;
+import com.example.platform.timeline.canonicalmodel.CanonicalAutomationKeyframe;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -72,8 +75,87 @@ public final class InternalTimelineCandidateAdapter {
                 tracks.add(mapTrack(trackNode));
             }
         }
+        List<CanonicalTransition> transitions = new ArrayList<>();
+        JsonNode transitionNodes = composition.path("transitions");
+        if (transitionNodes.isArray()) {
+            for (JsonNode trNode : transitionNodes) {
+                CanonicalTransition tr = mapTransition(trNode);
+                if (tr != null) transitions.add(tr);
+            }
+        }
+        List<CanonicalAutomationCurve> automations = new ArrayList<>();
+        JsonNode automationNodes = composition.path("automations");
+        if (automationNodes.isArray()) {
+            for (JsonNode curveNode : automationNodes) {
+                CanonicalAutomationCurve curve = mapAutomation(curveNode);
+                if (curve != null) automations.add(curve);
+            }
+        }
         return new TimelineCandidate(timelineId, projectId,
-                TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks);
+                TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks,
+                transitions, automations);
+    }
+
+    /**
+     * EFFECT_TRANSITION_CANONICALIZATION_V1 (C9): first-class transition — typed
+     * participants, exact MediaTime duration, alignment, temporal policy.
+     */
+    private static CanonicalTransition mapTransition(JsonNode trNode) {
+        String id = trNode.path("id").asText("");
+        if (id.isBlank()) return null;
+        String defId = trNode.path("transitionDefinitionId").asText("");
+        String outgoing = trNode.path("outgoingClipId").asText("");
+        String incoming = trNode.path("incomingClipId").asText("");
+        if (outgoing.isBlank() || incoming.isBlank()) return null;
+        MediaTime duration = mediaTimeFromTicks(
+                trNode.path("durationTicks").asLong(0),
+                trNode.path("durationTimeScale").asLong(1));
+        if (duration.isLessThanOrEqualTo(MediaTime.ZERO)) return null;
+        java.util.Map<String, String> params = new java.util.LinkedHashMap<>();
+        JsonNode paramsNode = trNode.path("parameters");
+        if (paramsNode.isObject()) {
+            paramsNode.fields().forEachRemaining(e -> params.put(e.getKey(),
+                    e.getValue().asText("")));
+        }
+        return new CanonicalTransition(id, defId,
+                trNode.path("transitionDefinitionVersion").asText("1.0"),
+                outgoing, incoming,
+                trNode.path("mediaType").asText("VIDEO"),
+                duration,
+                trNode.path("alignment").asText("CENTER_ON_CUT"),
+                trNode.path("temporalPolicy").asText("USE_SOURCE_HANDLES"),
+                params);
+    }
+
+    /**
+     * EFFECT_TRANSITION_CANONICALIZATION_V1 (C7/C8): automation — exact MediaTime
+     * keyframes, deterministic ordering, HOLD/LINEAR interpolation.
+     */
+    private static CanonicalAutomationCurve mapAutomation(JsonNode curveNode) {
+        String id = curveNode.path("automationId").asText("");
+        if (id.isBlank()) return null;
+        List<CanonicalAutomationKeyframe> keyframes = new ArrayList<>();
+        JsonNode kfNodes = curveNode.path("keyframes");
+        if (kfNodes.isArray()) {
+            for (JsonNode kf : kfNodes) {
+                keyframes.add(new CanonicalAutomationKeyframe(
+                        kf.path("keyframeId").asText("kf_" + keyframes.size()),
+                        mediaTimeFromTicks(kf.path("timeTicks").asLong(0),
+                                kf.path("timeTimeScale").asLong(1)),
+                        kf.path("value").asDouble(0.0),
+                        kf.path("interpolation").asText("LINEAR")));
+            }
+        }
+        return new CanonicalAutomationCurve(id,
+                curveNode.path("targetEntityId").asText(""),
+                curveNode.path("parameterPath").asText(""),
+                curveNode.path("valueType").asText("float"),
+                curveNode.path("extrapolation").asText("HOLD"),
+                keyframes);
+    }
+
+    private static MediaTime mediaTimeFromTicks(long ticks, long timeScale) {
+        return MediaTime.ofTicks(ticks, timeScale);
     }
 
     private static TimelineCandidate.Track mapTrack(JsonNode trackNode) {

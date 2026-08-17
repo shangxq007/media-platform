@@ -43,7 +43,8 @@ public class TimelinePatchApplier {
                 current.id(), base.revisionId() + "+patched", current.duration(),
                 current.tracks(), current.captions(), current.watermarks(),
                 current.templateApplications(), current.workflowSteps(),
-                current.outputProfile(), current.safeMetadata(), current.textElements());
+                current.outputProfile(), current.safeMetadata(), current.textElements(),
+                current.transitions(), current.automations());
         return TimelinePatchApplicationResult.applied(patched);
     }
 
@@ -68,6 +69,9 @@ public class TimelinePatchApplier {
             case WORKFLOW_APPLY_TEMPLATE_STEP_CHANGED -> applyWorkflowStep(s, op);
             case OUTPUT_PROFILE_CHANGED -> applyOutputProfile(s, op);
             case METADATA_CHANGED -> applyMetadata(s, op);
+            case EFFECT_CHANGED -> applyEffectChanged(s, op);
+            case TRANSITION_CHANGED -> applyTransitionChanged(s, op);
+            case AUTOMATION_CHANGED -> applyAutomationChanged(s, op);
             default -> TimelinePatchApplicationResult.unsupported("Unsupported: " + op.type());
         };
     }
@@ -355,7 +359,120 @@ public class TimelinePatchApplier {
         }
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), meta, s.textElements()));
+                s.workflowSteps(), s.outputProfile(), meta, s.textElements(),
+                s.transitions(), s.automations()));
+    }
+
+    // --- EFFECT / TRANSITION / AUTOMATION apply
+    //     (EFFECT_TRANSITION_CANONICALIZATION_V1 second correction: production
+    //     patch path materializes typed semantic changes from op safeMetadata.) ---
+
+    private TimelinePatchApplicationResult applyEffectChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        String trackId = extractTrackId(op.path().value());
+        String clipId = extractId(op.path().value(), "timeline.tracks." + trackId + ".clips.");
+        Optional<CanonicalTimelineTrackSnapshot> trackOpt = findTrack(s, trackId);
+        if (trackOpt.isEmpty()) return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND,
+                op.path().value(), "Track not found");
+        CanonicalTimelineTrackSnapshot track = trackOpt.get();
+        List<CanonicalTimelineClipSnapshot> clips = new ArrayList<>(track.clips());
+        for (int i = 0; i < clips.size(); i++) {
+            CanonicalTimelineClipSnapshot c = clips.get(i);
+            if (c.clipId().equals(clipId)) {
+                Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+                clips.set(i, new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
+                        c.start(), c.duration(), c.sourceStart(), c.sourceDuration(), c.rate(),
+                        parseEffects(meta.get("effects")), c.safeMetadata()));
+                return ok(withUpdatedTrack(s, trackId, newTrackWithClips(track, clips)));
+            }
+        }
+        return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND, op.path().value(), "Clip not found");
+    }
+
+    private TimelinePatchApplicationResult applyTransitionChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        String transitionId = op.path().value().substring("timeline.transitions.".length());
+        Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        MediaTime duration = MediaTime.ofTicks(parseLong(meta.get("durationTicks"), 0),
+                parseLong(meta.get("durationTimeScale"), 1));
+        Map<String, String> params = new LinkedHashMap<>();
+        String paramsEnc = meta.get("parameters");
+        if (paramsEnc != null && !paramsEnc.isBlank()) {
+            for (String entry : paramsEnc.split(",")) {
+                if (entry.contains("=")) {
+                    String[] parts = entry.split("=", 2);
+                    params.put(parts[0], parts[1]);
+                }
+            }
+        }
+        CanonicalTimelineTransitionSnapshot updated = new CanonicalTimelineTransitionSnapshot(
+                transitionId,
+                meta.getOrDefault("transitionDefinitionId", ""),
+                meta.getOrDefault("transitionDefinitionVersion", "1.0"),
+                meta.getOrDefault("outgoingClipId", ""),
+                meta.getOrDefault("incomingClipId", ""),
+                meta.getOrDefault("mediaType", "VIDEO"),
+                duration,
+                meta.getOrDefault("alignment", "CENTER_ON_CUT"),
+                meta.getOrDefault("temporalPolicy", "USE_SOURCE_HANDLES"),
+                params);
+        List<CanonicalTimelineTransitionSnapshot> transitions = new ArrayList<>(s.transitions());
+        boolean replaced = false;
+        for (int i = 0; i < transitions.size(); i++) {
+            if (transitions.get(i).transitionId().equals(transitionId)) {
+                transitions.set(i, updated);
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) {
+            // Transition was added on this side.
+            transitions.add(updated);
+        }
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
+                s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(),
+                List.copyOf(transitions), s.automations()));
+    }
+
+    private TimelinePatchApplicationResult applyAutomationChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        String automationId = op.path().value().substring("timeline.automations.".length());
+        Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        List<CanonicalTimelineAutomationKeyframe> keyframes = new ArrayList<>();
+        String kfEnc = meta.get("keyframes");
+        if (kfEnc != null && !kfEnc.isBlank()) {
+            for (String kf : kfEnc.split("\u001f")) {
+                String[] parts = kf.split("\u001e");
+                if (parts.length >= 5) {
+                    keyframes.add(new CanonicalTimelineAutomationKeyframe(
+                            parts[0],
+                            MediaTime.ofTicks(parseLong(parts[1], 0), parseLong(parts[2], 1)),
+                            Double.parseDouble(parts[3]),
+                            parts[4]));
+                }
+            }
+        }
+        CanonicalTimelineAutomationSnapshot updated = new CanonicalTimelineAutomationSnapshot(
+                automationId,
+                meta.getOrDefault("targetEntityId", ""),
+                meta.getOrDefault("parameterPath", ""),
+                meta.getOrDefault("valueType", "float"),
+                meta.getOrDefault("extrapolation", "HOLD"),
+                keyframes);
+        List<CanonicalTimelineAutomationSnapshot> automations = new ArrayList<>(s.automations());
+        boolean replaced = false;
+        for (int i = 0; i < automations.size(); i++) {
+            if (automations.get(i).automationId().equals(automationId)) {
+                automations.set(i, updated);
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) {
+            automations.add(updated);
+        }
+        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
+                s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(),
+                s.transitions(), List.copyOf(automations)));
     }
 
     // --- Helpers ---

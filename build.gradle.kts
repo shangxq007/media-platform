@@ -1256,7 +1256,35 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(!transition.contains("clip.effects") && !transition.contains("effects.add")) {
             "FAIL: transition modeled as clip effect"
         }
+        // 9. SECOND CORRECTION: production merge diff path must emit semantic
+        //    ops for effect/transition/automation (CanonicalTimelineDiffCalculator).
+        val diffCalc = file("timeline-module/src/main/java/com/example/platform/timeline/diff/calculation/CanonicalTimelineDiffCalculator.java").readText()
+        require(diffCalc.contains("TimelineChangeType.EFFECT_CHANGED")
+                && diffCalc.contains("TimelineChangeType.TRANSITION_CHANGED")
+                && diffCalc.contains("TimelineChangeType.AUTOMATION_CHANGED")) {
+            "FAIL: production merge diff must emit EFFECT/TRANSITION/AUTOMATION semantic ops"
+        }
+        // 10. Production patch path materializes the three semantic ops.
+        val patchApplier = file("timeline-module/src/main/java/com/example/platform/timeline/diff/application/TimelinePatchApplier.java").readText()
+        require(patchApplier.contains("applyEffectChanged") && patchApplier.contains("applyTransitionChanged")
+                && patchApplier.contains("applyAutomationChanged")) {
+            "FAIL: production patch path must apply EFFECT/TRANSITION/AUTOMATION ops"
+        }
+        // 11. Merge engine writes merged transitions/automations back to the
+        //     merged payload (no silent target-side preservation).
+        val mergeEngine = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java").readText()
+        require(mergeEngine.contains("transitionsToJson") && mergeEngine.contains("automationsToJson")) {
+            "FAIL: merge engine must materialize merged transition/automation state"
+        }
+        // 12. Field-level local semantics have one authoritative location:
+        //     canonical snapshot records own local equality (no central switch
+        //     duplication across serializer/diff/patch/merge).
+        val trSnapshot = file("timeline-module/src/main/java/com/example/platform/timeline/diff/calculation/CanonicalTimelineTransitionSnapshot.java").readText()
+        val autoSnapshot = file("timeline-module/src/main/java/com/example/platform/timeline/diff/calculation/CanonicalTimelineAutomationSnapshot.java").readText()
+        require(trSnapshot.contains("localSemanticsEquals") && autoSnapshot.contains("localSemanticsEquals")) {
+            "FAIL: local semantic equality must be owned by the canonical component record"
+        }
 
-        println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3)")
+        println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }
 }

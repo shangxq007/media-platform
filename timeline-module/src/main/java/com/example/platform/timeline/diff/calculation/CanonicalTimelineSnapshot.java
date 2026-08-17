@@ -24,7 +24,9 @@ public record CanonicalTimelineSnapshot(
         List<CanonicalTimelineWorkflowStepSnapshot> workflowSteps,
         CanonicalTimelineOutputProfileSnapshot outputProfile,
         Map<String, String> safeMetadata,
-        List<com.example.platform.timeline.canonical.TextElement> textElements) {
+        List<com.example.platform.timeline.canonical.TextElement> textElements,
+        List<CanonicalTimelineTransitionSnapshot> transitions,
+        List<CanonicalTimelineAutomationSnapshot> automations) {
 
     public CanonicalTimelineSnapshot {
         if (id == null) throw new IllegalArgumentException("id must not be null");
@@ -32,5 +34,24 @@ public record CanonicalTimelineSnapshot(
             throw new IllegalArgumentException("revisionId must not be blank");
         Objects.requireNonNull(duration, "duration");
         // MediaTime is non-negative by construction.
+        transitions = transitions == null ? List.of() : List.copyOf(transitions);
+        automations = automations == null ? List.of() : List.copyOf(automations);
+    }
+
+    /** Convenience constructor without transitions/automations (structural snapshots). */
+    public CanonicalTimelineSnapshot(
+            CanonicalTimelineSnapshotId id,
+            String revisionId,
+            MediaTime duration,
+            List<CanonicalTimelineTrackSnapshot> tracks,
+            List<CanonicalTimelineCaptionSnapshot> captions,
+            List<CanonicalTimelineWatermarkSnapshot> watermarks,
+            List<CanonicalTimelineTemplateApplicationSnapshot> templateApplications,
+            List<CanonicalTimelineWorkflowStepSnapshot> workflowSteps,
+            CanonicalTimelineOutputProfileSnapshot outputProfile,
+            Map<String, String> safeMetadata,
+            List<com.example.platform.timeline.canonical.TextElement> textElements) {
+        this(id, revisionId, duration, tracks, captions, watermarks, templateApplications,
+                workflowSteps, outputProfile, safeMetadata, textElements, List.of(), List.of());
     }
 }
