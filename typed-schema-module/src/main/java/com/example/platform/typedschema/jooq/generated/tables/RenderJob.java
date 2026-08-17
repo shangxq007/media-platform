@@ -10,6 +10,7 @@ import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph.ArtifactGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode.ArtifactNodePath;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderBillingRecord.RenderBillingRecordPath;
 import com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalGraph.SystemCanonicalGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph.UnifiedRequestGraphPath;
@@ -73,12 +74,12 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
     /**
      * The column <code>public.render_job.project_id</code>.
      */
-    public final TableField<RenderJobRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+    public final TableField<RenderJobRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.render_job.timeline_snapshot_id</code>.
      */
-    public final TableField<RenderJobRecord, String> TIMELINE_SNAPSHOT_ID = createField(DSL.name("timeline_snapshot_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+    public final TableField<RenderJobRecord, String> TIMELINE_SNAPSHOT_ID = createField(DSL.name("timeline_snapshot_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.render_job.profile</code>.
@@ -225,6 +226,23 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
     @Override
     public UniqueKey<RenderJobRecord> getPrimaryKey() {
         return Keys.RENDER_JOB_PKEY;
+    }
+
+    @Override
+    public List<ForeignKey<RenderJobRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.RENDER_JOB__FK_RENDER_JOB_PROJECT);
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, Keys.RENDER_JOB__FK_RENDER_JOB_PROJECT, null);
+
+        return _project;
     }
 
     private transient ArtifactGraphPath _artifactGraph;

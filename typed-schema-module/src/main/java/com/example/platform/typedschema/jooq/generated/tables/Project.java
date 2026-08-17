@@ -7,7 +7,11 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
 import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata.ProjectImportMetadataPath;
+import com.example.platform.typedschema.jooq.generated.tables.RenderJob.RenderJobPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TimelineSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ProjectRecord;
 
 import java.time.LocalDateTime;
@@ -166,6 +170,19 @@ public class Project extends TableImpl<ProjectRecord> {
         return Keys.PROJECT_PKEY;
     }
 
+    private transient ArtifactPinPath _artifactPin;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.artifact_pin</code> table
+     */
+    public ArtifactPinPath artifactPin() {
+        if (_artifactPin == null)
+            _artifactPin = new ArtifactPinPath(this, null, Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_PROJECT.getInverseKey());
+
+        return _artifactPin;
+    }
+
     private transient ProjectImportMetadataPath _projectImportMetadata;
 
     /**
@@ -177,6 +194,45 @@ public class Project extends TableImpl<ProjectRecord> {
             _projectImportMetadata = new ProjectImportMetadataPath(this, null, Keys.PROJECT_IMPORT_METADATA__FK_IMPORT_METADATA_PROJECT.getInverseKey());
 
         return _projectImportMetadata;
+    }
+
+    private transient RenderJobPath _renderJob;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.render_job</code>
+     * table
+     */
+    public RenderJobPath renderJob() {
+        if (_renderJob == null)
+            _renderJob = new RenderJobPath(this, null, Keys.RENDER_JOB__FK_RENDER_JOB_PROJECT.getInverseKey());
+
+        return _renderJob;
+    }
+
+    private transient TimelineRevisionPath _timelineRevision;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.timeline_revision</code> table
+     */
+    public TimelineRevisionPath timelineRevision() {
+        if (_timelineRevision == null)
+            _timelineRevision = new TimelineRevisionPath(this, null, Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_PROJECT.getInverseKey());
+
+        return _timelineRevision;
+    }
+
+    private transient TimelineSnapshotPath _timelineSnapshot;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.timeline_snapshot</code> table
+     */
+    public TimelineSnapshotPath timelineSnapshot() {
+        if (_timelineSnapshot == null)
+            _timelineSnapshot = new TimelineSnapshotPath(this, null, Keys.TIMELINE_SNAPSHOT__FK_TIMELINE_SNAPSHOT_PROJECT.getInverseKey());
+
+        return _timelineSnapshot;
     }
 
     @Override

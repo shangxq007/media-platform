@@ -7,6 +7,8 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.TimelineSnapshotRecord;
 
 import java.time.LocalDateTime;
@@ -16,10 +18,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -123,6 +129,39 @@ public class TimelineSnapshot extends TableImpl<TimelineSnapshotRecord> {
         this(DSL.name("timeline_snapshot"), null);
     }
 
+    public <O extends Record> TimelineSnapshot(Table<O> path, ForeignKey<O, TimelineSnapshotRecord> childPath, InverseForeignKey<O, TimelineSnapshotRecord> parentPath) {
+        super(path, childPath, parentPath, TIMELINE_SNAPSHOT);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class TimelineSnapshotPath extends TimelineSnapshot implements Path<TimelineSnapshotRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> TimelineSnapshotPath(Table<O> path, ForeignKey<O, TimelineSnapshotRecord> childPath, InverseForeignKey<O, TimelineSnapshotRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private TimelineSnapshotPath(Name alias, Table<TimelineSnapshotRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public TimelineSnapshotPath as(String alias) {
+            return new TimelineSnapshotPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public TimelineSnapshotPath as(Name alias) {
+            return new TimelineSnapshotPath(alias, this);
+        }
+
+        @Override
+        public TimelineSnapshotPath as(Table<?> alias) {
+            return new TimelineSnapshotPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -136,6 +175,36 @@ public class TimelineSnapshot extends TableImpl<TimelineSnapshotRecord> {
     @Override
     public UniqueKey<TimelineSnapshotRecord> getPrimaryKey() {
         return Keys.TIMELINE_SNAPSHOT_PKEY;
+    }
+
+    @Override
+    public List<ForeignKey<TimelineSnapshotRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.TIMELINE_SNAPSHOT__FK_TIMELINE_SNAPSHOT_PROJECT);
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, Keys.TIMELINE_SNAPSHOT__FK_TIMELINE_SNAPSHOT_PROJECT, null);
+
+        return _project;
+    }
+
+    private transient TimelineRevisionPath _timelineRevision;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.timeline_revision</code> table
+     */
+    public TimelineRevisionPath timelineRevision() {
+        if (_timelineRevision == null)
+            _timelineRevision = new TimelineRevisionPath(this, null, Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_SNAPSHOT.getInverseKey());
+
+        return _timelineRevision;
     }
 
     @Override

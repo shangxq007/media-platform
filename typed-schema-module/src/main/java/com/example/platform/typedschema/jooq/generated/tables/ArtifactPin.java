@@ -8,6 +8,8 @@ import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactPinRecord;
 
 import java.time.LocalDateTime;
@@ -173,7 +175,7 @@ public class ArtifactPin extends TableImpl<ArtifactPinRecord> {
 
     @Override
     public List<ForeignKey<ArtifactPinRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_ARTIFACT);
+        return Arrays.asList(Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_ARTIFACT, Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_PROJECT, Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_REVISION);
     }
 
     private transient ArtifactPath _artifact;
@@ -186,6 +188,31 @@ public class ArtifactPin extends TableImpl<ArtifactPinRecord> {
             _artifact = new ArtifactPath(this, Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_ARTIFACT, null);
 
         return _artifact;
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_PROJECT, null);
+
+        return _project;
+    }
+
+    private transient TimelineRevisionPath _timelineRevision;
+
+    /**
+     * Get the implicit join path to the <code>public.timeline_revision</code>
+     * table.
+     */
+    public TimelineRevisionPath timelineRevision() {
+        if (_timelineRevision == null)
+            _timelineRevision = new TimelineRevisionPath(this, Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_REVISION, null);
+
+        return _timelineRevision;
     }
 
     @Override

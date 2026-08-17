@@ -601,6 +601,7 @@ tasks.register("jooqFoundationCheck") {
         "verifyGcr1CorrectionV2IngressAuthority",
         "verifyGcr2ArtifactAuthority",
         "verifyGcr2CorrectionV1",
+        "verifyGcr5Gcr6DatabaseCanonicalization",
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
@@ -1159,5 +1160,51 @@ tasks.register("verifyGcr2CorrectionV1") {
         }
 
         println("OK: GCR2-CORRECTION-V1 verified (replica/relation/provenance/traversal tenant-scoped at DB level; InMemory/Jooq conformance; maxDepth/limit normalized; no cross-tenant exposure)")
+    }
+}
+
+tasks.register("verifyGcr5Gcr6DatabaseCanonicalization") {
+    group = "verification"
+    description = "GCR5/GCR6: single canonical V1; structural FK integrity (timeline_revision/pin/snapshot/render_job); media_stream RESTRICT; no legacy migration residue; operational time contract; jOOQ parity prerequisites"
+    doLast {
+        val v1 = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql").readText()
+
+        // 1. Single canonical V1, zero incremental/backup migrations.
+        val migrationDir = file("platform-app/src/main/resources/db/migration")
+        val scripts = migrationDir.listFiles().orEmpty().filter { it.name.startsWith("V") && it.name.endsWith(".sql") }
+        require(scripts.size == 1 && scripts[0].name == "V1__initial_schema.sql") {
+            "FAIL: FLYWAY_SCRIPT_COUNT != 1 (found ${scripts.map { it.name }})"
+        }
+        val legacyMigrationDir = file("platform-app/src/main/resources/db/artifact-migration")
+        require(!legacyMigrationDir.exists()) {
+            "FAIL: LEGACY_SCHEMA_COMPATIBILITY_OBJECT_COUNT != 0 (db/artifact-migration residue)"
+        }
+
+        // 2. Structural FKs present (C5).
+        require(v1.contains("fk_timeline_revision_project") && v1.contains("fk_timeline_revision_parent")
+                && v1.contains("fk_timeline_revision_snapshot")) {
+            "FAIL: timeline_revision structural FKs missing (FK_INTEGRITY != 1)"
+        }
+        require(v1.contains("fk_artifact_pin_revision") && v1.contains("fk_artifact_pin_project")) {
+            "FAIL: artifact_pin structural FKs missing"
+        }
+        require(v1.contains("fk_render_job_project")) { "FAIL: render_job project FK missing" }
+        require(v1.contains("fk_timeline_snapshot_project")) { "FAIL: timeline_snapshot project FK missing" }
+
+        // 3. media_stream RESTRICT (C9 — no implicit canonical history destruction).
+        require(v1.contains("constraint fk_ms_media_asset foreign key (media_asset_id) references media_asset(id) on delete restrict")) {
+            "FAIL: media_stream cascade not converted to RESTRICT (HISTORICAL_DELETE_SAFETY != 1)"
+        }
+
+        // 4. render_job id type consistency (varchar(64) matching project.id / timeline_snapshot.id).
+        require(v1.contains("project_id varchar(64) not null,\n    timeline_snapshot_id varchar(64) not null")) {
+            "FAIL: render_job identity column types not canonical (varchar(128) residue)"
+        }
+
+        // 5. No TIMELINE_MEDIA_TIME as operational timestamp (MediaTime never in timestamp columns).
+        val mediaTimeAsTs = Regex("(?i)(media_time|frame_time|time_range)\\s+timestamp").findAll(v1)
+        require(!mediaTimeAsTs.iterator().hasNext()) { "FAIL: Timeline MediaTime stored as operational timestamp" }
+
+        println("OK: GCR5/GCR6 database canonicalization verified (single V1; FK integrity; media_stream RESTRICT; render_job identity types; no legacy migration residue; MediaTime/timestamp separation)")
     }
 }

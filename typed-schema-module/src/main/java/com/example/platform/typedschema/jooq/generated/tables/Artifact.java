@@ -12,6 +12,7 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.A
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ArtifactReplicaPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 
 import java.time.LocalDateTime;
@@ -270,6 +271,14 @@ public class Artifact extends TableImpl<ArtifactRecord> {
             _mediaAssetArtifact = new MediaAssetArtifactPath(this, null, Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_ARTIFACT.getInverseKey());
 
         return _mediaAssetArtifact;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.timeline_revision</code> table
+     */
+    public TimelineRevisionPath timelineRevision() {
+        return artifactPin().timelineRevision();
     }
 
     /**

@@ -17,8 +17,8 @@
 
 create table render_job (
     id varchar(64) primary key,
-    project_id varchar(128) not null,
-    timeline_snapshot_id varchar(128) not null,
+    project_id varchar(64) not null,
+    timeline_snapshot_id varchar(64) not null,
     profile varchar(128) not null,
     status varchar(32) not null,
     created_at timestamp not null,
@@ -279,6 +279,12 @@ create table project (
 
 create index ix_project_tenant_id on project(tenant_id);
 
+-- GCR5/GCR6 (C5): render_job.project_id references project — declared here
+-- because render_job precedes project in the script (forward FK).
+alter table render_job
+    add constraint fk_render_job_project
+        foreign key (project_id) references project(id) on delete restrict;
+
 create table "user" (
     id varchar(64) primary key,
     tenant_id varchar(64) not null,
@@ -522,7 +528,8 @@ create table timeline_snapshot (
     schema_version varchar(32) default '2.0.0',
     created_at timestamp not null default CURRENT_TIMESTAMP,
     content_hash varchar(64),
-    revision_number int
+    revision_number int,
+    constraint fk_timeline_snapshot_project foreign key (project_id) references project(id) on delete restrict
 );
 
 create index idx_timeline_snapshot_project on timeline_snapshot(project_id);
@@ -547,7 +554,10 @@ create table timeline_revision (
     labels_json varchar(512),
     is_merge boolean not null default false,
     merge_parent_revision_ids text,
-    merge_base_revision_id varchar(64)
+    merge_base_revision_id varchar(64),
+    constraint fk_timeline_revision_project foreign key (project_id) references project(id) on delete restrict,
+    constraint fk_timeline_revision_parent foreign key (parent_revision_id) references timeline_revision(id) on delete restrict,
+    constraint fk_timeline_revision_snapshot foreign key (snapshot_id) references timeline_snapshot(id) on delete restrict
 );
 
 create unique index ux_timeline_revision_project_num on timeline_revision(project_id, revision_number);
@@ -557,6 +567,14 @@ create index ix_timeline_revision_snapshot on timeline_revision(snapshot_id);
 create index ix_timeline_revision_edit_session on timeline_revision(project_id, edit_session_id, created_at desc);
 create index ix_timeline_revision_project_source on timeline_revision(project_id, source);
 create index ix_timeline_revision_is_merge on timeline_revision(is_merge);
+
+-- GCR5/GCR6 (C5): artifact_pin references timeline_revision — declared here
+-- because artifact_pin precedes timeline_revision in the script (forward FK).
+alter table artifact_pin
+    add constraint fk_artifact_pin_revision
+        foreign key (revision_id) references timeline_revision(id) on delete restrict,
+    add constraint fk_artifact_pin_project
+        foreign key (project_id) references project(id) on delete restrict;
 
 create table timeline_review (
     id varchar(64) primary key,
@@ -2194,7 +2212,7 @@ create table media_stream (
     hdr_mastering_display_ref varchar(128),
     hdr_content_light_ref varchar(128),
     container_stream_description varchar(128),
-    constraint fk_ms_media_asset foreign key (media_asset_id) references media_asset(id) on delete cascade
+    constraint fk_ms_media_asset foreign key (media_asset_id) references media_asset(id) on delete restrict
 );
 
 create index ix_ms_media_asset on media_stream(media_asset_id);

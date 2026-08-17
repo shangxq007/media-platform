@@ -1,0 +1,14 @@
+# GCR5_GCR6_DATABASE_MANIFEST.tsv
+
+OBJECT_TYPE | OBJECT_NAME | TABLE | DOMAIN | CURRENT_OWNER | FINAL_OWNER | CURRENT_STATE | ACTION | CONTRACT_REF | TEST_REF | FINAL_VERIFIED
+---|---|---|---|---|---|---|---|---|---|---
+TABLE | timeline_revision | timeline_revision | timeline | timeline-module | timeline-module | CANONICAL_STATE | ADD_FK (project/parent/snapshot) | C5 | Gcr5Gcr6DatabaseStructuralIntegrityTest | PENDING
+TABLE | timeline_snapshot | timeline_snapshot | timeline | timeline-module | timeline-module | CANONICAL_STATE | ADD_FK (project) | C5 | Gcr5Gcr6DatabaseStructuralIntegrityTest | PENDING
+TABLE | artifact_pin | artifact_pin | artifact | artifact-module | artifact-module | CANONICAL_RELATION | ADD_FK (revision/project) | C5 | Gcr5Gcr6DatabaseStructuralIntegrityTest | PENDING
+TABLE | render_job | render_job | render | render-module | render-module | EXECUTION_STATE | ADD_FK (project); varchar(128)→(64) id types | C5 | Gcr5Gcr6DatabaseStructuralIntegrityTest | PENDING
+TABLE | media_stream | media_stream | media | media-module | media-module | CANONICAL_STATE | CASCADE→RESTRICT | C9 | Gcr5Gcr6DatabaseStructuralIntegrityTest | PENDING
+FILE | db/artifact-migration/V6__artifact_and_provenance_v1.sql | media_artifact (dead) | artifact | NONE (legacy) | DELETED | LEGACY | DELETE | C18 | guard | PENDING
+FILE | V1__initial_schema.sql | all | all | platform-app | platform-app | CANONICAL | FINALIZED (greenfield rewrite) | C2 | SchemaEquivalence | PENDING
+GEN | jOOQ tables (7 files) | all | all | typed-schema | typed-schema | GENERATED | REGENERATED from V1 | C14/C15 | verifyJooqGeneratedSources | PENDING
+TRIGGER | trg_svd_snapshot_immutable | source_visual_description_snapshot | media | media-module | media-module | STRUCTURAL | KEEP | C19 | SourceVisualDescriptionSnapshotIT | PENDING
+GUARD | verifyGcr5Gcr6DatabaseCanonicalization | n/a | n/a | build | build | NEW | ADD | §37 | guard run | PENDING

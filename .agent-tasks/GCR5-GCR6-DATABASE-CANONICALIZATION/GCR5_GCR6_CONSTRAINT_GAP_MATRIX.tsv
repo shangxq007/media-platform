@@ -1,0 +1,25 @@
+# GCR5/GCR6 — Constraint Gap Matrix
+
+INVARIANT | DOMAIN_AUTHORITY | CURRENT_APP_VALIDATION | CURRENT_DB_CONSTRAINT | DB_ENFORCEABLE | SHOULD_DB_ENFORCE | ACTION
+---|---|---|---|---|---|---
+timeline_revision.project_id references project | timeline | ProjectImportService/revision service (implicit) | NONE | YES | YES | ADD_FK (C5/C7 same-context ownership)
+timeline_revision.parent_revision_id references timeline_revision(id) | timeline | RevisionCommandApplyService CAS | NONE | YES | YES | ADD_FK (C5 revision DAG parent exists)
+timeline_revision.tenant_id nullable while project.tenant_id NOT NULL | timeline | N/A (redundant) | NONE | PARTIAL | NO | DELETE_LEGACY_CONSTRAINT (drop nullable tenant_id; derive via project — C7 fail-closed)
+timeline_snapshot.project_id references project | timeline | N/A | NONE | YES | YES | ADD_FK (C5)
+timeline_revision.snapshot_id references timeline_snapshot(id) | timeline | recordRevision | NONE | YES | YES | ADD_FK (C5 revision→snapshot exists)
+artifact_pin.revision_id references timeline_revision(id) | artifact (pin projection) | ArtifactPinService registration | NONE (unique index only) | YES | YES | ADD_FK (C5 pin revision exists)
+artifact_pin.project_id references project(id) | artifact | ArtifactPinService | NONE | YES | YES | ADD_FK (C5)
+media_stream.media_asset_id ON DELETE CASCADE | media | media-module lifecycle | CASCADE | N/A | NO | RESTRUCTURE_SCHEMA → ON DELETE RESTRICT (C9 canonical stream history must not vanish implicitly)
+media_asset_artifact ON DELETE RESTRICT | media/artifact | both | RESTRICT | YES | KEEP | NO_CHANGE (correct: canonical binding protected)
+artifact_relation source/target ON DELETE RESTRICT | artifact | ArtifactLifecycleService deleteCheck | RESTRICT | YES | KEEP | NO_CHANGE (correct)
+render_job.project_id references project | render | N/A | NONE | YES | MAYBE | ADD_FK (execution state; low-risk, same-context)
+timeline_revision_ref.head_revision_id references timeline_revision(id) | timeline | RevisionCommandApplyService | FK present | YES | KEEP | NO_CHANGE
+timeline_revision_parent composite FK (project_id,id) | timeline | RevisionCommandApplyService | UNIQUE(project_id,id)+FK | YES | KEEP | NO_CHANGE
+artifact UNIQUE(tenant_id, content_digest, byte_length) | artifact | commit service | UNIQUE | YES | KEEP | NO_CHANGE (semantic: digest identity)
+artifact_pin UNIQUE(revision_id, artifact_id) | artifact | pin registration | UNIQUE | YES | KEEP | NO_CHANGE
+project_revision_counter → project | timeline | counter service | NONE | YES | MAYBE | ADD_FK (execution/projection; low priority)
+
+## Gap counts
+CONSTRAINT_GAP_COUNT_BEFORE = 8 (FK gaps: timeline_revision×2, timeline_snapshot×2, artifact_pin×2, render_job×1, media_stream cascade×1)
+TENANT_OWNERSHIP_GAP_COUNT_BEFORE = 1 (timeline_revision nullable tenant_id redundancy)
+PROJECT_OWNERSHIP_GAP_COUNT_BEFORE = 4 (timeline_revision.project_id, timeline_snapshot.project_id, artifact_pin.project_id, render_job.project_id)

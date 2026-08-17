@@ -52,6 +52,13 @@ class Gcr2PinRegistrationFailureRollbackTest extends PostgresTestContainerSuppor
         jdbc = new JdbcTemplate(dataSource);
     }
 
+    private void seedProject(String projectId, String tenantId) {
+        jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES (?, 't7', 'ACTIVE', ?)",
+                tenantId, java.sql.Timestamp.from(Instant.now()));
+        jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES (?, ?, 't7-project', ?)",
+                projectId, tenantId, java.sql.Timestamp.from(Instant.now()));
+    }
+
     private void seedArtifact(String artifactId, String tenantId) {
         jdbc.update("INSERT INTO artifact (id, tenant_id, content_digest, byte_length, media_type, "
                         + "artifact_kind, state, schema_version, created_at) "
@@ -75,6 +82,7 @@ class Gcr2PinRegistrationFailureRollbackTest extends PostgresTestContainerSuppor
         String tenant = "ten-t7";
         String artifactId = "art-t7";
         String projectId = "prj-t7";
+        seedProject(projectId, tenant);
         seedArtifact(artifactId, tenant);
         // The artifact's content digest on the canonical row.
         String digest = ContentDigest.sha256("d".repeat(64)).canonicalValue();

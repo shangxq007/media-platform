@@ -7,8 +7,13 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionParent.TimelineRevisionParentPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef.TimelineRevisionRefPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TimelineSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.TimelineRevisionRecord;
 
 import java.time.LocalDateTime;
@@ -238,6 +243,62 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
         return Keys.TIMELINE_REVISION_PKEY;
     }
 
+    @Override
+    public List<ForeignKey<TimelineRevisionRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_PARENT, Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_PROJECT, Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_SNAPSHOT);
+    }
+
+    private transient TimelineRevisionPath _timelineRevision;
+
+    /**
+     * Get the implicit join path to the <code>public.timeline_revision</code>
+     * table.
+     */
+    public TimelineRevisionPath timelineRevision() {
+        if (_timelineRevision == null)
+            _timelineRevision = new TimelineRevisionPath(this, Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_PARENT, null);
+
+        return _timelineRevision;
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_PROJECT, null);
+
+        return _project;
+    }
+
+    private transient TimelineSnapshotPath _timelineSnapshot;
+
+    /**
+     * Get the implicit join path to the <code>public.timeline_snapshot</code>
+     * table.
+     */
+    public TimelineSnapshotPath timelineSnapshot() {
+        if (_timelineSnapshot == null)
+            _timelineSnapshot = new TimelineSnapshotPath(this, Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_SNAPSHOT, null);
+
+        return _timelineSnapshot;
+    }
+
+    private transient ArtifactPinPath _artifactPin;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.artifact_pin</code> table
+     */
+    public ArtifactPinPath artifactPin() {
+        if (_artifactPin == null)
+            _artifactPin = new ArtifactPinPath(this, null, Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_REVISION.getInverseKey());
+
+        return _artifactPin;
+    }
+
     private transient TimelineRevisionParentPath _timelineRevisionParent;
 
     /**
@@ -262,6 +323,14 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
             _timelineRevisionRef = new TimelineRevisionRefPath(this, null, Keys.TIMELINE_REVISION_REF__FK_TIMELINE_REVISION_REF_HEAD.getInverseKey());
 
         return _timelineRevisionRef;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.artifact</code> table
+     */
+    public ArtifactPath artifact() {
+        return artifactPin().artifact();
     }
 
     @Override
