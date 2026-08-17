@@ -56,6 +56,14 @@ public final class TimelineEntityIndex {
                     put(index, EntityKind.TRANSITION, tr.path("id").asText("tr"), tr);
                 }
             }
+            // EFFECT_TRANSITION_CANONICALIZATION_V1: automation curves are
+            // Timeline-authored semantic state — indexed for diff visibility.
+            JsonNode automations = composition.get("automations");
+            if (automations != null && automations.isArray()) {
+                for (JsonNode curve : automations) {
+                    put(index, EntityKind.AUTOMATION, curve.path("automationId").asText("auto"), curve);
+                }
+            }
             JsonNode buses = composition.get("audioBuses");
             if (buses != null && buses.isArray()) {
                 for (JsonNode bus : buses) {

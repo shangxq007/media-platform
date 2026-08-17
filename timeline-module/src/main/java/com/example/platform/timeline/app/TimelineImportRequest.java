@@ -37,7 +37,34 @@ public record TimelineImportRequest(
         boolean otioExportLossy,
         Map<String, String> packagingHints,
         Map<String, String> metadata,
-        double durationSec) {
+        double durationSec,
+        List<ImportTransition> transitions,
+        List<ImportAutomationCurve> automations) {
+
+    /** Backward-compatible convenience constructor: no transitions/automations. */
+    public TimelineImportRequest(
+            String id,
+            String name,
+            int revision,
+            ImportOutput output,
+            List<ImportTrack> tracks,
+            List<ImportTextOverlay> textOverlays,
+            JsonNode styles,
+            JsonNode templates,
+            JsonNode renderGraphLayers,
+            JsonNode segmentPolicy,
+            boolean segmentPolicyEnabled,
+            List<ImportExternalRenderNode> externalRenderNodes,
+            String finalComposer,
+            boolean otioExportLossy,
+            Map<String, String> packagingHints,
+            Map<String, String> metadata,
+            double durationSec) {
+        this(id, name, revision, output, tracks, textOverlays, styles, templates,
+                renderGraphLayers, segmentPolicy, segmentPolicyEnabled, externalRenderNodes,
+                finalComposer, otioExportLossy, packagingHints, metadata, durationSec,
+                List.of(), List.of());
+    }
 
     /** Output specification of the imported timeline. */
     public record ImportOutput(
@@ -91,4 +118,41 @@ public record TimelineImportRequest(
             double durationSec,
             Map<String, Object> params,
             String intermediateFormat) {}
+
+    /**
+     * First-class transition relationship (EFECT_TRANSITION_CANONICALIZATION_V1
+     * C9): typed participants, exact MediaTime duration, alignment, temporal policy.
+     */
+    public record ImportTransition(
+            String id,
+            String definitionId,
+            String definitionVersion,
+            String outgoingClipId,
+            String incomingClipId,
+            String mediaType,
+            long durationTicks,
+            long durationTimeScale,
+            String alignment,
+            String temporalPolicy,
+            Map<String, String> parameters) {}
+
+    /**
+     * Timeline-authored automation curve (EFFECT_TRANSITION_CANONICALIZATION_V1
+     * C7/C8): exact MediaTime keyframes, deterministic ordering, HOLD/LINEAR.
+     */
+    public record ImportAutomationCurve(
+            String automationId,
+            String targetEntityId,
+            String parameterPath,
+            String valueType,
+            String extrapolation,
+            List<ImportAutomationKeyframe> keyframes) {}
+
+    /** Keyframe: stable id, exact MediaTime, typed value, interpolation. */
+    public record ImportAutomationKeyframe(
+            String keyframeId,
+            long timeTicks,
+            long timeTimeScale,
+            double value,
+            String interpolation) {}
 }

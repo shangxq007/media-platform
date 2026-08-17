@@ -205,6 +205,54 @@ public class TimelineImportService {
             subtitleTracks.add(subTrack);
             composition.set("subtitleTracks", subtitleTracks);
         }
+        // EFFECT_TRANSITION_CANONICALIZATION_V1 (C9/C7): first-class transitions
+        // and exact-MediaTime automations join the canonical composition state —
+        // they participate in content hash, semantic diff, patch and merge.
+        if (request.transitions() != null && !request.transitions().isEmpty()) {
+            ArrayNode transitions = InternalTimelineJson.mapper().createArrayNode();
+            for (TimelineImportRequest.ImportTransition tr : request.transitions()) {
+                ObjectNode trNode = InternalTimelineJson.mapper().createObjectNode();
+                trNode.put("id", tr.id());
+                trNode.put("transitionDefinitionId", tr.definitionId());
+                trNode.put("transitionDefinitionVersion", tr.definitionVersion());
+                trNode.put("outgoingClipId", tr.outgoingClipId());
+                trNode.put("incomingClipId", tr.incomingClipId());
+                trNode.put("mediaType", tr.mediaType());
+                trNode.put("durationTicks", tr.durationTicks());
+                trNode.put("durationTimeScale", tr.durationTimeScale());
+                trNode.put("alignment", tr.alignment());
+                trNode.put("temporalPolicy", tr.temporalPolicy());
+                if (tr.parameters() != null && !tr.parameters().isEmpty()) {
+                    trNode.set("parameters", InternalTimelineJson.mapper().valueToTree(tr.parameters()));
+                }
+                transitions.add(trNode);
+            }
+            composition.set("transitions", transitions);
+        }
+        if (request.automations() != null && !request.automations().isEmpty()) {
+            ArrayNode automations = InternalTimelineJson.mapper().createArrayNode();
+            for (TimelineImportRequest.ImportAutomationCurve curve : request.automations()) {
+                ObjectNode curveNode = InternalTimelineJson.mapper().createObjectNode();
+                curveNode.put("automationId", curve.automationId());
+                curveNode.put("targetEntityId", curve.targetEntityId());
+                curveNode.put("parameterPath", curve.parameterPath());
+                curveNode.put("valueType", curve.valueType());
+                curveNode.put("extrapolation", curve.extrapolation());
+                ArrayNode keyframes = InternalTimelineJson.mapper().createArrayNode();
+                for (TimelineImportRequest.ImportAutomationKeyframe kf : curve.keyframes()) {
+                    ObjectNode kfNode = InternalTimelineJson.mapper().createObjectNode();
+                    kfNode.put("keyframeId", kf.keyframeId());
+                    kfNode.put("timeTicks", kf.timeTicks());
+                    kfNode.put("timeTimeScale", kf.timeTimeScale());
+                    kfNode.put("value", kf.value());
+                    kfNode.put("interpolation", kf.interpolation());
+                    keyframes.add(kfNode);
+                }
+                curveNode.set("keyframes", keyframes);
+                automations.add(curveNode);
+            }
+            composition.set("automations", automations);
+        }
         return composition;
     }
 

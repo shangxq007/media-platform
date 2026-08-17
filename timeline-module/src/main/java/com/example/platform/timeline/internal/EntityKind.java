@@ -12,6 +12,7 @@ public enum EntityKind {
     AUDIO_MIX,
     EXTERNAL_NODE,
     TRANSITION,
+    AUTOMATION,
     OUTPUT,
     PACKAGING,
     FINAL_COMPOSER,

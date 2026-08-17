@@ -132,6 +132,8 @@ public class TimelineSemanticDiffService {
                     "external render node changed"));
             case TRANSITION -> out.add(SemanticChange.of(SemanticChangeType.TRANSITION_CHANGED, ref,
                     "transition changed"));
+            case AUTOMATION -> out.add(SemanticChange.of(SemanticChangeType.AUTOMATION_CHANGED, ref,
+                    "automation changed"));
             case OUTPUT -> out.add(SemanticChange.of(SemanticChangeType.OUTPUT_PROFILE_CHANGED, ref,
                     "output profile changed"));
             case PACKAGING -> out.add(SemanticChange.of(SemanticChangeType.PACKAGING_PARAM_CHANGED, ref,
