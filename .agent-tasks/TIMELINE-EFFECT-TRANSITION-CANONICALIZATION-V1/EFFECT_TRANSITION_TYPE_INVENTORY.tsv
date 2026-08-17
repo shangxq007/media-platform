@@ -1,0 +1,22 @@
+# TIMELINE EFFECT / TRANSITION — TYPE INVENTORY
+
+TYPE | MODULE | PACKAGE | ROLE | CURRENT_AUTHORITY | SEMANTIC_OR_EXECUTION | SERIALIZED_IN_TIMELINE | AFFECTS_HASH | DIFF_AWARE | MERGE_AWARE | PROVIDER_SPECIFIC | PERSISTED | REFERENCED_BY | PROPOSED_ACTION | RATIONALE
+---|---|---|---|---|---|---|---|---|---|---|---|---|---|---
+EffectInstance | timeline | semantics.effect | authored effect state | timeline | SEMANTIC | YES | YES | PARTIAL (coarse CLIP_EFFECT_CHANGED) | NO (opaque path) | NO | YES (revision payload) | CanonicalSerializer, validation | KEEP | canonical typed model exists
+EffectDefinition | timeline | semantics.effect | provider-neutral definition | timeline | SEMANTIC | NO (registry) | NO | N/A | N/A | NO | YES (in-memory/seed) | EffectInstance validation | KEEP | definition contract
+EffectParameterSchema | timeline | semantics.effect | typed param schema | timeline | SEMANTIC | NO | NO | N/A | N/A | NO | NO | EffectDefinition | KEEP | validation source
+TimelineClipEffect | timeline | canonicalmodel | opaque payload through gate/merge | timeline (opaque) | SEMANTIC-OPAQUE | YES | YES | PARTIAL | YES (verbatim CNM1) | NO | YES | InternalTimelineCandidateAdapter, TimelineMergeEngine | EVOLVE | typed model should supersede opaque for new authoring; opaque kept for gate preservation
+AudioEffectSemantics | timeline | semantics.effect | audio effect semantics | timeline | SEMANTIC | NO | NO | N/A | N/A | NO | NO | validation | KEEP | semantic helpers
+VideoEffectSemantics | timeline | semantics.effect | video effect semantics | timeline | SEMANTIC | NO | NO | N/A | N/A | NO | NO | validation | KEEP | semantic helpers
+TransitionInstance | timeline | semantics.transition | first-class transition relationship | timeline | SEMANTIC | YES | YES | PARTIAL (TRANSITION_CHANGED) | NO | NO | YES | CanonicalSerializer, validation | KEEP | first-class relationship already correct
+AutomationCurve | timeline | semantics.automation | authored temporal automation | timeline | SEMANTIC | YES | YES | NO | NO | NO | YES | CanonicalSerializer | KEEP | exact MediaTime, deterministic
+Automation.Keyframe | timeline | semantics.automation | keyframe | timeline | SEMANTIC | YES | YES | NO | NO | NO | YES | AutomationCurve | KEEP | typed, MediaTime
+InterpolationMode | timeline | semantics.automation | HOLD/LINEAR | timeline | SEMANTIC | YES | YES | N/A | N/A | NO | YES | Keyframe | KEEP | bounded v1
+EffectMappingService | render | infrastructure | effect catalog keyed by provider | RENDER (conflict) | EXECUTION-CATALOG | NO | NO | N/A | N/A | YES (providerKey) | NO | AdvancedEffectsPipeline | EVOLVE | catalog should reference canonical definitions, provider keys as implementation hints only
+AdvancedEffectsPipeline | render | app | effect lowering to execution | render | EXECUTION | NO | NO | N/A | N/A | YES | NO | render execution | KEEP | consumes List<Map<String,Object>> — should consume typed semantics
+EffectPackCatalogService/Seeder | render | app | package distribution catalog | render (package layer) | EXECUTION-PACKAGE | NO | NO | N/A | N/A | PARTIAL | YES (effect_pack tables) | platform-app web | KEEP | distribution metadata only (§40)
+effect_pack / effect_pack_effect | DB | platform-app V1 | package metadata | package layer | EXECUTION-PACKAGE | NO | NO | N/A | N/A | PARTIAL | YES | seeder/controller | KEEP | not semantic authority
+EffectPackController / EffectEntitlementAdapter | platform-app | web.effects | distribution + entitlement surface | package/capability | EXECUTION-PACKAGE | NO | NO | N/A | N/A | PARTIAL | NO | web | KEEP | entitlement/capability boundary (§41)
+EffectTaxonomyIntegrationTest / VerificationTest | platform-app | test | catalog taxonomy checks | render catalog | TEST | NO | NO | N/A | N/A | PARTIAL | NO | tests | EVOLVE | align with provider-neutral definition taxonomy
+
+UNCLASSIFIED_TYPE_COUNT = 0

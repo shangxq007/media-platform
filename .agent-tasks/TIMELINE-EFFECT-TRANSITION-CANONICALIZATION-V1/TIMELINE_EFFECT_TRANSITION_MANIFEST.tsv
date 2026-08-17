@@ -1,0 +1,23 @@
+# TIMELINE_EFFECT_TRANSITION_MANIFEST.tsv
+
+OBJECT | TYPE | MODULE | CURRENT_AUTHORITY | FINAL_AUTHORITY | SEMANTIC_ROLE | CURRENT_STATE | ACTION | CONTRACT_REF | TEST_REF | FINAL_VERIFIED
+---|---|---|---|---|---|---|---|---|---|---
+EffectInstance | SEMANTIC | timeline | timeline | timeline | authored effect state | CANONICAL | KEEP | C4 | EffectTransitionCanonicalSemanticsTest | VERIFIED
+EffectDefinition | SEMANTIC | timeline | timeline | timeline | provider-neutral definition | CANONICAL | KEEP | C2 | EffectTransitionCanonicalSemanticsTest | VERIFIED
+EffectParameterSchema | SEMANTIC | timeline | timeline | timeline | typed param schema | CANONICAL | KEEP | C6 | EffectTransitionCanonicalSemanticsTest | VERIFIED
+TimelineClipEffect | SEMANTIC-OPAQUE | timeline | timeline (opaque) | timeline (preservation) | gate/merge preservation | PRESERVATION | KEEP | C13 | TimelineMergeEngine tests | VERIFIED
+TransitionInstance | SEMANTIC | timeline | timeline | timeline | first-class relationship | CANONICAL | KEEP | C9/C10 | EffectTransitionCanonicalSemanticsTest | VERIFIED
+AutomationCurve | SEMANTIC | timeline | timeline | timeline | temporal automation | CANONICAL | KEEP | C7/C8 | EffectTransitionCanonicalSemanticsTest | VERIFIED
+Automation.Keyframe | SEMANTIC | timeline | timeline | timeline | keyframe | CANONICAL | KEEP | C7/C8 | EffectTransitionCanonicalSemanticsTest | VERIFIED
+CanonicalSerializer | SERIALIZATION | timeline | timeline | timeline | deterministic serialization | CANONICAL | EVOLVE (typed params) | C12 | EffectTransitionCanonicalSemanticsTest | VERIFIED
+SemanticChangeType | DIFF | timeline | timeline | timeline | typed change categories | PARTIAL (coarse) | KEEP (bounded) | C13 | TimelineSemanticDiffService tests | VERIFIED
+TimelineMergeEngine | MERGE | timeline | timeline | timeline | semantic merge (opaque preserve) | CANONICAL | KEEP | C13 | TimelineMergeEngine tests | VERIFIED
+EffectMappingService | EXECUTION-CATALOG | render | render | render (implementation view) | provider availability catalog | EXECUTION | KEEP (bounded; providerKey/assetPath deferred) | C3/C14 | EffectTaxonomy tests | VERIFIED
+AdvancedEffectsPipeline | EXECUTION | render | render | render | effect lowering | EXECUTION | KEEP | C14 | render tests | VERIFIED
+EffectPackCatalogService/Seeder | PACKAGE | render | package layer | package layer | distribution metadata | EXECUTION-PACKAGE | KEEP | §40 | EffectPack tests | VERIFIED
+effect_pack / effect_pack_effect | DB | platform-app V1 | package layer | package layer | package metadata | EXECUTION-PACKAGE | KEEP | §40 | EffectPack tests | VERIFIED
+
+UNCLASSIFIED = 0
+FINAL_AUTHORITY_MISMATCH = 0
+FINAL_LOCATION_MISMATCH = 0
+FINAL_VERIFIED_PENDING = 0

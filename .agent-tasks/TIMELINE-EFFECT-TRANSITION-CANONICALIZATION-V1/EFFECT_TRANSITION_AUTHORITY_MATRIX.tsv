@@ -1,0 +1,20 @@
+# TIMELINE EFFECT / TRANSITION — AUTHORITY MATRIX
+
+CONCEPT | CURRENT_AUTHORITY | FINAL_AUTHORITY | SEMANTIC_OR_EXECUTION | STATUS | ACTION
+---|---|---|---|---|---
+EffectDefinition | timeline (semantics.effect.EffectDefinition) | TIMELINE (sole) | SEMANTIC | CORRECT | KEEP — provider-neutral definition contract
+EffectInstance | timeline (semantics.effect.EffectInstance) | TIMELINE (sole) | SEMANTIC | CORRECT | KEEP — authored state
+TransitionDefinition | render catalog (EffectMappingService transition entries) | TIMELINE (semantic definition registry) | SEMANTIC | CONFLICT | EVOLVE — semantic definitions belong to Timeline; render catalog becomes implementation availability view
+TransitionInstance | timeline (semantics.transition.TransitionInstance) | TIMELINE (sole) | SEMANTIC | CORRECT | KEEP — first-class relationship
+AutomationCurve | timeline (semantics.automation.Automation) | TIMELINE (sole) | SEMANTIC | CORRECT | KEEP
+Effect implementation availability | render catalog + capability | CAPABILITY system | EXECUTION | CONFLICT | EVOLVE — availability/entitlement via capability; not semantic authority
+Effect package distribution | effect_pack tables + render seeder | PACKAGE/MARKETPLACE layer | EXECUTION-PACKAGE | CORRECT (bounded) | KEEP — distribution only
+Render effect lowering | AdvancedEffectsPipeline + EffectMappingService | RENDER (derived execution) | EXECUTION | CORRECT DIRECTION | KEEP — one-way lowering
+FFmpeg/worker execution | render services | RENDER (execution) | EXECUTION | CORRECT | KEEP — one-way
+Artifact-backed effect inputs | none (storage URI in particle_overlay) | ARTIFACT authority (canonical ArtifactId) | SEMANTIC | GAP | EVOLVE — replace storage URI param with Artifact reference (C16)
+
+EFFECT_SEMANTIC_AUTHORITY_COUNT = 1 (timeline)
+TRANSITION_SEMANTIC_AUTHORITY_COUNT = 1 (timeline)
+AUTOMATION_SEMANTIC_AUTHORITY_COUNT = 1 (timeline)
+RENDER_CANONICAL_EFFECT_AUTHORITY_COUNT = 1 → 0 (render catalog demoted to implementation view)
+PROVIDER_CANONICAL_EFFECT_AUTHORITY_COUNT = 0 (providerKey is catalog key, not semantic identity — bounded)

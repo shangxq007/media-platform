@@ -1,0 +1,19 @@
+# TIMELINE EFFECT / TRANSITION — PROVIDER LEAKAGE MATRIX
+
+OBJECT | LOCATION | PATTERN | CLASSIFICATION | ACTION
+---|---|---|---|---
+EffectInstance.parameters | timeline semantics.effect | Map<String,String> (no provider syntax found) | SEMANTIC | KEEP (schema-validated)
+TransitionInstance.parameters | timeline semantics.transition | Map<String,String> | SEMANTIC | KEEP
+AutomationCurve | timeline semantics.automation | MediaTime + typed value | SEMANTIC | KEEP
+TimelineClipEffect | timeline canonicalmodel | opaque JSON payload (could carry provider-shaped data but never interpreted by timeline) | SEMANTIC-OPAQUE | KEEP (preserved, not interpreted)
+CanonicalSerializer | timeline serialization | deterministic typed arrays | SEMANTIC | KEEP
+EffectMappingService providerKey | render infrastructure | "video.dissolve" → ofx/javacv/ffmpeg provider keys as catalog identity | INVALID_PROVIDER_LEAKAGE (catalog identity = provider key) | EVOLVE — providerKey demoted to implementation hint; canonical definitionId becomes catalog key
+EffectMappingService assetPath | render infrastructure | "Local path or storage URI" parameter for particle_overlay | INVALID_PROVIDER_LEAKAGE (storage URI as canonical param) | EVOLVE — Artifact reference (C16)
+AdvancedEffectsPipeline effects input | render app | List<Map<String,Object>> untyped effect maps | IMPLEMENTATION (execution boundary) | KEEP (lowering boundary; typed consumption added)
+FFmpeg filter construction | render services (MultiProviderPipelineService, RenderStepExecutionService) | filter graph building | IMPLEMENTATION (one-way lowering) | KEEP
+EffectPackCatalog seeding | render app | catalog metadata with provider compatibility strings | EXECUTION_HINT | KEEP (distribution layer)
+
+CANONICAL_TIMELINE_PROVIDER_COMMAND_COUNT = 0 (timeline authored semantics carry no ffmpeg/filter commands)
+TIMELINE_FFMPEG_COMMAND_FRAGMENT_COUNT = 0 (in timeline module)
+PROVIDER_LEAKAGE_COUNT_BEFORE = 2 (render catalog providerKey identity + assetPath storage URI)
+PROVIDER_LEAKAGE_COUNT_AFTER = 0

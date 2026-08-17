@@ -157,6 +157,10 @@ public final class CanonicalSerializer {
         strField(sb, "duration", t.duration().toString(), false);
         strField(sb, "alignment", t.alignment().name(), false);
         strField(sb, "temporalPolicy", t.temporalPolicy().name(), false);
+        // EFFECT_TRANSITION_CANONICALIZATION_V1 (C12/§30): parameters are authored
+        // semantic state — parameter changes MUST affect the canonical serialization
+        // and therefore the content hash. Keys are sorted for determinism.
+        stringMapField(sb, "parameters", t.parameters(), false);
     }
 
     private static void appendEffect(StringBuilder sb, EffectInstance e) {
@@ -167,6 +171,11 @@ public final class CanonicalSerializer {
         boolField(sb, "enabled", e.enabled(), false);
         strField(sb, "applicationRangeStart", e.applicationRange().start().toString(), false);
         strField(sb, "applicationRangeEnd", e.applicationRange().end().toString(), false);
+        // EFFECT_TRANSITION_CANONICALIZATION_V1 (C12/§30): typed parameter state and
+        // automation bindings are authored semantics — they MUST affect the canonical
+        // serialization / content hash. Keys are sorted for determinism.
+        stringMapField(sb, "parameters", e.parameters(), false);
+        stringMapField(sb, "automationBindings", e.automationBindings(), false);
     }
 
     private static void appendAutomation(StringBuilder sb, Automation.AutomationCurve c) {
@@ -212,6 +221,21 @@ public final class CanonicalSerializer {
     private static void boolField(StringBuilder sb, String key, boolean value, boolean first) {
         if (!first) sb.append(',');
         sb.append('"').append(escapeJson(key)).append("\":").append(value);
+    }
+
+    /** Deterministic map serialization: keys sorted lexicographically (C12/§29). */
+    private static void stringMapField(StringBuilder sb, String key, java.util.Map<String, String> map, boolean first) {
+        if (!first) sb.append(',');
+        sb.append('"').append(escapeJson(key)).append("\":{");
+        var keys = new java.util.ArrayList<>(map.keySet());
+        java.util.Collections.sort(keys);
+        for (int i = 0; i < keys.size(); i++) {
+            if (i > 0) sb.append(',');
+            String k = keys.get(i);
+            sb.append('"').append(escapeJson(k)).append("\":\"")
+              .append(escapeJson(map.get(k))).append('"');
+        }
+        sb.append('}');
     }
 
     public static String escapeJson(String s) {

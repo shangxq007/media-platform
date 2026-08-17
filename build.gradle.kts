@@ -602,6 +602,7 @@ tasks.register("jooqFoundationCheck") {
         "verifyGcr2ArtifactAuthority",
         "verifyGcr2CorrectionV1",
         "verifyGcr5Gcr6DatabaseCanonicalization",
+        "verifyTimelineEffectTransitionCanonicalization",
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
@@ -1206,5 +1207,56 @@ tasks.register("verifyGcr5Gcr6DatabaseCanonicalization") {
         require(!mediaTimeAsTs.iterator().hasNext()) { "FAIL: Timeline MediaTime stored as operational timestamp" }
 
         println("OK: GCR5/GCR6 database canonicalization verified (single V1; FK integrity; media_stream RESTRICT; render_job identity types; no legacy migration residue; MediaTime/timestamp separation)")
+    }
+}
+
+tasks.register("verifyTimelineEffectTransitionCanonicalization") {
+    group = "verification"
+    description = "TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1: Timeline owns Effect/Transition/Automation semantics; canonical serializer includes typed parameters (hash participation); no provider command leakage in authored semantics; transition is first-class (not clip effect); automation uses MediaTime"
+    doLast {
+        val serializer = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/serialization/CanonicalSerializer.java").readText()
+        val effect = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/effect/EffectInstance.java").readText()
+        val transition = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/transition/TransitionInstance.java").readText()
+        val automation = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/automation/Automation.java").readText()
+
+        // 1. Typed parameter state participates in canonical serialization (hash).
+        require(serializer.contains("stringMapField(sb, \"parameters\"") && serializer.contains("stringMapField(sb, \"automationBindings\"")) {
+            "FAIL: effect/transition parameters not serialized (EFFECT_PARAMETER_CHANGE_AFFECTS_HASH != YES)"
+        }
+        // 2. Deterministic map key ordering.
+        require(serializer.contains("java.util.Collections.sort(keys)")) {
+            "FAIL: canonical map serialization not deterministic (sorted keys missing)"
+        }
+        // 3. Automation uses exact MediaTime (no wall clock / double seconds as time).
+        require(automation.contains("MediaTime time") && !automation.contains("LocalDateTime") && !automation.contains("Instant")) {
+            "FAIL: automation not exact-MediaTime (AUTOMATION_OPERATIONAL_TIMESTAMP_COUNT != 0)"
+        }
+        // 4. Transition is first-class relationship with typed participants (not clip effect).
+        require(transition.contains("outgoingClipId") && transition.contains("incomingClipId")
+                && transition.contains("duration") && transition.contains("TransitionAlignment")) {
+            "FAIL: transition not first-class relationship (TRANSITION_AS_CLIP_EFFECT_COUNT != 0)"
+        }
+        // 5. No provider command leakage in timeline authored semantics.
+        val timelineMain = fileTree("timeline-module/src/main").matching { include("**/*.java") }
+                .map { it.readText() }.joinToString("\n")
+        require(!timelineMain.contains("ffmpeg") && !timelineMain.contains("filter_complex")
+                && !timelineMain.contains("eq=")) {
+            "FAIL: provider command fragment in Timeline authored semantics (TIMELINE_FFMPEG_COMMAND_FRAGMENT_COUNT != 0)"
+        }
+        // 6. EffectInstance is typed semantic state with definition reference.
+        require(effect.contains("effectDefinitionId") && effect.contains("effectInstanceId")) {
+            "FAIL: EffectInstance missing definition reference"
+        }
+        // 7. No Timeline V3 introduced.
+        val timelineDir = file("timeline-module/src/main/java/com/example/platform/timeline")
+        require(timelineDir.walkTopDown().none { it.name.contains("TimelineDocumentV3") }) {
+            "FAIL: Timeline V3 introduced (TIMELINE_V3_INTRODUCED_COUNT != 0)"
+        }
+        // 8. Transition never appended to clip.effects.
+        require(!transition.contains("clip.effects") && !transition.contains("effects.add")) {
+            "FAIL: transition modeled as clip effect"
+        }
+
+        println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3)")
     }
 }
