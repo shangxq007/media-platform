@@ -12,6 +12,12 @@ import java.util.Objects;
  * <p>{@code duration} is an exact {@link MediaTime}; integer milliseconds
  * are a projection, never merge semantic authority.
  * Internal domain model. Provider-neutral, storage-neutral.
+ *
+ * <p>THIRD CORRECTION (semantic state preservation): the full 12-field
+ * constructor is the ONLY constructor. Every reconstruction must carry
+ * transitions and automations explicitly — silent field loss is impossible.
+ * Copy helpers (withTracks/withDuration/withTransitions/withAutomations/
+ * withMetadata) preserve every unrelated field.
  */
 public record CanonicalTimelineSnapshot(
         CanonicalTimelineSnapshotId id,
@@ -38,20 +44,36 @@ public record CanonicalTimelineSnapshot(
         automations = automations == null ? List.of() : List.copyOf(automations);
     }
 
-    /** Convenience constructor without transitions/automations (structural snapshots). */
-    public CanonicalTimelineSnapshot(
-            CanonicalTimelineSnapshotId id,
-            String revisionId,
-            MediaTime duration,
-            List<CanonicalTimelineTrackSnapshot> tracks,
-            List<CanonicalTimelineCaptionSnapshot> captions,
-            List<CanonicalTimelineWatermarkSnapshot> watermarks,
-            List<CanonicalTimelineTemplateApplicationSnapshot> templateApplications,
-            List<CanonicalTimelineWorkflowStepSnapshot> workflowSteps,
-            CanonicalTimelineOutputProfileSnapshot outputProfile,
-            Map<String, String> safeMetadata,
-            List<com.example.platform.timeline.canonical.TextElement> textElements) {
-        this(id, revisionId, duration, tracks, captions, watermarks, templateApplications,
-                workflowSteps, outputProfile, safeMetadata, textElements, List.of(), List.of());
+    // ── Full-state copy helpers (THIRD CORRECTION): every helper preserves all
+    //    unrelated fields, including transitions and automations. ──
+
+    public CanonicalTimelineSnapshot withTracks(List<CanonicalTimelineTrackSnapshot> tracks) {
+        return new CanonicalTimelineSnapshot(id, revisionId, duration,
+                tracks, captions, watermarks, templateApplications, workflowSteps,
+                outputProfile, safeMetadata, textElements, transitions, automations);
+    }
+
+    public CanonicalTimelineSnapshot withDuration(MediaTime newDuration) {
+        return new CanonicalTimelineSnapshot(id, revisionId, newDuration,
+                tracks, captions, watermarks, templateApplications, workflowSteps,
+                outputProfile, safeMetadata, textElements, transitions, automations);
+    }
+
+    public CanonicalTimelineSnapshot withTransitions(List<CanonicalTimelineTransitionSnapshot> newTransitions) {
+        return new CanonicalTimelineSnapshot(id, revisionId, duration,
+                tracks, captions, watermarks, templateApplications, workflowSteps,
+                outputProfile, safeMetadata, textElements, newTransitions, automations);
+    }
+
+    public CanonicalTimelineSnapshot withAutomations(List<CanonicalTimelineAutomationSnapshot> newAutomations) {
+        return new CanonicalTimelineSnapshot(id, revisionId, duration,
+                tracks, captions, watermarks, templateApplications, workflowSteps,
+                outputProfile, safeMetadata, textElements, transitions, newAutomations);
+    }
+
+    public CanonicalTimelineSnapshot withMetadata(Map<String, String> newMetadata) {
+        return new CanonicalTimelineSnapshot(id, revisionId, duration,
+                tracks, captions, watermarks, templateApplications, workflowSteps,
+                outputProfile, newMetadata, textElements, transitions, automations);
     }
 }

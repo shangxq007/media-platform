@@ -294,12 +294,12 @@ class TimelineNonConflictingMergePlannerTest {
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
-                base.safeMetadata(), List.of());
+                base.safeMetadata(), List.of(), List.of(), List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(7777),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
-                base.safeMetadata(), List.of());
+                base.safeMetadata(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -375,7 +375,7 @@ class TimelineNonConflictingMergePlannerTest {
                 snapId("snap-rev-theirs"), "rev-theirs", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
-                base.safeMetadata(), List.of());
+                base.safeMetadata(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -397,21 +397,21 @@ class TimelineNonConflictingMergePlannerTest {
                 "cap-2", MediaTime.ofMillis(3000), MediaTime.ofMillis(6000), "World", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap1, cap2), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(cap1, cap2), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         // ours changes cap-1
         CanonicalTimelineCaptionSnapshot cap1ours = new CanonicalTimelineCaptionSnapshot(
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hi", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap1ours, cap2), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(cap1ours, cap2), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         // theirs changes cap-2
         CanonicalTimelineCaptionSnapshot cap2theirs = new CanonicalTimelineCaptionSnapshot(
                 "cap-2", MediaTime.ofMillis(3000), MediaTime.ofMillis(6000), "Earth", Map.of(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap1, cap2theirs), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(cap1, cap2theirs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -432,7 +432,7 @@ class TimelineNonConflictingMergePlannerTest {
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
-                base.safeMetadata(), List.of());
+                base.safeMetadata(), List.of(), List.of(), List.of());
         CanonicalTimelineSnapshot theirs = snap("rev-theirs");
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
@@ -454,19 +454,19 @@ class TimelineNonConflictingMergePlannerTest {
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -487,13 +487,13 @@ class TimelineNonConflictingMergePlannerTest {
                 "p2", "mp4", "16:9", 1280, 720, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p1, Map.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), p1, Map.of(), List.of(), List.of(), List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p2, Map.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), p2, Map.of(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -511,19 +511,19 @@ class TimelineNonConflictingMergePlannerTest {
                 "wm-1", "logo", "BOTTOM_RIGHT", 50, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(wm), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(), List.of(wm), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         CanonicalTimelineWatermarkSnapshot wmOurs = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "TOP_LEFT", 80, Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(wmOurs), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(), List.of(wmOurs), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         CanonicalTimelineWatermarkSnapshot wmTheirs = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "CENTER", 30, Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(wmTheirs), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(), List.of(wmTheirs), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -560,16 +560,16 @@ class TimelineNonConflictingMergePlannerTest {
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         CanonicalTimelineCaptionSnapshot capChanged = new CanonicalTimelineCaptionSnapshot(
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "World", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(capChanged), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(capChanged), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(capChanged), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(capChanged), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -587,13 +587,13 @@ class TimelineNonConflictingMergePlannerTest {
                 "p1", "mp4", "16:9", 1920, 1080, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of(), List.of(), List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -625,7 +625,7 @@ class TimelineNonConflictingMergePlannerTest {
                 snapId("snap-rev-theirs"), "rev-theirs", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
-                base.safeMetadata(), List.of());
+                base.safeMetadata(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -643,12 +643,12 @@ class TimelineNonConflictingMergePlannerTest {
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
-                base.safeMetadata(), List.of());
+                base.safeMetadata(), List.of(), List.of(), List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(7777),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
-                base.safeMetadata(), List.of());
+                base.safeMetadata(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -667,19 +667,19 @@ class TimelineNonConflictingMergePlannerTest {
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
                 "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -796,12 +796,12 @@ class TimelineNonConflictingMergePlannerTest {
 
     private CanonicalTimelineSnapshot snap(String revId) {
         return new CanonicalTimelineSnapshot(snapId("snap-" + revId), revId, MediaTime.ofMillis(5000),
-                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of());
+                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
     }
 
     private CanonicalTimelineSnapshot snapWithMetadata(String revId, Map<String, String> metadata) {
         return new CanonicalTimelineSnapshot(snapId("snap-" + revId), revId, MediaTime.ofMillis(5000),
-                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, metadata, List.of());
+                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, metadata, List.of(), List.of(), List.of());
     }
 
     private CanonicalTimelineTrackSnapshot track(String id, int order) {

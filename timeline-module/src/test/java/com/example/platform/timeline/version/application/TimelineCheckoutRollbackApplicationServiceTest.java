@@ -765,7 +765,7 @@ class TimelineCheckoutRollbackApplicationServiceTest {
                     new CanonicalTimelineSnapshotId("snap-" + revisionId),
                     revisionId,
                     MediaTime.ofMillis(0), List.of(), List.of(), List.of(),
-                    List.of(), List.of(), null, Map.of(), List.of());
+                    List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
             snapshots.put(revisionId, snapshot);
         }
 

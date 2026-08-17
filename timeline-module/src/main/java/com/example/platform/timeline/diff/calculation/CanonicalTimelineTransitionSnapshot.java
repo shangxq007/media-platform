@@ -31,14 +31,31 @@ public record CanonicalTimelineTransitionSnapshot(
 
     /** Merge-relevant local semantic equality (excludes identity). */
     public boolean localSemanticsEquals(CanonicalTimelineTransitionSnapshot other) {
-        return Objects.equals(transitionDefinitionId, other.transitionDefinitionId)
-                && Objects.equals(transitionDefinitionVersion, other.transitionDefinitionVersion)
-                && Objects.equals(outgoingClipId, other.outgoingClipId)
-                && Objects.equals(incomingClipId, other.incomingClipId)
-                && Objects.equals(mediaType, other.mediaType)
-                && duration.isEqualTo(other.duration)
-                && Objects.equals(alignment, other.alignment)
-                && Objects.equals(temporalPolicy, other.temporalPolicy)
-                && Objects.equals(parameters, other.parameters);
+        return semanticFingerprint().equals(other.semanticFingerprint());
+    }
+
+    /**
+     * THIRD CORRECTION (complete semantic signature): deterministic fingerprint
+     * over ALL merge-relevant authored fields — definition/version/participants/
+     * mediaType/duration/alignment/temporalPolicy/parameters (sorted keys).
+     * Used by equality, diff afterValue, and merge conflict identity from ONE
+     * authority. Provider/runtime fields excluded.
+     */
+    public String semanticFingerprint() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("def=").append(transitionDefinitionId == null ? "" : transitionDefinitionId).append(';')
+          .append("ver=").append(transitionDefinitionVersion == null ? "" : transitionDefinitionVersion).append(';')
+          .append("out=").append(outgoingClipId == null ? "" : outgoingClipId).append(';')
+          .append("inc=").append(incomingClipId == null ? "" : incomingClipId).append(';')
+          .append("media=").append(mediaType == null ? "" : mediaType).append(';')
+          .append("dur=").append(duration == null ? "" : duration.ticks() + "/" + duration.timeScale()).append(';')
+          .append("align=").append(alignment == null ? "" : alignment).append(';')
+          .append("pol=").append(temporalPolicy == null ? "" : temporalPolicy).append(';')
+          .append("params=");
+        if (parameters != null && !parameters.isEmpty()) {
+            new java.util.TreeMap<>(parameters).forEach((k, v) ->
+                    sb.append(k).append('=').append(v == null ? "" : v).append(','));
+        }
+        return sb.toString();
     }
 }

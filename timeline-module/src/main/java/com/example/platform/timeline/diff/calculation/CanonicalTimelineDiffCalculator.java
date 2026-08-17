@@ -227,9 +227,8 @@ public class CanonicalTimelineDiffCalculator {
         for (String id : beforeTx.keySet()) {
             CanonicalTimelineTransitionSnapshot bt = beforeTx.get(id);
             if (!afterTx.containsKey(id)) {
-                ops.add(change(seq, TimelineChangeType.TRANSITION_CHANGED,
-                        TimelineChangeScope.TRANSITION, "timeline.transitions." + id,
-                        bt.duration().toString(), null));
+                // THIRD CORRECTION: deletion is first-class semantic behavior.
+                ops.add(transitionDeletedOp(seq, id, bt));
             } else {
                 CanonicalTimelineTransitionSnapshot at = afterTx.get(id);
                 if (!bt.localSemanticsEquals(at)) {
@@ -243,6 +242,21 @@ public class CanonicalTimelineDiffCalculator {
                 ops.add(transitionOp(seq, id, at));
             }
         }
+    }
+
+    /** TRANSITION delete op (THIRD CORRECTION): explicit, non-ambiguous. */
+    private TimelineChangeOperation transitionDeletedOp(int[] seq, String id,
+            CanonicalTimelineTransitionSnapshot t) {
+        Map<String, String> meta = new LinkedHashMap<>();
+        meta.put("deleted", "true");
+        meta.put("transitionDefinitionId", t.transitionDefinitionId());
+        return new TimelineChangeOperation(
+                new TimelineChangeOperationId("op-" + (++seq[0])),
+                TimelineChangeType.TRANSITION_CHANGED, TimelineChangeScope.TRANSITION,
+                new TimelineChangePath("timeline.transitions." + id),
+                TimelineChangePayload.ofString(t.semanticFingerprint()),
+                TimelineChangePayload.empty(),
+                meta);
     }
 
     /** TRANSITION_CHANGED op with after-state reconstruction data in safeMetadata. */
@@ -260,7 +274,7 @@ public class CanonicalTimelineDiffCalculator {
         meta.put("temporalPolicy", t.temporalPolicy());
         if (t.parameters() != null && !t.parameters().isEmpty()) {
             StringBuilder sb = new StringBuilder();
-            t.parameters().forEach((k, v) -> {
+            new java.util.TreeMap<>(t.parameters()).forEach((k, v) -> {
                 if (sb.length() > 0) sb.append(',');
                 sb.append(k).append('=').append(v);
             });
@@ -270,12 +284,12 @@ public class CanonicalTimelineDiffCalculator {
                 new TimelineChangeOperationId("op-" + (++seq[0])),
                 TimelineChangeType.TRANSITION_CHANGED, TimelineChangeScope.TRANSITION,
                 new TimelineChangePath("timeline.transitions." + id),
-                TimelineChangePayload.ofString(meta.getOrDefault("durationTicks", "")),
-                // afterValue = semantic signature (duration+alignment) so the
-                // merge planner distinguishes divergent two-sided edits.
-                TimelineChangePayload.ofString(meta.getOrDefault("durationTicks", "")
-                        + ":" + meta.getOrDefault("durationTimeScale", "")
-                        + ":" + meta.getOrDefault("alignment", "")),
+                TimelineChangePayload.ofString(t.semanticFingerprint()),
+                // THIRD CORRECTION: afterValue = COMPLETE semantic fingerprint
+                // (definition/version/participants/mediaType/duration/alignment/
+                // policy/parameters) so divergent two-sided edits in ANY
+                // merge-relevant field produce explicit conflict.
+                TimelineChangePayload.ofString(t.semanticFingerprint()),
                 meta);
     }
 
@@ -289,9 +303,17 @@ public class CanonicalTimelineDiffCalculator {
         for (String id : beforeAuto.keySet()) {
             CanonicalTimelineAutomationSnapshot bc = beforeAuto.get(id);
             if (!afterAuto.containsKey(id)) {
-                ops.add(change(seq, TimelineChangeType.AUTOMATION_CHANGED,
-                        TimelineChangeScope.AUTOMATION, "timeline.automations." + id,
-                        String.valueOf(bc.keyframes()), null));
+                // THIRD CORRECTION: deletion is first-class semantic behavior.
+                Map<String, String> meta = new LinkedHashMap<>();
+                meta.put("deleted", "true");
+                meta.put("targetEntityId", bc.targetEntityId());
+                ops.add(new TimelineChangeOperation(
+                        new TimelineChangeOperationId("op-" + (++seq[0])),
+                        TimelineChangeType.AUTOMATION_CHANGED, TimelineChangeScope.AUTOMATION,
+                        new TimelineChangePath("timeline.automations." + id),
+                        TimelineChangePayload.ofString(bc.semanticFingerprint()),
+                        TimelineChangePayload.empty(),
+                        meta));
             } else {
                 CanonicalTimelineAutomationSnapshot ac = afterAuto.get(id);
                 if (!bc.localSemanticsEquals(ac)) {
@@ -329,10 +351,11 @@ public class CanonicalTimelineDiffCalculator {
                 new TimelineChangeOperationId("op-" + (++seq[0])),
                 TimelineChangeType.AUTOMATION_CHANGED, TimelineChangeScope.AUTOMATION,
                 new TimelineChangePath("timeline.automations." + id),
-                TimelineChangePayload.ofString(meta.getOrDefault("keyframes", "")),
-                // afterValue = semantic signature (keyframes) so the merge
-                // planner distinguishes divergent two-sided edits.
-                TimelineChangePayload.ofString(meta.getOrDefault("keyframes", "")),
+                TimelineChangePayload.ofString(c.semanticFingerprint()),
+                // THIRD CORRECTION: afterValue = COMPLETE semantic fingerprint
+                // (target/path/valueType/extrapolation/keyframes) so divergent
+                // two-sided edits in ANY merge-relevant field conflict.
+                TimelineChangePayload.ofString(c.semanticFingerprint()),
                 meta);
     }
 

@@ -443,14 +443,18 @@ public class TimelineMergeEngine {
             // C1-CNM1: merged tracks carry each clip's exact rational rate and
             // opaque effect payload; no single target-fps projection is applied.
             mergedComposition.set("tracks", tracksToJson(mergedSnapshot.tracks()));
-            // EFFECT_TRANSITION_CANONICALIZATION_V1 (second correction): merged
-            // transition/automation state is the semantic merge RESULT (not
-            // target-side preservation) — write the patched snapshot state back
-            // into the merged payload composition.
-            if (!mergedSnapshot.transitions().isEmpty()) {
+            // THIRD CORRECTION: the merged snapshot is authority for merge-owned
+            // fields. Canonical convention: absent field == empty collection
+            // (import writes no field for empty). Empty merged result REMOVES
+            // the field — never resurrects deleted target-authored semantics.
+            if (mergedSnapshot.transitions().isEmpty()) {
+                mergedComposition.remove("transitions");
+            } else {
                 mergedComposition.set("transitions", transitionsToJson(mergedSnapshot.transitions()));
             }
-            if (!mergedSnapshot.automations().isEmpty()) {
+            if (mergedSnapshot.automations().isEmpty()) {
+                mergedComposition.remove("automations");
+            } else {
                 mergedComposition.set("automations", automationsToJson(mergedSnapshot.automations()));
             }
             // revision counter is a document-level field; the persistence layer

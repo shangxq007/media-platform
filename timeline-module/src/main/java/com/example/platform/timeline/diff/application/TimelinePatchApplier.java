@@ -82,7 +82,7 @@ public class TimelinePatchApplier {
         MediaTime val = parseMediaTime(afterVal(op), s.duration());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), val,
                 s.tracks(), s.captions(), s.watermarks(),
-                s.templateApplications(), s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
+                s.templateApplications(), s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
     }
 
     // --- Track ---
@@ -234,7 +234,7 @@ public class TimelinePatchApplier {
                 .map(c -> c.captionId().equals(capId) ? updated : c).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), captions, s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
     }
 
     // --- Watermark ---
@@ -259,7 +259,7 @@ public class TimelinePatchApplier {
                 .map(w -> w.watermarkId().equals(wmId) ? updated : w).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), wms, s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
     }
 
     // --- Template ---
@@ -283,7 +283,7 @@ public class TimelinePatchApplier {
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), apps,
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
     }
 
     private TimelinePatchApplicationResult applyTemplateProfile(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
@@ -300,7 +300,7 @@ public class TimelinePatchApplier {
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), apps,
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
     }
 
     // --- Workflow ---
@@ -318,7 +318,7 @@ public class TimelinePatchApplier {
                 .map(w -> w.workflowStepId().equals(stepId) ? updated : w).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                steps, s.outputProfile(), s.safeMetadata(), s.textElements()));
+                steps, s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
     }
 
     // --- Output profile ---
@@ -338,7 +338,7 @@ public class TimelinePatchApplier {
                 old != null ? old.aspectRatio() : "16:9", newW, newH, Map.of());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), profile, s.safeMetadata(), s.textElements()));
+                s.workflowSteps(), profile, s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
     }
 
     // --- Metadata ---
@@ -391,6 +391,17 @@ public class TimelinePatchApplier {
     private TimelinePatchApplicationResult applyTransitionChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
         String transitionId = op.path().value().substring("timeline.transitions.".length());
         Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        // THIRD CORRECTION: deletion is first-class — "deleted" flag removes the
+        // transition; empty after-state is meaningful, never target resurrection.
+        if ("true".equals(meta.get("deleted"))) {
+            List<CanonicalTimelineTransitionSnapshot> transitions = new ArrayList<>(s.transitions());
+            boolean removed = transitions.removeIf(t -> t.transitionId().equals(transitionId));
+            if (!removed) {
+                return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND,
+                        op.path().value(), "Transition not found for deletion");
+            }
+            return ok(s.withTransitions(List.copyOf(transitions)));
+        }
         MediaTime duration = MediaTime.ofTicks(parseLong(meta.get("durationTicks"), 0),
                 parseLong(meta.get("durationTimeScale"), 1));
         Map<String, String> params = new LinkedHashMap<>();
@@ -436,6 +447,17 @@ public class TimelinePatchApplier {
     private TimelinePatchApplicationResult applyAutomationChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
         String automationId = op.path().value().substring("timeline.automations.".length());
         Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        // THIRD CORRECTION: deletion is first-class — "deleted" flag removes the
+        // automation; empty after-state is meaningful, never target resurrection.
+        if ("true".equals(meta.get("deleted"))) {
+            List<CanonicalTimelineAutomationSnapshot> automations = new ArrayList<>(s.automations());
+            boolean removed = automations.removeIf(a -> a.automationId().equals(automationId));
+            if (!removed) {
+                return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND,
+                        op.path().value(), "Automation not found for deletion");
+            }
+            return ok(s.withAutomations(List.copyOf(automations)));
+        }
         List<CanonicalTimelineAutomationKeyframe> keyframes = new ArrayList<>();
         String kfEnc = meta.get("keyframes");
         if (kfEnc != null && !kfEnc.isBlank()) {
@@ -603,7 +625,7 @@ public class TimelinePatchApplier {
     private CanonicalTimelineSnapshot withTracks(CanonicalTimelineSnapshot s, List<CanonicalTimelineTrackSnapshot> tracks) {
         return new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 tracks, s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements());
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations());
     }
 
     private CanonicalTimelineSnapshot withUpdatedTrack(CanonicalTimelineSnapshot s, String trackId, CanonicalTimelineTrackSnapshot updated) {

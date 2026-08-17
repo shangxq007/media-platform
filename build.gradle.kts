@@ -1284,6 +1284,36 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(trSnapshot.contains("localSemanticsEquals") && autoSnapshot.contains("localSemanticsEquals")) {
             "FAIL: local semantic equality must be owned by the canonical component record"
         }
+        // 13. THIRD CORRECTION: complete semantic fingerprint drives equality
+        //     AND diff afterValue from ONE authority.
+        require(trSnapshot.contains("semanticFingerprint") && autoSnapshot.contains("semanticFingerprint")) {
+            "FAIL: complete semantic fingerprint missing on component records"
+        }
+        require(diffCalc.contains("semanticFingerprint()")) {
+            "FAIL: production diff afterValue must use the complete semantic fingerprint"
+        }
+        // 14. THIRD CORRECTION: no unsafe incomplete snapshot constructor
+        //     (silent transitions/automations erasure must be impossible).
+        val snapshotRec = file("timeline-module/src/main/java/com/example/platform/timeline/diff/calculation/CanonicalTimelineSnapshot.java").readText()
+        require(snapshotRec.contains("withTracks(") && snapshotRec.contains("withTransitions(")
+                && snapshotRec.contains("withAutomations(")) {
+            "FAIL: full-state snapshot copy helpers missing"
+        }
+        require(!snapshotRec.contains("// Convenience constructor without transitions/automations")) {
+            "FAIL: unsafe incomplete snapshot convenience constructor must be removed"
+        }
+        // 15. THIRD CORRECTION: deletion is first-class (deleted flag) and
+        //     merge writes merged result (no target resurrection).
+        require(diffCalc.contains("\"deleted\", \"true\"")) {
+            "FAIL: explicit semantic deletion op missing in production diff"
+        }
+        require(patchApplier.contains("meta.get(\"deleted\")")) {
+            "FAIL: patch applier must handle explicit deletion"
+        }
+        require(mergeEngine.contains("mergedComposition.remove(\"transitions\")")
+                && mergeEngine.contains("mergedComposition.remove(\"automations\")")) {
+            "FAIL: merge materialization must represent empty semantic result (no target resurrection)"
+        }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }

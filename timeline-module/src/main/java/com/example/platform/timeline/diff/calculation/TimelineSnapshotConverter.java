@@ -163,7 +163,9 @@ public final class TimelineSnapshotConverter {
                 List.of(),
                 null,
                 Map.of("schemaVersion", document.getSchemaVersion()),
-                document.getTextElements());
+                document.getTextElements(),
+                List.of(),
+                List.of());
     }
 
     /**
