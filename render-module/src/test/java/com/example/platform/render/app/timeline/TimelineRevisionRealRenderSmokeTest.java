@@ -410,7 +410,7 @@ class TimelineRevisionRealRenderSmokeTest {
         private final InMemoryTimelineRevisionRepository repo;
 
         StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) {
-            super(null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null, null, null);
             this.repo = repo;
         }
 

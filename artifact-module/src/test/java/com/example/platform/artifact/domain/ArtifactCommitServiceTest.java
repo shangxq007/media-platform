@@ -1,7 +1,7 @@
 package com.example.platform.artifact.domain;
 import com.example.platform.shared.identity.ArtifactId;
 
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.StorageReplicaId;
@@ -48,7 +48,7 @@ class ArtifactCommitServiceTest {
                     ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                     STORAGE_OBJECT_ID, STORAGE_REPLICA_ID, PROVIDER_ID,
                     ReplicaRole.PRIMARY, "us-east-1", "idem-001",
-                    List.of(), NOW, NOW);
+                    List.of(), NOW, NOW, null, null);
 
             ArtifactCommitResult result = commitService.commit(request);
 
@@ -66,7 +66,7 @@ class ArtifactCommitServiceTest {
                     ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                     new StorageObjectId("obj-parent"), new StorageReplicaId("rep-parent"),
                     PROVIDER_ID, ReplicaRole.PRIMARY, "us-east-1", "idem-parent",
-                    List.of(), NOW, NOW);
+                    List.of(), NOW, NOW, null, null);
             commitService.commit(parentRequest);
 
             // Then create a child with provenance
@@ -80,7 +80,7 @@ class ArtifactCommitServiceTest {
                             ProvenanceRelationType.TRANSCODED_FROM,
                             "op-1", 1, "attempt-1",
                             "req-digest", "res-digest"
-                    )), NOW, NOW);
+                    )), NOW, NOW, null, null);
 
             ArtifactCommitResult result = commitService.commit(childRequest);
 
@@ -101,7 +101,7 @@ class ArtifactCommitServiceTest {
                     ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                     STORAGE_OBJECT_ID, STORAGE_REPLICA_ID, PROVIDER_ID,
                     ReplicaRole.PRIMARY, "us-east-1", "idem-001",
-                    List.of(), NOW, NOW);
+                    List.of(), NOW, NOW, null, null);
 
             ArtifactCommitResult result1 = commitService.commit(request);
             ArtifactCommitResult result2 = commitService.commit(request);
@@ -118,7 +118,7 @@ class ArtifactCommitServiceTest {
                     ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                     STORAGE_OBJECT_ID, STORAGE_REPLICA_ID, PROVIDER_ID,
                     ReplicaRole.PRIMARY, "us-east-1", "idem-001",
-                    List.of(), NOW, NOW);
+                    List.of(), NOW, NOW, null, null);
             commitService.commit(request1);
 
             ContentDigest differentDigest = ContentDigest.sha256("b".repeat(64));
@@ -127,7 +127,7 @@ class ArtifactCommitServiceTest {
                     ArtifactMediaType.AUDIO, ArtifactKind.SOURCE_MEDIA, 1,
                     new StorageObjectId("obj-002"), new StorageReplicaId("rep-002"),
                     PROVIDER_ID, ReplicaRole.SECONDARY, "us-west-2", "idem-001",
-                    List.of(), NOW, NOW);
+                    List.of(), NOW, NOW, null, null);
 
             assertThatThrownBy(() -> commitService.commit(request2))
                     .isInstanceOf(ArtifactErrorCode.ArtifactDomainException.class)
@@ -143,7 +143,7 @@ class ArtifactCommitServiceTest {
                     ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                     STORAGE_OBJECT_ID, STORAGE_REPLICA_ID, PROVIDER_ID,
                     ReplicaRole.PRIMARY, "us-east-1", "idem-001",
-                    List.of(), NOW, NOW);
+                    List.of(), NOW, NOW, null, null);
 
             commitService.commit(request);
             Optional<ArtifactCommitResult> found = commitService.findByIdempotencyKey("tenant-1", "idem-001");
@@ -165,7 +165,7 @@ class ArtifactCommitServiceTest {
                     ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                     STORAGE_OBJECT_ID, STORAGE_REPLICA_ID, PROVIDER_ID,
                     ReplicaRole.PRIMARY, "us-east-1", "idem-001",
-                    List.of(), NOW, NOW);
+                    List.of(), NOW, NOW, null, null);
 
             commitService.commit(request);
 
@@ -174,7 +174,7 @@ class ArtifactCommitServiceTest {
                     ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                     STORAGE_OBJECT_ID, STORAGE_REPLICA_ID, PROVIDER_ID,
                     ReplicaRole.PRIMARY, "us-east-1", "idem-002",
-                    List.of(), NOW, NOW);
+                    List.of(), NOW, NOW, null, null);
 
             assertThatThrownBy(() -> commitService.commit(duplicate))
                     .isInstanceOf(ArtifactErrorCode.ArtifactDomainException.class);
@@ -193,7 +193,7 @@ class ArtifactCommitServiceTest {
                             ProvenanceRelationType.GENERATED_FROM,
                             "op-1", 1, "attempt-1",
                             "req-digest", "res-digest"
-                    )), NOW, NOW);
+                    )), NOW, NOW, null, null);
 
             assertThatThrownBy(() -> commitService.commit(request))
                     .isInstanceOf(ArtifactErrorCode.ProvenanceException.class)

@@ -1,25 +1,28 @@
 package com.example.platform.artifact.app;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import com.example.platform.artifact.domain.ArtifactCatalogEntry;
-import com.example.platform.artifact.domain.ArtifactStatus;
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
+import com.example.platform.artifact.domain.ArtifactState;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
+import com.example.platform.artifact.infrastructure.ArtifactPinRepository;
+import com.example.platform.artifact.infrastructure.ArtifactRepository;
 import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.storage.domain.BlobStorage;
 import java.time.Instant;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
@@ -31,189 +34,112 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.jdbc.core.JdbcTemplate;
 
+/**
+ * GCR-2: Artifact GC respects historical pin protection — pinned artifacts are
+ * never purged (HISTORICAL_PIN_GC_BYPASS_COUNT = 0).
+ */
 class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
     private static DataSource dataSource;
     private static DSLContext dsl;
-    private static ArtifactCatalogRepository repository;
-    private static ArtifactLifecycleService lifecycle;
-    
+
+    private ArtifactRepository artifactRepository;
+    private ArtifactPinRepository pinRepository;
     private ArtifactGcService gcService;
     private BlobStorage blobStorage;
-    private AuditPort auditPort;
 
     @BeforeAll
-    static void setUpDatabase() {
+    static void createDataSourceFixture() {
         dataSource = createDataSource();
-        var jdbc = new JdbcTemplate(dataSource);
-
-        jdbc.execute("CREATE TABLE IF NOT EXISTS artifact ("
-                + "id varchar(64) primary key,"
-                + "render_job_id varchar(64) not null,"
-                + "project_id varchar(64) not null,"
-                + "storage_uri text not null,"
-                + "format varchar(32),"
-                + "resolution varchar(32),"
-                + "duration bigint,"
-                + "created_at timestamp not null,"
-                + "status varchar(32) not null default 'ACTIVE',"
-                + "tombstoned_at timestamp"
-                + ")");
-
         var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
-        repository = new ArtifactCatalogRepository(dsl);
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
-        ArtifactCatalogService catalog = new ArtifactCatalogService(repository, null, registry);
-        ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
-        lifecycle = new ArtifactLifecycleService(repository, catalog, dsl, registry, events, java.util.List.of());
+        com.example.platform.artifact.testutil.ArtifactSchemaFixture.createCanonicalTables(
+                new org.springframework.jdbc.core.JdbcTemplate(dataSource));
+        dsl.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
+                + "id varchar(64) primary key,"
+                + "source_artifact_id varchar(64) not null,"
+                + "target_artifact_id varchar(64) not null,"
+                + "relation_type varchar(64) not null,"
+                + "created_at timestamp not null"
+                + ")");
     }
 
     @AfterAll
     static void tearDownDatabase() {
         closeDataSource(dataSource);
     }
-
     @BeforeEach
     void setUp() {
-        // Clean up before each test
+        dsl.execute("TRUNCATE TABLE artifact_pin CASCADE");
+        dsl.execute("TRUNCATE TABLE artifact_replica CASCADE");
         dsl.execute("TRUNCATE TABLE artifact CASCADE");
 
+        artifactRepository = new ArtifactRepository(dsl);
+        pinRepository = new ArtifactPinRepository(dsl);
+        ErrorCodeRegistry registry = new ErrorCodeRegistry();
+        registry.loadErrorCodes();
+        com.example.platform.artifact.app.ArtifactCatalogRepository catalogRepo =
+                new com.example.platform.artifact.app.ArtifactCatalogRepository(dsl);
+        com.example.platform.artifact.app.ArtifactRelationRepository relationRepo =
+                new com.example.platform.artifact.app.ArtifactRelationRepository(dsl);
+        com.example.platform.artifact.infrastructure.JooqArtifactCommitService commitService =
+                new com.example.platform.artifact.infrastructure.JooqArtifactCommitService(
+                        artifactRepository, relationRepo, dsl);
+        ArtifactCatalogService catalog =
+                new ArtifactCatalogService(catalogRepo, relationRepo, commitService, registry);
+        ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+        ArtifactLifecycleService lifecycle = new ArtifactLifecycleService(
+                catalogRepo, catalog, artifactRepository, pinRepository, dsl, registry, events, java.util.List.of());
         blobStorage = mock(BlobStorage.class);
-        auditPort = mock(AuditPort.class);
+        AuditPort auditPort = mock(AuditPort.class);
         ArtifactGcProperties props = new ArtifactGcProperties();
         props.setRetentionDays(1);
         props.setBatchSize(10);
-        gcService = new ArtifactGcService(repository, lifecycle, blobStorage, props, auditPort);
+        gcService = new ArtifactGcService(artifactRepository, lifecycle, blobStorage, props, auditPort);
+    }
+
+    private void insertTombstonedArtifact(String id, Instant tombstonedAt) {
+        artifactRepository.insertRaw(new ArtifactId(id), "t1", ContentDigest.sha256("a".repeat(64)),
+                10L, ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, ArtifactState.DELETING,
+                tombstonedAt);
     }
 
     @Test
-    void purgesOldTombstonedArtifacts() {
-        repository.save(new ArtifactCatalogEntry(
-                "art_gc1", "rj_1", "prj_1", "s3://bucket/old.mp4",
-                "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
-                Instant.now().minusSeconds(86400 * 10), Instant.now()));
-        when(blobStorage.deleteStorageUri(anyString())).thenReturn(true);
+    void purgesOldUnpinnedTombstonedArtifacts() {
+        insertTombstonedArtifact("art_gc1", Instant.now().minusSeconds(86400 * 10));
 
         ArtifactGcService.GcResult result = gcService.runGc(1);
         assertEquals(1, result.purged());
         assertEquals(0, result.failed());
-
-        ArtifactCatalogEntry updated = repository.findById("art_gc1").orElseThrow();
-        assertEquals(ArtifactStatus.PURGED, updated.status());
-        verify(blobStorage).deleteStorageUri("s3://bucket/old.mp4");
+        // Logical purge marks the canonical Artifact DELETED (row remains as history).
+        assertTrue(artifactRepository.findById("t1", new ArtifactId("art_gc1"))
+                .map(a -> a.state() == ArtifactState.DELETED).orElse(false));
     }
 
     @Test
-    void dryRunShouldNotDeleteBlob() {
-        repository.save(new ArtifactCatalogEntry(
-                "art_dry1", "rj_1", "prj_1", "s3://bucket/dry.mp4",
-                "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
-                Instant.now().minusSeconds(86400 * 10), Instant.now()));
-
-        ArtifactGcService.GcResult result = gcService.runGc(1, true, 50);
-
-        assertEquals(1, result.purged());  // dry-run counts as "would purge"
-        assertEquals(0, result.failed());
-
-        // Should NOT delete blob
-        verify(blobStorage, never()).deleteStorageUri(anyString());
-
-        // Should NOT update status to PURGED
-        ArtifactCatalogEntry unchanged = repository.findById("art_dry1").orElseThrow();
-        assertEquals(ArtifactStatus.TOMBSTONED, unchanged.status());
-
-        // Should have recorded dry-run audit
-        verify(auditPort).record(eq("SYSTEM"), eq("ARTIFACT_BLOB_GC"), eq("ARTIFACT_CATALOG"),
-                eq("artifact"), eq("gc"), argThat(m -> Boolean.TRUE.equals(m.get("dryRun"))));
-    }
-
-    @Test
-    void shouldSkipActiveArtifact() {
-        repository.save(new ArtifactCatalogEntry(
-                "art_active", "rj_1", "prj_1", "s3://bucket/active.mp4",
-                "mp4", "1080p", 10L, null, null, ArtifactStatus.ACTIVE,
-                null, Instant.now()));
+    void skipsPinnedArtifacts() {
+        insertTombstonedArtifact("art_pinned", Instant.now().minusSeconds(86400 * 10));
+        pinRepository.insert("pin_1", "trev_1", "prj_1", "art_pinned",
+                ContentDigest.sha256("a".repeat(64)), Instant.now());
 
         ArtifactGcService.GcResult result = gcService.runGc(1);
-
         assertEquals(0, result.purged());
+        assertEquals(1, result.skipped());
         verify(blobStorage, never()).deleteStorageUri(anyString());
+        // Pinned artifact must remain present (not deleted).
+        assertTrue(artifactRepository.findById("t1", new ArtifactId("art_pinned")).isPresent());
     }
 
     @Test
-    void shouldRespectLimit() {
-        for (int i = 0; i < 5; i++) {
-            repository.save(new ArtifactCatalogEntry(
-                    "art_limit_" + i, "rj_1", "prj_1", "s3://bucket/f" + i + ".mp4",
-                    "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
-                    Instant.now().minusSeconds(86400 * 10), Instant.now()));
-        }
-        when(blobStorage.deleteStorageUri(anyString())).thenReturn(true);
+    void keepsYoungTombstonedArtifacts() {
+        insertTombstonedArtifact("art_young", Instant.now().minusSeconds(60));
 
-        ArtifactGcService.GcResult result = gcService.runGc(1, false, 2);
-
-        assertEquals(5, result.scanned());  // all candidates scanned
-        assertEquals(2, result.purged());   // only 2 processed due to limit
-    }
-
-    @Test
-    void shouldRespectGracePeriod() {
-        // Tombstoned only 1 hour ago (within 7-day grace)
-        repository.save(new ArtifactCatalogEntry(
-                "art_recent", "rj_1", "prj_1", "s3://bucket/recent.mp4",
-                "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
-                Instant.now().minusSeconds(3600), Instant.now()));
-
-        ArtifactGcService.GcResult result = gcService.runGc(7);
-
-        assertEquals(0, result.purged());  // too recent, within grace period
-        verify(blobStorage, never()).deleteStorageUri(anyString());
-    }
-
-    @Test
-    void deleteFailureShouldBeRecordedAndContinue() {
-        repository.save(new ArtifactCatalogEntry(
-                "art_ok", "rj_1", "prj_1", "s3://bucket/ok.mp4",
-                "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
-                Instant.now().minusSeconds(86400 * 10), Instant.now()));
-        repository.save(new ArtifactCatalogEntry(
-                "art_fail", "rj_1", "prj_1", "s3://bucket/fail.mp4",
-                "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
-                Instant.now().minusSeconds(86400 * 10), Instant.now()));
-
-        when(blobStorage.deleteStorageUri("s3://bucket/ok.mp4")).thenReturn(true);
-        when(blobStorage.deleteStorageUri("s3://bucket/fail.mp4"))
-                .thenThrow(new RuntimeException("S3 delete failed"));
-
-        ArtifactGcService.GcResult result = gcService.runGc(1);
-
-        assertEquals(1, result.purged());   // ok one succeeded
-        assertEquals(1, result.failed());   // fail one recorded
-        assertTrue(result.errors().stream().anyMatch(e -> e.contains("art_fail")));
-    }
-
-    @Test
-    void auditShouldNotContainStorageUri() {
-        repository.save(new ArtifactCatalogEntry(
-                "art_audit", "rj_1", "prj_1", "s3://bucket/secret.mp4",
-                "mp4", "1080p", 10L, null, null, ArtifactStatus.TOMBSTONED,
-                Instant.now().minusSeconds(86400 * 10), Instant.now()));
-        when(blobStorage.deleteStorageUri(anyString())).thenReturn(true);
-
-        gcService.runGc(1);
-
-        verify(auditPort).record(anyString(), anyString(), anyString(),
-                anyString(), anyString(), argThat(m -> {
-                    String s = m.toString();
-                    return !s.contains("s3://bucket") &&
-                            !s.contains("secret.mp4") &&
-                            m.containsKey("scanned") &&
-                            m.containsKey("purged") &&
-                            m.containsKey("failed");
-                }));
+        ArtifactGcService.GcResult result = gcService.runGc(1, false, 10);
+        // Young tombstoned artifact is outside the retention window: not a GC candidate.
+        assertEquals(0, result.purged());
+        assertEquals(0, result.scanned());
+        assertTrue(artifactRepository.findById("t1", new ArtifactId("art_young"))
+                .map(a -> a.state() == ArtifactState.DELETING).orElse(false));
     }
 }

@@ -71,6 +71,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     private EffectTimelineInspector effectTimelineInspector;
     private RenderProfileResolver renderProfileResolver;
     private StorageCatalogPort storageCatalogPort;
+    private com.example.platform.artifact.app.ArtifactCatalogService artifactCatalogService;
     private EditorTimelineConverter editorTimelineConverter;
     private ProviderRuntimeEngine providerRuntimeEngine;
 
@@ -101,6 +102,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         effectTimelineInspector = mock(EffectTimelineInspector.class);
         renderProfileResolver = mock(RenderProfileResolver.class);
         storageCatalogPort = mock(StorageCatalogPort.class);
+        artifactCatalogService = mock(com.example.platform.artifact.app.ArtifactCatalogService.class);
         editorTimelineConverter = mock(EditorTimelineConverter.class);
         providerRuntimeEngine = mock(ProviderRuntimeEngine.class);
 
@@ -143,7 +145,8 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
         RenderArtifactQueryService artifactQueryService = new RenderArtifactQueryService(
-                renderJobRepository, storageCatalogPort, List.of());
+                renderJobRepository, mock(com.example.platform.artifact.domain.ArtifactQueryService.class),
+                artifactCatalogService, List.of());
         RenderJobExecutionService executionService = new RenderJobExecutionService(
                 renderJobRepository, quotaService, null, renderProviderRouter,
                 providerRuntimeEngine,
@@ -636,10 +639,12 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         assertTrue(jobRow.get(field("artifact_uri"), String.class).contains("artifacts"));
 
         // Verify artifact query works
-        var artifactRef = new StorageCatalogPort.ArtifactRef(
-                "art-1", jobId, "proj-10", "localFsStorageProvider://artifacts/output.mp4",
-                "mp4", "1920x1080", 10L, java.time.Instant.now());
-        when(storageCatalogPort.findArtifactsByJob(jobId)).thenReturn(List.of(artifactRef));
+        com.example.platform.artifact.domain.ArtifactCatalogEntry artifactEntry =
+                new com.example.platform.artifact.domain.ArtifactCatalogEntry(
+                        "art-1", jobId, "proj-10", "localFsStorageProvider://artifacts/output.mp4",
+                        "mp4", "1920x1080", 10L, 1024L, "abc",
+                        com.example.platform.artifact.domain.ArtifactStatus.ACTIVE, null, java.time.Instant.now());
+        when(artifactCatalogService.listArtifactsByRenderJob(jobId)).thenReturn(List.of(artifactEntry));
 
         List<ArtifactInfoResponse> artifacts = service.getArtifactsByJob(jobId);
         assertEquals(1, artifacts.size());

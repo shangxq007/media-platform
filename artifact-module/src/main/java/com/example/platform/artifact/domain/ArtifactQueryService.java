@@ -86,5 +86,5 @@ public interface ArtifactQueryService {
      * @param limit maximum number of results
      * @return list of artifacts with matching digest
      */
-    List<Artifact> findByContentDigest(String tenantId, com.example.platform.storage.contract.ContentDigest contentDigest, int limit);
+    List<Artifact> findByContentDigest(String tenantId, com.example.platform.shared.digest.ContentDigest contentDigest, int limit);
 }

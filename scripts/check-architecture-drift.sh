@@ -997,14 +997,14 @@ if grep -q 'timeline_revision_parent' timeline-module/src/main/java/com/example/
 else
     fail "graph authority missing"
 fi
-if grep -q 'parent_revision_id' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql && grep -q 'timeline_revision_parent' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql; then
+if grep -q 'parent_revision_id' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'timeline_revision_parent' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "V4 migration retires legacy parent authority (edges single authority)"
 else
     fail "V4 migration incomplete"
 fi
 
 # RCG-33: cross-project parent DB enforcement
-if grep -q 'references timeline_revision(project_id, id)' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql; then
+if grep -q 'references timeline_revision(project_id, id)' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "cross-project parent edge DB-enforced (composite FK)"
 else
     fail "RCI4 composite FK missing"
@@ -1018,7 +1018,7 @@ else
 fi
 
 # RCG-36/37: apply_command domain separation, OperationPlan semantics preserved
-if grep -q 'command_domain' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql && grep -q "'OPERATION_PLAN'" platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql; then
+if grep -q 'command_domain' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q "'OPERATION_PLAN'" platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "apply_command domain separation (OP maps OPERATION_PLAN)"
 else
     fail "command domain missing"
@@ -1069,9 +1069,11 @@ else
     fail "RCP2 source pin violation"
 fi
 
-# RCFG-7/8/9: counter migration above max; bootstrap atomic; no MAX+1
-if grep -q 'coalesce(max(revision_number), 0) + 1' platform-app/src/main/resources/db/migration/V4__revision_command_parent_graph.sql; then
-    pass "counter migration starts above historical max"
+# RCFG-7/8/9: counter table exists in canonical V1; bootstrap is ON CONFLICT
+# DO NOTHING. The V4-era backfill formula (coalesce(max(revision_number),0)+1)
+# was a historical data migration — irrelevant for greenfield single-V1.
+if grep -q 'create table project_revision_counter' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+    pass "counter table defined in canonical V1"
 else
     fail "RCP3 migration formula missing"
 fi
@@ -1184,7 +1186,7 @@ fi
 
 # ROADMAP_18 CIP2 gates
 # CIP2G1: durable snapshot persistence exists
-if [ -f platform-app/src/main/resources/db/migration/V5__source_visual_description_snapshot.sql ] && [ -f media-module/src/main/java/com/example/platform/media/app/sourcevisual/SourceVisualDescriptionSnapshotRepository.java ]; then
+if grep -q 'source_visual_description_snapshot' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && [ -f media-module/src/main/java/com/example/platform/media/app/sourcevisual/SourceVisualDescriptionSnapshotRepository.java ]; then
     pass "CIP2G1 durable snapshot persistence exists"
 else
     fail "CIP2G1 durable persistence missing"
@@ -1196,7 +1198,7 @@ else
     pass "CIP2G2/G3 historical reload: zero normalizer/probe dependency"
 fi
 # CIP2G4: immutable content binding (artifact_id column)
-if grep -q 'artifact_id' platform-app/src/main/resources/db/migration/V5__source_visual_description_snapshot.sql; then
+if grep -q 'artifact_id' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'source_visual_description_snapshot' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "CIP2G4 immutable content binding (artifact content version)"
 else
     fail "CIP2G4 artifact binding missing"
@@ -1224,8 +1226,9 @@ if grep -q 'UNSPECIFIED' color-image-module/src/main/java/com/example/platform/c
 else
     fail "CIP2G13 primaries states lost"
 fi
-# CIP2G14: no float DB conversion
-if grep -q 'double precision\|::double\|float8' platform-app/src/main/resources/db/migration/V5__source_visual_description_snapshot.sql; then
+# CIP2G14: no float DB conversion (scoped to source_visual_description_snapshot
+# definition inside canonical V1; other tables legitimately use numeric types)
+if awk '/create table source_visual_description_snapshot/,/^\);/' platform-app/src/main/resources/db/migration/V1__initial_schema.sql | grep -q 'double precision\|::double\|float8'; then
     fail "CIP2G14 float DB conversion"
 else
     pass "CIP2G14 zero Rational float DB conversion"
@@ -1233,12 +1236,12 @@ fi
 
 # ROADMAP_18 CIP2D/CIP2E gates
 # CIP2DG1-7: DB-enforced ownership (V6 composite FKs)
-if grep -q 'fk_svd_stream_asset' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql && grep -q 'fk_svd_asset_artifact' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql; then
+if grep -q 'fk_svd_stream_asset' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'fk_svd_asset_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "CIP2DG1/2/3/4 DB-enforced stream+artifact ownership (composite FKs)"
 else
     fail "CIP2DG1-4 ownership FKs missing"
 fi
-if grep -q 'uq_ms_id_asset' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql && grep -q 'uq_maa_asset_artifact' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql; then
+if grep -q 'uq_ms_id_asset' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'uq_maa_asset_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "CIP2DG1/5/6/7 composite-FK prerequisite UNIQUE keys present"
 else
     fail "CIP2DG5-7 UNIQUE prerequisites missing"
@@ -1276,13 +1279,13 @@ fi
 
 # ROADMAP_18 CIP2F/CIP2G gates
 # CIP2FG1/2: content-version snapshot identity (composite PK)
-if grep -q 'pk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V7__source_visual_snapshot_content_version.sql; then
+if grep -q 'pk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "CIP2FG1/2 F2 composite snapshot identity (media_stream_id, artifact_id)"
 else
     fail "CIP2FG1/2 composite PK missing"
 fi
 # CIP2FG3/4: DB-level snapshot immutability trigger
-if grep -q 'trg_svd_snapshot_immutable' platform-app/src/main/resources/db/migration/V7__source_visual_snapshot_content_version.sql && grep -q 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE' platform-app/src/main/resources/db/migration/V7__source_visual_snapshot_content_version.sql; then
+if grep -q 'trg_svd_snapshot_immutable' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "CIP2FG3/4 direct SQL rebind/payload rewrite rejected (immutability trigger)"
 else
     fail "CIP2FG3/4 immutability trigger missing"
@@ -1306,7 +1309,7 @@ else
     fail "CIP2GG1 artifact immutability unproven"
 fi
 # V6 regression: composite FKs still present
-if grep -q 'fk_svd_stream_asset' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql && grep -q 'fk_svd_asset_artifact' platform-app/src/main/resources/db/migration/V6__source_visual_snapshot_ownership.sql; then
+if grep -q 'fk_svd_stream_asset' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'fk_svd_asset_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "V6 regression: cross-asset ownership FKs retained"
 else
     fail "V6 ownership regression"

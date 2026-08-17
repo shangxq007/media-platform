@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.conf.RenderNameCase;
+import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
 import org.springframework.beans.BeansException;
@@ -33,7 +34,9 @@ public class DslContextConfiguration {
     @ConditionalOnMissingBean
     public DSLContext dslContext(DataSource dataSource) {
         Settings settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
-        return DSL.using(dataSource, SQLDialect.POSTGRES, settings);
+        // GCR-2 T7 (PIN_REGISTRATION_FAILURE_ROLLBACK_V1): jOOQ joins Spring
+        // transactions so revision+artifact_pin commit/rollback atomically.
+        return DSL.using(new TransactionAwareDataSourceProxy(dataSource), SQLDialect.POSTGRES, settings);
     }
 
     @Bean

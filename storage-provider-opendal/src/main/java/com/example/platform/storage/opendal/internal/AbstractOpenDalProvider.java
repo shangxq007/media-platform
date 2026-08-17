@@ -99,7 +99,7 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
 
     @Override
     public StorageWriteSession beginWrite(String writeSessionId, StorageNamespace namespace,
-                                          com.example.platform.storage.contract.ContentDigest expectedDigest,
+                                          com.example.platform.shared.digest.ContentDigest expectedDigest,
                                           long expectedLength) {
         Objects.requireNonNull(writeSessionId, "writeSessionId required");
         Objects.requireNonNull(expectedDigest, "expectedDigest required");
@@ -144,7 +144,7 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
 
     @Override
     public WriteSessionResult completeWrite(StorageWriteSession session,
-                                            com.example.platform.storage.contract.ContentDigest actualDigest) {
+                                            com.example.platform.shared.digest.ContentDigest actualDigest) {
         Objects.requireNonNull(session, "session required");
         Objects.requireNonNull(actualDigest, "actualDigest required");
 
@@ -257,7 +257,7 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
                 if (data != null && data.length > 0) {
                     String hex = computeSha256(data);
                     return Optional.of(new StorageObjectMetadata(objectId,
-                            com.example.platform.storage.contract.ContentDigest.sha256(hex), length));
+                            com.example.platform.shared.digest.ContentDigest.sha256(hex), length));
                 }
             } catch (Exception readEx) {
                 // Fall through to ETag-based approach
@@ -265,11 +265,11 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
 
             // Fallback: try ETag
             String etag = meta.getEtag();
-            com.example.platform.storage.contract.ContentDigest digest;
+            com.example.platform.shared.digest.ContentDigest digest;
             if (etag != null && !etag.isBlank() && etag.length() == 64) {
-                digest = com.example.platform.storage.contract.ContentDigest.sha256(etag);
+                digest = com.example.platform.shared.digest.ContentDigest.sha256(etag);
             } else {
-                digest = com.example.platform.storage.contract.ContentDigest.sha256(
+                digest = com.example.platform.shared.digest.ContentDigest.sha256(
                         etag != null ? etag.replaceAll("\"", "") : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                 );
             }
@@ -308,8 +308,8 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
 
         // Step 2: Compute source digest
         String sourceHex = computeSha256(sourceBytes);
-        com.example.platform.storage.contract.ContentDigest sourceDigest =
-                com.example.platform.storage.contract.ContentDigest.sha256(sourceHex);
+        com.example.platform.shared.digest.ContentDigest sourceDigest =
+                com.example.platform.shared.digest.ContentDigest.sha256(sourceHex);
         long sourceLength = sourceBytes.length;
 
         // Step 3: Write to target

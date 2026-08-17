@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 
 import javax.sql.DataSource;
 import java.util.LinkedHashMap;
@@ -44,6 +45,12 @@ public class DataSourceConfiguration {
     @Bean
     @ConditionalOnMissingBean(DSLContext.class)
     public DSLContext dslContext(DataSource dataSource) throws java.sql.SQLException {
-        return DSL.using(dataSource, SQLDialect.POSTGRES);
+        // GCR-2 T7 (PIN_REGISTRATION_FAILURE_ROLLBACK_V1): jOOQ must participate in
+        // Spring-managed transactions (@Transactional rollback). A bare DataSource
+        // hands jOOQ an untracked connection that commits independently of the
+        // surrounding transaction — a pin-persistence failure would NOT roll back
+        // the revision insert. TransactionAwareDataSourceProxy binds jOOQ
+        // connections to the active Spring transaction when one exists.
+        return DSL.using(new TransactionAwareDataSourceProxy(dataSource), SQLDialect.POSTGRES);
     }
 }

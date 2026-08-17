@@ -1,5 +1,5 @@
 package com.example.platform.storage.contract.write;
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.namespace.StorageNamespace;
 import java.io.Serializable;

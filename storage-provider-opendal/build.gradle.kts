@@ -25,6 +25,9 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     // Platform storage provider API — uses render-module which contains StorageProvider SPI
     implementation(project(":storage-module"))
+    // GCR-2: ContentDigest moved to shared-kernel (shared.digest) — direct dependency required
+    // (storage-module exposes shared-kernel as implementation, not api).
+    implementation(project(":shared-kernel"))
 
     // Apache OpenDAL — fixed version, no SNAPSHOT, no dynamic versions
     // Uses 'implementation' (not 'api') to prevent transitive leakage to consumers

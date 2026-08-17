@@ -3,6 +3,7 @@ package com.example.platform.render.app.timeline;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineCanonicalizer;import com.example.platform.timeline.app.TimelineContentHasher;import com.example.platform.timeline.app.TimelineRevisionDiffService;import com.example.platform.timeline.app.TimelineRevisionService;import com.example.platform.timeline.app.TimelineSemanticDiffService;
 import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
+import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
@@ -95,7 +96,10 @@ class TimelineRevisionServiceE1bGateIntegrationTest extends PostgresTestContaine
                 new TimelineRevisionDiffService(),
                 new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter()),
                 patchService,
-                new TimelineSemanticDiffService(canonicalizer));
+                new TimelineSemanticDiffService(canonicalizer),
+                new TimelineArtifactPinValidator(new com.example.platform.render.testutil.NoopArtifactQueryService()),
+                new com.example.platform.artifact.app.ArtifactPinService(
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)));
         editorSyncService = new TimelineEditorSyncService(
                 conversionService, new InternalTimelineToEditorConverter(), snapshotService,
                 resolver, revisionService);

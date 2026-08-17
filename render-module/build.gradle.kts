@@ -16,6 +16,7 @@ dependencies {
     testImplementation(testFixtures(project(":shared-kernel")))
     api(project(":ai-module"))
     api(project(":storage-module"))
+    api(project(":artifact-module")) // GCR-2: canonical Artifact authority (frozen direction: Render -> Artifact; no cycle: artifact-module no longer depends on render)
     api(project(":extension-module"))
     api(project(":entitlement-module"))
     api(project(":billing-module"))

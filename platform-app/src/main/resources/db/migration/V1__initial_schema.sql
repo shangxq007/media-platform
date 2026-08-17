@@ -428,26 +428,66 @@ create index ix_api_client_workspace_id on api_client(workspace_id);
 -- ============================================================
 -- 3. MEDIA & RENDERING
 -- ============================================================
--- artifact, artifact_relation, render_job_status_history,
--- timeline_snapshot, timeline_revision, effect_pack, effect_pack_effect,
--- client_export_session, media_asset_metadata
+-- artifact, artifact_replica, artifact_pin, artifact_relation,
+-- render_job_status_history, timeline_snapshot, timeline_revision,
+-- effect_pack, effect_pack_effect, client_export_session,
+-- media_asset_metadata
+--
+-- GCR-2 (ARTIFACT_AUTHORITY_CONTRACT_V1): `artifact` is the canonical
+-- Artifact record. ArtifactId (id) is stable logical identity; content_digest
+-- is immutable integrity; physical locations live in artifact_replica (0..N);
+-- storage_uri is NOT identity and no longer lives on the canonical record.
+-- render_job_id/project_id are nullable provenance trace (render-origin).
 
 create table artifact (
     id varchar(64) primary key,
-    render_job_id varchar(64) not null,
-    project_id varchar(64) not null,
-    storage_uri text not null,
-    format varchar(32),
-    resolution varchar(32),
-    duration bigint,
+    tenant_id varchar(64) not null,
+    project_id varchar(64),
+    render_job_id varchar(64),
+    content_digest varchar(128) not null,
+    byte_length bigint not null,
+    media_type varchar(64) not null,
+    artifact_kind varchar(32) not null,
+    state varchar(32) not null,
+    schema_version int not null default 1,
     created_at timestamp not null,
-    status varchar(32) not null default 'ACTIVE',
-    tombstoned_at timestamp
+    tombstoned_at timestamp,
+    constraint uq_artifact_tenant_digest unique (tenant_id, content_digest, byte_length)
 );
 
 create index ix_artifact_render_job_id on artifact(render_job_id);
 create index ix_artifact_project_id on artifact(project_id);
-create index ix_artifact_status on artifact(status);
+create index ix_artifact_state on artifact(state);
+create index ix_artifact_content_digest on artifact(content_digest);
+
+create table artifact_replica (
+    artifact_id varchar(64) not null,
+    replica_id varchar(64) not null,
+    provider_id varchar(64) not null,
+    storage_object_id varchar(64) not null,
+    region varchar(64),
+    role varchar(32) not null default 'PRIMARY',
+    state varchar(32) not null default 'ACTIVE',
+    created_at timestamp not null,
+    constraint pk_artifact_replica primary key (artifact_id, replica_id),
+    constraint fk_artifact_replica_artifact foreign key (artifact_id) references artifact(id) on delete restrict
+);
+
+create index ix_artifact_replica_storage on artifact_replica(storage_object_id);
+
+create table artifact_pin (
+    pin_id varchar(64) primary key,
+    revision_id varchar(64) not null,
+    project_id varchar(64) not null,
+    artifact_id varchar(64) not null,
+    content_digest varchar(128) not null,
+    pinned_at timestamp not null,
+    constraint fk_artifact_pin_artifact foreign key (artifact_id) references artifact(id) on delete restrict,
+    constraint uq_artifact_pin_revision unique (revision_id, artifact_id)
+);
+
+create index ix_artifact_pin_artifact on artifact_pin(artifact_id);
+create index ix_artifact_pin_revision on artifact_pin(revision_id);
 
 create table artifact_relation (
     id varchar(64) primary key,
@@ -2791,3 +2831,124 @@ create table workflow_execution (
 );
 create unique index ux_workflow_execution_idempotency on workflow_execution (tenant_id, idempotency_key);
 create index ix_workflow_execution_tenant_status on workflow_execution (tenant_id, status, created_at desc);
+
+-- ============================================================
+-- GCR-2 SINGLE-V1 CONSOLIDATION
+-- Former V2 (timeline_revision_ref, apply_command), V3 (deferrable FK),
+-- V4 (timeline_revision_parent, project_revision_counter, command_domain),
+-- V5 (source_visual_description_snapshot), V6 (ownership UNIQUE/FKs),
+-- V7 (composite snapshot PK, immutable trigger) folded into canonical V1
+-- as FINAL schema definitions. No incremental migration archaeology.
+-- ============================================================
+
+-- OWNERSHIP UNIQUES (former V6): enable composite ownership FKs.
+alter table media_stream
+    add constraint uq_ms_id_asset unique (id, media_asset_id);
+
+alter table media_asset_artifact
+    add constraint uq_maa_asset_artifact unique (media_asset_id, artifact_id);
+
+-- REVISION PARENT GRAPH (former V4): composite FK target + ordered parent edges.
+create unique index ux_timeline_revision_project_id on timeline_revision(project_id, id);
+
+create table timeline_revision_parent (
+    project_id         varchar(64) not null,
+    revision_id        varchar(64) not null,
+    parent_revision_id varchar(64) not null,
+    parent_order       int         not null,
+    primary key (revision_id, parent_order),
+    constraint ux_timeline_revision_parent_pair
+        unique (revision_id, parent_revision_id),
+    constraint ck_timeline_revision_parent_order_nonnegative
+        check (parent_order >= 0),
+    constraint ck_timeline_revision_parent_no_self
+        check (revision_id <> parent_revision_id),
+    constraint fk_timeline_revision_parent_revision
+        foreign key (revision_id) references timeline_revision(id),
+    constraint fk_timeline_revision_parent_parent
+        foreign key (project_id, parent_revision_id)
+        references timeline_revision(project_id, id)
+);
+
+create index ix_timeline_revision_parent_child on timeline_revision_parent(revision_id);
+create index ix_timeline_revision_parent_parent on timeline_revision_parent(parent_revision_id);
+
+-- REVISION COUNTER (former V4): DB-safe per-project revision allocation.
+create table project_revision_counter (
+    project_id          varchar(64) not null primary key,
+    next_revision_number bigint not null
+);
+
+-- OPERATION PLAN TRANSACTION MODEL (former V2/V3): per-project head/ref row with
+-- database-enforced CAS; head FK DEFERRABLE INITIALLY DEFERRED so the apply
+-- transaction may advance head before inserting the revision in the same tx
+-- (FK remains fully active: validated at COMMIT).
+create table timeline_revision_ref (
+    project_id         varchar(64)  not null,
+    ref_id             varchar(64)  not null,
+    head_revision_id   varchar(64),
+    version            bigint       not null default 0,
+    updated_at         timestamp    not null default current_timestamp,
+    primary key (project_id, ref_id),
+    constraint fk_timeline_revision_ref_head
+        foreign key (head_revision_id) references timeline_revision(id)
+        deferrable initially deferred
+);
+
+-- APPLY COMMAND IDEMPOTENCY (former V2/V4): durable command replay authority;
+-- command_domain separates OPERATION_PLAN vs REVISION_COMMAND semantic domains.
+create table apply_command (
+    apply_command_id     varchar(64)  not null,
+    plan_digest          varchar(64)  not null,
+    fingerprint          varchar(64)  not null,
+    status               varchar(16)  not null,
+    result_revision_id   varchar(64),
+    result_content_hash  varchar(64),
+    result_status        varchar(16),
+    project_id           varchar(64),
+    command_domain       varchar(32)  not null default 'OPERATION_PLAN',
+    created_at           timestamp    not null default current_timestamp,
+    completed_at         timestamp,
+    primary key (apply_command_id)
+);
+
+create index ix_apply_command_fingerprint on apply_command(fingerprint);
+
+-- SOURCE VISUAL DESCRIPTION SNAPSHOT (former V5/V6/V7): durable canonical
+-- Media-owned snapshot, bound to immutable source content. Final shape:
+-- composite PK (media_stream_id, artifact_id) supports F2 multi-content-version
+-- coexistence; ownership FKs reject cross-asset/unlinked bindings; append-only
+-- immutability is enforced by PostgreSQL trigger (no semantic UPDATE).
+create table source_visual_description_snapshot (
+    media_stream_id varchar(64) not null,
+    media_asset_id   varchar(64) not null,
+    artifact_id      varchar(64) not null,
+    canonical_payload text not null,
+    created_at       timestamp not null default current_timestamp,
+    constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id),
+    constraint fk_source_visual_snapshot_stream
+        foreign key (media_stream_id) references media_stream(id),
+    constraint fk_svd_stream_asset
+        foreign key (media_stream_id, media_asset_id)
+        references media_stream (id, media_asset_id),
+    constraint fk_svd_asset_artifact
+        foreign key (media_asset_id, artifact_id)
+        references media_asset_artifact (media_asset_id, artifact_id)
+);
+
+create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$
+begin
+    if new.media_stream_id is distinct from old.media_stream_id
+       or new.media_asset_id is distinct from old.media_asset_id
+       or new.artifact_id is distinct from old.artifact_id
+       or new.canonical_payload is distinct from old.canonical_payload then
+        raise exception 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE: semantic mutation of '
+            'source_visual_description_snapshot is forbidden (append-only canonical fact)';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger trg_svd_snapshot_immutable
+    before update on source_visual_description_snapshot
+    for each row execute function trg_fn_svd_snapshot_immutable();

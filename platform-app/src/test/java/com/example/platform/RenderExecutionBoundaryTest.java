@@ -166,9 +166,10 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
         for (Map<String, Object> m : migrations) {
             evidence.append(String.format("FLYWAY: V%s - %s [%s]%n", m.get("version"), m.get("description"), m.get("script")));
         }
-        // Greenfield baseline: exactly V1+V2 migrations before first release
-        Assertions.assertEquals(7, migrations.size(),
-                "Greenfield baseline must contain exactly V1+V2 migrations");
+        // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
+        // exactly ONE canonical V1 migration; former V2..V7 consolidated into V1.
+        Assertions.assertEquals(1, migrations.size(),
+                "Greenfield baseline must contain exactly one canonical V1 migration");
         Map<String, Object> singleMigration = migrations.get(0);
         Assertions.assertEquals("1", String.valueOf(singleMigration.get("version")),
                 "Only V1 may be active before first release");

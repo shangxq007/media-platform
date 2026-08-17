@@ -140,7 +140,10 @@ class PluginRuntimeArchitectureGuardTest {
     void arPrv2_07_durableOutputUsesArtifactRef() throws IOException {
         Path result = RUNTIME.resolve("PluginExecutionResult.java");
         String src = stripComments(read(result));
-        assertTrue(src.contains("ArtifactRef"), "AR-PRV2-07 ArtifactRef missing");
+        // GCR-2: shared-kernel ArtifactRef retired; durable outputs are typed
+        // List<ArtifactId> (stable logical identity, no storage-URI semantics).
+        assertTrue(src.contains("List<ArtifactId>"), "AR-PRV2-07 typed ArtifactId list missing");
+        assertFalse(src.contains("ArtifactRef"), "AR-PRV2-07 legacy ArtifactRef must be absent");
         assertFalse(src.contains("InputStream"), "AR-PRV2-07 InputStream in result");
         assertFalse(src.contains("byte[]"), "AR-PRV2-07 byte[] in result");
     }

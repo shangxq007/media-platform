@@ -23,12 +23,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StorageOwnershipArchitectureTest {
 
     private static final List<String> CANONICAL_CONTRACTS = List.of(
-            "ContentDigest.java",
             "StorageObjectId.java",
             "StorageReplicaId.java",
             "StorageProviderId.java",
             "StorageProvider.java"
     );
+
+    // GCR-2: ContentDigest is an immutable cross-domain integrity primitive rehomed
+    // to shared-kernel (shared.digest) — its ownership follows the authority move.
+    private static final String CONTENT_DIGEST_PATH =
+            "shared-kernel/src/main/java/com/example/platform/shared/digest/ContentDigest.java";
 
     private static Path repoRoot() {
         Path p = Paths.get("").toAbsolutePath();
@@ -83,5 +87,7 @@ class StorageOwnershipArchitectureTest {
                 .toList();
         assertTrue(found.size() == CANONICAL_CONTRACTS.size(),
                 "storage-module must own all canonical contracts, found: " + found);
+        assertTrue(Files.isRegularFile(repoRoot().resolve(CONTENT_DIGEST_PATH)),
+                "ContentDigest must live in shared-kernel shared.digest (GCR-2 authority move)");
     }
 }

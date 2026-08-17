@@ -26,7 +26,7 @@ class StorageCatalogServiceTest {
             @Override public String presign(String objectKey) { return null; }
         };
 
-        StorageCatalogService service = new StorageCatalogService(List.of(localFs, s3), null);
+        StorageCatalogService service = new StorageCatalogService(List.of(localFs, s3));
         List<String> codes = service.providerCodes();
 
         assertNotNull(codes);
@@ -37,7 +37,7 @@ class StorageCatalogServiceTest {
 
     @Test
     void providerCodesReturnsEmptyWhenNoProviders() {
-        StorageCatalogService service = new StorageCatalogService(List.of(), null);
+        StorageCatalogService service = new StorageCatalogService(List.of());
         List<String> codes = service.providerCodes();
 
         assertNotNull(codes);
@@ -52,7 +52,7 @@ class StorageCatalogServiceTest {
             @Override public String presign(String objectKey) { return null; }
         };
 
-        StorageCatalogService service = new StorageCatalogService(List.of(provider), null);
+        StorageCatalogService service = new StorageCatalogService(List.of(provider));
         List<String> codes = service.providerCodes();
 
         assertEquals(1, codes.size());

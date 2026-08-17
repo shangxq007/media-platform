@@ -178,7 +178,8 @@ _Others_
 * `c.e.p.r.infrastructure.RenderProvider` (via `c.e.p.r.infrastructure.vapoursynth.VapourSynthRenderProvider`)
 |Bean references
 |* `c.e.p.t.app.TimelineRevisionService` (in Timeline)
-* `c.e.p.s.api.StorageCatalogPort` (in Storage)
+* `c.e.p.a.domain.ArtifactQueryService` (in Artifact)
+* `c.e.p.a.app.ArtifactCatalogService` (in Artifact)
 * `c.e.p.a.api.AiGatewayPort` (in AI)
 * `c.e.p.n.app.NotificationEventPublisher` (in Notification)
 * `c.e.p.t.adapter.TimelineSnapshotService` (in Timeline)
@@ -200,6 +201,7 @@ _Others_
 * `c.e.p.t.app.TimelineCanonicalizer` (in Timeline)
 * `c.e.p.s.web.ErrorCodeRegistry` (in Shared Kernel)
 * `c.e.p.e.app.ProcessToolRunner` (in Extension)
+* `c.e.p.a.domain.ArtifactCommitService` (in Artifact)
 * `c.e.p.e.runtime.PluginRuntime` (in Extension)
 * `c.e.p.b.app.SubscriptionBillingService` (in Billing)
 * `c.e.p.q.app.QuotaService` (in Quota & Metering)

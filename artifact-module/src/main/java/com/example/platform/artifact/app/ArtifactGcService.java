@@ -1,7 +1,7 @@
 package com.example.platform.artifact.app;
 
-import com.example.platform.artifact.domain.ArtifactCatalogEntry;
-import com.example.platform.artifact.domain.ArtifactStatus;
+import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.infrastructure.ArtifactRepository;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.storage.domain.BlobStorage;
@@ -18,28 +18,33 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * Purges tombstoned catalog artifacts: deletes blob (when supported) and marks {@link ArtifactStatus#PURGED}.
+ * GCR-2 (ARTIFACT_AUTHORITY_CONTRACT_V1 C13/C14): Artifact-owned GC.
  *
- * <p>Supports dry-run mode for safe preview of what would be cleaned up.
+ * <p>Purges tombstoned canonical Artifacts (state DELETING past retention) by
+ * marking them DELETED. Every candidate passes {@link ArtifactLifecycleService}
+ * deleteCheck, which FAILS CLOSED on historical pin protection — a pinned
+ * Artifact (or its last usable replica) is never GC'd
+ * (HISTORICAL_PIN_GC_BYPASS_COUNT = 0). Physical blob deletion is data-plane
+ * (BlobStorage), not Artifact identity authority.</p>
  */
 @Service
 public class ArtifactGcService {
 
     private static final Logger log = LoggerFactory.getLogger(ArtifactGcService.class);
 
-    private final ArtifactCatalogRepository artifactRepository;
+    private final Optional<ArtifactRepository> artifactRepository;
     private final ArtifactLifecycleService lifecycleService;
     private final Optional<BlobStorage> blobStorage;
     private final ArtifactGcProperties properties;
     private final AuditPort auditPort;
 
     public ArtifactGcService(
-            @Autowired(required = false) ArtifactCatalogRepository artifactRepository,
+            @Autowired(required = false) ArtifactRepository artifactRepository,
             ArtifactLifecycleService lifecycleService,
             @Autowired(required = false) BlobStorage blobStorage,
             ArtifactGcProperties properties,
             @Autowired(required = false) AuditPort auditPort) {
-        this.artifactRepository = artifactRepository;
+        this.artifactRepository = Optional.ofNullable(artifactRepository);
         this.lifecycleService = lifecycleService;
         this.blobStorage = Optional.ofNullable(blobStorage);
         this.properties = properties;
@@ -54,21 +59,13 @@ public class ArtifactGcService {
         return runGc(retentionDays, false, properties.getBatchSize());
     }
 
-    /**
-     * Run garbage collection on tombstoned artifacts.
-     *
-     * @param retentionDays only tombstoned before this many days ago
-     * @param dryRun if true, report what would be deleted without actually deleting
-     * @param limit  max number of artifacts to process (0 = use config batchSize)
-     */
-    @SuppressWarnings("unchecked")
     public GcResult runGc(int retentionDays, boolean dryRun, int limit) {
-        if (artifactRepository == null) {
+        if (artifactRepository.isEmpty()) {
             return new GcResult(0, 0, 0, 0, List.of(), List.of("persistent catalog unavailable"));
         }
 
         Instant cutoff = Instant.now().minus(Math.max(1, retentionDays), ChronoUnit.DAYS);
-        List<ArtifactCatalogEntry> candidates = artifactRepository.findTombstonedBefore(cutoff);
+        List<Artifact> candidates = artifactRepository.get().findTombstonedBefore(null, cutoff);
         int scanned = candidates.size();
         int purged = 0;
         int skipped = 0;
@@ -77,31 +74,32 @@ public class ArtifactGcService {
         List<String> errors = new ArrayList<>();
         int effectiveLimit = limit > 0 ? limit : Math.max(1, properties.getBatchSize());
 
-        for (ArtifactCatalogEntry artifact : candidates.stream().limit(effectiveLimit).toList()) {
+        for (Artifact artifact : candidates.stream().limit(effectiveLimit).toList()) {
             try {
-                var check = lifecycleService.deleteCheck(artifact.id());
+                var check = lifecycleService.deleteCheck(artifact.artifactId().value());
                 if (!check.deletable()) {
                     skipped++;
-                    actions.add("SKIP " + artifact.id() + " (not deletable)");
+                    actions.add("SKIP " + artifact.artifactId().value() + " (" + check.references() + ")");
                     continue;
                 }
                 if (dryRun) {
                     purged++;
-                    actions.add("WOULD_PURGE " + artifact.id() + " storageUri=" + artifact.storageUri());
-                    log.info("[dry-run] Would purge artifact id={} uri={}", artifact.id(), artifact.storageUri());
+                    actions.add("WOULD_PURGE " + artifact.artifactId().value());
+                    log.info("[dry-run] Would purge artifact id={}", artifact.artifactId().value());
                 } else {
-                    deleteBlobIfPresent(artifact.storageUri());
-                    artifactRepository.updateStatus(artifact.id(), ArtifactStatus.PURGED, artifact.tombstonedAt());
+                    // Physical blob deletion is data-plane (BlobStorage) by replica
+                    // location; canonical logical deletion is artifact-owned.
+                    artifactRepository.get().markPurged(artifact.artifactId().value());
                     purged++;
-                    actions.add("PURGED " + artifact.id());
-                    log.info("Purged artifact id={} uri={}", artifact.id(), artifact.storageUri());
+                    actions.add("PURGED " + artifact.artifactId().value());
+                    log.info("Purged artifact id={}", artifact.artifactId().value());
                 }
             } catch (Exception e) {
                 failed++;
                 skipped++;
-                actions.add("FAILED " + artifact.id() + ": " + e.getMessage());
-                errors.add(artifact.id() + ": " + e.getMessage());
-                log.warn("ArtifactCatalogEntry GC failed for {}: {}", artifact.id(), e.getMessage());
+                actions.add("FAILED " + artifact.artifactId().value() + ": " + e.getMessage());
+                errors.add(artifact.artifactId().value() + ": " + e.getMessage());
+                log.warn("Artifact GC failed for {}: {}", artifact.artifactId().value(), e.getMessage());
             }
         }
 
@@ -110,27 +108,19 @@ public class ArtifactGcService {
         return result;
     }
 
-    private void deleteBlobIfPresent(String storageUri) {
-        if (storageUri == null || storageUri.isBlank() || blobStorage.isEmpty()) {
-            return;
-        }
-        blobStorage.get().deleteStorageUri(storageUri);
-    }
-
     @SuppressWarnings("unchecked")
     private void recordGcAudit(GcResult result, boolean dryRun, int retentionDays) {
         try {
             if (auditPort != null) {
                 Map<String, Object> payload = new LinkedHashMap<>();
-                payload.put("action", dryRun ? "ARTIFACT_BLOB_GC_DRY_RUN" : "ARTIFACT_BLOB_GC");
+                payload.put("action", dryRun ? "ARTIFACT_GC_DRY_RUN" : "ARTIFACT_GC");
                 payload.put("scanned", result.scanned());
                 payload.put("purged", result.purged());
                 payload.put("skipped", result.skipped());
                 payload.put("failed", result.failed());
                 payload.put("retentionDays", retentionDays);
                 payload.put("dryRun", dryRun);
-                // Never include storageUri in audit
-                auditPort.record("SYSTEM", "ARTIFACT_BLOB_GC", "ARTIFACT_CATALOG",
+                auditPort.record("SYSTEM", "ARTIFACT_GC", "ARTIFACT",
                         "artifact", "gc", payload);
             }
         } catch (Exception e) {

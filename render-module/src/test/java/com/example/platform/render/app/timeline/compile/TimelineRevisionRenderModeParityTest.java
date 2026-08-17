@@ -317,7 +317,7 @@ class TimelineRevisionRenderModeParityTest {
     }
     static class StubTimelineRevisionService extends TimelineRevisionService {
         private final InMemoryTimelineRevisionRepository repo;
-        StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null, null, null, null); this.repo = repo; }
+        StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null, null, null, null, null, null); this.repo = repo; }
         @Override public Optional<RevisionInfo> findById(String revisionId) {
             return repo.findById(revisionId).map(row -> new RevisionInfo(
                     row.id(), row.projectId(), row.tenantId(), row.parentRevisionId(),

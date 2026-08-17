@@ -13,8 +13,8 @@ import com.example.platform.timeline.semantics.clip.MediaClip.TimeRange;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.storage.contract.ContentDigest;
-import com.example.platform.storage.contract.ContentDigest.DigestAlgorithm;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest.DigestAlgorithm;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

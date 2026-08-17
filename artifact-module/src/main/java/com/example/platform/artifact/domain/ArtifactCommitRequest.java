@@ -1,7 +1,7 @@
 package com.example.platform.artifact.domain;
 import com.example.platform.shared.identity.ArtifactId;
 
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.StorageReplicaId;
@@ -32,7 +32,11 @@ public record ArtifactCommitRequest(
         String idempotencyKey,
         List<ProvenanceEdgeDeclaration> provenanceDeclarations,
         Instant evaluatedAt,
-        Instant createdAt
+        Instant createdAt,
+        // GCR-2: nullable provenance/association trace (render_job_id / project_id
+        // on the canonical record). NOT identity — never used for lookup/equality.
+        String renderJobId,
+        String projectId
 ) {
     public ArtifactCommitRequest {
         Objects.requireNonNull(artifactId, "artifactId");
@@ -52,6 +56,7 @@ public record ArtifactCommitRequest(
         provenanceDeclarations = provenanceDeclarations != null ? List.copyOf(provenanceDeclarations) : List.of();
         Objects.requireNonNull(evaluatedAt, "evaluatedAt");
         Objects.requireNonNull(createdAt, "createdAt");
+        // Trace fields are nullable by contract (render_job_id/project_id association only).
     }
 
     /**

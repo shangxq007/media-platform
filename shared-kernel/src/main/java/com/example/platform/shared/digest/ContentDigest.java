@@ -1,4 +1,4 @@
-package com.example.platform.storage.contract;
+package com.example.platform.shared.digest;
 import java.io.Serializable;
 public record ContentDigest(DigestAlgorithm algorithm, String value) implements Serializable {
     public ContentDigest {

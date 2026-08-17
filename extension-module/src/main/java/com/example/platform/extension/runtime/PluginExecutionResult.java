@@ -1,6 +1,6 @@
 package com.example.platform.extension.runtime;
 
-import com.example.platform.shared.capability.ArtifactRef;
+import com.example.platform.shared.identity.ArtifactId;
 
 import java.util.List;
 import java.util.Objects;
@@ -8,21 +8,21 @@ import java.util.Objects;
 /**
  * Canonical plugin execution result (frozen PRV2-ADR-006).
  *
- * <p>Durable media/file/model outputs are ALWAYS {@link ArtifactRef} references —
+ * <p>Durable media/file/model outputs are ALWAYS typed {@link ArtifactId} references —
  * never File, Path, InputStream, byte[], Mat, AVFrame, Packet, Tensor or
  * provider-native media objects (AR-PRV2-07, PRV2-RED-011,
  * RUNTIME_OBJECT_IS_NOT_PLATFORM_ARTIFACT).</p>
  *
  * @param status               terminal execution status
  * @param output               small typed result payload (nullable; bounded, never a raw media object)
- * @param artifactRefs         durable output artifact references (empty when none)
+ * @param artifactRefs         durable output artifact references (empty when none) — typed {@link ArtifactId} (GCR-2)
  * @param providerObservations provider observations (cost/usage metadata, nullable)
  * @param error                canonical error when status != SUCCEEDED (nullable)
  */
 public record PluginExecutionResult(
         PluginExecutionStatus status,
         Object output,
-        List<ArtifactRef> artifactRefs,
+        List<ArtifactId> artifactRefs,
         Object providerObservations,
         PluginRuntimeError error) {
 
@@ -33,7 +33,7 @@ public record PluginExecutionResult(
         }
     }
 
-    public static PluginExecutionResult succeeded(Object output, List<ArtifactRef> artifactRefs, Object providerObservations) {
+    public static PluginExecutionResult succeeded(Object output, List<ArtifactId> artifactRefs, Object providerObservations) {
         return new PluginExecutionResult(PluginExecutionStatus.SUCCEEDED, output, artifactRefs, providerObservations, null);
     }
 

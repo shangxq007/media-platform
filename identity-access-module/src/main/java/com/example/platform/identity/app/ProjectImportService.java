@@ -1,6 +1,7 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.artifact.app.ArtifactCatalogService;
+import com.example.platform.artifact.app.ArtifactLifecycleService;
 import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.Ids;
@@ -51,17 +52,22 @@ public class ProjectImportService {
 
     private final TenantProjectService tenantProjectService;
     private final ArtifactCatalogService artifactCatalogService;
+    private final ArtifactLifecycleService artifactLifecycleService;
     private final AuditPort auditPort;
     private final ImportAssetDownloader assetDownloader;
     private final BlobStorage blobStorage;
 
     public ProjectImportService(TenantProjectService tenantProjectService,
                                  ArtifactCatalogService artifactCatalogService,
+                                 @Autowired(required = false) ArtifactLifecycleService artifactLifecycleService,
                                  @Autowired(required = false) AuditPort auditPort,
                                  @Autowired(required = false) ImportAssetDownloader assetDownloader,
                                  @Autowired(required = false) BlobStorage blobStorage) {
         this.tenantProjectService = tenantProjectService;
         this.artifactCatalogService = artifactCatalogService;
+        this.artifactLifecycleService = artifactLifecycleService != null
+                ? artifactLifecycleService
+                : new NoopArtifactLifecycle();
         this.auditPort = auditPort;
         this.assetDownloader = assetDownloader;
         this.blobStorage = blobStorage;
@@ -331,9 +337,9 @@ public class ProjectImportService {
      */
     private void rollbackArtifact(String artifactId) {
         try {
-            artifactCatalogService.updateStatus(
-                    artifactId,
-                    com.example.platform.artifact.domain.ArtifactStatus.TOMBSTONED);
+            // GCR-2: tombstone routes through Artifact-owned lifecycle (pin-aware
+            // fail-closed); catalog is projection-only.
+            artifactLifecycleService.tombstone(artifactId);
             log.info("Tombstoned artifact for rollback: {}", artifactId);
         } catch (Exception e) {
             log.warn("Failed to tombstone artifact {}: {}", artifactId, e.getMessage());
@@ -518,6 +524,18 @@ public class ProjectImportService {
 
         String reasonCode() {
             return reasonCode;
+        }
+    }
+
+    /** Fallback used when the artifact lifecycle bean is not present (tests/embedded). */
+    private static final class NoopArtifactLifecycle extends com.example.platform.artifact.app.ArtifactLifecycleService {
+        NoopArtifactLifecycle() {
+            super(null, null, null, null, null, null, null, java.util.List.of());
+        }
+
+        @Override
+        public ArtifactCatalogEntry tombstone(String artifactId) {
+            return null;
         }
     }
 }

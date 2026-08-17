@@ -95,6 +95,17 @@ class ModularityTest {
         // violations — same class as the pre-existing render entries above.
         "render' depends on module 'timeline",
         "render' depends on module 'operation",
+        // GCR-2 reference-integrity dependency: Timeline validates immutable
+        // ArtifactId + ContentDigest pins through the Artifact authority
+        // (ArtifactQueryService) before revision commit. Bounded to Artifact-facing
+        // query contracts; Artifact does not depend on Timeline (no cycle).
+        "timeline' depends on module 'artifact",
+        // GCR-2 render reconnect: Render is Artifact producer/consumer through
+        // Artifact-owned services (ArtifactQueryService / ArtifactCatalogService /
+        // ArtifactCommitService) and domain value types. Frozen direction
+        // Render -> Artifact; artifact-module has no dependency on render.
+        "render' depends on named interface(s) 'artifact :: domain",
+        "render' depends on named interface(s) 'artifact :: app",
         "web' depends on module 'timeline",
         "timeline' depends on non-exposed type com.example.platform.audio",
         "timeline' depends on non-exposed type com.example.platform.fonttext",

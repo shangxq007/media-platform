@@ -13,9 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * K1 AR structural guards (K1-AR-01..05). Assert the shared-kernel package layout
+ * K1 AR structural guards (K1-AR-01..06). Assert the shared-kernel package layout
  * no longer holds any workflow/automation/provider-registry/effect-execution
- * authority, and that ArtifactRef is the sole surviving capability-family type.
+ * authority. GCR-2: shared/capability ArtifactRef is RETIRED (SHARED_KERNEL_
+ * ARTIFACT_REF_TYPE_COUNT = 0) — the capability family is fully removed from
+ * shared-kernel; artifact identity primitives live in shared/identity + shared/digest.
  */
 class K1SharedKernelAuthorityGuardTest {
 
@@ -65,22 +67,38 @@ class K1SharedKernelAuthorityGuardTest {
         assertFalse(exists(CAP + "/execution"), "K1-AR-03: shared/capability/execution must be absent");
     }
 
-    /** K1-AR-04: retired legacy capability skeleton absent — root contains ONLY ArtifactRef.java. */
+    /** K1-AR-04: GCR-2 — shared/capability ArtifactRef RETIRED; capability root is empty/absent. */
     @Test
-    void k1Ar04_capabilityRootOnlyArtifactRef() {
-        List<Path> files = capRootFiles();
-        assertTrue(files.size() == 1 && files.get(0).getFileName().toString().equals("ArtifactRef.java"),
-                "K1-AR-04: shared/capability root must contain ONLY ArtifactRef.java, found: " + files);
+    void k1Ar04_capabilityArtifactRefRetired() {
+        Path dir = repoRoot().resolve(CAP);
+        if (Files.exists(dir)) {
+            List<Path> files = capRootFiles();
+            assertTrue(files.isEmpty(),
+                    "K1-AR-04: shared/capability root must be empty after ArtifactRef retirement, found: " + files);
+        }
+        assertFalse(exists(CAP + "/ArtifactRef.java"), "K1-AR-04: shared ArtifactRef must be deleted (GCR-2)");
     }
 
-    /** K1-AR-05: ArtifactRef remains the only capability-family type (canonical primitive preserved). */
+    /** K1-AR-05: GCR-2 — no capability-family type survives; artifact primitives live in identity/digest. */
     @Test
-    void k1Ar05_artifactRefSoleCapabilityType() {
-        assertTrue(exists(CAP + "/ArtifactRef.java"), "K1-AR-05: ArtifactRef must be retained");
+    void k1Ar05_capabilityFamilyRetired() {
+        assertFalse(exists(CAP + "/ArtifactRef.java"), "K1-AR-05: ArtifactRef must NOT be retained (GCR-2)");
+        // Artifact identity + integrity primitives now live in shared/identity and shared/digest.
+        assertTrue(exists("shared-kernel/src/main/java/com/example/platform/shared/identity/ArtifactId.java"),
+                "K1-AR-05: ArtifactId primitive must exist in shared/identity");
+        assertTrue(exists("shared-kernel/src/main/java/com/example/platform/shared/digest/ContentDigest.java"),
+                "K1-AR-05: ContentDigest primitive must exist in shared/digest (GCR-2)");
         // No other capability-family packages may exist.
         String[] retired = {"action", "event", "execution", "flow", "hook", "registry", "trace", "validation"};
         for (String sub : retired) {
             assertFalse(exists(CAP + "/" + sub), "K1-AR-05: retired package must remain absent: " + sub);
         }
+    }
+
+    /** K1-AR-06: GCR-2 — no production usage of shared ArtifactRef anywhere. */
+    @Test
+    void k1Ar06_noSharedArtifactRefProductionUsage() {
+        assertFalse(exists(CAP + "/ArtifactRef.java"),
+                "K1-AR-06: shared ArtifactRef type absent ⇒ production usage count = 0");
     }
 }

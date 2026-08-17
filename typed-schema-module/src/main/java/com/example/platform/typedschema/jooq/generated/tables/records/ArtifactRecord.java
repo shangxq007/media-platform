@@ -35,16 +35,16 @@ public class ArtifactRecord extends UpdatableRecordImpl<ArtifactRecord> {
     }
 
     /**
-     * Setter for <code>public.artifact.render_job_id</code>.
+     * Setter for <code>public.artifact.tenant_id</code>.
      */
-    public void setRenderJobId(String value) {
+    public void setTenantId(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>public.artifact.render_job_id</code>.
+     * Getter for <code>public.artifact.tenant_id</code>.
      */
-    public String getRenderJobId() {
+    public String getTenantId() {
         return (String) get(1);
     }
 
@@ -63,101 +63,129 @@ public class ArtifactRecord extends UpdatableRecordImpl<ArtifactRecord> {
     }
 
     /**
-     * Setter for <code>public.artifact.storage_uri</code>.
+     * Setter for <code>public.artifact.render_job_id</code>.
      */
-    public void setStorageUri(String value) {
+    public void setRenderJobId(String value) {
         set(3, value);
     }
 
     /**
-     * Getter for <code>public.artifact.storage_uri</code>.
+     * Getter for <code>public.artifact.render_job_id</code>.
      */
-    public String getStorageUri() {
+    public String getRenderJobId() {
         return (String) get(3);
     }
 
     /**
-     * Setter for <code>public.artifact.format</code>.
+     * Setter for <code>public.artifact.content_digest</code>.
      */
-    public void setFormat(String value) {
+    public void setContentDigest(String value) {
         set(4, value);
     }
 
     /**
-     * Getter for <code>public.artifact.format</code>.
+     * Getter for <code>public.artifact.content_digest</code>.
      */
-    public String getFormat() {
+    public String getContentDigest() {
         return (String) get(4);
     }
 
     /**
-     * Setter for <code>public.artifact.resolution</code>.
+     * Setter for <code>public.artifact.byte_length</code>.
      */
-    public void setResolution(String value) {
+    public void setByteLength(Long value) {
         set(5, value);
     }
 
     /**
-     * Getter for <code>public.artifact.resolution</code>.
+     * Getter for <code>public.artifact.byte_length</code>.
      */
-    public String getResolution() {
-        return (String) get(5);
+    public Long getByteLength() {
+        return (Long) get(5);
     }
 
     /**
-     * Setter for <code>public.artifact.duration</code>.
+     * Setter for <code>public.artifact.media_type</code>.
      */
-    public void setDuration(Long value) {
+    public void setMediaType(String value) {
         set(6, value);
     }
 
     /**
-     * Getter for <code>public.artifact.duration</code>.
+     * Getter for <code>public.artifact.media_type</code>.
      */
-    public Long getDuration() {
-        return (Long) get(6);
+    public String getMediaType() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.artifact.artifact_kind</code>.
+     */
+    public void setArtifactKind(String value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.artifact_kind</code>.
+     */
+    public String getArtifactKind() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for <code>public.artifact.state</code>.
+     */
+    public void setState(String value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.state</code>.
+     */
+    public String getState() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for <code>public.artifact.schema_version</code>.
+     */
+    public void setSchemaVersion(Integer value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.schema_version</code>.
+     */
+    public Integer getSchemaVersion() {
+        return (Integer) get(9);
     }
 
     /**
      * Setter for <code>public.artifact.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(7, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.artifact.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(7);
-    }
-
-    /**
-     * Setter for <code>public.artifact.status</code>.
-     */
-    public void setStatus(String value) {
-        set(8, value);
-    }
-
-    /**
-     * Getter for <code>public.artifact.status</code>.
-     */
-    public String getStatus() {
-        return (String) get(8);
+        return (LocalDateTime) get(10);
     }
 
     /**
      * Setter for <code>public.artifact.tombstoned_at</code>.
      */
     public void setTombstonedAt(LocalDateTime value) {
-        set(9, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.artifact.tombstoned_at</code>.
      */
     public LocalDateTime getTombstonedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -183,18 +211,20 @@ public class ArtifactRecord extends UpdatableRecordImpl<ArtifactRecord> {
     /**
      * Create a detached, initialised ArtifactRecord
      */
-    public ArtifactRecord(String id, String renderJobId, String projectId, String storageUri, String format, String resolution, Long duration, LocalDateTime createdAt, String status, LocalDateTime tombstonedAt) {
+    public ArtifactRecord(String id, String tenantId, String projectId, String renderJobId, String contentDigest, Long byteLength, String mediaType, String artifactKind, String state, Integer schemaVersion, LocalDateTime createdAt, LocalDateTime tombstonedAt) {
         super(Artifact.ARTIFACT);
 
         setId(id);
-        setRenderJobId(renderJobId);
+        setTenantId(tenantId);
         setProjectId(projectId);
-        setStorageUri(storageUri);
-        setFormat(format);
-        setResolution(resolution);
-        setDuration(duration);
+        setRenderJobId(renderJobId);
+        setContentDigest(contentDigest);
+        setByteLength(byteLength);
+        setMediaType(mediaType);
+        setArtifactKind(artifactKind);
+        setState(state);
+        setSchemaVersion(schemaVersion);
         setCreatedAt(createdAt);
-        setStatus(status);
         setTombstonedAt(tombstonedAt);
         resetChangedOnNotNull();
     }

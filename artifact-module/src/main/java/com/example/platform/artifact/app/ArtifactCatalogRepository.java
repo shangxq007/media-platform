@@ -1,31 +1,28 @@
 package com.example.platform.artifact.app;
 
+import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
+
 import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
-import org.jooq.Record;
-
 import org.springframework.stereotype.Repository;
-import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
-
 
 /**
- * Persistence repository for {@link ArtifactCatalogEntry} entities in the artifact catalog.
+ * GCR-2 (ARTIFACT_AUTHORITY_CONTRACT_V1 C6/C16): ArtifactCatalogEntry is a
+ * READ/PROJECTION ONLY repository over the canonical {@code artifact} table.
  *
- * <p>Only created when a {@link DSLContext} bean is available (i.e., when the
- * datasource-module is properly configured). The {@link ArtifactCatalogService}
- * falls back to in-memory storage when this repository is not available.</p>
- *
- * <p><strong>Note:</strong> Uses lowercase column names for PostgreSQL compatibility.
- * The DSLContext should be configured with RenderNameCase.LOWER.</p>
+ * <p>The canonical Artifact identity/digest/replica truth is owned by
+ * artifact-module's {@code ArtifactRepository} + {@code ArtifactCommitService}
+ * (single write authority). This repository performs NO canonical writes:
+ * catalog rebuild/delete cannot mutate canonical Artifact identity, and no
+ * canonical mutation routes through the catalog. Storage URI is a projection
+ * field (physical replica location), never identity.</p>
  */
 @Repository
-
 public class ArtifactCatalogRepository {
 
     private final DSLContext dsl;
@@ -34,101 +31,60 @@ public class ArtifactCatalogRepository {
         this.dsl = dsl;
     }
 
-    public ArtifactCatalogEntry save(ArtifactCatalogEntry artifact) {
-        LocalDateTime createdAt = artifact.createdAt() != null
-                ? LocalDateTime.ofInstant(artifact.createdAt(), ZoneOffset.UTC)
-                : LocalDateTime.now();
-        String status = artifact.status() != null ? artifact.status().name() : ArtifactStatus.ACTIVE.name();
-        dsl.insertInto(ARTIFACT)
-                .columns(ARTIFACT.ID, ARTIFACT.RENDER_JOB_ID, ARTIFACT.PROJECT_ID,
-                        ARTIFACT.STORAGE_URI, ARTIFACT.FORMAT, ARTIFACT.RESOLUTION,
-                        ARTIFACT.DURATION, ARTIFACT.STATUS, ARTIFACT.TOMBSTONED_AT, ARTIFACT.CREATED_AT)
-                .values(artifact.id(), artifact.renderJobId(), artifact.projectId(),
-                        artifact.storageUri(), artifact.format(), artifact.resolution(),
-                        artifact.duration(), status,
-                        artifact.tombstonedAt() != null
-                                ? LocalDateTime.ofInstant(artifact.tombstonedAt(), ZoneOffset.UTC)
-                                : null,
-                        createdAt)
-                .execute();
-        return artifact;
-    }
-
-    public ArtifactCatalogEntry updateStatus(String artifactId, ArtifactStatus status, Instant tombstonedAt) {
-        LocalDateTime tombstoneTs = tombstonedAt != null
-                ? LocalDateTime.ofInstant(tombstonedAt, ZoneOffset.UTC)
-                : null;
-        dsl.update(ARTIFACT)
-                .set(ARTIFACT.STATUS, status.name())
-                .set(ARTIFACT.TOMBSTONED_AT, tombstoneTs)
-                .where(ARTIFACT.ID.eq(artifactId))
-                .execute();
-        return findById(artifactId).orElseThrow();
-    }
-
-    public Optional<ArtifactCatalogEntry> findById(String id) {
-        Record record = dsl.select()
-                .from(ARTIFACT)
-                .where(ARTIFACT.ID.eq(id))
-                .fetchOne();
-        return Optional.ofNullable(record).map(this::mapRecord);
-    }
-
-    public List<ArtifactCatalogEntry> findByProjectId(String projectId) {
-        return dsl.select()
-                .from(ARTIFACT)
-                .where(ARTIFACT.PROJECT_ID.eq(projectId))
-                .orderBy(ARTIFACT.CREATED_AT.desc())
-                .fetch(this::mapRecord);
-    }
-
-    public List<ArtifactCatalogEntry> findByRenderJobId(String renderJobId) {
-        return dsl.select()
-                .from(ARTIFACT)
-                .where(ARTIFACT.RENDER_JOB_ID.eq(renderJobId))
-                .orderBy(ARTIFACT.CREATED_AT.desc())
-                .fetch(this::mapRecord);
+    private ArtifactCatalogEntry toEntry(org.jooq.Record r) {
+        return new ArtifactCatalogEntry(
+                r.get(ARTIFACT.ID),
+                r.get(ARTIFACT.RENDER_JOB_ID),
+                r.get(ARTIFACT.PROJECT_ID),
+                null,
+                r.get(ARTIFACT.MEDIA_TYPE),
+                null,
+                null,
+                r.get(ARTIFACT.BYTE_LENGTH),
+                r.get(ARTIFACT.CONTENT_DIGEST),
+                statusFrom(r.get(ARTIFACT.STATE)),
+                toInstant(r.get(ARTIFACT.TOMBSTONED_AT)),
+                toInstant(r.get(ARTIFACT.CREATED_AT)));
     }
 
     public List<ArtifactCatalogEntry> findAll() {
-        return dsl.select()
-                .from(ARTIFACT)
-                .orderBy(ARTIFACT.CREATED_AT.desc())
-                .fetch(this::mapRecord);
+        return dsl.selectFrom(ARTIFACT)
+                .orderBy(ARTIFACT.CREATED_AT)
+                .fetch()
+                .map(this::toEntry);
     }
 
-    public List<ArtifactCatalogEntry> findTombstonedBefore(Instant cutoff) {
-        LocalDateTime cutoffTs = LocalDateTime.ofInstant(cutoff, ZoneOffset.UTC);
-        return dsl.select()
-                .from(ARTIFACT)
-                .where(ARTIFACT.STATUS.eq(ArtifactStatus.TOMBSTONED.name()))
-                .and(ARTIFACT.TOMBSTONED_AT.isNotNull())
-                .and(ARTIFACT.TOMBSTONED_AT.lessThan(cutoffTs))
-                .orderBy(ARTIFACT.TOMBSTONED_AT.asc())
-                .fetch(this::mapRecord);
+    public Optional<ArtifactCatalogEntry> findById(String id) {
+        return dsl.selectFrom(ARTIFACT)
+                .where(ARTIFACT.ID.eq(id))
+                .fetchOptional()
+                .map(this::toEntry);
     }
 
-    private ArtifactCatalogEntry mapRecord(Record record) {
-        LocalDateTime createdAt = record.get(ARTIFACT.CREATED_AT, LocalDateTime.class);
-        LocalDateTime tombstonedAt = record.get(ARTIFACT.TOMBSTONED_AT, LocalDateTime.class);
-        Long duration = record.get(ARTIFACT.DURATION, Long.class);
-        String statusRaw = record.get(ARTIFACT.STATUS, String.class);
-        ArtifactStatus status = statusRaw != null && !statusRaw.isBlank()
-                ? ArtifactStatus.valueOf(statusRaw)
-                : ArtifactStatus.ACTIVE;
-        return new ArtifactCatalogEntry(
-                record.get(ARTIFACT.ID, String.class),
-                record.get(ARTIFACT.RENDER_JOB_ID, String.class),
-                record.get(ARTIFACT.PROJECT_ID, String.class),
-                record.get(ARTIFACT.STORAGE_URI, String.class),
-                record.get(ARTIFACT.FORMAT, String.class),
-                record.get(ARTIFACT.RESOLUTION, String.class),
-                duration,
-                null, // size_bytes not in schema
-                null, // checksum not in schema
-                status,
-                tombstonedAt != null ? tombstonedAt.atZone(ZoneOffset.UTC).toInstant() : null,
-                createdAt != null ? createdAt.atZone(ZoneOffset.UTC).toInstant() : null
-        );
+    public List<ArtifactCatalogEntry> findByProjectId(String projectId) {
+        return dsl.selectFrom(ARTIFACT)
+                .where(ARTIFACT.PROJECT_ID.eq(projectId))
+                .orderBy(ARTIFACT.CREATED_AT)
+                .fetch()
+                .map(this::toEntry);
+    }
+
+    private static ArtifactStatus statusFrom(String state) {
+        if (state == null) {
+            return ArtifactStatus.ACTIVE;
+        }
+        try {
+            return switch (state) {
+                case "DELETING", "DELETED" -> ArtifactStatus.TOMBSTONED;
+                case "QUARANTINED", "FAILED" -> ArtifactStatus.TOMBSTONED;
+                default -> ArtifactStatus.ACTIVE;
+            };
+        } catch (Exception e) {
+            return ArtifactStatus.ACTIVE;
+        }
+    }
+
+    private static java.time.Instant toInstant(LocalDateTime ts) {
+        return ts == null ? null : ts.toInstant(ZoneOffset.UTC);
     }
 }

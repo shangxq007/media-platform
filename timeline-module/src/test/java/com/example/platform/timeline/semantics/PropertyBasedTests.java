@@ -4,7 +4,7 @@ import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 
 import com.example.platform.timeline.semantics.automation.Automation;
 import com.example.platform.timeline.semantics.clip.MediaClip;

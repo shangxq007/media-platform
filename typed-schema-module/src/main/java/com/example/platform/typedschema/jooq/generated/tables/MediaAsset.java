@@ -7,6 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata.AssetSemanticMetadataPath;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing.MarketplaceListingPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
@@ -317,6 +318,14 @@ public class MediaAsset extends TableImpl<MediaAssetRecord> {
             _searchProjection = new SearchProjectionPath(this, null, Keys.SEARCH_PROJECTION__FK_SP_ASSET.getInverseKey());
 
         return _searchProjection;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.artifact</code> table
+     */
+    public ArtifactPath artifact() {
+        return mediaAssetArtifact().artifact();
     }
 
     @Override

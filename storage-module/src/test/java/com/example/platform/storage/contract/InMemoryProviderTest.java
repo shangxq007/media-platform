@@ -6,7 +6,7 @@ import com.example.platform.storage.contract.namespace.*;
 import com.example.platform.storage.contract.provider.*;
 import com.example.platform.storage.contract.read.*;
 import com.example.platform.storage.contract.write.*;
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 import org.junit.jupiter.api.Test;
 import java.io.InputStream;
 import java.util.*;

@@ -6,10 +6,13 @@ package com.example.platform.typedschema.jooq.generated;
 
 import com.example.platform.typedschema.jooq.generated.tables.ApiClient;
 import com.example.platform.typedschema.jooq.generated.tables.ApiKey;
+import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand;
 import com.example.platform.typedschema.jooq.generated.tables.Artifact;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata;
 import com.example.platform.typedschema.jooq.generated.tables.AuditRecords;
 import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice;
@@ -110,6 +113,7 @@ import com.example.platform.typedschema.jooq.generated.tables.TenantLitellmVirtu
 import com.example.platform.typedschema.jooq.generated.tables.TimelineComment;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineReview;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionParent;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphEdge;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphNode;
@@ -179,15 +183,20 @@ public class Indexes {
     public static final Index IDX_TIMELINE_SNAPSHOT_PROJECT = Internal.createIndex(DSL.name("idx_timeline_snapshot_project"), TimelineSnapshot.TIMELINE_SNAPSHOT, new OrderField[] { TimelineSnapshot.TIMELINE_SNAPSHOT.PROJECT_ID }, false);
     public static final Index IX_API_CLIENT_WORKSPACE_ID = Internal.createIndex(DSL.name("ix_api_client_workspace_id"), ApiClient.API_CLIENT, new OrderField[] { ApiClient.API_CLIENT.WORKSPACE_ID }, false);
     public static final Index IX_API_KEY_FINGERPRINT = Internal.createIndex(DSL.name("ix_api_key_fingerprint"), ApiKey.API_KEY, new OrderField[] { ApiKey.API_KEY.FINGERPRINT }, false);
+    public static final Index IX_APPLY_COMMAND_FINGERPRINT = Internal.createIndex(DSL.name("ix_apply_command_fingerprint"), ApplyCommand.APPLY_COMMAND, new OrderField[] { ApplyCommand.APPLY_COMMAND.FINGERPRINT }, false);
+    public static final Index IX_ARTIFACT_CONTENT_DIGEST = Internal.createIndex(DSL.name("ix_artifact_content_digest"), Artifact.ARTIFACT, new OrderField[] { Artifact.ARTIFACT.CONTENT_DIGEST }, false);
     public static final Index IX_ARTIFACT_GRAPH_JOB_ID = Internal.createIndex(DSL.name("ix_artifact_graph_job_id"), ArtifactGraph.ARTIFACT_GRAPH, new OrderField[] { ArtifactGraph.ARTIFACT_GRAPH.JOB_ID }, false);
     public static final Index IX_ARTIFACT_NODE_HASH = Internal.createIndex(DSL.name("ix_artifact_node_hash"), ArtifactNode.ARTIFACT_NODE, new OrderField[] { ArtifactNode.ARTIFACT_NODE.HASH }, false);
     public static final Index IX_ARTIFACT_NODE_JOB_ID = Internal.createIndex(DSL.name("ix_artifact_node_job_id"), ArtifactNode.ARTIFACT_NODE, new OrderField[] { ArtifactNode.ARTIFACT_NODE.JOB_ID }, false);
     public static final Index IX_ARTIFACT_NODE_TYPE = Internal.createIndex(DSL.name("ix_artifact_node_type"), ArtifactNode.ARTIFACT_NODE, new OrderField[] { ArtifactNode.ARTIFACT_NODE.TYPE }, false);
+    public static final Index IX_ARTIFACT_PIN_ARTIFACT = Internal.createIndex(DSL.name("ix_artifact_pin_artifact"), ArtifactPin.ARTIFACT_PIN, new OrderField[] { ArtifactPin.ARTIFACT_PIN.ARTIFACT_ID }, false);
+    public static final Index IX_ARTIFACT_PIN_REVISION = Internal.createIndex(DSL.name("ix_artifact_pin_revision"), ArtifactPin.ARTIFACT_PIN, new OrderField[] { ArtifactPin.ARTIFACT_PIN.REVISION_ID }, false);
     public static final Index IX_ARTIFACT_PROJECT_ID = Internal.createIndex(DSL.name("ix_artifact_project_id"), Artifact.ARTIFACT, new OrderField[] { Artifact.ARTIFACT.PROJECT_ID }, false);
     public static final Index IX_ARTIFACT_RELATION_SOURCE = Internal.createIndex(DSL.name("ix_artifact_relation_source"), ArtifactRelation.ARTIFACT_RELATION, new OrderField[] { ArtifactRelation.ARTIFACT_RELATION.SOURCE_ARTIFACT_ID }, false);
     public static final Index IX_ARTIFACT_RELATION_TARGET = Internal.createIndex(DSL.name("ix_artifact_relation_target"), ArtifactRelation.ARTIFACT_RELATION, new OrderField[] { ArtifactRelation.ARTIFACT_RELATION.TARGET_ARTIFACT_ID }, false);
     public static final Index IX_ARTIFACT_RENDER_JOB_ID = Internal.createIndex(DSL.name("ix_artifact_render_job_id"), Artifact.ARTIFACT, new OrderField[] { Artifact.ARTIFACT.RENDER_JOB_ID }, false);
-    public static final Index IX_ARTIFACT_STATUS = Internal.createIndex(DSL.name("ix_artifact_status"), Artifact.ARTIFACT, new OrderField[] { Artifact.ARTIFACT.STATUS }, false);
+    public static final Index IX_ARTIFACT_REPLICA_STORAGE = Internal.createIndex(DSL.name("ix_artifact_replica_storage"), ArtifactReplica.ARTIFACT_REPLICA, new OrderField[] { ArtifactReplica.ARTIFACT_REPLICA.STORAGE_OBJECT_ID }, false);
+    public static final Index IX_ARTIFACT_STATE = Internal.createIndex(DSL.name("ix_artifact_state"), Artifact.ARTIFACT, new OrderField[] { Artifact.ARTIFACT.STATE }, false);
     public static final Index IX_ASM_LANGUAGE = Internal.createIndex(DSL.name("ix_asm_language"), AssetSemanticMetadata.ASSET_SEMANTIC_METADATA, new OrderField[] { AssetSemanticMetadata.ASSET_SEMANTIC_METADATA.LANGUAGE }, false);
     public static final Index IX_ASM_STATUS = Internal.createIndex(DSL.name("ix_asm_status"), AssetSemanticMetadata.ASSET_SEMANTIC_METADATA, new OrderField[] { AssetSemanticMetadata.ASSET_SEMANTIC_METADATA.STATUS }, false);
     public static final Index IX_AUDIT_RECORDS_ACTOR_ID = Internal.createIndex(DSL.name("ix_audit_records_actor_id"), AuditRecords.AUDIT_RECORDS, new OrderField[] { AuditRecords.AUDIT_RECORDS.ACTOR_ID }, false);
@@ -388,6 +397,8 @@ public class Indexes {
     public static final Index IX_TIMELINE_REVISION_EDIT_SESSION = Internal.createIndex(DSL.name("ix_timeline_revision_edit_session"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.EDIT_SESSION_ID, TimelineRevision.TIMELINE_REVISION.CREATED_AT.desc() }, false);
     public static final Index IX_TIMELINE_REVISION_IS_MERGE = Internal.createIndex(DSL.name("ix_timeline_revision_is_merge"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.IS_MERGE }, false);
     public static final Index IX_TIMELINE_REVISION_PARENT = Internal.createIndex(DSL.name("ix_timeline_revision_parent"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PARENT_REVISION_ID }, false);
+    public static final Index IX_TIMELINE_REVISION_PARENT_CHILD = Internal.createIndex(DSL.name("ix_timeline_revision_parent_child"), TimelineRevisionParent.TIMELINE_REVISION_PARENT, new OrderField[] { TimelineRevisionParent.TIMELINE_REVISION_PARENT.REVISION_ID }, false);
+    public static final Index IX_TIMELINE_REVISION_PARENT_PARENT = Internal.createIndex(DSL.name("ix_timeline_revision_parent_parent"), TimelineRevisionParent.TIMELINE_REVISION_PARENT, new OrderField[] { TimelineRevisionParent.TIMELINE_REVISION_PARENT.PARENT_REVISION_ID }, false);
     public static final Index IX_TIMELINE_REVISION_PROJECT_CREATED = Internal.createIndex(DSL.name("ix_timeline_revision_project_created"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.CREATED_AT.desc() }, false);
     public static final Index IX_TIMELINE_REVISION_PROJECT_SOURCE = Internal.createIndex(DSL.name("ix_timeline_revision_project_source"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.SOURCE }, false);
     public static final Index IX_TIMELINE_REVISION_SNAPSHOT = Internal.createIndex(DSL.name("ix_timeline_revision_snapshot"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.SNAPSHOT_ID }, false);
@@ -427,6 +438,7 @@ public class Indexes {
     public static final Index IX_WORKSPACE_TENANT_ID = Internal.createIndex(DSL.name("ix_workspace_tenant_id"), Workspace.WORKSPACE, new OrderField[] { Workspace.WORKSPACE.TENANT_ID }, false);
     public static final Index UQ_EFFECT_PACK_EFFECT_KEY = Internal.createIndex(DSL.name("uq_effect_pack_effect_key"), EffectPackEffect.EFFECT_PACK_EFFECT, new OrderField[] { EffectPackEffect.EFFECT_PACK_EFFECT.PACK_ROW_ID, EffectPackEffect.EFFECT_PACK_EFFECT.EFFECT_KEY }, true);
     public static final Index UQ_EFFECT_PACK_IDENTITY = Internal.createIndex(DSL.name("uq_effect_pack_identity"), EffectPack.EFFECT_PACK, new OrderField[] { EffectPack.EFFECT_PACK.PACK_ID, EffectPack.EFFECT_PACK.VERSION, EffectPack.EFFECT_PACK.TENANT_ID }, true);
+    public static final Index UX_TIMELINE_REVISION_PROJECT_ID = Internal.createIndex(DSL.name("ux_timeline_revision_project_id"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.ID }, true);
     public static final Index UX_TIMELINE_REVISION_PROJECT_NUM = Internal.createIndex(DSL.name("ux_timeline_revision_project_num"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.REVISION_NUMBER }, true);
     public static final Index UX_WORKFLOW_EXECUTION_IDEMPOTENCY = Internal.createIndex(DSL.name("ux_workflow_execution_idempotency"), WorkflowExecution.WORKFLOW_EXECUTION, new OrderField[] { WorkflowExecution.WORKFLOW_EXECUTION.TENANT_ID, WorkflowExecution.WORKFLOW_EXECUTION.IDEMPOTENCY_KEY }, true);
 }

@@ -52,7 +52,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
 
     @Test
     @Order(2)
-    @DisplayName("V1..V7: flyway_schema_history contains exactly seven rows (V1..V6 + V7 content-version)")
+    @DisplayName("V1: flyway_schema_history contains exactly one canonical V1 row (GCR-2 consolidation)")
     void flywayHistoryExactlyOneV1() throws Exception {
         assertTrue(deployed);
         try (Connection conn = db.createConnection("")) {
@@ -63,19 +63,9 @@ class UserWorkflowDefinitionV1SchemaMigrationTest {
                 assertEquals("1", rs.getString("version"), "first migration version must be 1");
                 assertEquals("V1__initial_schema.sql", rs.getString("script"),
                         "script must be the canonical consolidated V1");
-                assertTrue(rs.next(), "second migration row (V2) must exist");
-                assertEquals("2", rs.getString("version"), "second migration version must be 2");
-                assertTrue(rs.next(), "third migration row (V3) must exist");
-                assertEquals("3", rs.getString("version"), "third migration version must be 3");
-                assertTrue(rs.next(), "fourth migration row (V4) must exist");
-                assertEquals("4", rs.getString("version"), "fourth migration version must be 4");
-                assertTrue(rs.next(), "fifth migration row (V5) must exist");
-                assertEquals("5", rs.getString("version"), "fifth migration version must be 5");
-                assertTrue(rs.next(), "sixth migration row (V6) must exist");
-                assertEquals("6", rs.getString("version"), "sixth migration version must be 6");
-                assertTrue(rs.next(), "seventh migration row (V7) must exist");
-                assertEquals("7", rs.getString("version"), "seventh migration version must be 7");
-                assertFalse(rs.next(), "flyway_schema_history must contain exactly seven rows (V1..V7)");
+                // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
+                // former V2..V7 incremental migrations are consolidated into V1.
+                assertFalse(rs.next(), "flyway_schema_history must contain exactly one row (V1)");
             }
         }
     }

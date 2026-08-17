@@ -7,7 +7,10 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ArtifactRelationPath;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ArtifactReplicaPath;
+import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 
@@ -66,44 +69,54 @@ public class Artifact extends TableImpl<ArtifactRecord> {
     public final TableField<ArtifactRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column <code>public.artifact.render_job_id</code>.
+     * The column <code>public.artifact.tenant_id</code>.
      */
-    public final TableField<ArtifactRecord, String> RENDER_JOB_ID = createField(DSL.name("render_job_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<ArtifactRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.artifact.project_id</code>.
      */
-    public final TableField<ArtifactRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<ArtifactRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
-     * The column <code>public.artifact.storage_uri</code>.
+     * The column <code>public.artifact.render_job_id</code>.
      */
-    public final TableField<ArtifactRecord, String> STORAGE_URI = createField(DSL.name("storage_uri"), SQLDataType.CLOB.nullable(false), this, "");
+    public final TableField<ArtifactRecord, String> RENDER_JOB_ID = createField(DSL.name("render_job_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
-     * The column <code>public.artifact.format</code>.
+     * The column <code>public.artifact.content_digest</code>.
      */
-    public final TableField<ArtifactRecord, String> FORMAT = createField(DSL.name("format"), SQLDataType.VARCHAR(32), this, "");
+    public final TableField<ArtifactRecord, String> CONTENT_DIGEST = createField(DSL.name("content_digest"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
-     * The column <code>public.artifact.resolution</code>.
+     * The column <code>public.artifact.byte_length</code>.
      */
-    public final TableField<ArtifactRecord, String> RESOLUTION = createField(DSL.name("resolution"), SQLDataType.VARCHAR(32), this, "");
+    public final TableField<ArtifactRecord, Long> BYTE_LENGTH = createField(DSL.name("byte_length"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
-     * The column <code>public.artifact.duration</code>.
+     * The column <code>public.artifact.media_type</code>.
      */
-    public final TableField<ArtifactRecord, Long> DURATION = createField(DSL.name("duration"), SQLDataType.BIGINT, this, "");
+    public final TableField<ArtifactRecord, String> MEDIA_TYPE = createField(DSL.name("media_type"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.artifact.artifact_kind</code>.
+     */
+    public final TableField<ArtifactRecord, String> ARTIFACT_KIND = createField(DSL.name("artifact_kind"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column <code>public.artifact.state</code>.
+     */
+    public final TableField<ArtifactRecord, String> STATE = createField(DSL.name("state"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column <code>public.artifact.schema_version</code>.
+     */
+    public final TableField<ArtifactRecord, Integer> SCHEMA_VERSION = createField(DSL.name("schema_version"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.INTEGER)), this, "");
 
     /**
      * The column <code>public.artifact.created_at</code>.
      */
     public final TableField<ArtifactRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
-
-    /**
-     * The column <code>public.artifact.status</code>.
-     */
-    public final TableField<ArtifactRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'ACTIVE'::character varying"), SQLDataType.VARCHAR)), this, "");
 
     /**
      * The column <code>public.artifact.tombstoned_at</code>.
@@ -179,12 +192,30 @@ public class Artifact extends TableImpl<ArtifactRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_ARTIFACT_PROJECT_ID, Indexes.IX_ARTIFACT_RENDER_JOB_ID, Indexes.IX_ARTIFACT_STATUS);
+        return Arrays.asList(Indexes.IX_ARTIFACT_CONTENT_DIGEST, Indexes.IX_ARTIFACT_PROJECT_ID, Indexes.IX_ARTIFACT_RENDER_JOB_ID, Indexes.IX_ARTIFACT_STATE);
     }
 
     @Override
     public UniqueKey<ArtifactRecord> getPrimaryKey() {
         return Keys.ARTIFACT_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<ArtifactRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_ARTIFACT_TENANT_DIGEST);
+    }
+
+    private transient ArtifactPinPath _artifactPin;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.artifact_pin</code> table
+     */
+    public ArtifactPinPath artifactPin() {
+        if (_artifactPin == null)
+            _artifactPin = new ArtifactPinPath(this, null, Keys.ARTIFACT_PIN__FK_ARTIFACT_PIN_ARTIFACT.getInverseKey());
+
+        return _artifactPin;
     }
 
     private transient ArtifactRelationPath _fkArtifactRelationSource;
@@ -215,6 +246,19 @@ public class Artifact extends TableImpl<ArtifactRecord> {
         return _fkArtifactRelationTarget;
     }
 
+    private transient ArtifactReplicaPath _artifactReplica;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.artifact_replica</code> table
+     */
+    public ArtifactReplicaPath artifactReplica() {
+        if (_artifactReplica == null)
+            _artifactReplica = new ArtifactReplicaPath(this, null, Keys.ARTIFACT_REPLICA__FK_ARTIFACT_REPLICA_ARTIFACT.getInverseKey());
+
+        return _artifactReplica;
+    }
+
     private transient MediaAssetArtifactPath _mediaAssetArtifact;
 
     /**
@@ -226,6 +270,14 @@ public class Artifact extends TableImpl<ArtifactRecord> {
             _mediaAssetArtifact = new MediaAssetArtifactPath(this, null, Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_ARTIFACT.getInverseKey());
 
         return _mediaAssetArtifact;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.media_asset</code> table
+     */
+    public MediaAssetPath mediaAsset() {
+        return mediaAssetArtifact().mediaAsset();
     }
 
     @Override

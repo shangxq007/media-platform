@@ -98,7 +98,7 @@ class OpenDalTimeoutRetryTest {
         );
 
         String content = "TimeoutTestContent";
-        var digest = com.example.platform.storage.contract.ContentDigest.sha256(
+        var digest = com.example.platform.shared.digest.ContentDigest.sha256(
                 computeSha256(content));
 
         var session = provider.beginWrite("timeout-test-ws", namespace, digest, content.length());

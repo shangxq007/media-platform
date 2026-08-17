@@ -1,7 +1,7 @@
 package com.example.platform.artifact.domain;
 import com.example.platform.shared.identity.ArtifactId;
 
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.StorageReplicaId;
@@ -104,7 +104,7 @@ class PropertyBasedTest {
                 ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                 new StorageObjectId("obj-001"), new StorageReplicaId("rep-001"),
                 new StorageProviderId("provider-001"), ReplicaRole.PRIMARY, "us-east-1",
-                "idem-001", List.of(), NOW, NOW);
+                "idem-001", List.of(), NOW, NOW, null, null);
 
         ArtifactCommitResult result1 = service.commit(request);
         ArtifactCommitResult result2 = service.commit(request);
@@ -167,7 +167,7 @@ class PropertyBasedTest {
                         new ArtifactCommitRequest.ProvenanceEdgeDeclaration(
                                 new ArtifactId("parent-2"), ProvenanceRelationType.COMPOSED_FROM,
                                 "op-compose", 1, "attempt-1", "req-2", "res-2")
-                ), NOW, NOW);
+                ), NOW, NOW, null, null);
 
         ArtifactCommitResult result = service.commit(childRequest);
 
@@ -188,6 +188,6 @@ class PropertyBasedTest {
                 ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, 1,
                 new StorageObjectId("obj-" + id), new StorageReplicaId("rep-" + id),
                 new StorageProviderId("provider-001"), ReplicaRole.PRIMARY, "us-east-1",
-                idemKey, List.of(), NOW, NOW);
+                idemKey, List.of(), NOW, NOW, null, null);
     }
 }

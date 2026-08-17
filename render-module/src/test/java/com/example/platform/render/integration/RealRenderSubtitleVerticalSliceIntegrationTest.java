@@ -19,6 +19,7 @@ import com.example.platform.timeline.app.ProductCurrentRevisionService;
 import com.example.platform.timeline.app.TimelineCanonicalizer;
 import com.example.platform.render.app.timeline.TimelineConversionService;
 import com.example.platform.render.app.timeline.TimelineInputProductResolver;
+import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.render.app.timeline.TimelineRenderJobMapper;
 import com.example.platform.timeline.app.TimelineRevisionDiffService;
@@ -329,7 +330,10 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 new TimelineRevisionDiffService(),
                 new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter()),
                 patchService,
-                new TimelineSemanticDiffService(canonicalizer));
+                new TimelineSemanticDiffService(canonicalizer),
+                new TimelineArtifactPinValidator(new com.example.platform.render.testutil.NoopArtifactQueryService()),
+                new com.example.platform.artifact.app.ArtifactPinService(
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)));
     }
 
     private PlanBasedTimelineRevisionRenderService buildPlanBasedRenderService() {

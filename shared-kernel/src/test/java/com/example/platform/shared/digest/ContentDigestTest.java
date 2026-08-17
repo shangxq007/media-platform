@@ -1,5 +1,5 @@
-package com.example.platform.storage.contract;
-import com.example.platform.storage.contract.ContentDigest;
+package com.example.platform.shared.digest;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

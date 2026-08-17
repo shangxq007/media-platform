@@ -3,7 +3,7 @@ package com.example.platform.execution.domain;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.artifact.domain.ArtifactKind;
 import com.example.platform.execution.domain.operation.*;
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

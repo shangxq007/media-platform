@@ -64,6 +64,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
     private EffectTimelineInspector effectTimelineInspector;
     private RenderProfileResolver renderProfileResolver;
     private StorageCatalogPort storageCatalogPort;
+    private com.example.platform.artifact.app.ArtifactCatalogService artifactCatalogService;
     private EditorTimelineConverter editorTimelineConverter;
     private ProviderRuntimeEngine providerRuntimeEngine;
 
@@ -94,6 +95,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         effectTimelineInspector = mock(EffectTimelineInspector.class);
         renderProfileResolver = mock(RenderProfileResolver.class);
         storageCatalogPort = mock(StorageCatalogPort.class);
+        artifactCatalogService = mock(com.example.platform.artifact.app.ArtifactCatalogService.class);
         editorTimelineConverter = mock(EditorTimelineConverter.class);
 
         when(quotaService.checkQuota(anyString(), anyString(), anyInt())).thenReturn(true);
@@ -143,7 +145,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
         RenderArtifactQueryService artifactQueryService = new RenderArtifactQueryService(
-                renderJobRepository, storageCatalogPort, List.of());
+                renderJobRepository, mock(com.example.platform.artifact.domain.ArtifactQueryService.class),
+                artifactCatalogService, List.of());
         RenderJobExecutionService executionService = new RenderJobExecutionService(
                 renderJobRepository, quotaService, null, renderProviderRouter,
                 providerRuntimeEngine,
@@ -386,10 +389,12 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         TenantContext.set("tenant-7");
         insertRenderJob("rj-7", "proj-7", "tenant-7", "snap-7", "default_1080p", "COMPLETED");
 
-        var artifactRef = new StorageCatalogPort.ArtifactRef(
-                "art-1", "rj-7", "proj-7", "localFsStorageProvider://artifacts/rj-7/output.mp4",
-                "mp4", "1920x1080", 10L, java.time.Instant.now());
-        when(storageCatalogPort.findArtifactsByJob("rj-7")).thenReturn(List.of(artifactRef));
+        com.example.platform.artifact.domain.ArtifactCatalogEntry artifactEntry =
+                new com.example.platform.artifact.domain.ArtifactCatalogEntry(
+                        "art-1", "rj-7", "proj-7", "localFsStorageProvider://artifacts/rj-7/output.mp4",
+                        "mp4", "1920x1080", 10L, 1024L, "abc",
+                        com.example.platform.artifact.domain.ArtifactStatus.ACTIVE, null, java.time.Instant.now());
+        when(artifactCatalogService.listArtifactsByRenderJob("rj-7")).thenReturn(List.of(artifactEntry));
 
         List<ArtifactInfoResponse> artifacts = service.getArtifactsByJob("rj-7");
 

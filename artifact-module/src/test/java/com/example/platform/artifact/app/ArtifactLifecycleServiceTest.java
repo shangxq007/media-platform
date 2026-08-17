@@ -38,24 +38,14 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
+        // GCR-2: canonical Artifact schema (artifact + artifact_replica + artifact_pin)
+        com.example.platform.artifact.testutil.ArtifactSchemaFixture.createCanonicalTables(jdbc);
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
                 + "id varchar(64) primary key,"
                 + "source_artifact_id varchar(64) not null,"
                 + "target_artifact_id varchar(64) not null,"
                 + "relation_type varchar(64) not null,"
                 + "created_at timestamp not null"
-                + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS artifact ("
-                + "id varchar(64) primary key,"
-                + "render_job_id varchar(64) not null,"
-                + "project_id varchar(64) not null,"
-                + "storage_uri text not null,"
-                + "format varchar(32),"
-                + "resolution varchar(32),"
-                + "duration bigint,"
-                + "created_at timestamp not null,"
-                + "status varchar(32) not null default 'ACTIVE',"
-                + "tombstoned_at timestamp"
                 + ")");
 
         var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
@@ -64,9 +54,17 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
         relationRepository = new ArtifactRelationRepository(dsl);
         ErrorCodeRegistry registry = new ErrorCodeRegistry();
         registry.loadErrorCodes();
-        catalogService = new ArtifactCatalogService(repository, relationRepository, registry);
+        com.example.platform.artifact.infrastructure.ArtifactRepository canonicalRepo =
+                new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl);
+        com.example.platform.artifact.infrastructure.ArtifactPinRepository pinRepo =
+                new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl);
+        com.example.platform.artifact.infrastructure.JooqArtifactCommitService commitService =
+                new com.example.platform.artifact.infrastructure.JooqArtifactCommitService(
+                        canonicalRepo, relationRepository, dsl);
+        catalogService = new ArtifactCatalogService(repository, relationRepository, commitService, registry);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
-        lifecycleService = new ArtifactLifecycleService(repository, catalogService, dsl, registry, events, List.of());
+        lifecycleService = new ArtifactLifecycleService(
+                repository, catalogService, canonicalRepo, pinRepo, dsl, registry, events, List.of());
     }
 
     @AfterAll
@@ -83,14 +81,14 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void deleteCheckAllowsWhenNoReferences() {
-        ArtifactCatalogEntry artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         var check = lifecycleService.deleteCheck(artifact.id());
         assertTrue(check.deletable());
     }
 
     @Test
     void tombstoneUpdatesStatus() {
-        ArtifactCatalogEntry artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         ArtifactCatalogEntry tombstoned = lifecycleService.tombstone(artifact.id());
         assertEquals(ArtifactStatus.TOMBSTONED, tombstoned.status());
         assertTrue(tombstoned.tombstonedAt() != null);
@@ -98,8 +96,8 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void tombstoneBlockedWhenRelationExists() {
-        ArtifactCatalogEntry source = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/a.mp4", "mp4", "1080p", 10L);
-        ArtifactCatalogEntry target = catalogService.registerArtifact("rj_2", "prj_1", "s3://b/b.srt", "srt", "sub", 0L);
+        ArtifactCatalogEntry source = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/a.mp4", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        ArtifactCatalogEntry target = catalogService.registerArtifact("rj_2", "prj_1", "s3://b/b.srt", "srt", "sub", 0L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         catalogService.relateArtifacts(source.id(), target.id(), "HAS_SUBTITLE");
         var check = lifecycleService.deleteCheck(source.id());
         assertFalse(check.deletable());

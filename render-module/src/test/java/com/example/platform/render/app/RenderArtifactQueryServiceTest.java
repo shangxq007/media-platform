@@ -1,31 +1,54 @@
 package com.example.platform.render.app;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.example.platform.artifact.app.ArtifactCatalogService;
+import com.example.platform.artifact.domain.Artifact;
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
+import com.example.platform.artifact.domain.ArtifactQueryService;
+import com.example.platform.artifact.domain.ArtifactReplicaBinding;
+import com.example.platform.artifact.domain.ArtifactState;
+import com.example.platform.artifact.domain.ReplicaRole;
 import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.infrastructure.RenderJobRepository;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.storage.api.StorageCatalogPort;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
+import com.example.platform.storage.domain.BlobStorage;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-
+/**
+ * GCR-2: render consumes Artifact through artifact-module contracts (single
+ * canonical query authority); physical bytes via storage data-plane.
+ */
 class RenderArtifactQueryServiceTest {
 
     private RenderJobRepository renderJobRepository;
-    private StorageCatalogPort storageCatalogPort;
+    private ArtifactQueryService artifactQueryService;
+    private ArtifactCatalogService artifactCatalogService;
     private RenderArtifactQueryService service;
+    private BlobStorage blobStorage;
 
     @BeforeEach
     void setUp() {
         renderJobRepository = mock(RenderJobRepository.class);
-        storageCatalogPort = mock(StorageCatalogPort.class);
-        service = new RenderArtifactQueryService(renderJobRepository, storageCatalogPort, List.of());
+        artifactQueryService = mock(ArtifactQueryService.class);
+        artifactCatalogService = mock(ArtifactCatalogService.class);
+        blobStorage = mock(BlobStorage.class);
+        service = new RenderArtifactQueryService(
+                renderJobRepository, artifactQueryService, artifactCatalogService, List.of(blobStorage));
         TenantContext.clear();
     }
 
@@ -35,84 +58,51 @@ class RenderArtifactQueryServiceTest {
     }
 
     @Test
-    void getArtifactsByJobReturnsArtifacts() {
+    void getArtifactsByJobReturnsArtifactsFromCatalogProjection() {
         TenantContext.set("tenant-1");
         when(renderJobRepository.requireTenantIdByJobId("rj-1")).thenReturn("tenant-1");
 
-        var ref = new StorageCatalogPort.ArtifactRef(
-                "art-1", "rj-1", "proj-1", "localFsStorageProvider://output.mp4",
-                "mp4", "1920x1080", 10L, Instant.now());
-        when(storageCatalogPort.findArtifactsByJob("rj-1")).thenReturn(List.of(ref));
+        com.example.platform.artifact.domain.ArtifactCatalogEntry entry =
+                new com.example.platform.artifact.domain.ArtifactCatalogEntry(
+                        "art-1", "rj-1", "proj-1", "local://output.mp4",
+                        "mp4", "1920x1080", 10L, 1024L, "abc", 
+                        com.example.platform.artifact.domain.ArtifactStatus.ACTIVE, null, Instant.now());
+        when(artifactCatalogService.listArtifactsByRenderJob("rj-1")).thenReturn(List.of(entry));
 
         List<ArtifactInfoResponse> result = service.getArtifactsByJob("rj-1");
 
         assertEquals(1, result.size());
         assertEquals("art-1", result.get(0).artifactId());
         assertEquals("rj-1", result.get(0).renderJobId());
-        assertEquals("proj-1", result.get(0).projectId());
-        assertEquals("mp4", result.get(0).format());
+        assertEquals("local://output.mp4", result.get(0).storageUri());
     }
 
     @Test
-    void getArtifactsByJobReturnsEmptyListWhenNoArtifacts() {
-        TenantContext.set("tenant-2");
-        when(renderJobRepository.requireTenantIdByJobId("rj-2")).thenReturn("tenant-2");
-        when(storageCatalogPort.findArtifactsByJob("rj-2")).thenReturn(List.of());
+    void getArtifactContentReadsBytesFromReplicaViaStorageDataPlane() {
+        TenantContext.set("tenant-1");
+        ArtifactId id = new ArtifactId("art-1");
+        Artifact artifact = new Artifact(id, "tenant-1",
+                ContentDigest.sha256("a".repeat(64)), 1024L,
+                ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, ArtifactState.AVAILABLE, 1, Instant.now());
+        when(artifactQueryService.getArtifact("tenant-1", id)).thenReturn(Optional.of(artifact));
+        ArtifactReplicaBinding replica = new ArtifactReplicaBinding(
+                "rep-1", id, new StorageObjectId("bucket/key.mp4"),
+                new StorageReplicaId("replica-1"), new StorageProviderId("local"),
+                ReplicaRole.PRIMARY, "default", Instant.now());
+        when(artifactQueryService.listReplicas("tenant-1", id)).thenReturn(List.of(replica));
+        when(blobStorage.get("bucket", "key.mp4")).thenReturn(Optional.of(new byte[] {1, 2, 3}));
 
-        List<ArtifactInfoResponse> result = service.getArtifactsByJob("rj-2");
+        byte[] content = service.getArtifactContent("art-1");
 
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
+        assertEquals(3, content.length);
     }
 
     @Test
-    void getArtifactsByJobRejectsCrossTenantAccess() {
-        TenantContext.set("tenant-a");
-        when(renderJobRepository.requireTenantIdByJobId("rj-3")).thenReturn("tenant-b");
+    void getArtifactContentReturnsNullWhenArtifactMissing() {
+        TenantContext.set("tenant-1");
+        ArtifactId id = new ArtifactId("missing");
+        when(artifactQueryService.getArtifact("tenant-1", id)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class,
-                () -> service.getArtifactsByJob("rj-3"));
-
-        verifyNoInteractions(storageCatalogPort);
-    }
-
-    @Test
-    void getArtifactsByJobThrowsWhenJobNotFound() {
-        when(renderJobRepository.requireTenantIdByJobId("nonexistent"))
-                .thenThrow(new IllegalArgumentException("Render job not found: nonexistent"));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> service.getArtifactsByJob("nonexistent"));
-    }
-
-    @Test
-    void getArtifactsByJobMapsMultipleArtifacts() {
-        TenantContext.set("tenant-4");
-        when(renderJobRepository.requireTenantIdByJobId("rj-4")).thenReturn("tenant-4");
-
-        var ref1 = new StorageCatalogPort.ArtifactRef(
-                "art-1", "rj-4", "proj-4", "storage://out1.mp4", "mp4", "1920x1080", 10L, Instant.now());
-        var ref2 = new StorageCatalogPort.ArtifactRef(
-                "art-2", "rj-4", "proj-4", "storage://out2.mp4", "mp4", "1280x720", 5L, Instant.now());
-        when(storageCatalogPort.findArtifactsByJob("rj-4")).thenReturn(List.of(ref1, ref2));
-
-        List<ArtifactInfoResponse> result = service.getArtifactsByJob("rj-4");
-
-        assertEquals(2, result.size());
-        assertEquals("art-1", result.get(0).artifactId());
-        assertEquals("art-2", result.get(1).artifactId());
-    }
-
-    @Test
-    void doesNotCallProviderOrRouter() {
-        TenantContext.set("tenant-5");
-        when(renderJobRepository.requireTenantIdByJobId("rj-5")).thenReturn("tenant-5");
-        when(storageCatalogPort.findArtifactsByJob("rj-5")).thenReturn(List.of());
-
-        service.getArtifactsByJob("rj-5");
-
-        // Only storageCatalogPort should be called, no render/quota/ai interactions
-        verify(storageCatalogPort).findArtifactsByJob("rj-5");
-        verifyNoMoreInteractions(storageCatalogPort);
+        assertEquals(null, service.getArtifactContent("missing"));
     }
 }

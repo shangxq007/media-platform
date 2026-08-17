@@ -5,12 +5,15 @@ import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
@@ -68,7 +71,13 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
                 new TimelineRevisionDiffService(),
                 new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter()),
                 new TimelinePatchService(canonicalizer),
-                new TimelineSemanticDiffService(canonicalizer));
+                new TimelineSemanticDiffService(canonicalizer),
+                new TimelineArtifactPinValidator(
+                        new com.example.platform.artifact.infrastructure.JooqArtifactQueryService(
+                                new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl),
+                                new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
+                new com.example.platform.artifact.app.ArtifactPinService(
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)));
     }
 
     @Test
@@ -172,5 +181,65 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
         var steps = revisionService.previewPatchSteps(head.id());
         assertFalse(steps.hasPatchOps());
         assertTrue(steps.steps().isEmpty());
+    }
+
+    @Test
+    void t6_successfulRevisionRegistersPinProtectionRows() {
+        // Seed a canonical Artifact that a revision's sourceBinding will pin.
+        dsl.execute("TRUNCATE TABLE artifact_pin CASCADE");
+        dsl.execute("TRUNCATE TABLE artifact_replica CASCADE");
+        dsl.execute("TRUNCATE TABLE artifact CASCADE");
+        var artifactRepo = new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl);
+        var digest = com.example.platform.shared.digest.ContentDigest.sha256("d".repeat(64));
+        artifactRepo.insertRaw(new com.example.platform.shared.identity.ArtifactId("art-t6"),
+                "ten-1", digest, 512L,
+                com.example.platform.artifact.domain.ArtifactMediaType.VIDEO,
+                com.example.platform.artifact.domain.ArtifactKind.RENDER_MASTER,
+                com.example.platform.artifact.domain.ArtifactState.AVAILABLE, null);
+
+        // Build internal timeline JSON whose clip sourceBinding pins art-t6
+        // (E1b-valid: assetId + timelineRange/sourceRange + sourceBinding).
+        String json = "{\"schemaVersion\":1,\"id\":\"tl-t6\",\"revision\":1,\"composition\":{\"tracks\":["
+                + "{\"id\":\"t1\",\"type\":\"VIDEO\",\"clips\":[{\"id\":\"c1\",\"assetId\":\"ast-t6\","
+                + "\"timelineRange\":{\"start\":{\"frame\":0,\"rate\":{\"num\":30,\"den\":1}},\"duration\":{\"frame\":30,\"rate\":{\"num\":30,\"den\":1}}},"
+                + "\"sourceRange\":{\"start\":{\"frame\":0,\"rate\":{\"num\":30,\"den\":1}},\"duration\":{\"frame\":30,\"rate\":{\"num\":30,\"den\":1}}},"
+                + "\"sourceBinding\":{"
+                + "\"artifactId\":\"art-t6\",\"contentDigest\":{\"algorithm\":\"SHA256\",\"value\":\""
+                + digest.value() + "\"}}}]}]}}";
+        TimelineRevisionService.RevisionInfo info =
+                revisionService.recordRevision("prj-t6", "ten-1", json, "sync", null, null, "pin test");
+        assertNotNull(info.id());
+
+        long pins = dsl.fetchCount(dsl.selectFrom(
+                com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN)
+                .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.REVISION_ID.eq(info.id())));
+        assertEquals(1, pins, "successful revision must register all required artifact_pin protection rows");
+    }
+
+    @Test
+    void t2b_missingArtifactPinFailsClosedWithoutRevision() {
+        dsl.execute("TRUNCATE TABLE artifact_pin CASCADE");
+        dsl.execute("TRUNCATE TABLE artifact_replica CASCADE");
+        dsl.execute("TRUNCATE TABLE artifact CASCADE");
+        long revisionsBefore = dsl.fetchCount(dsl.selectFrom(
+                com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION));
+
+        String json = "{\"schemaVersion\":1,\"id\":\"tl-t2b\",\"revision\":1,\"composition\":{\"tracks\":["
+                + "{\"id\":\"t1\",\"type\":\"VIDEO\",\"clips\":[{\"id\":\"c1\",\"assetId\":\"ast-t2b\","
+                + "\"timelineRange\":{\"start\":{\"frame\":0,\"rate\":{\"num\":30,\"den\":1}},\"duration\":{\"frame\":30,\"rate\":{\"num\":30,\"den\":1}}},"
+                + "\"sourceRange\":{\"start\":{\"frame\":0,\"rate\":{\"num\":30,\"den\":1}},\"duration\":{\"frame\":30,\"rate\":{\"num\":30,\"den\":1}}},"
+                + "\"sourceBinding\":{"
+                + "\"artifactId\":\"art-missing\",\"contentDigest\":{\"algorithm\":\"SHA256\",\"value\":\""
+                + "e".repeat(64) + "\"}}}]}]}}";
+
+        assertThrows(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class,
+                () -> revisionService.recordRevision("prj-t2b", "ten-1", json, "sync", null, null, "bad pin"));
+
+        long revisionsAfter = dsl.fetchCount(dsl.selectFrom(
+                com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION));
+        assertEquals(revisionsBefore, revisionsAfter, "invalid pin must not create a revision");
+        long pinsAfter = dsl.fetchCount(dsl.selectFrom(
+                com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN));
+        assertEquals(0, pinsAfter, "invalid pin must not create protection rows");
     }
 }

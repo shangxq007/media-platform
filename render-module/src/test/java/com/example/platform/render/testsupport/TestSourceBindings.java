@@ -6,7 +6,7 @@ import com.example.platform.timeline.semantics.clip.MediaClip.TimeRange;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 
 /** Test factory for typed MediaStreamSourceBinding (TIMELINE_V2 test fixtures). */
 public final class TestSourceBindings {

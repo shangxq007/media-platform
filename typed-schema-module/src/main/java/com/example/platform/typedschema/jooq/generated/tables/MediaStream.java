@@ -8,6 +8,7 @@ import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
+import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot.SourceVisualDescriptionSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.MediaStreamRecord;
 
 import java.util.Arrays;
@@ -261,6 +262,11 @@ public class MediaStream extends TableImpl<MediaStreamRecord> {
     }
 
     @Override
+    public List<UniqueKey<MediaStreamRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_MS_ID_ASSET);
+    }
+
+    @Override
     public List<ForeignKey<MediaStreamRecord, ?>> getReferences() {
         return Arrays.asList(Keys.MEDIA_STREAM__FK_MS_MEDIA_ASSET);
     }
@@ -275,6 +281,34 @@ public class MediaStream extends TableImpl<MediaStreamRecord> {
             _mediaAsset = new MediaAssetPath(this, Keys.MEDIA_STREAM__FK_MS_MEDIA_ASSET, null);
 
         return _mediaAsset;
+    }
+
+    private transient SourceVisualDescriptionSnapshotPath _fkSourceVisualSnapshotStream;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.source_visual_description_snapshot</code> table, via the
+     * <code>fk_source_visual_snapshot_stream</code> key
+     */
+    public SourceVisualDescriptionSnapshotPath fkSourceVisualSnapshotStream() {
+        if (_fkSourceVisualSnapshotStream == null)
+            _fkSourceVisualSnapshotStream = new SourceVisualDescriptionSnapshotPath(this, null, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SOURCE_VISUAL_SNAPSHOT_STREAM.getInverseKey());
+
+        return _fkSourceVisualSnapshotStream;
+    }
+
+    private transient SourceVisualDescriptionSnapshotPath _fkSvdStreamAsset;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.source_visual_description_snapshot</code> table, via the
+     * <code>fk_svd_stream_asset</code> key
+     */
+    public SourceVisualDescriptionSnapshotPath fkSvdStreamAsset() {
+        if (_fkSvdStreamAsset == null)
+            _fkSvdStreamAsset = new SourceVisualDescriptionSnapshotPath(this, null, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_STREAM_ASSET.getInverseKey());
+
+        return _fkSvdStreamAsset;
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
+import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot.SourceVisualDescriptionSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.MediaAssetArtifactRecord;
 
 import java.time.LocalDateTime;
@@ -160,6 +161,11 @@ public class MediaAssetArtifact extends TableImpl<MediaAssetArtifactRecord> {
     }
 
     @Override
+    public List<UniqueKey<MediaAssetArtifactRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_MAA_ASSET_ARTIFACT);
+    }
+
+    @Override
     public List<ForeignKey<MediaAssetArtifactRecord, ?>> getReferences() {
         return Arrays.asList(Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_ARTIFACT, Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_MEDIA_ASSET);
     }
@@ -186,6 +192,19 @@ public class MediaAssetArtifact extends TableImpl<MediaAssetArtifactRecord> {
             _mediaAsset = new MediaAssetPath(this, Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_MEDIA_ASSET, null);
 
         return _mediaAsset;
+    }
+
+    private transient SourceVisualDescriptionSnapshotPath _sourceVisualDescriptionSnapshot;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.source_visual_description_snapshot</code> table
+     */
+    public SourceVisualDescriptionSnapshotPath sourceVisualDescriptionSnapshot() {
+        if (_sourceVisualDescriptionSnapshot == null)
+            _sourceVisualDescriptionSnapshot = new SourceVisualDescriptionSnapshotPath(this, null, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_ASSET_ARTIFACT.getInverseKey());
+
+        return _sourceVisualDescriptionSnapshot;
     }
 
     @Override

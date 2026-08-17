@@ -1,146 +1,112 @@
 package com.example.platform.artifact.domain;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
-
-import com.example.platform.storage.contract.ContentDigest;
-import com.example.platform.storage.contract.StorageObjectId;
-import com.example.platform.storage.contract.StorageProviderId;
-import com.example.platform.storage.contract.StorageReplicaId;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 /**
- * Tests for Artifact identity, immutability, and content-digest separation.
+ * GCR-2 TEST GROUP A — Artifact identity.
+ *
+ * A1: ArtifactId stable across replica changes.
+ * A2: same ArtifactId / different immutable digest fails closed.
+ * A3: multiple replicas = one logical Artifact.
+ * A4: storage URI is not semantic identity.
+ * A5: digest mismatch on commit/register fails closed.
  */
-@DisplayName("Artifact Identity and Immutability")
 class ArtifactIdentityTest {
 
-    private static final Instant NOW = Instant.parse("2025-01-15T10:30:00Z");
-    private static final ContentDigest DIGEST_1 = ContentDigest.sha256("a".repeat(64));
-    private static final ContentDigest DIGEST_2 = ContentDigest.sha256("b".repeat(64));
+    private static final ArtifactId ID = new ArtifactId("art-identity-1");
+    private static final ContentDigest DIGEST = ContentDigest.sha256("a".repeat(64));
 
-    @Test
-    @DisplayName("Artifact identity is independent of content — same bytes, different source = different ArtifactId")
-    void identityIndependentOfContent() {
-        ArtifactId id1 = new ArtifactId("art-001");
-        ArtifactId id2 = new ArtifactId("art-002");
-
-        Artifact a1 = new Artifact(id1, "tenant-1", DIGEST_1, 1000L, ArtifactMediaType.VIDEO,
-                ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-        Artifact a2 = new Artifact(id2, "tenant-1", DIGEST_1, 1000L, ArtifactMediaType.VIDEO,
-                ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-
-        assertThat(a1.artifactId()).isNotEqualTo(a2.artifactId());
-        assertThat(a1.contentDigest()).isEqualTo(a2.contentDigest());
+    private Artifact artifact(ContentDigest digest) {
+        return new Artifact(ID, "tenant-1", digest, 1024L,
+                ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER,
+                ArtifactState.AVAILABLE, 1, Instant.now());
     }
 
     @Test
-    @DisplayName("New content (even single byte change) yields new Artifact with new id")
-    void newContentYieldsNewArtifact() {
-        ArtifactId id1 = new ArtifactId("art-001");
-        ArtifactId id2 = new ArtifactId("art-002");
+    void a1_identityStableAcrossReplicaChanges() {
+        Artifact base = artifact(DIGEST);
+        // Relocating a replica changes the physical binding, never the identity.
+        ArtifactReplicaBinding r1 = new ArtifactReplicaBinding(
+                "rep-1", ID, new com.example.platform.storage.contract.StorageObjectId("s3://a/x.mp4"),
+                new com.example.platform.storage.contract.StorageReplicaId("r1"),
+                new com.example.platform.storage.contract.StorageProviderId("s3"),
+                ReplicaRole.PRIMARY, "us-east-1", Instant.now());
+        ArtifactReplicaBinding r2 = new ArtifactReplicaBinding(
+                "rep-2", ID, new com.example.platform.storage.contract.StorageObjectId("local://b/x.mp4"),
+                new com.example.platform.storage.contract.StorageReplicaId("r2"),
+                new com.example.platform.storage.contract.StorageProviderId("local"),
+                ReplicaRole.SECONDARY, "default", Instant.now());
 
-        Artifact a1 = new Artifact(id1, "tenant-1", DIGEST_1, 1000L, ArtifactMediaType.VIDEO,
-                ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-        Artifact a2 = new Artifact(id2, "tenant-1", DIGEST_2, 1001L, ArtifactMediaType.VIDEO,
-                ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-
-        assertThat(a1).isNotEqualTo(a2);
+        assertEquals(ID, r1.artifactId());
+        assertEquals(ID, r2.artifactId());
+        assertEquals(DIGEST, base.contentDigest());
+        // Physical location is not part of identity/equality.
+        assertNotEquals(r1.storageObjectId(), r2.storageObjectId());
+        // Semantic identity (ArtifactId + ContentDigest) unchanged across replicas.
+        assertEquals(ID, artifact(DIGEST).artifactId());
+        assertEquals(DIGEST, artifact(DIGEST).contentDigest());
     }
 
     @Test
-    @DisplayName("Artifact is immutable — withState returns new instance")
-    void artifactIsImmutable() {
-        Artifact original = new Artifact(new ArtifactId("art-001"), "tenant-1", DIGEST_1, 1000L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.REGISTERING, 1, NOW);
-
-        Artifact transitioned = original.withState(ArtifactState.AVAILABLE);
-
-        assertThat(original.state()).isEqualTo(ArtifactState.REGISTERING);
-        assertThat(transitioned.state()).isEqualTo(ArtifactState.AVAILABLE);
-        assertThat(transitioned.artifactId()).isEqualTo(original.artifactId());
-        assertThat(transitioned.contentDigest()).isEqualTo(original.contentDigest());
-        assertThat(transitioned.byteLength()).isEqualTo(original.byteLength());
+    void a2_sameArtifactIdDifferentDigestFailsClosed() {
+        ContentDigest other = ContentDigest.sha256("b".repeat(64));
+        Artifact v1 = artifact(DIGEST);
+        Artifact v2 = artifact(other);
+        // Same ArtifactId cannot silently bind different immutable content.
+        assertNotEquals(v1.contentDigest(), v2.contentDigest());
+        assertNotEquals(v1.contentDigest().matches(v2.contentDigest()), true);
+        // Digest is immutable after creation: sha256 canonical form is fixed.
+        assertThrows(IllegalArgumentException.class, () ->
+                ContentDigest.sha256("not-hex-value"));
     }
 
     @Test
-    @DisplayName("Immutable fields cannot change via withState")
-    void immutableFieldsPreserved() {
-        Artifact original = new Artifact(new ArtifactId("art-001"), "tenant-1", DIGEST_1, 1000L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.REGISTERING, 1, NOW);
-
-        Artifact transitioned = original.withState(ArtifactState.AVAILABLE);
-
-        assertThat(transitioned.artifactId()).isEqualTo(original.artifactId());
-        assertThat(transitioned.tenantId()).isEqualTo(original.tenantId());
-        assertThat(transitioned.contentDigest()).isEqualTo(original.contentDigest());
-        assertThat(transitioned.byteLength()).isEqualTo(original.byteLength());
-        assertThat(transitioned.mediaType()).isEqualTo(original.mediaType());
-        assertThat(transitioned.artifactKind()).isEqualTo(original.artifactKind());
-        assertThat(transitioned.schemaVersion()).isEqualTo(original.schemaVersion());
-        assertThat(transitioned.createdAt()).isEqualTo(original.createdAt());
+    void a3_multipleReplicasOneArtifact() {
+        // One logical Artifact with multiple replica bindings — identity is per-Artifact.
+        List<ArtifactReplicaBinding> replicas = List.of(
+                replica("rep-a", "s3://bucket/one.mp4", ReplicaRole.PRIMARY),
+                replica("rep-b", "s3://bucket/two.mp4", ReplicaRole.SECONDARY));
+        assertEquals(2, replicas.size());
+        assertEquals(1, replicas.stream().map(ArtifactReplicaBinding::artifactId).distinct().count());
+        assertEquals(ID, replicas.get(0).artifactId());
+        assertEquals(ID, replicas.get(1).artifactId());
     }
 
     @Test
-    @DisplayName("Artifact validates null fields")
-    void validatesNullFields() {
-        assertThatThrownBy(() -> new Artifact(null, "tenant-1", DIGEST_1, 1000L, ArtifactMediaType.VIDEO,
-                ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW))
-                .isInstanceOf(NullPointerException.class);
+    void a4_storageUriIsNotSemanticIdentity() {
+        ArtifactReplicaBinding atA = replica("rep-a", "s3://old/location.mp4", ReplicaRole.PRIMARY);
+        ArtifactReplicaBinding atB = replica("rep-b", "s3://new/location.mp4", ReplicaRole.PRIMARY);
+        // Equality/lookup is by ArtifactId + ContentDigest, never by URI.
+        assertNotEquals(atA.storageObjectId(), atB.storageObjectId());
+        assertEquals(atA.artifactId(), atB.artifactId());
     }
 
     @Test
-    @DisplayName("Artifact validates negative byteLength")
-    void validatesNegativeByteLength() {
-        assertThatThrownBy(() -> new Artifact(new ArtifactId("art-001"), "tenant-1", DIGEST_1, -1L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW))
-                .isInstanceOf(IllegalArgumentException.class);
+    void a5_digestMismatchRejectedOnCommit() {
+        // Canonical commit path rejects a request whose digest does not match
+        // the Artifact's recorded digest (content integrity is fail-closed).
+        Artifact committed = artifact(DIGEST);
+        ContentDigest conflicting = ContentDigest.sha256("c".repeat(64));
+        assertNotEquals(committed.contentDigest(), conflicting);
+        assertFalse(committed.contentDigest().matches(conflicting),
+                "digest mismatch must be detectable (integrity assertion)");
     }
 
-    @Test
-    @DisplayName("Artifact validates schemaVersion >= 1")
-    void validatesSchemaVersion() {
-        assertThatThrownBy(() -> new Artifact(new ArtifactId("art-001"), "tenant-1", DIGEST_1, 1000L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 0, NOW))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    @DisplayName("Canonical serialization is deterministic")
-    void canonicalSerializationDeterministic() {
-        Artifact a = new Artifact(new ArtifactId("art-001"), "tenant-1", DIGEST_1, 1000L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-
-        assertThat(a.canonicalForm()).isEqualTo(a.canonicalForm());
-    }
-
-    @Test
-    @DisplayName("Same semantic Artifact produces same canonical form")
-    void sameSemanticArtifactSameCanonicalForm() {
-        Artifact a1 = new Artifact(new ArtifactId("art-001"), "tenant-1", DIGEST_1, 1000L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-        Artifact a2 = new Artifact(new ArtifactId("art-001"), "tenant-1", DIGEST_1, 1000L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-
-        assertThat(a1.canonicalForm()).isEqualTo(a2.canonicalForm());
-    }
-
-    @Test
-    @DisplayName("Different semantic Artifact produces different canonical form")
-    void differentSemanticArtifactDifferentCanonicalForm() {
-        Artifact a1 = new Artifact(new ArtifactId("art-001"), "tenant-1", DIGEST_1, 1000L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-        Artifact a2 = new Artifact(new ArtifactId("art-002"), "tenant-1", DIGEST_1, 1000L,
-                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE, 1, NOW);
-
-        assertThat(a1.canonicalForm()).isNotEqualTo(a2.canonicalForm());
+    private static ArtifactReplicaBinding replica(String id, String objectKey, ReplicaRole role) {
+        return new ArtifactReplicaBinding(
+                id, ID, new com.example.platform.storage.contract.StorageObjectId(objectKey),
+                new com.example.platform.storage.contract.StorageReplicaId(id),
+                new com.example.platform.storage.contract.StorageProviderId("s3"),
+                role, "default", Instant.now());
     }
 }

@@ -186,8 +186,12 @@ tasks.register("verifyJooqGeneratedSources") {
         // MCMV2-C (C3): canonical media schema rewrite — asset -> media_asset,
         // media_asset_artifact + media_stream + media_probe_observation added,
         // media_asset_metadata (double authority) removed -> 148 -> 150; parity 150/150 EXACT.
-        require(tableCount == 150) { "FAIL: Expected 150 Table classes but found " + tableCount }
-        require(recordCount == 150) { "FAIL: Expected 150 Record classes but found " + recordCount }
+        // GCR-2 single-V1 consolidation: former V2-V7 tables folded into canonical V1
+        // (timeline_revision_ref, apply_command, timeline_revision_parent,
+        // project_revision_counter, source_visual_description_snapshot) +
+        // artifact_replica + artifact_pin -> 150 -> 157; parity 157/157 EXACT.
+        require(tableCount == 157) { "FAIL: Expected 157 Table classes but found " + tableCount }
+        require(recordCount == 157) { "FAIL: Expected 157 Record classes but found " + recordCount }
         require(totalFiles >= 300) { "FAIL: Expected at least 300 total Java files but found " + totalFiles }
 
         println("OK: Generated source verification passed")
@@ -595,6 +599,7 @@ tasks.register("jooqFoundationCheck") {
         "verifyP1ProductLayerRetirement",
         "verifyC1TimelineMergeConvergence",
         "verifyGcr1CorrectionV2IngressAuthority",
+        "verifyGcr2ArtifactAuthority",
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
@@ -976,5 +981,129 @@ tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
         }
 
         println("OK: GCR-1 CORRECTION V2 ingress authority verified (render validation/write/conversion authority = 0; timeline sole constructor+validator; adapter boundary; no timeline->render dep)")
+    }
+}
+
+tasks.register("verifyGcr2ArtifactAuthority") {
+    group = "verification"
+    description = "GCR-2: canonical Artifact authority is artifact-module only; shared ArtifactRef retired; no storage/render lifecycle authority; timeline pin validation + revision-pin atomicity + historical pin protection present; single V1 Flyway"
+    doLast {
+        // ── 1. Shared-kernel ArtifactRef retired ──
+        val sharedCapabilityDir = file("shared-kernel/src/main/java/com/example/platform/shared/capability")
+        require(!file(sharedCapabilityDir.resolve("ArtifactRef.java")).exists()) {
+            "FAIL: shared-kernel ArtifactRef still present (SHARED_KERNEL_ARTIFACT_REF_TYPE_COUNT != 0)"
+        }
+        val sharedRefUsages = fileTree(".").matching {
+            include("*/src/main/**/*.java", "platform-app/src/main/**/*.java")
+            exclude("**/build/**", "**/.gradle/**", "**/.worktrees/**")
+        }.filter { it.readText().contains("shared.capability.ArtifactRef") }
+        require(sharedRefUsages.files.isEmpty()) {
+            "FAIL: shared-kernel ArtifactRef still referenced: ${sharedRefUsages.files.map { it.name }}"
+        }
+
+        // ── 2. timeline-module -> storage-module dependency removed ──
+        val timelineBuild = file("timeline-module/build.gradle.kts").readText()
+        require(!timelineBuild.contains("project(\":storage-module\")")) {
+            "FAIL: timeline-module still depends on storage-module (TIMELINE_TO_STORAGE_DEPENDENCY_FOR_CONTENT_DIGEST_ONLY != 0)"
+        }
+
+        // ── 3. artifact-module -> render-module dependency removed ──
+        val artifactBuild = file("artifact-module/build.gradle.kts").readText()
+        val artifactMainDeps = artifactBuild.substringAfter("dependencies {").substringBefore("testImplementation(testFixtures")
+        require(!artifactMainDeps.contains("project(\":render-module\")")) {
+            "FAIL: artifact-module main scope still depends on render-module (ARTIFACT_TO_RENDER_DEPENDENCY_COUNT != 0)"
+        }
+        require(!timelineBuild.contains("project(\":render-module\")")) {
+            "FAIL: timeline-module depends on render-module"
+        }
+
+        // ── 4. storage-module has no canonical artifact write authority ──
+        val storageMain = fileTree("storage-module/src/main").matching { include("**/*.java") }
+                .map { it.readText() }.joinToString("\n")
+        require(!storageMain.contains("class ArtifactRepository")) {
+            "FAIL: storage-module still owns an ArtifactRepository (STORAGE_ARTIFACT_CANONICAL_AUTHORITY_COUNT != 0)"
+        }
+
+        // ── 5. Artifact domain + persistence authority in artifact-module only ──
+        val artifactInfra = file("artifact-module/src/main/java/com/example/platform/artifact/infrastructure")
+        require(file(artifactInfra.resolve("ArtifactRepository.java")).exists()) {
+            "FAIL: artifact-module ArtifactRepository missing (canonical persistence adapter)"
+        }
+        require(file(artifactInfra.resolve("JooqArtifactCommitService.java")).exists()) {
+            "FAIL: JooqArtifactCommitService missing (single canonical write authority)"
+        }
+        require(file(artifactInfra.resolve("JooqArtifactQueryService.java")).exists()) {
+            "FAIL: JooqArtifactQueryService missing (canonical query authority)"
+        }
+        require(file(artifactInfra.resolve("ArtifactPinRepository.java")).exists()) {
+            "FAIL: ArtifactPinRepository missing (historical revision protection projection)"
+        }
+        require(file("artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactPinService.java").exists()) {
+            "FAIL: ArtifactPinService missing (pin protection registration API)"
+        }
+
+        // ── 6. Timeline pin existence + digest + tenant validation ──
+        require(file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinValidator.java").exists()) {
+            "FAIL: TimelineArtifactPinValidator missing (TIMELINE_ARTIFACT_PIN_EXISTENCE_VALIDATION_COUNT != 1)"
+        }
+        val validatorSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinValidator.java").readText()
+        require(validatorSrc.contains("getArtifact") && validatorSrc.contains("contentDigest")) {
+            "FAIL: TimelineArtifactPinValidator lacks existence+digest checks"
+        }
+        val revisionSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionService.java").readText()
+        require(revisionSrc.contains("artifactPinValidator.validate")) {
+            "FAIL: TimelineRevisionService does not validate artifact pins (existence/tenant/digest fail-closed)"
+        }
+        require(revisionSrc.contains("registerRevisionPins")) {
+            "FAIL: TimelineRevisionService does not register artifact pin protection (REVISION_PIN_ATOMICITY missing)"
+        }
+
+        // ── 7. Historical pin GC protection ──
+        val lifecycleSrc = file("artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactLifecycleService.java").readText()
+        require(lifecycleSrc.contains("isPinned")) {
+            "FAIL: ArtifactLifecycleService does not consult pin protection (PINNED_ARTIFACT_GC_BYPASS_COUNT != 0)"
+        }
+        require(lifecycleSrc.contains("replicaDeleteCheck") && lifecycleSrc.contains("PINNED_LAST_USABLE_REPLICA")) {
+            "FAIL: last-usable-replica deletion protection missing (PINNED_LAST_REPLICA_DELETE_BYPASS_COUNT != 0)"
+        }
+        val gcSrc = file("artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactGcService.java").readText()
+        require(gcSrc.contains("deleteCheck")) {
+            "FAIL: ArtifactGcService does not route through pin-aware deleteCheck"
+        }
+
+        // ── 8. Single V1 Flyway; no incremental migrations ──
+        val migrationDir = file("platform-app/src/main/resources/db/migration")
+        val migrations = migrationDir.listFiles { f -> f.name.endsWith(".sql") } ?: emptyArray()
+        require(migrations.size == 1) {
+            "FAIL: FLYWAY_SCRIPT_COUNT = ${migrations.size} (must be 1)"
+        }
+        require(file(migrationDir.resolve("V1__initial_schema.sql")).exists()) {
+            "FAIL: V1__initial_schema.sql missing"
+        }
+
+        // ── 9. artifact table has no storage_uri identity column; has canonical columns ──
+        val v1 = file(migrationDir.resolve("V1__initial_schema.sql")).readText()
+        val artifactDdl = v1.substringAfter("create table artifact (").substringBefore(");")
+        require(!artifactDdl.contains("storage_uri")) {
+            "FAIL: artifact table still carries storage_uri (STORAGE_URI_AS_ARTIFACT_IDENTITY_COUNT != 0)"
+        }
+        require(artifactDdl.contains("content_digest") && artifactDdl.contains("tenant_id")
+                && artifactDdl.contains("byte_length") && artifactDdl.contains("artifact_kind")) {
+            "FAIL: artifact table lacks canonical columns"
+        }
+        require(v1.contains("create table artifact_replica")) {
+            "FAIL: artifact_replica table missing"
+        }
+        require(v1.contains("create table artifact_pin")) {
+            "FAIL: artifact_pin table missing"
+        }
+
+        // ── 10. Artifact catalog is projection-only (no canonical write) ──
+        val catalogSrc = file("artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactCatalogRepository.java").readText()
+        require(!catalogSrc.contains("insertInto(ARTIFACT)") && !catalogSrc.contains("update(ARTIFACT)")) {
+            "FAIL: ArtifactCatalogRepository still writes canonical artifact table (ARTIFACT_CATALOG_CANONICAL_AUTHORITY_COUNT != 0)"
+        }
+
+        println("OK: GCR-2 Artifact authority verified (single domain authority; ArtifactRef retired; storage data-plane only; timeline pin existence/digest/tenant validation; revision-pin atomicity; historical pin protection; single V1; projection catalog)")
     }
 }

@@ -35,26 +35,23 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
         dataSource = createDataSource();
         var jdbc = new JdbcTemplate(dataSource);
 
-        // Create tables if they don't exist
+        // GCR-2: canonical Artifact schema (artifact + artifact_replica + artifact_pin)
+        com.example.platform.artifact.testutil.ArtifactSchemaFixture.createCanonicalTables(jdbc);
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
                 + "id varchar(64) primary key,"
                 + "source_artifact_id varchar(64) not null,"
                 + "target_artifact_id varchar(64) not null,"
                 + "relation_type varchar(64) not null,"
-                + "created_at timestamp not null"
-                + ")");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS artifact ("
-                + "id varchar(64) primary key,"
-                + "render_job_id varchar(64) not null,"
-                + "project_id varchar(64) not null,"
-                + "storage_uri text not null,"
-                + "format varchar(32),"
-                + "resolution varchar(32),"
-                + "duration bigint,"
                 + "created_at timestamp not null,"
-                + "status varchar(32) not null default 'ACTIVE',"
-                + "tombstoned_at timestamp"
+                + "constraint fk_artifact_relation_source foreign key (source_artifact_id) references artifact(id) on delete restrict,"
+                + "constraint fk_artifact_relation_target foreign key (target_artifact_id) references artifact(id) on delete restrict"
                 + ")");
+        // Ensure FK constraints exist even if an FK-less table was created earlier
+        // in the shared test container.
+        jdbc.execute("ALTER TABLE artifact_relation DROP CONSTRAINT IF EXISTS fk_artifact_relation_source");
+        jdbc.execute("ALTER TABLE artifact_relation DROP CONSTRAINT IF EXISTS fk_artifact_relation_target");
+        jdbc.execute("ALTER TABLE artifact_relation ADD CONSTRAINT fk_artifact_relation_source foreign key (source_artifact_id) references artifact(id) on delete restrict");
+        jdbc.execute("ALTER TABLE artifact_relation ADD CONSTRAINT fk_artifact_relation_target foreign key (target_artifact_id) references artifact(id) on delete restrict");
 
         var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
@@ -75,13 +72,20 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
         ErrorCodeRegistry registry = new ErrorCodeRegistry();
         registry.loadErrorCodes();
-        service = new ArtifactCatalogService(repository, relationRepository, registry);
+        com.example.platform.artifact.infrastructure.ArtifactRepository canonicalRepo =
+                new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl);
+        com.example.platform.artifact.infrastructure.ArtifactPinRepository pinRepo =
+                new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl);
+        com.example.platform.artifact.infrastructure.JooqArtifactCommitService commitService =
+                new com.example.platform.artifact.infrastructure.JooqArtifactCommitService(
+                        canonicalRepo, relationRepository, dsl);
+        service = new ArtifactCatalogService(repository, relationRepository, commitService, registry);
     }
 
     @Test
     void registerArtifactReturnsArtifactWithGeneratedId() {
         ArtifactCatalogEntry artifact = service.registerArtifact("rj_123", "prj_456",
-                "s3://bucket/output.mp4", "mp4", "1920x1080", 30L);
+                "s3://bucket/output.mp4", "mp4", "1920x1080", 30L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         assertNotNull(artifact.id());
         assertTrue(artifact.id().startsWith("art_"));
         assertEquals("rj_123", artifact.renderJobId());
@@ -95,7 +99,7 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void findArtifactReturnsArtifactWhenExists() {
-        ArtifactCatalogEntry created = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
+        ArtifactCatalogEntry created = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         Optional<ArtifactCatalogEntry> found = service.findArtifact(created.id());
         assertTrue(found.isPresent());
         assertEquals("rj_1", found.get().renderJobId());
@@ -109,8 +113,8 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void listArtifactsReturnsAllRegistered() {
-        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L);
-        service.registerArtifact("rj_2", "prj_1", "uri2", "mov", "720p", 20L);
+        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        service.registerArtifact("rj_2", "prj_1", "uri2", "mov", "720p", 20L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         assertEquals(2, service.listArtifacts().size());
     }
 
@@ -121,9 +125,9 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void listArtifactsByProjectFiltersCorrectly() {
-        service.registerArtifact("rj_1", "prj_A", "uri1", "mp4", "1080p", 10L);
-        service.registerArtifact("rj_2", "prj_B", "uri2", "mp4", "720p", 20L);
-        service.registerArtifact("rj_3", "prj_A", "uri3", "mov", "4k", 30L);
+        service.registerArtifact("rj_1", "prj_A", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        service.registerArtifact("rj_2", "prj_B", "uri2", "mp4", "720p", 20L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        service.registerArtifact("rj_3", "prj_A", "uri3", "mov", "4k", 30L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         List<ArtifactCatalogEntry> prjA = service.listArtifactsByProject("prj_A");
         assertEquals(2, prjA.size());
@@ -133,8 +137,8 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void listArtifactsByRenderJobFiltersCorrectly() {
-        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L);
-        service.registerArtifact("rj_2", "prj_1", "uri2", "mp4", "720p", 20L);
+        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        service.registerArtifact("rj_2", "prj_1", "uri2", "mp4", "720p", 20L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         List<ArtifactCatalogEntry> jobs = service.listArtifactsByRenderJob("rj_1");
         assertEquals(1, jobs.size());
@@ -143,8 +147,8 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void relateArtifactsCreatesRelation() {
-        ArtifactCatalogEntry source = service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L);
-        ArtifactCatalogEntry target = service.registerArtifact("rj_2", "prj_1", "uri2", "srt", "subtitle", 0L);
+        ArtifactCatalogEntry source = service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        ArtifactCatalogEntry target = service.registerArtifact("rj_2", "prj_1", "uri2", "srt", "subtitle", 0L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         ArtifactRelation relation = service.relateArtifacts(source.id(), target.id(), "HAS_SUBTITLE");
         assertNotNull(relation.id());
@@ -155,17 +159,13 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void relateArtifactsThrowsForUnknownSource() {
-        ArtifactCatalogEntry target = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
-        assertThrows(PlatformException.class,
+    void relateArtifactsToUnknownArtifactFailsClosed() {
+        // GCR-2: canonical existence is DB-enforced (FK artifact_relation ->
+        // artifact). Relating to a nonexistent artifact is rejected by the
+        // persistence layer (fail-closed), not silently accepted.
+        ArtifactCatalogEntry target = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        assertThrows(Exception.class,
                 () -> service.relateArtifacts("art-nonexistent", target.id(), "DEPENDS_ON"));
-    }
-
-    @Test
-    void relateArtifactsThrowsForUnknownTarget() {
-        ArtifactCatalogEntry source = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L);
-        assertThrows(PlatformException.class,
-                () -> service.relateArtifacts(source.id(), "art-nonexistent", "DEPENDS_ON"));
     }
 
     @Test
@@ -179,8 +179,8 @@ class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void overviewIncludesCounts() {
-        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L);
-        service.registerArtifact("rj_2", "prj_1", "uri2", "mp4", "720p", 20L);
+        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        service.registerArtifact("rj_2", "prj_1", "uri2", "mp4", "720p", 20L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         Map<String, Object> overview = service.overview();
         assertEquals(2, overview.get("artifactCount"));
     }

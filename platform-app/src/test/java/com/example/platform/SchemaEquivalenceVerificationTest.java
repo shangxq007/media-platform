@@ -68,7 +68,12 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertTrue(result.migrationsExecuted >= 1, "At least one migration should execute");
 
         var info = flyway.info();
-        assertEquals(7, info.all().length, "Expected V1..V7 migrations (V2 op-plan; V3 deferrable FK; V4 parent graph; V5 snapshot; V6 ownership; V7 content-version)");
+        // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
+        // former V2-V7 incremental migrations are consolidated into canonical V1
+        // (timeline_revision_ref, apply_command, timeline_revision_parent,
+        // project_revision_counter, source_visual_description_snapshot, ownership
+        // FKs/UNIQUEs, immutable snapshot trigger). ONE pre-release migration.
+        assertEquals(1, info.all().length, "Expected exactly one canonical V1 migration");
         assertEquals("1", info.all()[0].getVersion().getVersion());
         assertEquals("V1__initial_schema.sql", info.all()[0].getScript());
         deployed = true;
@@ -288,7 +293,9 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
                 .defaultSchema(SCHEMA)
                 .load();
         var info = flyway.info();
-        assertEquals(7, info.all().length, "Only V1..V7 should be active");
+        // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
+        // exactly one canonical V1 migration; no incremental V2..V7.
+        assertEquals(1, info.all().length, "Only canonical V1 should be active");
         assertEquals("1", info.all()[0].getVersion().getVersion());
     }
 

@@ -1,7 +1,7 @@
 package com.example.platform.execution.domain;
 
 import com.example.platform.shared.identity.ArtifactId;
-import com.example.platform.storage.contract.ContentDigest;
+import com.example.platform.shared.digest.ContentDigest;
 
 import java.io.Serializable;
 import java.util.Objects;

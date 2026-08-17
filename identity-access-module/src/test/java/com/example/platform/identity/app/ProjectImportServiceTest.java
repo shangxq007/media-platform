@@ -54,7 +54,7 @@ class ProjectImportServiceTest {
     @BeforeEach
     void setUp() {
         importService = new ProjectImportService(tenantProjectService, artifactCatalogService,
-                auditPort, assetDownloader, blobStorage);
+                null, auditPort, assetDownloader, blobStorage);
     }
 
     @AfterEach
@@ -506,7 +506,7 @@ class ProjectImportServiceTest {
         when(tenantProjectService.createProject(eq("tenant-1"), any())).thenReturn(created);
 
         ProjectImportService serviceNoStorage = new ProjectImportService(tenantProjectService, artifactCatalogService,
-                auditPort, assetDownloader, null);
+                null, auditPort, assetDownloader, null);
         // blobStorage NOT set
 
         ProjectImportRequest request = new ProjectImportRequest(

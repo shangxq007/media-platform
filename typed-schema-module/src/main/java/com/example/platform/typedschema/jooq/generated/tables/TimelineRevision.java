@@ -7,6 +7,8 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionParent.TimelineRevisionParentPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef.TimelineRevisionRefPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.TimelineRevisionRecord;
 
 import java.time.LocalDateTime;
@@ -16,10 +18,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -184,6 +190,39 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
         this(DSL.name("timeline_revision"), null);
     }
 
+    public <O extends Record> TimelineRevision(Table<O> path, ForeignKey<O, TimelineRevisionRecord> childPath, InverseForeignKey<O, TimelineRevisionRecord> parentPath) {
+        super(path, childPath, parentPath, TIMELINE_REVISION);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class TimelineRevisionPath extends TimelineRevision implements Path<TimelineRevisionRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> TimelineRevisionPath(Table<O> path, ForeignKey<O, TimelineRevisionRecord> childPath, InverseForeignKey<O, TimelineRevisionRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private TimelineRevisionPath(Name alias, Table<TimelineRevisionRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public TimelineRevisionPath as(String alias) {
+            return new TimelineRevisionPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public TimelineRevisionPath as(Name alias) {
+            return new TimelineRevisionPath(alias, this);
+        }
+
+        @Override
+        public TimelineRevisionPath as(Table<?> alias) {
+            return new TimelineRevisionPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -191,12 +230,38 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_TIMELINE_REVISION_EDIT_SESSION, Indexes.IX_TIMELINE_REVISION_IS_MERGE, Indexes.IX_TIMELINE_REVISION_PARENT, Indexes.IX_TIMELINE_REVISION_PROJECT_CREATED, Indexes.IX_TIMELINE_REVISION_PROJECT_SOURCE, Indexes.IX_TIMELINE_REVISION_SNAPSHOT, Indexes.UX_TIMELINE_REVISION_PROJECT_NUM);
+        return Arrays.asList(Indexes.IX_TIMELINE_REVISION_EDIT_SESSION, Indexes.IX_TIMELINE_REVISION_IS_MERGE, Indexes.IX_TIMELINE_REVISION_PARENT, Indexes.IX_TIMELINE_REVISION_PROJECT_CREATED, Indexes.IX_TIMELINE_REVISION_PROJECT_SOURCE, Indexes.IX_TIMELINE_REVISION_SNAPSHOT, Indexes.UX_TIMELINE_REVISION_PROJECT_ID, Indexes.UX_TIMELINE_REVISION_PROJECT_NUM);
     }
 
     @Override
     public UniqueKey<TimelineRevisionRecord> getPrimaryKey() {
         return Keys.TIMELINE_REVISION_PKEY;
+    }
+
+    private transient TimelineRevisionParentPath _timelineRevisionParent;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.timeline_revision_parent</code> table
+     */
+    public TimelineRevisionParentPath timelineRevisionParent() {
+        if (_timelineRevisionParent == null)
+            _timelineRevisionParent = new TimelineRevisionParentPath(this, null, Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_REVISION.getInverseKey());
+
+        return _timelineRevisionParent;
+    }
+
+    private transient TimelineRevisionRefPath _timelineRevisionRef;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.timeline_revision_ref</code> table
+     */
+    public TimelineRevisionRefPath timelineRevisionRef() {
+        if (_timelineRevisionRef == null)
+            _timelineRevisionRef = new TimelineRevisionRefPath(this, null, Keys.TIMELINE_REVISION_REF__FK_TIMELINE_REVISION_REF_HEAD.getInverseKey());
+
+        return _timelineRevisionRef;
     }
 
     @Override

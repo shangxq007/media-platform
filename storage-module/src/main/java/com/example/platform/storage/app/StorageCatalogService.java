@@ -1,70 +1,30 @@
 package com.example.platform.storage.app;
 
-import com.example.platform.shared.Ids;
-import com.example.platform.shared.web.TenantContext;
 import com.example.platform.storage.api.StorageCatalogPort;
 import com.example.platform.storage.domain.BlobStorage;
-import com.example.platform.storage.domain.StorageObjectRef;
+import java.util.List;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-
+/**
+ * GCR-2 (ARTIFACT_AUTHORITY_CONTRACT_V1 C17): storage catalog service is now
+ * DATA-PLANE ONLY. The render-output Artifact registration path
+ * (registerArtifact / findArtifactsByJob / findArtifact / ArtifactRef record)
+ * is REPLACED: canonical Artifact persistence is owned exclusively by
+ * artifact-module (JooqArtifactCommitService + ArtifactRepository). Storage
+ * keeps physical operations (BlobStorage providers, object read/write) and
+ * provider inventory.
+ */
 @Service
 public class StorageCatalogService implements StorageCatalogPort {
 
     private final List<BlobStorage> providers;
-    private final ArtifactRepository artifactRepository;
 
-    public StorageCatalogService(List<BlobStorage> providers, ArtifactRepository artifactRepository) {
+    public StorageCatalogService(List<BlobStorage> providers) {
         this.providers = providers;
-        this.artifactRepository = artifactRepository;
     }
 
+    @Override
     public List<String> providerCodes() {
         return providers.stream().map(BlobStorage::code).toList();
-    }
-
-    @Override
-    public StorageCatalogPort.ArtifactRef registerArtifact(String renderJobId, String projectId, StorageObjectRef providerRef) {
-        String artifactId = Ids.newId("art");
-        StorageCatalogPort.ArtifactRef info = new StorageCatalogPort.ArtifactRef(
-                artifactId, renderJobId, projectId,
-                providerRef.bucket() + "/" + providerRef.objectKey(),
-                "mp4", "1920x1080", 30L, Instant.now());
-        artifactRepository.save(new ArtifactRepository.ArtifactMetadata(
-                info.artifactId(), info.renderJobId(), info.projectId(),
-                info.storageUri(), info.format(), info.resolution(),
-                info.duration(), info.createdAt()));
-        return info;
-    }
-
-    @Override
-    public List<StorageCatalogPort.ArtifactRef> findArtifactsByJob(String renderJobId) {
-        return artifactRepository.findByRenderJobId(renderJobId).stream()
-                .map(a -> new StorageCatalogPort.ArtifactRef(
-                        a.id(), a.renderJobId(), a.projectId(),
-                        a.storageUri(), a.format(), a.resolution(),
-                        a.duration(), a.createdAt()))
-                .toList();
-    }
-
-    public List<StorageCatalogPort.ArtifactRef> findArtifactsByProject(String projectId) {
-        return artifactRepository.findByProjectId(projectId).stream()
-                .map(a -> new StorageCatalogPort.ArtifactRef(
-                        a.id(), a.renderJobId(), a.projectId(),
-                        a.storageUri(), a.format(), a.resolution(),
-                        a.duration(), a.createdAt()))
-                .toList();
-    }
-
-    @Override
-    public Optional<StorageCatalogPort.ArtifactRef> findArtifact(String artifactId) {
-        return artifactRepository.findById(artifactId)
-                .map(a -> new StorageCatalogPort.ArtifactRef(
-                        a.id(), a.renderJobId(), a.projectId(),
-                        a.storageUri(), a.format(), a.resolution(),
-                        a.duration(), a.createdAt()));
     }
 }

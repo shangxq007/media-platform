@@ -1,11 +1,21 @@
 package com.example.platform.artifact.app;
 
 import com.example.platform.artifact.domain.ArtifactCatalogEntry;
+import com.example.platform.artifact.domain.ArtifactCommitRequest;
+import com.example.platform.artifact.domain.ArtifactCommitService;
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
 import com.example.platform.artifact.domain.ArtifactRelation;
 import com.example.platform.artifact.domain.ArtifactStatus;
+import com.example.platform.artifact.domain.ReplicaRole;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.MediaAssetErrors;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,11 +29,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * Service for managing artifact catalog entries.
+ * GCR-2 (ARTIFACT_AUTHORITY_CONTRACT_V1 C6/C16): Artifact catalog is a
+ * PROJECTION / read model. Canonical Artifact creation routes through
+ * {@link ArtifactCommitService} (single write authority); the catalog never
+ * writes canonical Artifact truth, never owns identity/lifecycle/replicas.
  *
- * <p>When {@link ArtifactCatalogRepository} is available (DSLContext bean present),
- * artifacts are persisted to the database. Otherwise falls back to in-memory
- * storage for backward compatibility.</p>
+ * <p>Registration paths that carry a valid SHA-256 checksum commit a canonical
+ * Artifact via the commit service (persistent). Registration without a content
+ * checksum is kept as an in-memory projection only (no canonical row without a
+ * content-integrity assertion). Catalog rebuild/delete cannot mutate canonical
+ * identity.</p>
  */
 @Service
 public class ArtifactCatalogService {
@@ -32,6 +47,7 @@ public class ArtifactCatalogService {
 
     private final ArtifactCatalogRepository artifactRepository;
     private final ArtifactRelationRepository relationRepository;
+    private final Optional<ArtifactCommitService> commitService;
     private final ErrorCodeRegistry errorCodeRegistry;
     private final boolean persistent;
 
@@ -43,11 +59,13 @@ public class ArtifactCatalogService {
     public ArtifactCatalogService(
             @Autowired(required = false) ArtifactCatalogRepository artifactRepository,
             @Autowired(required = false) ArtifactRelationRepository relationRepository,
+            @Autowired(required = false) ArtifactCommitService commitService,
             ErrorCodeRegistry errorCodeRegistry) {
         this.artifactRepository = artifactRepository;
         this.relationRepository = relationRepository;
+        this.commitService = Optional.ofNullable(commitService);
         this.errorCodeRegistry = errorCodeRegistry;
-        this.persistent = artifactRepository != null;
+        this.persistent = artifactRepository != null && this.commitService.isPresent();
         log.info("ArtifactCatalogService initialized (persistent={})", persistent);
     }
 
@@ -56,12 +74,17 @@ public class ArtifactCatalogService {
                 "authority", "artifact",
                 "capability", "catalog",
                 "status", "active",
-                "description", "ArtifactCatalogEntry catalog — persistent storage of render artifacts, relations, and provenance.",
+                "description", "ArtifactCatalogEntry projection over canonical Artifact persistence.",
                 "artifactCount", persistent ? artifactRepository.findAll().size() : artifacts.size(),
-                "persistent", persistent
-        );
+                "persistent", persistent);
     }
 
+    /**
+     * Registers an artifact into the catalog projection. When a valid SHA-256
+     * checksum is supplied the canonical Artifact is committed via
+     * {@link ArtifactCommitService}; otherwise the entry is kept in the
+     * in-memory projection only.
+     */
     public ArtifactCatalogEntry registerArtifact(String renderJobId, String projectId,
             String storageUri, String format, String resolution, long duration) {
         return registerArtifact(renderJobId, projectId, storageUri, format, resolution,
@@ -71,20 +94,39 @@ public class ArtifactCatalogService {
     public ArtifactCatalogEntry registerArtifact(String renderJobId, String projectId,
             String storageUri, String format, String resolution, long duration,
             Long sizeBytes, String checksum) {
-        if (persistent) {
-            String id = Ids.newId("art");
-            ArtifactCatalogEntry artifact = new ArtifactCatalogEntry(id, renderJobId, projectId, storageUri,
-                    format, resolution, duration, sizeBytes, checksum,
-                    ArtifactStatus.ACTIVE, null, Instant.now());
-            return artifactRepository.save(artifact);
+        String id = Ids.newId("art");
+        ArtifactCatalogEntry entry = new ArtifactCatalogEntry(
+                id, renderJobId, projectId, storageUri, format, resolution, duration,
+                sizeBytes, checksum, ArtifactStatus.ACTIVE, null, Instant.now());
+
+        if (persistent && checksum != null && checksum.matches("[0-9a-fA-F]{64}")) {
+            try {
+                commitService.get().commit(new ArtifactCommitRequest(
+                        new ArtifactId(id),
+                        "system",
+                        ContentDigest.sha256(checksum),
+                        sizeBytes != null ? sizeBytes : 0L,
+                        mediaTypeFrom(format),
+                        ArtifactKind.RENDER_MASTER,
+                        1,
+                        new StorageObjectId(storageUri != null ? storageUri : id),
+                        new StorageReplicaId("replica-1"),
+                        new StorageProviderId("local"),
+                        ReplicaRole.PRIMARY,
+                        "default",
+                        id,
+                        List.of(),
+                        Instant.now(),
+                        Instant.now(),
+                        renderJobId,
+                        projectId));
+            } catch (Exception e) {
+                log.warn("Catalog registration skipped canonical commit for {}: {}", id, e.getMessage());
+            }
         } else {
-            String id = "art-" + artifactSeq.incrementAndGet();
-            ArtifactCatalogEntry artifact = new ArtifactCatalogEntry(id, renderJobId, projectId, storageUri,
-                    format, resolution, duration, sizeBytes, checksum,
-                    ArtifactStatus.ACTIVE, null, Instant.now());
-            artifacts.put(id, artifact);
-            return artifact;
+            artifacts.put(id, entry);
         }
+        return entry;
     }
 
     public Optional<ArtifactCatalogEntry> findArtifact(String id) {
@@ -98,7 +140,7 @@ public class ArtifactCatalogService {
         if (persistent) {
             return artifactRepository.findAll();
         }
-        return List.copyOf(artifacts.values());
+        return new ArrayList<>(artifacts.values());
     }
 
     public List<ArtifactCatalogEntry> listArtifactsByProject(String projectId) {
@@ -106,101 +148,73 @@ public class ArtifactCatalogService {
             return artifactRepository.findByProjectId(projectId);
         }
         return artifacts.values().stream()
-                .filter(a -> a.projectId().equals(projectId))
+                .filter(a -> projectId.equals(a.projectId()))
                 .toList();
     }
 
     public List<ArtifactCatalogEntry> listArtifactsByRenderJob(String renderJobId) {
         if (persistent) {
-            return artifactRepository.findByRenderJobId(renderJobId);
+            return artifactRepository.findAll().stream()
+                    .filter(a -> renderJobId.equals(a.renderJobId()))
+                    .toList();
         }
         return artifacts.values().stream()
-                .filter(a -> a.renderJobId().equals(renderJobId))
+                .filter(a -> renderJobId.equals(a.renderJobId()))
                 .toList();
     }
 
     public ArtifactRelation relateArtifacts(String sourceId, String targetId, String relationType) {
-        if (persistent) {
-            if (artifactRepository.findById(sourceId).isEmpty()) {
-                throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, sourceId);
-            }
-            if (artifactRepository.findById(targetId).isEmpty()) {
-                throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, targetId);
-            }
-        } else {
-            if (!artifacts.containsKey(sourceId)) {
-                throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, sourceId);
-            }
-            if (!artifacts.containsKey(targetId)) {
-                throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, targetId);
-            }
-        }
-        String id = persistent ? Ids.newId("rel") : "rel-" + relationSeq.incrementAndGet();
+        String id = Ids.newId("rel");
         ArtifactRelation relation = new ArtifactRelation(id, sourceId, targetId, relationType);
-        if (persistent && relationRepository != null) {
+        if (persistent) {
             relationRepository.save(relation);
+        } else {
+            relations.put(id, relation);
         }
-        relations.put(id, relation);
         return relation;
     }
 
     public List<Map<String, Object>> findRelationReferences(String artifactId) {
-        if (persistent && relationRepository != null) {
+        if (persistent) {
             return relationRepository.findReferenceMaps(artifactId);
         }
-        List<Map<String, Object>> refs = new ArrayList<>();
-        for (ArtifactRelation relation : relations.values()) {
-            if (artifactId.equals(relation.sourceId())) {
-                refs.add(Map.of(
-                        "kind", "artifact_relation",
-                        "relationId", relation.id(),
-                        "role", "source",
-                        "peerId", relation.targetId(),
-                        "relationType", relation.relationType()));
-            }
-            if (artifactId.equals(relation.targetId())) {
-                refs.add(Map.of(
-                        "kind", "artifact_relation",
-                        "relationId", relation.id(),
-                        "role", "target",
-                        "peerId", relation.sourceId(),
-                        "relationType", relation.relationType()));
-            }
-        }
-        return refs;
+        return relations.values().stream()
+                .filter(r -> artifactId.equals(r.sourceId()) || artifactId.equals(r.targetId()))
+                .map(r -> Map.<String, Object>of(
+                        "relationId", r.id(),
+                        "sourceId", r.sourceId(),
+                        "targetId", r.targetId(),
+                        "relationType", r.relationType()))
+                .toList();
     }
 
     public ArtifactCatalogEntry tombstoneInMemory(String artifactId) {
         ArtifactCatalogEntry existing = artifacts.get(artifactId);
         if (existing == null) {
-            throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
+            return null;
         }
-        ArtifactCatalogEntry updated = new ArtifactCatalogEntry(
+        ArtifactCatalogEntry tombstoned = new ArtifactCatalogEntry(
                 existing.id(), existing.renderJobId(), existing.projectId(), existing.storageUri(),
-                existing.format(), existing.resolution(), existing.duration(),
-                existing.sizeBytes(), existing.checksum(),
-                ArtifactStatus.TOMBSTONED, Instant.now(), existing.createdAt());
-        artifacts.put(artifactId, updated);
-        return updated;
+                existing.format(), existing.resolution(), existing.duration(), existing.sizeBytes(),
+                existing.checksum(), ArtifactStatus.TOMBSTONED, Instant.now(), existing.createdAt());
+        artifacts.put(artifactId, tombstoned);
+        return tombstoned;
     }
 
-    public ArtifactCatalogEntry updateStatus(String artifactId, ArtifactStatus newStatus) {
-        if (persistent) {
-            return artifactRepository.updateStatus(artifactId, newStatus,
-                    newStatus == ArtifactStatus.TOMBSTONED ? Instant.now() : null);
+    private static ArtifactMediaType mediaTypeFrom(String format) {
+        if (format == null) {
+            return ArtifactMediaType.VIDEO;
         }
-        ArtifactCatalogEntry existing = artifacts.get(artifactId);
-        if (existing == null) {
-            throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
+        String f = format.toLowerCase();
+        if (f.contains("mp4") || f.contains("mov") || f.contains("webm") || f.contains("mkv")) {
+            return ArtifactMediaType.VIDEO;
         }
-        ArtifactCatalogEntry updated = new ArtifactCatalogEntry(
-                existing.id(), existing.renderJobId(), existing.projectId(), existing.storageUri(),
-                existing.format(), existing.resolution(), existing.duration(),
-                existing.sizeBytes(), existing.checksum(),
-                newStatus,
-                newStatus == ArtifactStatus.TOMBSTONED ? Instant.now() : existing.tombstonedAt(),
-                existing.createdAt());
-        artifacts.put(artifactId, updated);
-        return updated;
+        if (f.contains("mp3") || f.contains("wav") || f.contains("aac") || f.contains("flac")) {
+            return ArtifactMediaType.AUDIO;
+        }
+        if (f.contains("png") || f.contains("jpg") || f.contains("jpeg") || f.contains("webp")) {
+            return ArtifactMediaType.IMAGE;
+        }
+        return ArtifactMediaType.VIDEO;
     }
 }

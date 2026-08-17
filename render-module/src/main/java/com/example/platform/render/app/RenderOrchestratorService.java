@@ -55,13 +55,21 @@ public class RenderOrchestratorService implements RenderOrchestratorPort {
     }
 
     @Override
-    @Transactional
+    // GCR-2 (RENDER_EXECUTION_OUTSIDE_WRITE_TRANSACTION_V1): the render execution
+    // chain (provider.render) must NOT run inside a write transaction. A write
+    // transaction held across provider execution keeps render_job row locks
+    // uncommitted; the failure path (RenderJobFailureService.recordDurableFailure,
+    // REQUIRES_NEW) then deadlocks against its own outer transaction. State writes
+    // inside the chain are individually committed (pre-GCR-2 jOOQ behavior).
     public String executeExistingRenderJob(String tenantId, String jobId) {
         return executionService.execute(tenantId, jobId);
     }
 
     @Override
-    @Transactional
+    // GCR-2 (RENDER_EXECUTION_OUTSIDE_WRITE_TRANSACTION_V1): same rationale as
+    // executeExistingRenderJob — the finish/render phase must not hold a write
+    // transaction across provider execution (self-deadlock with the REQUIRES_NEW
+    // failure path on the same render_job row).
     public String finishRenderPhase(String tenantId, String jobId) {
         return executionService.finishRenderPhase(tenantId, jobId);
     }

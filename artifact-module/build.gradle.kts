@@ -23,12 +23,10 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
-    // Artifact Domain depends only on the StorageProvider SPI and Storage Domain,
-    // both of which live in render-module. No dependency on OpenDAL adapter,
-    // cloud SDKs, bucket names, object keys, or signed URLs.
-    implementation(project(":render-module"))
-
-    // PMPR-ST1: canonical storage contracts (ContentDigest/StorageObjectId/...) now owned by storage authority
+    // GCR-2: artifact-module depends on storage-module contracts (ContentDigest was moved
+    // to shared-kernel; storage contracts StorageObjectId/StorageReplicaId/StorageProviderId
+    // remain storage data-plane). The stale render-module dependency is REMOVED — artifact
+    // main code has zero render imports (fixes the #14 dependency-cycle premise).
     implementation(project(":storage-module"))
 
     // PMPR-A1R1: artifact catalog absorbed — shared-kernel API + micrometer for catalog services/metrics

@@ -162,15 +162,14 @@ class PluginRuntimeRedMatrixTest {
     }
 
     @Test
-    void red011_durableMediaOutputIsArtifactRef() {
-        // PluginExecutionResult.artifactRefs is List<ArtifactRef> — structurally
-        // durable media outputs can only be references, never native objects
-        var ref = new com.example.platform.shared.capability.ArtifactRef(
-                "art-1", "tenant-1", "video/mp4", "abc123", "s3://x", "logical-uri",
-                new com.example.platform.shared.capability.ArtifactRef.ArtifactPermissions(true, false, false));
+    void red011_durableMediaOutputIsArtifactId() {
+        // GCR-2: PluginExecutionResult.artifactRefs is List<ArtifactId> — structurally
+        // durable media outputs can only be typed ArtifactId references, never native objects
+        // (shared-kernel ArtifactRef retired).
+        var ref = new com.example.platform.shared.identity.ArtifactId("art-1");
         PluginExecutionResult result = PluginExecutionResult.succeeded(null, java.util.List.of(ref), null);
         assertEquals(1, result.artifactRefs().size());
-        assertEquals("art-1", result.artifactRefs().get(0).artifactId());
+        assertEquals("art-1", result.artifactRefs().get(0).value());
     }
 
     @Test

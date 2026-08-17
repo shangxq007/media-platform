@@ -7,6 +7,7 @@ import com.example.platform.timeline.adapter.TimelineSnapshotService.SnapshotInf
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.timeline.canonicalmodel.TimelineModelPath;
 import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
@@ -35,6 +36,8 @@ public class TimelineRevisionService {
     private final TimelinePayloadCodec payloadCodec;
     private final TimelinePatchService timelinePatchService;
     private final TimelineSemanticDiffService semanticDiffService;
+    private final TimelineArtifactPinValidator artifactPinValidator;
+    private final com.example.platform.artifact.app.ArtifactPinService artifactPinService;
 
     public TimelineRevisionService(
             TimelineRevisionRepository revisionRepository,
@@ -43,7 +46,9 @@ public class TimelineRevisionService {
             TimelineRevisionDiffService diffService,
             TimelinePayloadCodec payloadCodec,
             TimelinePatchService timelinePatchService,
-            TimelineSemanticDiffService semanticDiffService) {
+            TimelineSemanticDiffService semanticDiffService,
+            TimelineArtifactPinValidator artifactPinValidator,
+            com.example.platform.artifact.app.ArtifactPinService artifactPinService) {
         this.revisionRepository = revisionRepository;
         this.snapshotService = snapshotService;
         this.contentHasher = contentHasher;
@@ -51,6 +56,8 @@ public class TimelineRevisionService {
         this.payloadCodec = payloadCodec;
         this.timelinePatchService = timelinePatchService;
         this.semanticDiffService = semanticDiffService;
+        this.artifactPinValidator = artifactPinValidator;
+        this.artifactPinService = artifactPinService;
     }
 
     @Transactional
@@ -102,6 +109,22 @@ public class TimelineRevisionService {
         TimelineCanonicalNormalizer.normalize(candidate)
                 .orElseThrow(() -> new TimelineCanonicalRejectionException(validation.diagnostics()));
 
+        // GCR-2 (C11/C12, Roadmap #14 closure): exact Artifact pin reference-integrity
+        // validation — existence + tenant + digest, FAIL CLOSED before any write.
+        List<TimelineArtifactPinExtractor.ArtifactPin> pins =
+                TimelineArtifactPinExtractor.extract(internalTimelineJson);
+        if (!pins.isEmpty()) {
+            TimelineArtifactPinValidator.ValidationResult pinValidation =
+                    artifactPinValidator.validate(effectiveTenant, pins);
+            if (!pinValidation.valid()) {
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                TimelineModelPath.root().field("sourceBinding"),
+                                "Artifact pin reference-integrity: " + String.join("; ", pinValidation.violations())));
+            }
+        }
+
         String contentHash = contentHasher.hashInternalTimeline(internalTimelineJson);
         int internalRevision = parseInternalRevision(internalTimelineJson);
 
@@ -144,6 +167,19 @@ public class TimelineRevisionService {
                 null,
                 OffsetDateTime.now());
         revisionRepository.insert(row);
+
+        // GCR-2 (C10, TIMELINE_REVISION_AND_REQUIRED_ARTIFACT_PROTECTION_ARE_ATOMIC_V1):
+        // register artifact_pin protection rows in the SAME transaction as the revision.
+        // A successful revision commit cannot exist without all required protection
+        // records (PIN_REGISTRATION_FAILURE => REVISION_NOT_COMMITTED via rollback).
+        if (!pins.isEmpty()) {
+            artifactPinService.registerRevisionPins(projectId, revisionId, effectiveTenant,
+                    pins.stream()
+                            .map(p -> new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
+                                    p.artifactId(), p.contentDigest()))
+                            .toList());
+        }
+
         log.info("Recorded timeline revision id={} project={} rev={}", revisionId, projectId, revisionNumber);
         return toInfo(row);
     }

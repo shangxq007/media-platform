@@ -7,10 +7,13 @@ package com.example.platform.typedschema.jooq.generated;
 import com.example.platform.typedschema.jooq.generated.tables.ApiClient;
 import com.example.platform.typedschema.jooq.generated.tables.ApiKey;
 import com.example.platform.typedschema.jooq.generated.tables.AppDatasource;
+import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand;
 import com.example.platform.typedschema.jooq.generated.tables.Artifact;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata;
 import com.example.platform.typedschema.jooq.generated.tables.AuditRecords;
 import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice;
@@ -81,6 +84,7 @@ import com.example.platform.typedschema.jooq.generated.tables.Product;
 import com.example.platform.typedschema.jooq.generated.tables.ProductDependency;
 import com.example.platform.typedschema.jooq.generated.tables.Project;
 import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata;
+import com.example.platform.typedschema.jooq.generated.tables.ProjectRevisionCounter;
 import com.example.platform.typedschema.jooq.generated.tables.PromptEvaluationResult;
 import com.example.platform.typedschema.jooq.generated.tables.PromptExecutionRun;
 import com.example.platform.typedschema.jooq.generated.tables.PromptTemplate;
@@ -117,6 +121,7 @@ import com.example.platform.typedschema.jooq.generated.tables.SharedResourceGran
 import com.example.platform.typedschema.jooq.generated.tables.SocialConnectedPlatform;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPost;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPostAnalytics;
+import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObject;
 import com.example.platform.typedschema.jooq.generated.tables.StorageReference;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionContract;
@@ -130,6 +135,8 @@ import com.example.platform.typedschema.jooq.generated.tables.TenantLitellmVirtu
 import com.example.platform.typedschema.jooq.generated.tables.TimelineComment;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineReview;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionParent;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphEdge;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphNode;
@@ -192,6 +199,11 @@ public class Public extends SchemaImpl {
     public final AppDatasource APP_DATASOURCE = AppDatasource.APP_DATASOURCE;
 
     /**
+     * The table <code>public.apply_command</code>.
+     */
+    public final ApplyCommand APPLY_COMMAND = ApplyCommand.APPLY_COMMAND;
+
+    /**
      * The table <code>public.artifact</code>.
      */
     public final Artifact ARTIFACT = Artifact.ARTIFACT;
@@ -207,9 +219,19 @@ public class Public extends SchemaImpl {
     public final ArtifactNode ARTIFACT_NODE = ArtifactNode.ARTIFACT_NODE;
 
     /**
+     * The table <code>public.artifact_pin</code>.
+     */
+    public final ArtifactPin ARTIFACT_PIN = ArtifactPin.ARTIFACT_PIN;
+
+    /**
      * The table <code>public.artifact_relation</code>.
      */
     public final ArtifactRelation ARTIFACT_RELATION = ArtifactRelation.ARTIFACT_RELATION;
+
+    /**
+     * The table <code>public.artifact_replica</code>.
+     */
+    public final ArtifactReplica ARTIFACT_REPLICA = ArtifactReplica.ARTIFACT_REPLICA;
 
     /**
      * The table <code>public.asset_semantic_metadata</code>.
@@ -562,6 +584,11 @@ public class Public extends SchemaImpl {
     public final ProjectImportMetadata PROJECT_IMPORT_METADATA = ProjectImportMetadata.PROJECT_IMPORT_METADATA;
 
     /**
+     * The table <code>public.project_revision_counter</code>.
+     */
+    public final ProjectRevisionCounter PROJECT_REVISION_COUNTER = ProjectRevisionCounter.PROJECT_REVISION_COUNTER;
+
+    /**
      * The table <code>public.prompt_evaluation_result</code>.
      */
     public final PromptEvaluationResult PROMPT_EVALUATION_RESULT = PromptEvaluationResult.PROMPT_EVALUATION_RESULT;
@@ -742,6 +769,11 @@ public class Public extends SchemaImpl {
     public final SocialPostAnalytics SOCIAL_POST_ANALYTICS = SocialPostAnalytics.SOCIAL_POST_ANALYTICS;
 
     /**
+     * The table <code>public.source_visual_description_snapshot</code>.
+     */
+    public final SourceVisualDescriptionSnapshot SOURCE_VISUAL_DESCRIPTION_SNAPSHOT = SourceVisualDescriptionSnapshot.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT;
+
+    /**
      * The table <code>public.storage_object</code>.
      */
     public final StorageObject STORAGE_OBJECT = StorageObject.STORAGE_OBJECT;
@@ -805,6 +837,16 @@ public class Public extends SchemaImpl {
      * The table <code>public.timeline_revision</code>.
      */
     public final TimelineRevision TIMELINE_REVISION = TimelineRevision.TIMELINE_REVISION;
+
+    /**
+     * The table <code>public.timeline_revision_parent</code>.
+     */
+    public final TimelineRevisionParent TIMELINE_REVISION_PARENT = TimelineRevisionParent.TIMELINE_REVISION_PARENT;
+
+    /**
+     * The table <code>public.timeline_revision_ref</code>.
+     */
+    public final TimelineRevisionRef TIMELINE_REVISION_REF = TimelineRevisionRef.TIMELINE_REVISION_REF;
 
     /**
      * The table <code>public.timeline_snapshot</code>.
@@ -945,10 +987,13 @@ public class Public extends SchemaImpl {
             ApiClient.API_CLIENT,
             ApiKey.API_KEY,
             AppDatasource.APP_DATASOURCE,
+            ApplyCommand.APPLY_COMMAND,
             Artifact.ARTIFACT,
             ArtifactGraph.ARTIFACT_GRAPH,
             ArtifactNode.ARTIFACT_NODE,
+            ArtifactPin.ARTIFACT_PIN,
             ArtifactRelation.ARTIFACT_RELATION,
+            ArtifactReplica.ARTIFACT_REPLICA,
             AssetSemanticMetadata.ASSET_SEMANTIC_METADATA,
             AuditRecords.AUDIT_RECORDS,
             BillingInvoice.BILLING_INVOICE,
@@ -1019,6 +1064,7 @@ public class Public extends SchemaImpl {
             ProductDependency.PRODUCT_DEPENDENCY,
             Project.PROJECT,
             ProjectImportMetadata.PROJECT_IMPORT_METADATA,
+            ProjectRevisionCounter.PROJECT_REVISION_COUNTER,
             PromptEvaluationResult.PROMPT_EVALUATION_RESULT,
             PromptExecutionRun.PROMPT_EXECUTION_RUN,
             PromptTemplate.PROMPT_TEMPLATE,
@@ -1055,6 +1101,7 @@ public class Public extends SchemaImpl {
             SocialConnectedPlatform.SOCIAL_CONNECTED_PLATFORM,
             SocialPost.SOCIAL_POST,
             SocialPostAnalytics.SOCIAL_POST_ANALYTICS,
+            SourceVisualDescriptionSnapshot.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT,
             StorageObject.STORAGE_OBJECT,
             StorageReference.STORAGE_REFERENCE,
             SubscriptionContract.SUBSCRIPTION_CONTRACT,
@@ -1068,6 +1115,8 @@ public class Public extends SchemaImpl {
             TimelineComment.TIMELINE_COMMENT,
             TimelineReview.TIMELINE_REVIEW,
             TimelineRevision.TIMELINE_REVISION,
+            TimelineRevisionParent.TIMELINE_REVISION_PARENT,
+            TimelineRevisionRef.TIMELINE_REVISION_REF,
             TimelineSnapshot.TIMELINE_SNAPSHOT,
             UnifiedGraphEdge.UNIFIED_GRAPH_EDGE,
             UnifiedGraphNode.UNIFIED_GRAPH_NODE,

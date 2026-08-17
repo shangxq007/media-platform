@@ -30,7 +30,7 @@
     </database>
     <target>
       <packageName>com.example.platform.typedschema.jooq.generated</packageName>
-      <directory>/home/user/Documents/workspace/projects/media-platform/typed-schema-module/src/main/java</directory>
+      <directory>/home/user/Documents/workspace/projects/media-platform/.worktrees/gcr2-artifact-authority/typed-schema-module/src/main/java</directory>
     </target>
   </generator>
 </configuration>

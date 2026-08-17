@@ -21,6 +21,11 @@ DB_PASS="codegen"
 
 JOOQ_VERSION="3.19.30"
 JOOQ_JAR="$SCRIPT_DIR/lib/jooq-codegen-$JOOQ_VERSION.jar"
+JOOQ_META_JAR="$SCRIPT_DIR/lib/jooq-meta-$JOOQ_VERSION.jar"
+JOOQ_CORE_JAR="$SCRIPT_DIR/lib/jooq-$JOOQ_VERSION.jar"
+JAXB_API_JAR="$SCRIPT_DIR/lib/jakarta.xml.bind-api-4.0.4.jar"
+REACTIVE_STREAMS_JAR="$SCRIPT_DIR/lib/reactive-streams.jar"
+R2DBC_SPI_JAR="$SCRIPT_DIR/lib/r2dbc-spi.jar"
 POSTGRES_JDBC_JAR="$SCRIPT_DIR/lib/postgresql-42.7.1.jar"
 
 cleanup() {
@@ -101,14 +106,14 @@ cat > "$CODEGEN_CONFIG" << EOF
 </configuration>
 EOF
 
-if [ -f "$JOOQ_JAR" ] && [ -f "$POSTGRES_JDBC_JAR" ]; then
-    java -cp "$JOOQ_JAR:$POSTGRES_JDBC_JAR" \
+if [ -f "$JOOQ_JAR" ] && [ -f "$JOOQ_META_JAR" ] && [ -f "$JOOQ_CORE_JAR" ] && [ -f "$JAXB_API_JAR" ] && [ -f "$REACTIVE_STREAMS_JAR" ] && [ -f "$R2DBC_SPI_JAR" ] && [ -f "$POSTGRES_JDBC_JAR" ]; then
+    java -cp "$JOOQ_JAR:$JOOQ_META_JAR:$JOOQ_CORE_JAR:$JAXB_API_JAR:$REACTIVE_STREAMS_JAR:$R2DBC_SPI_JAR:$POSTGRES_JDBC_JAR" \
         org.jooq.codegen.GenerationTool \
         "$CODEGEN_CONFIG"
     echo "jOOQ codegen complete."
 else
     echo "WARN: jOOQ codegen JARs not found at $SCRIPT_DIR/lib/"
-    echo "Expected: $JOOQ_JAR, $POSTGRES_JDBC_JAR"
+    echo "Expected: $JOOQ_JAR, $JOOQ_META_JAR, $JOOQ_CORE_JAR, $JAXB_API_JAR, $POSTGRES_JDBC_JAR"
     echo "Download from Maven Central or run via Gradle."
     echo ""
     echo "To run codegen via Gradle:"

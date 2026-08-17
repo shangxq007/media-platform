@@ -24,10 +24,11 @@ dependencies {
     implementation(project(":media-module"))
     implementation(project(":audio-module"))
     implementation(project(":font-text-module"))
-    // storage-module contract only: ContentDigest pin semantics in
-    // MediaStreamSourceBinding (same pattern as artifact-module).
-    // ArtifactId used by source bindings lives in shared-kernel (shared.identity).
-    implementation(project(":storage-module"))
+    // GCR-2: ContentDigest moved to shared-kernel (shared.digest); timeline no longer
+    // depends on storage-module (TIMELINE_TO_STORAGE_DEPENDENCY_FOR_CONTENT_DIGEST_ONLY = 0).
+    // timeline -> artifact-module: allowed direction (Artifact is upstream of Timeline);
+    // closes Roadmap #14 pin existence/tenant/digest validation.
+    implementation(project(":artifact-module"))
     // Jackson: canonical serialization visibility (records with @JsonCreator/
     // @JsonValue/@JsonSerialize) + TimelineDocumentJsonSerializer (databind).
     implementation("com.fasterxml.jackson.core:jackson-annotations")

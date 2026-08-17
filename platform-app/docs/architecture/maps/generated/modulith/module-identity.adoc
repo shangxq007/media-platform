@@ -48,5 +48,6 @@ _Others_
 * `c.e.p.s.audit.AuditPort` (in Shared Kernel)
 * `c.e.p.s.asset.AssetDownloadUrlPort` (in Shared Kernel)
 * `c.e.p.a.app.ArtifactCatalogService` (in Artifact)
+* `c.e.p.a.app.ArtifactLifecycleService` (in Artifact)
 * `c.e.p.s.domain.BlobStorage` (in Storage)
 |===
