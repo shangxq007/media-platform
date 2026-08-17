@@ -10,6 +10,7 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import org.springframework.stereotype.Repository;
+import static com.example.platform.typedschema.jooq.generated.tables.Artifact.ARTIFACT;
 import static com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ARTIFACT_RELATION;
 
 
@@ -39,6 +40,42 @@ public class ArtifactRelationRepository {
                 .where(ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(artifactId)
                         .or(ARTIFACT_RELATION.TARGET_ARTIFACT_ID.eq(artifactId)))
                 .fetch(this::mapRecord);
+    }
+
+    /**
+     * GCR2-CORRECTION-V1 (ARTIFACT_QUERY_TENANT_ARGUMENT_IS_SEMANTIC_NOT_DECORATIVE_V1):
+     * tenant-scoped relation lookup. The root Artifact must belong to the requested
+     * tenant AND both relation peers must belong to the same tenant
+     * (ARTIFACT_PROVENANCE_TRAVERSAL_NEVER_CROSSES_TENANT_BOUNDARY_V1). Scoped via
+     * canonical Artifact ownership — no tenant column added to artifact_relation.
+     */
+    public List<ArtifactRelation> findByArtifactIdScopedToTenant(String tenantId, String artifactId) {
+        var sourceArtifact = ARTIFACT.as("sa");
+        var targetArtifact = ARTIFACT.as("ta");
+        return dsl.select(ARTIFACT_RELATION.ID, ARTIFACT_RELATION.SOURCE_ARTIFACT_ID,
+                        ARTIFACT_RELATION.TARGET_ARTIFACT_ID, ARTIFACT_RELATION.RELATION_TYPE)
+                .from(ARTIFACT_RELATION)
+                .join(sourceArtifact).on(sourceArtifact.ID.eq(ARTIFACT_RELATION.SOURCE_ARTIFACT_ID))
+                .join(targetArtifact).on(targetArtifact.ID.eq(ARTIFACT_RELATION.TARGET_ARTIFACT_ID))
+                .where((ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(artifactId)
+                                .or(ARTIFACT_RELATION.TARGET_ARTIFACT_ID.eq(artifactId)))
+                        .and(sourceArtifact.TENANT_ID.eq(tenantId))
+                        .and(targetArtifact.TENANT_ID.eq(tenantId)))
+                .fetch(this::mapRecord);
+    }
+
+    /** Whether a relation exists for the artifact with BOTH peers in the tenant. */
+    public boolean hasRelationInTenant(String tenantId, String artifactId) {
+        var sourceArtifact = ARTIFACT.as("sa");
+        var targetArtifact = ARTIFACT.as("ta");
+        return dsl.fetchExists(dsl.selectOne()
+                .from(ARTIFACT_RELATION)
+                .join(sourceArtifact).on(sourceArtifact.ID.eq(ARTIFACT_RELATION.SOURCE_ARTIFACT_ID))
+                .join(targetArtifact).on(targetArtifact.ID.eq(ARTIFACT_RELATION.TARGET_ARTIFACT_ID))
+                .where((ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(artifactId)
+                                .or(ARTIFACT_RELATION.TARGET_ARTIFACT_ID.eq(artifactId)))
+                        .and(sourceArtifact.TENANT_ID.eq(tenantId))
+                        .and(targetArtifact.TENANT_ID.eq(tenantId))));
     }
 
     public List<Map<String, Object>> findReferenceMaps(String artifactId) {

@@ -27,6 +27,12 @@ public final class NoopArtifactQueryService implements ArtifactQueryService {
     }
 
     @Override
+    public java.util.Optional<ArtifactReplicaBinding> findReplica(String tenantId, ArtifactId artifactId,
+            com.example.platform.storage.contract.StorageReplicaId replicaId) {
+        return java.util.Optional.empty();
+    }
+
+    @Override
     public List<ArtifactId> listParents(String tenantId, ArtifactId artifactId) {
         return List.of();
     }

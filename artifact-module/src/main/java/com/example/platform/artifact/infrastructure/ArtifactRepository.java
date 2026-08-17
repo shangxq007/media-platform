@@ -114,8 +114,16 @@ public class ArtifactRepository {
     }
 
     public List<ArtifactReplicaBinding> listReplicas(String tenantId, ArtifactId artifactId) {
+        // GCR2-CORRECTION-V1 (ARTIFACT_QUERY_TENANT_ARGUMENT_IS_SEMANTIC_NOT_DECORATIVE_V1):
+        // scope through canonical Artifact ownership — replica metadata must not be
+        // observable cross-tenant.
         return dsl.selectFrom(ARTIFACT_REPLICA)
-                .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId.value()))
+                .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId.value())
+                        .and(org.jooq.impl.DSL.exists(
+                                dsl.selectOne()
+                                        .from(ARTIFACT)
+                                        .where(ARTIFACT.ID.eq(ARTIFACT_REPLICA.ARTIFACT_ID)
+                                                .and(ARTIFACT.TENANT_ID.eq(tenantId))))))
                 .fetch()
                 .map(r -> new ArtifactReplicaBinding(
                         r.get(ARTIFACT_REPLICA.ARTIFACT_ID) + ":" + r.get(ARTIFACT_REPLICA.REPLICA_ID),
@@ -129,9 +137,15 @@ public class ArtifactRepository {
     }
 
     public Optional<ArtifactReplicaBinding> findReplica(String tenantId, ArtifactId artifactId, StorageReplicaId replicaId) {
+        // GCR2-CORRECTION-V1: tenant-scoped through canonical Artifact ownership.
         return dsl.selectFrom(ARTIFACT_REPLICA)
                 .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId.value())
-                        .and(ARTIFACT_REPLICA.REPLICA_ID.eq(replicaId.value())))
+                        .and(ARTIFACT_REPLICA.REPLICA_ID.eq(replicaId.value()))
+                        .and(org.jooq.impl.DSL.exists(
+                                dsl.selectOne()
+                                        .from(ARTIFACT)
+                                        .where(ARTIFACT.ID.eq(ARTIFACT_REPLICA.ARTIFACT_ID)
+                                                .and(ARTIFACT.TENANT_ID.eq(tenantId))))))
                 .fetchOptional()
                 .map(r -> new ArtifactReplicaBinding(
                         r.get(ARTIFACT_REPLICA.ARTIFACT_ID) + ":" + r.get(ARTIFACT_REPLICA.REPLICA_ID),

@@ -600,6 +600,7 @@ tasks.register("jooqFoundationCheck") {
         "verifyC1TimelineMergeConvergence",
         "verifyGcr1CorrectionV2IngressAuthority",
         "verifyGcr2ArtifactAuthority",
+        "verifyGcr2CorrectionV1",
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
@@ -1105,5 +1106,58 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         }
 
         println("OK: GCR-2 Artifact authority verified (single domain authority; ArtifactRef retired; storage data-plane only; timeline pin existence/digest/tenant validation; revision-pin atomicity; historical pin protection; single V1; projection catalog)")
+    }
+}
+
+tasks.register("verifyGcr2CorrectionV1") {
+    group = "verification"
+    description = "GCR2-CORRECTION-V1: Artifact query tenant isolation (replica/relation/provenance/traversal DB-scoped; InMemory/Jooq conformance; maxDepth/limit normalized); no cross-tenant exposure"
+    doLast {
+        val artifactRepo = file("artifact-module/src/main/java/com/example/platform/artifact/infrastructure/ArtifactRepository.java").readText()
+        val relationRepo = file("artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactRelationRepository.java").readText()
+        val jooqQuery = file("artifact-module/src/main/java/com/example/platform/artifact/infrastructure/JooqArtifactQueryService.java").readText()
+        val inMemory = file("artifact-module/src/main/java/com/example/platform/artifact/domain/InMemoryArtifactQueryService.java").readText()
+
+        // 1. Replica queries tenant-scoped via canonical Artifact ownership (EXISTS).
+        require(artifactRepo.contains("TENANT_ID.eq(tenantId)") && artifactRepo.split("ARTIFACT_REPLICA.ARTIFACT_ID.eq").size >= 3
+                && artifactRepo.contains("org.jooq.impl.DSL.exists")) {
+            "FAIL: listReplicas/findReplica not tenant-scoped (JOOQ_ARTIFACT_QUERY_TENANT_SCOPED_REPLICA_COUNT != 1)"
+        }
+
+        // 2. Relation/provenance tenant-scoped: both peers JOIN artifact, tenant filter on both.
+        require(relationRepo.contains("findByArtifactIdScopedToTenant") && relationRepo.contains("sourceArtifact.TENANT_ID.eq(tenantId)")
+                && relationRepo.contains("targetArtifact.TENANT_ID.eq(tenantId)")) {
+            "FAIL: relation lookup not tenant-scoped on BOTH peers (JOOQ_ARTIFACT_QUERY_TENANT_SCOPED_RELATION_COUNT != 1)"
+        }
+
+        // 3. Jooq query service uses tenant-scoped relations for parents/children/provenance.
+        require(jooqQuery.contains("findByArtifactIdScopedToTenant")) {
+            "FAIL: JooqArtifactQueryService still uses unscoped relation lookup (JOOQ_ARTIFACT_QUERY_TENANT_SCOPED_PROVENANCE_COUNT != 1)"
+        }
+
+        // 4. Traversal: root existence check + hop-scoped (via tenant-scoped listParents/listChildren).
+        require(jooqQuery.contains("findById(tenantId, artifactId).isEmpty()") && jooqQuery.contains("if (maxDepth < 1)")) {
+            "FAIL: traversal root-scope / maxDepth normalization missing (JOOQ_ARTIFACT_QUERY_TENANT_SCOPED_TRAVERSAL_COUNT != 1)"
+        }
+
+        // 5. maxDepth + limit normalized to InMemory contract in BOTH implementations.
+        require(inMemory.contains("if (maxDepth < 1) return List.of();") && jooqQuery.contains("if (maxDepth < 1) {\n            return List.of();")) {
+            "FAIL: maxDepth < 1 behavior diverges (ARTIFACT_QUERY_IMPLEMENTATION_CONFORMANCE_FAILURE_COUNT != 0)"
+        }
+        require(inMemory.contains("Math.max(1, limit)") && jooqQuery.contains("Math.max(1, limit)")) {
+            "FAIL: limit <= 0 behavior diverges (ARTIFACT_QUERY_IMPLEMENTATION_CONFORMANCE_FAILURE_COUNT != 0)"
+        }
+
+        // 6. InMemory peer-tenant defense for malformed cross-tenant relations.
+        require(inMemory.contains("artifactTenants.get(peer.value())")) {
+            "FAIL: InMemory relation queries lack peer-tenant defense (CROSS_TENANT_ARTIFACT_QUERY_EXPOSURE_COUNT != 0)"
+        }
+
+        // 7. getArtifact remains tenant-scoped (contract).
+        require(jooqQuery.contains("artifactRepository.findById(tenantId, artifactId)")) {
+            "FAIL: getArtifact not tenant-scoped (JOOQ_ARTIFACT_QUERY_TENANT_SCOPED_GET_COUNT != 1)"
+        }
+
+        println("OK: GCR2-CORRECTION-V1 verified (replica/relation/provenance/traversal tenant-scoped at DB level; InMemory/Jooq conformance; maxDepth/limit normalized; no cross-tenant exposure)")
     }
 }

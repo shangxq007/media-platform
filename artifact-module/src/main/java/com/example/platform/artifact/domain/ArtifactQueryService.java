@@ -32,6 +32,17 @@ public interface ArtifactQueryService {
     List<ArtifactReplicaBinding> listReplicas(String tenantId, ArtifactId artifactId);
 
     /**
+     * Finds a single replica binding for an artifact.
+     *
+     * @param tenantId the tenant (for isolation)
+     * @param artifactId the artifact ID
+     * @param replicaId the replica ID
+     * @return the replica binding, or empty if not found / not owned by tenant
+     */
+    java.util.Optional<ArtifactReplicaBinding> findReplica(String tenantId, ArtifactId artifactId,
+            com.example.platform.storage.contract.StorageReplicaId replicaId);
+
+    /**
      * Lists direct parent artifacts (artifacts this artifact was derived from).
      *
      * @param tenantId the tenant

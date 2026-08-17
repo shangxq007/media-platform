@@ -56,14 +56,29 @@ public class InMemoryArtifactQueryService implements ArtifactQueryService {
     }
 
     @Override
+    public Optional<ArtifactReplicaBinding> findReplica(String tenantId, ArtifactId artifactId,
+            com.example.platform.storage.contract.StorageReplicaId replicaId) {
+        Artifact artifact = artifacts.get(artifactId.value());
+        if (artifact == null || !artifact.tenantId().equals(tenantId)) {
+            return Optional.empty();
+        }
+        return replicaBindings.getOrDefault(artifactId.value(), List.of()).stream()
+                .filter(b -> b.storageReplicaId().equals(replicaId))
+                .findFirst();
+    }
+
+    @Override
     public List<ArtifactId> listParents(String tenantId, ArtifactId artifactId) {
         Artifact artifact = artifacts.get(artifactId.value());
         if (artifact == null || !artifact.tenantId().equals(tenantId)) {
             return List.of();
         }
+        // GCR2-CORRECTION-V1: peers must belong to the SAME tenant (malformed
+        // cross-tenant relation defense — conformance with the jOOQ adapter).
         return edgesByArtifact.getOrDefault(artifactId.value(), List.of()).stream()
                 .filter(e -> e.childArtifactId().value().equals(artifactId.value()))
                 .map(ProvenanceEdge::parentArtifactId)
+                .filter(peer -> tenantId.equals(artifactTenants.get(peer.value())))
                 .distinct()
                 .toList();
     }
@@ -74,9 +89,11 @@ public class InMemoryArtifactQueryService implements ArtifactQueryService {
         if (artifact == null || !artifact.tenantId().equals(tenantId)) {
             return List.of();
         }
+        // GCR2-CORRECTION-V1: peers must belong to the SAME tenant.
         return edgesByArtifact.getOrDefault(artifactId.value(), List.of()).stream()
                 .filter(e -> e.parentArtifactId().value().equals(artifactId.value()))
                 .map(ProvenanceEdge::childArtifactId)
+                .filter(peer -> tenantId.equals(artifactTenants.get(peer.value())))
                 .distinct()
                 .toList();
     }
@@ -87,7 +104,11 @@ public class InMemoryArtifactQueryService implements ArtifactQueryService {
         if (artifact == null || !artifact.tenantId().equals(tenantId)) {
             return List.of();
         }
-        return Collections.unmodifiableList(edgesByArtifact.getOrDefault(artifactId.value(), List.of()));
+        // GCR2-CORRECTION-V1: peers must belong to the SAME tenant.
+        return edgesByArtifact.getOrDefault(artifactId.value(), List.of()).stream()
+                .filter(e -> tenantId.equals(artifactTenants.get(e.parentArtifactId().value()))
+                        && tenantId.equals(artifactTenants.get(e.childArtifactId().value())))
+                .toList();
     }
 
     @Override
