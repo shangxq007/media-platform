@@ -12,8 +12,8 @@
 - origin/main: 1d0d2d7e71d1f0fce72d04dda8057fc547b903f7 (unchanged)
 
 ## Round-4 implementation candidate (frozen)
-- ROUND4_IMPLEMENTATION_SHA: <filled at freeze>
-- ROUND4_IMPLEMENTATION_TREE: <filled at freeze>
+- ROUND4_IMPLEMENTATION_SHA: 626e7f471ad8d70b82c3d1f21273c47689b33a8f
+- ROUND4_IMPLEMENTATION_TREE: a56bc781adb36f67d4df409be4a4f5252bb6b80a
 - branch: agent/checkpoint-a-semantic-closure (append-forward, no amend/rebase)
 - scope drift: NONE
 
@@ -103,12 +103,12 @@
   callers today; reachable only behind a proven Timeline boundary when wired).
 
 ## Gates (from the frozen Round-4 candidate)
-- full suite: <filled at freeze> (timeline 691 + audio 22 + render 2751 + others)
-- bootJar: <filled at freeze>
-- pfirr1RemediationCheck: <filled at freeze>
+- full suite: 7260 tests / 0 failures / 0 errors / 43 skipped (all modules; timeline 691 + render 2751 + platform-app 562 + audio 22 + 35 others)
+- bootJar: PASS
+- pfirr1RemediationCheck: PASS
 - verifyTimelineEffectTransitionCanonicalization (G1-G7 + H1-H16): PASS
 - Modulith: N/A (no standalone task; NamedInterface guard PASS)
-- git diff --check: <filled at freeze>
+- git diff --check: PASS
 
 ## Honest Round-3 record (not rewritten)
 - Round-3 implementation b2d4d635 preserved (append-forward only).
@@ -116,12 +116,13 @@
   source-binding flattening, non-production combined E2E, restore-pin + real
   repository atomicity gaps).
 - Round-3 claimed 734 additions / 2053 deletions — corrected GitHub reality for
-  b2d4d635 ≈ 2022 additions / 454 deletions; Round-4 statistics reported from
-  the actual git compare (see freeze record).
+  b2d4d635 ≈ 2022 additions / 454 deletions.
+- Round-4 actual compare 87d8a8ea..626e7f47: 36 files changed, 3458 insertions(+),
+  286 deletions(-) (production 13 + test 18 + docs 3 + build guard 2).
 
 ## Authority
-- ROUND4_CORRECTION_FCV: <filled at freeze>
-- CHECKPOINT_A_STATUS: <filled at freeze>
-- PROPOSED_CHECKPOINT_A_VERDICT: <filled at freeze>
+- ROUND4_CORRECTION_FCV: PASS (frozen at 626e7f47; gates below)
+- CHECKPOINT_A_STATUS: READY_FOR_CHATGPT_INDEPENDENT_FINAL_REVIEW
+- PROPOSED_CHECKPOINT_A_VERDICT: PASS
 - ARCHITECTURE_ESCALATION_REQUIRED: NO
 - ROADMAP20_START_AUTHORIZED: NO (only ChatGPT may set YES)
