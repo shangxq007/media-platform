@@ -256,9 +256,14 @@ public final class InternalTimelineCandidateAdapter {
             String id = fx.path("id").asText(null);
             String effectKey = fx.path("effectKey").asText("");
             if (effectKey.isBlank()) {
-                // Tolerance for wire nodes without effectKey (canonical contract
-                // requires a non-blank key; the fallback preserves the payload).
-                effectKey = "opaque";
+                // FIFTH CORRECTION (F4.1): missing/blank effectKey FAILS CLOSED.
+                // No "opaque"/"unknown" fallback — canonical contract requires
+                // a non-blank effect key.
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_EFFECT_KEY_INVALID,
+                                TimelineModelPath.root().field("tracks").field("clips").field("effects"),
+                                "Effect effectKey must be non-blank"));
             }
             Map<String, Object> parameters = fx.path("parameters").isObject()
                     ? InternalTimelineJson.mapper().convertValue(fx.path("parameters"), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {})

@@ -44,7 +44,8 @@ public final class TimelineDocumentCandidateMapper {
         // F009: timelineId derived deterministically from productId (the Timeline belongs
         // to the product; TimelineDocument carries no timeline identifier).
         return new TimelineCandidate(productId, productId,
-                TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks);
+                TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks,
+                List.of(), List.of());
     }
 
     private static TimelineCandidate.Track mapTrack(TimelineTrack track) {

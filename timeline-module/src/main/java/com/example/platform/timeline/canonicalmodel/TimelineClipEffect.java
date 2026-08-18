@@ -24,20 +24,14 @@ public record TimelineClipEffect(String id, String effectKey, Map<String, Object
     }
 
     /**
-     * FOURTH CORRECTION — deterministic complete local semantic fingerprint:
-     * id + effectKey + parameters with canonical sorted key ordering.
-     * Map insertion order is fingerprint-neutral. Provider/runtime fields are
-     * excluded by construction (no provider fields exist in this value object).
+     * FIFTH CORRECTION — deep deterministic complete local semantic
+     * fingerprint: id + effectKey + parameters with deep canonical ordering
+     * (nested Maps key-sorted recursively), typed JSON encoding (number vs
+     * string vs boolean vs null distinct), collision-resistant (JSON escaping
+     * — no delimiter ambiguity). Delegates to the single local Effect semantic
+     * codec authority ({@link EffectCanonicalSemantics}).
      */
     public String semanticFingerprint() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("id=").append(id == null ? "" : id).append(';')
-          .append("key=").append(effectKey).append(';')
-          .append("params=");
-        if (!parameters.isEmpty()) {
-            new java.util.TreeMap<>(parameters).forEach((k, v) ->
-                    sb.append(k).append('=').append(v == null ? "" : v).append(','));
-        }
-        return sb.toString();
+        return EffectCanonicalSemantics.semanticFingerprint(this);
     }
 }

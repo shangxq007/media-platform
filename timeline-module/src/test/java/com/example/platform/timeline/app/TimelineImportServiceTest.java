@@ -33,7 +33,7 @@ class TimelineImportServiceTest {
                 id, id, 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 tracks, overlays, null, null, null, null, false, List.of(), "AUTO", false,
-                Map.of(), Map.of("platform.import.source", "test"), durationSec);
+                Map.of(), Map.of("platform.import.source", "test"), durationSec, List.of(), List.of());
     }
 
     @Test
@@ -60,7 +60,7 @@ class TimelineImportServiceTest {
                                 List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 3))))))),
                 List.of(new ImportTextOverlay("cue1", "Hello", new FontFamilyName("DejaVu Sans"), 1.0, 2.0)),
                 null, null, null, null, false, List.of(), "AUTO", false,
-                Map.of(), Map.of("platform.import.source", "test"), 3.0);
+                Map.of(), Map.of("platform.import.source", "test"), 3.0, List.of(), List.of());
         String v1 = service.importTimeline(req);
         assertTrue(v1.contains("subtitleTracks"));
         assertTrue(v1.contains("styles"));
@@ -83,7 +83,7 @@ class TimelineImportServiceTest {
                 List.of(new ImportExternalRenderNode(
                         "xr_remotion_title", "remotion", "tpl_remotion_title", null, null,
                         0.0, 2.0, Map.of("compositionId", "Comp"), null)),
-                "AUTO", false, Map.of(), Map.of(), 2.0);
+                "AUTO", false, Map.of(), Map.of(), 2.0, List.of(), List.of());
         String v1 = service.importTimeline(req);
         assertTrue(v1.contains("tpl_remotion_title"));
         assertTrue(v1.contains("xr_remotion_title"));

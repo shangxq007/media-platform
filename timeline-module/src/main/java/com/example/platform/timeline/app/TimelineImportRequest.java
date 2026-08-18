@@ -41,30 +41,8 @@ public record TimelineImportRequest(
         List<ImportTransition> transitions,
         List<ImportAutomationCurve> automations) {
 
-    /** Backward-compatible convenience constructor: no transitions/automations. */
-    public TimelineImportRequest(
-            String id,
-            String name,
-            int revision,
-            ImportOutput output,
-            List<ImportTrack> tracks,
-            List<ImportTextOverlay> textOverlays,
-            JsonNode styles,
-            JsonNode templates,
-            JsonNode renderGraphLayers,
-            JsonNode segmentPolicy,
-            boolean segmentPolicyEnabled,
-            List<ImportExternalRenderNode> externalRenderNodes,
-            String finalComposer,
-            boolean otioExportLossy,
-            Map<String, String> packagingHints,
-            Map<String, String> metadata,
-            double durationSec) {
-        this(id, name, revision, output, tracks, textOverlays, styles, templates,
-                renderGraphLayers, segmentPolicy, segmentPolicyEnabled, externalRenderNodes,
-                finalComposer, otioExportLossy, packagingHints, metadata, durationSec,
-                List.of(), List.of());
-    }
+    // FIFTH CORRECTION (F4.3): no backward-compatible convenience constructor
+    // — the full current semantic constructor is the only one.
 
     /** Output specification of the imported timeline. */
     public record ImportOutput(

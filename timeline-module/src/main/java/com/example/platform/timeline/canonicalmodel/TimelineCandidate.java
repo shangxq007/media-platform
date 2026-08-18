@@ -19,20 +19,6 @@ public record TimelineCandidate(
         automations = automations == null ? List.of() : List.copyOf(automations);
     }
 
-    /** Convenience constructor without transitions/automations (structural only). */
-    public TimelineCandidate(
-            String timelineId,
-            String projectId,
-            TimelineCanonicalProfile profile,
-            List<Track> tracks) {
-        this(timelineId, projectId, profile, tracks, List.of(), List.of());
-    }
-
-    public static TimelineCandidate of(String timelineId, String projectId, TimelineCanonicalProfile profile,
-            List<Track> tracks) {
-        return new TimelineCandidate(timelineId, projectId, profile, tracks);
-    }
-
     public static TimelineCandidate fromCanonical(TimelineCanonicalModel model) {
         Objects.requireNonNull(model, "model");
         return new TimelineCandidate(model.timelineId(), model.projectId(), model.profile(),

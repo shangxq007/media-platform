@@ -72,6 +72,6 @@ class TimelineConversionServiceDelegationTest {
                         java.util.List.of(new com.example.platform.timeline.app.TimelineImportRequest.ImportClip(
                                 "", "ast_1", null, 0, 0, 0.0, 2.0, 0.0, 2.0, java.util.List.of())))),
                 java.util.List.of(), null, null, null, null, false, java.util.List.of(), "AUTO", false,
-                java.util.Map.of(), java.util.Map.of(), 2.0);
+                java.util.Map.of(), java.util.Map.of(), 2.0, java.util.List.of(), java.util.List.of());
     }
 }

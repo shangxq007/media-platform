@@ -10,11 +10,11 @@ class TimelineCanonicalNormalizerTest {
 
     @Test
     void normalizationOrdersTracksAndClipsDeterministically() {
-        TimelineCandidate candidate = TimelineCandidate.of("timeline-1", "project-1",
+        TimelineCandidate candidate = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(track("video-b", TimelineCandidate.TrackType.VIDEO, 1, clip("clip-b", 5)),
                         track("audio-a", TimelineCandidate.TrackType.AUDIO, 1, clip("clip-audio", 2)),
-                        track("video-a", TimelineCandidate.TrackType.VIDEO, 1, clip("clip-a", 0))));
+                        track("video-a", TimelineCandidate.TrackType.VIDEO, 1, clip("clip-a", 0))), List.of(), List.of());
 
         TimelineCanonicalModel model = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
 
@@ -26,10 +26,10 @@ class TimelineCanonicalNormalizerTest {
 
     @Test
     void normalizationIsDeterministicAndIdempotentForSameInput() {
-        TimelineCandidate candidate = TimelineCandidate.of("timeline-1", "project-1",
+        TimelineCandidate candidate = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(track("video", TimelineCandidate.TrackType.VIDEO, 0,
-                        clip("clip-b", 5), clip("clip-a", 0))));
+                        clip("clip-b", 5), clip("clip-a", 0))), List.of(), List.of());
 
         TimelineCanonicalModel first = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
         TimelineCanonicalModel second = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
@@ -43,9 +43,9 @@ class TimelineCanonicalNormalizerTest {
 
     @Test
     void canonicalOutputCollectionsAreImmutable() {
-        TimelineCanonicalModel model = TimelineCanonicalNormalizer.normalize(TimelineCandidate.of("timeline-1", "project-1",
+        TimelineCanonicalModel model = TimelineCanonicalNormalizer.normalize(new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
-                List.of(track("video", TimelineCandidate.TrackType.VIDEO, 0, clip("clip", 0))))).orElseThrow();
+                List.of(track("video", TimelineCandidate.TrackType.VIDEO, 0, clip("clip", 0))), List.of(), List.of())).orElseThrow();
 
         assertThrows(UnsupportedOperationException.class, () -> model.tracks().clear());
         assertThrows(UnsupportedOperationException.class, () -> model.tracks().getFirst().clips().clear());

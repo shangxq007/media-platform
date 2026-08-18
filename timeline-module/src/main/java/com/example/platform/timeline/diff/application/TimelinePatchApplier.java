@@ -1,5 +1,6 @@
 package com.example.platform.timeline.diff.application;
 
+import com.example.platform.timeline.canonicalmodel.EffectCanonicalSemantics;
 import com.example.platform.timeline.diff.*;
 import com.example.platform.timeline.diff.calculation.*;
 import com.example.platform.shared.time.FrameRate;
@@ -113,6 +114,9 @@ public class TimelinePatchApplier {
                     long rateNum = parseLong(parts[6], 30);
                     long rateDen = parseLong(parts[7], 1);
                     String effectsEnc = parts.length > 8 ? parts[8] : null;
+                    if (effectsEnc != null && effectsEnc.startsWith("effects=")) {
+                        effectsEnc = effectsEnc.substring("effects=".length());
+                    }
                     clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
                             start, duration, sourceStart, sourceDuration,
                             FrameRate.of(rateNum, rateDen),
@@ -566,33 +570,12 @@ public class TimelinePatchApplier {
     }
 
     /**
-     * C1-CNM1: deserialize the opaque effect payload encoded by the diff
-     * calculator's clipAddedOp (unit-separator encoding). Empty/null -> no
-     * effects.
+     * FIFTH CORRECTION: deserialize the canonical Effect encoding produced by
+     * the diff (EffectCanonicalSemantics.encodeEffects). Delegates to the
+     * single local Effect semantic codec authority — no independent grammar.
      */
     private List<com.example.platform.timeline.canonicalmodel.TimelineClipEffect> parseEffects(String encoded) {
-        if (encoded == null || encoded.isBlank()) {
-            return List.of();
-        }
-        List<com.example.platform.timeline.canonicalmodel.TimelineClipEffect> out = new ArrayList<>();
-        for (String fx : encoded.split("\\u001f")) {
-            String[] parts = fx.split("\\u001e", -1);
-            if (parts.length >= 2) {
-                String id = parts[0].isEmpty() ? null : parts[0];
-                String effectKey = parts[1];
-                java.util.Map<String, Object> params = new java.util.LinkedHashMap<>();
-                if (parts.length > 2 && !parts[2].isBlank()) {
-                    for (String kv : parts[2].split(",")) {
-                        int eq = kv.indexOf('=');
-                        if (eq > 0) {
-                            params.put(kv.substring(0, eq), kv.substring(eq + 1));
-                        }
-                    }
-                }
-                out.add(new com.example.platform.timeline.canonicalmodel.TimelineClipEffect(id, effectKey, params));
-            }
-        }
-        return out;
+        return EffectCanonicalSemantics.decodeEffects(encoded);
     }
 
     /** Exact FrameRate from canonical "num/den" form; falls back to current value. */

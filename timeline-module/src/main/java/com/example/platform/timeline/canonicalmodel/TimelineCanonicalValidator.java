@@ -42,6 +42,10 @@ public final class TimelineCanonicalValidator {
         // target must reference an existing authored semantic entity
         // (Effect instance within the aggregate).
         validateTransitionReferences(candidate, clipsById, diagnostics);
+        // FIFTH CORRECTION (F1.2): Effect instance identity is an aggregate
+        // invariant — duplicate non-null Effect IDs fail closed REGARDLESS of
+        // whether any Automation references them.
+        validateEffectIdUniqueness(candidate, clipsById, diagnostics);
         validateAutomationTargets(candidate, clipsById, diagnostics);
         trackCounts.entrySet().stream()
                 .filter(entry -> entry.getValue() > 1)
@@ -202,21 +206,44 @@ public final class TimelineCanonicalValidator {
     }
 
     /**
-     * FOURTH CORRECTION (BLOCKER 1): aggregate automation target validation.
+     * FIFTH CORRECTION (F1.2): Effect instance identity aggregate invariant.
+     * Non-null Effect IDs must be unique across the whole Timeline — duplicate
+     * IDs create ambiguous Automation references and fail closed.
+     */
+    private static void validateEffectIdUniqueness(TimelineCandidate candidate,
+            Map<String, TimelineCandidate.Clip> clipsById, List<TimelineDiagnostic> diagnostics) {
+        java.util.Set<String> effectIds = new java.util.HashSet<>();
+        for (TimelineCandidate.Clip clip : clipsById.values()) {
+            if (clip.effects() != null) {
+                for (TimelineClipEffect e : clip.effects()) {
+                    if (e.id() != null && !e.id().isBlank() && !effectIds.add(e.id())) {
+                        diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_EFFECT_ID_DUPLICATE,
+                                TimelineModelPath.root().field("tracks"), e.id(),
+                                "Duplicate Effect instance id across the timeline — ambiguous reference"));
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * FIFTH CORRECTION (BLOCKER F1): aggregate automation target validation.
      * The supported target universe (from repository reality) is an Effect
      * instance within the same aggregate; the referenced Effect identity must
-     * exist on some Clip of the timeline.
+     * exist exactly once (Effect IDs are aggregate-unique — duplicate non-null
+     * Effect IDs create ambiguous references and fail closed). A Timeline with
+     * zero Clips but automations MUST NOT bypass target validation.
      */
     private static void validateAutomationTargets(TimelineCandidate candidate,
             Map<String, TimelineCandidate.Clip> clipsById, List<TimelineDiagnostic> diagnostics) {
-        if (candidate.automations() == null || clipsById.isEmpty()) {
+        if (candidate.automations() == null || candidate.automations().isEmpty()) {
             return;
         }
         java.util.Set<String> effectIds = new java.util.HashSet<>();
         for (TimelineCandidate.Clip clip : clipsById.values()) {
             if (clip.effects() != null) {
                 for (TimelineClipEffect e : clip.effects()) {
-                    if (e.id() != null) {
+                    if (e.id() != null && !e.id().isBlank()) {
                         effectIds.add(e.id());
                     }
                 }

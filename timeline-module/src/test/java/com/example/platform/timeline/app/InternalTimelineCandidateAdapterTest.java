@@ -147,7 +147,9 @@ class InternalTimelineCandidateAdapterTest {
 
     @Test
     void additionalAdapterCodes_zero() {
-        assertEquals(5, TimelineCanonicalRejectionException.Code.values().length,
-                "the five frozen adapter codes must remain exactly five (no additions)");
+        // FIFTH CORRECTION (F4.1): +TIMELINE_EFFECT_KEY_INVALID — blank
+        // effectKey now fails closed at the adapter (no opaque fallback).
+        assertEquals(6, TimelineCanonicalRejectionException.Code.values().length,
+                "the six frozen adapter codes must remain exactly six (F4.1 added TIMELINE_EFFECT_KEY_INVALID)");
     }
 }

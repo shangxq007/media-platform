@@ -142,7 +142,8 @@ public class TimelineSpecImportAdapter {
                 extensions.packagingHints() != null
                         ? new LinkedHashMap<>(extensions.packagingHints()) : new LinkedHashMap<>(),
                 metadata,
-                spec.computeDuration() > 0 ? spec.computeDuration() : 30.0);
+                spec.computeDuration() > 0 ? spec.computeDuration() : 30.0,
+                List.of(), List.of());
     }
 
     private static List<TimelineImportRequest.ImportClipEffect> mapEffects(List<TimelineClipEffect> effects) {

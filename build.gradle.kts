@@ -1348,6 +1348,39 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(e2eTest.contains("TimelineMergeEngine(")) {
             "FAIL: E2E tests must invoke the actual TimelineMergeEngine"
         }
+        // 20. FIFTH CORRECTION (F1): Automation target validation must not
+        //     bypass on empty clips; Effect instance IDs aggregate-unique.
+        require(validator.contains("validateEffectIdUniqueness")
+                && validator.contains("candidate.automations().isEmpty()")) {
+            "FAIL: Effect-ID uniqueness invariant + zero-bypass Automation target validation required"
+        }
+        // 21. FIFTH CORRECTION (F2/F3): single local Effect semantic codec
+        //     authority — deep typed encoding, no delimiter grammar in
+        //     diff/patch.
+        val effectSemantics = file("timeline-module/src/main/java/com/example/platform/timeline/canonicalmodel/EffectCanonicalSemantics.java").readText()
+        require(effectSemantics.contains("deepSorted") && effectSemantics.contains("encodeEffects")
+                && effectSemantics.contains("decodeEffects")) {
+            "FAIL: single local Effect canonical codec missing"
+        }
+        require(!diffCalc.contains("fx.id() == null ? \"\" : fx.id()).append('\\u001e')")) {
+            "FAIL: production diff must not use custom delimiter Effect grammar"
+        }
+        require(!patchApplier.contains("kv.split(\",\")") || !patchApplier.contains("eq > 0")) {
+            "FAIL: production patch must not independently parse Effect field grammar"
+        }
+        // 22. FIFTH CORRECTION (F4): zero semantic compatibility constructors/
+        //     fallbacks.
+        require(!candidateModel.contains("public TimelineCandidate(\n            String timelineId,\n            String projectId,\n            TimelineCanonicalProfile profile,\n            List<Track> tracks)")) {
+            "FAIL: TimelineCandidate structural-only convenience constructor must be removed"
+        }
+        require(!file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineImportRequest.java").readText()
+                .contains("Backward-compatible convenience constructor")) {
+            "FAIL: TimelineImportRequest backward-compatible semantic constructor must be removed"
+        }
+        require(!file("timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineCandidateAdapter.java").readText()
+                .contains("effectKey = \"opaque\"")) {
+            "FAIL: opaque effectKey fallback must be removed"
+        }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }

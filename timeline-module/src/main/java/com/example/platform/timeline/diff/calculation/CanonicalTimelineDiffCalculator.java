@@ -1,6 +1,7 @@
 package com.example.platform.timeline.diff.calculation;
 
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
+import com.example.platform.timeline.canonicalmodel.EffectCanonicalSemantics;
 import com.example.platform.timeline.diff.*;
 import java.util.*;
 
@@ -183,26 +184,19 @@ public class CanonicalTimelineDiffCalculator {
                             TimelineChangeScope.ASSET_BINDING, clipPath + ".assetBindingId",
                             bc.assetBindingId(), ac.assetBindingId()));
                 }
-                // EFFECT_TRANSITION_CANONICALIZATION_V1 (FOURTH CORRECTION):
+                // EFFECT_TRANSITION_CANONICALIZATION_V1 (FIFTH CORRECTION):
                 // effects are authored Timeline semantics owned by
-                // TimelineClipEffect.semanticFingerprint() — the diff consumes
-                // that single local semantic authority (no central field
-                // encoding, no List.toString()/Map.toString() signatures).
-                // Coarse EFFECT_CHANGED op is deterministic, patchable,
-                // merge-visible and conflict-visible (non-lossy).
+                // TimelineClipEffect.semanticFingerprint() and reconstructed
+                // through EffectCanonicalSemantics — the diff consumes that
+                // single local semantic authority (no central field encoding,
+                // no List.toString()/Map.toString() signatures, no custom
+                // delimiter grammar). Coarse EFFECT_CHANGED op is
+                // deterministic, patchable, merge-visible, conflict-visible.
                 if (!effectFingerprint(bc.effects()).equals(effectFingerprint(ac.effects()))) {
                     Map<String, String> meta = new LinkedHashMap<>();
-                    StringBuilder sb = new StringBuilder();
-                    for (var fx : ac.effects()) {
-                        if (sb.length() > 0) sb.append('\u001f');
-                        sb.append(fx.id() == null ? "" : fx.id()).append('\u001e')
-                                .append(fx.effectKey()).append('\u001e');
-                        if (fx.parameters() != null && !fx.parameters().isEmpty()) {
-                            new java.util.TreeMap<>(fx.parameters()).forEach((k, v) ->
-                                    sb.append(k).append('=').append(v == null ? "" : v).append(','));
-                        }
-                    }
-                    meta.put("effects", sb.toString());
+                    // after-state rides as the canonical Effect encoding
+                    // (EffectCanonicalSemantics.encodeEffects — lossless/typed).
+                    meta.put("effects", EffectCanonicalSemantics.encodeEffects(ac.effects()));
                     ops.add(new TimelineChangeOperation(
                             new TimelineChangeOperationId("op-" + (++seq[0])),
                             TimelineChangeType.EFFECT_CHANGED,
@@ -702,18 +696,8 @@ public class CanonicalTimelineDiffCalculator {
                         .append(clip.rate().numerator().toString()).append('\u001e')
                         .append(clip.rate().denominator()).append('\u001e');
                 if (clip.effects() != null && !clip.effects().isEmpty()) {
-                    StringBuilder efx = new StringBuilder();
-                    for (var fx : clip.effects()) {
-                        if (efx.length() > 0) efx.append('\u001f');
-                        efx.append(fx.id() == null ? "" : fx.id()).append('\u001e')
-                                .append(fx.effectKey()).append('\u001e');
-                        if (fx.parameters() != null) {
-                            efx.append(fx.parameters().entrySet().stream()
-                                    .map(e -> e.getKey() + "=" + e.getValue())
-                                    .reduce((a, b) -> a + "," + b).orElse(""));
-                        }
-                    }
-                    sb.append(efx);
+                    // FIFTH CORRECTION: canonical Effect encoding (lossless/typed).
+                    sb.append("effects=").append(EffectCanonicalSemantics.encodeEffects(clip.effects())).append('\u001e');
                 }
             }
             meta.put("clips", sb.toString());
@@ -743,18 +727,9 @@ public class CanonicalTimelineDiffCalculator {
         meta.put("rateNum", clip.rate().numerator().toString());
         meta.put("rateDen", String.valueOf(clip.rate().denominator()));
         if (clip.effects() != null && !clip.effects().isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (var fx : clip.effects()) {
-                if (sb.length() > 0) sb.append('\u001f');
-                sb.append(fx.id() == null ? "" : fx.id()).append('\u001e')
-                        .append(fx.effectKey()).append('\u001e');
-                if (fx.parameters() != null) {
-                    sb.append(fx.parameters().entrySet().stream()
-                            .map(e -> e.getKey() + "=" + e.getValue())
-                            .reduce((a, b) -> a + "," + b).orElse(""));
-                }
-            }
-            meta.put("effects", sb.toString());
+            // FIFTH CORRECTION: canonical Effect encoding (lossless/typed) —
+            // single local semantic codec authority.
+            meta.put("effects", EffectCanonicalSemantics.encodeEffects(clip.effects()));
         }
         return new TimelineChangeOperation(
                 new TimelineChangeOperationId("op-" + (++seq[0])),

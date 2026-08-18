@@ -21,7 +21,8 @@ public class TimelineCanonicalRejectionException extends RuntimeException {
         TIMELINE_TRACK_TYPE_UNSUPPORTED,
         TIMELINE_CLIP_ID_INVALID,
         TIMELINE_SOURCE_REF_INVALID,
-        TIMELINE_TIMING_INVALID
+        TIMELINE_TIMING_INVALID,
+        TIMELINE_EFFECT_KEY_INVALID
     }
 
     /** Application-level adapter diagnostic: stable code + model path + human message. */

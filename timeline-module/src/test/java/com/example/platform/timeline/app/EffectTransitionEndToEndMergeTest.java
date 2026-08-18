@@ -2,6 +2,7 @@ package com.example.platform.timeline.app;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -259,6 +260,76 @@ class EffectTransitionEndToEndMergeTest {
                 "E2E-M1: source-only effect change must survive actual merge");
         assertEquals(1, out.reloaded.transitions().size(), "E2E-M1: transition preserved");
         assertEquals(1, out.reloaded.automations().size(), "E2E-M1: automation preserved");
+    }
+
+    // ── FIFTH CORRECTION (F3.3): typed/nested Effect parameters survive the
+    //    real TimelineMergeEngine losslessly (type + nested semantics). ──
+    @Test
+    void e2eF3TypedEffectParametersSurviveActualMerge() {
+        Map<String, Object> typedParams = new java.util.LinkedHashMap<>();
+        typedParams.put("radius", 9);                       // integer
+        typedParams.put("label", "9");                      // string
+        typedParams.put("enabled", true);                   // boolean
+        typedParams.put("comma", "a,b");                    // comma value
+        typedParams.put("equals", "a=b");                   // equals value
+        Map<String, Object> nested = new java.util.LinkedHashMap<>();
+        nested.put("z", 2);
+        nested.put("a", 1);
+        typedParams.put("nested", nested);                  // nested map
+        typedParams.put("list", List.of(1, "2", true));     // list
+
+        var typedBase = new TimelineImportRequest("tl-typed", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
+                                0.0, 2.0, 0.0, 2.0,
+                                List.of(new ImportClipEffect("fx1", "blur",
+                                        Map.of("radius", 3)))),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
+        var typedOurs = new TimelineImportRequest("tl-typed", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
+                                0.0, 2.0, 0.0, 2.0,
+                                List.of(new ImportClipEffect("fx1", "blur", typedParams))),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
+
+        MergeOutcome out = merge(typedBase, typedOurs, typedBase);
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, out.result.status(),
+                "E2E-F3: typed Effect source-only merge must be MERGED");
+        assertNotNull(out.mergedPayload);
+        assertFalse(out.reloadValidation.hasFatalErrors(),
+                "E2E-F3: merged payload must pass canonical reload validation");
+        Map<String, Object> params = out.reloaded.tracks().get(0).clips().get(0)
+                .effects().get(0).parameters();
+        assertEquals(Integer.valueOf(9), params.get("radius"),
+                "E2E-F3: integer parameter must survive merge as integer (not string)");
+        assertEquals("9", params.get("label"), "E2E-F3: string parameter must survive as string");
+        assertEquals(Boolean.TRUE, params.get("enabled"), "E2E-F3: boolean must survive");
+        assertEquals("a,b", params.get("comma"), "E2E-F3: comma value must survive");
+        assertEquals("a=b", params.get("equals"), "E2E-F3: equals value must survive");
+        assertEquals(Map.of("z", 2, "a", 1), params.get("nested"),
+                "E2E-F3: nested map semantics must survive");
+        assertEquals(List.of(1, "2", true), params.get("list"),
+                "E2E-F3: list must survive");
+        assertNotEquals(params.get("radius").getClass(), params.get("label").getClass(),
+                "E2E-F3: number/string type distinction must survive the merge");
+        assertEquals(1, out.reloaded.transitions().size(), "E2E-F3: transition preserved");
+        assertEquals(1, out.reloaded.automations().size(), "E2E-F3: automation preserved");
     }
 
     // ── E2E-M2: transition source-only merge ──
