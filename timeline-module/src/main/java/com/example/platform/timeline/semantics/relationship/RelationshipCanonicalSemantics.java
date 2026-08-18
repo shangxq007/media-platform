@@ -64,4 +64,55 @@ public final class RelationshipCanonicalSemantics {
     public static TimelineClipId[] syncEndpoints(SyncRelationship s) {
         return new TimelineClipId[] {s.endpointA(), s.endpointB()};
     }
+
+    // ── CHECKPOINT_A Round 4 (R4-A3): relationship-local change authority ──
+    // Timeline must NOT independently know how a Group mutates its membership
+    // or how a Sync anchor is edited. These typed operations are owned here.
+
+    /** Typed membership delta of a Group relationship. */
+    public record GroupMemberDelta(TimelineClipId member, boolean added) {}
+
+    /** Compute the Group membership delta between two Group relationships with
+     *  the same GroupId. Unknown variants fail closed (never identityHashCode). */
+    public static java.util.List<GroupMemberDelta> groupMemberDelta(
+            SemanticRelationship before, SemanticRelationship after) {
+        if (!(before instanceof GroupRelationship bg) || !(after instanceof GroupRelationship ag)) {
+            throw new IllegalStateException(
+                    "groupMemberDelta requires GroupRelationship on both sides: "
+                            + before.getClass().getSimpleName() + " / "
+                            + after.getClass().getSimpleName());
+        }
+        java.util.List<GroupMemberDelta> deltas = new java.util.ArrayList<>();
+        for (TimelineClipId m : bg.members()) {
+            if (!ag.members().contains(m)) {
+                deltas.add(new GroupMemberDelta(m, false));
+            }
+        }
+        for (TimelineClipId m : ag.members()) {
+            if (!bg.members().contains(m)) {
+                deltas.add(new GroupMemberDelta(m, true));
+            }
+        }
+        return java.util.List.copyOf(deltas);
+    }
+
+    /** Apply one membership change to a Group relationship — the ONLY way
+     *  Timeline mutates Group membership (no direct member-set manipulation). */
+    public static GroupRelationship applyGroupMemberChange(
+            GroupRelationship group, TimelineClipId member, boolean add) {
+        java.util.Set<TimelineClipId> members = new java.util.LinkedHashSet<>(group.members());
+        if (add) {
+            members.add(member);
+        } else {
+            members.remove(member);
+        }
+        return new GroupRelationship(group.groupId(), members);
+    }
+
+    /** Anchor change detection for Sync relationships: true when the anchor
+     *  correspondence changed while identity (normalized endpoints) stayed. */
+    public static boolean syncAnchorChanged(SyncRelationship before, SyncRelationship after) {
+        return !before.localAnchorA().equals(after.localAnchorA())
+                || !before.localAnchorB().equals(after.localAnchorB());
+    }
 }

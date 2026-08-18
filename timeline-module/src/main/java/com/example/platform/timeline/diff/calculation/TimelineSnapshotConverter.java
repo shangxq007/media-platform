@@ -70,10 +70,9 @@ public final class TimelineSnapshotConverter {
                         clip.rate() != null ? clip.rate() : FrameRate.of(30, 1),
                         clip.effects() != null ? List.copyOf(clip.effects()) : List.of(),
                         Map.of(),
-                        clip.sourceKind(),
-                        clip.mediaStreamId(),
-                        clip.artifactId(),
-                        clip.contentDigest(),
+                        // R4-B: the TYPED source binding is the merge-path
+                        // authority — the candidate carries it end-to-end.
+                        clip.sourceBinding(),
                         clip.temporalMapping()));
             }
             String kind = track.type() != null ? track.type().name() : "VIDEO";

@@ -163,8 +163,12 @@ public class TimelineRevisionSaveService {
             // CHECKPOINT_A (Blocker C): register artifact_pin protection rows in
             // the SAME transaction as the revision (PIN_REGISTRATION_FAILURE
             // rolls back the whole write — no visible dangling revision state).
+            // R4-D2: registration executes on the transaction's OWN DSLContext
+            // (ArtifactPinService.registerRevisionPinsTx) so the pin rows join
+            // the same physical DB transaction — proven by real-PG IT, not
+            // assumed through Spring proxy participation.
             if (artifactPinService != null && !pinsToRegister.isEmpty()) {
-                artifactPinService.registerRevisionPins(productId, revisionId,
+                artifactPinService.registerRevisionPinsTx(tx.dsl(), productId, revisionId,
                         com.example.platform.shared.web.TenantContext.get(),
                         pinsToRegister.stream()
                                 .map(p -> new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
@@ -197,42 +201,59 @@ public class TimelineRevisionSaveService {
                 .fetchOne(TIMELINE_REVISION.SCHEMA_VERSION);
 
         String revisionId = UUID.randomUUID().toString();
+        final String schemaVersionFinal = schemaVersion;
+        final String contentHashFinal = contentHash;
 
-        // Contract P: restore writes a new snapshot row carrying the source revision's
-        // governed payload (copy of the historical payload) when one exists, so the restored
-        // revision never points at a missing payload. Legacy rows without a payload keep the
-        // historical behavior (documented limitation; no backfill, no migration).
-        String snapshotId = copyHistoricalSnapshotPayload(productId, historicalRevisionId, revisionId);
+        // R4-D1 (CHECKPOINT_A Round 4): the WHOLE restore write — snapshot
+        // copy, revision insert, head update, artifact-pin copy for the NEW
+        // revision — is ONE explicit jOOQ transaction. A restored revision that
+        // references pinned artifacts MUST gain protection rows for its new
+        // revision id ((revisionId, artifactId) protection identity), copied
+        // from the historical revision's immutable pin contract inside the same
+        // transaction. Failure anywhere rolls back the entire restore.
+        return dsl.transactionResult(tx -> {
+            // Contract P: restore writes a new snapshot row carrying the source revision's
+            // governed payload (copy of the historical payload) when one exists, so the restored
+            // revision never points at a missing payload. Legacy rows without a payload keep the
+            // historical behavior (documented limitation; no backfill, no migration).
+            String snapshotId = copyHistoricalSnapshotPayload(tx.dsl(), productId, historicalRevisionId, revisionId);
 
-        // Compute revision number for this product
-        Integer maxRevisionNumber = dsl.select(org.jooq.impl.DSL.max(TIMELINE_REVISION.REVISION_NUMBER))
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))
-                .fetchOneInto(Integer.class);
-        int nextRevisionNumber = (maxRevisionNumber != null ? maxRevisionNumber : 0) + 1;
+            // Compute revision number for this product
+            Integer maxRevisionNumber = tx.dsl().select(org.jooq.impl.DSL.max(TIMELINE_REVISION.REVISION_NUMBER))
+                    .from(TIMELINE_REVISION)
+                    .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                    .fetchOneInto(Integer.class);
+            int nextRevisionNumber = (maxRevisionNumber != null ? maxRevisionNumber : 0) + 1;
 
-        dsl.insertInto(TIMELINE_REVISION)
-                .set(TIMELINE_REVISION.ID, revisionId)
-                .set(TIMELINE_REVISION.PROJECT_ID, productId)
-                .set(TIMELINE_REVISION.PARENT_REVISION_ID, expectedCurrentRevisionId)
-                // Contract P: record the governing tenant (tenant-guarded lookup parity).
-                .set(TIMELINE_REVISION.TENANT_ID, com.example.platform.shared.web.TenantContext.get())
-                .set(TIMELINE_REVISION.REVISION_NUMBER, nextRevisionNumber)
-                .set(TIMELINE_REVISION.SNAPSHOT_ID, snapshotId)
-                .set(TIMELINE_REVISION.INTERNAL_REVISION, nextRevisionNumber)
-                .set(TIMELINE_REVISION.CONTENT_HASH, contentHash)
-                .set(TIMELINE_REVISION.SCHEMA_VERSION, schemaVersion)
-                .set(TIMELINE_REVISION.CREATED_AT, LocalDateTime.now())
-                .set(TIMELINE_REVISION.SOURCE, "restore")
-                .execute();
+            tx.dsl().insertInto(TIMELINE_REVISION)
+                    .set(TIMELINE_REVISION.ID, revisionId)
+                    .set(TIMELINE_REVISION.PROJECT_ID, productId)
+                    .set(TIMELINE_REVISION.PARENT_REVISION_ID, expectedCurrentRevisionId)
+                    // Contract P: record the governing tenant (tenant-guarded lookup parity).
+                    .set(TIMELINE_REVISION.TENANT_ID, com.example.platform.shared.web.TenantContext.get())
+                    .set(TIMELINE_REVISION.REVISION_NUMBER, nextRevisionNumber)
+                    .set(TIMELINE_REVISION.SNAPSHOT_ID, snapshotId)
+                    .set(TIMELINE_REVISION.INTERNAL_REVISION, nextRevisionNumber)
+                    .set(TIMELINE_REVISION.CONTENT_HASH, contentHashFinal)
+                    .set(TIMELINE_REVISION.SCHEMA_VERSION, schemaVersionFinal)
+                    .set(TIMELINE_REVISION.CREATED_AT, LocalDateTime.now())
+                    .set(TIMELINE_REVISION.SOURCE, "restore")
+                    .execute();
 
-        currentRevisionService.updateCurrentRevision(productId, expectedCurrentRevisionId, revisionId);
+            currentRevisionService.updateCurrentRevisionTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
 
-        log.info("Restored revision {} as new revision {} for product {}", historicalRevisionId, revisionId, productId);
+            // R4-D1: the restored revision is a DISTINCT revision id — it must
+            // carry its own artifact-pin protection rows, copied from the
+            // historical revision's immutable pins in the SAME transaction.
+            if (artifactPinService != null) {
+                artifactPinService.copyRevisionPinsTx(tx.dsl(), productId, historicalRevisionId, revisionId);
+            }
 
-        return new TimelineRevision(revisionId, productId, expectedCurrentRevisionId,
-                schemaVersion,
-                null, contentHash, Instant.now(), createdBy);
+            log.info("Restored revision {} as new revision {} for product {}", historicalRevisionId, revisionId, productId);
+            return new TimelineRevision(revisionId, productId, expectedCurrentRevisionId,
+                    schemaVersionFinal,
+                    null, contentHashFinal, Instant.now(), createdBy);
+        });
     }
 
     /**
@@ -278,12 +299,13 @@ public class TimelineRevisionSaveService {
      * Contract P: restore copies the historical revision's governed payload into a new
      * snapshot row so the restored revision never points at a missing payload. When the
      * historical revision has no payload row (legacy data), the legacy behavior is preserved.
+     * R4-D1: runs on the transaction DSL so the snapshot copy joins the restore transaction.
      */
-    private String copyHistoricalSnapshotPayload(String productId, String historicalRevisionId, String fallbackRevisionId) {
+    private String copyHistoricalSnapshotPayload(org.jooq.DSLContext tx, String productId, String historicalRevisionId, String fallbackRevisionId) {
         if (timelineSnapshotService == null) {
             return fallbackRevisionId;
         }
-        String historicalSnapshotId = dsl.select(TIMELINE_REVISION.SNAPSHOT_ID)
+        String historicalSnapshotId = tx.select(TIMELINE_REVISION.SNAPSHOT_ID)
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
                 .and(TIMELINE_REVISION.PROJECT_ID.eq(productId))
@@ -295,12 +317,12 @@ public class TimelineRevisionSaveService {
         if (payload == null) {
             return fallbackRevisionId;
         }
-        String schemaVersion = dsl.select(TIMELINE_REVISION.SCHEMA_VERSION)
+        String schemaVersion = tx.select(TIMELINE_REVISION.SCHEMA_VERSION)
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
                 .and(TIMELINE_REVISION.PROJECT_ID.eq(productId))
                 .fetchOne(TIMELINE_REVISION.SCHEMA_VERSION);
-        return timelineSnapshotService.save(productId, null, payload, schemaVersion);
+        return timelineSnapshotService.saveTx(tx, productId, null, payload, schemaVersion);
     }
 
     @Transactional(readOnly = true)

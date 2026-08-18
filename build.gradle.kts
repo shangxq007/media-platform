@@ -1549,6 +1549,93 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(file("render-module/src/test/java/com/example/platform/render/app/timeline/CheckpointAPinRegistrationRollbackIT.java").exists()) {
             "FAIL (H8): same-path real-PG pin rollback IT must exist"
         }
+        // ── CHECKPOINT_A Round 4 (H9-H16): strengthened locality guards over
+        //    ALL central Timeline surfaces ──
+        val centralClasses = listOf(
+            "diff/calculation/CanonicalTimelineDiffCalculator.java",
+            "diff/application/TimelinePatchApplier.java",
+            "app/TimelineMergeEngine.java",
+            "app/InternalTimelineCandidateAdapter.java",
+            "app/TimelineDocumentCandidateMapper.java",
+            "diff/calculation/TimelineSnapshotConverter.java"
+        )
+        val centralSrc = centralClasses.map { f ->
+            file("timeline-module/src/main/java/com/example/platform/timeline/" + f).readText()
+        }.joinToString("\n")
+        // H9: zero System.identityHashCode canonical identity across ALL central classes.
+        require(!centralSrc.contains("System.identityHashCode")) {
+            "FAIL (H9): System.identityHashCode canonical identity forbidden in all central Timeline classes"
+        }
+        // H10: central patch must not independently reproduce relationship
+        //     identity grammar (group:/sync: prefixes are Relationship-domain rules).
+        require(!patchApplier.contains("\"group:\" + ") && !patchApplier.contains("\"sync:\" + ")) {
+            "FAIL (H10): central patch must not independently normalize relationship identity"
+        }
+        // H11: Timeline adapter must not define the canonical AudioMix fingerprint
+        //     grammar — the fingerprint/codec authority lives in audio-module.
+        require(!file("timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineCandidateAdapter.java").readText()
+                .contains("audioMixFingerprint")) {
+            "FAIL (H11): Timeline adapter must not define AudioMix canonical fingerprint"
+        }
+        require(file("audio-module/src/main/java/com/example/platform/audio/domain/mix/AudioMixCanonicalSemantics.java").readText()
+                .contains("semanticFingerprint") && file("audio-module/src/main/java/com/example/platform/audio/domain/mix/AudioMixCanonicalSemantics.java").readText()
+                .contains("canonicalValue")) {
+            "FAIL (H11): AudioMix canonical fingerprint/codec authority must live in audio-module"
+        }
+        // H12: typed TimelineSourceBinding is the clip source-semantics authority
+        //     in BOTH the canonical snapshot and the candidate model.
+        require(file("timeline-module/src/main/java/com/example/platform/timeline/diff/calculation/CanonicalTimelineClipSnapshot.java").readText()
+                .contains("TimelineSourceBinding sourceBinding")) {
+            "FAIL (H12): CanonicalTimelineClipSnapshot must carry the typed TimelineSourceBinding"
+        }
+        require(candidateModel.contains("TimelineSourceBinding sourceBinding")) {
+            "FAIL (H12): TimelineCandidate.Clip must carry the typed TimelineSourceBinding"
+        }
+        // H13: central diff must not independently enumerate Transition/Automation
+        //     authored local fields into metadata (single canonical payload only).
+        require(!diffCalc.contains("meta.put(\"transitionDefinitionId\"") && !diffCalc.contains("meta.put(\"targetEntityId\"")) {
+            "FAIL (H13): central diff must not enumerate Transition/Automation local fields"
+        }
+        // H14: central patch must reconstruct Transition/Automation through the
+        //     local canonical authority (fail-closed payload decode), never by
+        //     inventing defaults.
+        val transitionDecodeInPatch = patchApplier.contains("TransitionCanonicalSemantics.fromCanonicalValue")
+                || patchApplier.contains("fromCanonicalValue(transitionId")
+        val automationDecodeInPatch = patchApplier.contains("AutomationCanonicalSemantics.fromCanonicalValue")
+                || patchApplier.contains("fromCanonicalValue(automationId")
+        require(transitionDecodeInPatch && automationDecodeInPatch) {
+            "FAIL (H14): central patch must reconstruct through local canonical authorities"
+        }
+        require(!patchApplier.contains("valueType\", \"float\"") && !patchApplier.contains("extrapolation\", \"HOLD\"")) {
+            "FAIL (H14): central patch must not synthesize Automation defaults"
+        }
+        // H15: real R4 behavioral tests exist (authoritative evidence).
+        val r4Tests = listOf(
+            "CheckpointARound4ComponentAuthorityTest",
+            "CheckpointARound4RelationshipAuthorityTest",
+            "CheckpointARound4SourceBindingClosureTest",
+            "CheckpointARound4TrueMergeE2ETest"
+        )
+        for (t in r4Tests) {
+            require(file("timeline-module/src/test/java/com/example/platform/timeline/app/" + t + ".java").exists()) {
+                "FAIL (H15): R4 behavioral test " + t + " must exist"
+            }
+        }
+        require(file("timeline-module/src/test/java/com/example/platform/timeline/app/CheckpointARound4TrueMergeE2ETest.java").readText()
+                .contains("trueEightFamilyProductionMergeE2E")) {
+            "FAIL (H15): true eight-family production TimelineMergeEngine E2E missing"
+        }
+        // H16: real-repository pin atomicity / restore copy / patch path ITs exist.
+        val r4PinITs = listOf(
+            "CheckpointARound4RealPinAtomicityIT",
+            "CheckpointARound4RestorePinCopyIT",
+            "CheckpointARound4PatchPathPinIT"
+        )
+        for (t in r4PinITs) {
+            require(file("render-module/src/test/java/com/example/platform/render/app/timeline/" + t + ".java").exists()) {
+                "FAIL (H16): real-PG pin IT " + t + " must exist"
+            }
+        }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }

@@ -101,7 +101,10 @@ public class TimelineMergeEngine {
     private final TimelineNonConflictingMergePlanner mergePlanner;
     private final TimelinePatchApplier patchApplier;
     private final ObjectMapper objectMapper;
+    private final TimelineArtifactPinValidator artifactPinValidator;
+    private final com.example.platform.artifact.app.ArtifactPinService artifactPinService;
 
+    /** Production constructor: 7 semantic collaborators (compute + persistence). */
     public TimelineMergeEngine(
             TimelineRevisionRepository revisionRepository,
             TimelineSnapshotService snapshotService,
@@ -110,6 +113,34 @@ public class TimelineMergeEngine {
             TimelineNonConflictingMergePlanner mergePlanner,
             TimelinePatchApplier patchApplier,
             ObjectMapper objectMapper) {
+        this(revisionRepository, snapshotService, currentRevisionService,
+                previewService, mergePlanner, patchApplier, objectMapper, null, null);
+    }
+
+    /**
+     * R4-D4 (CHECKPOINT_A Round 4): full production constructor including the
+     * Timeline artifact-pin invariant boundary. @Autowired: Spring must select
+     * the production 9-arg wiring (the 7-arg overload exists for legacy/direct
+     * test wiring only). The PERSISTENT merge path extracts typed pins from the
+     * merged payload, validates them, and registers protection rows for the NEW
+     * merge revision identity inside the same transaction — a merge revision is
+     * a NEW historical identity and must protect every exact artifact it
+     * consumes. When the pin boundary is absent (legacy/test wiring) the
+     * persistent path skips registration but the canonical gates remain
+     * unconditionally on; no production wiring may omit the pin boundary once
+     * merged revisions can carry pinned content.
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public TimelineMergeEngine(
+            TimelineRevisionRepository revisionRepository,
+            TimelineSnapshotService snapshotService,
+            ProductCurrentRevisionService currentRevisionService,
+            TimelineMergePreviewService previewService,
+            TimelineNonConflictingMergePlanner mergePlanner,
+            TimelinePatchApplier patchApplier,
+            ObjectMapper objectMapper,
+            TimelineArtifactPinValidator artifactPinValidator,
+            com.example.platform.artifact.app.ArtifactPinService artifactPinService) {
         this.revisionRepository = revisionRepository;
         this.snapshotService = snapshotService;
         this.currentRevisionService = currentRevisionService;
@@ -117,6 +148,8 @@ public class TimelineMergeEngine {
         this.mergePlanner = mergePlanner;
         this.patchApplier = patchApplier;
         this.objectMapper = objectMapper;
+        this.artifactPinValidator = artifactPinValidator;
+        this.artifactPinService = artifactPinService;
     }
 
     public TimelineMergeResult merge(TimelineMergeRequest request) {
@@ -389,6 +422,41 @@ public class TimelineMergeEngine {
             log.info("Canonical merge revision created: id={} project={} rev={}",
                     mergeRevisionId, request.projectId(), revNum);
 
+            // R4-D4 (CHECKPOINT_A Round 4): the merge revision is a NEW
+            // historical identity — it must itself protect every exact artifact
+            // the merged payload consumes. Extract typed pins from the merged
+            // payload, validate existence/tenant/digest, and register pin rows
+            // for the NEW merge revision id. Failure (validation or
+            // registration) aborts the merge before head advance — the merge
+            // transaction (@Transactional) rolls back: no visible merge
+            // revision, head unchanged, no partial pins. Registration runs
+            // inside the SAME transaction when the engine is invoked through a
+            // Spring proxy (production path); direct-wiring tests exercise the
+            // validation boundary via the semantic gate.
+            if (artifactPinValidator != null && artifactPinService != null) {
+                java.util.List<TimelineArtifactPinExtractor.ArtifactPin> mergedPins =
+                        TimelineArtifactPinExtractor.extract(mergedPayload);
+                if (!mergedPins.isEmpty()) {
+                    TimelineArtifactPinValidator.ValidationResult pinValidation =
+                            artifactPinValidator.validate(effectiveTenant, mergedPins);
+                    if (!pinValidation.valid()) {
+                        throw new TimelineCanonicalRejectionException(
+                                new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                        TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                        com.example.platform.timeline.canonicalmodel.TimelineModelPath.root()
+                                                .field("sourceBinding"),
+                                        "Merge artifact pin reference-integrity: "
+                                                + String.join("; ", pinValidation.violations())));
+                    }
+                    artifactPinService.registerRevisionPins(
+                            request.projectId(), mergeRevisionId, effectiveTenant,
+                            mergedPins.stream()
+                                    .map(p -> new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
+                                            p.artifactId(), p.contentDigest()))
+                                    .toList());
+                }
+            }
+
             currentRevisionService.updateCurrentRevision(
                     request.projectId(), request.targetRevisionId(), mergeRevisionId);
 
@@ -470,14 +538,31 @@ public class TimelineMergeEngine {
                     || mergedSnapshot.audioMix().equals(com.example.platform.audio.domain.mix.AudioMix.empty())) {
                 mergedComposition.remove("audioMix");
             } else {
+                // R4-A4: AudioMix canonical fragment delegated to the Audio-domain
+                // authority (Timeline never owns AudioMix field grammar).
                 mergedComposition.set("audioMix",
-                        InternalTimelineJson.mapper().valueToTree(mergedSnapshot.audioMix()));
+                        com.example.platform.audio.domain.mix.AudioMixCanonicalSemantics
+                                .canonicalValue(mergedSnapshot.audioMix()));
             }
             if (mergedSnapshot.semanticRelationships().isEmpty()) {
                 mergedComposition.remove("semanticRelationships");
             } else {
-                mergedComposition.set("semanticRelationships",
-                        InternalTimelineJson.mapper().valueToTree(mergedSnapshot.semanticRelationships()));
+                // R4-A3: merged relationship write-back delegated to the
+                // Relationship-local authority — valueToTree on the polymorphic
+                // root DROPS the kind discriminator (verified defect), so the
+                // canonical JSON codec is the only lossless write-back path.
+                ArrayNode rels = InternalTimelineJson.mapper().createArrayNode();
+                for (com.example.platform.timeline.semantics.relationship.SemanticRelationship r
+                        : mergedSnapshot.semanticRelationships()) {
+                    try {
+                        rels.add(InternalTimelineJson.mapper().readTree(
+                                com.example.platform.timeline.semantics.relationship
+                                        .RelationshipCanonicalSemantics.canonicalJson(r)));
+                    } catch (Exception e) {
+                        throw new IllegalStateException("Relationship canonical fragment decode failed", e);
+                    }
+                }
+                mergedComposition.set("semanticRelationships", rels);
             }
             // revision counter is a document-level field; the persistence layer
             // re-assigns it on insert, so leave it untouched here.
@@ -563,6 +648,13 @@ public class TimelineMergeEngine {
         node.set("timelineRange", rangeToJson(clip.start(), clip.duration(), clip.rate(), mapper));
         node.set("sourceRange", rangeToJson(clip.sourceStart(), clip.sourceDuration(), clip.rate(), mapper));
         // CHECKPOINT_A: full typed source semantics survive the merged write-back.
+        // R4-B: the TYPED binding is emitted as the nested sourceBinding object
+        // (the wire shape the Artifact pin extractor reads); legacy flat fields
+        // remain projections for old consumers — never the semantic authority.
+        if (clip.sourceBinding() != null) {
+            node.set("sourceBinding", com.example.platform.timeline.semantics.clip
+                    .TimelineSourceBindingCanonicalSemantics.canonicalValue(clip.sourceBinding()));
+        }
         if (clip.sourceKind() != null) {
             node.put("sourceKind", clip.sourceKind());
         }

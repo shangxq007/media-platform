@@ -41,6 +41,36 @@ public class ArtifactPinService {
         }
     }
 
+    /**
+     * R4-D1 (CHECKPOINT_A Round 4): transaction-aware registration. The caller
+     * (Timeline revision writer) passes its OWN transaction DSL so the pin rows
+     * join the SAME physical database transaction as the revision row — no
+     * assumption of Spring proxy participation. Artifact remains the pin
+     * persistence authority (SQL lives in {@link ArtifactPinRepository}).
+     */
+    public void registerRevisionPinsTx(org.jooq.DSLContext tx, String projectId,
+            String revisionId, String tenantId, List<ArtifactPin> pins) {
+        if (pins == null) {
+            return;
+        }
+        Instant now = Instant.now();
+        for (ArtifactPin pin : pins) {
+            pinRepository.insertTx(tx, Ids.newId("pin"), revisionId, projectId,
+                    pin.artifactId().value(), pin.contentDigest(), now);
+        }
+    }
+
+    /**
+     * R4-D1: copy the exact pin contract of a historical revision onto a NEW
+     * revision id — inside the caller's transaction. Restore must not re-resolve
+     * mutable latest Artifact state; the historical immutable pin records are
+     * the contract. Artifact owns the SQL.
+     */
+    public void copyRevisionPinsTx(org.jooq.DSLContext tx, String projectId,
+            String fromRevisionId, String toRevisionId) {
+        pinRepository.copyPinsTx(tx, projectId, fromRevisionId, toRevisionId);
+    }
+
     public boolean isPinned(ArtifactId artifactId) {
         return pinRepository.isPinned(artifactId.value());
     }

@@ -57,24 +57,33 @@ public final class AutomationCanonicalSemantics {
         List<CanonicalTimelineAutomationKeyframe> kfs = new ArrayList<>();
         JsonNode kfNode = node.path("keyframes");
         if (kfNode.isArray()) {
+            int idx = 0;
             for (JsonNode k : kfNode) {
                 MediaTime time = null;
                 if (k.has("timeTicks")) {
                     time = MediaTime.ofTicks(k.path("timeTicks").asLong(), k.path("timeTimeScale").asLong(1));
                 }
+                // Missing keyframeId gets a deterministic index-based id (legacy
+                // authored payloads may omit it; the canonical authority owns
+                // this defaulting policy).
+                String keyframeId = k.path("keyframeId").asText("");
+                if (keyframeId.isBlank()) {
+                    keyframeId = "kf_" + idx;
+                }
+                idx++;
                 kfs.add(new CanonicalTimelineAutomationKeyframe(
-                        k.path("keyframeId").asText(""),
+                        keyframeId,
                         time,
                         k.path("value").asDouble(0.0),
-                        k.path("interpolation").asText("")));
+                        k.path("interpolation").asText("LINEAR")));
             }
         }
         return new CanonicalTimelineAutomationSnapshot(
                 automationId,
                 node.path("targetEntityId").asText(""),
                 node.path("parameterPath").asText(""),
-                node.path("valueType").asText(""),
-                node.path("extrapolation").asText(""),
+                node.path("valueType").asText("float"),
+                node.path("extrapolation").asText("HOLD"),
                 kfs);
     }
 
@@ -100,5 +109,22 @@ public final class AutomationCanonicalSemantics {
     public static boolean localSemanticsEquals(
             CanonicalTimelineAutomationSnapshot a, CanonicalTimelineAutomationSnapshot b) {
         return canonicalValue(a).equals(canonicalValue(b));
+    }
+
+    /** R4-A2: mapping between the canonical Automation domain value and the
+     *  candidate representation — owned here so no adapter keeps a second
+     *  Automation field grammar. */
+    public static com.example.platform.timeline.canonicalmodel.CanonicalAutomationCurve toCandidateValue(
+            CanonicalTimelineAutomationSnapshot c) {
+        return new com.example.platform.timeline.canonicalmodel.CanonicalAutomationCurve(
+                c.automationId(),
+                c.targetEntityId(),
+                c.parameterPath(),
+                c.valueType(),
+                c.extrapolation(),
+                c.keyframes().stream()
+                        .map(k -> new com.example.platform.timeline.canonicalmodel.CanonicalAutomationKeyframe(
+                                k.keyframeId(), k.time(), k.value(), k.interpolation()))
+                        .toList());
     }
 }

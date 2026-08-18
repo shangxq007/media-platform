@@ -60,8 +60,25 @@ public class TimelinePatchApplier {
             case CLIP_REMOVED -> applyClipRemoved(s, op);
             case CLIP_MOVED -> applyClipField(s, op, "start");
             case CLIP_TRIMMED -> applyClipField(s, op, "duration");
-            case CLIP_SPEED_CHANGED -> applyClipField(s, op, "rate");
-            case ASSET_BINDING_CHANGED -> applyClipField(s, op, "assetBindingId");
+            case CLIP_SPEED_CHANGED -> {
+                // R4-B: CLIP_SPEED_CHANGED carries two distinct path scopes —
+                // ".rate" (legacy playback-rate change) and ".temporalMapping"
+                // (typed TemporalMapping change). Dispatch on the path suffix.
+                if (op.path() != null && op.path().value().endsWith(".temporalMapping")) {
+                    yield applyClipField(s, op, "temporalMapping");
+                }
+                yield applyClipField(s, op, "rate");
+            }
+            case ASSET_BINDING_CHANGED -> {
+                // R4-B: ASSET_BINDING_CHANGED carries two distinct path scopes —
+                // ".assetBindingId" (legacy asset binding) and ".sourceSemantics"
+                // (typed TimelineSourceBinding change). Dispatch on the path
+                // suffix; never force both through the assetBindingId field.
+                if (op.path() != null && op.path().value().endsWith(".sourceSemantics")) {
+                    yield applyClipField(s, op, "sourceSemantics");
+                }
+                yield applyClipField(s, op, "assetBindingId");
+            }
             case CAPTION_SEGMENT_CHANGED -> applyCaptionText(s, op);
             case TEXT_STYLE_CHANGED -> applyCaptionText(s, op);
             case WATERMARK_CHANGED -> applyWatermark(s, op);
@@ -77,6 +94,7 @@ public class TimelinePatchApplier {
             case AUDIO_MIX_CHANGED -> applyAudioMixChanged(s, op);
             case RELATIONSHIP_ADDED -> applyRelationshipAdded(s, op);
             case RELATIONSHIP_REMOVED -> applyRelationshipRemoved(s, op);
+            case SYNC_ANCHOR_CHANGED -> applySyncAnchorChanged(s, op);
             case GROUP_MEMBER_ADDED -> applyGroupMember(s, op, true);
             case GROUP_MEMBER_REMOVED -> applyGroupMember(s, op, false);
             default -> TimelinePatchApplicationResult.unsupported("Unsupported: " + op.type());
@@ -93,8 +111,12 @@ public class TimelinePatchApplier {
                     "AudioMix change without canonical payload");
         }
         try {
-            com.example.platform.audio.domain.mix.AudioMix mix = com.example.platform.timeline.app.InternalTimelineJson.mapper()
-                    .readValue(enc, com.example.platform.audio.domain.mix.AudioMix.class);
+            // R4-A4: AudioMix decode delegated to the Audio-domain authority
+            // (Timeline never owns AudioMasterBus/AudioRoute/DSP grammar).
+            com.example.platform.audio.domain.mix.AudioMix mix =
+                    com.example.platform.audio.domain.mix.AudioMixCanonicalSemantics
+                            .fromCanonicalJson(com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                                    .readTree(enc));
             return ok(s.withAudioMix(mix));
         } catch (Exception e) {
             return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
@@ -135,6 +157,51 @@ public class TimelinePatchApplier {
         return ok(s.withSemanticRelationships(rels));
     }
 
+    /** R4-A3: Sync anchor change — single typed local op carrying the complete
+     *  canonical after payload. Decode/replacement delegated to the
+     *  Relationship-local authority; never remove+add. */
+    private TimelinePatchApplicationResult applySyncAnchorChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        String key = op.path().value().substring(op.path().value().lastIndexOf('.') + 1);
+        Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        String enc = meta.get("relationship");
+        if (enc == null || enc.isBlank()) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "SYNC_ANCHOR_CHANGED without canonical payload");
+        }
+        try {
+            com.example.platform.timeline.semantics.relationship.SemanticRelationship replacement =
+                    com.example.platform.timeline.semantics.relationship.RelationshipCanonicalSemantics
+                            .fromCanonicalJson(enc);
+            if (!(replacement instanceof com.example.platform.timeline.semantics.relationship.SyncRelationship)) {
+                return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                        "SYNC_ANCHOR_CHANGED payload is not a SyncRelationship");
+            }
+            if (!com.example.platform.timeline.semantics.relationship.RelationshipCanonicalSemantics
+                    .canonicalKey(replacement).equals(key)) {
+                return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                        "SYNC_ANCHOR_CHANGED payload identity does not match path");
+            }
+            java.util.List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> rels =
+                    new java.util.ArrayList<>(s.semanticRelationships());
+            boolean replaced = false;
+            for (int i = 0; i < rels.size(); i++) {
+                if (relationshipKey(rels.get(i)).equals(key)) {
+                    rels.set(i, replacement);
+                    replaced = true;
+                    break;
+                }
+            }
+            if (!replaced) {
+                return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND, op.path().value(),
+                        "Sync relationship not found for anchor change");
+            }
+            return ok(s.withSemanticRelationships(rels));
+        } catch (Exception e) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "Malformed SYNC_ANCHOR_CHANGED payload: " + e.getMessage());
+        }
+    }
+
     private TimelinePatchApplicationResult applyGroupMember(CanonicalTimelineSnapshot s, TimelineChangeOperation op,
                                                             boolean add) {
         String key = op.path().value().substring(op.path().value().lastIndexOf('.') + 1);
@@ -143,17 +210,14 @@ public class TimelinePatchApplier {
                 new java.util.ArrayList<>(s.semanticRelationships());
         for (int i = 0; i < rels.size(); i++) {
             var r = rels.get(i);
-            if (relationshipKey(r).equals(key) && r instanceof com.example.platform.timeline.semantics.relationship.GroupRelationship g) {
-                java.util.Set<com.example.platform.timeline.canonical.TimelineClipId> members =
-                        new java.util.LinkedHashSet<>(g.members());
-                com.example.platform.timeline.canonical.TimelineClipId id =
-                        new com.example.platform.timeline.canonical.TimelineClipId(member);
-                if (add) {
-                    members.add(id);
-                } else {
-                    members.remove(id);
-                }
-                rels.set(i, new com.example.platform.timeline.semantics.relationship.GroupRelationship(g.groupId(), members));
+            if (com.example.platform.timeline.semantics.relationship.RelationshipCanonicalSemantics
+                    .canonicalKey(r).equals(key)
+                    && r instanceof com.example.platform.timeline.semantics.relationship.GroupRelationship g) {
+                // R4-A3: membership mutation delegated to the Relationship-local
+                // authority — Timeline never manipulates Group member sets directly.
+                rels.set(i, com.example.platform.timeline.semantics.relationship.RelationshipCanonicalSemantics
+                        .applyGroupMemberChange(g,
+                                new com.example.platform.timeline.canonical.TimelineClipId(member), add));
                 return ok(s.withSemanticRelationships(rels));
             }
         }
@@ -161,16 +225,11 @@ public class TimelinePatchApplier {
                 "Group relationship not found for member update");
     }
 
+    /** R4-A3: identity delegated to the Relationship-local authority — no
+     *  duplicated group:/sync: grammar, no identityHashCode fallback anywhere. */
     private static String relationshipKey(com.example.platform.timeline.semantics.relationship.SemanticRelationship r) {
-        if (r instanceof com.example.platform.timeline.semantics.relationship.GroupRelationship g) {
-            return "group:" + g.groupId().value();
-        }
-        if (r instanceof com.example.platform.timeline.semantics.relationship.SyncRelationship s) {
-            String a = s.endpointA().value();
-            String b = s.endpointB().value();
-            return a.compareTo(b) <= 0 ? "sync:" + a + ":" + b : "sync:" + b + ":" + a;
-        }
-        return "rel:" + System.identityHashCode(r);
+        return com.example.platform.timeline.semantics.relationship.RelationshipCanonicalSemantics
+                .canonicalKey(r);
     }
 
     // --- Duration ---
@@ -277,12 +336,25 @@ public class TimelinePatchApplier {
         long rateNum = parseLong(meta.get("rateNum"), 30);
         long rateDen = parseLong(meta.get("rateDen"), 1);
         FrameRate rate = FrameRate.of(rateNum, rateDen);
-        clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
-                start, duration, sourceStart, sourceDuration, rate,
-                parseEffects(meta.get("effects")), Map.of(),
-                meta.get("sourceKind"), meta.get("mediaStreamId"),
-                meta.get("artifactId"), meta.get("contentDigest"),
-                parseTemporalMapping(meta.get("temporalMapping"), null)));
+        // R4-B: reconstruct the TYPED source binding from the authoritative
+        // binding payload; the legacy flat projections remain only as a
+        // fallback for pre-R4 ops (never the semantic authority).
+        String sbEnc = meta.get("sourceBinding");
+        if (sbEnc != null && !sbEnc.isBlank()) {
+            clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
+                    start, duration, sourceStart, sourceDuration, rate,
+                    parseEffects(meta.get("effects")), Map.of(),
+                    com.example.platform.timeline.semantics.clip
+                            .TimelineSourceBindingCanonicalSemantics.decode(sbEnc),
+                    parseTemporalMapping(meta.get("temporalMapping"), null)));
+        } else {
+            clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
+                    start, duration, sourceStart, sourceDuration, rate,
+                    parseEffects(meta.get("effects")), Map.of(),
+                    meta.get("sourceKind"), meta.get("mediaStreamId"),
+                    meta.get("artifactId"), meta.get("contentDigest"),
+                    parseTemporalMapping(meta.get("temporalMapping"), null)));
+        }
         return ok(withUpdatedTrack(s, trackId, newTrackWithClips(track, clips)));
     }
 
@@ -558,37 +630,25 @@ public class TimelinePatchApplier {
             }
             return ok(s.withTransitions(List.copyOf(transitions)));
         }
-        MediaTime duration = MediaTime.ofTicks(parseLong(meta.get("durationTicks"), 0),
-                parseLong(meta.get("durationTimeScale"), 1));
-        Map<String, String> params = new LinkedHashMap<>();
-        String paramsEnc = meta.get("parameters");
-        if (paramsEnc != null && !paramsEnc.isBlank()) {
-            // CHECKPOINT_A Round 3: Transition-local canonical JSON authority —
-            // no delimiter grammar, no "a,b=c" collision. Malformed payload is
-            // a reconstruction failure, never a silent blank.
-            com.fasterxml.jackson.databind.JsonNode enc;
-            try {
-                enc = com.example.platform.timeline.app.InternalTimelineJson.mapper()
-                        .readTree(paramsEnc);
-            } catch (Exception e) {
-                return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
-                        "TRANSITION_CHANGED parameters not canonical JSON");
-            }
-            com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
-                    .fromCanonicalValue(transitionId, enc).parameters()
-                    .forEach(params::put);
+        // R4-A1: reconstruction MUST come from the complete Transition-local
+        // canonical payload (single authority) — a MODIFY/ADD without it fails
+        // closed; no field-by-field defaults are invented here.
+        String payload = meta.get("transition");
+        if (payload == null || payload.isBlank()) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "TRANSITION_CHANGED missing canonical payload");
         }
-        CanonicalTimelineTransitionSnapshot updated = new CanonicalTimelineTransitionSnapshot(
-                transitionId,
-                meta.getOrDefault("transitionDefinitionId", ""),
-                meta.getOrDefault("transitionDefinitionVersion", "1.0"),
-                meta.getOrDefault("outgoingClipId", ""),
-                meta.getOrDefault("incomingClipId", ""),
-                meta.getOrDefault("mediaType", "VIDEO"),
-                duration,
-                meta.getOrDefault("alignment", "CENTER_ON_CUT"),
-                meta.getOrDefault("temporalPolicy", "USE_SOURCE_HANDLES"),
-                params);
+        com.fasterxml.jackson.databind.JsonNode enc;
+        try {
+            enc = com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                    .readTree(payload);
+        } catch (Exception e) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "TRANSITION_CHANGED payload not canonical JSON");
+        }
+        CanonicalTimelineTransitionSnapshot updated =
+                com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
+                        .fromCanonicalValue(transitionId, enc);
         List<CanonicalTimelineTransitionSnapshot> transitions = new ArrayList<>(s.transitions());
         boolean replaced = false;
         for (int i = 0; i < transitions.size(); i++) {
@@ -622,29 +682,26 @@ public class TimelinePatchApplier {
             }
             return ok(s.withAutomations(List.copyOf(automations)));
         }
-        // CHECKPOINT_A Round 3: Automation-local canonical JSON authority — no
-        // delimiter grammar, no collision on authored strings.
-        CanonicalTimelineAutomationSnapshot updated;
-        String kfEnc = meta.get("keyframes");
-        if (kfEnc != null && !kfEnc.isBlank()) {
-            com.fasterxml.jackson.databind.JsonNode enc;
-            try {
-                enc = com.example.platform.timeline.app.InternalTimelineJson.mapper().readTree(kfEnc);
-            } catch (Exception e) {
-                return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
-                        "AUTOMATION_CHANGED keyframes not canonical JSON");
-            }
-            updated = com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
-                    .fromCanonicalValue(automationId, enc);
-        } else {
-            updated = new CanonicalTimelineAutomationSnapshot(
-                    automationId,
-                    meta.getOrDefault("targetEntityId", ""),
-                    meta.getOrDefault("parameterPath", ""),
-                    meta.getOrDefault("valueType", "float"),
-                    meta.getOrDefault("extrapolation", "HOLD"),
-                    new ArrayList<>());
+        // R4-A2: reconstruction MUST come from the complete Automation-local
+        // canonical payload (single authority). Malformed/missing payload in an
+        // operation that requires reconstruction FAILS CLOSED — no synthesized
+        // default valueType/extrapolation/empty keyframes, no authored-state
+        // invention.
+        String payload = meta.get("automation");
+        if (payload == null || payload.isBlank()) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "AUTOMATION_CHANGED missing canonical payload");
         }
+        CanonicalTimelineAutomationSnapshot updated;
+        com.fasterxml.jackson.databind.JsonNode enc;
+        try {
+            enc = com.example.platform.timeline.app.InternalTimelineJson.mapper().readTree(payload);
+        } catch (Exception e) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "AUTOMATION_CHANGED payload not canonical JSON");
+        }
+        updated = com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
+                .fromCanonicalValue(automationId, enc);
         List<CanonicalTimelineAutomationSnapshot> automations = new ArrayList<>(s.automations());
         boolean replaced = false;
         for (int i = 0; i < automations.size(); i++) {
@@ -683,32 +740,45 @@ public class TimelinePatchApplier {
         return switch (field) {
             case "start" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                     parseMediaTime(afterValue, c.start()), c.duration(), c.sourceStart(), c.sourceDuration(),
-                    c.rate(), c.effects(), c.safeMetadata(), c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping());
+                    c.rate(), c.effects(), c.safeMetadata(), c.sourceBinding(), c.temporalMapping());
             case "duration" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                     c.start(), parseMediaTime(afterValue, c.duration()), c.sourceStart(),
                     parseMediaTime(afterValue, c.sourceDuration()),
-                    c.rate(), c.effects(), c.safeMetadata(), c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping());
+                    c.rate(), c.effects(), c.safeMetadata(), c.sourceBinding(), c.temporalMapping());
             case "rate" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                     c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
                     parseFrameRate(afterValue, c.rate()), c.effects(), c.safeMetadata(),
-                    c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping());
+                    c.sourceBinding(), c.temporalMapping());
             case "temporalMapping" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                     c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
-                    c.rate(), c.effects(), c.safeMetadata(),
-                    c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(),
+                    c.rate(), c.effects(), c.safeMetadata(), c.sourceBinding(),
                     parseTemporalMapping(afterValue, c.temporalMapping()));
             case "sourceSemantics" -> {
                 Map<String, String> sm = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+                // R4-B: source-semantics reconstruction uses the TYPED binding
+                // payload (single authority). Missing/blank payload fails
+                // closed — no silent String-field narrowing.
+                String sbEnc = sm.get("sourceBinding");
+                if (sbEnc == null || sbEnc.isBlank()) {
+                    yield new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
+                            c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
+                            c.rate(), c.effects(), c.safeMetadata(),
+                            null, null, null, null,
+                            c.temporalMapping());
+                }
+                com.example.platform.timeline.semantics.clip.TimelineSourceBinding binding =
+                        com.example.platform.timeline.semantics.clip
+                                .TimelineSourceBindingCanonicalSemantics.decode(sbEnc);
                 yield new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                         c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
                         c.rate(), c.effects(), c.safeMetadata(),
-                        sm.get("sourceKind"), sm.get("mediaStreamId"), sm.get("artifactId"), sm.get("contentDigest"),
+                        binding,
                         c.temporalMapping());
             }
             case "assetBindingId" -> new CanonicalTimelineClipSnapshot(c.clipId(),
                     afterValue != null ? afterValue : c.assetBindingId(),
                     c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
-                    c.rate(), c.effects(), c.safeMetadata(), c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping());
+                    c.rate(), c.effects(), c.safeMetadata(), c.sourceBinding(), c.temporalMapping());
             default -> c;
         };
     }

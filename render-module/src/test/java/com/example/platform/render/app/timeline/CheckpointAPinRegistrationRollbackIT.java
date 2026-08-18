@@ -118,7 +118,8 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
         // pin registration FAILS inside the same transaction
         ArtifactPinService pinService = mock(ArtifactPinService.class);
         doThrow(new IllegalStateException("simulated pin registration failure"))
-                .when(pinService).registerRevisionPins(
+                .when(pinService).registerRevisionPinsTx(
+                        org.mockito.ArgumentMatchers.any(org.jooq.DSLContext.class),
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.anyString(),
@@ -173,7 +174,8 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))), "revision committed");
         assertEquals(revision.revisionId(), currentRevisionService.getCurrentRevisionId(productId),
                 "head updated");
-        org.mockito.Mockito.verify(pinService).registerRevisionPins(
+        org.mockito.Mockito.verify(pinService).registerRevisionPinsTx(
+                org.mockito.ArgumentMatchers.any(org.jooq.DSLContext.class),
                 org.mockito.ArgumentMatchers.eq(productId),
                 org.mockito.ArgumentMatchers.eq(revision.revisionId()),
                 org.mockito.ArgumentMatchers.eq(TENANT),

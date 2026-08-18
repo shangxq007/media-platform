@@ -106,7 +106,9 @@ public final class InternalTimelineCandidateAdapter {
                 com.example.platform.timeline.app.InternalTimelineCandidateAdapter.RelationshipJson.relationshipsOf(composition));
     }
 
-    /** CHECKPOINT_A: parse the authored AudioMix from the internal payload (absent == empty). */
+    /** CHECKPOINT_A: parse the authored AudioMix from the internal payload (absent == empty).
+     *  R4-A4: decode delegates to the Audio-domain authority; this adapter is a thin
+     *  boundary (no AudioMasterBus/AudioRoute/gain/mute/balance/DSP field knowledge). */
     public static final class AudioMixJson {
         private static final com.fasterxml.jackson.databind.ObjectMapper M =
                 com.example.platform.timeline.app.InternalTimelineJson.mapper();
@@ -117,22 +119,14 @@ public final class InternalTimelineCandidateAdapter {
                 return com.example.platform.audio.domain.mix.AudioMix.empty();
             }
             try {
-                return M.treeToValue(node, com.example.platform.audio.domain.mix.AudioMix.class);
+                return com.example.platform.audio.domain.mix.AudioMixCanonicalSemantics
+                        .fromCanonicalJson(node);
             } catch (Exception e) {
                 throw new TimelineCanonicalRejectionException(
                         new TimelineCanonicalRejectionException.AdapterDiagnostic(
                                 TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
                                 TimelineModelPath.root().field("composition").field("audioMix"),
                                 "Malformed authored AudioMix: " + e.getMessage()));
-            }
-        }
-
-        /** Deterministic canonical form of an AudioMix (no toString/hashCode identity). */
-        public static String audioMixFingerprint(com.example.platform.audio.domain.mix.AudioMix mix) {
-            try {
-                return M.writeValueAsString(mix);
-            } catch (Exception e) {
-                throw new IllegalStateException("AudioMix canonical fingerprint failed", e);
             }
         }
     }
@@ -164,59 +158,41 @@ public final class InternalTimelineCandidateAdapter {
     /**
      * EFFECT_TRANSITION_CANONICALIZATION_V1 (C9): first-class transition — typed
      * participants, exact MediaTime duration, alignment, temporal policy.
+     *
+     * R4-A1: authored field decoding delegated to TransitionCanonicalSemantics
+     * (single Transition-local grammar). Timeline keeps only aggregate topology
+     * validation: non-blank identity, participant presence, duration > zero.
      */
     private static CanonicalTransition mapTransition(JsonNode trNode) {
         String id = trNode.path("id").asText("");
         if (id.isBlank()) return null;
-        String defId = trNode.path("transitionDefinitionId").asText("");
         String outgoing = trNode.path("outgoingClipId").asText("");
         String incoming = trNode.path("incomingClipId").asText("");
         if (outgoing.isBlank() || incoming.isBlank()) return null;
-        MediaTime duration = mediaTimeFromTicks(
-                trNode.path("durationTicks").asLong(0),
-                trNode.path("durationTimeScale").asLong(1));
-        if (duration.isLessThanOrEqualTo(MediaTime.ZERO)) return null;
-        java.util.Map<String, String> params = new java.util.LinkedHashMap<>();
-        JsonNode paramsNode = trNode.path("parameters");
-        if (paramsNode.isObject()) {
-            paramsNode.fields().forEachRemaining(e -> params.put(e.getKey(),
-                    e.getValue().asText("")));
+        com.example.platform.timeline.diff.calculation.CanonicalTimelineTransitionSnapshot decoded =
+                com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
+                        .fromCanonicalValue(id, trNode);
+        if (decoded.duration() == null || decoded.duration().isLessThanOrEqualTo(MediaTime.ZERO)) {
+            return null;
         }
-        return new CanonicalTransition(id, defId,
-                trNode.path("transitionDefinitionVersion").asText("1.0"),
-                outgoing, incoming,
-                trNode.path("mediaType").asText("VIDEO"),
-                duration,
-                trNode.path("alignment").asText("CENTER_ON_CUT"),
-                trNode.path("temporalPolicy").asText("USE_SOURCE_HANDLES"),
-                params);
+        return com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
+                .toCandidateValue(decoded);
     }
 
     /**
      * EFFECT_TRANSITION_CANONICALIZATION_V1 (C7/C8): automation — exact MediaTime
      * keyframes, deterministic ordering, HOLD/LINEAR interpolation.
+     *
+     * R4-A2: authored field decoding delegated to AutomationCanonicalSemantics
+     * (single Automation-local grammar). Timeline keeps only aggregate topology
+     * validation: non-blank automation identity.
      */
     private static CanonicalAutomationCurve mapAutomation(JsonNode curveNode) {
         String id = curveNode.path("automationId").asText("");
         if (id.isBlank()) return null;
-        List<CanonicalAutomationKeyframe> keyframes = new ArrayList<>();
-        JsonNode kfNodes = curveNode.path("keyframes");
-        if (kfNodes.isArray()) {
-            for (JsonNode kf : kfNodes) {
-                keyframes.add(new CanonicalAutomationKeyframe(
-                        kf.path("keyframeId").asText("kf_" + keyframes.size()),
-                        mediaTimeFromTicks(kf.path("timeTicks").asLong(0),
-                                kf.path("timeTimeScale").asLong(1)),
-                        kf.path("value").asDouble(0.0),
-                        kf.path("interpolation").asText("LINEAR")));
-            }
-        }
-        return new CanonicalAutomationCurve(id,
-                curveNode.path("targetEntityId").asText(""),
-                curveNode.path("parameterPath").asText(""),
-                curveNode.path("valueType").asText("float"),
-                curveNode.path("extrapolation").asText("HOLD"),
-                keyframes);
+        return com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
+                .toCandidateValue(com.example.platform.timeline.semantics.automation
+                        .AutomationCanonicalSemantics.fromCanonicalValue(id, curveNode));
     }
 
     private static MediaTime mediaTimeFromTicks(long ticks, long timeScale) {
@@ -284,10 +260,28 @@ public final class InternalTimelineCandidateAdapter {
         // (kind/asset/stream/artifact/digest/temporal mapping) — absent nodes
         // remain null/empty (internal payloads may not yet carry them), never
         // fabricated.
+        // R4-B: the TYPED TimelineSourceBinding is the merge-path authority.
+        // The nested sourceBinding object (extractor-compatible wire shape) is
+        // preferred; legacy flat fields remain a projection fallback for old
+        // payloads.
         String sourceKind = clipNode.path("sourceKind").asText(null);
         String mediaStreamId = clipNode.path("mediaStreamId").asText(null);
         String artifactId = clipNode.path("artifactId").asText(null);
         String contentDigest = clipNode.path("contentDigest").asText(null);
+        com.example.platform.timeline.semantics.clip.TimelineSourceBinding sourceBinding = null;
+        JsonNode sbNode = clipNode.path("sourceBinding");
+        if (sbNode.isObject() && !sbNode.isEmpty()) {
+            try {
+                sourceBinding = com.example.platform.timeline.semantics.clip
+                        .TimelineSourceBindingCanonicalSemantics.fromCanonicalValue(sbNode);
+            } catch (Exception e) {
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field("sourceBinding"),
+                                "Malformed clip sourceBinding: " + e.getMessage()));
+            }
+        }
         com.example.platform.timeline.semantics.temporal.TemporalMapping temporalMapping = null;
         JsonNode tmNode = clipNode.path("temporalMapping");
         if (tmNode.isObject() && !tmNode.isEmpty()) {
@@ -304,7 +298,8 @@ public final class InternalTimelineCandidateAdapter {
         }
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(assetId),
                 timelineStart, sourceStart, duration, rate, mapEffects(clipNode), List.of(),
-                sourceKind, assetId, mediaStreamId, artifactId, contentDigest, temporalMapping);
+                sourceKind, assetId, mediaStreamId, artifactId, contentDigest, temporalMapping,
+                sourceBinding);
     }
 
     /**

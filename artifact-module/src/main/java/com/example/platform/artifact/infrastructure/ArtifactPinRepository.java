@@ -34,6 +34,47 @@ public class ArtifactPinRepository {
                 .execute();
     }
 
+    /**
+     * R4-D1/D2 (CHECKPOINT_A Round 4): transaction-aware insert — executes on
+     * the CALLER's DSLContext so the pin row joins the same physical database
+     * transaction as the revision write. Artifact remains the pin persistence
+     * authority (this SQL); Timeline never inserts ARTIFACT_PIN rows itself.
+     */
+    public void insertTx(org.jooq.DSLContext tx, String pinId, String revisionId,
+            String projectId, String artifactId, ContentDigest digest, java.time.Instant pinnedAt) {
+        tx.insertInto(ARTIFACT_PIN)
+                .columns(ARTIFACT_PIN.PIN_ID, ARTIFACT_PIN.REVISION_ID, ARTIFACT_PIN.PROJECT_ID,
+                        ARTIFACT_PIN.ARTIFACT_ID, ARTIFACT_PIN.CONTENT_DIGEST, ARTIFACT_PIN.PINNED_AT)
+                .values(pinId, revisionId, projectId, artifactId, digest.canonicalValue(),
+                        LocalDateTime.ofInstant(pinnedAt, ZoneOffset.UTC))
+                .execute();
+    }
+
+    /**
+     * R4-D1: copy the exact pin records of one revision onto another revision id
+     * (same project, same artifacts, same digests) inside the caller's
+     * transaction. Immutable historical pin contract is preserved — no
+     * re-resolution of mutable latest Artifact state.
+     */
+    public void copyPinsTx(org.jooq.DSLContext tx, String projectId,
+            String fromRevisionId, String toRevisionId) {
+        tx.insertInto(ARTIFACT_PIN)
+                .columns(ARTIFACT_PIN.PIN_ID, ARTIFACT_PIN.REVISION_ID, ARTIFACT_PIN.PROJECT_ID,
+                        ARTIFACT_PIN.ARTIFACT_ID, ARTIFACT_PIN.CONTENT_DIGEST, ARTIFACT_PIN.PINNED_AT)
+                .select(tx.select(
+                                org.jooq.impl.DSL.concat(
+                                        ARTIFACT_PIN.ARTIFACT_ID, org.jooq.impl.DSL.val("|"), org.jooq.impl.DSL.val(toRevisionId)),
+                                org.jooq.impl.DSL.val(toRevisionId),
+                                ARTIFACT_PIN.PROJECT_ID,
+                                ARTIFACT_PIN.ARTIFACT_ID,
+                                ARTIFACT_PIN.CONTENT_DIGEST,
+                                ARTIFACT_PIN.PINNED_AT)
+                        .from(ARTIFACT_PIN)
+                        .where(ARTIFACT_PIN.REVISION_ID.eq(fromRevisionId))
+                        .and(ARTIFACT_PIN.PROJECT_ID.eq(projectId)))
+                .execute();
+    }
+
     public boolean isPinned(String artifactId) {
         return dsl.fetchExists(ARTIFACT_PIN.where(ARTIFACT_PIN.ARTIFACT_ID.eq(artifactId)));
     }

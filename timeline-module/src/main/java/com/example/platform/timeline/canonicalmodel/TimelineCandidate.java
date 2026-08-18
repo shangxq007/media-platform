@@ -55,7 +55,7 @@ public record TimelineCandidate(
                                                 FrameRate.of(30, 1),
                                                 List.of(),
                                                 List.of(),
-                                                null, null, null, null, null, null))
+                                                null, null, null, null, null, null, null))
                                         .toList()))
                         .toList(),
                 model.transitions(), model.automations(), List.of(),
@@ -82,7 +82,8 @@ public record TimelineCandidate(
             MediaTime sourceStart, MediaTime duration, FrameRate rate,
             List<TimelineClipEffect> effects, List<Object> unsupportedConstructs,
             String sourceKind, String mediaAssetId, String mediaStreamId,
-            String artifactId, String contentDigest, TemporalMapping temporalMapping) {
+            String artifactId, String contentDigest, TemporalMapping temporalMapping,
+            com.example.platform.timeline.semantics.clip.TimelineSourceBinding sourceBinding) {
         public Clip {
             unsupportedConstructs = unsupportedConstructs == null ? List.of() : List.copyOf(unsupportedConstructs);
             effects = effects == null ? List.of() : List.copyOf(effects);

@@ -78,7 +78,7 @@ public final class TransitionCanonicalSemantics {
         return new CanonicalTimelineTransitionSnapshot(
                 transitionId,
                 node.path("transitionDefinitionId").asText(""),
-                node.path("transitionDefinitionVersion").asText(""),
+                node.path("transitionDefinitionVersion").asText("1.0"),
                 node.path("outgoingClipId").asText(""),
                 node.path("incomingClipId").asText(""),
                 node.path("mediaType").asText("VIDEO"),
@@ -112,5 +112,23 @@ public final class TransitionCanonicalSemantics {
     public static boolean localSemanticsEquals(
             CanonicalTimelineTransitionSnapshot a, CanonicalTimelineTransitionSnapshot b) {
         return canonicalValue(a).equals(canonicalValue(b));
+    }
+
+    /** R4-A1: mapping between the canonical Transition domain value and the
+     *  candidate representation — owned here so no adapter keeps a second
+     *  Transition field grammar. */
+    public static com.example.platform.timeline.canonicalmodel.CanonicalTransition toCandidateValue(
+            CanonicalTimelineTransitionSnapshot t) {
+        return new com.example.platform.timeline.canonicalmodel.CanonicalTransition(
+                t.transitionId(),
+                t.transitionDefinitionId(),
+                t.transitionDefinitionVersion(),
+                t.outgoingClipId(),
+                t.incomingClipId(),
+                t.mediaType(),
+                t.duration(),
+                t.alignment(),
+                t.temporalPolicy(),
+                t.parameters());
     }
 }

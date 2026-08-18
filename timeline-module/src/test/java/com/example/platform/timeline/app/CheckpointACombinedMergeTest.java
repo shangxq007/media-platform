@@ -196,10 +196,12 @@ class CheckpointACombinedMergeTest {
                 "v1", 0, "VIDEO", List.of(), Map.of());
         CanonicalTimelineSnapshot base = snap(doc(mix(0.5), List.of()), "b").withTracks(List.of(emptyTrack));
         // build a clip with full typed source semantics + temporal mapping
+        // R4-B: sourceKind is the typed SourceKind discriminator ("MEDIA_STREAM"),
+        // never the legacy track-kind string — the flat fields are projections.
         var clip = new com.example.platform.timeline.diff.calculation.CanonicalTimelineClipSnapshot(
                 "c1", "ast-1", MediaTime.ofTicks(0, 30), MediaTime.ofTicks(60, 30),
                 MediaTime.ofTicks(0, 30), MediaTime.ofTicks(60, 30), FrameRate.of(30, 1),
-                List.of(), Map.of(), "VIDEO", "stream-1", "art-1",
+                List.of(), Map.of(), "MEDIA_STREAM", "stream-1", "art-1",
                 "a".repeat(64), new FreezeTemporalMapping(MediaTime.ofTicks(15, 30)));
         var track = new com.example.platform.timeline.diff.calculation.CanonicalTimelineTrackSnapshot(
                 "v1", 0, "VIDEO", List.of(clip), Map.of());
@@ -213,8 +215,15 @@ class CheckpointACombinedMergeTest {
         assertEquals("stream-1", reloaded.mediaStreamId(), "mediaStreamId must survive");
         assertEquals("art-1", reloaded.artifactId(), "artifactId must survive");
         assertEquals("a".repeat(64), reloaded.contentDigest(), "contentDigest must survive");
-        assertEquals("VIDEO", reloaded.sourceKind(), "sourceKind must survive");
+        assertEquals("MEDIA_STREAM", reloaded.sourceKind(), "sourceKind must survive");
         assertEquals(new FreezeTemporalMapping(MediaTime.ofTicks(15, 30)), reloaded.temporalMapping(),
                 "temporalMapping must survive exactly");
+        // R4-B: the TYPED binding itself survives the diff → patch cycle.
+        assertTrue(reloaded.sourceBinding() instanceof com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding,
+                "typed source binding must survive");
+        assertEquals("art-1", reloaded.sourceBinding().sourceKind() != null
+                        && reloaded.sourceBinding() instanceof com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding m
+                        ? m.artifactId().value() : null,
+                "typed binding artifact id must survive exactly");
     }
 }

@@ -18,6 +18,11 @@ java {
 // only consumer direction; audio never depends on render/timeline (no cycle).
 dependencies {
     implementation(project(":shared-kernel"))
+    // CHECKPOINT_A Round 4 (R4-A4): AudioMixCanonicalSemantics owns the
+    // AudioMix canonical representation (deterministic JSON). jackson-databind
+    // is a serialization library (not Spring/infra); the AudioMix wire shape is
+    // Jackson-compatible and decode must accept the existing authored shape.
+    implementation("com.fasterxml.jackson.core:jackson-databind")
     testImplementation(platform("org.junit:junit-bom:6.0.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

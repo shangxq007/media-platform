@@ -115,10 +115,47 @@ public final class TimelineDocumentCandidateMapper {
         // CHECKPOINT_A correction: carry the FULL typed source semantics of the
         // canonical clip (kind/asset/stream/artifact/digest/temporal mapping) —
         // never narrow to assetId alone.
+        // R4-B: the typed TimelineSourceBinding is the merge-path authority;
+        // built from the document clip's flat fields via the binding authority.
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(mediaAssetId),
                 timelineStart, sourceStart, duration, FrameRate.of(30, 1), List.of(), List.of(),
                 clip.getSourceKind(), mediaAssetId, clip.getMediaStreamId(),
-                clip.getArtifactId(), clip.getContentDigest(), clip.getTemporalMapping());
+                clip.getArtifactId(), clip.getContentDigest(), clip.getTemporalMapping(),
+                typedBindingOf(clip));
+    }
+
+    /** R4-B: construct the typed TimelineSourceBinding from the document clip's
+     *  flat source fields (null when the clip carries no source binding). */
+    private static com.example.platform.timeline.semantics.clip.TimelineSourceBinding typedBindingOf(
+            com.example.platform.timeline.canonical.TimelineClip clip) {
+        String kind = clip.getSourceKind();
+        if (kind == null || kind.isBlank()
+                || !com.example.platform.timeline.semantics.clip.TimelineSourceBinding.SourceKind.MEDIA_STREAM
+                        .name().equals(kind)) {
+            return null;
+        }
+        String mediaAssetId = clip.getMediaAssetId();
+        String mediaStreamId = clip.getMediaStreamId();
+        String artifactId = clip.getArtifactId();
+        String contentDigest = clip.getContentDigest();
+        if (mediaAssetId == null || mediaAssetId.isBlank()
+                || mediaStreamId == null || mediaStreamId.isBlank()
+                || artifactId == null || artifactId.isBlank()
+                || contentDigest == null || contentDigest.isBlank()) {
+            return null;
+        }
+        try {
+            return new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
+                    new com.example.platform.media.domain.identity.MediaAssetId(mediaAssetId),
+                    new com.example.platform.media.domain.stream.MediaStreamId(mediaStreamId),
+                    new com.example.platform.shared.identity.ArtifactId(artifactId),
+                    com.example.platform.shared.digest.ContentDigest.sha256(contentDigest),
+                    new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(
+                            clip.getTrimStart() != null ? clip.getTrimStart() : com.example.platform.shared.time.MediaTime.ZERO,
+                            clip.getTrimEnd() != null ? clip.getTrimEnd() : com.example.platform.shared.time.MediaTime.ZERO));
+        } catch (IllegalArgumentException invalid) {
+            return null;
+        }
     }
 
     private static MediaTime toMediaTime(Duration duration) {

@@ -16,9 +16,9 @@ class TimelineCanonicalProductionBoundaryTest {
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(
                         TimelineCandidate.track("video-a", TimelineCandidate.TrackType.VIDEO, 2, null,
-                                List.of(new TimelineCandidate.Clip("clip-b", TimelineSourceRef.of("raw-b"), MediaTime.ofTicks(5, 1), MediaTime.ZERO, MediaTime.ofTicks(5, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null))),
+                                List.of(new TimelineCandidate.Clip("clip-b", TimelineSourceRef.of("raw-b"), MediaTime.ofTicks(5, 1), MediaTime.ZERO, MediaTime.ofTicks(5, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null, null))),
                         TimelineCandidate.track("video-b", TimelineCandidate.TrackType.VIDEO, 1, null,
-                                List.of(new TimelineCandidate.Clip("clip-a", TimelineSourceRef.of("raw-a"), MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(5, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null)))), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                                List.of(new TimelineCandidate.Clip("clip-a", TimelineSourceRef.of("raw-a"), MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(5, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null, null)))), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
         TimelineCanonicalModel normalized = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
@@ -43,8 +43,8 @@ class TimelineCanonicalProductionBoundaryTest {
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(
                         TimelineCandidate.track("video", TimelineCandidate.TrackType.VIDEO, 0, null,
-                                List.of(new TimelineCandidate.Clip("clip-1", TimelineSourceRef.of("raw-a"), MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(5, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null),
-                                        new TimelineCandidate.Clip("clip-1", TimelineSourceRef.of("raw-b"), MediaTime.ofTicks(3, 1), MediaTime.ofTicks(2, 1), MediaTime.ofTicks(2, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null))),
+                                List.of(new TimelineCandidate.Clip("clip-1", TimelineSourceRef.of("raw-a"), MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(5, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null, null),
+                                        new TimelineCandidate.Clip("clip-1", TimelineSourceRef.of("raw-b"), MediaTime.ofTicks(3, 1), MediaTime.ofTicks(2, 1), MediaTime.ofTicks(2, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null, null))),
                         TimelineCandidate.track("video", TimelineCandidate.TrackType.SUBTITLE, 0, null, List.of())), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
