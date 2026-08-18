@@ -11,7 +11,8 @@ public final class VariationCoordinate implements Comparable<VariationCoordinate
     private final VariationAxisTag axis;
     private final FontRational coordinate;
 
-    public VariationCoordinate(VariationAxisTag axis, FontRational coordinate) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public VariationCoordinate(@com.fasterxml.jackson.annotation.JsonProperty("axis") VariationAxisTag axis, @com.fasterxml.jackson.annotation.JsonProperty("coordinate") FontRational coordinate) {
         this.axis = Objects.requireNonNull(axis, "axis");
         this.coordinate = Objects.requireNonNull(coordinate, "coordinate");
     }

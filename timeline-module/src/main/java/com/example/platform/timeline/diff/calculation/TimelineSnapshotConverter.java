@@ -86,7 +86,7 @@ public final class TimelineSnapshotConverter {
                 List.of(),
                 null,
                 Map.of("schemaVersion", "internal-1.0"),
-                List.of(),
+                candidate.textElements(),
                 toTransitionSnapshots(candidate.transitions()),
                 toAutomationSnapshots(candidate.automations()));
     }

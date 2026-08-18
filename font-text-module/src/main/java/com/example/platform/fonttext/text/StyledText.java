@@ -21,8 +21,8 @@ public final class StyledText {
     private final List<TextStyleRun> styleRuns;
     private final ParagraphStyle paragraphStyle;
 
-    public StyledText(TextContent content, List<TextSemanticRun> semanticRuns,
-                      List<TextStyleRun> styleRuns, ParagraphStyle paragraphStyle) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public StyledText(@com.fasterxml.jackson.annotation.JsonProperty("content") TextContent content, @com.fasterxml.jackson.annotation.JsonProperty("semanticRuns") List<TextSemanticRun> semanticRuns, @com.fasterxml.jackson.annotation.JsonProperty("styleRuns") List<TextStyleRun> styleRuns, @com.fasterxml.jackson.annotation.JsonProperty("paragraphStyle") ParagraphStyle paragraphStyle) {
         this.content = Objects.requireNonNull(content, "content");
         this.paragraphStyle = Objects.requireNonNull(paragraphStyle, "paragraphStyle");
         int max = content.scalarCount();

@@ -94,6 +94,15 @@ public class TimelineDocument {
         this.textElements = textElements != null
                 ? textElements.stream().sorted(TEXT_ELEMENT_ORDER).toList()
                 : List.of();
+        // ROADMAP #19 (A2): TextElement instance identity is aggregate-unique —
+        // duplicate IDs fail closed at construction (canonical authored state).
+        java.util.Set<String> elementIds = new java.util.HashSet<>();
+        for (TextElement element : this.textElements) {
+            if (!elementIds.add(element.id().value())) {
+                throw new IllegalArgumentException(
+                        "Duplicate TextElement id in document: " + element.id().value());
+            }
+        }
     }
 
     /** Deterministic relationship ordering: kind, then semantic identity key. */

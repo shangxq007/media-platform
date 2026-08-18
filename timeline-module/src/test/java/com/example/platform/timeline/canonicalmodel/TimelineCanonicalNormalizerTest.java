@@ -14,7 +14,7 @@ class TimelineCanonicalNormalizerTest {
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(track("video-b", TimelineCandidate.TrackType.VIDEO, 1, clip("clip-b", 5)),
                         track("audio-a", TimelineCandidate.TrackType.AUDIO, 1, clip("clip-audio", 2)),
-                        track("video-a", TimelineCandidate.TrackType.VIDEO, 1, clip("clip-a", 0))), List.of(), List.of());
+                        track("video-a", TimelineCandidate.TrackType.VIDEO, 1, clip("clip-a", 0))), List.of(), List.of(), List.of());
 
         TimelineCanonicalModel model = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
 
@@ -29,7 +29,7 @@ class TimelineCanonicalNormalizerTest {
         TimelineCandidate candidate = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(track("video", TimelineCandidate.TrackType.VIDEO, 0,
-                        clip("clip-b", 5), clip("clip-a", 0))), List.of(), List.of());
+                        clip("clip-b", 5), clip("clip-a", 0))), List.of(), List.of(), List.of());
 
         TimelineCanonicalModel first = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
         TimelineCanonicalModel second = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
@@ -45,7 +45,7 @@ class TimelineCanonicalNormalizerTest {
     void canonicalOutputCollectionsAreImmutable() {
         TimelineCanonicalModel model = TimelineCanonicalNormalizer.normalize(new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
-                List.of(track("video", TimelineCandidate.TrackType.VIDEO, 0, clip("clip", 0))), List.of(), List.of())).orElseThrow();
+                List.of(track("video", TimelineCandidate.TrackType.VIDEO, 0, clip("clip", 0))), List.of(), List.of(), List.of())).orElseThrow();
 
         assertThrows(UnsupportedOperationException.class, () -> model.tracks().clear());
         assertThrows(UnsupportedOperationException.class, () -> model.tracks().getFirst().clips().clear());

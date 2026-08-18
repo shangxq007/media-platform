@@ -21,8 +21,8 @@ public final class ResolvedFontInstance {
     private final ValidatedFontExecutionReference executionReference;
     private final List<VariationCoordinate> variationCoordinates; // sorted by tag
 
-    public ResolvedFontInstance(ValidatedFontExecutionReference executionReference,
-                                List<VariationCoordinate> variationCoordinates) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public ResolvedFontInstance(@com.fasterxml.jackson.annotation.JsonProperty("executionReference") ValidatedFontExecutionReference executionReference, @com.fasterxml.jackson.annotation.JsonProperty("variationCoordinates") List<VariationCoordinate> variationCoordinates) {
         this.executionReference = Objects.requireNonNull(executionReference, "executionReference");
         List<VariationCoordinate> axes = new ArrayList<>(variationCoordinates);
         axes.sort(null);

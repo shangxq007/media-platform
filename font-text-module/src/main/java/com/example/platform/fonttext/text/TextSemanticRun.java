@@ -17,8 +17,8 @@ public final class TextSemanticRun {
     private final ScriptTag script;       // null = UNSPECIFIED
     private final RangeDirectionOverride directionOverride;
 
-    public TextSemanticRun(TextRange range, LanguageTag language, ScriptTag script,
-                           RangeDirectionOverride directionOverride) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public TextSemanticRun(@com.fasterxml.jackson.annotation.JsonProperty("range") TextRange range, @com.fasterxml.jackson.annotation.JsonProperty("language") LanguageTag language, @com.fasterxml.jackson.annotation.JsonProperty("script") ScriptTag script, @com.fasterxml.jackson.annotation.JsonProperty("directionOverride") RangeDirectionOverride directionOverride) {
         this.range = Objects.requireNonNull(range, "range");
         this.language = language;
         this.script = script;

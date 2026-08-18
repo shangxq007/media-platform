@@ -1401,6 +1401,47 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(e2eTest.contains("e2eS3EffectDeleteVsAutomationModifyFailsClosed")) {
             "FAIL: Effect-delete × Automation-modify real three-way E2E missing"
         }
+        // ── ROADMAP #19 (G-R19): TimedText local semantic authority ──
+        val timedText = file("timeline-module/src/main/java/com/example/platform/timeline/canonical/TimedTextCanonicalSemantics.java").readText()
+        require(timedText.contains("canonicalValue") && timedText.contains("semanticFingerprint")
+                && timedText.contains("encodeElements") && timedText.contains("decodeElements")) {
+            "FAIL (G-R19-1): TimedTextCanonicalSemantics must be the local authority with canonical/fingerprint/encode/decode"
+        }
+        require(!diffCalc.contains("content().value().hashCode()")) {
+            "FAIL (G-R19-2): diff must not use TextElement content.hashCode() as semantic identity"
+        }
+        require(diffCalc.contains("TimedTextCanonicalSemantics.semanticFingerprint")) {
+            "FAIL (G-R19-3): diff must delegate TimedText fingerprint to the local authority"
+        }
+        require(patchApplier.contains("TEXT_ELEMENT_CHANGED -> applyTextElementChanged")
+                || patchApplier.contains("case TEXT_ELEMENT_CHANGED -> applyTextElementChanged")) {
+            "FAIL (G-R19-4): patch applier must have a real TEXT_ELEMENT_CHANGED application path"
+        }
+        require(patchApplier.contains("TimedTextCanonicalSemantics.decodeElements")) {
+            "FAIL (G-R19-5): patch must delegate TimedText decode to the local authority"
+        }
+        require(file("timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java").readText()
+                .contains("Duplicate TextElement id")) {
+            "FAIL (G-R19-6): duplicate TextElement identity validation must exist"
+        }
+        val timedTextE2E = file("timeline-module/src/test/java/com/example/platform/timeline/app/TimedTextMergeEngineTest.java").readText()
+        require(timedTextE2E.contains("f1SourceOnlyTimedTextMerge") && timedTextE2E.contains("f3DivergentSameElementConflict")
+                && timedTextE2E.contains("f5DeleteLastEmptyState") && timedTextE2E.contains("f4DeleteVsModifyFailsClosed")) {
+            "FAIL (G-R19-7/8/9): real TimelineMergeEngine TimedText E2E (source/divergent/delete-last/delete-vs-modify) missing"
+        }
+        require(timedTextE2E.contains("f6MixedSemanticFamiliesPreserved")) {
+            "FAIL (G-R19-10): mixed semantic-family merge E2E missing"
+        }
+        require(!timelineMain.contains("content().value().hashCode()")) {
+            "FAIL (G-R19-11): no Java hashCode TimedText semantic identity in production"
+        }
+        require(!timelineMain.contains("SemanticComponent<")) {
+            "FAIL (G-R19-12): no generic SemanticComponent framework introduced"
+        }
+        require(!file("timeline-module/src/main/java/com/example/platform/timeline/canonical/TextElement.java").readText()
+                .contains("drawtext") && !timedText.contains("drawtext")) {
+            "FAIL (G-R19-14): no provider execution syntax in canonical TimedText"
+        }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }

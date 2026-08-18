@@ -9,6 +9,7 @@ public final class TextElementId {
 
     private final String value;
 
+    @com.fasterxml.jackson.annotation.JsonCreator(mode = com.fasterxml.jackson.annotation.JsonCreator.Mode.DELEGATING)
     public TextElementId(String value) {
         Objects.requireNonNull(value, "value");
         if (value.isBlank()) {
@@ -19,6 +20,7 @@ public final class TextElementId {
 
     public static TextElementId random() { return new TextElementId(UUID.randomUUID().toString()); }
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String value() { return value; }
 
     @Override

@@ -457,6 +457,13 @@ public class TimelineMergeEngine {
             } else {
                 mergedComposition.set("automations", automationsToJson(mergedSnapshot.automations()));
             }
+            // ROADMAP #19: merged snapshot is authority for TimedText too —
+            // absent==empty convention (import omits empty textElements).
+            if (mergedSnapshot.textElements().isEmpty()) {
+                mergedComposition.remove("textElements");
+            } else {
+                mergedComposition.set("textElements", textElementsToJson(mergedSnapshot.textElements()));
+            }
             // revision counter is a document-level field; the persistence layer
             // re-assigns it on insert, so leave it untouched here.
             return InternalTimelineJson.write(mergedRoot);
@@ -467,6 +474,7 @@ public class TimelineMergeEngine {
 
     private ArrayNode tracksToJson(List<CanonicalTimelineTrackSnapshot> tracks) {
         ObjectMapper mapper = InternalTimelineJson.mapper();
+
         ArrayNode out = mapper.createArrayNode();
         // Track order is semantic (TRACK_REORDERED materializes the order field);
         // emit in order, mirroring TimelineSnapshotConverter.toDocument sorting.
@@ -514,6 +522,15 @@ public class TimelineMergeEngine {
     }
 
     /** EFFECT_TRANSITION_CANONICALIZATION_V1: merged automations → composition JSON. */
+    /** ROADMAP #19: canonical TextElement JSON array (typed via local codec). */
+    private ArrayNode textElementsToJson(List<com.example.platform.timeline.canonical.TextElement> elements) {
+        ArrayNode arr = InternalTimelineJson.mapper().createArrayNode();
+        for (com.example.platform.timeline.canonical.TextElement e : elements) {
+            arr.add(InternalTimelineJson.mapper().valueToTree(e));
+        }
+        return arr;
+    }
+
     private ArrayNode automationsToJson(List<CanonicalTimelineAutomationSnapshot> automations) {
         ObjectMapper mapper = InternalTimelineJson.mapper();
         ArrayNode out = mapper.createArrayNode();

@@ -21,8 +21,8 @@ public final class FontFallbackPolicy {
     public record ScriptOverride(ScriptTag script, List<FontFamilyName> chain) {}
     public record LanguageOverride(LanguageTag language, List<FontFamilyName> chain) {}
 
-    public FontFallbackPolicy(List<FontFamilyName> defaultChain, List<ScriptOverride> scriptOverrides,
-                              List<LanguageOverride> languageOverrides, List<FontFamilyName> emojiChain) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public FontFallbackPolicy(@com.fasterxml.jackson.annotation.JsonProperty("defaultChain") List<FontFamilyName> defaultChain, @com.fasterxml.jackson.annotation.JsonProperty("scriptOverrides") List<ScriptOverride> scriptOverrides, @com.fasterxml.jackson.annotation.JsonProperty("languageOverrides") List<LanguageOverride> languageOverrides, @com.fasterxml.jackson.annotation.JsonProperty("emojiChain") List<FontFamilyName> emojiChain) {
         this.defaultChain = Collections.unmodifiableList(new ArrayList<>(defaultChain));
         this.scriptOverrides = Collections.unmodifiableList(new ArrayList<>(scriptOverrides));
         this.languageOverrides = Collections.unmodifiableList(new ArrayList<>(languageOverrides));

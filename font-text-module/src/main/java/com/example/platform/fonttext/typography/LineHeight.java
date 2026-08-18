@@ -11,7 +11,8 @@ public final class LineHeight {
     private final Form form;
     private final FontRational value;
 
-    public LineHeight(Form form, FontRational value) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public LineHeight(@com.fasterxml.jackson.annotation.JsonProperty("form") Form form, @com.fasterxml.jackson.annotation.JsonProperty("value") FontRational value) {
         this.form = Objects.requireNonNull(form, "form");
         this.value = Objects.requireNonNull(value, "value");
         if (value.numerator().signum() <= 0) {

@@ -16,8 +16,8 @@ public final class TextStyle {
     private final FontRational tracking;
     private final OpenTypeFeatureIntent features;
 
-    public TextStyle(FontSelectionIntent fontSelection, FontSize fontSize,
-                     FontRational tracking, OpenTypeFeatureIntent features) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public TextStyle(@com.fasterxml.jackson.annotation.JsonProperty("fontSelection") FontSelectionIntent fontSelection, @com.fasterxml.jackson.annotation.JsonProperty("fontSize") FontSize fontSize, @com.fasterxml.jackson.annotation.JsonProperty("tracking") FontRational tracking, @com.fasterxml.jackson.annotation.JsonProperty("features") OpenTypeFeatureIntent features) {
         this.fontSelection = Objects.requireNonNull(fontSelection, "fontSelection");
         this.fontSize = Objects.requireNonNull(fontSize, "fontSize");
         this.tracking = Objects.requireNonNull(tracking, "tracking");

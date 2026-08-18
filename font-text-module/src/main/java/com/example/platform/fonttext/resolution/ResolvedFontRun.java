@@ -12,7 +12,8 @@ public final class ResolvedFontRun {
     private final TextRange range;
     private final ResolvedFontInstance font;
 
-    public ResolvedFontRun(TextRange range, ResolvedFontInstance font) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public ResolvedFontRun(@com.fasterxml.jackson.annotation.JsonProperty("range") TextRange range, @com.fasterxml.jackson.annotation.JsonProperty("font") ResolvedFontInstance font) {
         this.range = Objects.requireNonNull(range, "range");
         this.font = Objects.requireNonNull(font, "font");
     }

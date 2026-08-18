@@ -11,12 +11,14 @@ public record TimelineCandidate(
         TimelineCanonicalProfile profile,
         List<Track> tracks,
         List<CanonicalTransition> transitions,
-        List<CanonicalAutomationCurve> automations) {
+        List<CanonicalAutomationCurve> automations,
+        List<com.example.platform.timeline.canonical.TextElement> textElements) {
 
     public TimelineCandidate {
         tracks = tracks == null ? List.of() : List.copyOf(tracks);
         transitions = transitions == null ? List.of() : List.copyOf(transitions);
         automations = automations == null ? List.of() : List.copyOf(automations);
+        textElements = textElements == null ? List.of() : List.copyOf(textElements);
     }
 
     public static TimelineCandidate fromCanonical(TimelineCanonicalModel model) {
@@ -31,7 +33,7 @@ public record TimelineCandidate(
                                                 List.of(), null))
                                         .toList()))
                         .toList(),
-                model.transitions(), model.automations());
+                model.transitions(), model.automations(), List.of());
     }
 
     public static Track track(String trackId, TrackType type, int zOrder, Double audioGain, List<Clip> clips) {

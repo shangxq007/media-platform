@@ -45,7 +45,7 @@ public final class TimelineDocumentCandidateMapper {
         // to the product; TimelineDocument carries no timeline identifier).
         return new TimelineCandidate(productId, productId,
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks,
-                List.of(), List.of());
+                List.of(), List.of(), List.of());
     }
 
     private static TimelineCandidate.Track mapTrack(TimelineTrack track) {

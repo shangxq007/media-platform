@@ -11,7 +11,9 @@ public final class OpticalSizingIntent {
     private final Kind kind;
     private final FontRational explicitCoordinate; // null unless EXPLICIT
 
-    private OpticalSizingIntent(Kind kind, FontRational explicitCoordinate) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+    private OpticalSizingIntent(@com.fasterxml.jackson.annotation.JsonProperty("kind") Kind kind,
+                                @com.fasterxml.jackson.annotation.JsonProperty("explicitCoordinate") FontRational explicitCoordinate) {
         this.kind = Objects.requireNonNull(kind, "kind");
         this.explicitCoordinate = explicitCoordinate;
         if (kind == Kind.EXPLICIT && explicitCoordinate == null) {

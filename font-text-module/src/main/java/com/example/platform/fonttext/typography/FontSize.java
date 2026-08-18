@@ -10,7 +10,8 @@ public final class FontSize {
 
     private final FontRational value;
 
-    public FontSize(FontRational value) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public FontSize(@com.fasterxml.jackson.annotation.JsonProperty("value") FontRational value) {
         this.value = Objects.requireNonNull(value, "value");
         if (value.numerator().signum() <= 0) {
             throw new IllegalArgumentException("font size must be > 0");

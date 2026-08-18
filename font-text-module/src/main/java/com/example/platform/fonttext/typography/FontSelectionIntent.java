@@ -23,10 +23,8 @@ public final class FontSelectionIntent {
     private final OpticalSizingIntent opticalSizing;
     private final List<VariationCoordinate> explicitAxisOverrides; // sorted by tag, immutable
 
-    public FontSelectionIntent(List<FontFamilyName> familyPreferences, WeightIntent weight,
-                               StretchIntent stretch, SlantIntent slant,
-                               OpticalSizingIntent opticalSizing,
-                               List<VariationCoordinate> explicitAxisOverrides) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public FontSelectionIntent(@com.fasterxml.jackson.annotation.JsonProperty("familyPreferences") List<FontFamilyName> familyPreferences, @com.fasterxml.jackson.annotation.JsonProperty("weight") WeightIntent weight, @com.fasterxml.jackson.annotation.JsonProperty("stretch") StretchIntent stretch, @com.fasterxml.jackson.annotation.JsonProperty("slant") SlantIntent slant, @com.fasterxml.jackson.annotation.JsonProperty("opticalSizing") OpticalSizingIntent opticalSizing, @com.fasterxml.jackson.annotation.JsonProperty("explicitAxisOverrides") List<VariationCoordinate> explicitAxisOverrides) {
         List<FontFamilyName> fam = new ArrayList<>(familyPreferences);
         if (fam.isEmpty()) {
             throw new IllegalArgumentException("at least one family preference required");

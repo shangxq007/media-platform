@@ -59,6 +59,14 @@ public record CanonicalTimelineSnapshot(
                 outputProfile, safeMetadata, textElements, transitions, automations);
     }
 
+    // ROADMAP #19: TimedText-aware full-state copy helper (preserves all other
+    // fields, including effects via tracks, transitions and automations).
+    public CanonicalTimelineSnapshot withTextElements(List<com.example.platform.timeline.canonical.TextElement> newTextElements) {
+        return new CanonicalTimelineSnapshot(id, revisionId, duration,
+                tracks, captions, watermarks, templateApplications, workflowSteps,
+                outputProfile, safeMetadata, newTextElements, transitions, automations);
+    }
+
     public CanonicalTimelineSnapshot withTransitions(List<CanonicalTimelineTransitionSnapshot> newTransitions) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
                 tracks, captions, watermarks, templateApplications, workflowSteps,

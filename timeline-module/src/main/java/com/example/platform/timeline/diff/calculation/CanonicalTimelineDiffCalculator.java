@@ -1,7 +1,8 @@
 package com.example.platform.timeline.diff.calculation;
 
-import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
+import com.example.platform.timeline.canonical.TimedTextCanonicalSemantics;
 import com.example.platform.timeline.canonicalmodel.EffectCanonicalSemantics;
+import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.timeline.diff.*;
 import java.util.*;
 
@@ -455,15 +456,24 @@ public class CanonicalTimelineDiffCalculator {
         for (String id : beforeMap.keySet()) {
             var b = beforeMap.get(id);
             if (!afterMap.containsKey(id)) {
-                ops.add(change(seq, TimelineChangeType.TEXT_ELEMENT_CHANGED,
-                        TimelineChangeScope.TEXT_ELEMENT, "timeline.textElements." + id,
-                        b.id().value(), null));
+                // ROADMAP #19: deletion is first-class semantic behavior —
+                // explicit deleted op, never ambiguous with an empty change.
+                Map<String, String> delMeta = new java.util.LinkedHashMap<>();
+                delMeta.put("deleted", "true");
+                ops.add(new TimelineChangeOperation(
+                        new TimelineChangeOperationId("op-" + (++seq[0])),
+                        TimelineChangeType.TEXT_ELEMENT_CHANGED, TimelineChangeScope.TEXT_ELEMENT,
+                        new TimelineChangePath("timeline.textElements." + id),
+                        TimelineChangePayload.ofString(b.id().value()),
+                        TimelineChangePayload.empty(),
+                        delMeta));
             } else {
                 var a = afterMap.get(id);
                 if (!b.equals(a)) {
                     ops.add(change(seq, TimelineChangeType.TEXT_ELEMENT_CHANGED,
                             TimelineChangeScope.TEXT_ELEMENT, "timeline.textElements." + id,
-                            summary(b), summary(a)));
+                            TimedTextCanonicalSemantics.semanticFingerprint(b),
+                            TimedTextCanonicalSemantics.semanticFingerprint(a)));
                 }
             }
         }
@@ -484,11 +494,6 @@ public class CanonicalTimelineDiffCalculator {
             m.put(e.id().value(), e);
         }
         return m;
-    }
-
-    private static String summary(com.example.platform.timeline.canonical.TextElement e) {
-        return e.id().value() + ":" + e.styledText().content().scalarCount() + ":" + e.start()
-                + ":" + e.duration() + ":" + e.styledText().content().value().hashCode();
     }
 
     // --- Template application diff ---

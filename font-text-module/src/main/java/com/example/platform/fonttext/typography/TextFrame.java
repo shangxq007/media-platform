@@ -17,9 +17,8 @@ public final class TextFrame {
     private final ParagraphStyle.WrapPolicy wrapBehavior;
     private final OverflowBehavior overflowBehavior;
 
-    public TextFrame(FontRational widthConstraint, FontRational heightConstraint,
-                     HorizontalAlignment horizontalAlignment, VerticalAlignment verticalAlignment,
-                     ParagraphStyle.WrapPolicy wrapBehavior, OverflowBehavior overflowBehavior) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public TextFrame(@com.fasterxml.jackson.annotation.JsonProperty("widthConstraint") FontRational widthConstraint, @com.fasterxml.jackson.annotation.JsonProperty("heightConstraint") FontRational heightConstraint, @com.fasterxml.jackson.annotation.JsonProperty("horizontalAlignment") HorizontalAlignment horizontalAlignment, @com.fasterxml.jackson.annotation.JsonProperty("verticalAlignment") VerticalAlignment verticalAlignment, @com.fasterxml.jackson.annotation.JsonProperty("wrapBehavior") ParagraphStyle.WrapPolicy wrapBehavior, @com.fasterxml.jackson.annotation.JsonProperty("overflowBehavior") OverflowBehavior overflowBehavior) {
         this.widthConstraint = Objects.requireNonNull(widthConstraint, "widthConstraint");
         this.heightConstraint = heightConstraint;
         this.horizontalAlignment = Objects.requireNonNull(horizontalAlignment, "horizontalAlignment");

@@ -11,7 +11,7 @@ public final class FontFamilyName {
     private final String name;
 
     @com.fasterxml.jackson.annotation.JsonCreator
-    public FontFamilyName(String name) {
+public FontFamilyName(@com.fasterxml.jackson.annotation.JsonProperty("name") String name) {
         Objects.requireNonNull(name, "name");
         String n = name.trim();
         if (n.isEmpty()) {

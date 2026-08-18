@@ -91,9 +91,17 @@ public final class InternalTimelineCandidateAdapter {
                 if (curve != null) automations.add(curve);
             }
         }
+        List<com.example.platform.timeline.canonical.TextElement> textElements = new ArrayList<>();
+        JsonNode textNodes = composition.path("textElements");
+        if (textNodes.isArray()) {
+            for (JsonNode elNode : textNodes) {
+                textElements.add(com.example.platform.timeline.canonical.TimedTextCanonicalSemantics
+                        .fromCanonicalNode(elNode));
+            }
+        }
         return new TimelineCandidate(timelineId, projectId,
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks,
-                transitions, automations);
+                transitions, automations, textElements);
     }
 
     /**

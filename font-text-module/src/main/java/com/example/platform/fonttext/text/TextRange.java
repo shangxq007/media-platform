@@ -11,7 +11,8 @@ public final class TextRange {
     private final int start;
     private final int end;
 
-    public TextRange(int start, int end) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public TextRange(@com.fasterxml.jackson.annotation.JsonProperty("start") int start, @com.fasterxml.jackson.annotation.JsonProperty("end") int end) {
         if (start < 0 || end < start) {
             throw new IllegalArgumentException("invalid scalar range [" + start + ", " + end + ")");
         }

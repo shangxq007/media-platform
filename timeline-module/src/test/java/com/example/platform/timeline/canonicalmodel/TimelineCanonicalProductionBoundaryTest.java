@@ -20,7 +20,7 @@ class TimelineCanonicalProductionBoundaryTest {
                                         MediaTime.ofTicks(5, 1), MediaTime.ZERO, MediaTime.ofTicks(5, 1), null))),
                         TimelineCandidate.track("video-b", TimelineCandidate.TrackType.VIDEO, 1, null,
                                 List.of(TimelineCandidate.clip("clip-a", TimelineSourceRef.of("raw-a"),
-                                        MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(5, 1), null)))), List.of(), List.of());
+                                        MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(5, 1), null)))), List.of(), List.of(), List.of());
 
         TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
         TimelineCanonicalModel normalized = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
@@ -49,7 +49,7 @@ class TimelineCanonicalProductionBoundaryTest {
                                                 MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(5, 1), null),
                                         TimelineCandidate.clip("clip-1", TimelineSourceRef.of("raw-b"),
                                                 MediaTime.ofTicks(3, 1), MediaTime.ofTicks(2, 1), MediaTime.ofTicks(2, 1), null))),
-                        TimelineCandidate.track("video", TimelineCandidate.TrackType.SUBTITLE, 0, null, List.of())), List.of(), List.of());
+                        TimelineCandidate.track("video", TimelineCandidate.TrackType.SUBTITLE, 0, null, List.of())), List.of(), List.of(), List.of());
 
         TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
 

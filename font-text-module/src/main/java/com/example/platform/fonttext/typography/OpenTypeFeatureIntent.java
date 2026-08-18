@@ -15,7 +15,8 @@ public final class OpenTypeFeatureIntent {
 
     public record OpenTypeFeatureSetting(OpenTypeFeatureTag tag, State state) {}
 
-    public OpenTypeFeatureIntent(List<OpenTypeFeatureSetting> settings) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public OpenTypeFeatureIntent(@com.fasterxml.jackson.annotation.JsonProperty("settings") List<OpenTypeFeatureSetting> settings) {
         List<OpenTypeFeatureSetting> s = new ArrayList<>(settings);
         s.sort((a, b) -> a.tag().compareTo(b.tag()));
         this.settings = Collections.unmodifiableList(s);

@@ -14,7 +14,8 @@ public final class TextContent {
 
     private final String value;
 
-    public TextContent(String value) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public TextContent(@com.fasterxml.jackson.annotation.JsonProperty("value") String value) {
         Objects.requireNonNull(value, "value");
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);

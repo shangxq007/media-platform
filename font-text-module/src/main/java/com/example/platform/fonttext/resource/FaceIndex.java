@@ -10,7 +10,8 @@ public final class FaceIndex {
 
     private final int value;
 
-    public FaceIndex(int value) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public FaceIndex(@com.fasterxml.jackson.annotation.JsonProperty("value") int value) {
         if (value < 0) {
             throw new IllegalArgumentException("FaceIndex must be >= 0");
         }

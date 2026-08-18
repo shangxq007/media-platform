@@ -12,7 +12,8 @@ public final class FontRational {
     private final BigInteger numerator;
     private final BigInteger denominator;
 
-    public FontRational(BigInteger numerator, BigInteger denominator) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public FontRational(@com.fasterxml.jackson.annotation.JsonProperty("numerator") BigInteger numerator, @com.fasterxml.jackson.annotation.JsonProperty("denominator") BigInteger denominator) {
         Objects.requireNonNull(numerator, "numerator");
         Objects.requireNonNull(denominator, "denominator");
         if (denominator.signum() == 0) {

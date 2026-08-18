@@ -19,9 +19,8 @@ public final class ParagraphStyle {
     private final ParagraphBaseDirection baseDirection;
     private final LineBreakPolicy lineBreakPolicy;
 
-    public ParagraphStyle(Alignment alignment, Justification justification, LineHeight lineHeight,
-                          WrapPolicy wrapPolicy, ParagraphBaseDirection baseDirection,
-                          LineBreakPolicy lineBreakPolicy) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public ParagraphStyle(@com.fasterxml.jackson.annotation.JsonProperty("alignment") Alignment alignment, @com.fasterxml.jackson.annotation.JsonProperty("justification") Justification justification, @com.fasterxml.jackson.annotation.JsonProperty("lineHeight") LineHeight lineHeight, @com.fasterxml.jackson.annotation.JsonProperty("wrapPolicy") WrapPolicy wrapPolicy, @com.fasterxml.jackson.annotation.JsonProperty("baseDirection") ParagraphBaseDirection baseDirection, @com.fasterxml.jackson.annotation.JsonProperty("lineBreakPolicy") LineBreakPolicy lineBreakPolicy) {
         this.alignment = Objects.requireNonNull(alignment, "alignment");
         this.justification = Objects.requireNonNull(justification, "justification");
         this.lineHeight = Objects.requireNonNull(lineHeight, "lineHeight");

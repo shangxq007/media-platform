@@ -12,7 +12,8 @@ public final class TextStyleRun {
     private final TextRange range;
     private final TextStyle style;
 
-    public TextStyleRun(TextRange range, TextStyle style) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public TextStyleRun(@com.fasterxml.jackson.annotation.JsonProperty("range") TextRange range, @com.fasterxml.jackson.annotation.JsonProperty("style") TextStyle style) {
         this.range = Objects.requireNonNull(range, "range");
         this.style = Objects.requireNonNull(style, "style");
     }

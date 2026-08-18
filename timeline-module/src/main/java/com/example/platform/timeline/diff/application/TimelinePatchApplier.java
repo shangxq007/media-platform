@@ -73,6 +73,7 @@ public class TimelinePatchApplier {
             case EFFECT_CHANGED -> applyEffectChanged(s, op);
             case TRANSITION_CHANGED -> applyTransitionChanged(s, op);
             case AUTOMATION_CHANGED -> applyAutomationChanged(s, op);
+            case TEXT_ELEMENT_CHANGED -> applyTextElementChanged(s, op);
             default -> TimelinePatchApplicationResult.unsupported("Unsupported: " + op.type());
         };
     }
@@ -390,6 +391,57 @@ public class TimelinePatchApplier {
             }
         }
         return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND, op.path().value(), "Clip not found");
+    }
+
+    /**
+     * ROADMAP #19 — TimedText change application. Delegates ALL TextElement
+     * field semantics to the local TimedTextCanonicalSemantics authority:
+     * the op's afterValue is the canonical fingerprint payload (decode →
+     * replace id-matched element; null afterValue = deletion).
+     */
+    private TimelinePatchApplicationResult applyTextElementChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        String elementId = op.path().value().substring("timeline.textElements.".length());
+        Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        List<com.example.platform.timeline.canonical.TextElement> elements =
+                new ArrayList<>(s.textElements());
+        if ("true".equals(meta.get("deleted"))) {
+            boolean removed = elements.removeIf(e -> e.id().value().equals(elementId));
+            if (!removed) {
+                return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND, op.path().value(),
+                        "TextElement not found for deletion");
+            }
+            return ok(s.withTextElements(elements));
+        }
+        String afterValue = op.afterValue() != null ? op.afterValue().stringValue() : null;
+        if (afterValue == null) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "TextElement change requires a canonical after payload");
+        }
+        List<com.example.platform.timeline.canonical.TextElement> decoded =
+                com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.decodeElements(
+                        "[" + afterValue + "]");
+        if (decoded.size() != 1) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "TextElement canonical payload must decode to exactly one element");
+        }
+        com.example.platform.timeline.canonical.TextElement replacement = decoded.get(0);
+        if (!replacement.id().value().equals(elementId)) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "TextElement payload id does not match change path");
+        }
+        boolean replaced = false;
+        for (int i = 0; i < elements.size(); i++) {
+            if (elements.get(i).id().value().equals(elementId)) {
+                elements.set(i, replacement);
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) {
+            // NEW element (added) — append, preserving collection ordering semantics.
+            elements.add(replacement);
+        }
+        return ok(s.withTextElements(elements));
     }
 
     private TimelinePatchApplicationResult applyTransitionChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {

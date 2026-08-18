@@ -11,7 +11,7 @@ class TimelineCanonicalValidatorTest {
     @Test
     void emptyTimelineIsValidAndNormalizesToEmptyModel() {
         TimelineCandidate candidate = new TimelineCandidate("timeline-empty", "project-1",
-                TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, List.of(), List.of(), List.of());
+                TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, List.of(), List.of(), List.of(), List.of());
 
         TimelineValidationResult result = TimelineCanonicalValidator.validate(candidate);
         TimelineCanonicalModel model = TimelineCanonicalNormalizer.normalize(candidate).orElseThrow();
@@ -27,7 +27,7 @@ class TimelineCanonicalValidatorTest {
         TimelineCandidate candidate = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(track("track", clip("clip", "source-a", 0, 5)),
-                        track("track", clip("clip", "source-b", 5, 5))), List.of(), List.of());
+                        track("track", clip("clip", "source-b", 5, 5))), List.of(), List.of(), List.of());
 
         assertEquals(List.of(TimelineDiagnosticCode.TIMELINE_TRACK_ID_DUPLICATE,
                         TimelineDiagnosticCode.TIMELINE_CLIP_ID_DUPLICATE),
@@ -39,11 +39,11 @@ class TimelineCanonicalValidatorTest {
         TimelineCandidate zero = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(track("track", TimelineCandidate.clip("clip", TimelineSourceRef.of("source-a"),
-                        MediaTime.ZERO, MediaTime.ZERO, MediaTime.ZERO, null))), List.of(), List.of());
+                        MediaTime.ZERO, MediaTime.ZERO, MediaTime.ZERO, null))), List.of(), List.of(), List.of());
         TimelineCandidate missingSource = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(track("track", TimelineCandidate.clip("clip", null,
-                        MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(1, 1), null))), List.of(), List.of());
+                        MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(1, 1), null))), List.of(), List.of(), List.of());
 
         assertEquals(TimelineDiagnosticCode.TIMELINE_DURATION_ZERO,
                 TimelineCanonicalValidator.validate(zero).diagnostics().getFirst().code());
@@ -57,7 +57,7 @@ class TimelineCanonicalValidatorTest {
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(TimelineCandidate.track("subtitle", TimelineCandidate.TrackType.SUBTITLE, 0, null,
                         List.of(TimelineCandidate.clip("clip", TimelineSourceRef.of("source-a"),
-                                MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(1, 1), List.of("effect"))))), List.of(), List.of());
+                                MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(1, 1), List.of("effect"))))), List.of(), List.of(), List.of());
 
         assertEquals(List.of(TimelineDiagnosticCode.TIMELINE_TRACK_TYPE_UNSUPPORTED,
                         TimelineDiagnosticCode.TIMELINE_CONSTRUCT_UNSUPPORTED),

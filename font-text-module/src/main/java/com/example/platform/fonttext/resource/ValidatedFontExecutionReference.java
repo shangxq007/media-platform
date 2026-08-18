@@ -18,11 +18,8 @@ public final class ValidatedFontExecutionReference {
     private final FontFormat format;
     private final FaceIndex faceIndex;
 
-    public ValidatedFontExecutionReference(FontContentDigest sourceFontContentDigest,
-                                           FontContentDigest validatedExecutionContentDigest,
-                                           FontSecurityState securityState,
-                                           FontFormat format,
-                                           FaceIndex faceIndex) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+public ValidatedFontExecutionReference(@com.fasterxml.jackson.annotation.JsonProperty("sourceFontContentDigest") FontContentDigest sourceFontContentDigest, @com.fasterxml.jackson.annotation.JsonProperty("validatedExecutionContentDigest") FontContentDigest validatedExecutionContentDigest, @com.fasterxml.jackson.annotation.JsonProperty("securityState") FontSecurityState securityState, @com.fasterxml.jackson.annotation.JsonProperty("format") FontFormat format, @com.fasterxml.jackson.annotation.JsonProperty("faceIndex") FaceIndex faceIndex) {
         this.sourceFontContentDigest = Objects.requireNonNull(sourceFontContentDigest, "source digest");
         this.validatedExecutionContentDigest = Objects.requireNonNull(validatedExecutionContentDigest, "validated digest");
         this.securityState = Objects.requireNonNull(securityState, "securityState");
