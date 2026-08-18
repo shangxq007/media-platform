@@ -1,5 +1,6 @@
 package com.example.platform.timeline.diff.calculation;
 
+import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.timeline.diff.*;
 import java.util.*;
 
@@ -182,23 +183,23 @@ public class CanonicalTimelineDiffCalculator {
                             TimelineChangeScope.ASSET_BINDING, clipPath + ".assetBindingId",
                             bc.assetBindingId(), ac.assetBindingId()));
                 }
-                // EFFECT_TRANSITION_CANONICALIZATION_V1 (second correction):
-                // effects are typed authored semantics — diffed by local
-                // semantic equality (record equality covers id/effectKey/
-                // parameters). Coarse EFFECT_CHANGED op is deterministic,
-                // patchable, merge-visible and conflict-visible (non-lossy).
-                // After-state rides in safeMetadata for patch materialization.
-                if (!bc.effects().equals(ac.effects())) {
+                // EFFECT_TRANSITION_CANONICALIZATION_V1 (FOURTH CORRECTION):
+                // effects are authored Timeline semantics owned by
+                // TimelineClipEffect.semanticFingerprint() — the diff consumes
+                // that single local semantic authority (no central field
+                // encoding, no List.toString()/Map.toString() signatures).
+                // Coarse EFFECT_CHANGED op is deterministic, patchable,
+                // merge-visible and conflict-visible (non-lossy).
+                if (!effectFingerprint(bc.effects()).equals(effectFingerprint(ac.effects()))) {
                     Map<String, String> meta = new LinkedHashMap<>();
                     StringBuilder sb = new StringBuilder();
                     for (var fx : ac.effects()) {
                         if (sb.length() > 0) sb.append('\u001f');
                         sb.append(fx.id() == null ? "" : fx.id()).append('\u001e')
                                 .append(fx.effectKey()).append('\u001e');
-                        if (fx.parameters() != null) {
-                            sb.append(fx.parameters().entrySet().stream()
-                                    .map(e -> e.getKey() + "=" + e.getValue())
-                                    .reduce((a, b) -> a + "," + b).orElse(""));
+                        if (fx.parameters() != null && !fx.parameters().isEmpty()) {
+                            new java.util.TreeMap<>(fx.parameters()).forEach((k, v) ->
+                                    sb.append(k).append('=').append(v == null ? "" : v).append(','));
                         }
                     }
                     meta.put("effects", sb.toString());
@@ -207,8 +208,8 @@ public class CanonicalTimelineDiffCalculator {
                             TimelineChangeType.EFFECT_CHANGED,
                             TimelineChangeScope.CLIP,
                             new TimelineChangePath(clipPath + ".effects"),
-                            TimelineChangePayload.ofString(bc.effects().toString()),
-                            TimelineChangePayload.ofString(ac.effects().toString()),
+                            TimelineChangePayload.ofString(effectFingerprint(bc.effects())),
+                            TimelineChangePayload.ofString(effectFingerprint(ac.effects())),
                             meta));
                 }
             }
@@ -216,6 +217,22 @@ public class CanonicalTimelineDiffCalculator {
     }
 
     // --- Transition / Automation diff (EFFECT_TRANSITION_CANONICALIZATION_V1) ---
+
+    /**
+     * Effect local semantic fingerprint consumed by production diff: delegates
+     * to TimelineClipEffect.semanticFingerprint() (single local authority).
+     */
+    private String effectFingerprint(List<TimelineClipEffect> effects) {
+        if (effects == null || effects.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (TimelineClipEffect e : effects) {
+            if (sb.length() > 0) sb.append('\u001f');
+            sb.append(e.semanticFingerprint());
+        }
+        return sb.toString();
+    }
 
     private void diffTransitions(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
                                  List<TimelineChangeOperation> ops, int[] seq) {

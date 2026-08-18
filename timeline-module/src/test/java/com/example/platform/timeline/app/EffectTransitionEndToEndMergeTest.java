@@ -1,0 +1,429 @@
+package com.example.platform.timeline.app;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.example.platform.shared.time.FrameRate;
+import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.app.TimelineImportRequest.ImportAutomationCurve;
+import com.example.platform.timeline.app.TimelineImportRequest.ImportAutomationKeyframe;
+import com.example.platform.timeline.app.TimelineImportRequest.ImportClip;
+import com.example.platform.timeline.app.TimelineImportRequest.ImportClipEffect;
+import com.example.platform.timeline.app.TimelineImportRequest.ImportOutput;
+import com.example.platform.timeline.app.TimelineImportRequest.ImportTrack;
+import com.example.platform.timeline.app.TimelineImportRequest.ImportTransition;
+import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
+import com.example.platform.timeline.app.TimelineCanonicalizer;
+import com.example.platform.timeline.internal.TimelineMergeResult;
+import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
+import com.example.platform.timeline.internal.TimelineMergeRequest;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
+import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
+import com.example.platform.timeline.diff.application.TimelinePatchApplier;
+import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
+import com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector;
+import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+/**
+ * TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 — FOURTH CORRECTION:
+ * TRUE END-TO-END TimelineMergeEngine proof.
+ *
+ * Every case runs the ACTUAL production sequence:
+ * revision payloads -> canonical gate -> production diff -> conflict analysis
+ * -> merge plan -> production patch/apply -> TimelineMergeEngine -> merged
+ * internal payload -> reload through canonical adapter/gate -> assert.
+ *
+ * E2E-M1/M2/M3 source-only semantic merges, E2E-R1/R2 delete-last,
+ * E2E-C1 divergent conflict (no silent resolution), E2E-X1 delete-Clip vs
+ * Transition (fail closed), XV1-XV3 aggregate validation.
+ */
+class EffectTransitionEndToEndMergeTest {
+
+    private final TimelineImportService importService = new TimelineImportService();
+
+    // ── fixtures ──
+
+    private static ImportTrack fullTrack(String clipId, String effectParamValue) {
+        return new ImportTrack("v1", "VIDEO", 0, List.of(
+                new ImportClip(clipId, "ast_1", "file:///a.mp4", 1920, 1080,
+                        0.0, 2.0, 0.0, 2.0,
+                        List.of(new ImportClipEffect("fx1", "blur",
+                                Map.of("radius", Integer.valueOf(effectParamValue))))),
+                new ImportClip(clipId + "-2", "ast_2", "file:///b.mp4", 1920, 1080,
+                        2.0, 4.0, 0.0, 2.0, List.of())));
+    }
+
+    private static TimelineImportRequest base(String timelineId) {
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", "3")),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
+    }
+
+    private static TimelineImportRequest withEffectRadius(String timelineId, String radius) {
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", radius)),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
+    }
+
+    private static TimelineImportRequest withTransitionDuration(String timelineId, long ticks, long scale) {
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", "3")),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        ticks, scale, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
+    }
+
+    private static TimelineImportRequest withAutomationValue(String timelineId, double v) {
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", "3")),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, v, "LINEAR")))));
+    }
+
+    private static TimelineImportRequest withoutSemantics(String timelineId) {
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", "3")),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0, List.of(), List.of());
+    }
+
+    private static TimelineImportRequest withoutTransitionOnly(String timelineId) {
+        // SOURCE: deletes the transition only; automation remains.
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", "3")),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0, List.of(),
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
+    }
+
+    private static TimelineImportRequest withoutAutomationOnly(String timelineId) {
+        // SOURCE: deletes the automation only; transition remains.
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", "3")),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of());
+    }
+
+    private static TimelineImportRequest withoutClipC1(String timelineId) {
+        // OURS: delete Clip c1 (transition t1 references it) — this request is
+        // INVALID by construction and must fail closed at the canonical gate.
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1-2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
+    }
+
+    private static TimelineImportRequest withoutClipC1AndTransition(String timelineId) {
+        // OURS: delete Clip c1 AND the transition referencing it AND the
+        // automation targeting fx1 (hosted on c1) — a locally consistent
+        // delete (valid aggregate: no dangling references of any kind).
+        return new TimelineImportRequest(timelineId, "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1-2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0, List.of(), List.of());
+    }
+
+    // ── engine harness (real production path) ──
+
+    /**
+     * Runs the actual production merge sequence for base/source/target payloads
+     * and returns the merged internal payload + reloaded semantic state.
+     */
+    private record MergeOutcome(
+            TimelineMergeResult result,
+            String mergedPayload,
+            TimelineCandidate reloaded,
+            TimelineValidationResult reloadValidation) {
+    }
+
+    private MergeOutcome merge(TimelineImportRequest baseReq, TimelineImportRequest sourceReq,
+            TimelineImportRequest targetReq) {
+        com.example.platform.shared.web.TenantContext.set("tenant-1");
+        String base = importService.importTimeline(baseReq);
+        String source = importService.importTimeline(sourceReq);
+        String target = importService.importTimeline(targetReq);
+        TimelineRevisionRepository revisionRepo = mock(TimelineRevisionRepository.class);
+        TimelineSnapshotService snapshotService = mock(TimelineSnapshotService.class);
+        com.example.platform.timeline.app.ProductCurrentRevisionService currentService =
+                mock(com.example.platform.timeline.app.ProductCurrentRevisionService.class);
+        TimelineRevisionRepository.RevisionRow baseRow = row("base-rev", "snap-base", base);
+        TimelineRevisionRepository.RevisionRow srcRow = row("src-rev", "snap-src", source);
+        TimelineRevisionRepository.RevisionRow tgtRow = row("tgt-rev", "snap-tgt", target);
+        when(revisionRepo.findById("base-rev")).thenReturn(Optional.of(baseRow));
+        when(revisionRepo.findById("src-rev")).thenReturn(Optional.of(srcRow));
+        when(revisionRepo.findById("tgt-rev")).thenReturn(Optional.of(tgtRow));
+        when(snapshotService.findById("snap-base"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", base, "internal-1.0")));
+        when(snapshotService.findById("snap-src"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", source, "internal-1.0")));
+        when(snapshotService.findById("snap-tgt"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", target, "internal-1.0")));
+        when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("snap-merged");
+        when(revisionRepo.nextRevisionNumber("proj-1")).thenReturn(9);
+        when(revisionRepo.listByProject("proj-1", 500)).thenReturn(List.of());
+        when(currentService.getCurrentRevisionId("proj-1")).thenReturn("tgt-rev");
+        var previewService = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
+        var planner = new TimelineNonConflictingMergePlanner(previewService);
+        TimelineMergeEngine engine = new TimelineMergeEngine(revisionRepo, snapshotService,
+                currentService, previewService, planner, new TimelinePatchApplier(),
+                InternalTimelineJson.mapper());
+        TimelineMergeResult result = engine.merge(new TimelineMergeRequest(
+                "proj-1", "tenant-1", "base-rev", "src-rev", "tgt-rev", "user-1", "merge-1"));
+        if (result.status() == TimelineMergeResult.MergeStatus.MERGED) {
+            TimelineCandidate reloaded = InternalTimelineCandidateAdapter.map("proj-1", result.mergedPayloadJson());
+            TimelineValidationResult validation = TimelineCanonicalValidator.validate(reloaded);
+            return new MergeOutcome(result, result.mergedPayloadJson(), reloaded, validation);
+        }
+        return new MergeOutcome(result, null, null, null);
+    }
+
+    private String hashOf(String payload) {
+        return new TimelineContentHasher(new TimelineCanonicalizer()).hashInternalTimeline(payload);
+    }
+
+    private static TimelineRevisionRepository.RevisionRow row(String rev, String snap, String payload) {
+        return new TimelineRevisionRepository.RevisionRow(
+                rev, "proj-1", "tenant-1", "base-rev", 1, snap, 0,
+                new TimelineContentHasher(new TimelineCanonicalizer()).hashInternalTimeline(payload),
+                "internal-1.0", "merge", "user-1", null, "test", null, null, null,
+                true, "src-rev,tgt-rev", "base-rev", java.time.OffsetDateTime.now());
+    }
+
+    // ── E2E-M1: effect source-only merge ──
+    @Test
+    void e2eM1EffectSourceOnlySurvivesActualMerge() {
+        MergeOutcome out = merge(base("tl"), withEffectRadius("tl", "9"), base("tl"));
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, out.result.status());
+        assertNotNull(out.mergedPayload, "E2E-M1: merged payload must be produced");
+        assertFalse(out.reloadValidation.hasFatalErrors(), "E2E-M1: merged payload must pass canonical validation");
+        // Reloaded semantics: effect radius = 9; transition + automation preserved.
+        assertEquals(1, out.reloaded.tracks().get(0).clips().get(0).effects().size());
+        assertTrue(out.reloaded.tracks().get(0).clips().get(0).effects().get(0).parameters()
+                        .get("radius").toString().contains("9"),
+                "E2E-M1: source-only effect change must survive actual merge");
+        assertEquals(1, out.reloaded.transitions().size(), "E2E-M1: transition preserved");
+        assertEquals(1, out.reloaded.automations().size(), "E2E-M1: automation preserved");
+    }
+
+    // ── E2E-M2: transition source-only merge ──
+    @Test
+    void e2eM2TransitionSourceOnlySurvivesActualMerge() {
+        MergeOutcome out = merge(base("tl"), withTransitionDuration("tl", 30, 30), base("tl"));
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, out.result.status());
+        assertFalse(out.reloadValidation.hasFatalErrors());
+        assertEquals(1, out.reloaded.tracks().get(0).clips().get(0).effects().size(),
+                "E2E-M2: effect preserved");
+        assertTrue(out.reloaded.transitions().get(0).duration().isEqualTo(MediaTime.ofTicks(30, 30)),
+                "E2E-M2: source-only transition duration change must survive actual merge");
+        assertEquals(1, out.reloaded.automations().size(), "E2E-M2: automation preserved");
+    }
+
+    // ── E2E-M3: automation source-only merge ──
+    @Test
+    void e2eM3AutomationSourceOnlySurvivesActualMerge() {
+        MergeOutcome out = merge(base("tl"), withAutomationValue("tl", 0.8), base("tl"));
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, out.result.status());
+        assertFalse(out.reloadValidation.hasFatalErrors());
+        assertEquals(0.8, out.reloaded.automations().get(0).keyframes().get(0).value(), 1e-9,
+                "E2E-M3: source-only automation change must survive actual merge");
+        assertEquals(1, out.reloaded.transitions().size(), "E2E-M3: transition preserved");
+        assertEquals(1, out.reloaded.tracks().get(0).clips().get(0).effects().size(),
+                "E2E-M3: effect preserved");
+    }
+
+    // ── E2E-R1: transition delete-last → merged payload empty/absent (no resurrection) ──
+    @Test
+    void e2eR1TransitionDeleteLastProducesEmptyMergedState() {
+        MergeOutcome out = merge(base("tl"), withoutTransitionOnly("tl"), base("tl"));
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, out.result.status());
+        assertTrue(out.reloaded.transitions().isEmpty(),
+                "E2E-R1: delete-last transition must be absent from merged payload");
+        // Serialized payload must not resurrect target's transition.
+        assertFalse(out.mergedPayload.contains("\"transitions\""),
+                "E2E-R1: merged payload must carry canonical empty (field absent), no target resurrection");
+        assertEquals(1, out.reloaded.automations().size(),
+                "E2E-R1: unrelated automation preserved");
+    }
+
+    // ── E2E-R2: automation delete-last → merged payload empty/absent ──
+    @Test
+    void e2eR2AutomationDeleteLastProducesEmptyMergedState() {
+        MergeOutcome out = merge(base("tl"), withoutAutomationOnly("tl"), base("tl"));
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, out.result.status());
+        assertTrue(out.reloaded.automations().isEmpty(),
+                "E2E-R2: delete-last automation must be absent from merged payload");
+        assertFalse(out.mergedPayload.contains("\"automations\""),
+                "E2E-R2: merged payload must carry canonical empty (field absent), no target resurrection");
+        assertEquals(1, out.reloaded.transitions().size(),
+                "E2E-R2: unrelated transition preserved");
+    }
+
+    // ── E2E-C1: divergent effect two-sided edit → NO silent merged revision ──
+    @Test
+    void e2eC1DivergentEffectEditDoesNotSilentlyMerge() {
+        MergeOutcome out = merge(base("tl"), withEffectRadius("tl", "9"), withEffectRadius("tl", "15"));
+        assertFalse(out.result.status() == TimelineMergeResult.MergeStatus.MERGED,
+                "E2E-C1: divergent two-sided effect edit must not produce a silent merged revision; got "
+                        + out.result.status() + " " + out.result.mergedRevisionId());
+    }
+
+    // ── E2E-X1: delete Clip vs Transition — REAL three-way cases ──
+    // Case A (THEIRS retains t1): OURS deletes c1 AND resolves its own local
+    // state by deleting the referencing transition → merged aggregate is valid
+    // (no dangling endpoint) and may merge cleanly.
+    // Case B (THEIRS modifies t1): OURS deletes c1 + t1 while THEIRS changes t1
+    // → same-path delete-vs-modify must fail closed (explicit conflict).
+    // Forbidden in both: a persisted/reloaded dangling Transition (t1 → missing c1).
+    @Test
+    void e2eX1DeleteClipVsTransitionFailsClosed() {
+        // Case A: consistent delete on OURS side; THEIRS retains base.
+        MergeOutcome outA = merge(base("tl"), withoutClipC1AndTransition("tl"), base("tl"));
+        if (outA.result.status() == TimelineMergeResult.MergeStatus.MERGED) {
+            // Reloaded aggregate must not contain a dangling transition.
+            assertTrue(outA.reloaded.transitions().isEmpty(),
+                    "E2E-X1A: merged aggregate must not carry a transition referencing deleted clip c1");
+            assertFalse(outA.reloadValidation.hasFatalErrors(),
+                    "E2E-X1A: merged payload must pass aggregate validation");
+        } else {
+            // Explicit conflict / blocked is also acceptable (fail-closed).
+            assertTrue(outA.result.status() == TimelineMergeResult.MergeStatus.CONFLICTS
+                            || outA.result.status() == TimelineMergeResult.MergeStatus.FAILED,
+                    "E2E-X1A: fail-closed via conflict/blocked; got " + outA.result.status());
+        }
+
+        // Case B: THEIRS modifies t1 while OURS deletes c1 + t1 →
+        // delete-vs-modify on the same transition path must fail closed.
+        MergeOutcome outB = merge(base("tl"), withoutClipC1AndTransition("tl"),
+                withTransitionDuration("tl", 30, 30));
+        assertFalse(outB.result.status() == TimelineMergeResult.MergeStatus.MERGED,
+                "E2E-X1B: delete-Clip/Transition vs modified Transition must not silently merge; got "
+                        + outB.result.status() + " " + outB.result.mergedRevisionId());
+    }
+
+    // ── XV1/XV2/XV3: aggregate validation rejects dangling/self transition endpoints ──
+    @Test
+    void xv1TransitionOutgoingClipMissingFailsValidation() {
+        var bad = new TimelineImportRequest("tl", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
+                                0.0, 2.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 2.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "ghost", "c1", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of())),
+                List.of());
+        assertRejected(bad, "XV1: transition with missing outgoing Clip must be rejected");
+    }
+
+    @Test
+    void xv2TransitionIncomingClipMissingFailsValidation() {
+        var bad = new TimelineImportRequest("tl", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
+                                0.0, 2.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 2.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "ghost", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of())),
+                List.of());
+        assertRejected(bad, "XV2: transition with missing incoming Clip must be rejected");
+    }
+
+    @Test
+    void xv3TransitionSelfReferenceFailsValidation() {
+        var bad = new TimelineImportRequest("tl", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
+                                0.0, 2.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 2.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of())),
+                List.of());
+        assertRejected(bad, "XV3: transition with outgoing == incoming must be rejected");
+    }
+
+    @Test
+    void xv6AutomationMissingTargetFailsValidation() {
+        var bad = new TimelineImportRequest("tl", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
+                                0.0, 2.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 2.0, List.of(),
+                List.of(new ImportAutomationCurve("auto-1", "ghost-fx", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.5, "LINEAR")))));
+        assertRejected(bad, "XV6: automation targeting a missing Effect must be rejected");
+    }
+
+    private void assertRejected(TimelineImportRequest req, String message) {
+        try {
+            importService.importTimeline(req);
+            throw new AssertionError(message + " (import unexpectedly accepted)");
+        } catch (TimelineCanonicalRejectionException expected) {
+            // expected: aggregate validation fail-closed
+        } catch (IllegalArgumentException expected) {
+            // also acceptable: construction-time fail-closed (e.g. self-reference)
+        }
+    }
+}

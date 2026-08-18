@@ -8,6 +8,7 @@ import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile;
 import com.example.platform.timeline.canonicalmodel.TimelineModelPath;
 import com.example.platform.timeline.canonicalmodel.TimelineSourceRef;
+import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -104,7 +105,7 @@ public final class TimelineDocumentCandidateMapper {
                     "Clip duration overflow"));
         }
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(mediaAssetId),
-                timelineStart, sourceStart, duration, List.of());
+                timelineStart, sourceStart, duration, FrameRate.of(30, 1), List.of(), List.of());
     }
 
     private static MediaTime toMediaTime(Duration duration) {

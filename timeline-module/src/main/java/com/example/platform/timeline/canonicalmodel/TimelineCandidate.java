@@ -41,7 +41,8 @@ public record TimelineCandidate(
                                 track.zOrder(), track.audioGain(),
                                 track.clips().stream()
                                         .map(clip -> new Clip(clip.clipId(), clip.sourceRef(), clip.timelineStart(),
-                                                clip.sourceStart(), clip.duration(), null))
+                                                clip.sourceStart(), clip.duration(), FrameRate.of(30, 1),
+                                                List.of(), null))
                                         .toList()))
                         .toList(),
                 model.transitions(), model.automations());
@@ -53,7 +54,8 @@ public record TimelineCandidate(
 
     public static Clip clip(String clipId, TimelineSourceRef sourceRef, MediaTime timelineStart,
             MediaTime sourceStart, MediaTime duration, List<Object> unsupportedConstructs) {
-        return new Clip(clipId, sourceRef, timelineStart, sourceStart, duration, unsupportedConstructs);
+        return new Clip(clipId, sourceRef, timelineStart, sourceStart, duration,
+                FrameRate.of(30, 1), List.of(), unsupportedConstructs);
     }
 
     public enum TrackType {
@@ -74,13 +76,6 @@ public record TimelineCandidate(
         public Clip {
             unsupportedConstructs = unsupportedConstructs == null ? List.of() : List.copyOf(unsupportedConstructs);
             effects = effects == null ? List.of() : List.copyOf(effects);
-        }
-
-        /** Legacy constructor — no rate/effects (defaults 30/1 rate, no effects). */
-        public Clip(String clipId, TimelineSourceRef sourceRef, MediaTime timelineStart,
-                MediaTime sourceStart, MediaTime duration, List<Object> unsupportedConstructs) {
-            this(clipId, sourceRef, timelineStart, sourceStart, duration,
-                    FrameRate.of(30, 1), List.of(), unsupportedConstructs);
         }
     }
 }

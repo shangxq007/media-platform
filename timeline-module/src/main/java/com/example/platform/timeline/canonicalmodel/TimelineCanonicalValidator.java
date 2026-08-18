@@ -23,6 +23,7 @@ public final class TimelineCanonicalValidator {
 
         Map<String, Integer> trackCounts = new HashMap<>();
         Map<String, Integer> clipCounts = new HashMap<>();
+        Map<String, TimelineCandidate.Clip> clipsById = new HashMap<>();
         for (TimelineCandidate.Track track : candidate.tracks()) {
             if (track.trackId() != null) {
                 trackCounts.merge(track.trackId(), 1, Integer::sum);
@@ -30,9 +31,18 @@ public final class TimelineCanonicalValidator {
             for (TimelineCandidate.Clip clip : track.clips()) {
                 if (clip.clipId() != null) {
                     clipCounts.merge(clip.clipId(), 1, Integer::sum);
+                    clipsById.put(clip.clipId(), clip);
                 }
             }
         }
+
+        // FOURTH CORRECTION — aggregate reference validation (BLOCKER 1):
+        // every Transition endpoint must reference an existing Clip in the
+        // SAME aggregate and must not be a self-reference; every Automation
+        // target must reference an existing authored semantic entity
+        // (Effect instance within the aggregate).
+        validateTransitionReferences(candidate, clipsById, diagnostics);
+        validateAutomationTargets(candidate, clipsById, diagnostics);
         trackCounts.entrySet().stream()
                 .filter(entry -> entry.getValue() > 1)
                 .sorted(Map.Entry.comparingByKey())
@@ -156,5 +166,71 @@ public final class TimelineCanonicalValidator {
     private static TimelineDiagnostic error(TimelineDiagnosticCode code, TimelineModelPath path,
             String relatedIdentifier, String message) {
         return TimelineDiagnostic.error(code, path, relatedIdentifier, message);
+    }
+
+    /**
+     * FOURTH CORRECTION (BLOCKER 1): aggregate transition endpoint validation.
+     * Every transition endpoint must reference an existing Clip in the SAME
+     * aggregate; outgoing != incoming (no self-reference).
+     */
+    private static void validateTransitionReferences(TimelineCandidate candidate,
+            Map<String, TimelineCandidate.Clip> clipsById, List<TimelineDiagnostic> diagnostics) {
+        if (candidate.transitions() == null) {
+            return;
+        }
+        for (int i = 0; i < candidate.transitions().size(); i++) {
+            CanonicalTransition t = candidate.transitions().get(i);
+            TimelineModelPath path = TimelineModelPath.root().field("transitions").index(i);
+            String outgoing = t.outgoingClipId();
+            String incoming = t.incomingClipId();
+            if (outgoing == null || outgoing.isBlank() || !clipsById.containsKey(outgoing)) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_ENDPOINT_MISSING,
+                        path.field("outgoingClipId"), outgoing == null ? "<null>" : outgoing,
+                        "Transition outgoingClipId must reference an existing Clip in the same timeline"));
+            }
+            if (incoming == null || incoming.isBlank() || !clipsById.containsKey(incoming)) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_ENDPOINT_MISSING,
+                        path.field("incomingClipId"), incoming == null ? "<null>" : incoming,
+                        "Transition incomingClipId must reference an existing Clip in the same timeline"));
+            }
+            if (outgoing != null && outgoing.equals(incoming)) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_TRANSITION_SELF_REFERENCE,
+                        path, t.transitionId(),
+                        "Transition outgoingClipId and incomingClipId must differ"));
+            }
+        }
+    }
+
+    /**
+     * FOURTH CORRECTION (BLOCKER 1): aggregate automation target validation.
+     * The supported target universe (from repository reality) is an Effect
+     * instance within the same aggregate; the referenced Effect identity must
+     * exist on some Clip of the timeline.
+     */
+    private static void validateAutomationTargets(TimelineCandidate candidate,
+            Map<String, TimelineCandidate.Clip> clipsById, List<TimelineDiagnostic> diagnostics) {
+        if (candidate.automations() == null || clipsById.isEmpty()) {
+            return;
+        }
+        java.util.Set<String> effectIds = new java.util.HashSet<>();
+        for (TimelineCandidate.Clip clip : clipsById.values()) {
+            if (clip.effects() != null) {
+                for (TimelineClipEffect e : clip.effects()) {
+                    if (e.id() != null) {
+                        effectIds.add(e.id());
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < candidate.automations().size(); i++) {
+            CanonicalAutomationCurve a = candidate.automations().get(i);
+            String target = a.targetEntityId();
+            if (target == null || target.isBlank() || !effectIds.contains(target)) {
+                diagnostics.add(error(TimelineDiagnosticCode.TIMELINE_AUTOMATION_TARGET_MISSING,
+                        TimelineModelPath.root().field("automations").index(i).field("targetEntityId"),
+                        target == null ? "<null>" : target,
+                        "Automation targetEntityId must reference an existing Effect instance in the same timeline"));
+            }
+        }
     }
 }

@@ -1314,6 +1314,40 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
                 && mergeEngine.contains("mergedComposition.remove(\"automations\")")) {
             "FAIL: merge materialization must represent empty semantic result (no target resurrection)"
         }
+        // 16. FOURTH CORRECTION: Effect owns local semantic fingerprint
+        //     (no central List.toString()/Map.toString() effect signatures).
+        val clipEffect = file("timeline-module/src/main/java/com/example/platform/timeline/canonicalmodel/TimelineClipEffect.java").readText()
+        require(clipEffect.contains("semanticFingerprint")) {
+            "FAIL: Effect must own a deterministic local semantic fingerprint"
+        }
+        require(!diffCalc.contains("effects().toString()") && !diffCalc.contains("parameters().toString()")) {
+            "FAIL: production diff must not use List/Map toString as Effect semantic identity"
+        }
+        // 17. FOURTH CORRECTION: aggregate reference validation enforced by
+        //     the canonical validator (transition endpoints + automation targets).
+        val validator = file("timeline-module/src/main/java/com/example/platform/timeline/canonicalmodel/TimelineCanonicalValidator.java").readText()
+        require(validator.contains("validateTransitionReferences") && validator.contains("validateAutomationTargets")) {
+            "FAIL: canonical validator must enforce transition endpoint and automation target references"
+        }
+        require(!validator.contains("// Convenience constructor without transitions/automations")) {
+            "FAIL: no semantic convenience constructors may remain"
+        }
+        // 18. FOURTH CORRECTION: no Legacy Clip constructor remains.
+        val candidateModel = file("timeline-module/src/main/java/com/example/platform/timeline/canonicalmodel/TimelineCandidate.java").readText()
+        require(!candidateModel.contains("Legacy constructor")) {
+            "FAIL: TimelineCandidate Clip Legacy constructor must be removed"
+        }
+        // 19. FOURTH CORRECTION: real TimelineMergeEngine E2E test class exists.
+        val e2eTest = file("timeline-module/src/test/java/com/example/platform/timeline/app/EffectTransitionEndToEndMergeTest.java").readText()
+        require(e2eTest.contains("e2eM1EffectSourceOnlySurvivesActualMerge")
+                && e2eTest.contains("e2eR1TransitionDeleteLastProducesEmptyMergedState")
+                && e2eTest.contains("e2eC1DivergentEffectEditDoesNotSilentlyMerge")
+                && e2eTest.contains("e2eX1DeleteClipVsTransitionFailsClosed")) {
+            "FAIL: real TimelineMergeEngine E2E tests must exist (source-only, delete-last, conflict, cross-object)"
+        }
+        require(e2eTest.contains("TimelineMergeEngine(")) {
+            "FAIL: E2E tests must invoke the actual TimelineMergeEngine"
+        }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }

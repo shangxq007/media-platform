@@ -37,17 +37,20 @@ class EffectTransitionSemanticClosureTest {
     private final TimelineSemanticDiffService diffService = new TimelineSemanticDiffService(new TimelineCanonicalizer());
 
     private static ImportTrack track(String clipId, List<ImportClipEffect> effects) {
-        return new ImportTrack("v1", "VIDEO", 0, List.of(new ImportClip(
-                clipId, "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, effects)));
+        // Two non-overlapping clips so Transition endpoints (c1 -> c2) satisfy
+        // aggregate reference validation (FOURTH CORRECTION).
+        return new ImportTrack("v1", "VIDEO", 0, List.of(
+                new ImportClip(clipId, "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, effects),
+                new ImportClip(clipId + "-2", "ast_2", "file:///b.mp4", 1920, 1080, 2.0, 4.0, 0.0, 2.0, List.of())));
     }
 
     private static ImportTransition transition(String id, String defId, long durTicks, long durScale, String alignment) {
-        return new ImportTransition(id, defId, "1.0", "c1", "c2", "VIDEO",
+        return new ImportTransition(id, defId, "1.0", "c1", "c1-2", "VIDEO",
                 durTicks, durScale, alignment, "USE_SOURCE_HANDLES", Map.of("duration", "0.8"));
     }
 
     private static ImportAutomationCurve automation(double v) {
-        return new ImportAutomationCurve("auto-1", "fx-1", "opacity", "float", "HOLD",
+        return new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
                 List.of(new ImportAutomationKeyframe("kf-1", 0, 30, v, "LINEAR"),
                         new ImportAutomationKeyframe("kf-2", 30, 30, 1.0, "LINEAR")));
     }
@@ -111,12 +114,12 @@ class EffectTransitionSemanticClosureTest {
     void h6AutomationKeyChangeAffectsHash() throws Exception {
         TimelineImportRequest reqA = new TimelineImportRequest("tl-a", "A", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
-                List.of(track("c1", List.of())), List.of(), null, null, null, null, false,
+                List.of(track("c1", List.of(new ImportClipEffect("fx1", "blur", Map.of())))), List.of(), null, null, null, null, false,
                 List.of(), "AUTO", false, Map.of(), Map.of(), 2.0, List.of(),
                 List.of(automation(0.0)));
         TimelineImportRequest reqB = new TimelineImportRequest("tl-b", "B", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
-                List.of(track("c1", List.of())), List.of(), null, null, null, null, false,
+                List.of(track("c1", List.of(new ImportClipEffect("fx1", "blur", Map.of())))), List.of(), null, null, null, null, false,
                 List.of(), "AUTO", false, Map.of(), Map.of(), 2.0, List.of(),
                 List.of(automation(0.8)));
         assertNotEquals(hasher.hashInternalTimeline(service.importTimeline(reqA)),
@@ -161,12 +164,12 @@ class EffectTransitionSemanticClosureTest {
     void d3AutomationOnlyChangeDiffVisible() throws Exception {
         TimelineImportRequest reqA = new TimelineImportRequest("tl-a", "A", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
-                List.of(track("c1", List.of())), List.of(), null, null, null, null, false,
+                List.of(track("c1", List.of(new ImportClipEffect("fx1", "blur", Map.of())))), List.of(), null, null, null, null, false,
                 List.of(), "AUTO", false, Map.of(), Map.of(), 2.0, List.of(),
                 List.of(automation(0.0)));
         TimelineImportRequest reqB = new TimelineImportRequest("tl-b", "B", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
-                List.of(track("c1", List.of())), List.of(), null, null, null, null, false,
+                List.of(track("c1", List.of(new ImportClipEffect("fx1", "blur", Map.of())))), List.of(), null, null, null, null, false,
                 List.of(), "AUTO", false, Map.of(), Map.of(), 2.0, List.of(),
                 List.of(automation(0.8)));
         var result = diffService.diff(service.importTimeline(reqA), service.importTimeline(reqB));
@@ -221,7 +224,7 @@ class EffectTransitionSemanticClosureTest {
     void t3AutomationExactMediaTime() {
         TimelineImportRequest req = new TimelineImportRequest("tl-a", "A", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
-                List.of(track("c1", List.of())), List.of(), null, null, null, null, false,
+                List.of(track("c1", List.of(new ImportClipEffect("fx1", "blur", Map.of())))), List.of(), null, null, null, null, false,
                 List.of(), "AUTO", false, Map.of(), Map.of(), 2.0, List.of(),
                 List.of(automation(0.5)));
         String v1 = service.importTimeline(req);

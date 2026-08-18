@@ -67,12 +67,14 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
                         new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
                                 0.0, 2.0, 0.0, 2.0,
-                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 3))))))),
+                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 3)))),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0,
                 List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
                         15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "opacity", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
     }
 
@@ -81,7 +83,9 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
                         new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
-                                0.0, 2.0, 0.0, 2.0, List.of())))),
+                                0.0, 2.0, 0.0, 2.0, List.of()),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0, List.of(), List.of());
     }
@@ -91,6 +95,7 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
         TimelineCandidate candidate = InternalTimelineCandidateAdapter.map("prj", payload);
         TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
         if (validation.hasFatalErrors()) {
+            System.out.println("DIAGNOSTICS for " + revId + ": " + validation.diagnostics());
             throw new TimelineCanonicalRejectionException(validation.diagnostics());
         }
         TimelineCanonicalNormalizer.normalize(candidate)
@@ -113,12 +118,14 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
                         new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
                                 0.0, 2.0, 0.0, 2.0,
-                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 9))))))),
+                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 9)))),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0,
                 List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
                         15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "opacity", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
         CanonicalTimelineSnapshot effectChangedSnap = snapshotOf(effectChanged, "r3");
         var diff = new CanonicalTimelineDiffCalculator().calculate(base, effectChangedSnap);
@@ -147,12 +154,14 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
                         new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
                                 0.0, 2.0, 0.0, 2.0,
-                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 3))))))),
+                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 3)))),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0,
                 List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
                         30, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "1.0"))),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "opacity", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.0, "LINEAR")))));
         CanonicalTimelineSnapshot after = snapshotOf(changed, "r2");
         var diff = new CanonicalTimelineDiffCalculator().calculate(base, after);
@@ -177,12 +186,14 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
                         new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
                                 0.0, 2.0, 0.0, 2.0,
-                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 3))))))),
+                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 3)))),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0,
                 List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
                         15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "opacity", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.8, "LINEAR")))));
         CanonicalTimelineSnapshot after = snapshotOf(changed, "r2");
         var diff = new CanonicalTimelineDiffCalculator().calculate(base, after);
@@ -273,7 +284,8 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
         var oursReq = new TimelineImportRequest("tl", "T", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
-                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of())))),
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of()),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080, 2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 4.0,
                 List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
@@ -282,7 +294,8 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
         var theirsReq = new TimelineImportRequest("tl", "T", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
-                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of())))),
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of()),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080, 2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 4.0,
                 List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
@@ -291,7 +304,8 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
         var baseReq = new TimelineImportRequest("tl", "T", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
-                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of())))),
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of()),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080, 2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 4.0,
                 List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
@@ -313,26 +327,26 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
         var baseReq = new TimelineImportRequest("tl", "T", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
-                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of())))),
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of(new ImportClipEffect("fx1", "blur", Map.of())))))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0, List.of(),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "opacity", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.5, "LINEAR")))));
         var oursReq = new TimelineImportRequest("tl", "T", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
-                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of())))),
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of(new ImportClipEffect("fx1", "blur", Map.of())))))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0, List.of(),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "gain", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "gain", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.5, "LINEAR")))));
         var theirsReq = new TimelineImportRequest("tl", "T", 1,
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
-                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of())))),
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080, 0.0, 2.0, 0.0, 2.0, List.of(new ImportClipEffect("fx1", "blur", Map.of())))))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0, List.of(),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "pan", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "pan", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.5, "LINEAR")))));
         var plan = planner.plan(new TimelineMergePlanRequest(
                 new com.example.platform.timeline.diff.merge.plan.TimelineMergePlanRequestId("p"),
@@ -409,13 +423,15 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
                         new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
-                                0.5, 2.0, 0.0, 2.0,
-                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 9))))))),
+                                0.5, 1.5, 0.0, 2.0,
+                                List.of(new ImportClipEffect("fx1", "blur", Map.of("radius", 9)))),
+                        new ImportClip("c2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0,
                 List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c2", "VIDEO",
                         30, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "1.0"))),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "opacity", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.8, "LINEAR")))));
         CanonicalTimelineSnapshot after = snapshotOf(effectChangedReq, "r2");
         var diff = new CanonicalTimelineDiffCalculator().calculate(base, after);
@@ -438,6 +454,6 @@ class EffectTransitionThirdCorrectionSemanticClosureTest {
         // All families coexist
         assertEquals(1, patched.transitions().size());
         assertEquals(1, patched.automations().size());
-        assertEquals(1, patched.tracks().get(0).clips().size());
+        assertEquals(2, patched.tracks().get(0).clips().size());
     }
 }

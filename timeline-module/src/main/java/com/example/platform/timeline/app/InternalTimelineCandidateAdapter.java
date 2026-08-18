@@ -241,9 +241,10 @@ public final class InternalTimelineCandidateAdapter {
     }
 
     /**
-     * C1-CNM1: effect preservation — parse the wire {@code effects[]} array
-     * into opaque {@link TimelineClipEffect} payloads. Never interpreted
-     * semantically; preserved verbatim through merge.
+     * FOURTH CORRECTION: parse the wire {@code effects[]} array into
+     * {@link TimelineClipEffect} canonical value objects. Effect local
+     * semantics (semanticFingerprint) are Timeline-authored state — the
+     * production diff/patch/merge path consumes that authority.
      */
     private static List<TimelineClipEffect> mapEffects(JsonNode clipNode) {
         JsonNode effects = clipNode.path("effects");
@@ -255,7 +256,8 @@ public final class InternalTimelineCandidateAdapter {
             String id = fx.path("id").asText(null);
             String effectKey = fx.path("effectKey").asText("");
             if (effectKey.isBlank()) {
-                // Opaque preservation: keep the raw node even if effectKey is absent.
+                // Tolerance for wire nodes without effectKey (canonical contract
+                // requires a non-blank key; the fallback preserves the payload).
                 effectKey = "opaque";
             }
             Map<String, Object> parameters = fx.path("parameters").isObject()

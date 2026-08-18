@@ -55,7 +55,8 @@ class EffectTransitionProductionMergeSemanticClosureTest {
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
                         new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
-                                0.0, 2.0, 0.0, 2.0, List.of())))),
+                                0.0, 2.0, 0.0, 2.0,
+                                List.of(new ImportClipEffect("fx1", "blur", Map.of())))))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0, List.of(), List.of());
     }
@@ -92,10 +93,11 @@ class EffectTransitionProductionMergeSemanticClosureTest {
                 new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
                 List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
                         new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
-                                0.0, 2.0, 0.0, 2.0, List.of())))),
+                                0.0, 2.0, 0.0, 2.0,
+                                List.of(new ImportClipEffect("fx1", "blur", Map.of())))))),
                 List.of(), null, null, null, null, false, List.of(), "AUTO", false,
                 Map.of(), Map.of(), 2.0, List.of(),
-                List.of(new ImportAutomationCurve("auto-1", "fx-1", "opacity", "float", "HOLD",
+                List.of(new ImportAutomationCurve("auto-1", "fx1", "opacity", "float", "HOLD",
                         List.of(new ImportAutomationKeyframe("kf-1", 0, 30, value, "LINEAR"),
                                 new ImportAutomationKeyframe("kf-2", 30, 30, 1.0, "LINEAR")))));
     }

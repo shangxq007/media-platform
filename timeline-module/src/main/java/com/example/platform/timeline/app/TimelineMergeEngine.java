@@ -548,8 +548,9 @@ public class TimelineMergeEngine {
         node.put("assetId", clip.assetBindingId());
         node.set("timelineRange", rangeToJson(clip.start(), clip.duration(), clip.rate(), mapper));
         node.set("sourceRange", rangeToJson(clip.sourceStart(), clip.sourceDuration(), clip.rate(), mapper));
-        // C1-CNM1 effect preservation: merged clips carry their opaque effect
-        // payloads (preserved target/source-side, never semantically merged).
+        // FOURTH CORRECTION: merged clips carry their authored Effect state
+        // (canonical Effect semantics; diff/patch/merge consume the local
+        // semantic fingerprint authority).
         if (clip.effects() != null && !clip.effects().isEmpty()) {
             ArrayNode effects = mapper.createArrayNode();
             for (com.example.platform.timeline.canonicalmodel.TimelineClipEffect fx : clip.effects()) {
