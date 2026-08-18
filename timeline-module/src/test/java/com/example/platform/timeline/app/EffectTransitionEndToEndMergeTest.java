@@ -332,6 +332,69 @@ class EffectTransitionEndToEndMergeTest {
         assertEquals(1, out.reloaded.automations().size(), "E2E-F3: automation preserved");
     }
 
+    // ── SIXTH CORRECTION (S3): REAL three-way Effect-delete × Automation-modify
+    //    must fail closed — never persist a dangling Automation target. ──
+    @Test
+    void e2eS3EffectDeleteVsAutomationModifyFailsClosed() {
+        // BASE: Clip c1 with Effect fx1 + Automation auto1 targeting fx1.
+        var s3Base = new TimelineImportRequest("tl-s3", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", "3")),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.5, "LINEAR")))));
+        // OURS: delete Effect fx1 AND the dependent Automation auto1 (locally
+        // consistent — no dangling references; valid canonical branch).
+        var s3Ours = new TimelineImportRequest("tl-s3", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(new ImportTrack("v1", "VIDEO", 0, List.of(
+                        new ImportClip("c1", "ast_1", "file:///a.mp4", 1920, 1080,
+                                0.0, 2.0, 0.0, 2.0, List.of()),
+                        new ImportClip("c1-2", "ast_2", "file:///b.mp4", 1920, 1080,
+                                2.0, 4.0, 0.0, 2.0, List.of())))),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of());
+        // THEIRS: retain Effect fx1, modify Automation auto1 (value 0.5 → 0.8).
+        var s3Theirs = new TimelineImportRequest("tl-s3", "T", 1,
+                new ImportOutput("mp4", 1920, 1080, FrameRate.of(30, 1)),
+                List.of(fullTrack("c1", "3")),
+                List.of(), null, null, null, null, false, List.of(), "AUTO", false,
+                Map.of(), Map.of(), 4.0,
+                List.of(new ImportTransition("t1", "video.dissolve", "1.0", "c1", "c1-2", "VIDEO",
+                        15, 30, "CENTER_ON_CUT", "USE_SOURCE_HANDLES", Map.of("duration", "0.5"))),
+                List.of(new ImportAutomationCurve("auto1", "fx1", "opacity", "float", "HOLD",
+                        List.of(new ImportAutomationKeyframe("kf-1", 0, 30, 0.8, "LINEAR")))));
+
+        // All three branches are individually canonical-valid (import succeeds).
+        String basePayload = importService.importTimeline(s3Base);
+        String oursPayload = importService.importTimeline(s3Ours);
+        String theirsPayload = importService.importTimeline(s3Theirs);
+        assertTrue(basePayload.contains("auto1"), "S3: BASE must carry the automation");
+        assertFalse(oursPayload.contains("auto1"), "S3: OURS must be locally consistent (automation removed)");
+
+        MergeOutcome out = merge(s3Base, s3Ours, s3Theirs);
+        // Fail-closed: no silently persisted invalid MERGED state.
+        if (out.result.status() == TimelineMergeResult.MergeStatus.MERGED) {
+            // If merged, the merged payload must NOT contain a dangling automation:
+            // either the automation was removed together with the effect, or
+            // canonical reload rejects it.
+            assertFalse(out.mergedPayload.contains("auto1"),
+                    "S3: merged payload must not contain Automation targeting a deleted Effect");
+            assertFalse(out.reloadValidation.hasFatalErrors(),
+                    "S3: merged payload must pass canonical reload validation");
+        } else {
+            assertTrue(out.result.status() == TimelineMergeResult.MergeStatus.CONFLICTS
+                            || out.result.status() == TimelineMergeResult.MergeStatus.FAILED,
+                    "S3: fail-closed via explicit conflict/blocked; got " + out.result.status());
+        }
+    }
+
     // ── E2E-M2: transition source-only merge ──
     @Test
     void e2eM2TransitionSourceOnlySurvivesActualMerge() {

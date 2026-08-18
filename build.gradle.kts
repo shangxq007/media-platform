@@ -1381,6 +1381,26 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
                 .contains("effectKey = \"opaque\"")) {
             "FAIL: opaque effectKey fallback must be removed"
         }
+        // 23. SIXTH CORRECTION (S1): whole-Effect fingerprint must be the
+        //     complete canonical Effect value — no manual delimiter envelope.
+        val effectSemanticsSrc = file("timeline-module/src/main/java/com/example/platform/timeline/canonicalmodel/EffectCanonicalSemantics.java").readText()
+        require(effectSemanticsSrc.contains("canonicalEffectValue")
+                && effectSemanticsSrc.contains("writeValueAsString(canonicalEffectValue(effect))")) {
+            "FAIL: semanticFingerprint must derive from the complete canonical Effect value"
+        }
+        require(!effectSemanticsSrc.contains("sb.append(\"id=\")")) {
+            "FAIL: manual id=...;key=... delimiter envelope must be removed"
+        }
+        // 24. SIXTH CORRECTION (S2): encodeEffects must use the SAME canonical
+        //     Effect value (deepSorted parameters) as the fingerprint.
+        require(effectSemanticsSrc.contains("out.add(canonicalEffectValue(e))")) {
+            "FAIL: encodeEffects must use canonicalEffectValue (single deep canonical representation)"
+        }
+        // 25. SIXTH CORRECTION (S3): real Effect-delete × Automation-modify
+        //     three-way E2E must exist in the actual engine test class.
+        require(e2eTest.contains("e2eS3EffectDeleteVsAutomationModifyFailsClosed")) {
+            "FAIL: Effect-delete × Automation-modify real three-way E2E missing"
+        }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }

@@ -61,15 +61,32 @@ public final class EffectCanonicalSemantics {
     }
 
     /**
-     * Complete deterministic semantic fingerprint of one Effect:
-     * id + effectKey + deep-canonical parameters.
+     * SIXTH CORRECTION (S1/S2) — THE ONE complete canonical Effect semantic
+     * value: id + effectKey + deep-canonical parameters as a typed structure.
+     * No manual delimiter framing; JSON escaping handles arbitrary legal
+     * authored string contents; field knowledge lives here ONCE.
+     */
+    public static Map<String, Object> canonicalEffectValue(TimelineClipEffect effect) {
+        TreeMap<String, Object> node = new TreeMap<>();
+        node.put("id", effect.id());
+        node.put("effectKey", effect.effectKey());
+        node.put("parameters", deepSorted(effect.parameters()));
+        return node;
+    }
+
+    /**
+     * SIXTH CORRECTION (S1) — complete deterministic semantic fingerprint of
+     * one Effect, derived from the complete canonical Effect value. Manual
+     * "id=...;key=..." delimiter envelope REMOVED (collision-free: id/effectKey
+     * are typed JSON fields; arbitrary ";", "=", ",", quotes, backslash are
+     * escaped by JSON).
      */
     public static String semanticFingerprint(TimelineClipEffect effect) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("id=").append(effect.id() == null ? "" : effect.id()).append(';')
-          .append("key=").append(effect.effectKey()).append(';')
-          .append("params=").append(encodeValue(effect.parameters()));
-        return sb.toString();
+        try {
+            return InternalTimelineJson.mapper().writeValueAsString(canonicalEffectValue(effect));
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Effect canonical value is not JSON-serializable", ex);
+        }
     }
 
     /** Canonical JSON encoding of an Effect list (lossless, typed). */
@@ -77,13 +94,12 @@ public final class EffectCanonicalSemantics {
         if (effects == null || effects.isEmpty()) {
             return "[]";
         }
+        // SIXTH CORRECTION (S2): every element is the SAME canonical Effect
+        // value used by semanticFingerprint (deepSorted parameters) — one
+        // representation, one field-knowledge location.
         List<Map<String, Object>> out = new ArrayList<>(effects.size());
         for (TimelineClipEffect e : effects) {
-            TreeMap<String, Object> node = new TreeMap<>();
-            node.put("id", e.id());
-            node.put("effectKey", e.effectKey());
-            node.put("parameters", e.parameters());
-            out.add(node);
+            out.add(canonicalEffectValue(e));
         }
         try {
             return InternalTimelineJson.mapper().writeValueAsString(out);
