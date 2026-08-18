@@ -82,7 +82,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         currentRevisionService = new ProductCurrentRevisionService(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         // PRODUCTION wiring: 4-arg constructor enables the Contract P snapshot payload write.
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService, null, null);
     }
 
     // =====================================================================
@@ -193,7 +193,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     void apply_missingSnapshotPayload_failsClosedZeroWrites() {
         // Legacy wiring (3-arg ctor): no snapshot authority -> no payload row.
         // A revision without a governed payload must remain TIMELINE_PATCH_PAYLOAD_INVALID.
-        var legacySave = new TimelineRevisionSaveService(dsl, currentRevisionService, digester);
+        var legacySave = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, null, null, null);
         String productId = "prod-nopay-" + UUID.randomUUID();
         insertProduct(productId);
         TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");

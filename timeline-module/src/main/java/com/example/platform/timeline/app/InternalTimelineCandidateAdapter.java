@@ -101,7 +101,64 @@ public final class InternalTimelineCandidateAdapter {
         }
         return new TimelineCandidate(timelineId, projectId,
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks,
-                transitions, automations, textElements);
+                transitions, automations, textElements,
+                com.example.platform.timeline.app.InternalTimelineCandidateAdapter.AudioMixJson.audioMixOf(composition),
+                com.example.platform.timeline.app.InternalTimelineCandidateAdapter.RelationshipJson.relationshipsOf(composition));
+    }
+
+    /** CHECKPOINT_A: parse the authored AudioMix from the internal payload (absent == empty). */
+    public static final class AudioMixJson {
+        private static final com.fasterxml.jackson.databind.ObjectMapper M =
+                com.example.platform.timeline.app.InternalTimelineJson.mapper();
+
+        public static com.example.platform.audio.domain.mix.AudioMix audioMixOf(JsonNode composition) {
+            JsonNode node = composition.path("audioMix");
+            if (!node.isObject() || node.isNull() || node.isEmpty()) {
+                return com.example.platform.audio.domain.mix.AudioMix.empty();
+            }
+            try {
+                return M.treeToValue(node, com.example.platform.audio.domain.mix.AudioMix.class);
+            } catch (Exception e) {
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                TimelineModelPath.root().field("composition").field("audioMix"),
+                                "Malformed authored AudioMix: " + e.getMessage()));
+            }
+        }
+
+        /** Deterministic canonical form of an AudioMix (no toString/hashCode identity). */
+        public static String audioMixFingerprint(com.example.platform.audio.domain.mix.AudioMix mix) {
+            try {
+                return M.writeValueAsString(mix);
+            } catch (Exception e) {
+                throw new IllegalStateException("AudioMix canonical fingerprint failed", e);
+            }
+        }
+    }
+
+    /** CHECKPOINT_A: parse authored SemanticRelationships (absent == empty). */
+    static final class RelationshipJson {
+        static java.util.List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> relationshipsOf(
+                JsonNode composition) {
+            JsonNode node = composition.path("semanticRelationships");
+            java.util.List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> out = new ArrayList<>();
+            if (node.isArray()) {
+                for (JsonNode rel : node) {
+                    try {
+                        out.add(com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                                .treeToValue(rel, com.example.platform.timeline.semantics.relationship.SemanticRelationship.class));
+                    } catch (Exception e) {
+                        throw new TimelineCanonicalRejectionException(
+                                new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                        TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                        TimelineModelPath.root().field("composition").field("semanticRelationships"),
+                                        "Malformed authored SemanticRelationship: " + e.getMessage()));
+                    }
+                }
+            }
+            return out;
+        }
     }
 
     /**
@@ -223,8 +280,31 @@ public final class InternalTimelineCandidateAdapter {
         MediaTime timelineStart = rangeStart(clipNode.path("timelineRange"), "timelineRange", clipId, rate);
         MediaTime sourceStart = sourceRangeStart(clipNode, clipId, rate);
         MediaTime duration = rangeDuration(clipNode.path("timelineRange"), "timelineRange", clipId, rate);
+        // CHECKPOINT_A: carry the full typed source semantics of the clip
+        // (kind/asset/stream/artifact/digest/temporal mapping) — absent nodes
+        // remain null/empty (internal payloads may not yet carry them), never
+        // fabricated.
+        String sourceKind = clipNode.path("sourceKind").asText(null);
+        String mediaStreamId = clipNode.path("mediaStreamId").asText(null);
+        String artifactId = clipNode.path("artifactId").asText(null);
+        String contentDigest = clipNode.path("contentDigest").asText(null);
+        com.example.platform.timeline.semantics.temporal.TemporalMapping temporalMapping = null;
+        JsonNode tmNode = clipNode.path("temporalMapping");
+        if (tmNode.isObject() && !tmNode.isEmpty()) {
+            try {
+                temporalMapping = com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                        .treeToValue(tmNode, com.example.platform.timeline.semantics.temporal.TemporalMapping.class);
+            } catch (Exception e) {
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field("temporalMapping"),
+                                "Malformed clip temporalMapping: " + e.getMessage()));
+            }
+        }
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(assetId),
-                timelineStart, sourceStart, duration, rate, mapEffects(clipNode), List.of());
+                timelineStart, sourceStart, duration, rate, mapEffects(clipNode), List.of(),
+                sourceKind, assetId, mediaStreamId, artifactId, contentDigest, temporalMapping);
     }
 
     /**

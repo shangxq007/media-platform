@@ -43,9 +43,16 @@ public final class TimelineDocumentCandidateMapper {
         }
         // F009: timelineId derived deterministically from productId (the Timeline belongs
         // to the product; TimelineDocument carries no timeline identifier).
+        // CHECKPOINT_A correction: full authored semantic surface — no silent
+        // narrowing of textElements/audioMix/relationships (TimelineDocument
+        // carries no transitions/automations fields; those live in internal
+        // payloads and remain List.of() here).
         return new TimelineCandidate(productId, productId,
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks,
-                List.of(), List.of(), List.of());
+                List.of(), List.of(),
+                document.getTextElements() != null ? List.copyOf(document.getTextElements()) : List.of(),
+                document.getAudioMix() != null ? document.getAudioMix() : com.example.platform.audio.domain.mix.AudioMix.empty(),
+                document.getSemanticRelationships() != null ? List.copyOf(document.getSemanticRelationships()) : List.of());
     }
 
     private static TimelineCandidate.Track mapTrack(TimelineTrack track) {
@@ -105,8 +112,13 @@ public final class TimelineDocumentCandidateMapper {
                     TimelineModelPath.root().field("tracks").field("clips").id(clipId).field("duration"),
                     "Clip duration overflow"));
         }
+        // CHECKPOINT_A correction: carry the FULL typed source semantics of the
+        // canonical clip (kind/asset/stream/artifact/digest/temporal mapping) —
+        // never narrow to assetId alone.
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(mediaAssetId),
-                timelineStart, sourceStart, duration, FrameRate.of(30, 1), List.of(), List.of());
+                timelineStart, sourceStart, duration, FrameRate.of(30, 1), List.of(), List.of(),
+                clip.getSourceKind(), mediaAssetId, clip.getMediaStreamId(),
+                clip.getArtifactId(), clip.getContentDigest(), clip.getTemporalMapping());
     }
 
     private static MediaTime toMediaTime(Duration duration) {

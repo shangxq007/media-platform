@@ -58,7 +58,7 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         RenderTestSchemaFixture.truncate(dsl);
         digester = new TimelineContentDigester();
         currentRevisionService = new ProductCurrentRevisionService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, null, null, null);
     }
 
     @Test

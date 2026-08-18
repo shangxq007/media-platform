@@ -45,7 +45,7 @@ public class TimelinePatchApplier {
                 current.tracks(), current.captions(), current.watermarks(),
                 current.templateApplications(), current.workflowSteps(),
                 current.outputProfile(), current.safeMetadata(), current.textElements(),
-                current.transitions(), current.automations());
+                current.transitions(), current.automations(), current.audioMix(), current.semanticRelationships());
         return TimelinePatchApplicationResult.applied(patched);
     }
 
@@ -74,8 +74,103 @@ public class TimelinePatchApplier {
             case TRANSITION_CHANGED -> applyTransitionChanged(s, op);
             case AUTOMATION_CHANGED -> applyAutomationChanged(s, op);
             case TEXT_ELEMENT_CHANGED -> applyTextElementChanged(s, op);
+            case AUDIO_MIX_CHANGED -> applyAudioMixChanged(s, op);
+            case RELATIONSHIP_ADDED -> applyRelationshipAdded(s, op);
+            case RELATIONSHIP_REMOVED -> applyRelationshipRemoved(s, op);
+            case GROUP_MEMBER_ADDED -> applyGroupMember(s, op, true);
+            case GROUP_MEMBER_REMOVED -> applyGroupMember(s, op, false);
             default -> TimelinePatchApplicationResult.unsupported("Unsupported: " + op.type());
         };
+    }
+
+    // --- CHECKPOINT_A: AudioMix / SemanticRelationship application ---
+
+    private TimelinePatchApplicationResult applyAudioMixChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        String enc = meta.get("audioMix");
+        if (enc == null || enc.isBlank()) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "AudioMix change without canonical payload");
+        }
+        try {
+            com.example.platform.audio.domain.mix.AudioMix mix = com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                    .readValue(enc, com.example.platform.audio.domain.mix.AudioMix.class);
+            return ok(s.withAudioMix(mix));
+        } catch (Exception e) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "Malformed AudioMix payload: " + e.getMessage());
+        }
+    }
+
+    private TimelinePatchApplicationResult applyRelationshipAdded(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+        String enc = meta.get("relationship");
+        if (enc == null || enc.isBlank()) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "Relationship add without canonical payload");
+        }
+        try {
+            com.example.platform.timeline.semantics.relationship.SemanticRelationship rel =
+                    com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                            .readValue(enc, com.example.platform.timeline.semantics.relationship.SemanticRelationship.class);
+            java.util.List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> rels =
+                    new java.util.ArrayList<>(s.semanticRelationships());
+            rels.add(rel);
+            return ok(s.withSemanticRelationships(rels));
+        } catch (Exception e) {
+            return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                    "Malformed relationship payload: " + e.getMessage());
+        }
+    }
+
+    private TimelinePatchApplicationResult applyRelationshipRemoved(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
+        String key = op.path().value().substring(op.path().value().lastIndexOf('.') + 1);
+        java.util.List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> rels =
+                new java.util.ArrayList<>(s.semanticRelationships());
+        boolean removed = rels.removeIf(r -> relationshipKey(r).equals(key));
+        if (!removed) {
+            return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND, op.path().value(),
+                    "Relationship not found for removal");
+        }
+        return ok(s.withSemanticRelationships(rels));
+    }
+
+    private TimelinePatchApplicationResult applyGroupMember(CanonicalTimelineSnapshot s, TimelineChangeOperation op,
+                                                            boolean add) {
+        String key = op.path().value().substring(op.path().value().lastIndexOf('.') + 1);
+        String member = add ? op.afterValue().stringValue() : op.beforeValue().stringValue();
+        java.util.List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> rels =
+                new java.util.ArrayList<>(s.semanticRelationships());
+        for (int i = 0; i < rels.size(); i++) {
+            var r = rels.get(i);
+            if (relationshipKey(r).equals(key) && r instanceof com.example.platform.timeline.semantics.relationship.GroupRelationship g) {
+                java.util.Set<com.example.platform.timeline.canonical.TimelineClipId> members =
+                        new java.util.LinkedHashSet<>(g.members());
+                com.example.platform.timeline.canonical.TimelineClipId id =
+                        new com.example.platform.timeline.canonical.TimelineClipId(member);
+                if (add) {
+                    members.add(id);
+                } else {
+                    members.remove(id);
+                }
+                rels.set(i, new com.example.platform.timeline.semantics.relationship.GroupRelationship(g.groupId(), members));
+                return ok(s.withSemanticRelationships(rels));
+            }
+        }
+        return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND, op.path().value(),
+                "Group relationship not found for member update");
+    }
+
+    private static String relationshipKey(com.example.platform.timeline.semantics.relationship.SemanticRelationship r) {
+        if (r instanceof com.example.platform.timeline.semantics.relationship.GroupRelationship g) {
+            return "group:" + g.groupId().value();
+        }
+        if (r instanceof com.example.platform.timeline.semantics.relationship.SyncRelationship s) {
+            String a = s.endpointA().value();
+            String b = s.endpointB().value();
+            return a.compareTo(b) <= 0 ? "sync:" + a + ":" + b : "sync:" + b + ":" + a;
+        }
+        return "rel:" + System.identityHashCode(r);
     }
 
     // --- Duration ---
@@ -84,7 +179,7 @@ public class TimelinePatchApplier {
         MediaTime val = parseMediaTime(afterVal(op), s.duration());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), val,
                 s.tracks(), s.captions(), s.watermarks(),
-                s.templateApplications(), s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
+                s.templateApplications(), s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- Track ---
@@ -121,7 +216,8 @@ public class TimelinePatchApplier {
                     clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
                             start, duration, sourceStart, sourceDuration,
                             FrameRate.of(rateNum, rateDen),
-                            parseEffects(effectsEnc), Map.of()));
+                            parseEffects(effectsEnc), Map.of(),
+                            null, null, null, null, null));
                 }
             }
         }
@@ -183,7 +279,10 @@ public class TimelinePatchApplier {
         FrameRate rate = FrameRate.of(rateNum, rateDen);
         clips.add(new CanonicalTimelineClipSnapshot(clipId, assetBindingId,
                 start, duration, sourceStart, sourceDuration, rate,
-                parseEffects(meta.get("effects")), Map.of()));
+                parseEffects(meta.get("effects")), Map.of(),
+                meta.get("sourceKind"), meta.get("mediaStreamId"),
+                meta.get("artifactId"), meta.get("contentDigest"),
+                parseTemporalMapping(meta.get("temporalMapping"), null)));
         return ok(withUpdatedTrack(s, trackId, newTrackWithClips(track, clips)));
     }
 
@@ -217,7 +316,7 @@ public class TimelinePatchApplier {
             if (!c.clipId().equals(clipId)) {
                 clips.add(c);
             } else {
-                clips.add(applyClipFieldOp(c, field, afterValue));
+                clips.add(applyClipFieldOp(c, field, afterValue, op));
             }
         }
         return ok(withUpdatedTrack(s, trackId, newTrackWithClips(track, clips)));
@@ -239,7 +338,7 @@ public class TimelinePatchApplier {
                 .map(c -> c.captionId().equals(capId) ? updated : c).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), captions, s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- Watermark ---
@@ -264,7 +363,7 @@ public class TimelinePatchApplier {
                 .map(w -> w.watermarkId().equals(wmId) ? updated : w).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), wms, s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- Template ---
@@ -288,7 +387,7 @@ public class TimelinePatchApplier {
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), apps,
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     private TimelinePatchApplicationResult applyTemplateProfile(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
@@ -305,7 +404,7 @@ public class TimelinePatchApplier {
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), apps,
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- Workflow ---
@@ -323,7 +422,7 @@ public class TimelinePatchApplier {
                 .map(w -> w.workflowStepId().equals(stepId) ? updated : w).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                steps, s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
+                steps, s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- Output profile ---
@@ -343,7 +442,7 @@ public class TimelinePatchApplier {
                 old != null ? old.aspectRatio() : "16:9", newW, newH, Map.of());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), profile, s.safeMetadata(), s.textElements(), s.transitions(), s.automations()));
+                s.workflowSteps(), profile, s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- Metadata ---
@@ -365,7 +464,7 @@ public class TimelinePatchApplier {
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), meta, s.textElements(),
-                s.transitions(), s.automations()));
+                s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- EFFECT / TRANSITION / AUTOMATION apply
@@ -386,7 +485,8 @@ public class TimelinePatchApplier {
                 Map<String, String> meta = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
                 clips.set(i, new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                         c.start(), c.duration(), c.sourceStart(), c.sourceDuration(), c.rate(),
-                        parseEffects(meta.get("effects")), c.safeMetadata()));
+                        parseEffects(meta.get("effects")), c.safeMetadata(),
+                        c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping()));
                 return ok(withUpdatedTrack(s, trackId, newTrackWithClips(track, clips)));
             }
         }
@@ -463,12 +563,20 @@ public class TimelinePatchApplier {
         Map<String, String> params = new LinkedHashMap<>();
         String paramsEnc = meta.get("parameters");
         if (paramsEnc != null && !paramsEnc.isBlank()) {
-            for (String entry : paramsEnc.split(",")) {
-                if (entry.contains("=")) {
-                    String[] parts = entry.split("=", 2);
-                    params.put(parts[0], parts[1]);
-                }
+            // CHECKPOINT_A Round 3: Transition-local canonical JSON authority —
+            // no delimiter grammar, no "a,b=c" collision. Malformed payload is
+            // a reconstruction failure, never a silent blank.
+            com.fasterxml.jackson.databind.JsonNode enc;
+            try {
+                enc = com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                        .readTree(paramsEnc);
+            } catch (Exception e) {
+                return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                        "TRANSITION_CHANGED parameters not canonical JSON");
             }
+            com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
+                    .fromCanonicalValue(transitionId, enc).parameters()
+                    .forEach(params::put);
         }
         CanonicalTimelineTransitionSnapshot updated = new CanonicalTimelineTransitionSnapshot(
                 transitionId,
@@ -497,7 +605,7 @@ public class TimelinePatchApplier {
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(),
-                List.copyOf(transitions), s.automations()));
+                List.copyOf(transitions), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     private TimelinePatchApplicationResult applyAutomationChanged(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
@@ -514,27 +622,29 @@ public class TimelinePatchApplier {
             }
             return ok(s.withAutomations(List.copyOf(automations)));
         }
-        List<CanonicalTimelineAutomationKeyframe> keyframes = new ArrayList<>();
+        // CHECKPOINT_A Round 3: Automation-local canonical JSON authority — no
+        // delimiter grammar, no collision on authored strings.
+        CanonicalTimelineAutomationSnapshot updated;
         String kfEnc = meta.get("keyframes");
         if (kfEnc != null && !kfEnc.isBlank()) {
-            for (String kf : kfEnc.split("\u001f")) {
-                String[] parts = kf.split("\u001e");
-                if (parts.length >= 5) {
-                    keyframes.add(new CanonicalTimelineAutomationKeyframe(
-                            parts[0],
-                            MediaTime.ofTicks(parseLong(parts[1], 0), parseLong(parts[2], 1)),
-                            Double.parseDouble(parts[3]),
-                            parts[4]));
-                }
+            com.fasterxml.jackson.databind.JsonNode enc;
+            try {
+                enc = com.example.platform.timeline.app.InternalTimelineJson.mapper().readTree(kfEnc);
+            } catch (Exception e) {
+                return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
+                        "AUTOMATION_CHANGED keyframes not canonical JSON");
             }
+            updated = com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
+                    .fromCanonicalValue(automationId, enc);
+        } else {
+            updated = new CanonicalTimelineAutomationSnapshot(
+                    automationId,
+                    meta.getOrDefault("targetEntityId", ""),
+                    meta.getOrDefault("parameterPath", ""),
+                    meta.getOrDefault("valueType", "float"),
+                    meta.getOrDefault("extrapolation", "HOLD"),
+                    new ArrayList<>());
         }
-        CanonicalTimelineAutomationSnapshot updated = new CanonicalTimelineAutomationSnapshot(
-                automationId,
-                meta.getOrDefault("targetEntityId", ""),
-                meta.getOrDefault("parameterPath", ""),
-                meta.getOrDefault("valueType", "float"),
-                meta.getOrDefault("extrapolation", "HOLD"),
-                keyframes);
         List<CanonicalTimelineAutomationSnapshot> automations = new ArrayList<>(s.automations());
         boolean replaced = false;
         for (int i = 0; i < automations.size(); i++) {
@@ -550,28 +660,55 @@ public class TimelinePatchApplier {
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(),
-                s.transitions(), List.copyOf(automations)));
+                s.transitions(), List.copyOf(automations), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- Helpers ---
 
+    private com.example.platform.timeline.semantics.temporal.TemporalMapping parseTemporalMapping(
+            String enc, com.example.platform.timeline.semantics.temporal.TemporalMapping current) {
+        if (enc == null || enc.isBlank()) {
+            return current;
+        }
+        try {
+            return com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                    .readValue(enc, com.example.platform.timeline.semantics.temporal.TemporalMapping.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Malformed TemporalMapping payload: " + e.getMessage());
+        }
+    }
+
     private CanonicalTimelineClipSnapshot applyClipFieldOp(
-            CanonicalTimelineClipSnapshot c, String field, String afterValue) {
+            CanonicalTimelineClipSnapshot c, String field, String afterValue, TimelineChangeOperation op) {
         return switch (field) {
             case "start" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                     parseMediaTime(afterValue, c.start()), c.duration(), c.sourceStart(), c.sourceDuration(),
-                    c.rate(), c.effects(), c.safeMetadata());
+                    c.rate(), c.effects(), c.safeMetadata(), c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping());
             case "duration" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                     c.start(), parseMediaTime(afterValue, c.duration()), c.sourceStart(),
                     parseMediaTime(afterValue, c.sourceDuration()),
-                    c.rate(), c.effects(), c.safeMetadata());
+                    c.rate(), c.effects(), c.safeMetadata(), c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping());
             case "rate" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
                     c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
-                    parseFrameRate(afterValue, c.rate()), c.effects(), c.safeMetadata());
+                    parseFrameRate(afterValue, c.rate()), c.effects(), c.safeMetadata(),
+                    c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping());
+            case "temporalMapping" -> new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
+                    c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
+                    c.rate(), c.effects(), c.safeMetadata(),
+                    c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(),
+                    parseTemporalMapping(afterValue, c.temporalMapping()));
+            case "sourceSemantics" -> {
+                Map<String, String> sm = op.safeMetadata() != null ? op.safeMetadata() : Map.of();
+                yield new CanonicalTimelineClipSnapshot(c.clipId(), c.assetBindingId(),
+                        c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
+                        c.rate(), c.effects(), c.safeMetadata(),
+                        sm.get("sourceKind"), sm.get("mediaStreamId"), sm.get("artifactId"), sm.get("contentDigest"),
+                        c.temporalMapping());
+            }
             case "assetBindingId" -> new CanonicalTimelineClipSnapshot(c.clipId(),
                     afterValue != null ? afterValue : c.assetBindingId(),
                     c.start(), c.duration(), c.sourceStart(), c.sourceDuration(),
-                    c.rate(), c.effects(), c.safeMetadata());
+                    c.rate(), c.effects(), c.safeMetadata(), c.sourceKind(), c.mediaStreamId(), c.artifactId(), c.contentDigest(), c.temporalMapping());
             default -> c;
         };
     }
@@ -660,7 +797,7 @@ public class TimelinePatchApplier {
     private CanonicalTimelineSnapshot withTracks(CanonicalTimelineSnapshot s, List<CanonicalTimelineTrackSnapshot> tracks) {
         return new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
                 tracks, s.captions(), s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations());
+                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships());
     }
 
     private CanonicalTimelineSnapshot withUpdatedTrack(CanonicalTimelineSnapshot s, String trackId, CanonicalTimelineTrackSnapshot updated) {

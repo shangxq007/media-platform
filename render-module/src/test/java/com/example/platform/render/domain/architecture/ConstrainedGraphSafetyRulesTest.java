@@ -127,7 +127,7 @@ class ConstrainedGraphSafetyRulesTest {
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
                 before.tracks(), before.captions(), before.watermarks(),
                 before.templateApplications(), before.workflowSteps(),
-                before.outputProfile(), Map.of(), List.of(), List.of(), List.of());
+                before.outputProfile(), Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculator calculator = new CanonicalTimelineDiffCalculator();
         CanonicalTimelineDiffCalculationResult r1 = calculator.calculate(before, after);
@@ -150,7 +150,7 @@ class ConstrainedGraphSafetyRulesTest {
                 original.id(), original.revisionId(), original.duration(),
                 original.tracks(), original.captions(), original.watermarks(),
                 original.templateApplications(), original.workflowSteps(),
-                original.outputProfile(), original.safeMetadata(), List.of(), List.of(), List.of());
+                original.outputProfile(), original.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         TimelinePatch patch = new TimelinePatch(
                 new TimelinePatchId("p1"), "rev-1",
@@ -183,12 +183,12 @@ class ConstrainedGraphSafetyRulesTest {
                 new CanonicalTimelineSnapshotId("snap-ours"), "rev-ours", MediaTime.ofMillis(8000),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(),
-                base.outputProfile(), Map.of(), List.of(), List.of(), List.of());
+                base.outputProfile(), Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-theirs"), "rev-theirs", MediaTime.ofMillis(12000),
                 base.tracks(), base.captions(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(),
-                base.outputProfile(), Map.of(), List.of(), List.of(), List.of());
+                base.outputProfile(), Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         TimelineMergeConflictDetector detector = new TimelineMergeConflictDetector();
         TimelineMergePreviewService service = new TimelineMergePreviewService(detector);
@@ -311,12 +311,12 @@ class ConstrainedGraphSafetyRulesTest {
                 MediaTime.ofMillis(5000),
                 List.of(new CanonicalTimelineTrackSnapshot(
                         "track-v", 0, "VIDEO", List.of(
-                        new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of())), Map.of())),
+                        new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of(), null, null, null, null, null)), Map.of())),
                 List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
                 new CanonicalTimelineOutputProfileSnapshot("default", "mp4", "16:9", 1920, 1080, Map.of()),
-                Map.of(), List.of(), List.of(), List.of());
+                Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 }

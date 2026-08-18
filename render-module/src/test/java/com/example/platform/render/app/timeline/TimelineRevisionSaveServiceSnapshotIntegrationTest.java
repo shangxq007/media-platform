@@ -66,7 +66,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         digester = new TimelineContentDigester();
         currentRevisionService = new ProductCurrentRevisionService(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService, null, null);
     }
 
     @Test

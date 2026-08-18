@@ -39,7 +39,7 @@ class ProductCurrentRevisionServiceIntegrationTest extends PostgresTestContainer
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         currentRevisionService = new ProductCurrentRevisionService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new com.example.platform.timeline.canonical.TimelineContentDigester());
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new com.example.platform.timeline.canonical.TimelineContentDigester(), null, null, null);
     }
 
     @Test

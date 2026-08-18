@@ -52,7 +52,7 @@ class CanonicalTimelineDiffCalculatorTest {
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
                 before.tracks(), before.captions(), before.watermarks(),
                 before.templateApplications(), before.workflowSteps(),
-                before.outputProfile(), Map.of(), List.of(), List.of(), List.of());
+                before.outputProfile(), Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
 
@@ -72,7 +72,7 @@ class CanonicalTimelineDiffCalculatorTest {
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0), newTrack),
-                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
 
@@ -86,7 +86,7 @@ class CanonicalTimelineDiffCalculatorTest {
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0), trackSnapshot("track-2", 1)),
-                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot after = simpleSnapshot("rev-2");
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
@@ -107,10 +107,10 @@ class CanonicalTimelineDiffCalculatorTest {
 
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(t1, t2), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(t1, t2), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
-                List.of(t1moved, t2moved), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(t1moved, t2moved), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
 
@@ -124,7 +124,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Clip added")
     void clipAdded() {
         CanonicalTimelineSnapshot before = simpleSnapshot("rev-1");
-        CanonicalTimelineClipSnapshot newClip = new CanonicalTimelineClipSnapshot("clip-2", "asset-2", MediaTime.ofMillis(5000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
+        CanonicalTimelineClipSnapshot newClip = new CanonicalTimelineClipSnapshot("clip-2", "asset-2", MediaTime.ofMillis(5000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of(), null, null, null, null, null);
         CanonicalTimelineSnapshot after = snapshotWithClips("rev-2",
                 List.of(clipSnapshot("clip-1", 0), newClip));
 
@@ -151,7 +151,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Clip moved (start changed)")
     void clipMoved() {
         CanonicalTimelineClipSnapshot beforeClip = clipSnapshot("clip-1", 0);
-        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(2000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
+        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(2000), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of(), null, null, null, null, null);
 
         CanonicalTimelineSnapshot before = snapshotWithClips("rev-1", List.of(beforeClip));
         CanonicalTimelineSnapshot after = snapshotWithClips("rev-2", List.of(afterClip));
@@ -166,7 +166,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Clip trimmed (duration changed)")
     void clipTrimmed() {
         CanonicalTimelineClipSnapshot beforeClip = clipSnapshot("clip-1", 0);
-        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(8000), MediaTime.ofMillis(0), MediaTime.ofMillis(8000), FrameRate.of(30, 1), List.of(), Map.of());
+        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(8000), MediaTime.ofMillis(0), MediaTime.ofMillis(8000), FrameRate.of(30, 1), List.of(), Map.of(), null, null, null, null, null);
 
         CanonicalTimelineSnapshot before = snapshotWithClips("rev-1", List.of(beforeClip));
         CanonicalTimelineSnapshot after = snapshotWithClips("rev-2", List.of(afterClip));
@@ -181,7 +181,7 @@ class CanonicalTimelineDiffCalculatorTest {
     @DisplayName("Asset binding changed")
     void assetBindingChanged() {
         CanonicalTimelineClipSnapshot beforeClip = clipSnapshot("clip-1", 0);
-        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-NEW", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
+        CanonicalTimelineClipSnapshot afterClip = new CanonicalTimelineClipSnapshot("clip-1", "asset-NEW", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of(), null, null, null, null, null);
 
         CanonicalTimelineSnapshot before = snapshotWithClips("rev-1", List.of(beforeClip));
         CanonicalTimelineSnapshot after = snapshotWithClips("rev-2", List.of(afterClip));
@@ -313,10 +313,10 @@ class CanonicalTimelineDiffCalculatorTest {
 
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), beforeP, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), beforeP, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), afterP, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), afterP, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
 
@@ -333,11 +333,11 @@ class CanonicalTimelineDiffCalculatorTest {
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
-                Map.of("title", "Old"), List.of(), List.of(), List.of());
+                Map.of("title", "Old"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
-                Map.of("title", "New"), List.of(), List.of(), List.of());
+                Map.of("title", "New"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
 
@@ -382,11 +382,11 @@ class CanonicalTimelineDiffCalculatorTest {
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-1"), "rev-1", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
-                Map.of("title", "Old"), List.of(), List.of(), List.of());
+                Map.of("title", "Old"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(5000),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null,
-                Map.of("title", "New"), List.of(), List.of(), List.of());
+                Map.of("title", "New"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
         assertEquals(TimelineRenderImpactLevel.METADATA_ONLY, result.diff().renderImpact().level());
@@ -403,7 +403,7 @@ class CanonicalTimelineDiffCalculatorTest {
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
                 List.of(), List.of(cap), List.of(), List.of(), List.of(), null,
-                Map.of("title", "New"), List.of(), List.of(), List.of());
+                Map.of("title", "New"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult r1 = calculator.calculate(before, after);
         CanonicalTimelineDiffCalculationResult r2 = calculator.calculate(before, after);
@@ -431,7 +431,7 @@ class CanonicalTimelineDiffCalculatorTest {
         CanonicalTimelineSnapshot before = simpleSnapshot("rev-1");
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult result = calculator.calculate(before, after);
         String str = result.diff().toString();
@@ -447,7 +447,7 @@ class CanonicalTimelineDiffCalculatorTest {
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
-                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineSnapshot snapshotWithClips(String revisionId, List<CanonicalTimelineClipSnapshot> clips) {
@@ -455,7 +455,7 @@ class CanonicalTimelineDiffCalculatorTest {
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId, MediaTime.ofMillis(10000),
                 List.of(new CanonicalTimelineTrackSnapshot("track-1", 0, "VIDEO", clips, Map.of())),
-                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineSnapshot snapshotWithCaptions(String revisionId, List<CanonicalTimelineCaptionSnapshot> captions) {
@@ -463,7 +463,7 @@ class CanonicalTimelineDiffCalculatorTest {
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
-                captions, List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                captions, List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineSnapshot snapshotWithWatermarks(String revisionId, List<CanonicalTimelineWatermarkSnapshot> watermarks) {
@@ -471,7 +471,7 @@ class CanonicalTimelineDiffCalculatorTest {
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
-                List.of(), watermarks, List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(), watermarks, List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineSnapshot snapshotWithTemplates(String revisionId, List<CanonicalTimelineTemplateApplicationSnapshot> templates) {
@@ -479,7 +479,7 @@ class CanonicalTimelineDiffCalculatorTest {
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
-                List.of(), List.of(), templates, List.of(), null, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), templates, List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineSnapshot snapshotWithWorkflow(String revisionId, List<CanonicalTimelineWorkflowStepSnapshot> steps) {
@@ -487,7 +487,7 @@ class CanonicalTimelineDiffCalculatorTest {
                 new CanonicalTimelineSnapshotId("snap-" + revisionId),
                 revisionId, MediaTime.ofMillis(5000),
                 List.of(trackSnapshot("track-1", 0)),
-                List.of(), List.of(), List.of(), steps, null, Map.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), steps, null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineTrackSnapshot trackSnapshot(String id, int order) {
@@ -496,6 +496,6 @@ class CanonicalTimelineDiffCalculatorTest {
     }
 
     private CanonicalTimelineClipSnapshot clipSnapshot(String id, long startMs) {
-        return new CanonicalTimelineClipSnapshot(id, "asset-1", MediaTime.ofMillis(startMs), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of());
+        return new CanonicalTimelineClipSnapshot(id, "asset-1", MediaTime.ofMillis(startMs), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of(), null, null, null, null, null);
     }
 }

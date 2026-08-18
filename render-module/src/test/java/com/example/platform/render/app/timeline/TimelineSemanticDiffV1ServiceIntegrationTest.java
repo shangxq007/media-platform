@@ -63,7 +63,7 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         ProductCurrentRevisionService currentRevisionService = new ProductCurrentRevisionService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester());
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(), null, null, null);
         diffService = new TimelineSemanticDiffV1Service(saveService, new TimelineContentDigester(), new ObjectMapper());
     }
 

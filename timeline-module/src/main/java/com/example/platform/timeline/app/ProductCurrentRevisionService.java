@@ -29,8 +29,16 @@ public class ProductCurrentRevisionService {
      */
     @Transactional
     public void updateCurrentRevision(String productId, String expectedCurrentRevisionId, String newRevisionId) {
+        updateCurrentRevisionTx(dsl, productId, expectedCurrentRevisionId, newRevisionId);
+    }
+
+    /** CHECKPOINT_A (Round 3): transaction-scoped head update — the caller's
+     *  jOOQ transaction context is used so head mutation joins the same atomic
+     *  unit as revision insert + pin registration (rollback-safe). */
+    public void updateCurrentRevisionTx(org.jooq.DSLContext tx,
+                                        String productId, String expectedCurrentRevisionId, String newRevisionId) {
         // Read actual current revision
-        String actualCurrentRevisionId = dsl.select(PRODUCT.CURRENT_REVISION_ID)
+        String actualCurrentRevisionId = tx.select(PRODUCT.CURRENT_REVISION_ID)
                 .from(PRODUCT)
                 .where(PRODUCT.PRODUCT_ID.eq(productId))
                 .fetchOne(PRODUCT.CURRENT_REVISION_ID);
@@ -44,7 +52,7 @@ public class ProductCurrentRevisionService {
         }
 
         // Update current revision pointer
-        int updated = dsl.update(PRODUCT)
+        int updated = tx.update(PRODUCT)
                 .set(PRODUCT.CURRENT_REVISION_ID, newRevisionId)
                 .where(PRODUCT.PRODUCT_ID.eq(productId))
                 .execute();

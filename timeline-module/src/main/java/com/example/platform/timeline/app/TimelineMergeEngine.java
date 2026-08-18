@@ -464,6 +464,21 @@ public class TimelineMergeEngine {
             } else {
                 mergedComposition.set("textElements", textElementsToJson(mergedSnapshot.textElements()));
             }
+            // CHECKPOINT_A: AudioMix + SemanticRelationships participate in the
+            // merged write-back (absent == empty convention, like the others).
+            if (mergedSnapshot.audioMix() == null
+                    || mergedSnapshot.audioMix().equals(com.example.platform.audio.domain.mix.AudioMix.empty())) {
+                mergedComposition.remove("audioMix");
+            } else {
+                mergedComposition.set("audioMix",
+                        InternalTimelineJson.mapper().valueToTree(mergedSnapshot.audioMix()));
+            }
+            if (mergedSnapshot.semanticRelationships().isEmpty()) {
+                mergedComposition.remove("semanticRelationships");
+            } else {
+                mergedComposition.set("semanticRelationships",
+                        InternalTimelineJson.mapper().valueToTree(mergedSnapshot.semanticRelationships()));
+            }
             // revision counter is a document-level field; the persistence layer
             // re-assigns it on insert, so leave it untouched here.
             return InternalTimelineJson.write(mergedRoot);
@@ -495,27 +510,18 @@ public class TimelineMergeEngine {
         return out;
     }
 
-    /** EFFECT_TRANSITION_CANONICALIZATION_V1: merged transitions → composition JSON. */
+    /** CHECKPOINT_A Round 3: merged transitions → composition JSON, delegating
+     *  the Transition-local fragment to TransitionCanonicalSemantics (Timeline
+     *  only adds aggregate identity). */
     private ArrayNode transitionsToJson(List<CanonicalTimelineTransitionSnapshot> transitions) {
         ObjectMapper mapper = InternalTimelineJson.mapper();
         ArrayNode out = mapper.createArrayNode();
         List<CanonicalTimelineTransitionSnapshot> ordered = new ArrayList<>(transitions);
         ordered.sort(java.util.Comparator.comparing(CanonicalTimelineTransitionSnapshot::transitionId));
         for (CanonicalTimelineTransitionSnapshot t : ordered) {
-            ObjectNode node = mapper.createObjectNode();
+            ObjectNode node = com.example.platform.timeline.semantics.transition
+                    .TransitionCanonicalSemantics.canonicalValue(t);
             node.put("id", t.transitionId());
-            node.put("transitionDefinitionId", t.transitionDefinitionId());
-            node.put("transitionDefinitionVersion", t.transitionDefinitionVersion());
-            node.put("outgoingClipId", t.outgoingClipId());
-            node.put("incomingClipId", t.incomingClipId());
-            node.put("mediaType", t.mediaType());
-            node.put("durationTicks", t.duration().ticks());
-            node.put("durationTimeScale", t.duration().timeScale());
-            node.put("alignment", t.alignment());
-            node.put("temporalPolicy", t.temporalPolicy());
-            if (t.parameters() != null && !t.parameters().isEmpty()) {
-                node.set("parameters", mapper.valueToTree(new java.util.TreeMap<>(t.parameters())));
-            }
             out.add(node);
         }
         return out;
@@ -533,29 +539,18 @@ public class TimelineMergeEngine {
         return arr;
     }
 
+    /** CHECKPOINT_A Round 3: merged automations → composition JSON, delegating
+     *  the Automation-local fragment to AutomationCanonicalSemantics (Timeline
+     *  only adds aggregate identity). */
     private ArrayNode automationsToJson(List<CanonicalTimelineAutomationSnapshot> automations) {
         ObjectMapper mapper = InternalTimelineJson.mapper();
         ArrayNode out = mapper.createArrayNode();
         List<CanonicalTimelineAutomationSnapshot> ordered = new ArrayList<>(automations);
         ordered.sort(java.util.Comparator.comparing(CanonicalTimelineAutomationSnapshot::automationId));
         for (CanonicalTimelineAutomationSnapshot c : ordered) {
-            ObjectNode node = mapper.createObjectNode();
+            ObjectNode node = com.example.platform.timeline.semantics.automation
+                    .AutomationCanonicalSemantics.canonicalValue(c);
             node.put("automationId", c.automationId());
-            node.put("targetEntityId", c.targetEntityId());
-            node.put("parameterPath", c.parameterPath());
-            node.put("valueType", c.valueType());
-            node.put("extrapolation", c.extrapolation());
-            ArrayNode kfs = mapper.createArrayNode();
-            for (CanonicalTimelineAutomationKeyframe k : c.keyframes()) {
-                ObjectNode kf = mapper.createObjectNode();
-                kf.put("keyframeId", k.keyframeId());
-                kf.put("timeTicks", k.time().ticks());
-                kf.put("timeTimeScale", k.time().timeScale());
-                kf.put("value", k.value());
-                kf.put("interpolation", k.interpolation());
-                kfs.add(kf);
-            }
-            node.set("keyframes", kfs);
             out.add(node);
         }
         return out;
@@ -567,23 +562,33 @@ public class TimelineMergeEngine {
         node.put("assetId", clip.assetBindingId());
         node.set("timelineRange", rangeToJson(clip.start(), clip.duration(), clip.rate(), mapper));
         node.set("sourceRange", rangeToJson(clip.sourceStart(), clip.sourceDuration(), clip.rate(), mapper));
-        // FOURTH CORRECTION: merged clips carry their authored Effect state
-        // (canonical Effect semantics; diff/patch/merge consume the local
-        // semantic fingerprint authority).
+        // CHECKPOINT_A: full typed source semantics survive the merged write-back.
+        if (clip.sourceKind() != null) {
+            node.put("sourceKind", clip.sourceKind());
+        }
+        if (clip.mediaStreamId() != null) {
+            node.put("mediaStreamId", clip.mediaStreamId());
+        }
+        if (clip.artifactId() != null) {
+            node.put("artifactId", clip.artifactId());
+        }
+        if (clip.contentDigest() != null) {
+            node.put("contentDigest", clip.contentDigest());
+        }
+        if (clip.temporalMapping() != null) {
+            node.set("temporalMapping", mapper.valueToTree(clip.temporalMapping()));
+        }
+        // CHECKPOINT_A Round 3: merged clips carry their authored Effect state —
+        // the Effect-local fragment is delegated to EffectCanonicalSemantics
+        // (Timeline orchestrates the clip, never the Effect field grammar).
         if (clip.effects() != null && !clip.effects().isEmpty()) {
-            ArrayNode effects = mapper.createArrayNode();
-            for (com.example.platform.timeline.canonicalmodel.TimelineClipEffect fx : clip.effects()) {
-                ObjectNode fxNode = mapper.createObjectNode();
-                if (fx.id() != null) {
-                    fxNode.put("id", fx.id());
-                }
-                fxNode.put("effectKey", fx.effectKey());
-                if (fx.parameters() != null && !fx.parameters().isEmpty()) {
-                    fxNode.set("parameters", mapper.valueToTree(fx.parameters()));
-                }
-                effects.add(fxNode);
+            try {
+                node.set("effects", InternalTimelineJson.mapper().readTree(
+                        com.example.platform.timeline.canonicalmodel
+                                .EffectCanonicalSemantics.encodeEffects(clip.effects())));
+            } catch (Exception e) {
+                throw new IllegalStateException("Effect canonical fragment decode failed", e);
             }
-            node.set("effects", effects);
         }
         return node;
     }

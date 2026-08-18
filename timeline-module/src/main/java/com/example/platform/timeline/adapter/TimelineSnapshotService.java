@@ -28,9 +28,16 @@ public class TimelineSnapshotService {
 
     @Transactional
     public String save(String projectId, String tenantId, String payloadJson, String schemaVersion) {
+        return saveTx(dsl, projectId, tenantId, payloadJson, schemaVersion);
+    }
+
+    /** CHECKPOINT_A (Round 3): transaction-scoped snapshot write joining the
+     *  caller's jOOQ transaction (rollback-safe with revision + pins). */
+    public String saveTx(org.jooq.DSLContext tx, String projectId, String tenantId,
+                         String payloadJson, String schemaVersion) {
         String snapshotId = Ids.newId("snap");
         String effectiveTenant = tenantId != null ? tenantId : TenantContext.get();
-        dsl.insertInto(TIMELINE_SNAPSHOT)
+        tx.insertInto(TIMELINE_SNAPSHOT)
                 .columns(TIMELINE_SNAPSHOT.ID, TIMELINE_SNAPSHOT.PROJECT_ID, TIMELINE_SNAPSHOT.TENANT_ID,
                         TIMELINE_SNAPSHOT.PAYLOAD_JSON, TIMELINE_SNAPSHOT.SCHEMA_VERSION, TIMELINE_SNAPSHOT.CREATED_AT)
                 .values(snapshotId, projectId, effectiveTenant, payloadJson,

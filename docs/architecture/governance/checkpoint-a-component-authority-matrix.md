@@ -1,0 +1,20 @@
+# CHECKPOINT_A — COMPONENT_LOCAL_SEMANTIC_AUTHORITY_MATRIX (Round 3, from real code)
+
+Gate: COMPONENT_LOCAL_SEMANTIC_AUTHORITY_GATE = PASS (executable H1-H8 guards in
+verifyTimelineEffectTransitionCanonicalization).
+
+| COMPONENT | LOCAL_CANONICALIZATION_OWNER | LOCAL_EQUALITY_OWNER | FINGERPRINT_OWNER | ENCODE_OWNER | DECODE_OWNER | LOCAL_DIFF_OWNER | RECONSTRUCTION_OWNER | MERGE_OUTPUT_FRAGMENT_OWNER | CROSS_OBJECT_INVARIANT_OWNER |
+|---|---|---|---|---|---|---|---|---|---|
+| Effect | EffectCanonicalSemantics | EffectCanonicalSemantics | EffectCanonicalSemantics | EffectCanonicalSemantics | EffectCanonicalSemantics | EffectCanonicalSemantics (fingerprint compare) | EffectCanonicalSemantics | EffectCanonicalSemantics.encodeEffects (Round 3: TimelineMergeEngine delegates) | Timeline (clip target existence) |
+| Transition | TransitionCanonicalSemantics (NEW) | TransitionCanonicalSemantics.localSemanticsEquals | TransitionCanonicalSemantics.semanticFingerprint (SHA-256) | TransitionCanonicalSemantics.encode (canonical JSON) | TransitionCanonicalSemantics.fromCanonicalValue | TransitionCanonicalSemantics (fingerprint) | TransitionCanonicalSemantics.fromCanonicalValue | TransitionCanonicalSemantics.canonicalValue (Round 3) | Timeline (participant topology/existence, delete-vs-modify, 3-way orchestration) |
+| Automation | AutomationCanonicalSemantics (NEW) | AutomationCanonicalSemantics.localSemanticsEquals | AutomationCanonicalSemantics.semanticFingerprint | AutomationCanonicalSemantics.encode | AutomationCanonicalSemantics.fromCanonicalValue | AutomationCanonicalSemantics (fingerprint) | AutomationCanonicalSemantics.fromCanonicalValue | AutomationCanonicalSemantics.canonicalValue (Round 3) | Timeline (target existence, target×deletion, Effect cross-object) |
+| TimedText | TimedTextCanonicalSemantics (reference pattern, unchanged) | TimedTextCanonicalSemantics | TimedTextCanonicalSemantics | TimedTextCanonicalSemantics | TimedTextCanonicalSemantics | TimedTextCanonicalSemantics | TimedTextCanonicalSemantics | TimedTextCanonicalSemantics (TimelineMergeEngine delegates) | Timeline (aggregate changes) |
+| AudioMix | audio-module (AudioMix/AudioMasterBus/AudioRoute/AudioGain records) | audio-module (record equals) | InternalTimelineCandidateAdapter.AudioMixJson (thin adapter: mapper.writeValueAsString only — zero DSP grammar) | audio-module (Jackson) | InternalTimelineCandidateAdapter.AudioMixJson (treeToValue only) | whole-value compare (no field-level) | audio-module (decode) | TimelineMergeEngine inserts whole AudioMix fragment | Timeline (whole-component conservative 3-way) |
+| SemanticRelationship | RelationshipCanonicalSemantics (NEW: canonicalKey/canonicalJson/fromCanonicalJson) + domain records (GroupRelationship/SyncRelationship identity rules) | domain records (equals) | RelationshipCanonicalSemantics | RelationshipCanonicalSemantics | RelationshipCanonicalSemantics | RelationshipCanonicalSemantics (key identity) | RelationshipCanonicalSemantics | TimelineMergeEngine (whole relationship fragment) | Timeline (collection orchestration, clip existence, cross-object validation) |
+| TemporalMapping | typed mapping classes (ConstantRateTemporalMapping/FreezeTemporalMapping records + Jackson type metadata) | typed records (equals) | n/a (whole-value compare) | Jackson (typed) | Jackson (typed) | whole typed value compare | Jackson (typed) | TimelineMergeEngine inserts whole mapping | Timeline (clip binding changes/replacement conflict) |
+| TimelineSourceBinding | typed clip snapshot fields (sourceKind/mediaStreamId/artifactId/contentDigest) + TimelineClip | record equals | n/a (whole-value compare) | TimelineClip Jackson | TimelineClip Jackson | whole typed compare | TimelineClip Jackson | TimelineMergeEngine (whole binding) | Timeline (historical binding validation, replacement conflict) |
+
+FINAL: COMPONENT_LOCAL_SEMANTIC_AUTHORITY_GATE = PASS
+No central component-grammar duplication remains (delimiter grammars removed;
+identityHashCode removed; no generic SemanticComponent framework; no
+Map<String,Object> semantic payload).

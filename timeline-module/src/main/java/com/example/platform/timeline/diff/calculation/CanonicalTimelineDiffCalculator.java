@@ -42,6 +42,11 @@ public class CanonicalTimelineDiffCalculator {
         diffTransitions(before, after, operations, opSeq);
         diffAutomations(before, after, operations, opSeq);
 
+        // CHECKPOINT_A correction: AudioMix and SemanticRelationships join the
+        // production semantic diff path — never silent-dropped by merge.
+        diffAudioMix(before, after, operations, opSeq);
+        diffRelationships(before, after, operations, opSeq);
+
         // Captions
         diffCaptions(before, after, operations, opSeq);
 
@@ -185,6 +190,40 @@ public class CanonicalTimelineDiffCalculator {
                             TimelineChangeScope.ASSET_BINDING, clipPath + ".assetBindingId",
                             bc.assetBindingId(), ac.assetBindingId()));
                 }
+                // CHECKPOINT_A: the FULL typed source semantics must be
+                // diff-visible — kind/stream/artifact/digest/temporal mapping.
+                if (!Objects.equals(bc.sourceKind(), ac.sourceKind())
+                        || !Objects.equals(bc.mediaStreamId(), ac.mediaStreamId())
+                        || !Objects.equals(bc.artifactId(), ac.artifactId())
+                        || !Objects.equals(bc.contentDigest(), ac.contentDigest())) {
+                    Map<String, String> srcMeta = new LinkedHashMap<>();
+                    srcMeta.put("sourceKind", ac.sourceKind());
+                    srcMeta.put("mediaStreamId", ac.mediaStreamId());
+                    srcMeta.put("artifactId", ac.artifactId());
+                    srcMeta.put("contentDigest", ac.contentDigest());
+                    ops.add(new TimelineChangeOperation(
+                            new TimelineChangeOperationId("op-" + (++seq[0])),
+                            TimelineChangeType.ASSET_BINDING_CHANGED,
+                            TimelineChangeScope.ASSET_BINDING,
+                            new TimelineChangePath(clipPath + ".sourceSemantics"),
+                            TimelineChangePayload.ofString(bc.sourceKind() + "/" + bc.mediaStreamId() + "/" + bc.artifactId() + "/" + bc.contentDigest()),
+                            TimelineChangePayload.ofString(ac.sourceKind() + "/" + ac.mediaStreamId() + "/" + ac.artifactId() + "/" + ac.contentDigest()),
+                            srcMeta));
+                }
+                if (!java.util.Objects.equals(bc.temporalMapping(), ac.temporalMapping())) {
+                    String beforeTm = bc.temporalMapping() == null ? "" : temporalMappingJson(bc.temporalMapping());
+                    String afterTm = ac.temporalMapping() == null ? "" : temporalMappingJson(ac.temporalMapping());
+                    Map<String, String> tmMeta = new LinkedHashMap<>();
+                    tmMeta.put("temporalMapping", afterTm);
+                    ops.add(new TimelineChangeOperation(
+                            new TimelineChangeOperationId("op-" + (++seq[0])),
+                            TimelineChangeType.CLIP_SPEED_CHANGED,
+                            TimelineChangeScope.CLIP,
+                            new TimelineChangePath(clipPath + ".temporalMapping"),
+                            TimelineChangePayload.ofString(beforeTm),
+                            TimelineChangePayload.ofString(afterTm),
+                            tmMeta));
+                }
                 // EFFECT_TRANSITION_CANONICALIZATION_V1 (FIFTH CORRECTION):
                 // effects are authored Timeline semantics owned by
                 // TimelineClipEffect.semanticFingerprint() and reconstructed
@@ -212,6 +251,136 @@ public class CanonicalTimelineDiffCalculator {
     }
 
     // --- Transition / Automation diff (EFFECT_TRANSITION_CANONICALIZATION_V1) ---
+
+    // CHECKPOINT_A: AudioMix is a bounded semantic component — whole-value
+    // equality drives AUDIO_MIX_CHANGED; no DSP-level field merge invented here.
+    private void diffAudioMix(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
+                              List<TimelineChangeOperation> ops, int[] seq) {
+        com.example.platform.audio.domain.mix.AudioMix b = before.audioMix();
+        com.example.platform.audio.domain.mix.AudioMix a = after.audioMix();
+        if (b == null) b = com.example.platform.audio.domain.mix.AudioMix.empty();
+        if (a == null) a = com.example.platform.audio.domain.mix.AudioMix.empty();
+        if (!b.equals(a)) {
+            Map<String, String> meta = new LinkedHashMap<>();
+            try {
+                meta.put("audioMix", com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                        .writeValueAsString(a));
+            } catch (Exception e) {
+                throw new IllegalStateException("AudioMix canonical encoding failed", e);
+            }
+            ops.add(new TimelineChangeOperation(
+                    new TimelineChangeOperationId("op-" + (++seq[0])),
+                    TimelineChangeType.AUDIO_MIX_CHANGED,
+                    TimelineChangeScope.TIMELINE,
+                    new TimelineChangePath("timeline.audioMix"),
+                    TimelineChangePayload.ofString(com.example.platform.timeline.app.InternalTimelineCandidateAdapter.AudioMixJson.audioMixFingerprint(b)),
+                    TimelineChangePayload.ofString(com.example.platform.timeline.app.InternalTimelineCandidateAdapter.AudioMixJson.audioMixFingerprint(a)),
+                    meta));
+        }
+    }
+
+    // CHECKPOINT_A: SemanticRelationships are identity-based typed semantics.
+    // Conservative identity matching (Group: groupId; Sync: normalized endpoint
+    // pair), then member/anchor deltas. No naive field merge, no Map payloads.
+    private void diffRelationships(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
+                                   List<TimelineChangeOperation> ops, int[] seq) {
+        Map<String, com.example.platform.timeline.semantics.relationship.SemanticRelationship> beforeRels =
+                relationshipMap(before.semanticRelationships());
+        Map<String, com.example.platform.timeline.semantics.relationship.SemanticRelationship> afterRels =
+                relationshipMap(after.semanticRelationships());
+
+        for (String key : beforeRels.keySet()) {
+            if (!afterRels.containsKey(key)) {
+                ops.add(change(seq, TimelineChangeType.RELATIONSHIP_REMOVED,
+                        TimelineChangeScope.TIMELINE, "timeline.semanticRelationships." + key,
+                        key, null));
+            }
+        }
+        for (String key : afterRels.keySet()) {
+            if (!beforeRels.containsKey(key)) {
+                Map<String, String> meta = new LinkedHashMap<>();
+                meta.put("relationship", relationshipJson(afterRels.get(key)));
+                ops.add(new TimelineChangeOperation(
+                        new TimelineChangeOperationId("op-" + (++seq[0])),
+                        TimelineChangeType.RELATIONSHIP_ADDED,
+                        TimelineChangeScope.TIMELINE,
+                        new TimelineChangePath("timeline.semanticRelationships." + key),
+                        TimelineChangePayload.empty(),
+                        TimelineChangePayload.ofString(key),
+                        meta));
+                continue;
+            }
+            var b = beforeRels.get(key);
+            var a = afterRels.get(key);
+            if (b.equals(a)) {
+                continue;
+            }
+            // Same identity, different content → member/anchor deltas.
+            if (b instanceof com.example.platform.timeline.semantics.relationship.GroupRelationship bg
+                    && a instanceof com.example.platform.timeline.semantics.relationship.GroupRelationship ag) {
+                for (com.example.platform.timeline.canonical.TimelineClipId m : bg.members()) {
+                    if (!ag.members().contains(m)) {
+                        ops.add(change(seq, TimelineChangeType.GROUP_MEMBER_REMOVED,
+                                TimelineChangeScope.TIMELINE, "timeline.semanticRelationships." + key,
+                                m.value(), null));
+                    }
+                }
+                for (com.example.platform.timeline.canonical.TimelineClipId m : ag.members()) {
+                    if (!bg.members().contains(m)) {
+                        ops.add(change(seq, TimelineChangeType.GROUP_MEMBER_ADDED,
+                                TimelineChangeScope.TIMELINE, "timeline.semanticRelationships." + key,
+                                null, m.value()));
+                    }
+                }
+            } else {
+                // Sync anchor change: conservative whole-relationship replace.
+                ops.add(change(seq, TimelineChangeType.RELATIONSHIP_REMOVED,
+                        TimelineChangeScope.TIMELINE, "timeline.semanticRelationships." + key,
+                        key, null));
+                Map<String, String> meta = new LinkedHashMap<>();
+                meta.put("relationship", relationshipJson(a));
+                ops.add(new TimelineChangeOperation(
+                        new TimelineChangeOperationId("op-" + (++seq[0])),
+                        TimelineChangeType.RELATIONSHIP_ADDED,
+                        TimelineChangeScope.TIMELINE,
+                        new TimelineChangePath("timeline.semanticRelationships." + key),
+                        TimelineChangePayload.empty(),
+                        TimelineChangePayload.ofString(key),
+                        meta));
+            }
+        }
+    }
+
+    private static Map<String, com.example.platform.timeline.semantics.relationship.SemanticRelationship>
+            relationshipMap(java.util.List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> rels) {
+        Map<String, com.example.platform.timeline.semantics.relationship.SemanticRelationship> map = new java.util.LinkedHashMap<>();
+        if (rels != null) {
+            for (var r : rels) {
+                map.put(relationshipKey(r), r);
+            }
+        }
+        return map;
+    }
+
+    // CHECKPOINT_A Round 3: identity/normalization/encoding owned by
+    // RelationshipCanonicalSemantics (Timeline orchestrates, never re-derives).
+    private static String relationshipKey(com.example.platform.timeline.semantics.relationship.SemanticRelationship r) {
+        return com.example.platform.timeline.semantics.relationship.RelationshipCanonicalSemantics
+                .canonicalKey(r);
+    }
+
+    private static String relationshipJson(com.example.platform.timeline.semantics.relationship.SemanticRelationship r) {
+        return com.example.platform.timeline.semantics.relationship.RelationshipCanonicalSemantics
+                .canonicalJson(r);
+    }
+
+    private static String temporalMappingJson(com.example.platform.timeline.semantics.temporal.TemporalMapping tm) {
+        try {
+            return com.example.platform.timeline.app.InternalTimelineJson.mapper().writeValueAsString(tm);
+        } catch (Exception e) {
+            throw new IllegalStateException("TemporalMapping canonical encoding failed", e);
+        }
+    }
 
     /**
      * Effect local semantic fingerprint consumed by production diff: delegates
@@ -284,14 +453,10 @@ public class CanonicalTimelineDiffCalculator {
         meta.put("durationTimeScale", String.valueOf(t.duration().timeScale()));
         meta.put("alignment", t.alignment());
         meta.put("temporalPolicy", t.temporalPolicy());
-        if (t.parameters() != null && !t.parameters().isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            new java.util.TreeMap<>(t.parameters()).forEach((k, v) -> {
-                if (sb.length() > 0) sb.append(',');
-                sb.append(k).append('=').append(v);
-            });
-            meta.put("parameters", sb.toString());
-        }
+        // CHECKPOINT_A Round 3: parameters ride the Transition-local canonical
+        // JSON value — delimiter-free, values like "a,b=c" survive untouched.
+        meta.put("parameters", com.example.platform.timeline.semantics.transition
+                .TransitionCanonicalSemantics.encode(t));
         return new TimelineChangeOperation(
                 new TimelineChangeOperationId("op-" + (++seq[0])),
                 TimelineChangeType.TRANSITION_CHANGED, TimelineChangeScope.TRANSITION,
@@ -349,16 +514,10 @@ public class CanonicalTimelineDiffCalculator {
         meta.put("parameterPath", c.parameterPath());
         meta.put("valueType", c.valueType());
         meta.put("extrapolation", c.extrapolation());
-        StringBuilder kf = new StringBuilder();
-        for (var k : c.keyframes()) {
-            if (kf.length() > 0) kf.append('\u001f');
-            kf.append(k.keyframeId()).append('\u001e')
-                    .append(k.time().ticks()).append('\u001e')
-                    .append(k.time().timeScale()).append('\u001e')
-                    .append(k.value()).append('\u001e')
-                    .append(k.interpolation());
-        }
-        meta.put("keyframes", kf.toString());
+        // CHECKPOINT_A Round 3: full Automation-local canonical JSON — no
+        // delimiter grammar, authored strings survive untouched.
+        meta.put("keyframes", com.example.platform.timeline.semantics.automation
+                .AutomationCanonicalSemantics.encode(c));
         return new TimelineChangeOperation(
                 new TimelineChangeOperationId("op-" + (++seq[0])),
                 TimelineChangeType.AUTOMATION_CHANGED, TimelineChangeScope.AUTOMATION,
@@ -738,6 +897,27 @@ public class CanonicalTimelineDiffCalculator {
             // FIFTH CORRECTION: canonical Effect encoding (lossless/typed) —
             // single local semantic codec authority.
             meta.put("effects", EffectCanonicalSemantics.encodeEffects(clip.effects()));
+        }
+        // CHECKPOINT_A: full typed source semantics ride the CLIP_ADDED op.
+        if (clip.sourceKind() != null) {
+            meta.put("sourceKind", clip.sourceKind());
+        }
+        if (clip.mediaStreamId() != null) {
+            meta.put("mediaStreamId", clip.mediaStreamId());
+        }
+        if (clip.artifactId() != null) {
+            meta.put("artifactId", clip.artifactId());
+        }
+        if (clip.contentDigest() != null) {
+            meta.put("contentDigest", clip.contentDigest());
+        }
+        if (clip.temporalMapping() != null) {
+            try {
+                meta.put("temporalMapping", com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                        .writeValueAsString(clip.temporalMapping()));
+            } catch (Exception e) {
+                throw new IllegalStateException("TemporalMapping canonical encoding failed", e);
+            }
         }
         return new TimelineChangeOperation(
                 new TimelineChangeOperationId("op-" + (++seq[0])),

@@ -1465,6 +1465,90 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(!timedText.contains("run.getClass().getDeclaredFields()")) {
             "FAIL (TT-C2): reflection-based canonical run construction must be removed"
         }
+        // ── CHECKPOINT_A (G1-G7): combined semantic closure guards ──
+        val saveService = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java").readText()
+        require(saveService.contains("extractPinsFromDocument") && saveService.contains("artifactPinValidator.validate")
+                && saveService.contains("registerRevisionPins")) {
+            "FAIL (G1): every canonical revision writer must enforce the artifact-pin boundary (extract→validate→register)"
+        }
+        require(!saveService.contains("Backward-compatible constructor for existing direct-wiring tests")) {
+            "FAIL (G1): no no-pin public constructor may remain for production wiring"
+        }
+        require(saveService.contains("cannot save pinned content")) {
+            "FAIL (G1): no-pin save surface must fail closed on pinned content"
+        }
+        require(candidateModel.contains("AudioMix audioMix") && candidateModel.contains("semanticRelationships")
+                && candidateModel.contains("temporalMapping")) {
+            "FAIL (G2): TimelineCandidate must carry AudioMix/relationships/temporal mapping (no silent narrowing)"
+        }
+        require(snapshotRec.contains("AudioMix audioMix") && snapshotRec.contains("semanticRelationships")) {
+            "FAIL (G2): CanonicalTimelineSnapshot must carry AudioMix/relationships"
+        }
+        require(diffCalc.contains("diffAudioMix") && diffCalc.contains("diffRelationships")) {
+            "FAIL (G3): production diff must cover AudioMix + SemanticRelationships"
+        }
+        require(mergeEngine.contains("\"audioMix\"") && mergeEngine.contains("\"semanticRelationships\"")) {
+            "FAIL (G3): production merge write-back must carry AudioMix + SemanticRelationships"
+        }
+        require(!diffCalc.contains("Map<String, Object>") || !diffCalc.contains("new HashMap")) {
+            "FAIL (G5): no Map-based generic semantic payload authority"
+        }
+        require(!file("timeline-module/build.gradle.kts").readText().contains("render-module")) {
+            "FAIL (G6): timeline must not depend on render for semantic correctness"
+        }
+        require(file("timeline-module/src/test/java/com/example/platform/timeline/app/CheckpointACombinedMergeTest.java").readText()
+                .contains("combinedEightFamilyMerge") && file("timeline-module/src/test/java/com/example/platform/timeline/app/CheckpointAPinInvariantTest.java").readText()
+                .contains("case1MissingArtifactFailsClosed")) {
+            "FAIL (G7): combined E2E + pin invariant tests must exist"
+        }
+        // ── CHECKPOINT_A Round 3 (H1-H8): COMPONENT_LOCAL_SEMANTIC_AUTHORITY ──
+        val transitionAuthority = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/transition/TransitionCanonicalSemantics.java").readText()
+        val automationAuthority = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/automation/AutomationCanonicalSemantics.java").readText()
+        val relationshipAuthority = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/relationship/RelationshipCanonicalSemantics.java").readText()
+        require(transitionAuthority.contains("canonicalValue") && transitionAuthority.contains("semanticFingerprint")
+                && transitionAuthority.contains("fromCanonicalValue")) {
+            "FAIL (H1): Transition-local canonical authority must exist (value/fingerprint/decode)"
+        }
+        require(!diffCalc.contains("sb.append(k).append('=').append(v)")) {
+            "FAIL (H1): central diff must not own delimiter parameter grammar"
+        }
+        require(!patchApplier.contains("paramsEnc.split(\",\")")) {
+            "FAIL (H1): central patch must not own delimiter parameter decode"
+        }
+        require(automationAuthority.contains("canonicalValue") && automationAuthority.contains("keyframes")) {
+            "FAIL (H2): Automation-local canonical authority must exist"
+        }
+        require(!diffCalc.contains("keyframes\", kf.toString") && !diffCalc.contains("kf.toString()")) {
+            "FAIL (H2): central diff must not own keyframe delimiter grammar"
+        }
+        require(!patchApplier.contains("kfEnc.split")) {
+            "FAIL (H2): central patch must not own keyframe delimiter decode"
+        }
+        require(mergeEngine.contains("TransitionCanonicalSemantics.canonicalValue")
+                && mergeEngine.contains("AutomationCanonicalSemantics.canonicalValue")) {
+            "FAIL (H3): merge output must delegate Transition/Automation local fragments"
+        }
+        require(mergeEngine.contains("EffectCanonicalSemantics.encodeEffects")) {
+            "FAIL (H3): merge output must delegate Effect local authority"
+        }
+        require(relationshipAuthority.contains("canonicalKey") && relationshipAuthority.contains("canonicalJson")) {
+            "FAIL (H4): Relationship identity/normalization must live in the relationship authority"
+        }
+        require(!diffCalc.contains("System.identityHashCode")) {
+            "FAIL (H4): no unstable relationship identity may exist"
+        }
+        require(!diffCalc.contains("Map<String, Object>") && !mergeEngine.contains("Map<String, Object>")) {
+            "FAIL (H5): no Map-based generic semantic payload authority"
+        }
+        require(!diffCalc.contains("GenericSemanticComponent") && !mergeEngine.contains("SemanticComponent")) {
+            "FAIL (H6): no generic SemanticComponent framework"
+        }
+        require(file("timeline-module/src/test/java/com/example/platform/timeline/semantics/ComponentLocalSemanticAuthorityCollisionTest.java").exists()) {
+            "FAIL (H7): delimiter collision regression tests must exist"
+        }
+        require(file("render-module/src/test/java/com/example/platform/render/app/timeline/CheckpointAPinRegistrationRollbackIT.java").exists()) {
+            "FAIL (H8): same-path real-PG pin rollback IT must exist"
+        }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }

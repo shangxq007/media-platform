@@ -165,7 +165,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         snapshotService = new TimelineSnapshotService(dsl);
         ProductCurrentRevisionService currentRevisionService = new ProductCurrentRevisionService(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
-                new com.example.platform.timeline.canonical.TimelineContentDigester(), snapshotService);
+                new com.example.platform.timeline.canonical.TimelineContentDigester(), snapshotService, null, null);
         revisionService = buildTimelineRevisionService(dsl, snapshotService);
         ProductRepository productRepo = new ProductRepository(dsl);
         ProductDependencyRepository depRepo = new ProductDependencyRepository(dsl);

@@ -31,31 +31,18 @@ public record CanonicalTimelineTransitionSnapshot(
 
     /** Merge-relevant local semantic equality (excludes identity). */
     public boolean localSemanticsEquals(CanonicalTimelineTransitionSnapshot other) {
-        return semanticFingerprint().equals(other.semanticFingerprint());
+        // CHECKPOINT_A Round 3: local semantics owned by TransitionCanonicalSemantics.
+        return com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
+                .localSemanticsEquals(this, other);
     }
 
     /**
-     * THIRD CORRECTION (complete semantic signature): deterministic fingerprint
-     * over ALL merge-relevant authored fields — definition/version/participants/
-     * mediaType/duration/alignment/temporalPolicy/parameters (sorted keys).
-     * Used by equality, diff afterValue, and merge conflict identity from ONE
-     * authority. Provider/runtime fields excluded.
+     * COMPONENT_LOCAL_SEMANTIC_AUTHORITY_V1 (CHECKPOINT_A Round 3): deterministic
+     * fingerprint delegated to the Transition-local authority (SHA-256 over the
+     * canonical JSON value — no delimiter grammar, no collision).
      */
     public String semanticFingerprint() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("def=").append(transitionDefinitionId == null ? "" : transitionDefinitionId).append(';')
-          .append("ver=").append(transitionDefinitionVersion == null ? "" : transitionDefinitionVersion).append(';')
-          .append("out=").append(outgoingClipId == null ? "" : outgoingClipId).append(';')
-          .append("inc=").append(incomingClipId == null ? "" : incomingClipId).append(';')
-          .append("media=").append(mediaType == null ? "" : mediaType).append(';')
-          .append("dur=").append(duration == null ? "" : duration.ticks() + "/" + duration.timeScale()).append(';')
-          .append("align=").append(alignment == null ? "" : alignment).append(';')
-          .append("pol=").append(temporalPolicy == null ? "" : temporalPolicy).append(';')
-          .append("params=");
-        if (parameters != null && !parameters.isEmpty()) {
-            new java.util.TreeMap<>(parameters).forEach((k, v) ->
-                    sb.append(k).append('=').append(v == null ? "" : v).append(','));
-        }
-        return sb.toString();
+        return com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
+                .semanticFingerprint(this);
     }
 }

@@ -50,7 +50,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         currentRevisionService = new ProductCurrentRevisionService(dsl);
-        revisionSaveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester());
+        revisionSaveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(), null, null, null);
         pinningService = new RenderJobRevisionPinningService(dsl);
     }
 

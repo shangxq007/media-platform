@@ -29,7 +29,12 @@ public record CanonicalTimelineClipSnapshot(
         MediaTime sourceDuration,
         FrameRate rate,
         List<TimelineClipEffect> effects,
-        Map<String, String> safeMetadata) {
+        Map<String, String> safeMetadata,
+        String sourceKind,
+        String mediaStreamId,
+        String artifactId,
+        String contentDigest,
+        com.example.platform.timeline.semantics.temporal.TemporalMapping temporalMapping) {
 
     public CanonicalTimelineClipSnapshot {
         Objects.requireNonNull(clipId, "clipId");

@@ -69,7 +69,12 @@ public final class TimelineSnapshotConverter {
                         clip.duration(),
                         clip.rate() != null ? clip.rate() : FrameRate.of(30, 1),
                         clip.effects() != null ? List.copyOf(clip.effects()) : List.of(),
-                        Map.of()));
+                        Map.of(),
+                        clip.sourceKind(),
+                        clip.mediaStreamId(),
+                        clip.artifactId(),
+                        clip.contentDigest(),
+                        clip.temporalMapping()));
             }
             String kind = track.type() != null ? track.type().name() : "VIDEO";
             tracks.add(new CanonicalTimelineTrackSnapshot(
@@ -88,7 +93,9 @@ public final class TimelineSnapshotConverter {
                 Map.of("schemaVersion", "internal-1.0"),
                 candidate.textElements(),
                 toTransitionSnapshots(candidate.transitions()),
-                toAutomationSnapshots(candidate.automations()));
+                toAutomationSnapshots(candidate.automations()),
+                candidate.audioMix(),
+                candidate.semanticRelationships());
     }
 
     /** EFFECT_TRANSITION_CANONICALIZATION_V1: first-class transitions cross the
@@ -146,7 +153,12 @@ public final class TimelineSnapshotConverter {
                         clip.getTrimEnd(),
                         FrameRate.of(30, 1),
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        clip.getSourceKind(),
+                        clip.getMediaStreamId(),
+                        clip.getArtifactId(),
+                        clip.getContentDigest(),
+                        clip.getTemporalMapping()));
             }
             String kind = track.type() != null ? track.type().name() : "VIDEO";
             tracks.add(new CanonicalTimelineTrackSnapshot(
@@ -165,7 +177,10 @@ public final class TimelineSnapshotConverter {
                 Map.of("schemaVersion", document.getSchemaVersion()),
                 document.getTextElements(),
                 List.of(),
-                List.of());
+                List.of(),
+                document.getAudioMix() != null ? document.getAudioMix() : com.example.platform.audio.domain.mix.AudioMix.empty(),
+                document.getSemanticRelationships() != null
+                        ? List.copyOf(document.getSemanticRelationships()) : List.of());
     }
 
     /**

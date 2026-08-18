@@ -32,7 +32,9 @@ public record CanonicalTimelineSnapshot(
         Map<String, String> safeMetadata,
         List<com.example.platform.timeline.canonical.TextElement> textElements,
         List<CanonicalTimelineTransitionSnapshot> transitions,
-        List<CanonicalTimelineAutomationSnapshot> automations) {
+        List<CanonicalTimelineAutomationSnapshot> automations,
+        com.example.platform.audio.domain.mix.AudioMix audioMix,
+        List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> semanticRelationships) {
 
     public CanonicalTimelineSnapshot {
         if (id == null) throw new IllegalArgumentException("id must not be null");
@@ -42,6 +44,8 @@ public record CanonicalTimelineSnapshot(
         // MediaTime is non-negative by construction.
         transitions = transitions == null ? List.of() : List.copyOf(transitions);
         automations = automations == null ? List.of() : List.copyOf(automations);
+        audioMix = audioMix == null ? com.example.platform.audio.domain.mix.AudioMix.empty() : audioMix;
+        semanticRelationships = semanticRelationships == null ? List.of() : List.copyOf(semanticRelationships);
     }
 
     // ── Full-state copy helpers (THIRD CORRECTION): every helper preserves all
@@ -50,13 +54,13 @@ public record CanonicalTimelineSnapshot(
     public CanonicalTimelineSnapshot withTracks(List<CanonicalTimelineTrackSnapshot> tracks) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
                 tracks, captions, watermarks, templateApplications, workflowSteps,
-                outputProfile, safeMetadata, textElements, transitions, automations);
+                outputProfile, safeMetadata, textElements, transitions, automations, audioMix, semanticRelationships);
     }
 
     public CanonicalTimelineSnapshot withDuration(MediaTime newDuration) {
         return new CanonicalTimelineSnapshot(id, revisionId, newDuration,
                 tracks, captions, watermarks, templateApplications, workflowSteps,
-                outputProfile, safeMetadata, textElements, transitions, automations);
+                outputProfile, safeMetadata, textElements, transitions, automations, audioMix, semanticRelationships);
     }
 
     // ROADMAP #19: TimedText-aware full-state copy helper (preserves all other
@@ -64,24 +68,40 @@ public record CanonicalTimelineSnapshot(
     public CanonicalTimelineSnapshot withTextElements(List<com.example.platform.timeline.canonical.TextElement> newTextElements) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
                 tracks, captions, watermarks, templateApplications, workflowSteps,
-                outputProfile, safeMetadata, newTextElements, transitions, automations);
+                outputProfile, safeMetadata, newTextElements, transitions, automations, audioMix, semanticRelationships);
     }
 
     public CanonicalTimelineSnapshot withTransitions(List<CanonicalTimelineTransitionSnapshot> newTransitions) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
                 tracks, captions, watermarks, templateApplications, workflowSteps,
-                outputProfile, safeMetadata, textElements, newTransitions, automations);
+                outputProfile, safeMetadata, textElements, newTransitions, automations, audioMix, semanticRelationships);
     }
 
     public CanonicalTimelineSnapshot withAutomations(List<CanonicalTimelineAutomationSnapshot> newAutomations) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
                 tracks, captions, watermarks, templateApplications, workflowSteps,
-                outputProfile, safeMetadata, textElements, transitions, newAutomations);
+                outputProfile, safeMetadata, textElements, transitions, newAutomations, audioMix, semanticRelationships);
+    }
+
+    // CHECKPOINT_A: AudioMix / relationship-aware copy helpers (full-state).
+    public CanonicalTimelineSnapshot withAudioMix(com.example.platform.audio.domain.mix.AudioMix newAudioMix) {
+        return new CanonicalTimelineSnapshot(id, revisionId, duration,
+                tracks, captions, watermarks, templateApplications, workflowSteps,
+                outputProfile, safeMetadata, textElements, transitions, automations,
+                newAudioMix, semanticRelationships);
+    }
+
+    public CanonicalTimelineSnapshot withSemanticRelationships(
+            List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> newRelationships) {
+        return new CanonicalTimelineSnapshot(id, revisionId, duration,
+                tracks, captions, watermarks, templateApplications, workflowSteps,
+                outputProfile, safeMetadata, textElements, transitions, automations,
+                audioMix, newRelationships);
     }
 
     public CanonicalTimelineSnapshot withMetadata(Map<String, String> newMetadata) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
                 tracks, captions, watermarks, templateApplications, workflowSteps,
-                outputProfile, newMetadata, textElements, transitions, automations);
+                outputProfile, newMetadata, textElements, transitions, automations, audioMix, semanticRelationships);
     }
 }

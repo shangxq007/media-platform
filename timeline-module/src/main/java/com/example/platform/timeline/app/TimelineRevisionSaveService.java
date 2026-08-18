@@ -44,28 +44,31 @@ public class TimelineRevisionSaveService {
     private final ProductCurrentRevisionService currentRevisionService;
     private final TimelineContentDigester contentDigester;
     private final TimelineSnapshotService timelineSnapshotService;
+    private final TimelineArtifactPinValidator artifactPinValidator;
+    private final com.example.platform.artifact.app.ArtifactPinService artifactPinService;
 
     /**
-     * Backward-compatible constructor for existing direct-wiring tests. When the snapshot
-     * service is absent the legacy behavior is preserved (SNAPSHOT_ID = revision id, no
-     * payload row) so pre-existing E1 tests remain valid.
+     * SINGLE production constructor: snapshot payload + CHECKPOINT_A artifact-pin
+     * invariant boundary (extract → validate → register, same transaction).
+     *
+     * <p>Fail-closed guard: if the validator/pin-service wiring is absent and the
+     * document actually carries artifact pins, saveRevision throws — a no-pin
+     * save surface can never commit pinned content. (Test fixtures without pins
+     * are unaffected.)
      */
-    public TimelineRevisionSaveService(DSLContext dsl,
-                                       ProductCurrentRevisionService currentRevisionService,
-                                       TimelineContentDigester contentDigester) {
-        this(dsl, currentRevisionService, contentDigester, null);
-    }
-
-    /** Production constructor: enables the Contract P snapshot-payload completion. */
     @Autowired
     public TimelineRevisionSaveService(DSLContext dsl,
                                        ProductCurrentRevisionService currentRevisionService,
                                        TimelineContentDigester contentDigester,
-                                       TimelineSnapshotService timelineSnapshotService) {
+                                       TimelineSnapshotService timelineSnapshotService,
+                                       TimelineArtifactPinValidator artifactPinValidator,
+                                       com.example.platform.artifact.app.ArtifactPinService artifactPinService) {
         this.dsl = dsl;
         this.currentRevisionService = currentRevisionService;
         this.contentDigester = contentDigester;
         this.timelineSnapshotService = timelineSnapshotService;
+        this.artifactPinValidator = artifactPinValidator;
+        this.artifactPinService = artifactPinService;
     }
 
     @Transactional
@@ -81,6 +84,36 @@ public class TimelineRevisionSaveService {
         TimelineCanonicalNormalizer.normalize(candidate)
                 .orElseThrow(() -> new TimelineCanonicalRejectionException(validation.diagnostics()));
 
+        // CHECKPOINT_A (Blocker C): EVERY canonical revision write path must
+        // enforce the artifact-pin invariant boundary — extract → validate
+        // (existence + tenant + digest) → register (same transaction). The
+        // production wiring (6-arg constructor) always enforces it; the
+        // test-only wiring (no validator injected) skips the gate for legacy
+        // direct-wiring tests, documented on the constructor.
+        java.util.List<TimelineArtifactPinExtractor.ArtifactPin> pins = java.util.Collections.emptyList();
+        if (artifactPinValidator != null) {
+            pins = extractPinsFromDocument(document);
+            if (!pins.isEmpty()) {
+                TimelineArtifactPinValidator.ValidationResult pinValidation =
+                        artifactPinValidator.validate(com.example.platform.shared.web.TenantContext.get(), pins);
+                if (!pinValidation.valid()) {
+                    throw new TimelineCanonicalRejectionException(
+                            new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                    TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                    com.example.platform.timeline.canonicalmodel.TimelineModelPath.root().field("sourceBinding"),
+                                    "Artifact pin reference-integrity: " + String.join("; ", pinValidation.violations())));
+                }
+            }
+        } else {
+            // CHECKPOINT_A fail-closed guard: a save surface without the pin
+            // validator must never commit a document that carries artifact pins.
+            pins = extractPinsFromDocument(document);
+            if (!pins.isEmpty()) {
+                throw new IllegalStateException(
+                        "TimelineRevisionSaveService without artifact-pin validator cannot save pinned content");
+            }
+        }
+
         String digest = contentDigester.digest(document);
         String parentRevisionId = currentRevisionService.getCurrentRevisionId(productId);
 
@@ -89,45 +122,59 @@ public class TimelineRevisionSaveService {
             throw new TimelineConflictException(productId, expectedCurrentRevisionId, parentRevisionId);
         }
 
+        // CHECKPOINT_A (Round 3): explicit jOOQ transaction — revision insert +
+        // pin registration + head update are ONE atomic unit regardless of any
+        // Spring proxy boundary. Pin-registration failure rolls the whole write
+        // back (no visible dangling revision), even when this service is invoked
+        // directly (ITs, non-proxied wiring).
         String revisionId = UUID.randomUUID().toString();
+        final java.util.List<TimelineArtifactPinExtractor.ArtifactPin> pinsToRegister = pins;
+        return dsl.transactionResult(tx -> {
+            String snapshotId = persistSnapshotPayload(tx.dsl(), productId, document, revisionId);
 
-        // Contract P: governed snapshot payload write through the existing sole authority
-        // (TimelineSnapshotService), inside the same transaction, AFTER canonical acceptance
-        // and AFTER the conflict decision, and BEFORE the revision row becomes visible.
-        String snapshotId = persistSnapshotPayload(productId, document, revisionId);
+            TimelineRevision revision = new TimelineRevision(
+                    revisionId, productId, parentRevisionId,
+                    TimelineDocument.CURRENT_SCHEMA_VERSION,
+                    document, digest, Instant.now(), createdBy);
 
-        TimelineRevision revision = new TimelineRevision(
-                revisionId, productId, parentRevisionId,
-                TimelineDocument.CURRENT_SCHEMA_VERSION,
-                document, digest, Instant.now(), createdBy);
+            // Compute revision number for this product
+            Integer maxRevisionNumber = tx.dsl().select(org.jooq.impl.DSL.max(TIMELINE_REVISION.REVISION_NUMBER))
+                    .from(TIMELINE_REVISION)
+                    .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                    .fetchOneInto(Integer.class);
+            int nextRevisionNumber = (maxRevisionNumber != null ? maxRevisionNumber : 0) + 1;
 
-        // Compute revision number for this product
-        Integer maxRevisionNumber = dsl.select(org.jooq.impl.DSL.max(TIMELINE_REVISION.REVISION_NUMBER))
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))
-                .fetchOneInto(Integer.class);
-        int nextRevisionNumber = (maxRevisionNumber != null ? maxRevisionNumber : 0) + 1;
+            tx.dsl().insertInto(TIMELINE_REVISION)
+                    .set(TIMELINE_REVISION.ID, revision.revisionId())
+                    .set(TIMELINE_REVISION.PROJECT_ID, productId)
+                    .set(TIMELINE_REVISION.PARENT_REVISION_ID, revision.parentRevisionId())
+                    .set(TIMELINE_REVISION.REVISION_NUMBER, nextRevisionNumber)
+                    .set(TIMELINE_REVISION.TENANT_ID, com.example.platform.shared.web.TenantContext.get())
+                    .set(TIMELINE_REVISION.SNAPSHOT_ID, snapshotId)
+                    .set(TIMELINE_REVISION.INTERNAL_REVISION, nextRevisionNumber)
+                    .set(TIMELINE_REVISION.CONTENT_HASH, revision.contentDigest())
+                    .set(TIMELINE_REVISION.SCHEMA_VERSION, revision.timelineSchemaVersion())
+                    .set(TIMELINE_REVISION.CREATED_AT, LocalDateTime.now())
+                    .set(TIMELINE_REVISION.SOURCE, "api")
+                    .execute();
 
-        dsl.insertInto(TIMELINE_REVISION)
-                .set(TIMELINE_REVISION.ID, revision.revisionId())
-                .set(TIMELINE_REVISION.PROJECT_ID, productId)
-                .set(TIMELINE_REVISION.PARENT_REVISION_ID, revision.parentRevisionId())
-                .set(TIMELINE_REVISION.REVISION_NUMBER, nextRevisionNumber)
-                // Contract P: record the governing tenant so the tenant-guarded
-                // render/patch lookups can resolve E1-saved revisions.
-                .set(TIMELINE_REVISION.TENANT_ID, com.example.platform.shared.web.TenantContext.get())
-                .set(TIMELINE_REVISION.SNAPSHOT_ID, snapshotId)
-                .set(TIMELINE_REVISION.INTERNAL_REVISION, nextRevisionNumber)
-                .set(TIMELINE_REVISION.CONTENT_HASH, revision.contentDigest())
-                .set(TIMELINE_REVISION.SCHEMA_VERSION, revision.timelineSchemaVersion())
-                .set(TIMELINE_REVISION.CREATED_AT, LocalDateTime.now())
-                .set(TIMELINE_REVISION.SOURCE, "api")
-                .execute();
+            currentRevisionService.updateCurrentRevisionTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
 
-        currentRevisionService.updateCurrentRevision(productId, expectedCurrentRevisionId, revisionId);
+            // CHECKPOINT_A (Blocker C): register artifact_pin protection rows in
+            // the SAME transaction as the revision (PIN_REGISTRATION_FAILURE
+            // rolls back the whole write — no visible dangling revision state).
+            if (artifactPinService != null && !pinsToRegister.isEmpty()) {
+                artifactPinService.registerRevisionPins(productId, revisionId,
+                        com.example.platform.shared.web.TenantContext.get(),
+                        pinsToRegister.stream()
+                                .map(p -> new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
+                                        p.artifactId(), p.contentDigest()))
+                                .toList());
+            }
 
-        log.info("Saved timeline revision {} for product {}", revisionId, productId);
-        return revision;
+            log.info("Saved timeline revision {} for product {}", revisionId, productId);
+            return revision;
+        });
     }
 
     @Transactional
@@ -194,12 +241,34 @@ public class TimelineRevisionSaveService {
      * legacy SNAPSHOT_ID = revision id behavior only for the backward-compatible 3-arg
      * constructor wiring (no snapshot service available).
      */
-    private String persistSnapshotPayload(String productId, TimelineDocument document, String fallbackRevisionId) {
+    /** CHECKPOINT_A: typed pin extraction straight from the canonical document
+     *  (no JSON-format coupling; document carries artifactId/contentDigest per clip). */
+    private static java.util.List<TimelineArtifactPinExtractor.ArtifactPin> extractPinsFromDocument(
+            TimelineDocument document) {
+        java.util.LinkedHashMap<String, TimelineArtifactPinExtractor.ArtifactPin> distinct =
+                new java.util.LinkedHashMap<>();
+        for (com.example.platform.timeline.canonical.TimelineTrack track : document.getTracks()) {
+            for (com.example.platform.timeline.canonical.TimelineClip clip : track.clips()) {
+                String artifactId = clip.getArtifactId();
+                String digest = clip.getContentDigest();
+                if (artifactId != null && !artifactId.isBlank() && digest != null && !digest.isBlank()) {
+                    distinct.putIfAbsent(artifactId, new TimelineArtifactPinExtractor.ArtifactPin(
+                            new com.example.platform.shared.identity.ArtifactId(artifactId),
+                            new com.example.platform.shared.digest.ContentDigest(
+                                    com.example.platform.shared.digest.ContentDigest.DigestAlgorithm.SHA_256, digest)));
+                }
+            }
+        }
+        return java.util.List.copyOf(distinct.values());
+    }
+
+    private String persistSnapshotPayload(org.jooq.DSLContext tx, String productId,
+                                          TimelineDocument document, String fallbackRevisionId) {
         if (timelineSnapshotService == null) {
             return fallbackRevisionId;
         }
-        return timelineSnapshotService.save(
-                productId,
+        return timelineSnapshotService.saveTx(
+                tx, productId,
                 null,
                 TimelineDocumentJsonSerializer.serializeWithCaptions(document),
                 TimelineDocument.CURRENT_SCHEMA_VERSION);

@@ -25,29 +25,18 @@ public record CanonicalTimelineAutomationSnapshot(
 
     /** Merge-relevant local semantic equality. */
     public boolean localSemanticsEquals(CanonicalTimelineAutomationSnapshot other) {
-        return semanticFingerprint().equals(other.semanticFingerprint());
+        // CHECKPOINT_A Round 3: local semantics owned by AutomationCanonicalSemantics.
+        return com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
+                .localSemanticsEquals(this, other);
     }
 
     /**
-     * THIRD CORRECTION (complete semantic signature): deterministic fingerprint
-     * over ALL merge-relevant authored fields — targetEntityId/parameterPath/
-     * valueType/extrapolation/ordered keyframes (id/time/value/interpolation).
-     * Used by equality, diff afterValue, and merge conflict identity from ONE
-     * authority. No wall-clock semantics.
+     * COMPONENT_LOCAL_SEMANTIC_AUTHORITY_V1 (CHECKPOINT_A Round 3): deterministic
+     * fingerprint delegated to the Automation-local authority (SHA-256 over the
+     * canonical JSON value — no delimiter grammar, no collision).
      */
     public String semanticFingerprint() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("target=").append(targetEntityId == null ? "" : targetEntityId).append(';')
-          .append("path=").append(parameterPath == null ? "" : parameterPath).append(';')
-          .append("type=").append(valueType == null ? "" : valueType).append(';')
-          .append("extrap=").append(extrapolation == null ? "" : extrapolation).append(';')
-          .append("kf=");
-        for (CanonicalTimelineAutomationKeyframe k : keyframes) {
-            sb.append(k.keyframeId() == null ? "" : k.keyframeId()).append(':')
-              .append(k.time() == null ? "" : k.time().ticks() + "/" + k.time().timeScale()).append(':')
-              .append(k.value()).append(':')
-              .append(k.interpolation() == null ? "" : k.interpolation()).append(';');
-        }
-        return sb.toString();
+        return com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
+                .semanticFingerprint(this);
     }
 }
