@@ -10,8 +10,8 @@ public final class ScriptTag {
 
     private final String tag;
 
-    @com.fasterxml.jackson.annotation.JsonCreator
-public ScriptTag(@com.fasterxml.jackson.annotation.JsonProperty("tag") String tag) {
+    @com.fasterxml.jackson.annotation.JsonCreator(mode = com.fasterxml.jackson.annotation.JsonCreator.Mode.DELEGATING)
+public ScriptTag(String tag) {
         Objects.requireNonNull(tag, "tag");
         String t = tag.trim();
         if (!t.matches("[A-Za-z]{4}")) {

@@ -1442,6 +1442,29 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
                 .contains("drawtext") && !timedText.contains("drawtext")) {
             "FAIL (G-R19-14): no provider execution syntax in canonical TimedText"
         }
+        // ── ROADMAP #19 CORRECTION 1 (TT-C1/TT-C2) ──
+        require(!timedText.contains("field.getClass().getDeclaredFields()")
+                && !timedText.contains("field.setAccessible(true)")) {
+            "FAIL (TT-C2): canonical TimedText semantics must be explicit, not reflective"
+        }
+        require(timedText.contains("toCanonicalNode") && timedText.contains("TIMEDTEXT_CANONICAL_SCHEMA_IS_EXPLICIT_NOT_REFLECTIVE_V1")) {
+            "FAIL (TT-C2): explicit canonical-node API + explicit-schema contract required"
+        }
+        require(diffCalc.contains("TimedTextCanonicalSemantics.semanticFingerprint(afterMap.get(id))")) {
+            "FAIL (TT-C1): ADD must carry the complete canonical after payload"
+        }
+        require(diffCalc.contains("TimedTextCanonicalSemantics.semanticFingerprint(b)")) {
+            "FAIL (TT-C1): DELETE must carry the complete canonical before payload"
+        }
+        require(mergeEngine.contains("TimedTextCanonicalSemantics.toCanonicalNode")) {
+            "FAIL (TT-C2): merge output must delegate to the local TimedText authority"
+        }
+        require(timedTextE2E.contains("f7SourceOnlyTextElementAdd")) {
+            "FAIL (TT-C1): source-only ADD real TimelineMergeEngine E2E missing"
+        }
+        require(!timedText.contains("run.getClass().getDeclaredFields()")) {
+            "FAIL (TT-C2): reflection-based canonical run construction must be removed"
+        }
 
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
     }

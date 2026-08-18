@@ -522,11 +522,13 @@ public class TimelineMergeEngine {
     }
 
     /** EFFECT_TRANSITION_CANONICALIZATION_V1: merged automations → composition JSON. */
-    /** ROADMAP #19: canonical TextElement JSON array (typed via local codec). */
+    /** ROADMAP #19 (CORRECTION 1): TimedText output construction delegates to
+     *  the local TimedText canonical authority — never independent field
+     *  serialization of TextElement domain objects. */
     private ArrayNode textElementsToJson(List<com.example.platform.timeline.canonical.TextElement> elements) {
         ArrayNode arr = InternalTimelineJson.mapper().createArrayNode();
         for (com.example.platform.timeline.canonical.TextElement e : elements) {
-            arr.add(InternalTimelineJson.mapper().valueToTree(e));
+            arr.add(com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.toCanonicalNode(e));
         }
         return arr;
     }

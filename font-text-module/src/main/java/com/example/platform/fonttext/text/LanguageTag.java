@@ -10,8 +10,8 @@ public final class LanguageTag {
 
     private final String tag;
 
-    @com.fasterxml.jackson.annotation.JsonCreator
-public LanguageTag(@com.fasterxml.jackson.annotation.JsonProperty("tag") String tag) {
+    @com.fasterxml.jackson.annotation.JsonCreator(mode = com.fasterxml.jackson.annotation.JsonCreator.Mode.DELEGATING)
+public LanguageTag(String tag) {
         Objects.requireNonNull(tag, "tag");
         String t = tag.trim();
         if (t.isEmpty() || !t.matches("[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*")) {

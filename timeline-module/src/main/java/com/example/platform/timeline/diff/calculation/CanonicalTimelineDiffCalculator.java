@@ -456,15 +456,15 @@ public class CanonicalTimelineDiffCalculator {
         for (String id : beforeMap.keySet()) {
             var b = beforeMap.get(id);
             if (!afterMap.containsKey(id)) {
-                // ROADMAP #19: deletion is first-class semantic behavior —
-                // explicit deleted op, never ambiguous with an empty change.
+                // ROADMAP #19 (CORRECTION 1 / TT-C1): deletion carries the
+                // COMPLETE canonical before payload — never just the id.
                 Map<String, String> delMeta = new java.util.LinkedHashMap<>();
                 delMeta.put("deleted", "true");
                 ops.add(new TimelineChangeOperation(
                         new TimelineChangeOperationId("op-" + (++seq[0])),
                         TimelineChangeType.TEXT_ELEMENT_CHANGED, TimelineChangeScope.TEXT_ELEMENT,
                         new TimelineChangePath("timeline.textElements." + id),
-                        TimelineChangePayload.ofString(b.id().value()),
+                        TimelineChangePayload.ofString(TimedTextCanonicalSemantics.semanticFingerprint(b)),
                         TimelineChangePayload.empty(),
                         delMeta));
             } else {
@@ -479,9 +479,12 @@ public class CanonicalTimelineDiffCalculator {
         }
         for (String id : afterMap.keySet()) {
             if (!beforeMap.containsKey(id)) {
+                // ROADMAP #19 (CORRECTION 1 / TT-C1): ADD carries the COMPLETE
+                // canonical after payload — never just the id.
                 ops.add(change(seq, TimelineChangeType.TEXT_ELEMENT_CHANGED,
                         TimelineChangeScope.TEXT_ELEMENT, "timeline.textElements." + id,
-                        null, afterMap.get(id).id().value()));
+                        null,
+                        TimedTextCanonicalSemantics.semanticFingerprint(afterMap.get(id))));
             }
         }
     }

@@ -14,8 +14,8 @@ public final class FontContentDigest {
 
     private final String sha256Hex;
 
-    @com.fasterxml.jackson.annotation.JsonCreator
-    private FontContentDigest(@com.fasterxml.jackson.annotation.JsonProperty("sha256Hex") String sha256Hex) {
+    @com.fasterxml.jackson.annotation.JsonCreator(mode = com.fasterxml.jackson.annotation.JsonCreator.Mode.DELEGATING)
+    private FontContentDigest(String sha256Hex) {
         this.sha256Hex = sha256Hex;
     }
 

@@ -10,8 +10,8 @@ public final class VariationAxisTag implements Comparable<VariationAxisTag> {
 
     private final String tag;
 
-    @com.fasterxml.jackson.annotation.JsonCreator
-public VariationAxisTag(@com.fasterxml.jackson.annotation.JsonProperty("tag") String tag) {
+    @com.fasterxml.jackson.annotation.JsonCreator(mode = com.fasterxml.jackson.annotation.JsonCreator.Mode.DELEGATING)
+public VariationAxisTag(String tag) {
         Objects.requireNonNull(tag, "tag");
         String t = tag.trim();
         if (t.length() != 4 || !t.matches("[A-Za-z0-9]{4}")) {

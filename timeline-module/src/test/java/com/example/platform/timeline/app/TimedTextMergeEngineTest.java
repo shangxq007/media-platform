@@ -64,7 +64,7 @@ class TimedTextMergeEngineTest {
         var node = InternalTimelineJson.mapper().readTree(imported);
         var arr = InternalTimelineJson.mapper().createArrayNode();
         for (TextElement e : elements) {
-            arr.add(InternalTimelineJson.mapper().valueToTree(e));
+            arr.add(com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.toCanonicalNode(e));
         }
         ((com.fasterxml.jackson.databind.node.ObjectNode) node.path("composition")).set("textElements", arr);
         return InternalTimelineJson.mapper().writeValueAsString(node);
@@ -91,7 +91,7 @@ class TimedTextMergeEngineTest {
         var node = InternalTimelineJson.mapper().readTree(imported);
         var arr = InternalTimelineJson.mapper().createArrayNode();
         for (TextElement e : elements) {
-            arr.add(InternalTimelineJson.mapper().valueToTree(e));
+            arr.add(com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.toCanonicalNode(e));
         }
         ((com.fasterxml.jackson.databind.node.ObjectNode) node.path("composition")).set("textElements", arr);
         return InternalTimelineJson.mapper().writeValueAsString(node);
@@ -229,6 +229,26 @@ class TimedTextMergeEngineTest {
         com.fasterxml.jackson.databind.JsonNode merged = InternalTimelineJson.mapper().readTree(out.mergedPayload);
         assertTrue(merged.path("textElements").isMissingNode() || merged.path("textElements").size() == 0,
                 "F5: delete-last must yield canonical empty TimedText state");
+    }
+
+    // ── F7 (CORRECTION 1): source-only TextElement ADD — exact round-trip ──
+    @Test
+    void f7SourceOnlyTextElementAdd() throws Exception {
+        TextElement t1 = TestTextElements.textElement("t1");
+        MergeOutcome out = merge(docJson(), docJson(), docJson(t1));
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, out.result.status(),
+                "F7: source-only TextElement ADD must merge");
+        assertNotNull(out.mergedPayload);
+        assertFalse(out.reloadValidation.hasFatalErrors());
+        // Reload the merged payload through the canonical adapter and assert
+        // EXACT semantic equality of the added TextElement.
+        var node = InternalTimelineJson.mapper().readTree(out.mergedPayload);
+        var arr = node.path("composition").path("textElements");
+        assertEquals(1, arr.size(), "F7: exactly one TextElement must be added");
+        TextElement reloaded = com.example.platform.timeline.canonical.TimedTextCanonicalSemantics
+                .fromCanonicalNode(arr.get(0));
+        assertEquals(t1, reloaded, "F7: reloaded TextElement must EXACTLY equal THEIRS t1");
+        assertEquals(com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.semanticFingerprint(t1), com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.semanticFingerprint(reloaded));
     }
 
     // ── F6: mixed multi-component merge — TimedText + Effect + Transition +
