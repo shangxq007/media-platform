@@ -46,15 +46,17 @@ render-module / platform-app main sources, excluding the defining file and
 imports; test-only references excluded from production reachability).
 
 ## Surfaces
-
-| SURFACE | CLASSIFICATION | CREATES_NEW_REVISION | DIRECT_WRITER_OR_DELEGATES | CANONICAL_GATE | ARTIFACT_PIN_EXTRACTION | ARTIFACT_PIN_VALIDATION | PIN_REGISTRATION_OR_COPY | CAS_HEAD_PROTECTION | IDEMPOTENCY | TRANSACTION_BOUNDARY | SNAPSHOT_WRITE | HEAD_UPDATE | PUBLIC_UNSAFE_CONSTRUCTOR | NULL_DEPENDENCY_BYPASS | BYPASS_POSSIBLE |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| TimelineRevisionSaveService.saveRevision | DIRECT_TIMELINE_SEMANTIC_WRITER | YES | DIRECT | YES (canonical gate + normalize) | YES (extractPinsFromDocument) | YES (artifactPinValidator.validate) | YES (registerRevisionPinsTx same explicit jOOQ tx) | YES (expectedCurrentRevisionId CAS) | YES (new UUID per call; parent chain) | explicit dsl.transactionResult | YES (snapshotService.saveTx in tx) | YES (updateCurrentRevisionTx in tx) | NO (single 6-arg ctor, requireNonNull all) | NO (requireNonNull; no nullable skip) | NO |
-| TimelineRevisionSaveService.restoreRevision | DIRECT_TIMELINE_SEMANTIC_WRITER | YES (new revision id) | DIRECT | YES | N/A (copies historical pins) | N/A (historical pins already validated) | YES (copyRevisionPinsTx for new id, same tx) | YES (CAS) | YES (new UUID) | explicit dsl.transactionResult | YES | YES | NO (same ctor) | NO (copyRevisionPinsTx unconditional) | NO |
-| TimelinePatchApplicationService.apply | DELEGATING_TIMELINE_MUTATION_SURFACE | YES (via saveRevision delegate) | DELEGATES to TimelineRevisionSaveService | YES (delegate) | YES (delegate) | YES (delegate) | YES (delegate) | YES (delegate) | YES | delegate tx | YES (delegate) | YES (delegate) | NO | NO | NO |
-| TimelineMergeEngine.merge (persistent) | DIRECT_TIMELINE_SEMANTIC_WRITER | YES (dual-parent merge revision) | DIRECT | YES (canonical gates ×4: base/source/target/merged) | YES (TimelineArtifactPinExtractor.extract on merged payload) | YES (artifactPinValidator.validate) | YES (registerRevisionPins for NEW merge revision id, same @Transactional) | YES (head CAS via currentRevisionService) | YES (accepted-duplicate hash check) | @Transactional (Spring) | YES | YES | NO (single 9-arg ctor, requireNonNull all) | NO (no nullable pin skip; pin boundary by construction) | NO |
-| RevisionCommandApplyService | GENERIC_REVISION_MECHANICS | YES (copies plan payload verbatim) | DIRECT (mechanic) | N/A AT LAYER (upstream boundary; no Timeline semantic parsing) | N/A (no Timeline semantics) | N/A | N/A | YES (CAS) | YES | explicit tx | N/A | YES | NO (single ctor, no Spring annotation) | NO | NO (zero production callers; not a Spring bean; test-only instantiation) |
-| OperationPlanApplyService | GENERIC_REVISION_MECHANICS | YES (copies operation plan payload) | DIRECT (mechanic) | N/A AT LAYER | N/A | N/A | N/A | YES (CAS) | YES | explicit tx | N/A | YES | NO (single ctor, no Spring annotation) | NO | NO (zero production callers; not a Spring bean; test-only instantiation) |
+> RETIRED 2026-08-19 (POST_FINAL_REVIEW evidence cleanup): an earlier duplicate
+> "Surfaces" matrix below this line contained stale rows (e.g.
+> TimelineMergeEngine.merge described with "@Transactional (Spring)" and
+> "registerRevisionPins", and 9-arg constructor counts) that contradicted the
+> authoritative matrix at the top of this document. One authoritative matrix is
+> retained — see the top of this file. Current frozen source (2fdd95c6):
+> TimelineMergeEngine has a SINGLE 10-arg constructor (dsl added in
+> FINAL_CLOSURE_F1), the persistent merge write phase is an EXPLICIT jOOQ
+> transaction (dsl.transactionResult) with tx-aware writes
+> (saveTx / insertTx / registerRevisionPinsTx / updateCurrentRevisionTx), and
+> head mutation is a DB-enforced CAS (expected revision in UPDATE predicate).
 
 ## Call-graph safety confirmation (section 10)
 
@@ -71,12 +73,18 @@ imports; test-only references excluded from production reachability).
   artifact/source invariant → revision mechanics. Generic backends never learn
   Timeline/Artifact semantics.
 
-## Round-5 corrections vs Round 4
+## Round-5 corrections vs Round 4 (historical record — R5-era state)
+> Historical note (2026-08-19): this section records the ROUND-5 corrections as
+> they were at Round-5 freeze. POST-FINAL-REVIEW source (2fdd95c6) extends it:
+> TimelineMergeEngine now has a SINGLE 10-arg constructor (FINAL_CLOSURE_F1
+> added the root DSLContext for the explicit jOOQ write transaction), and the
+> persistent merge transaction boundary is EXPLICIT_JOOQ (no @Transactional).
 - TimelineMergeEngine: 7-arg public constructor REMOVED (was null-forwarding pin
-  boundary). Single 9-arg production constructor with requireNonNull on ALL nine
-  dependencies. @Autowired removed (constructor injection via sole constructor).
-  Nullable pin-skip (`if (artifactPinValidator != null && artifactPinService !=
-  null)`) removed — unconditional.
+  boundary). Single production constructor (9-arg at R5 freeze; 10-arg at
+  FINAL_CLOSURE_F1) with requireNonNull on ALL dependencies. @Autowired removed
+  (constructor injection via sole constructor). Nullable pin-skip
+  (`if (artifactPinValidator != null && artifactPinService != null)`) removed —
+  unconditional.
 - TimelineRevisionSaveService: single 6-arg constructor with requireNonNull on
   ALL six dependencies. @Autowired removed. Nullable skips removed in
   saveRevision (validator null check), tx pin registration
