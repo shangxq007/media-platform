@@ -18,8 +18,8 @@ PUBLIC_UNSAFE_CONSTRUCTOR | NULL_DEPENDENCY_BYPASS | BYPASS_POSSIBLE):
 | TimelinePatchApplicationService | DELEGATING_TIMELINE_MUTATION_SURFACE | YES | via saveRevision/engine | YES (via gate) | via saveRevision | via saveRevision | via saveRevision | via saveRevision | via saveRevision | EXPLICIT_JOOQ (via saveRevision) | via saveRevision | via saveRevision | 0 | 0 | NO |
 | TimelineMergeEngine.merge | DIRECT_TIMELINE_SEMANTIC_WRITER (persistent) | YES | delegates snapshot/revision/pin/head | YES (merged payload gate) | YES (extract pre-tx) | YES (validate pre-tx) | YES (registerRevisionPinsTx in-tx) | YES (updateCurrentRevisionTx CAS in-tx) | YES (merge hash dedup) | EXPLICIT_JOOQ (dsl.transactionResult; proxy-independent) | saveTx (tx.dsl) | updateCurrentRevisionTx (tx.dsl) | 0 | 0 | NO |
 | TimelineMergeEngine.mergeSemantic | PREVIEW_ONLY | NO | none | YES | N/A | N/A | N/A | N/A | N/A | NONE (compute only) | none | none | 0 | 0 | NO |
-| RevisionCommandApplyService | UNUSED_INTERNAL_MECHANICS | NO (never invoked by production surfaces) | none | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | 0 | 0 | NO |
-| OperationPlanApplyService | UNUSED_INTERNAL_MECHANICS | NO (never invoked by production surfaces) | none | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | 0 | 0 | NO |
+| RevisionCommandApplyService | UNUSED_INTERNAL_MECHANICS | YES (mechanically inserts TIMELINE_REVISION rows if invoked) | none (NO production callers) | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | 0 | 0 | NO |
+| OperationPlanApplyService | UNUSED_INTERNAL_MECHANICS | YES (mechanically inserts revision rows + advances head if invoked) | none (NO production callers) | N/A | N/A | N/A | N/A | DB-enforced head CAS (conditional UPDATE, rows==1) | N/A | EXPLICIT_JOOQ | tx-aware | tx-aware CAS | 0 | 0 | NO |
 | RevisionGraphService / other repository readers | READ_ONLY / GENERIC_REVISION_MECHANICS | NO | none | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | 0 | 0 | NO |
 
 FINAL_CLOSURE_F1 TimelineMergeEngine.merge row detail (required by spec section 12):

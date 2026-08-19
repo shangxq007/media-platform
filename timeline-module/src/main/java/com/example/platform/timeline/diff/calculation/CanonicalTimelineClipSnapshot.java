@@ -114,6 +114,13 @@ public record CanonicalTimelineClipSnapshot(
                     "Partial sourceBinding: MEDIA_STREAM requires mediaAssetId, "
                             + "mediaStreamId, artifactId and contentDigest");
         }
+        // POST_FINAL_REVIEW_P2-B: with binding intent, the EXACT source range
+        // is required — MISSING (null) must never be synthesized to 0..0.
+        if (sourceStart == null || sourceDuration == null) {
+            throw new IllegalArgumentException(
+                    "Partial sourceBinding: MEDIA_STREAM requires exact source range "
+                            + "(sourceStart/sourceDuration must not be null)");
+        }
         MediaTime end = sourceStart.add(sourceDuration);
         return new MediaStreamSourceBinding(
                 new com.example.platform.media.domain.identity.MediaAssetId(mediaAssetId),

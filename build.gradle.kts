@@ -1806,6 +1806,65 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
             "FAIL (F28c): F2 strict codec test matrix must exist"
         }
 
+        // ── POST_FINAL_REVIEW_P1 guards (post-final-review): DB-enforced head CAS ──
+        val currentRevSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/ProductCurrentRevisionService.java").readText()
+        // G29: expected revision participates in the UPDATE predicate.
+        require(currentRevSrc.contains("CURRENT_REVISION_ID.eq(expectedCurrentRevisionId)")
+                && currentRevSrc.contains("CURRENT_REVISION_ID.isNull()")) {
+            "FAIL (G29): head CAS must put expected revision in the UPDATE predicate (eq / IS NULL)"
+        }
+        // G30: NO check-then-act as correctness authority. The UPDATE (with the
+        // expected revision in its predicate — G29) must be the correctness
+        // authority and must come BEFORE any diagnostic read. A diagnostic
+        // SELECT after CAS failure is explicitly allowed (spec 4.2/4.5).
+        val casMethodBody = currentRevSrc.substring(
+                currentRevSrc.indexOf("public void updateCurrentRevisionTx"),
+                currentRevSrc.indexOf("public void updateCurrentRevisionTx") + 1800)
+        val firstUpdate = casMethodBody.indexOf("tx.update(")
+        val firstSelect = casMethodBody.indexOf("tx.select(")
+        require(firstUpdate != -1 && (firstSelect == -1 || firstUpdate < firstSelect)) {
+            "FAIL (G30): head CAS must not read-then-act (SELECT before conditional UPDATE)"
+        }
+        require(currentRevSrc.contains("if (updated != 1)")) {
+            "FAIL (G30b): head CAS must enforce affected-row count == 1"
+        }
+        // G30c: the real-PG CAS concurrency test exists and uses the real service.
+        val casIt = file("render-module/src/test/java/com/example/platform/render/app/timeline/CheckpointAPostFinalReviewHeadCasIT.java").readText()
+        require(casIt.contains("concurrentWritersSingleWinner")) {
+            "FAIL (G30c): real-PG head-CAS concurrency test must exist"
+        }
+
+        // ── POST_FINAL_REVIEW_P2 guards: source-binding strict boundary ──
+        // G31: adapter distinguishes ABSENT from PRESENT-malformed sourceBinding.
+        require(adapterSrc.contains("clipNode.has(\"sourceBinding\")")) {
+            "FAIL (G31): adapter must distinguish absent from present sourceBinding"
+        }
+        require(adapterSrc.contains("PRESENT clip sourceBinding must be a non-empty object")) {
+            "FAIL (G31b): present-but-malformed sourceBinding must fail closed"
+        }
+        // G32: canonical decoder rejects malformed JsonNode root (only null Java
+        // reference means caller-level absence).
+        require(sourceBindingSrc.contains("if (node == null)") && sourceBindingSrc.contains("node.getNodeType().name()")) {
+            "FAIL (G32): canonical binding decoder must reject malformed JsonNode roots"
+        }
+        // G33: document mapper must not synthesize MediaTime.ZERO for required
+        // source-binding range fields.
+        require(!mapperSrc.contains("clip.getTrimStart() != null ? clip.getTrimStart()")
+                && mapperSrc.contains("missing trimStart/trimEnd must not be synthesized to 0..0")) {
+            "FAIL (G33): document mapper must not synthesize ZERO for missing source range"
+        }
+        // G34: TimelineClip must not default trimStart/trimEnd to ZERO.
+        val clipSrc = file("timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClip.java").readText()
+        require(clipSrc.contains("this.trimStart = trimStart;")
+                && clipSrc.contains("MISSING (null) must remain")) {
+            "FAIL (G34): TimelineClip must preserve null trimStart/trimEnd (missing != zero)"
+        }
+        // G34b: the P2 boundary test matrix exists.
+        val p2Test = file("timeline-module/src/test/java/com/example/platform/timeline/app/CheckpointAPostFinalReviewSourceBindingBoundaryTest.java").exists()
+        require(p2Test) {
+            "FAIL (G34b): P2 source-binding strict-boundary test matrix must exist"
+        }
+
         println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership; R5 constructor-injection closure; R5 domain-value authority; R5 single typed source binding; FINAL_CLOSURE_F1 explicit-jOOQ merge transaction; FINAL_CLOSURE_F2 strict canonical codec)")
     }
 }

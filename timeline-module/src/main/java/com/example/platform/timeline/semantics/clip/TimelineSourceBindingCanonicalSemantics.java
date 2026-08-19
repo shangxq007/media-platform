@@ -72,8 +72,17 @@ public final class TimelineSourceBindingCanonicalSemantics {
      *  digest / range constructors — no synthesized defaults, no catch→null
      *  narrowing. */
     public static TimelineSourceBinding fromCanonicalValue(JsonNode node) {
-        if (node == null || node.isNull() || !node.isObject() || node.isEmpty()) {
+        // POST_FINAL_REVIEW_P2-A (G32): only a NULL Java reference may
+        // represent caller-level absence. A JsonNode payload is semantic
+        // intent and MUST be structurally valid — NullNode / non-object /
+        // empty object FAIL CLOSED (never silently narrowed to null).
+        if (node == null) {
             return null;
+        }
+        if (node.isNull() || !node.isObject() || node.isEmpty()) {
+            throw new IllegalStateException(
+                    "Canonical TimelineSourceBinding must be a non-empty object (got "
+                            + node.getNodeType().name() + ")");
         }
         String kind = node.path("sourceKind").asText("");
         if (!TimelineSourceBinding.SourceKind.MEDIA_STREAM.name().equals(kind)) {

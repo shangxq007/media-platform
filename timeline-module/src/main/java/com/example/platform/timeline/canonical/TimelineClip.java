@@ -107,8 +107,14 @@ public class TimelineClip {
         this.contentDigest = contentDigest;
         this.startTime = startTime != null ? startTime : MediaTime.ZERO;
         this.endTime = endTime != null ? endTime : MediaTime.ZERO;
-        this.trimStart = trimStart != null ? trimStart : MediaTime.ZERO;
-        this.trimEnd = trimEnd != null ? trimEnd : MediaTime.ZERO;
+        // POST_FINAL_REVIEW_P2-B: trimStart/trimEnd are SOURCE-RANGE semantics.
+        // They must NOT be defaulted to ZERO here — MISSING (null) must remain
+        // distinguishable from an authored zero so the document mapper can
+        // enforce "binding intent ⇒ exact source range required" instead of
+        // synthesizing 0..0. Consumers that need a non-null projection must
+        // validate intent first (mapper/aggregate rules).
+        this.trimStart = trimStart;
+        this.trimEnd = trimEnd;
         this.temporalMapping = temporalMapping != null
                 ? temporalMapping
                 : ConstantRateTemporalMapping.of(1, 1,

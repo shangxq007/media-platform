@@ -34,31 +34,46 @@ public class ProductCurrentRevisionService {
 
     /** CHECKPOINT_A (Round 3): transaction-scoped head update — the caller's
      *  jOOQ transaction context is used so head mutation joins the same atomic
-     *  unit as revision insert + pin registration (rollback-safe). */
+     *  unit as revision insert + pin registration (rollback-safe).
+     *
+     *  POST_FINAL_REVIEW_P1: REAL database-enforced compare-and-set. The
+     *  expected current revision participates in the UPDATE predicate itself:
+     *  expected != null → WHERE current_revision_id = expected;
+     *  expected == null → WHERE current_revision_id IS NULL.
+     *  Affected-rows == 1 is the ONLY correctness authority — NO
+     *  SELECT → Java-compare → unconditional-UPDATE check-then-act. The
+     *  post-failure SELECT exists for diagnostics only and never determines
+     *  correctness. */
     public void updateCurrentRevisionTx(org.jooq.DSLContext tx,
                                         String productId, String expectedCurrentRevisionId, String newRevisionId) {
-        // Read actual current revision
-        String actualCurrentRevisionId = tx.select(PRODUCT.CURRENT_REVISION_ID)
-                .from(PRODUCT)
-                .where(PRODUCT.PRODUCT_ID.eq(productId))
-                .fetchOne(PRODUCT.CURRENT_REVISION_ID);
-
-        // Optimistic concurrency check
-        if ((expectedCurrentRevisionId == null && actualCurrentRevisionId != null) ||
-            (expectedCurrentRevisionId != null && !expectedCurrentRevisionId.equals(actualCurrentRevisionId))) {
-            log.warn("Timeline revision conflict: product={}, expected={}, actual={}",
-                    productId, expectedCurrentRevisionId, actualCurrentRevisionId);
-            throw new TimelineConflictException(productId, expectedCurrentRevisionId, actualCurrentRevisionId);
+        int updated;
+        if (expectedCurrentRevisionId == null) {
+            updated = tx.update(PRODUCT)
+                    .set(PRODUCT.CURRENT_REVISION_ID, newRevisionId)
+                    .where(PRODUCT.PRODUCT_ID.eq(productId))
+                    .and(PRODUCT.CURRENT_REVISION_ID.isNull())
+                    .execute();
+        } else {
+            updated = tx.update(PRODUCT)
+                    .set(PRODUCT.CURRENT_REVISION_ID, newRevisionId)
+                    .where(PRODUCT.PRODUCT_ID.eq(productId))
+                    .and(PRODUCT.CURRENT_REVISION_ID.eq(expectedCurrentRevisionId))
+                    .execute();
         }
 
-        // Update current revision pointer
-        int updated = tx.update(PRODUCT)
-                .set(PRODUCT.CURRENT_REVISION_ID, newRevisionId)
-                .where(PRODUCT.PRODUCT_ID.eq(productId))
-                .execute();
-
-        if (updated == 0) {
-            throw new IllegalStateException("Product not found: " + productId);
+        if (updated != 1) {
+            // DIAGNOSTIC ONLY (same tx, never the correctness authority):
+            // distinguish missing product from stale expected head.
+            String actual = tx.select(PRODUCT.CURRENT_REVISION_ID)
+                    .from(PRODUCT)
+                    .where(PRODUCT.PRODUCT_ID.eq(productId))
+                    .fetchAny(PRODUCT.CURRENT_REVISION_ID);
+            if (actual == null) {
+                throw new IllegalStateException("Product not found: " + productId);
+            }
+            log.warn("Timeline revision conflict: product={}, expected={}, actual={}",
+                    productId, expectedCurrentRevisionId, actual);
+            throw new TimelineConflictException(productId, expectedCurrentRevisionId, actual);
         }
 
         log.debug("Updated product={} current revision to {}", productId, newRevisionId);

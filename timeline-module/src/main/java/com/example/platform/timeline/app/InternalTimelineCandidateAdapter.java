@@ -304,8 +304,21 @@ public final class InternalTimelineCandidateAdapter {
      */
     private static com.example.platform.timeline.semantics.clip.TimelineSourceBinding sourceBindingOf(
             JsonNode clipNode, String clipId) {
-        JsonNode sbNode = clipNode.path("sourceBinding");
-        if (sbNode.isObject() && !sbNode.isEmpty()) {
+        // POST_FINAL_REVIEW_P2-A: ABSENT vs PRESENT must be distinct. A
+        // PRESENT sourceBinding field is authored binding intent and MUST be
+        // structurally valid — null / string / array / number / boolean /
+        // empty object / non-object PRESENT input FAILS CLOSED (never silently
+        // falls through to flat detection → null absence).
+        if (clipNode.has("sourceBinding")) {
+            JsonNode sbNode = clipNode.get("sourceBinding");
+            if (sbNode == null || sbNode.isNull() || !sbNode.isObject() || sbNode.isEmpty()) {
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field("sourceBinding"),
+                                "PRESENT clip sourceBinding must be a non-empty object (got "
+                                        + (sbNode == null ? "null" : sbNode.getNodeType().name()) + ")"));
+            }
             try {
                 // F2 legacy-alias boundary (clearly identified): the historical
                 // internal-1.0 wire used "SHA256" (no underscore); the canonical

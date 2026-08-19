@@ -163,10 +163,16 @@ public final class TimelineDocumentCandidateMapper {
                         "Partial sourceBinding: MEDIA_STREAM requires mediaAssetId, "
                                 + "mediaStreamId, artifactId and contentDigest");
             }
-            MediaTime rangeStart = clip.getTrimStart() != null ? clip.getTrimStart()
-                    : com.example.platform.shared.time.MediaTime.ZERO;
-            MediaTime rangeEnd = clip.getTrimEnd() != null ? clip.getTrimEnd()
-                    : com.example.platform.shared.time.MediaTime.ZERO;
+            // POST_FINAL_REVIEW_P2-B: with binding intent, the EXACT authored
+            // source range is REQUIRED. TimelineClip preserves null (missing)
+            // trimStart/trimEnd — MISSING must never be synthesized to 0..0.
+            MediaTime rangeStart = clip.getTrimStart();
+            MediaTime rangeEnd = clip.getTrimEnd();
+            if (rangeStart == null || rangeEnd == null) {
+                throw new IllegalStateException(
+                        "Partial sourceBinding: MEDIA_STREAM requires exact sourceRangeStart/sourceRangeEnd "
+                                + "(missing trimStart/trimEnd must not be synthesized to 0..0)");
+            }
             if (rangeStart.isGreaterThan(rangeEnd)) {
                 throw new IllegalStateException(
                         "Source binding source range start > end");
