@@ -169,14 +169,15 @@ public final class InternalTimelineCandidateAdapter {
         String outgoing = trNode.path("outgoingClipId").asText("");
         String incoming = trNode.path("incomingClipId").asText("");
         if (outgoing.isBlank() || incoming.isBlank()) return null;
-        com.example.platform.timeline.diff.calculation.CanonicalTimelineTransitionSnapshot decoded =
+        // R5-A: the authority decodes into the DOMAIN value CanonicalTransition
+        // (strict; missing/malformed REQUIRED authored fields fail closed).
+        CanonicalTransition decoded =
                 com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
                         .fromCanonicalValue(id, trNode);
         if (decoded.duration() == null || decoded.duration().isLessThanOrEqualTo(MediaTime.ZERO)) {
             return null;
         }
-        return com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
-                .toCandidateValue(decoded);
+        return decoded;
     }
 
     /**
@@ -190,9 +191,11 @@ public final class InternalTimelineCandidateAdapter {
     private static CanonicalAutomationCurve mapAutomation(JsonNode curveNode) {
         String id = curveNode.path("automationId").asText("");
         if (id.isBlank()) return null;
+        // R5-A: the authority decodes into the DOMAIN value
+        // CanonicalAutomationCurve (strict; missing/malformed REQUIRED
+        // authored fields fail closed).
         return com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
-                .toCandidateValue(com.example.platform.timeline.semantics.automation
-                        .AutomationCanonicalSemantics.fromCanonicalValue(id, curveNode));
+                .fromCanonicalValue(id, curveNode);
     }
 
     private static MediaTime mediaTimeFromTicks(long ticks, long timeScale) {
@@ -257,31 +260,18 @@ public final class InternalTimelineCandidateAdapter {
         MediaTime sourceStart = sourceRangeStart(clipNode, clipId, rate);
         MediaTime duration = rangeDuration(clipNode.path("timelineRange"), "timelineRange", clipId, rate);
         // CHECKPOINT_A: carry the full typed source semantics of the clip
-        // (kind/asset/stream/artifact/digest/temporal mapping) — absent nodes
-        // remain null/empty (internal payloads may not yet carry them), never
-        // fabricated.
-        // R4-B: the TYPED TimelineSourceBinding is the merge-path authority.
-        // The nested sourceBinding object (extractor-compatible wire shape) is
-        // preferred; legacy flat fields remain a projection fallback for old
-        // payloads.
-        String sourceKind = clipNode.path("sourceKind").asText(null);
-        String mediaStreamId = clipNode.path("mediaStreamId").asText(null);
-        String artifactId = clipNode.path("artifactId").asText(null);
-        String contentDigest = clipNode.path("contentDigest").asText(null);
-        com.example.platform.timeline.semantics.clip.TimelineSourceBinding sourceBinding = null;
-        JsonNode sbNode = clipNode.path("sourceBinding");
-        if (sbNode.isObject() && !sbNode.isEmpty()) {
-            try {
-                sourceBinding = com.example.platform.timeline.semantics.clip
-                        .TimelineSourceBindingCanonicalSemantics.fromCanonicalValue(sbNode);
-            } catch (Exception e) {
-                throw new TimelineCanonicalRejectionException(
-                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
-                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
-                                TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field("sourceBinding"),
-                                "Malformed clip sourceBinding: " + e.getMessage()));
-            }
-        }
+        // (kind/asset/stream/artifact/digest/temporal mapping).
+        // R4-B: the TYPED TimelineSourceBinding is the merge-path authority;
+        // the nested sourceBinding object (extractor-compatible wire shape) is
+        // the canonical wire form.
+        // R5-B: flat wire fields (sourceKind/mediaStreamId/artifactId/
+        // contentDigest) are canonicalized IMMEDIATELY into ONE typed
+        // TimelineSourceBinding below — no flat semantic state survives into
+        // TimelineCandidate.Clip (single typed source authority; no dual
+        // contradictory representation). Partial/missing source binding intent
+        // FAILS CLOSED (never catch→null narrowing).
+        com.example.platform.timeline.semantics.clip.TimelineSourceBinding sourceBinding =
+                sourceBindingOf(clipNode, clipId);
         com.example.platform.timeline.semantics.temporal.TemporalMapping temporalMapping = null;
         JsonNode tmNode = clipNode.path("temporalMapping");
         if (tmNode.isObject() && !tmNode.isEmpty()) {
@@ -298,8 +288,64 @@ public final class InternalTimelineCandidateAdapter {
         }
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(assetId),
                 timelineStart, sourceStart, duration, rate, mapEffects(clipNode), List.of(),
-                sourceKind, assetId, mediaStreamId, artifactId, contentDigest, temporalMapping,
-                sourceBinding);
+                temporalMapping, sourceBinding);
+    }
+
+    /**
+     * R5-B: parse the clip's typed source binding from the canonical wire.
+     * Nested {@code sourceBinding} object is the canonical form; legacy flat
+     * fields (sourceKind/mediaStreamId/artifactId/contentDigest on the clip
+     * node) are canonicalized immediately into the same typed value. If ANY
+     * source-binding intent is present it must be COMPLETE — partial binding
+     * (e.g. artifactId without mediaStreamId, unknown sourceKind, malformed
+     * digest) FAILS CLOSED via TimelineCanonicalRejectionException. Only a
+     * fully ABSENT sourceBinding (no nested object AND no flat source fields)
+     * yields a null binding.
+     */
+    private static com.example.platform.timeline.semantics.clip.TimelineSourceBinding sourceBindingOf(
+            JsonNode clipNode, String clipId) {
+        JsonNode sbNode = clipNode.path("sourceBinding");
+        if (sbNode.isObject() && !sbNode.isEmpty()) {
+            try {
+                return com.example.platform.timeline.semantics.clip
+                        .TimelineSourceBindingCanonicalSemantics.fromCanonicalValue(sbNode);
+            } catch (Exception e) {
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field("sourceBinding"),
+                                "Malformed clip sourceBinding: " + e.getMessage()));
+            }
+        }
+        // Legacy flat fields: canonicalize immediately into the typed binding.
+        String flatSourceKind = clipNode.path("sourceKind").asText(null);
+        String flatMediaStreamId = clipNode.path("mediaStreamId").asText(null);
+        String flatArtifactId = clipNode.path("artifactId").asText(null);
+        String flatContentDigest = clipNode.path("contentDigest").asText(null);
+        String flatAssetId = clipNode.path("assetId").asText(null);
+        String flatMediaAssetId = clipNode.path("mediaAssetId").asText(null);
+        // R5-B: binding INTENT = presence of binding-specific fields
+        // (mediaAssetId/mediaStreamId/artifactId/contentDigest). sourceKind
+        // alone is not intent (legacy payloads may carry a lone sourceKind
+        // projection). A clip WITH any binding field but missing pieces fails
+        // closed below — no MediaAssetId-only fallback.
+        boolean anyFlatIntent = flatMediaAssetId != null || flatMediaStreamId != null
+                || flatArtifactId != null || flatContentDigest != null;
+        if (!anyFlatIntent) {
+            return null; // no authored source-binding intent
+        }
+        try {
+            return com.example.platform.timeline.semantics.clip
+                    .TimelineSourceBindingCanonicalSemantics.fromFlatFields(
+                            flatSourceKind, flatAssetId, flatMediaStreamId,
+                            flatArtifactId, flatContentDigest, clipNode.path("sourceRange"));
+        } catch (Exception e) {
+            throw new TimelineCanonicalRejectionException(
+                    new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                            TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                            TimelineModelPath.root().field("composition").field("tracks").field("clips").id(clipId).field("sourceBinding"),
+                            "Partial/invalid clip sourceBinding (flat): " + e.getMessage()));
+        }
     }
 
     /**

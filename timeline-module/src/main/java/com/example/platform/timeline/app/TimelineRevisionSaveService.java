@@ -9,11 +9,11 @@ import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.timeline.version.TimelineRevision;
+import java.util.Objects;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,19 +56,29 @@ public class TimelineRevisionSaveService {
      * save surface can never commit pinned content. (Test fixtures without pins
      * are unaffected.)
      */
-    @Autowired
+    // R5-C (CHECKPOINT_A Round 5) + CONSTRUCTOR_INJECTION_WITHOUT_EXPLICIT_AUTOWIRED_V1
+    // (R5 addendum): exactly ONE public constructor, constructor injection,
+    // NO @Autowired (Spring 4.3+ injects the sole constructor automatically),
+    // no secondary test convenience constructor. ALL production invariants are
+    // REQUIRED BY CONSTRUCTION — no constructor permits a save/restore surface
+    // with a missing artifact-pin dependency. A pinned revision can never be
+    // committed without pin validation/persistence authority.
     public TimelineRevisionSaveService(DSLContext dsl,
                                        ProductCurrentRevisionService currentRevisionService,
                                        TimelineContentDigester contentDigester,
                                        TimelineSnapshotService timelineSnapshotService,
                                        TimelineArtifactPinValidator artifactPinValidator,
                                        com.example.platform.artifact.app.ArtifactPinService artifactPinService) {
-        this.dsl = dsl;
-        this.currentRevisionService = currentRevisionService;
-        this.contentDigester = contentDigester;
-        this.timelineSnapshotService = timelineSnapshotService;
-        this.artifactPinValidator = artifactPinValidator;
-        this.artifactPinService = artifactPinService;
+        // R5-C (CHECKPOINT_A Round 5): ALL production invariants are REQUIRED
+        // BY CONSTRUCTION — no constructor permits a save/restore surface with
+        // a missing artifact-pin dependency. A pinned revision can never be
+        // committed without pin validation/persistence authority.
+        this.dsl = Objects.requireNonNull(dsl, "dsl");
+        this.currentRevisionService = Objects.requireNonNull(currentRevisionService, "currentRevisionService");
+        this.contentDigester = Objects.requireNonNull(contentDigester, "contentDigester");
+        this.timelineSnapshotService = Objects.requireNonNull(timelineSnapshotService, "timelineSnapshotService");
+        this.artifactPinValidator = Objects.requireNonNull(artifactPinValidator, "artifactPinValidator");
+        this.artifactPinService = Objects.requireNonNull(artifactPinService, "artifactPinService");
     }
 
     @Transactional
@@ -86,31 +96,21 @@ public class TimelineRevisionSaveService {
 
         // CHECKPOINT_A (Blocker C): EVERY canonical revision write path must
         // enforce the artifact-pin invariant boundary — extract → validate
-        // (existence + tenant + digest) → register (same transaction). The
-        // production wiring (6-arg constructor) always enforces it; the
-        // test-only wiring (no validator injected) skips the gate for legacy
-        // direct-wiring tests, documented on the constructor.
+        // (existence + tenant + digest) → register (same transaction).
+        // R5-C: the pin boundary is REQUIRED BY CONSTRUCTION (non-null
+        // dependencies); zero pins in the document is a normal no-op, a
+        // missing dependency is not — there is no nullable skip.
         java.util.List<TimelineArtifactPinExtractor.ArtifactPin> pins = java.util.Collections.emptyList();
-        if (artifactPinValidator != null) {
-            pins = extractPinsFromDocument(document);
-            if (!pins.isEmpty()) {
-                TimelineArtifactPinValidator.ValidationResult pinValidation =
-                        artifactPinValidator.validate(com.example.platform.shared.web.TenantContext.get(), pins);
-                if (!pinValidation.valid()) {
-                    throw new TimelineCanonicalRejectionException(
-                            new TimelineCanonicalRejectionException.AdapterDiagnostic(
-                                    TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
-                                    com.example.platform.timeline.canonicalmodel.TimelineModelPath.root().field("sourceBinding"),
-                                    "Artifact pin reference-integrity: " + String.join("; ", pinValidation.violations())));
-                }
-            }
-        } else {
-            // CHECKPOINT_A fail-closed guard: a save surface without the pin
-            // validator must never commit a document that carries artifact pins.
-            pins = extractPinsFromDocument(document);
-            if (!pins.isEmpty()) {
-                throw new IllegalStateException(
-                        "TimelineRevisionSaveService without artifact-pin validator cannot save pinned content");
+        pins = extractPinsFromDocument(document);
+        if (!pins.isEmpty()) {
+            TimelineArtifactPinValidator.ValidationResult pinValidation =
+                    artifactPinValidator.validate(com.example.platform.shared.web.TenantContext.get(), pins);
+            if (!pinValidation.valid()) {
+                throw new TimelineCanonicalRejectionException(
+                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                com.example.platform.timeline.canonicalmodel.TimelineModelPath.root().field("sourceBinding"),
+                                "Artifact pin reference-integrity: " + String.join("; ", pinValidation.violations())));
             }
         }
 
@@ -167,7 +167,9 @@ public class TimelineRevisionSaveService {
             // (ArtifactPinService.registerRevisionPinsTx) so the pin rows join
             // the same physical DB transaction — proven by real-PG IT, not
             // assumed through Spring proxy participation.
-            if (artifactPinService != null && !pinsToRegister.isEmpty()) {
+            // R5-C: no nullable skip — pin persistence authority is required
+            // by construction; zero pins is a normal no-op.
+            if (!pinsToRegister.isEmpty()) {
                 artifactPinService.registerRevisionPinsTx(tx.dsl(), productId, revisionId,
                         com.example.platform.shared.web.TenantContext.get(),
                         pinsToRegister.stream()
@@ -245,9 +247,9 @@ public class TimelineRevisionSaveService {
             // R4-D1: the restored revision is a DISTINCT revision id — it must
             // carry its own artifact-pin protection rows, copied from the
             // historical revision's immutable pins in the SAME transaction.
-            if (artifactPinService != null) {
-                artifactPinService.copyRevisionPinsTx(tx.dsl(), productId, historicalRevisionId, revisionId);
-            }
+            // R5-C: no nullable skip — pin persistence authority is required
+            // by construction.
+            artifactPinService.copyRevisionPinsTx(tx.dsl(), productId, historicalRevisionId, revisionId);
 
             log.info("Restored revision {} as new revision {} for product {}", historicalRevisionId, revisionId, productId);
             return new TimelineRevision(revisionId, productId, expectedCurrentRevisionId,

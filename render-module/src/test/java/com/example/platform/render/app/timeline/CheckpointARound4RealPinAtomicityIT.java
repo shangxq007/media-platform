@@ -175,16 +175,25 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
     @Test
     void realPinRepositoryFkViolationRollsBackWholeSave() {
-        String productId = "prod-r4-fk-" + java.util.UUID.randomUUID();
+        // R5-C6 (CORRECTED): the validator MUST return VALID — the failure must
+        // occur at the REAL ArtifactPinRepository INSERT inside the save
+        // transaction, NOT at the validation layer. The ArtifactQueryService
+        // mock answers as if the artifact exists (validator passes); the DB
+        // artifact row is intentionally absent, so the artifact_pin FK
+        // constraint (fk_pin_artifact → artifact.id) fires on the real INSERT.
+        String productId = "prod-r5-fk-" + java.util.UUID.randomUUID();
         insertProduct(productId);
-        // NOTE: no artifact row inserted — the artifact_pin FK will reject the
-        // pin insert at COMMIT/statement time (fk_pin_artifact).
+        // NOTE: no artifact row inserted — the artifact_pin FK rejects the pin
+        // insert at statement time (fk_pin_artifact).
 
         ArtifactQueryService query = mock(ArtifactQueryService.class);
-        when(query.getArtifact(anyString(), any())).thenReturn(Optional.empty());
-        // validator passes (we bypass it with a real-failing repository failure
-        // by using a validator that returns valid — see below we instead let the
-        // DB constraint do the failing).
+        Artifact artifact = new Artifact(new ArtifactId("ghost-art"), TENANT,
+                new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256, DIGEST_HEX), 1024L,
+                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE,
+                1, java.time.Instant.EPOCH);
+        // Validator returns VALID for the pinned artifact (existence + tenant +
+        // digest all pass through the mock query).
+        when(query.getArtifact(anyString(), any())).thenReturn(Optional.of(artifact));
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
@@ -192,10 +201,11 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         // The pin FK constraint (artifact_pin.artifact_id → artifact.id) fires
         // INSIDE the save transaction: ghost artifact id → statement failure →
-        // the whole dsl.transactionResult rolls back.
+        // the whole dsl.transactionResult rolls back. Validation already
+        // passed; this is a REAL database persistence failure.
         assertThrows(Exception.class,
                 () -> saveService.saveRevision(productId, null, pinnedDoc("ghost-art", DIGEST_HEX), "user-1"),
-                "ghost artifact must fail the pin insert inside the save transaction");
+                "ghost artifact must fail the real pin INSERT inside the save transaction");
 
         // no revision row
         assertEquals(0, dsl.fetchCount(DSL.selectFrom(TIMELINE_REVISION)
@@ -207,6 +217,65 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
                 .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
                 "no partial pin rows after rollback");
         // head unchanged (never set)
+        assertTrue(currentRevisionService.getCurrentRevisionId(productId) == null
+                        || currentRevisionService.getCurrentRevisionId(productId).isBlank(),
+                "head must remain unchanged");
+    }
+
+    @Test
+    void realPinRepositoryPartialPinWriteRollsBackEntirely() {
+        // R5-C7 (strong proof): TWO pins — pin 1 references a REAL artifact row
+        // (its INSERT would succeed), pin 2 references a ghost artifact (its
+        // INSERT fails the FK). The validator passes BOTH (mock query returns
+        // VALID for both). The failure therefore occurs at the SECOND real pin
+        // INSERT, AFTER the first pin row was written inside the transaction.
+        // Rollback must remove BOTH — artifact_pin count for the new revision
+        // must be ZERO (no partial pin set survives).
+        String productId = "prod-r5-partial-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        insertArtifact("art-1", DIGEST_HEX); // real row → pin 1 insertable
+
+        ArtifactQueryService query = mock(ArtifactQueryService.class);
+        Artifact artifact = new Artifact(new ArtifactId("art-1"), TENANT,
+                new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256, DIGEST_HEX), 1024L,
+                ArtifactMediaType.VIDEO, ArtifactKind.SOURCE_MEDIA, ArtifactState.AVAILABLE,
+                1, java.time.Instant.EPOCH);
+        // Validator answers VALID for EVERY artifact id (both pins pass
+        // validation — the DB layer decides).
+        when(query.getArtifact(anyString(), any())).thenReturn(Optional.of(artifact));
+
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
+                new TimelineContentDigester(), snapshotService,
+                new TimelineArtifactPinValidator(query), pinService);
+
+        // Two pinned clips: art-1 (real artifact row) + ghost-art (no row).
+        TimelineClip clip1 = new TimelineClip(
+                "c1", "asset-1", "stream-1", "art-1", DIGEST_HEX,
+                MediaTime.ZERO, MediaTime.ofTicks(30, 1),
+                MediaTime.ZERO, MediaTime.ofTicks(30, 1), "MEDIA_STREAM", null);
+        TimelineClip clip2 = new TimelineClip(
+                "c2", "asset-2", "stream-2", "ghost-art", DIGEST_HEX,
+                MediaTime.ofTicks(30, 1), MediaTime.ofTicks(60, 1),
+                MediaTime.ZERO, MediaTime.ofTicks(30, 1), "MEDIA_STREAM", null);
+        TimelineTrack track = new TimelineTrack("v1", "v1", TrackType.VIDEO, List.of(clip1, clip2));
+        TimelineDocument doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(track), TimelineMetadata.empty());
+
+        assertThrows(Exception.class,
+                () -> saveService.saveRevision(productId, null, doc, "user-1"),
+                "second pin INSERT (ghost artifact) must fail the whole save");
+
+        // No revision row.
+        assertEquals(0, dsl.fetchCount(DSL.selectFrom(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))),
+                "no revision may be durable after partial pin failure");
+        // artifact_pin count for the project = 0 — pin 1's successful INSERT
+        // was rolled back together with pin 2's failure.
+        assertEquals(0, dsl.fetchCount(DSL.selectFrom(
+                        com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN)
+                .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
+                "no partial pin set may survive (pin 1 rolled back with pin 2 failure)");
+        // Head unchanged.
         assertTrue(currentRevisionService.getCurrentRevisionId(productId) == null
                         || currentRevisionService.getCurrentRevisionId(productId).isBlank(),
                 "head must remain unchanged");

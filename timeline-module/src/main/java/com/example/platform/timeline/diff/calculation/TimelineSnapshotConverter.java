@@ -183,59 +183,6 @@ public final class TimelineSnapshotConverter {
     }
 
     /**
-     * {@code template} as the source for document-level fields (schema version,
-     * metadata) that are outside the canonical snapshot space.
-     *
-     * <p>Legacy timeline-1.0 document boundary: TimelineDocument is expressed
-     * in {@link java.time.Duration}; the exact {@link MediaTime} snapshot
-     * values are projected through the exact rational ms conversion (media
-     * time is never re-quantized through floating point here).</p>
-     */
-    public static TimelineDocument toDocument(CanonicalTimelineSnapshot snapshot, TimelineDocument template) {
-        String schemaVersion = snapshot.safeMetadata() != null
-                ? snapshot.safeMetadata().getOrDefault("schemaVersion",
-                        template != null ? template.getSchemaVersion() : TimelineDocument.CURRENT_SCHEMA_VERSION)
-                : (template != null ? template.getSchemaVersion() : TimelineDocument.CURRENT_SCHEMA_VERSION);
-        List<TimelineTrack> tracks = new ArrayList<>();
-        List<CanonicalTimelineTrackSnapshot> ordered = new ArrayList<>(snapshot.tracks());
-        ordered.sort(java.util.Comparator.comparingInt(CanonicalTimelineTrackSnapshot::order));
-        for (CanonicalTimelineTrackSnapshot track : ordered) {
-            List<TimelineClip> clips = new ArrayList<>();
-            for (CanonicalTimelineClipSnapshot clip : track.clips()) {
-                MediaTime start = clip.start();
-                MediaTime end = clip.start().add(clip.duration());
-                // Snapshot boundary: single binding id is restored as mediaAssetId;
-                // stream/artifact/digest are not carried in the merge snapshot
-                // (full binding restoration is a follow-up bounded delivery).
-                clips.add(new TimelineClip(
-                        clip.clipId(),
-                        clip.assetBindingId(),
-                        null,
-                        null,
-                        null,
-                        start,
-                        end,
-                        clip.sourceStart(),
-                        clip.sourceStart().add(clip.sourceDuration()),
-                        "MEDIA_STREAM"));
-            }
-            TrackType type = TrackType.VIDEO;
-            try {
-                if (track.kind() != null) {
-                    type = TrackType.valueOf(track.kind());
-                }
-            } catch (IllegalArgumentException ignored) {
-                type = TrackType.VIDEO;
-            }
-            tracks.add(new TimelineTrack(track.trackId(), track.trackId(), type, List.copyOf(clips)));
-        }
-        return new TimelineDocument(
-                schemaVersion,
-                List.copyOf(tracks),
-                template != null ? template.getMetadata() : null);
-    }
-
-    /**
      * Exact rational MediaTime -&gt; integer milliseconds (half-up).
      *
      * <p>PROJECTION ONLY — used at the legacy timeline-1.0 document boundary

@@ -75,7 +75,7 @@ class Gcr2PinRegistrationFailureRollbackTest extends PostgresTestContainerSuppor
                 + "\"sourceBinding\":{"
                 + "\"sourceKind\":\"MEDIA_STREAM\",\"mediaStreamId\":\"stream-1\",\"mediaAssetId\":\"ast-t7\","
                 + "\"artifactId\":\"" + artifactId + "\",\"contentDigest\":{\"algorithm\":\"SHA256\",\"value\":\""
-                + digest + "\"}}}]}]}}";
+                + digest + "\"},\"sourceRangeStart\":\"0/1\",\"sourceRangeEnd\":\"1/1\"}}]}]}}";
     }
 
     @Test

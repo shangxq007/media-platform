@@ -63,7 +63,10 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         ProductCurrentRevisionService currentRevisionService = new ProductCurrentRevisionService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(), null, null, null);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
         diffService = new TimelineSemanticDiffV1Service(saveService, new TimelineContentDigester(), new ObjectMapper());
     }
 

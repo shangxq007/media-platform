@@ -57,6 +57,6 @@ class TimelineCanonicalNormalizerTest {
     }
 
     private static TimelineCandidate.Clip clip(String id, long start) {
-        return new TimelineCandidate.Clip(id, TimelineSourceRef.of("source-" + id), MediaTime.ofTicks(start, 1), MediaTime.ZERO, MediaTime.ofTicks(5, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null, null);
+        return new TimelineCandidate.Clip(id, TimelineSourceRef.of("source-" + id), MediaTime.ofTicks(start, 1), MediaTime.ZERO, MediaTime.ofTicks(5, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null);
     }
 }

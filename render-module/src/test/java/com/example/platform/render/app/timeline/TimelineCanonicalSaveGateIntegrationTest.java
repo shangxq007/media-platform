@@ -58,7 +58,10 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         RenderTestSchemaFixture.truncate(dsl);
         digester = new TimelineContentDigester();
         currentRevisionService = new ProductCurrentRevisionService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, null, null, null);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester,
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
     }
 
     @Test

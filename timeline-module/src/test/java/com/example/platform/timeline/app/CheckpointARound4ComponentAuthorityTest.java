@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
 import com.example.platform.timeline.diff.application.TimelinePatchApplier;
 import com.example.platform.timeline.diff.application.TimelinePatchApplicationResult;
 import com.example.platform.timeline.diff.application.TimelinePatchApplicationStatus;
@@ -109,9 +110,12 @@ class CheckpointARound4ComponentAuthorityTest {
         CanonicalTimelineTransitionSnapshot t = transition("t1", params);
 
         ObjectNode canonical = TransitionCanonicalSemantics.canonicalValue(t);
-        CanonicalTimelineTransitionSnapshot decoded =
+        // R5-A: decode returns the DOMAIN value CanonicalTransition; compare
+        // against the snapshot converted to the domain value.
+        CanonicalTransition decoded =
                 TransitionCanonicalSemantics.fromCanonicalValue("t1", canonical);
-        assertEquals(t, decoded, "canonical round-trip must be lossless");
+        assertEquals(TransitionCanonicalSemantics.fromSnapshotValue(t), decoded,
+                "canonical round-trip must be lossless");
         assertEquals("x=y,z", decoded.parameters().get("a,b=c"),
                 "delimiter-looking authored values must survive");
     }
@@ -213,9 +217,12 @@ class CheckpointARound4ComponentAuthorityTest {
         CanonicalTimelineAutomationSnapshot a = automation("auto1", "a,b=c;d", kfs);
 
         ObjectNode canonical = AutomationCanonicalSemantics.canonicalValue(a);
-        CanonicalTimelineAutomationSnapshot decoded =
+        // R5-A: decode returns the DOMAIN value CanonicalAutomationCurve;
+        // compare against the snapshot converted to the domain value.
+        com.example.platform.timeline.canonicalmodel.CanonicalAutomationCurve decoded =
                 AutomationCanonicalSemantics.fromCanonicalValue("auto1", canonical);
-        assertEquals(a, decoded, "automation canonical round-trip must be lossless");
+        assertEquals(AutomationCanonicalSemantics.fromSnapshotValue(a), decoded,
+                "automation canonical round-trip must be lossless");
         assertEquals(MediaTime.ofTicks(15, 30), decoded.keyframes().get(1).time(),
                 "exact MediaTime keyframes must survive");
         assertEquals("a,b=c;d", decoded.parameterPath(),

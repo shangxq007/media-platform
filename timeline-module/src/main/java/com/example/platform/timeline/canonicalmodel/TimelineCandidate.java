@@ -55,7 +55,7 @@ public record TimelineCandidate(
                                                 FrameRate.of(30, 1),
                                                 List.of(),
                                                 List.of(),
-                                                null, null, null, null, null, null, null))
+                                                null, null))
                                         .toList()))
                         .toList(),
                 model.transitions(), model.automations(), List.of(),
@@ -81,12 +81,21 @@ public record TimelineCandidate(
     public record Clip(String clipId, TimelineSourceRef sourceRef, MediaTime timelineStart,
             MediaTime sourceStart, MediaTime duration, FrameRate rate,
             List<TimelineClipEffect> effects, List<Object> unsupportedConstructs,
-            String sourceKind, String mediaAssetId, String mediaStreamId,
-            String artifactId, String contentDigest, TemporalMapping temporalMapping,
+            TemporalMapping temporalMapping,
             com.example.platform.timeline.semantics.clip.TimelineSourceBinding sourceBinding) {
         public Clip {
             unsupportedConstructs = unsupportedConstructs == null ? List.of() : List.copyOf(unsupportedConstructs);
             effects = effects == null ? List.of() : List.copyOf(effects);
         }
+
+        /**
+         * R5-B: single typed source-binding authority. The typed
+         * {@code TimelineSourceBinding} is the ONLY source-semantics
+         * representation in the candidate; flattened sourceKind/mediaAssetId/
+         * mediaStreamId/artifactId/contentDigest were REMOVED (dual independent
+         * representation allowed contradictory states). Aggregates that need a
+         * projection read the typed binding; no flat semantic state survives
+         * into Candidate/merge.
+         */
     }
 }

@@ -58,9 +58,21 @@ class CheckpointAPinInvariantTest {
     }
 
     private TimelineRevisionSaveService saveService(ArtifactQueryService query, ArtifactPinService pinService) {
+        return saveService(query, pinService, org.mockito.Mockito.mock(org.jooq.DSLContext.class));
+    }
+
+    private TimelineRevisionSaveService saveService(ArtifactQueryService query, ArtifactPinService pinService,
+            org.jooq.DSLContext dsl) {
         TimelineArtifactPinValidator validator = new TimelineArtifactPinValidator(query);
-        return new TimelineRevisionSaveService(null, null, new TimelineContentDigester(),
-                null, validator, pinService);
+        // R5-C: all dependencies REQUIRED by construction — dsl/current/snapshot
+        // are mocks (legacy null wiring is no longer constructible);
+        // validator/pinService are the real/mocked pin boundary under test.
+        return new TimelineRevisionSaveService(
+                dsl,
+                org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                new TimelineContentDigester(),
+                org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
+                validator, pinService);
     }
 
     @Test
@@ -105,12 +117,11 @@ class CheckpointAPinInvariantTest {
     void case4PinRegistrationFailureFailsSave() {
         // validator passes (artifact exists, digest matches); pin registration
         // throws → the save must FAIL (never a partial success). The real
-        // rollback semantics are provided by the @Transactional boundary around
-        // saveRevision (same jOOQ transaction for revision insert + pin
-        // registration + head update — GCR-2 C10, exercised by
-        // TimelineRevisionServiceE1bGateIntegrationTest on real PostgreSQL);
-        // at unit level we prove the save never returns success when pin
-        // registration fails.
+        // rollback semantics are provided by the explicit jOOQ transaction
+        // around saveRevision (revision insert + pin registration + head update
+        // are one atomic unit — exercised on real PostgreSQL by the R5-C real
+        // DB failure ITs); at unit level we prove the save never returns
+        // success when pin registration fails (MOCK_FAILURE_INJECTION).
         com.example.platform.shared.web.TenantContext.set(TENANT);
         ArtifactQueryService query = mock(ArtifactQueryService.class);
         Artifact artifact = artifact(TENANT, "a".repeat(64));
@@ -118,10 +129,21 @@ class CheckpointAPinInvariantTest {
                 .thenReturn(Optional.of(artifact));
         ArtifactPinService pinService = mock(ArtifactPinService.class);
         org.mockito.Mockito.doThrow(new IllegalStateException("pin registration failure"))
-                .when(pinService).registerRevisionPins(
+                .when(pinService).registerRevisionPinsTx(
+                        org.mockito.ArgumentMatchers.any(),
                         org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyList());
-        TimelineRevisionSaveService svc = saveService(query, pinService);
+        // The transaction callable must actually run for the mocked pin
+        // registration failure to fire inside the save flow.
+        org.jooq.DSLContext txDsl = org.mockito.Mockito.mock(org.jooq.DSLContext.class,
+                org.mockito.Answers.RETURNS_DEEP_STUBS);
+        org.jooq.DSLContext dslMock = org.mockito.Mockito.mock(org.jooq.DSLContext.class);
+        org.mockito.Mockito.when(dslMock.transactionResult(org.mockito.ArgumentMatchers.<org.jooq.TransactionalCallable<Object>>any()))
+                .thenAnswer(inv -> {
+                    org.jooq.TransactionalCallable<Object> callable = inv.getArgument(0);
+                    return callable.run(txDsl.configuration());
+                });
+        TimelineRevisionSaveService svc = saveService(query, pinService, dslMock);
         assertThrows(Exception.class,
                 () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
                 "pin registration failure must fail the whole save (no visible dangling revision)");
@@ -151,19 +173,38 @@ class CheckpointAPinInvariantTest {
     }
 
     @Test
-    void case6NoPinValidatorCannotCommitPinnedContent() {
-        // A save surface wired WITHOUT the validator must refuse pinned content
-        // (fail-closed guard) — no no-pin write surface exists.
-        TimelineRevisionSaveService svc = new TimelineRevisionSaveService(null, null,
-                new TimelineContentDigester(), null, null, null);
-        assertThrows(IllegalStateException.class,
-                () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
-                "no-pin save surface must fail closed on pinned content");
-        // Unpinned content is unaffected (test wiring remains usable)
-        TimelineDocument plain = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(), TimelineMetadata.empty());
-        assertThrows(Exception.class, () -> svc.saveRevision("p1", null, plain, "user"),
-                "unpinned content still fails later at the (null-dsl) persistence stage — "
-                        + "the pin boundary itself is not the failure");
+    void case6NullPinBoundaryRejectedByConstruction() {
+        // R5-C: a save surface WITHOUT the artifact-pin boundary cannot even be
+        // CONSTRUCTED — required dependencies are non-null by construction
+        // (Objects.requireNonNull). No public constructor permits a save/
+        // restore surface with a missing validator or pin service.
+        TimelineContentDigester digester = new TimelineContentDigester();
+        assertThrows(NullPointerException.class,
+                () -> new TimelineRevisionSaveService(
+                        org.mockito.Mockito.mock(org.jooq.DSLContext.class),
+                        org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                        digester,
+                        org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
+                        null,
+                        org.mockito.Mockito.mock(ArtifactPinService.class)),
+                "null artifactPinValidator must be rejected by construction");
+        assertThrows(NullPointerException.class,
+                () -> new TimelineRevisionSaveService(
+                        org.mockito.Mockito.mock(org.jooq.DSLContext.class),
+                        org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                        digester,
+                        org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
+                        new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
+                        null),
+                "null artifactPinService must be rejected by construction");
+        assertThrows(NullPointerException.class,
+                () -> new TimelineRevisionSaveService(
+                        null,
+                        org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                        digester,
+                        org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
+                        new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
+                        org.mockito.Mockito.mock(ArtifactPinService.class)),
+                "null dsl must be rejected by construction");
     }
 }

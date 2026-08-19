@@ -28,9 +28,12 @@ class ComponentLocalSemanticAuthorityCollisionTest {
                 // old delimiter grammar would split on ',' and '='
                 Map.of("a,b=c", "x=y,z", "plain", "value", "semi;colon", "colon:value"));
         // lossless round trip through the canonical JSON authority
+        // R5-A: decode returns the DOMAIN value; compare against the snapshot
+        // projected to the domain value.
         var decoded = TransitionCanonicalSemantics.fromCanonicalValue(
                 "tr-1", TransitionCanonicalSemantics.canonicalValue(t));
-        assertEquals(t, decoded, "delimiter-like parameter keys/values must survive losslessly");
+        assertEquals(TransitionCanonicalSemantics.fromSnapshotValue(t), decoded,
+                "delimiter-like parameter keys/values must survive losslessly");
         // fingerprint deterministic + distinct from a modified twin
         assertEquals(TransitionCanonicalSemantics.semanticFingerprint(t),
                 TransitionCanonicalSemantics.semanticFingerprint(t));
@@ -50,7 +53,8 @@ class ComponentLocalSemanticAuthorityCollisionTest {
                         "kf-1", MediaTime.ofTicks(5, 30), 0.5, "LINEAR")));
         var decoded = AutomationCanonicalSemantics.fromCanonicalValue(
                 "auto-1", AutomationCanonicalSemantics.canonicalValue(a));
-        assertEquals(a, decoded, "automation canonical round trip must be lossless");
+        assertEquals(AutomationCanonicalSemantics.fromSnapshotValue(a), decoded,
+                "automation canonical round trip must be lossless");
         assertEquals(AutomationCanonicalSemantics.semanticFingerprint(a),
                 AutomationCanonicalSemantics.semanticFingerprint(a));
     }

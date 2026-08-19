@@ -66,7 +66,9 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         digester = new TimelineContentDigester();
         currentRevisionService = new ProductCurrentRevisionService(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService, null, null);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
     }
 
     @Test

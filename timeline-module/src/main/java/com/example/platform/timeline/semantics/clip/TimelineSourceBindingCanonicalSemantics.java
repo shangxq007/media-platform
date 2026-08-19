@@ -66,7 +66,11 @@ public final class TimelineSourceBindingCanonicalSemantics {
     }
 
     /** Lossless reconstruction from the canonical value. Unknown kinds FAIL
-     *  CLOSED — never a silent blank binding. */
+     *  CLOSED — never a silent blank binding. R5-B: partial source binding
+     *  (missing mediaAssetId/mediaStreamId/artifactId/digest/source range,
+     *  malformed digest, malformed range) FAILS CLOSED via the typed identity /
+     *  digest / range constructors — no synthesized defaults, no catch→null
+     *  narrowing. */
     public static TimelineSourceBinding fromCanonicalValue(JsonNode node) {
         if (node == null || node.isNull() || !node.isObject() || node.isEmpty()) {
             return null;
@@ -77,17 +81,101 @@ public final class TimelineSourceBindingCanonicalSemantics {
                     "Unknown TimelineSourceBinding sourceKind: '" + kind + "'");
         }
         JsonNode digestNode = node.path("contentDigest");
+        // R5-B strict: contentDigest must be a present object with a valid
+        // SHA-256 value (ContentDigest constructor rejects blank/invalid).
         ContentDigest digest = new ContentDigest(
                 ContentDigest.DigestAlgorithm.SHA_256,
                 digestNode.path("value").asText(""));
-        MediaTime start = MediaTime.parse(node.path("sourceRangeStart").asText("0"));
-        MediaTime end = MediaTime.parse(node.path("sourceRangeEnd").asText("0"));
+        // R5-B strict: source range REQUIRED in the canonical value — missing
+        // or malformed range is not silently defaulted to zero.
+        String rangeStartText = node.path("sourceRangeStart").asText(null);
+        String rangeEndText = node.path("sourceRangeEnd").asText(null);
+        if (rangeStartText == null || rangeEndText == null
+                || rangeStartText.isBlank() || rangeEndText.isBlank()) {
+            throw new IllegalStateException(
+                    "MediaStreamSourceBinding requires exact sourceRangeStart/sourceRangeEnd");
+        }
+        MediaTime start = MediaTime.parse(rangeStartText);
+        MediaTime end = MediaTime.parse(rangeEndText);
+        if (start.isGreaterThan(end)) {
+            throw new IllegalStateException(
+                    "MediaStreamSourceBinding source range start > end");
+        }
         return new MediaStreamSourceBinding(
                 new MediaAssetId(node.path("mediaAssetId").asText("")),
                 new MediaStreamId(node.path("mediaStreamId").asText("")),
                 new ArtifactId(node.path("artifactId").asText("")),
                 digest,
                 new MediaClip.TimeRange(start, end));
+    }
+
+    /**
+     * R5-B: canonicalize legacy FLAT wire fields into ONE typed
+     * TimelineSourceBinding immediately at the adapter boundary. If ANY flat
+     * source-binding intent is present it must be COMPLETE and VALID
+     * (sourceKind=MEDIA_STREAM, mediaAssetId, mediaStreamId, artifactId,
+     * contentDigest, exact source range from the wire sourceRange node) —
+     * partial intent FAILS CLOSED (never MediaAssetId-only fallback, never a
+     * silent null). Fully absent flat fields yield null (no binding intent).
+     */
+    public static TimelineSourceBinding fromFlatFields(
+            String sourceKind, String mediaAssetId, String mediaStreamId,
+            String artifactId, String contentDigest, JsonNode sourceRangeNode) {
+        if (sourceKind == null && mediaStreamId == null && artifactId == null
+                && contentDigest == null) {
+            return null; // no authored source-binding intent
+        }
+        if (!TimelineSourceBinding.SourceKind.MEDIA_STREAM.name().equals(sourceKind)) {
+            throw new IllegalStateException(
+                    "Unknown TimelineSourceBinding sourceKind: '" + sourceKind + "'");
+        }
+        if (mediaAssetId == null || mediaAssetId.isBlank()
+                || mediaStreamId == null || mediaStreamId.isBlank()
+                || artifactId == null || artifactId.isBlank()
+                || contentDigest == null || contentDigest.isBlank()) {
+            throw new IllegalStateException(
+                    "Partial flat sourceBinding: MEDIA_STREAM requires mediaAssetId, "
+                            + "mediaStreamId, artifactId and contentDigest");
+        }
+        MediaClip.TimeRange range = rangeOf(sourceRangeNode);
+        if (range == null) {
+            throw new IllegalStateException(
+                    "Partial flat sourceBinding: sourceRange required for MEDIA_STREAM");
+        }
+        return new MediaStreamSourceBinding(
+                new MediaAssetId(mediaAssetId),
+                new MediaStreamId(mediaStreamId),
+                new ArtifactId(artifactId),
+                new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256, contentDigest),
+                range);
+    }
+
+    /** Exact wire sourceRange → TimeRange; null when the node is absent. */
+    private static MediaClip.TimeRange rangeOf(JsonNode node) {
+        if (node == null || !node.isObject() || node.isEmpty()) {
+            return null;
+        }
+        JsonNode startNode = node.path("start");
+        JsonNode durationNode = node.path("duration");
+        if (!startNode.isObject() || !durationNode.isObject()) {
+            return null;
+        }
+        try {
+            long fpsNum = startNode.path("rate").path("num").asLong(30);
+            long fpsDen = startNode.path("rate").path("den").asLong(1);
+            long startFrame = startNode.path("frame").asLong(0);
+            long durationFrame = durationNode.path("frame").asLong(0);
+            if (fpsNum <= 0 || fpsDen <= 0) {
+                return null;
+            }
+            // frame N @ fps num/den → time = N * den / num seconds
+            // (exact rational: ticks = N*den, timeScale = num).
+            MediaTime start = MediaTime.ofTicks(startFrame * fpsDen, fpsNum);
+            MediaTime duration = MediaTime.ofTicks(durationFrame * fpsDen, fpsNum);
+            return new MediaClip.TimeRange(start, start.add(duration));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** Deterministic fingerprint — SHA-256 over canonical value; no delimiter

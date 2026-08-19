@@ -223,7 +223,7 @@ class CheckpointARound4SourceBindingClosureTest {
                 "c1", new com.example.platform.timeline.canonicalmodel.TimelineSourceRef("ast-1"),
                 MediaTime.ofTicks(0, 30), MediaTime.ofTicks(0, 30), MediaTime.ofTicks(60, 30),
                 FrameRate.of(30, 1), List.of(), List.of(),
-                "MEDIA_STREAM", "asset-1", "stream-1", "art-1", "a".repeat(64), null, binding);
+                null, binding);
         return new TimelineCandidate("tl-1", PROJECT,
                 com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(new TimelineCandidate.Track("v1", TimelineCandidate.TrackType.VIDEO, 0, null,
@@ -306,8 +306,18 @@ class CheckpointARound4SourceBindingClosureTest {
         when(repo.listByProject(PROJECT, 500)).thenReturn(List.of());
         when(cur.getCurrentRevisionId(PROJECT)).thenReturn("tgt-rev");
         TimelineMergePreviewService pv = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
+        com.example.platform.timeline.app.TimelineArtifactPinValidator pinValidator =
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class);
+        // R5-C: the pin boundary runs unconditionally in the persistent merge
+        // path — the test validator must answer VALID (pin validation itself is
+        // exercised by the R5-C real-PG tests).
+        org.mockito.Mockito.when(pinValidator.validate(org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(new com.example.platform.timeline.app.TimelineArtifactPinValidator.ValidationResult(true, java.util.List.of()));
         return new TimelineMergeEngine(repo, snap, cur, pv,
-                new TimelineNonConflictingMergePlanner(pv), new TimelinePatchApplier(), mapper);
+                new TimelineNonConflictingMergePlanner(pv), new TimelinePatchApplier(), mapper,
+                pinValidator,
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
     }
 
     private TimelineRevisionRepository.RevisionRow row(String rev, String snapId) {

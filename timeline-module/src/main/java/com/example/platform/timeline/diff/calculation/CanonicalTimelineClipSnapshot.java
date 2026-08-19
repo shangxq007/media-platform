@@ -59,12 +59,12 @@ public record CanonicalTimelineClipSnapshot(
     }
 
     /**
-     * R4-B legacy projection convenience constructor: builds the typed source
-     * binding from flat fields when the authored payload carried them. A
-     * binding is only constructed when the source kind is present AND all
-     * required typed fields are non-blank — never a MediaAssetId-only
-     * fallback, never silent String-field narrowing. Absent/partial flat
-     * fields yield a null binding (clip has no typed source binding).
+     * R5-B legacy projection convenience constructor: builds the typed source
+     * binding from flat fields when the authored payload carried them. Fully
+     * ABSENT flat source fields yield a null binding (no authored intent);
+     * ANY present source-binding intent must be COMPLETE — partial flat
+     * fields or unknown source kind FAIL CLOSED (never MediaAssetId-only
+     * fallback, never silent String-field narrowing, never catch→null).
      */
     public CanonicalTimelineClipSnapshot(
             String clipId,
@@ -93,22 +93,28 @@ public record CanonicalTimelineClipSnapshot(
     private static TimelineSourceBinding toTypedBinding(String sourceKind, String mediaAssetId,
             String mediaStreamId, String artifactId, String contentDigest,
             MediaTime sourceStart, MediaTime sourceDuration) {
+        // R5-B: binding INTENT = presence of binding-specific fields
+        // (mediaStreamId/artifactId/contentDigest). sourceKind alone is not
+        // intent (legacy callers may pass a lone sourceKind projection).
+        boolean anyIntent = mediaStreamId != null || artifactId != null
+                || contentDigest != null;
+        if (!anyIntent) {
+            return null; // no authored source-binding intent
+        }
         if (sourceKind == null || sourceKind.isBlank()
                 || !TimelineSourceBinding.SourceKind.MEDIA_STREAM.name().equals(sourceKind)) {
-            return null;
+            throw new IllegalArgumentException(
+                    "Unknown TimelineSourceBinding sourceKind: '" + sourceKind + "'");
         }
         if (mediaAssetId == null || mediaAssetId.isBlank()
                 || mediaStreamId == null || mediaStreamId.isBlank()
                 || artifactId == null || artifactId.isBlank()
                 || contentDigest == null || contentDigest.isBlank()) {
-            return null;
+            throw new IllegalArgumentException(
+                    "Partial sourceBinding: MEDIA_STREAM requires mediaAssetId, "
+                            + "mediaStreamId, artifactId and contentDigest");
         }
-        MediaTime end;
-        try {
-            end = sourceStart.add(sourceDuration);
-        } catch (ArithmeticException overflow) {
-            end = sourceStart;
-        }
+        MediaTime end = sourceStart.add(sourceDuration);
         return new MediaStreamSourceBinding(
                 new com.example.platform.media.domain.identity.MediaAssetId(mediaAssetId),
                 new com.example.platform.media.domain.stream.MediaStreamId(mediaStreamId),

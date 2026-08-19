@@ -117,44 +117,73 @@ public final class TimelineDocumentCandidateMapper {
         // never narrow to assetId alone.
         // R4-B: the typed TimelineSourceBinding is the merge-path authority;
         // built from the document clip's flat fields via the binding authority.
+        // R5-B: the document clip's flat fields are canonicalized immediately
+        // into ONE typed binding; partial/invalid source-binding intent FAILS
+        // CLOSED (no catch→null narrowing).
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(mediaAssetId),
                 timelineStart, sourceStart, duration, FrameRate.of(30, 1), List.of(), List.of(),
-                clip.getSourceKind(), mediaAssetId, clip.getMediaStreamId(),
-                clip.getArtifactId(), clip.getContentDigest(), clip.getTemporalMapping(),
-                typedBindingOf(clip));
+                clip.getTemporalMapping(), typedBindingOf(clip, clipId));
     }
 
-    /** R4-B: construct the typed TimelineSourceBinding from the document clip's
-     *  flat source fields (null when the clip carries no source binding). */
+    /** R5-B: construct the typed TimelineSourceBinding from the document clip's
+     *  flat source fields. Fully absent source fields yield null (no binding
+     *  intent); ANY present source-binding intent must be COMPLETE — partial
+     *  fields, unknown sourceKind, or invalid digest FAIL CLOSED (never a
+     *  silent null, never catch→null narrowing). */
     private static com.example.platform.timeline.semantics.clip.TimelineSourceBinding typedBindingOf(
-            com.example.platform.timeline.canonical.TimelineClip clip) {
+            com.example.platform.timeline.canonical.TimelineClip clip, String clipId) {
         String kind = clip.getSourceKind();
-        if (kind == null || kind.isBlank()
-                || !com.example.platform.timeline.semantics.clip.TimelineSourceBinding.SourceKind.MEDIA_STREAM
-                        .name().equals(kind)) {
-            return null;
-        }
         String mediaAssetId = clip.getMediaAssetId();
         String mediaStreamId = clip.getMediaStreamId();
         String artifactId = clip.getArtifactId();
         String contentDigest = clip.getContentDigest();
-        if (mediaAssetId == null || mediaAssetId.isBlank()
-                || mediaStreamId == null || mediaStreamId.isBlank()
-                || artifactId == null || artifactId.isBlank()
-                || contentDigest == null || contentDigest.isBlank()) {
-            return null;
+        // R5-B: source-binding INTENT is the presence of binding-specific
+        // fields (mediaStreamId/artifactId/contentDigest). The document model's
+        // TimelineClip constructor FORCES sourceKind to "MEDIA_STREAM" when
+        // null (legacy default), and mediaAssetId is the clip's generic source
+        // reference (always present) — neither alone is binding intent. A clip
+        // WITH binding-specific fields but missing pieces fails closed below.
+        boolean anyIntent = mediaStreamId != null || artifactId != null
+                || contentDigest != null;
+        if (!anyIntent) {
+            return null; // no authored source-binding intent
         }
         try {
+            if (kind == null || kind.isBlank()
+                    || !com.example.platform.timeline.semantics.clip.TimelineSourceBinding.SourceKind.MEDIA_STREAM
+                            .name().equals(kind)) {
+                throw new IllegalStateException(
+                        "Unknown TimelineSourceBinding sourceKind: '" + kind + "'");
+            }
+            if (mediaAssetId == null || mediaAssetId.isBlank()
+                    || mediaStreamId == null || mediaStreamId.isBlank()
+                    || artifactId == null || artifactId.isBlank()
+                    || contentDigest == null || contentDigest.isBlank()) {
+                throw new IllegalStateException(
+                        "Partial sourceBinding: MEDIA_STREAM requires mediaAssetId, "
+                                + "mediaStreamId, artifactId and contentDigest");
+            }
+            MediaTime rangeStart = clip.getTrimStart() != null ? clip.getTrimStart()
+                    : com.example.platform.shared.time.MediaTime.ZERO;
+            MediaTime rangeEnd = clip.getTrimEnd() != null ? clip.getTrimEnd()
+                    : com.example.platform.shared.time.MediaTime.ZERO;
+            if (rangeStart.isGreaterThan(rangeEnd)) {
+                throw new IllegalStateException(
+                        "Source binding source range start > end");
+            }
             return new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
                     new com.example.platform.media.domain.identity.MediaAssetId(mediaAssetId),
                     new com.example.platform.media.domain.stream.MediaStreamId(mediaStreamId),
                     new com.example.platform.shared.identity.ArtifactId(artifactId),
                     com.example.platform.shared.digest.ContentDigest.sha256(contentDigest),
                     new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(
-                            clip.getTrimStart() != null ? clip.getTrimStart() : com.example.platform.shared.time.MediaTime.ZERO,
-                            clip.getTrimEnd() != null ? clip.getTrimEnd() : com.example.platform.shared.time.MediaTime.ZERO));
-        } catch (IllegalArgumentException invalid) {
-            return null;
+                            rangeStart, rangeEnd));
+        } catch (Exception invalid) {
+            throw new TimelineCanonicalRejectionException(
+                    new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                            TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                            TimelineModelPath.root().field("tracks").field("clips").id(clipId).field("sourceBinding"),
+                            "Invalid clip sourceBinding: " + invalid.getMessage()));
         }
     }
 

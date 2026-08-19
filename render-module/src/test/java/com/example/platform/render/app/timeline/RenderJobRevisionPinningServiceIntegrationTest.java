@@ -50,7 +50,10 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         currentRevisionService = new ProductCurrentRevisionService(dsl);
-        revisionSaveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(), null, null, null);
+        revisionSaveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
         pinningService = new RenderJobRevisionPinningService(dsl);
     }
 

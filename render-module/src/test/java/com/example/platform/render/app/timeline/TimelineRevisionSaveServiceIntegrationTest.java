@@ -52,7 +52,10 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         currentRevisionService = new ProductCurrentRevisionService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(), null, null, null);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
     }
 
     @Test
@@ -234,7 +237,24 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         // base document is available (see patch-path-coverage evidence).
         String productId = "prod-gateext-" + java.util.UUID.randomUUID();
         insertProduct(productId);
-        var base = saveService.saveRevision(productId, null, createSampleDocument(), "user-1");
+        // R5-C: the production constructor requires non-null dependencies; the
+        // GitV1 "revision row without governed snapshot payload" limitation is
+        // reproduced with a snapshot service whose saveTx returns a snapshot id
+        // that has NO payload row (legacy semantics — the payload is absent, so
+        // the patch service cannot load the base document).
+        com.example.platform.timeline.adapter.TimelineSnapshotService legacySnapshot =
+                org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class);
+        org.mockito.Mockito.when(legacySnapshot.saveTx(org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn("snap-legacy-" + java.util.UUID.randomUUID());
+        var saveServiceLegacy = new TimelineRevisionSaveService(dsl, currentRevisionService,
+                new TimelineContentDigester(), legacySnapshot,
+                new com.example.platform.timeline.app.TimelineArtifactPinValidator(
+                        new com.example.platform.render.testutil.NoopArtifactQueryService()),
+                new com.example.platform.artifact.app.ArtifactPinService(
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)));
+        var base = saveServiceLegacy.saveRevision(productId, null, createSampleDocument(), "user-1");
 
         var patch = new com.example.platform.timeline.patch.TimelinePatch(
                 "1.0", "patch-" + java.util.UUID.randomUUID(), productId,

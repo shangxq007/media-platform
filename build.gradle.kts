@@ -1474,8 +1474,9 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(!saveService.contains("Backward-compatible constructor for existing direct-wiring tests")) {
             "FAIL (G1): no no-pin public constructor may remain for production wiring"
         }
-        require(saveService.contains("cannot save pinned content")) {
-            "FAIL (G1): no-pin save surface must fail closed on pinned content"
+        require(saveService.contains("Objects.requireNonNull(artifactPinValidator")
+                && saveService.contains("Objects.requireNonNull(artifactPinService")) {
+            "FAIL (G1): no-pin save surface must be impossible by construction (requireNonNull pin boundary)"
         }
         require(candidateModel.contains("AudioMix audioMix") && candidateModel.contains("semanticRelationships")
                 && candidateModel.contains("temporalMapping")) {
@@ -1599,10 +1600,9 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         // H14: central patch must reconstruct Transition/Automation through the
         //     local canonical authority (fail-closed payload decode), never by
         //     inventing defaults.
-        val transitionDecodeInPatch = patchApplier.contains("TransitionCanonicalSemantics.fromCanonicalValue")
-                || patchApplier.contains("fromCanonicalValue(transitionId")
-        val automationDecodeInPatch = patchApplier.contains("AutomationCanonicalSemantics.fromCanonicalValue")
-                || patchApplier.contains("fromCanonicalValue(automationId")
+        // (authority references may span lines: "...TransitionCanonicalSemantics\n  .fromCanonicalJson(...)")
+        val transitionDecodeInPatch = patchApplier.contains("TransitionCanonicalSemantics") && patchApplier.contains("fromCanonicalJson(transitionId")
+        val automationDecodeInPatch = patchApplier.contains("AutomationCanonicalSemantics") && patchApplier.contains("fromCanonicalJson(automationId")
         require(transitionDecodeInPatch && automationDecodeInPatch) {
             "FAIL (H14): central patch must reconstruct through local canonical authorities"
         }
@@ -1637,6 +1637,105 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
             }
         }
 
-        println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership)")
+        // ── R5 guards (CHECKPOINT_A Round 5) ──────────────────────────────
+
+        // H17: CONSTRUCTOR_INJECTION_WITHOUT_EXPLICIT_AUTOWIRED_V1 — the two
+        // Round-5 corrected production services must have exactly ONE public
+        // constructor, no @Autowired, no test-convenience constructor.
+        val mergeEngineSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java").readText()
+        val saveServiceSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java").readText()
+        require(!mergeEngineSrc.contains("org.springframework.beans.factory.annotation.Autowired")
+                && !saveServiceSrc.contains("org.springframework.beans.factory.annotation.Autowired")) {
+            "FAIL (H17): explicit @Autowired forbidden on R5-corrected production surfaces (EXPLICIT_AUTOWIRED_IN_ROUND5_CORRECTED_PRODUCTION_SURFACES must be 0)"
+        }
+        val mergeCtorCount = Regex("public TimelineMergeEngine\\(").findAll(mergeEngineSrc).count()
+        require(mergeCtorCount == 1) {
+            "FAIL (H17): TimelineMergeEngine must have exactly ONE public constructor (found $mergeCtorCount)"
+        }
+        val saveCtorCount = Regex("public TimelineRevisionSaveService\\(").findAll(saveServiceSrc).count()
+        require(saveCtorCount == 1) {
+            "FAIL (H17): TimelineRevisionSaveService must have exactly ONE public constructor (found $saveCtorCount)"
+        }
+        require(mergeEngineSrc.contains("Objects.requireNonNull(artifactPinValidator")
+                && mergeEngineSrc.contains("Objects.requireNonNull(artifactPinService")) {
+            "FAIL (H17): TimelineMergeEngine pin boundary must be non-null by construction"
+        }
+        require(saveServiceSrc.contains("Objects.requireNonNull(artifactPinValidator")
+                && saveServiceSrc.contains("Objects.requireNonNull(artifactPinService")) {
+            "FAIL (H17): TimelineRevisionSaveService pin boundary must be non-null by construction"
+        }
+
+        // H18: no nullable pin-skip in production save/restore/merge.
+        require(!mergeEngineSrc.contains("artifactPinValidator != null")
+                && !mergeEngineSrc.contains("artifactPinService != null")) {
+            "FAIL (H18): nullable pin-skip forbidden in TimelineMergeEngine (PERSISTENT_MERGE_WITHOUT_PIN_BOUNDARY = IMPOSSIBLE_BY_CONSTRUCTION)"
+        }
+        require(!saveServiceSrc.contains("artifactPinValidator != null")
+                && !saveServiceSrc.contains("artifactPinService != null")) {
+            "FAIL (H18): nullable pin-skip forbidden in TimelineRevisionSaveService (save/restore never skip pin persistence)"
+        }
+
+        // H19: Transition/Automation authority must be defined over the DOMAIN
+        // value, not the diff snapshot; no synthesized authored defaults.
+        val transitionAuth = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/transition/TransitionCanonicalSemantics.java").readText()
+        val automationAuth = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/automation/AutomationCanonicalSemantics.java").readText()
+        require(transitionAuth.contains("canonicalValue(CanonicalTransition")
+                && transitionAuth.contains("fromCanonicalValue(String transitionId, JsonNode node)")) {
+            "FAIL (H19): Transition canonical authority must be defined over the CanonicalTransition DOMAIN value"
+        }
+        require(automationAuth.contains("canonicalValue(CanonicalAutomationCurve")
+                && automationAuth.contains("fromCanonicalValue(String automationId, JsonNode node)")) {
+            "FAIL (H19): Automation canonical authority must be defined over the CanonicalAutomationCurve DOMAIN value"
+        }
+        require(!transitionAuth.contains("asText(\"1.0\")") && !transitionAuth.contains("asText(\"VIDEO\")")
+                && !transitionAuth.contains("asText(\"CENTER_ON_CUT\")") && !transitionAuth.contains("asText(\"USE_SOURCE_HANDLES\")")
+                && !transitionAuth.contains("asLong(1)")) {
+            "FAIL (H19): Transition decoder must not synthesize authored defaults (version/mediaType/alignment/policy/timeScale)"
+        }
+        require(!automationAuth.contains("asText(\"float\")") && !automationAuth.contains("asText(\"HOLD\")")
+                && !automationAuth.contains("asText(\"LINEAR\")") && !automationAuth.contains("asDouble(0.0)")
+                && !automationAuth.contains("\"kf_\" +") && !automationAuth.contains("asLong(1)")) {
+            "FAIL (H19): Automation decoder must not synthesize authored defaults (valueType/extrapolation/interpolation/0.0/kf_N/timeScale)"
+        }
+
+        // H20: TimelineCandidate.Clip must carry exactly ONE typed source
+        // binding authority — no flat source semantic fields.
+        val candidateSrc = file("timeline-module/src/main/java/com/example/platform/timeline/canonicalmodel/TimelineCandidate.java").readText()
+        val clipRecord = candidateSrc.substring(candidateSrc.indexOf("public record Clip("))
+        require(!clipRecord.contains("String sourceKind") && !clipRecord.contains("String mediaAssetId")
+                && !clipRecord.contains("String mediaStreamId") && !clipRecord.contains("String artifactId")
+                && !clipRecord.contains("String contentDigest")) {
+            "FAIL (H20): TimelineCandidate.Clip must NOT carry flat source semantic fields (single typed authority)"
+        }
+        require(clipRecord.contains("TimelineSourceBinding sourceBinding")) {
+            "FAIL (H20): TimelineCandidate.Clip must carry the typed TimelineSourceBinding"
+        }
+
+        // H21: no silent catch→null narrowing for authored source binding.
+        val adapterSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineCandidateAdapter.java").readText()
+        require(!adapterSrc.contains("catch (IllegalArgumentException e) {\n            return null;")
+                && !adapterSrc.contains("catch (Exception e) {\n            return null;")) {
+            "FAIL (H21): silent catch→null narrowing of source binding forbidden in adapter"
+        }
+        val mapperSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentCandidateMapper.java").readText()
+        require(!mapperSrc.contains("catch (IllegalArgumentException invalid) {\n            return null;")) {
+            "FAIL (H21): silent catch→null narrowing of source binding forbidden in document mapper"
+        }
+
+        // H22: R5 behavioral + real-PG tests must exist.
+        val r5Tests = listOf(
+            "CheckpointARound5StrictDecodeTest",
+            "CheckpointARound5SourceBindingClosureTest",
+            "CheckpointARound5PersistentMergePinIT"
+        )
+        for (t in r5Tests) {
+            val searchRoot = if (t.endsWith("IT")) "render-module/src/test" else "timeline-module/src/test"
+            val found = file(searchRoot).walkTopDown().any { it.name == t + ".java" }
+            require(found) {
+                "FAIL (H22): R5 test " + t + " must exist"
+            }
+        }
+
+        println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership; R5 constructor-injection closure; R5 domain-value authority; R5 single typed source binding)")
     }
 }

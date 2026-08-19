@@ -39,7 +39,10 @@ class ProductCurrentRevisionServiceIntegrationTest extends PostgresTestContainer
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         currentRevisionService = new ProductCurrentRevisionService(dsl);
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new com.example.platform.timeline.canonical.TimelineContentDigester(), null, null, null);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new com.example.platform.timeline.canonical.TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
     }
 
     @Test

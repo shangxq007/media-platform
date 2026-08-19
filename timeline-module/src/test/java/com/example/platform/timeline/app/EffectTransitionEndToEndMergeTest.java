@@ -223,7 +223,9 @@ class EffectTransitionEndToEndMergeTest {
         var planner = new TimelineNonConflictingMergePlanner(previewService);
         TimelineMergeEngine engine = new TimelineMergeEngine(revisionRepo, snapshotService,
                 currentService, previewService, planner, new TimelinePatchApplier(),
-                InternalTimelineJson.mapper());
+                InternalTimelineJson.mapper(),
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
         TimelineMergeResult result = engine.merge(new TimelineMergeRequest(
                 "proj-1", "tenant-1", "base-rev", "src-rev", "tgt-rev", "user-1", "merge-1"));
         if (result.status() == TimelineMergeResult.MergeStatus.MERGED) {

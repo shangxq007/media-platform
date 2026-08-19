@@ -1,6 +1,7 @@
 package com.example.platform.timeline.semantics.transition;
 
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineTransitionSnapshot;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,16 +14,33 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * COMPONENT_LOCAL_SEMANTIC_AUTHORITY_V1 (CHECKPOINT_A Round 3): the single
- * Transition-local semantic authority.
+ * COMPONENT_LOCAL_SEMANTIC_AUTHORITY_V1 (CHECKPOINT_A Round 3; R5-A: authority
+ * re-homed on the canonical DOMAIN value {@link CanonicalTransition}): the
+ * single Transition-local semantic authority.
+ *
+ * <p>The canonical semantic contract is defined over the domain value
+ * {@link CanonicalTransition} (canonicalmodel) — NOT over the central
+ * diff/merge snapshot projection {@link CanonicalTimelineTransitionSnapshot}.
+ * The snapshot is only merge transport: {@link #toSnapshotValue} /
+ * {@link #fromSnapshotValue} project to/from it; it never defines the
+ * Transition canonical semantic contract.
  *
  * <p>Owns ONLY Transition-local semantics:
  * <ul>
  *   <li>deterministic canonical value (JSON object — no delimiter grammar)</li>
  *   <li>deterministic fingerprint (SHA-256 over canonical value)</li>
  *   <li>local semantic equality</li>
- *   <li>lossless encode / decode / reconstruction</li>
+ *   <li>lossless encode / STRICT decode / reconstruction</li>
+ *   <li>conversion to/from the canonical Transition domain value</li>
  * </ul>
+ *
+ * <p>STRICT decode (R5-A): a canonical authored Transition payload requires
+ * every authored field — transitionDefinitionId, transitionDefinitionVersion,
+ * outgoingClipId, incomingClipId, mediaType, durationTicks, durationTimeScale,
+ * alignment, temporalPolicy. Missing or malformed REQUIRED fields FAIL CLOSED;
+ * the decoder never synthesizes authored semantics (no default version/media
+ * type/alignment/policy, no implicit timeScale). Parameters may be empty only
+ * because empty parameters are valid authored semantics.
  *
  * <p>Timeline keeps aggregate orchestration: transition identity/path, clip
  * participant topology, existence, delete-vs-modify, three-way orchestration,
@@ -38,20 +56,21 @@ public final class TransitionCanonicalSemantics {
 
     private TransitionCanonicalSemantics() {}
 
-    /** Deterministic canonical JSON value — the single lossless representation. */
-    public static ObjectNode canonicalValue(CanonicalTimelineTransitionSnapshot t) {
+    // ── Canonical value over the DOMAIN value (R5-A authority) ────────────
+
+    /** Deterministic canonical JSON value — the single lossless representation
+     *  of the canonical Transition domain value. */
+    public static ObjectNode canonicalValue(CanonicalTransition t) {
         ObjectNode node = MAPPER.createObjectNode();
-        node.put("transitionDefinitionId", t.transitionDefinitionId() == null ? "" : t.transitionDefinitionId());
-        node.put("transitionDefinitionVersion", t.transitionDefinitionVersion() == null ? "" : t.transitionDefinitionVersion());
-        node.put("outgoingClipId", t.outgoingClipId() == null ? "" : t.outgoingClipId());
-        node.put("incomingClipId", t.incomingClipId() == null ? "" : t.incomingClipId());
-        node.put("mediaType", t.mediaType() == null ? "" : t.mediaType());
-        if (t.duration() != null) {
-            node.put("durationTicks", t.duration().ticks());
-            node.put("durationTimeScale", t.duration().timeScale());
-        }
-        node.put("alignment", t.alignment() == null ? "" : t.alignment());
-        node.put("temporalPolicy", t.temporalPolicy() == null ? "" : t.temporalPolicy());
+        node.put("transitionDefinitionId", t.transitionDefinitionId());
+        node.put("transitionDefinitionVersion", t.transitionDefinitionVersion());
+        node.put("outgoingClipId", t.outgoingClipId());
+        node.put("incomingClipId", t.incomingClipId());
+        node.put("mediaType", t.mediaType());
+        node.put("durationTicks", t.duration().ticks());
+        node.put("durationTimeScale", t.duration().timeScale());
+        node.put("alignment", t.alignment());
+        node.put("temporalPolicy", t.temporalPolicy());
         ObjectNode params = node.putObject("parameters");
         Map<String, String> sorted = new TreeMap<>();
         if (t.parameters() != null) {
@@ -61,36 +80,72 @@ public final class TransitionCanonicalSemantics {
         return node;
     }
 
-    /** Lossless reconstruction from the canonical value. */
-    public static CanonicalTimelineTransitionSnapshot fromCanonicalValue(
-            String transitionId, JsonNode node) {
+    /** STRICT lossless reconstruction from the canonical value (R5-A). Every
+     *  REQUIRED authored field must be present and valid — missing/malformed
+     *  fields FAIL CLOSED (IllegalArgumentException). No synthesized defaults:
+     *  no implicit version/mediaType/alignment/temporalPolicy, no implicit
+     *  durationTimeScale. {@code transitionId} is Timeline-owned aggregate
+     *  identity (the path), supplied by the caller. */
+    public static CanonicalTransition fromCanonicalValue(String transitionId, JsonNode node) {
+        String definitionId = requiredText(node, "transitionDefinitionId");
+        String definitionVersion = requiredText(node, "transitionDefinitionVersion");
+        String outgoingClipId = requiredText(node, "outgoingClipId");
+        String incomingClipId = requiredText(node, "incomingClipId");
+        String mediaType = requiredText(node, "mediaType");
+        String alignment = requiredText(node, "alignment");
+        String temporalPolicy = requiredText(node, "temporalPolicy");
+        if (!node.has("durationTicks") || !node.has("durationTimeScale")) {
+            throw new IllegalArgumentException(
+                    "Transition requires durationTicks and durationTimeScale");
+        }
+        long ticks = node.path("durationTicks").asLong();
+        long timeScale = node.path("durationTimeScale").asLong();
+        if (ticks <= 0 || timeScale <= 0) {
+            throw new IllegalArgumentException(
+                    "Transition duration must be positive (ticks=" + ticks
+                            + ", timeScale=" + timeScale + ")");
+        }
+        MediaTime duration = MediaTime.ofTicks(ticks, timeScale);
         Map<String, String> params = new LinkedHashMap<>();
         JsonNode paramsNode = node.path("parameters");
         if (paramsNode.isObject()) {
             paramsNode.fields().forEachRemaining(e -> params.put(e.getKey(),
                     e.getValue().isNull() ? "" : e.getValue().asText()));
+        } else if (!paramsNode.isMissingNode() && !paramsNode.isNull()) {
+            throw new IllegalArgumentException("Transition parameters must be an object");
         }
-        MediaTime duration = null;
-        if (node.has("durationTicks")) {
-            duration = MediaTime.ofTicks(node.path("durationTicks").asLong(),
-                    node.path("durationTimeScale").asLong(1));
-        }
-        return new CanonicalTimelineTransitionSnapshot(
+        return new CanonicalTransition(
                 transitionId,
-                node.path("transitionDefinitionId").asText(""),
-                node.path("transitionDefinitionVersion").asText("1.0"),
-                node.path("outgoingClipId").asText(""),
-                node.path("incomingClipId").asText(""),
-                node.path("mediaType").asText("VIDEO"),
-                duration,
-                node.path("alignment").asText("CENTER_ON_CUT"),
-                node.path("temporalPolicy").asText("USE_SOURCE_HANDLES"),
-                params);
+                definitionId, definitionVersion, outgoingClipId, incomingClipId,
+                mediaType, duration, alignment, temporalPolicy, params);
+    }
+
+    /** STRICT decode from a canonical JSON string. */
+    public static CanonicalTransition fromCanonicalJson(String transitionId, String encoded) {
+        if (encoded == null || encoded.isBlank()) {
+            throw new IllegalArgumentException("Transition canonical payload missing");
+        }
+        try {
+            return fromCanonicalValue(transitionId, MAPPER.readTree(encoded));
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Malformed Transition canonical payload", e);
+        }
+    }
+
+    private static String requiredText(JsonNode node, String field) {
+        JsonNode v = node.path(field);
+        if (!v.isTextual() || v.asText().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Transition requires non-blank '" + field + "'");
+        }
+        return v.asText();
     }
 
     /** Deterministic fingerprint — SHA-256 over canonical value; no delimiter
      *  collision is possible because the value is structured JSON. */
-    public static String semanticFingerprint(CanonicalTimelineTransitionSnapshot t) {
+    public static String semanticFingerprint(CanonicalTransition t) {
         try {
             byte[] json = MAPPER.writeValueAsBytes(canonicalValue(t));
             byte[] hash = MessageDigest.getInstance("SHA-256").digest(json);
@@ -101,7 +156,7 @@ public final class TransitionCanonicalSemantics {
     }
 
     /** Canonical JSON as a string (lossless op payload). */
-    public static String encode(CanonicalTimelineTransitionSnapshot t) {
+    public static String encode(CanonicalTransition t) {
         try {
             return MAPPER.writeValueAsString(canonicalValue(t));
         } catch (Exception e) {
@@ -109,18 +164,16 @@ public final class TransitionCanonicalSemantics {
         }
     }
 
-    public static boolean localSemanticsEquals(
-            CanonicalTimelineTransitionSnapshot a, CanonicalTimelineTransitionSnapshot b) {
+    public static boolean localSemanticsEquals(CanonicalTransition a, CanonicalTransition b) {
         return canonicalValue(a).equals(canonicalValue(b));
     }
 
-    /** R4-A1: mapping between the canonical Transition domain value and the
-     *  candidate representation — owned here so no adapter keeps a second
-     *  Transition field grammar. */
-    public static com.example.platform.timeline.canonicalmodel.CanonicalTransition toCandidateValue(
-            CanonicalTimelineTransitionSnapshot t) {
-        return new com.example.platform.timeline.canonicalmodel.CanonicalTransition(
-                t.transitionId(),
+    // ── Merge-transport projection (R5-A: snapshot is transport, not contract) ──
+
+    /** Domain value → merge snapshot projection. */
+    public static CanonicalTimelineTransitionSnapshot toSnapshotValue(CanonicalTransition t) {
+        return new CanonicalTimelineTransitionSnapshot(
+                t.transitionId() == null ? "" : t.transitionId(),
                 t.transitionDefinitionId(),
                 t.transitionDefinitionVersion(),
                 t.outgoingClipId(),
@@ -130,5 +183,47 @@ public final class TransitionCanonicalSemantics {
                 t.alignment(),
                 t.temporalPolicy(),
                 t.parameters());
+    }
+
+    /** Merge snapshot → domain value (transport back). */
+    public static CanonicalTransition fromSnapshotValue(CanonicalTimelineTransitionSnapshot s) {
+        return new CanonicalTransition(
+                s.transitionId(),
+                s.transitionDefinitionId(),
+                s.transitionDefinitionVersion(),
+                s.outgoingClipId(),
+                s.incomingClipId(),
+                s.mediaType(),
+                s.duration(),
+                s.alignment(),
+                s.temporalPolicy(),
+                s.parameters());
+    }
+
+    // ── Snapshot convenience (merge transport path; contract lives on the
+    //    domain value above) ───────────────────────────────────────────────
+
+    public static ObjectNode canonicalValue(CanonicalTimelineTransitionSnapshot t) {
+        return canonicalValue(fromSnapshotValue(t));
+    }
+
+    public static String semanticFingerprint(CanonicalTimelineTransitionSnapshot t) {
+        return semanticFingerprint(fromSnapshotValue(t));
+    }
+
+    public static String encode(CanonicalTimelineTransitionSnapshot t) {
+        return encode(fromSnapshotValue(t));
+    }
+
+    public static boolean localSemanticsEquals(
+            CanonicalTimelineTransitionSnapshot a, CanonicalTimelineTransitionSnapshot b) {
+        return canonicalValue(fromSnapshotValue(a)).equals(canonicalValue(fromSnapshotValue(b)));
+    }
+
+    /** R4-A1: mapping between the canonical Transition domain value and the
+     *  candidate representation — owned here so no adapter keeps a second
+     *  Transition field grammar. */
+    public static CanonicalTransition toCandidateValue(CanonicalTimelineTransitionSnapshot t) {
+        return fromSnapshotValue(t);
     }
 }

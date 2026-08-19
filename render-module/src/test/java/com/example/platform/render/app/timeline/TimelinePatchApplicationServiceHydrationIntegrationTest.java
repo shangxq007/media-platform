@@ -82,7 +82,9 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         currentRevisionService = new ProductCurrentRevisionService(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         // PRODUCTION wiring: 4-arg constructor enables the Contract P snapshot payload write.
-        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService, null, null);
+        saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
     }
 
     // =====================================================================
@@ -191,9 +193,21 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
 
     @Test
     void apply_missingSnapshotPayload_failsClosedZeroWrites() {
-        // Legacy wiring (3-arg ctor): no snapshot authority -> no payload row.
-        // A revision without a governed payload must remain TIMELINE_PATCH_PAYLOAD_INVALID.
-        var legacySave = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, null, null, null);
+        // R5-C: the production constructor requires non-null dependencies; the
+        // legacy "no snapshot authority -> no payload row" semantics are
+        // reproduced with a snapshot service whose saveTx returns a snapshot id
+        // that has NO payload row. A revision without a governed payload must
+        // remain TIMELINE_PATCH_PAYLOAD_INVALID.
+        com.example.platform.timeline.adapter.TimelineSnapshotService legacySnapshot =
+                org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class);
+        org.mockito.Mockito.when(legacySnapshot.saveTx(org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn("snap-legacy-" + java.util.UUID.randomUUID());
+        var legacySave = new TimelineRevisionSaveService(dsl, currentRevisionService, digester,
+                legacySnapshot,
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
         String productId = "prod-nopay-" + UUID.randomUUID();
         insertProduct(productId);
         TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");

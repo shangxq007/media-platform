@@ -90,8 +90,19 @@ class CheckpointARound4TrueMergeE2ETest {
                 new TimelineMergeConflictDetector());
         TimelineNonConflictingMergePlanner planner =
                 new TimelineNonConflictingMergePlanner(previewService);
+        com.example.platform.timeline.app.TimelineArtifactPinValidator pinValidator =
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class);
+        // R5-C: the pin boundary runs unconditionally in the persistent merge
+        // path — the test validator must answer VALID (the E2E's artifacts are
+        // in-scope fixtures; pin validation itself is exercised by the R5-C
+        // real-PG tests).
+        org.mockito.Mockito.when(pinValidator.validate(org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(new com.example.platform.timeline.app.TimelineArtifactPinValidator.ValidationResult(true, java.util.List.of()));
         engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
-                previewService, planner, new TimelinePatchApplier(), mapper);
+                previewService, planner, new TimelinePatchApplier(), mapper,
+                pinValidator,
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
     }
 
     @AfterEach

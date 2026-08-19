@@ -38,10 +38,10 @@ class TimelineCanonicalValidatorTest {
     void invalidTimingAndSourceRangeProduceFrozenDiagnostics() {
         TimelineCandidate zero = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
-                List.of(track("track", new TimelineCandidate.Clip("clip", TimelineSourceRef.of("source-a"), MediaTime.ZERO, MediaTime.ZERO, MediaTime.ZERO, com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null, null))), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(track("track", new TimelineCandidate.Clip("clip", TimelineSourceRef.of("source-a"), MediaTime.ZERO, MediaTime.ZERO, MediaTime.ZERO, com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null))), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         TimelineCandidate missingSource = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
-                List.of(track("track", new TimelineCandidate.Clip("clip", null, MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(1, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null, null))), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(track("track", new TimelineCandidate.Clip("clip", null, MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(1, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null))), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         assertEquals(TimelineDiagnosticCode.TIMELINE_DURATION_ZERO,
                 TimelineCanonicalValidator.validate(zero).diagnostics().getFirst().code());
@@ -54,7 +54,7 @@ class TimelineCanonicalValidatorTest {
         TimelineCandidate candidate = new TimelineCandidate("timeline-1", "project-1",
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
                 List.of(TimelineCandidate.track("subtitle", TimelineCandidate.TrackType.SUBTITLE, 0, null,
-                        List.of(new TimelineCandidate.Clip("clip", TimelineSourceRef.of("source-a"), MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(1, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), List.of("effect"), null, null, null, null, null, null, null)))), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                        List.of(new TimelineCandidate.Clip("clip", TimelineSourceRef.of("source-a"), MediaTime.ZERO, MediaTime.ZERO, MediaTime.ofTicks(1, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), List.of("effect"), null, null)))), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         assertEquals(List.of(TimelineDiagnosticCode.TIMELINE_TRACK_TYPE_UNSUPPORTED,
                         TimelineDiagnosticCode.TIMELINE_CONSTRUCT_UNSUPPORTED),
@@ -66,6 +66,6 @@ class TimelineCanonicalValidatorTest {
     }
 
     private static TimelineCandidate.Clip clip(String id, String sourceId, long start, long duration) {
-        return new TimelineCandidate.Clip(id, TimelineSourceRef.of(sourceId), MediaTime.ofTicks(start, 1), MediaTime.ZERO, MediaTime.ofTicks(duration, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null, null, null, null, null, null);
+        return new TimelineCandidate.Clip(id, TimelineSourceRef.of(sourceId), MediaTime.ofTicks(start, 1), MediaTime.ZERO, MediaTime.ofTicks(duration, 1), com.example.platform.shared.time.FrameRate.of(30, 1), java.util.List.of(), null, null, null);
     }
 }

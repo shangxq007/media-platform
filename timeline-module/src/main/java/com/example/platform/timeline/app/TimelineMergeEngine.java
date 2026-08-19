@@ -20,6 +20,7 @@ import com.example.platform.timeline.diff.calculation.CanonicalTimelineSnapshot;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineTrackSnapshot;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineTransitionSnapshot;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineAutomationSnapshot;
+import java.util.Objects;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineAutomationKeyframe;
 import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanOperation;
@@ -104,33 +105,26 @@ public class TimelineMergeEngine {
     private final TimelineArtifactPinValidator artifactPinValidator;
     private final com.example.platform.artifact.app.ArtifactPinService artifactPinService;
 
-    /** Production constructor: 7 semantic collaborators (compute + persistence). */
-    public TimelineMergeEngine(
-            TimelineRevisionRepository revisionRepository,
-            TimelineSnapshotService snapshotService,
-            ProductCurrentRevisionService currentRevisionService,
-            TimelineMergePreviewService previewService,
-            TimelineNonConflictingMergePlanner mergePlanner,
-            TimelinePatchApplier patchApplier,
-            ObjectMapper objectMapper) {
-        this(revisionRepository, snapshotService, currentRevisionService,
-                previewService, mergePlanner, patchApplier, objectMapper, null, null);
-    }
-
     /**
-     * R4-D4 (CHECKPOINT_A Round 4): full production constructor including the
-     * Timeline artifact-pin invariant boundary. @Autowired: Spring must select
-     * the production 9-arg wiring (the 7-arg overload exists for legacy/direct
-     * test wiring only). The PERSISTENT merge path extracts typed pins from the
-     * merged payload, validates them, and registers protection rows for the NEW
-     * merge revision identity inside the same transaction — a merge revision is
-     * a NEW historical identity and must protect every exact artifact it
-     * consumes. When the pin boundary is absent (legacy/test wiring) the
-     * persistent path skips registration but the canonical gates remain
-     * unconditionally on; no production wiring may omit the pin boundary once
-     * merged revisions can carry pinned content.
+     * R5-C (CHECKPOINT_A Round 5): the ONLY production constructor. The
+     * Timeline artifact-pin invariant boundary is REQUIRED BY CONSTRUCTION —
+     * every dependency is {@link Objects#requireNonNull}; there is NO
+     * constructor that permits a persistent merge with a null pin boundary.
+     * PERSISTENT_MERGE_WITHOUT_PIN_BOUNDARY = IMPOSSIBLE BY CONSTRUCTION.
+     *
+     * <p>CONSTRUCTOR_INJECTION_WITHOUT_EXPLICIT_AUTOWIRED_V1 (R5 addendum):
+     * exactly ONE public constructor, constructor injection, NO @Autowired
+     * (Spring 4.3+ injects the sole constructor automatically), no secondary
+     * test convenience constructor. Tests that need lighter wiring pass
+     * explicit mocks/fakes.
+     *
+     * <p>The PERSISTENT merge path extracts typed pins from the merged payload,
+     * validates them (existence/tenant/digest), and registers protection rows
+     * for the NEW merge revision identity inside the same transaction — a
+     * merge revision is a NEW historical identity and must protect every exact
+     * artifact it consumes. Zero pins is a normal no-op; a missing dependency
+     * is not.
      */
-    @org.springframework.beans.factory.annotation.Autowired
     public TimelineMergeEngine(
             TimelineRevisionRepository revisionRepository,
             TimelineSnapshotService snapshotService,
@@ -141,15 +135,15 @@ public class TimelineMergeEngine {
             ObjectMapper objectMapper,
             TimelineArtifactPinValidator artifactPinValidator,
             com.example.platform.artifact.app.ArtifactPinService artifactPinService) {
-        this.revisionRepository = revisionRepository;
-        this.snapshotService = snapshotService;
-        this.currentRevisionService = currentRevisionService;
-        this.previewService = previewService;
-        this.mergePlanner = mergePlanner;
-        this.patchApplier = patchApplier;
-        this.objectMapper = objectMapper;
-        this.artifactPinValidator = artifactPinValidator;
-        this.artifactPinService = artifactPinService;
+        this.revisionRepository = Objects.requireNonNull(revisionRepository, "revisionRepository");
+        this.snapshotService = Objects.requireNonNull(snapshotService, "snapshotService");
+        this.currentRevisionService = Objects.requireNonNull(currentRevisionService, "currentRevisionService");
+        this.previewService = Objects.requireNonNull(previewService, "previewService");
+        this.mergePlanner = Objects.requireNonNull(mergePlanner, "mergePlanner");
+        this.patchApplier = Objects.requireNonNull(patchApplier, "patchApplier");
+        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+        this.artifactPinValidator = Objects.requireNonNull(artifactPinValidator, "artifactPinValidator");
+        this.artifactPinService = Objects.requireNonNull(artifactPinService, "artifactPinService");
     }
 
     public TimelineMergeResult merge(TimelineMergeRequest request) {
@@ -429,11 +423,11 @@ public class TimelineMergeEngine {
             // for the NEW merge revision id. Failure (validation or
             // registration) aborts the merge before head advance — the merge
             // transaction (@Transactional) rolls back: no visible merge
-            // revision, head unchanged, no partial pins. Registration runs
-            // inside the SAME transaction when the engine is invoked through a
-            // Spring proxy (production path); direct-wiring tests exercise the
-            // validation boundary via the semantic gate.
-            if (artifactPinValidator != null && artifactPinService != null) {
+            // revision, head unchanged, no partial pins.
+            // R5-C: the pin boundary is REQUIRED BY CONSTRUCTION (non-null
+            // dependencies); zero pins in the merged payload is a normal no-op,
+            // a missing dependency is not — there is no nullable skip.
+            {
                 java.util.List<TimelineArtifactPinExtractor.ArtifactPin> mergedPins =
                         TimelineArtifactPinExtractor.extract(mergedPayload);
                 if (!mergedPins.isEmpty()) {

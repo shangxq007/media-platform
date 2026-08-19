@@ -630,25 +630,28 @@ public class TimelinePatchApplier {
             }
             return ok(s.withTransitions(List.copyOf(transitions)));
         }
-        // R4-A1: reconstruction MUST come from the complete Transition-local
-        // canonical payload (single authority) — a MODIFY/ADD without it fails
-        // closed; no field-by-field defaults are invented here.
+        // R4-A1 + R5-A: reconstruction MUST come from the complete
+        // Transition-local canonical payload through the domain-value authority
+        // (TransitionCanonicalSemantics owns the contract over
+        // CanonicalTransition; the snapshot is merge transport only). A
+        // MODIFY/ADD without the payload, or with missing/malformed REQUIRED
+        // authored fields, fails closed — no synthesized defaults.
         String payload = meta.get("transition");
         if (payload == null || payload.isBlank()) {
             return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
                     "TRANSITION_CHANGED missing canonical payload");
         }
-        com.fasterxml.jackson.databind.JsonNode enc;
+        com.example.platform.timeline.canonicalmodel.CanonicalTransition domainValue;
         try {
-            enc = com.example.platform.timeline.app.InternalTimelineJson.mapper()
-                    .readTree(payload);
-        } catch (Exception e) {
+            domainValue = com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
+                    .fromCanonicalJson(transitionId, payload);
+        } catch (IllegalArgumentException e) {
             return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
-                    "TRANSITION_CHANGED payload not canonical JSON");
+                    "TRANSITION_CHANGED malformed canonical payload: " + e.getMessage());
         }
         CanonicalTimelineTransitionSnapshot updated =
                 com.example.platform.timeline.semantics.transition.TransitionCanonicalSemantics
-                        .fromCanonicalValue(transitionId, enc);
+                        .toSnapshotValue(domainValue);
         List<CanonicalTimelineTransitionSnapshot> transitions = new ArrayList<>(s.transitions());
         boolean replaced = false;
         for (int i = 0; i < transitions.size(); i++) {
@@ -682,26 +685,29 @@ public class TimelinePatchApplier {
             }
             return ok(s.withAutomations(List.copyOf(automations)));
         }
-        // R4-A2: reconstruction MUST come from the complete Automation-local
-        // canonical payload (single authority). Malformed/missing payload in an
-        // operation that requires reconstruction FAILS CLOSED — no synthesized
-        // default valueType/extrapolation/empty keyframes, no authored-state
-        // invention.
+        // R4-A2 + R5-A: reconstruction MUST come from the complete
+        // Automation-local canonical payload through the domain-value authority
+        // (AutomationCanonicalSemantics owns the contract over
+        // CanonicalAutomationCurve; the snapshot is merge transport only).
+        // Malformed/missing payload in an operation that requires reconstruction
+        // FAILS CLOSED — no synthesized default valueType/extrapolation/
+        // interpolation/0.0/kf_N ids, no authored-state invention.
         String payload = meta.get("automation");
         if (payload == null || payload.isBlank()) {
             return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
                     "AUTOMATION_CHANGED missing canonical payload");
         }
         CanonicalTimelineAutomationSnapshot updated;
-        com.fasterxml.jackson.databind.JsonNode enc;
+        com.example.platform.timeline.canonicalmodel.CanonicalAutomationCurve domainValue;
         try {
-            enc = com.example.platform.timeline.app.InternalTimelineJson.mapper().readTree(payload);
-        } catch (Exception e) {
+            domainValue = com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
+                    .fromCanonicalJson(automationId, payload);
+        } catch (IllegalArgumentException e) {
             return fail(TimelinePatchApplicationIssueCode.INVALID_PAYLOAD, op.path().value(),
-                    "AUTOMATION_CHANGED payload not canonical JSON");
+                    "AUTOMATION_CHANGED malformed canonical payload: " + e.getMessage());
         }
         updated = com.example.platform.timeline.semantics.automation.AutomationCanonicalSemantics
-                .fromCanonicalValue(automationId, enc);
+                .toSnapshotValue(domainValue);
         List<CanonicalTimelineAutomationSnapshot> automations = new ArrayList<>(s.automations());
         boolean replaced = false;
         for (int i = 0; i < automations.size(); i++) {

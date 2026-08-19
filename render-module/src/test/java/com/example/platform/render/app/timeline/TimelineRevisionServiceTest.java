@@ -206,7 +206,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
                 + "\"sourceBinding\":{"
                 + "\"sourceKind\":\"MEDIA_STREAM\",\"mediaStreamId\":\"stream-1\",\"mediaAssetId\":\"ast-t6\","
                 + "\"artifactId\":\"art-t6\",\"contentDigest\":{\"algorithm\":\"SHA256\",\"value\":\""
-                + digest.value() + "\"}}}]}]}}";
+                + digest.value() + "\"},\"sourceRangeStart\":\"0/1\",\"sourceRangeEnd\":\"1/1\"}}]}]}}";
         TimelineRevisionService.RevisionInfo info =
                 revisionService.recordRevision("prj-t6", "ten-1", json, "sync", null, null, "pin test");
         assertNotNull(info.id());

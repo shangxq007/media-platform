@@ -25,7 +25,7 @@ class TimelineDocumentCandidateMapperTest {
     @Test
     void mapsValidDocument_withFrozenDefaults() {
         var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO, null);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("t", "", Map.of()));
@@ -53,7 +53,7 @@ class TimelineDocumentCandidateMapperTest {
     @Test
     void convertsDurationExactlyToRationalMediaTime() {
         var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofRational(1, 1), MediaTime.ofMicros((2500) * 1000L), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
+                MediaTime.ofRational(1, 1), MediaTime.ofMicros((2500) * 1000L), MediaTime.ZERO, MediaTime.ZERO, null);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), TimelineMetadata.empty());
@@ -85,7 +85,7 @@ class TimelineDocumentCandidateMapperTest {
     @Test
     void blankAssetId_rejectedWithFrozenCode() {
         var clip = new TimelineClip("clip-1", null, null, null, null,
-                MediaTime.ZERO, MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
+                MediaTime.ZERO, MediaTime.ofRational(10, 1), MediaTime.ZERO, MediaTime.ZERO, null);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), TimelineMetadata.empty());
@@ -102,7 +102,7 @@ class TimelineDocumentCandidateMapperTest {
     @Test
     void negativeDuration_rejectedWithFrozenCode() {
         var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ofRational(10, 1), MediaTime.ofRational(5, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
+                MediaTime.ofRational(10, 1), MediaTime.ofRational(5, 1), MediaTime.ZERO, MediaTime.ZERO, null);
         var track = new TimelineTrack("track-1", "Main", TrackType.VIDEO, List.of(clip));
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), TimelineMetadata.empty());
@@ -119,7 +119,7 @@ class TimelineDocumentCandidateMapperTest {
     @Test
     void audioTrack_mapsWithNullGainDefault() {
         var clip = new TimelineClip("clip-1", "asset-1", null, null, null,
-                MediaTime.ZERO, MediaTime.ofRational(4, 1), MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
+                MediaTime.ZERO, MediaTime.ofRational(4, 1), MediaTime.ZERO, MediaTime.ZERO, null);
         var track = new TimelineTrack("track-1", "Mix", TrackType.AUDIO, List.of(clip));
         var doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), TimelineMetadata.empty());
