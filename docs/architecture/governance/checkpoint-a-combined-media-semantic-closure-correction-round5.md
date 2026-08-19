@@ -13,8 +13,8 @@
 - origin/main: 1d0d2d7e71d1f0fce72d04dda8057fc547b903f7 (unchanged)
 
 ## Round-5 implementation candidate (frozen)
-- ROUND5_IMPLEMENTATION_SHA: __FILL_AFTER_FREEZE__
-- ROUND5_IMPLEMENTATION_TREE: __FILL_AFTER_FREEZE__
+- ROUND5_IMPLEMENTATION_SHA: e4577cb1b393e81a331dd351078522180cfff38a
+- ROUND5_IMPLEMENTATION_TREE: 4f8f3b5e072bc19bf988526a25453de069d1970b
 - ROUND5_IMPLEMENTATION_PARENT: c82da1556365ecdb7f72017f0371a80a9b1cf3af
 - branch: agent/checkpoint-a-semantic-closure (append-forward, no amend/rebase)
 - scope drift: NONE
@@ -167,8 +167,29 @@
 - UNIT: CheckpointAPinInvariantTest (cases 1-6), R5-A/R5-B behavior suites.
 - SOURCE_GUARD: verifyTimelineEffectTransitionCanonicalization (H1-H22).
 
-## Test / gate results (exact, from JUnit XML on the frozen candidate)
-- __FILL_AFTER_FCV__
+## Test / gate results (exact, from JUnit XML on the frozen candidate e4577cb1)
+- FULL_SUITE: 7299 tests / 0 failures / 0 errors / 43 skipped (39 modules)
+- timeline-module: 727 / 0 / 0 / 0
+- audio-module: 22 / 0 / 0 / 0
+- render-module: 2754 / 0 / 0 / 19
+- platform-app: 562 / 0 / 0 / 20
+- REAL_POSTGRES pin gates: 10/10 (CheckpointARound4RealPinAtomicityIT 3,
+  CheckpointARound4RestorePinCopyIT 2, CheckpointARound4PatchPathPinIT 3,
+  CheckpointARound5PersistentMergePinIT 2 — all real PostgreSQL, zero mock
+  pin service/repository except the documented ArtifactQueryService seam and
+  the honestly-classified MOCK_FAILURE_INJECTION restore case)
+- R5-A strict decode: CheckpointARound5StrictDecodeTest 23/23
+- R5-B closure: CheckpointARound5SourceBindingClosureTest 13/13
+- R5-C unit: CheckpointAPinInvariantTest (cases 1-6) all green
+- bootJar: PASS
+- pfirr1RemediationCheck: PASS
+- verifyTimelineEffectTransitionCanonicalization (H1-H22 + G1-G8): PASS
+- ALL 20 repository verify tasks: PASS (architecture / dependency / drift /
+  governance / canonical semantics / jOOQ allowlist)
+- Modulith: N/A — no standalone Modulith task exists; the repository's
+  boundary/drift equivalent is verifyJooqNamedInterfacePreservation (PASS),
+  same substitute as Round-3/Round-4 records.
+- git diff --check: PASS
 
 ## Historical honesty
 - Round-3 independent review: FAIL_CORRECTABLE (unchanged record)
