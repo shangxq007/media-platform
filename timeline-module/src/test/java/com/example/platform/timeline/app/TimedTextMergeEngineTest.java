@@ -122,11 +122,21 @@ class TimedTextMergeEngineTest {
         when(currentService.getCurrentRevisionId("proj-1")).thenReturn("tgt-rev");
         var previewService = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
         var planner = new TimelineNonConflictingMergePlanner(previewService);
+        org.jooq.DSLContext dslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class);
+org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Configuration.class);
+        org.jooq.DSLContext txDsldslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class, org.mockito.Answers.RETURNS_DEEP_STUBS);
+        org.mockito.Mockito.when(cfgdslMockTime0.dsl()).thenReturn(txDsldslMockTime0);
+        org.mockito.Mockito.when(dslMockTime0.transactionResult(org.mockito.ArgumentMatchers.<org.jooq.TransactionalCallable<Object>>any()))
+                .thenAnswer(inv -> {
+                    org.jooq.TransactionalCallable<Object> callable = inv.getArgument(0);
+                    return callable.run(cfgdslMockTime0);
+                });
         TimelineMergeEngine engine = new TimelineMergeEngine(revisionRepo, snapshotService,
                 currentService, previewService, planner, new TimelinePatchApplier(),
                 InternalTimelineJson.mapper(),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
+                dslMockTime0);
         TimelineMergeResult result = engine.merge(new TimelineMergeRequest(
                 "proj-1", "tenant-1", "base-rev", "src-rev", "tgt-rev", "user-1", "merge-1"));
         if (result.status() == TimelineMergeResult.MergeStatus.MERGED) {

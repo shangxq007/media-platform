@@ -80,12 +80,37 @@ public final class TimelineSourceBindingCanonicalSemantics {
             throw new IllegalStateException(
                     "Unknown TimelineSourceBinding sourceKind: '" + kind + "'");
         }
+        // F2 (post-Round-5 strict): contentDigest MUST be a present object with
+        // BOTH algorithm and value. The authored algorithm is read and
+        // validated against the canonical domain value (SHA_256); missing /
+        // non-object / blank / unknown algorithm FAILS CLOSED — never silently
+        // normalized to SHA_256. value must be present and valid (ContentDigest
+        // constructor rejects blank/invalid hex).
         JsonNode digestNode = node.path("contentDigest");
-        // R5-B strict: contentDigest must be a present object with a valid
-        // SHA-256 value (ContentDigest constructor rejects blank/invalid).
+        if (!digestNode.isObject() || digestNode.isEmpty()) {
+            throw new IllegalStateException(
+                    "MediaStreamSourceBinding requires contentDigest object");
+        }
+        JsonNode algorithmNode = digestNode.path("algorithm");
+        if (!algorithmNode.isTextual() || algorithmNode.asText().isBlank()) {
+            throw new IllegalStateException(
+                    "MediaStreamSourceBinding requires contentDigest.algorithm");
+        }
+        String algorithm = algorithmNode.asText();
+        ContentDigest.DigestAlgorithm digestAlgorithm;
+        try {
+            digestAlgorithm = ContentDigest.DigestAlgorithm.valueOf(algorithm);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException(
+                    "Unknown contentDigest.algorithm: '" + algorithm + "'");
+        }
+        JsonNode digestValueNode = digestNode.path("value");
+        if (!digestValueNode.isTextual() || digestValueNode.asText().isBlank()) {
+            throw new IllegalStateException(
+                    "MediaStreamSourceBinding requires contentDigest.value");
+        }
         ContentDigest digest = new ContentDigest(
-                ContentDigest.DigestAlgorithm.SHA_256,
-                digestNode.path("value").asText(""));
+                digestAlgorithm, digestValueNode.asText());
         // R5-B strict: source range REQUIRED in the canonical value — missing
         // or malformed range is not silently defaulted to zero.
         String rangeStartText = node.path("sourceRangeStart").asText(null);
@@ -150,31 +175,66 @@ public final class TimelineSourceBindingCanonicalSemantics {
                 range);
     }
 
-    /** Exact wire sourceRange → TimeRange; null when the node is absent. */
+    /**
+     * F2 (post-Round-5 strict): exact wire sourceRange → TimeRange. ALL
+     * required fields MUST be present integral numbers — NO semantic defaults
+     * (no fps=30, den=1, frame=0 synthesis). Missing / non-integral /
+     * non-positive rate fields FAIL CLOSED (IllegalStateException). The frame
+     * values may be any non-negative integral number; duration must be
+     * non-negative. Exact rational conversion: frame N @ num/den →
+     * MediaTime(N*den, num) — no floating point.
+     */
     private static MediaClip.TimeRange rangeOf(JsonNode node) {
         if (node == null || !node.isObject() || node.isEmpty()) {
-            return null;
+            throw new IllegalStateException(
+                    "Flat sourceBinding requires sourceRange object");
         }
         JsonNode startNode = node.path("start");
         JsonNode durationNode = node.path("duration");
-        if (!startNode.isObject() || !durationNode.isObject()) {
-            return null;
+        if (!startNode.isObject() || startNode.isEmpty()
+                || !durationNode.isObject() || durationNode.isEmpty()) {
+            throw new IllegalStateException(
+                    "Flat sourceBinding requires sourceRange.start and sourceRange.duration objects");
+        }
+        JsonNode rateNode = startNode.path("rate");
+        if (!rateNode.isObject() || rateNode.isEmpty()) {
+            throw new IllegalStateException(
+                    "Flat sourceBinding requires sourceRange.start.rate object");
+        }
+        JsonNode numNode = rateNode.path("num");
+        JsonNode denNode = rateNode.path("den");
+        if (!numNode.isIntegralNumber() || !denNode.isIntegralNumber()) {
+            throw new IllegalStateException(
+                    "Flat sourceBinding requires integral sourceRange.start.rate.num/den");
+        }
+        long fpsNum = numNode.asLong();
+        long fpsDen = denNode.asLong();
+        if (fpsNum <= 0 || fpsDen <= 0) {
+            throw new IllegalStateException(
+                    "Flat sourceBinding requires positive rate.num/den (got "
+                            + fpsNum + "/" + fpsDen + ")");
+        }
+        JsonNode startFrameNode = startNode.path("frame");
+        JsonNode durationFrameNode = durationNode.path("frame");
+        if (!startFrameNode.isIntegralNumber() || !durationFrameNode.isIntegralNumber()) {
+            throw new IllegalStateException(
+                    "Flat sourceBinding requires integral sourceRange.start.frame and duration.frame");
+        }
+        long startFrame = startFrameNode.asLong();
+        long durationFrame = durationFrameNode.asLong();
+        if (startFrame < 0 || durationFrame < 0) {
+            throw new IllegalStateException(
+                    "Flat sourceBinding requires non-negative frame values");
         }
         try {
-            long fpsNum = startNode.path("rate").path("num").asLong(30);
-            long fpsDen = startNode.path("rate").path("den").asLong(1);
-            long startFrame = startNode.path("frame").asLong(0);
-            long durationFrame = durationNode.path("frame").asLong(0);
-            if (fpsNum <= 0 || fpsDen <= 0) {
-                return null;
-            }
             // frame N @ fps num/den → time = N * den / num seconds
             // (exact rational: ticks = N*den, timeScale = num).
-            MediaTime start = MediaTime.ofTicks(startFrame * fpsDen, fpsNum);
-            MediaTime duration = MediaTime.ofTicks(durationFrame * fpsDen, fpsNum);
+            MediaTime start = MediaTime.ofTicks(Math.multiplyExact(startFrame, fpsDen), fpsNum);
+            MediaTime duration = MediaTime.ofTicks(Math.multiplyExact(durationFrame, fpsDen), fpsNum);
             return new MediaClip.TimeRange(start, start.add(duration));
-        } catch (Exception e) {
-            return null;
+        } catch (ArithmeticException overflow) {
+            throw new IllegalStateException(
+                    "Flat sourceBinding sourceRange arithmetic overflow", overflow);
         }
     }
 

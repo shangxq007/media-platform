@@ -307,8 +307,23 @@ public final class InternalTimelineCandidateAdapter {
         JsonNode sbNode = clipNode.path("sourceBinding");
         if (sbNode.isObject() && !sbNode.isEmpty()) {
             try {
+                // F2 legacy-alias boundary (clearly identified): the historical
+                // internal-1.0 wire used "SHA256" (no underscore); the canonical
+                // domain algorithm value is "SHA_256". The canonical decoder
+                // (TimelineSourceBindingCanonicalSemantics.fromCanonicalValue)
+                // is STRICT and accepts ONLY canonical values — this adapter
+                // boundary canonicalizes the single known legacy alias before
+                // delegating. No general digest compatibility framework.
+                JsonNode effective = sbNode;
+                JsonNode algoNode = sbNode.path("contentDigest").path("algorithm");
+                if (algoNode.isTextual() && "SHA256".equals(algoNode.asText())) {
+                    com.fasterxml.jackson.databind.node.ObjectNode copy = sbNode.deepCopy();
+                    ((com.fasterxml.jackson.databind.node.ObjectNode) copy.path("contentDigest"))
+                            .put("algorithm", "SHA_256");
+                    effective = copy;
+                }
                 return com.example.platform.timeline.semantics.clip
-                        .TimelineSourceBindingCanonicalSemantics.fromCanonicalValue(sbNode);
+                        .TimelineSourceBindingCanonicalSemantics.fromCanonicalValue(effective);
             } catch (Exception e) {
                 throw new TimelineCanonicalRejectionException(
                         new TimelineCanonicalRejectionException.AdapterDiagnostic(

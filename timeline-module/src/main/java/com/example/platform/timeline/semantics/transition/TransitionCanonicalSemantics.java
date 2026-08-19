@@ -98,8 +98,16 @@ public final class TransitionCanonicalSemantics {
             throw new IllegalArgumentException(
                     "Transition requires durationTicks and durationTimeScale");
         }
-        long ticks = node.path("durationTicks").asLong();
-        long timeScale = node.path("durationTimeScale").asLong();
+        // F2 (post-Round-5): integral JSON nodes REQUIRED — no Jackson
+        // coercion of strings/booleans/objects/arrays into numbers.
+        JsonNode ticksNode = node.path("durationTicks");
+        JsonNode scaleNode = node.path("durationTimeScale");
+        if (!ticksNode.isIntegralNumber() || !scaleNode.isIntegralNumber()) {
+            throw new IllegalArgumentException(
+                    "Transition durationTicks/durationTimeScale must be integral JSON numbers");
+        }
+        long ticks = ticksNode.asLong();
+        long timeScale = scaleNode.asLong();
         if (ticks <= 0 || timeScale <= 0) {
             throw new IllegalArgumentException(
                     "Transition duration must be positive (ticks=" + ticks

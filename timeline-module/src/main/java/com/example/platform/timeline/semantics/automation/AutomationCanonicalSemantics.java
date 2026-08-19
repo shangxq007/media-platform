@@ -95,8 +95,17 @@ public final class AutomationCanonicalSemantics {
                         "Automation keyframe '" + keyframeId
                                 + "' requires timeTicks and timeTimeScale");
             }
-            long timeTicks = k.path("timeTicks").asLong();
-            long timeTimeScale = k.path("timeTimeScale").asLong();
+            // F2 (post-Round-5): integral JSON nodes REQUIRED — no Jackson
+            // coercion of strings/booleans/objects/arrays into numbers.
+            JsonNode ticksNode = k.path("timeTicks");
+            JsonNode scaleNode = k.path("timeTimeScale");
+            if (!ticksNode.isIntegralNumber() || !scaleNode.isIntegralNumber()) {
+                throw new IllegalArgumentException(
+                        "Automation keyframe '" + keyframeId
+                                + "' timeTicks/timeTimeScale must be integral JSON numbers");
+            }
+            long timeTicks = ticksNode.asLong();
+            long timeTimeScale = scaleNode.asLong();
             if (timeTimeScale <= 0) {
                 throw new IllegalArgumentException(
                         "Automation keyframe '" + keyframeId
@@ -108,6 +117,10 @@ public final class AutomationCanonicalSemantics {
                         "Automation keyframe '" + keyframeId + "' requires a numeric value");
             }
             double value = k.path("value").asDouble();
+            if (!Double.isFinite(value)) {
+                throw new IllegalArgumentException(
+                        "Automation keyframe '" + keyframeId + "' requires a finite value");
+            }
             String interpolation = requiredText(k, "interpolation");
             kfs.add(new CanonicalAutomationKeyframe(
                     keyframeId, time, value, interpolation));

@@ -99,10 +99,20 @@ class CheckpointARound4TrueMergeE2ETest {
         org.mockito.Mockito.when(pinValidator.validate(org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(new com.example.platform.timeline.app.TimelineArtifactPinValidator.ValidationResult(true, java.util.List.of()));
-        engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
+        org.jooq.DSLContext dslMockChec0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class);
+org.jooq.Configuration cfgdslMockChec0 = org.mockito.Mockito.mock(org.jooq.Configuration.class);
+        org.jooq.DSLContext txDsldslMockChec0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class, org.mockito.Answers.RETURNS_DEEP_STUBS);
+        org.mockito.Mockito.when(cfgdslMockChec0.dsl()).thenReturn(txDsldslMockChec0);
+        org.mockito.Mockito.when(dslMockChec0.transactionResult(org.mockito.ArgumentMatchers.<org.jooq.TransactionalCallable<Object>>any()))
+                .thenAnswer(inv -> {
+                    org.jooq.TransactionalCallable<Object> callable = inv.getArgument(0);
+                    return callable.run(cfgdslMockChec0);
+                });
+engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
                 previewService, planner, new TimelinePatchApplier(), mapper,
                 pinValidator,
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
+                dslMockChec0);
     }
 
     @AfterEach

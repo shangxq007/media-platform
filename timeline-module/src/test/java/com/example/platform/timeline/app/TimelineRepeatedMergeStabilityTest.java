@@ -58,12 +58,22 @@ class TimelineRepeatedMergeStabilityTest {
         TimelineMergePreviewService previewService = new TimelineMergePreviewService(
                 new com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector());
         TimelineNonConflictingMergePlanner planner = new TimelineNonConflictingMergePlanner(previewService);
-        engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
+        org.jooq.DSLContext dslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class);
+org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Configuration.class);
+        org.jooq.DSLContext txDsldslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class, org.mockito.Answers.RETURNS_DEEP_STUBS);
+        org.mockito.Mockito.when(cfgdslMockTime0.dsl()).thenReturn(txDsldslMockTime0);
+        org.mockito.Mockito.when(dslMockTime0.transactionResult(org.mockito.ArgumentMatchers.<org.jooq.TransactionalCallable<Object>>any()))
+                .thenAnswer(inv -> {
+                    org.jooq.TransactionalCallable<Object> callable = inv.getArgument(0);
+                    return callable.run(cfgdslMockTime0);
+                });
+engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
                 previewService, planner,
                 new com.example.platform.timeline.diff.application.TimelinePatchApplier(),
                 mapper,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
+                dslMockTime0);
     }
 
     @AfterEach

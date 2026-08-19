@@ -1,10 +1,44 @@
-# CHECKPOINT_A — REVISION_WRITE_SURFACE_MATRIX (Round 5, regenerated from call-graph audit)
+# CHECKPOINT_A — REVISION_WRITE_SURFACE_MATRIX (Round 5 + FINAL_CLOSURE_F1, regenerated from call-graph audit)
 
 Gate: REVISION_WRITE_SURFACE_BYPASS_COUNT = 0
       PUBLIC_UNSAFE_CONSTRUCTOR_COUNT = 0
       NULL_DEPENDENCY_BYPASS_COUNT = 0
       PRODUCTION_CONSTRUCTOR_AMBIGUITY = 0
       EXPLICIT_AUTOWIRED_IN_CORRECTED_PRODUCTION_SURFACES = 0
+
+Matrix (SURFACE | CLASSIFICATION | CREATES_NEW_REVISION | DIRECT_WRITER_OR_DELEGATES |
+CANONICAL_GATE | ARTIFACT_PIN_EXTRACTION | ARTIFACT_PIN_VALIDATION | PIN_REGISTRATION_OR_COPY |
+CAS_HEAD_PROTECTION | IDEMPOTENCY | TRANSACTION_BOUNDARY | SNAPSHOT_WRITE | HEAD_UPDATE |
+PUBLIC_UNSAFE_CONSTRUCTOR | NULL_DEPENDENCY_BYPASS | BYPASS_POSSIBLE):
+
+| SURFACE | CLASSIFICATION | CREATES | WRITES | CANON_GATE | PIN_EXTRACT | PIN_VALIDATE | PIN_REG | CAS_HEAD | IDEMPOTENT | TX_BOUNDARY | SNAP_WRITE | HEAD_UPDATE | UNSAFE_CTOR | NULL_BYPASS | BYPASS |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| TimelineRevisionSaveService.saveRevision | DIRECT_TIMELINE_SEMANTIC_WRITER | YES | delegates snapshot/revision/pin/head | YES (always) | YES (extract) | YES (validate) | YES (registerRevisionPinsTx) | YES (updateCurrentRevisionTx) | YES (content hash dedup) | EXPLICIT_JOOQ (transactionResult) | saveTx | updateCurrentRevisionTx | 0 | 0 | NO |
+| TimelineRevisionSaveService.restoreRevision | DIRECT_TIMELINE_SEMANTIC_WRITER | YES | delegates snapshot/revision/pin-copy/head | YES (always) | YES (extract) | YES (validate) | YES (copyRevisionPinsTx) | YES (updateCurrentRevisionTx) | NO (new identity) | EXPLICIT_JOOQ (transactionResult) | saveTx | updateCurrentRevisionTx | 0 | 0 | NO |
+| TimelinePatchApplicationService | DELEGATING_TIMELINE_MUTATION_SURFACE | YES | via saveRevision/engine | YES (via gate) | via saveRevision | via saveRevision | via saveRevision | via saveRevision | via saveRevision | EXPLICIT_JOOQ (via saveRevision) | via saveRevision | via saveRevision | 0 | 0 | NO |
+| TimelineMergeEngine.merge | DIRECT_TIMELINE_SEMANTIC_WRITER (persistent) | YES | delegates snapshot/revision/pin/head | YES (merged payload gate) | YES (extract pre-tx) | YES (validate pre-tx) | YES (registerRevisionPinsTx in-tx) | YES (updateCurrentRevisionTx CAS in-tx) | YES (merge hash dedup) | EXPLICIT_JOOQ (dsl.transactionResult; proxy-independent) | saveTx (tx.dsl) | updateCurrentRevisionTx (tx.dsl) | 0 | 0 | NO |
+| TimelineMergeEngine.mergeSemantic | PREVIEW_ONLY | NO | none | YES | N/A | N/A | N/A | N/A | N/A | NONE (compute only) | none | none | 0 | 0 | NO |
+| RevisionCommandApplyService | UNUSED_INTERNAL_MECHANICS | NO (never invoked by production surfaces) | none | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | 0 | 0 | NO |
+| OperationPlanApplyService | UNUSED_INTERNAL_MECHANICS | NO (never invoked by production surfaces) | none | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | 0 | 0 | NO |
+| RevisionGraphService / other repository readers | READ_ONLY / GENERIC_REVISION_MECHANICS | NO | none | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | 0 | 0 | NO |
+
+FINAL_CLOSURE_F1 TimelineMergeEngine.merge row detail (required by spec section 12):
+
+PUBLIC_ENTRYPOINT = SAFE
+TRANSACTION_ENTRYPOINT = merge(request, resolutions) (same code path as merge(request) → merge(request, Map.of()) — the WRITE PHASE is explicit jOOQ in BOTH; no self-invocation-sensitive @Transactional on either)
+TRANSACTION_MECHANISM = EXPLICIT_JOOQ (dsl.transactionResult(tx -> ...))
+SNAPSHOT_WRITE_API = snapshotService.saveTx(tx.dsl(), ...)
+REVISION_WRITE_API = revisionRepository.insertTx(tx.dsl(), row) + nextRevisionNumberTx(tx.dsl(), ...)
+PIN_WRITE_API = artifactPinService.registerRevisionPinsTx(tx.dsl(), ...)
+HEAD_CAS_API = currentRevisionService.updateCurrentRevisionTx(tx.dsl(), ...)
+SELF_INVOCATION_TRANSACTION_BYPASS = NO (0 — no @Transactional anywhere in TimelineMergeEngine)
+SAME_PHYSICAL_TRANSACTION_PROVEN = YES (real-PG: merge revision/snapshot/pins/head all roll back on pin FK failure)
+BYPASS_POSSIBLE = NO
+
+Call-graph safety (spec section 10):
+- RevisionCommandApplyService: NOT a Spring bean, NO production caller, domain-neutral generic mechanics; cannot create a Timeline semantic bypass.
+- OperationPlanApplyService: NOT a Spring bean, NO production caller, domain-neutral generic mechanics; cannot create a Timeline semantic bypass.
+- Invariant: Timeline semantic mutation authority → canonical validation → artifact/source invariant → revision mechanics (never the reverse).
 
 Audit method: repository search for every TIMELINE_REVISION writer + call-graph
 search for each surface's production callers (grep across timeline-module /

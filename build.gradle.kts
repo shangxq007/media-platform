@@ -1736,6 +1736,76 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
             }
         }
 
-        println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership; R5 constructor-injection closure; R5 domain-value authority; R5 single typed source binding)")
+        // ── FINAL_CLOSURE_F1 guards (post-Round-5): persistent merge transaction ──
+        // F23: the persistent merge entrypoint must NOT rely on a self-invoked
+        // @Transactional overload — no @Transactional on either merge overload.
+        require(!mergeEngineSrc.contains("@Transactional\n") && !mergeEngineSrc.contains("@Transactional(")) {
+            "FAIL (F23): TimelineMergeEngine must not depend on Spring @Transactional " +
+                "for the persistent merge entrypoint (self-invocation bypass)"
+        }
+        // F23b: the write phase opens an EXPLICIT jOOQ transaction whose own
+        // DSLContext flows through every write.
+        require(mergeEngineSrc.contains("dsl.transactionResult(tx ->")) {
+            "FAIL (F23b): persistent merge must open an explicit jOOQ write transaction"
+        }
+        // F24: persistent merge pin registration is transaction-aware.
+        require(mergeEngineSrc.contains("artifactPinService.registerRevisionPinsTx(")) {
+            "FAIL (F24): persistent merge must use transaction-aware registerRevisionPinsTx"
+        }
+        require(!mergeEngineSrc.contains("artifactPinService.registerRevisionPins(\n")) {
+            "FAIL (F24b): persistent merge must NOT call the non-transactional registerRevisionPins"
+        }
+        // F24c/d/e: snapshot/revision/head writes are tx-aware inside the write phase.
+        require(mergeEngineSrc.contains("snapshotService.saveTx(")) {
+            "FAIL (F24c): persistent merge must use transaction-aware snapshotService.saveTx"
+        }
+        require(mergeEngineSrc.contains("revisionRepository.insertTx(tx.dsl(), mergeRow)")) {
+            "FAIL (F24d): persistent merge must use transaction-aware revisionRepository.insertTx"
+        }
+        require(mergeEngineSrc.contains("currentRevisionService.updateCurrentRevisionTx(")) {
+            "FAIL (F24e): persistent merge must use transaction-aware head CAS updateCurrentRevisionTx"
+        }
+        // F24f: repository exposes the tx-aware insert/nextRevisionNumber APIs.
+        val revisionRepoSrc = file("timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineRevisionRepository.java").readText()
+        require(revisionRepoSrc.contains("public void insertTx(") && revisionRepoSrc.contains("public int nextRevisionNumberTx(")) {
+            "FAIL (F24f): TimelineRevisionRepository must expose insertTx and nextRevisionNumberTx"
+        }
+        // F24g: the TRUE production-path failure test exists (calls merge(request)).
+        val mergePinIt = file("render-module/src/test/java/com/example/platform/render/app/timeline/CheckpointARound5PersistentMergePinIT.java").readText()
+        require(mergePinIt.contains("mergeEngine.merge(request)")) {
+            "FAIL (F24g): the real-PG merge failure test must call the actual merge entrypoint"
+        }
+
+        // ── FINAL_CLOSURE_F2 guards (post-Round-5): canonical strictness ──
+        val sourceBindingSrc = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/TimelineSourceBindingCanonicalSemantics.java").readText()
+        // F25: canonical decoder consumes AND validates contentDigest.algorithm.
+        require(sourceBindingSrc.contains("digestNode.path(\"algorithm\")")) {
+            "FAIL (F25): canonical source-binding decoder must consume contentDigest.algorithm"
+        }
+        // F26: no hardcoded SHA_256 while ignoring the authored algorithm node.
+        require(!sourceBindingSrc.contains("ContentDigest(\n                ContentDigest.DigestAlgorithm.SHA_256,")) {
+            "FAIL (F26): source-binding decoder must not hardcode SHA_256 ignoring the authored algorithm"
+        }
+        // F27: flat source-range parser has NO semantic defaults for required fields.
+        require(!sourceBindingSrc.contains(".asLong(30)") && !sourceBindingSrc.contains(".asLong(1)")
+                && !sourceBindingSrc.contains(".asLong(0)")) {
+            "FAIL (F27): flat source-range parser must not contain semantic defaults (asLong(30)/asLong(1)/asLong(0))"
+        }
+        // F28: Transition/Automation strict decoders require integral numeric nodes.
+        val transitionSrc = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/transition/TransitionCanonicalSemantics.java").readText()
+        val automationSrc = file("timeline-module/src/main/java/com/example/platform/timeline/semantics/automation/AutomationCanonicalSemantics.java").readText()
+        require(transitionSrc.contains("isIntegralNumber()")) {
+            "FAIL (F28a): Transition decoder must require integral JSON nodes for ticks/timeScale"
+        }
+        require(automationSrc.contains("isIntegralNumber()")) {
+            "FAIL (F28b): Automation decoder must require integral JSON nodes for ticks/timeScale"
+        }
+        // F28c: the F2 strict-codec test matrix exists.
+        val f2Test = file("timeline-module/src/test/java/com/example/platform/timeline/semantics/CheckpointAFinalClosureF2StrictCodecTest.java").exists()
+        require(f2Test) {
+            "FAIL (F28c): F2 strict codec test matrix must exist"
+        }
+
+        println("OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership; R5 constructor-injection closure; R5 domain-value authority; R5 single typed source binding; FINAL_CLOSURE_F1 explicit-jOOQ merge transaction; FINAL_CLOSURE_F2 strict canonical codec)")
     }
 }

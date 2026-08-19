@@ -245,7 +245,8 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 new TimelinePatchApplier(),
                 InternalTimelineJson.mapper(),
                 new TimelineArtifactPinValidator(query),
-                pinService);
+                pinService,
+                dsl);
     }
 
     @Test
@@ -293,9 +294,23 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
 
     @Test
     void persistentMergeRealPinDbFailureRollsBackEverything() {
+        // FINAL_CLOSURE_F1 (post-Round-5): TRUE PRODUCTION-PATH failure test.
+        // Calls the real TimelineMergeEngine.merge(request) — the exact
+        // production public persistent merge entrypoint. The validator
+        // (ArtifactQueryService mock seam) reports VALID for EVERY artifact id;
+        // the failure occurs at the REAL ArtifactPinRepository INSERT inside
+        // the merge's explicit jOOQ write transaction.
+        //
+        // Two pins in the merged payload:
+        //   pin 1 → art-1 (REAL artifact row → its INSERT succeeds in-tx)
+        //   pin 2 → ghost-art (NO artifact row → artifact_pin FK fails)
+        // After the production merge throws, the whole transaction must roll
+        // back: no merge revision, no snapshot, no pin rows (partial-write
+        // erasure), head unchanged.
         String productId = "prod-r5-merge-fail-" + java.util.UUID.randomUUID();
         insertProduct(productId);
-        insertArtifact("art-1", DIGEST_HEX); // base/source/target pins are real
+        insertArtifact("art-1", DIGEST_HEX); // pin 1 insertable
+        // Validator answers VALID for EVERY artifact id — the DB decides.
         buildServices(queryReturning(artifactFor("art-1", DIGEST_HEX)));
 
         com.fasterxml.jackson.databind.ObjectMapper mapper = InternalTimelineJson.mapper();
@@ -304,46 +319,76 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
         String targetRev = "target-rev";
         persistRevision(baseRev, productId, null, 1,
                 internalPayload(mapper, "tl-1", 1000L, "art-1", DIGEST_HEX));
+        // SOURCE carries TWO clips: c1 pinned to art-1 (real row) and c2
+        // pinned to ghost-art (no row). The merged payload therefore contains
+        // two pins; the second INSERT fails the real FK.
         persistRevision(sourceRev, productId, baseRev, 2,
-                internalPayload(mapper, "tl-1", 2000L, "art-1", DIGEST_HEX));
+                twoClipPayload(mapper, "tl-1", "art-1", "ghost-art", DIGEST_HEX));
         persistRevision(targetRev, productId, baseRev, 3,
                 internalPayload(mapper, "tl-1", 1000L, "art-1", DIGEST_HEX));
         currentRevisionService.updateCurrentRevision(productId, null, targetRev);
 
-        // Real DB failure at the pin persistence layer inside a transaction
-        // that also writes the would-be merge revision. The merge engine's
-        // registration path (ArtifactPinService.registerRevisionPinsTx with the
-        // transaction's own DSLContext) is exactly what the persistent merge
-        // calls; a ghost artifact fails the real FK and must roll back both the
-        // pin rows AND the merge revision write in the same physical
-        // transaction.
-        String mergeRevId = "merge-rev-" + java.util.UUID.randomUUID();
-        assertThrows(Exception.class,
-                () -> dsl.transactionResult(tx -> {
-                    pinService.registerRevisionPinsTx(tx.dsl(), productId, mergeRevId,
-                            TENANT, List.of(new ArtifactPinService.ArtifactPin(
-                                    new ArtifactId("ghost-art"),
-                                    new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256, DIGEST_HEX))));
-                    tx.dsl().insertInto(TIMELINE_REVISION)
-                            .set(TIMELINE_REVISION.ID, mergeRevId)
-                            .set(TIMELINE_REVISION.PROJECT_ID, productId)
-                            .set(TIMELINE_REVISION.REVISION_NUMBER, 99)
-                            .set(TIMELINE_REVISION.TENANT_ID, TENANT)
-                            .set(TIMELINE_REVISION.SNAPSHOT_ID, "snap-x")
-                            .set(TIMELINE_REVISION.INTERNAL_REVISION, 99)
-                            .set(TIMELINE_REVISION.SOURCE, "merge")
-                            .execute();
-                    return null;
-                }),
-                "ghost pin INSERT must fail the merge transaction");
+        long snapshotsBefore = countSnapshots(productId);
 
-        assertEquals(0, dsl.fetchCount(DSL.selectFrom(TIMELINE_REVISION)
-                        .where(TIMELINE_REVISION.ID.eq(mergeRevId))),
-                "merge revision must roll back");
+        TimelineMergeRequest request = new TimelineMergeRequest(
+                productId, TENANT, baseRev, sourceRev, targetRev, "user", "merge");
+
+        assertThrows(Exception.class,
+                () -> mergeEngine.merge(request),
+                "real production merge must fail when the second pin INSERT hits the DB FK");
+
+        // No merge revision row (rollback).
+        assertEquals(0, countRevisions(productId) - 3,
+                "merge revision must roll back (exactly the 3 seeded revisions remain)");
+        // No snapshot leaked from the failed merge transaction.
+        assertEquals(snapshotsBefore, countSnapshots(productId),
+                "no leaked snapshot from the failed merge transaction");
+        // artifact_pin count for the project = 0 — the seeded revisions were
+        // persisted directly (no pin rows) and the merge's pin 1 (art-1, whose
+        // INSERT succeeded in-tx) was rolled back together with pin 2's
+        // failure. Zero surviving pin rows proves the partial-write erasure.
         assertEquals(0, dsl.fetchCount(DSL.selectFrom(ARTIFACT_PIN)
-                        .where(ARTIFACT_PIN.REVISION_ID.eq(mergeRevId))),
-                "no partial pin rows for the merge revision");
+                        .where(ARTIFACT_PIN.PROJECT_ID.eq(productId))),
+                "no partial pin set may survive (merge pin 1 rolled back with pin 2 failure)");
+        // Head unchanged.
         assertEquals(targetRev, currentRevisionService.getCurrentRevisionId(productId),
                 "head must remain at the last saved revision (merge rolled back)");
+    }
+
+    private long countRevisions(String productId) {
+        return dsl.fetchCount(DSL.selectFrom(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)));
+    }
+
+    private long countSnapshots(String productId) {
+        return dsl.fetchCount(DSL.selectFrom(
+                        com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PROJECT_ID.eq(productId)));
+    }
+
+    /** Internal payload with TWO clips pinned to two different artifacts. */
+    private static String twoClipPayload(
+            com.fasterxml.jackson.databind.ObjectMapper mapper, String timelineId,
+            String artifactId1, String artifactId2, String digest) {
+        com.fasterxml.jackson.databind.node.ObjectNode root = mapper.createObjectNode();
+        root.put("schemaVersion", "1.0");
+        root.put("id", timelineId);
+        com.fasterxml.jackson.databind.node.ObjectNode composition = mapper.createObjectNode();
+        com.fasterxml.jackson.databind.node.ArrayNode trackArray = mapper.createArrayNode();
+        com.fasterxml.jackson.databind.node.ObjectNode track = mapper.createObjectNode();
+        track.put("id", "v1");
+        track.put("type", "VIDEO");
+        com.fasterxml.jackson.databind.node.ArrayNode clipArray = mapper.createArrayNode();
+        clipArray.add(clipNode(mapper, "c1", 0L, 1000L, artifactId1, digest));
+        clipArray.add(clipNode(mapper, "c2", 1000L, 1000L, artifactId2, digest));
+        track.set("clips", clipArray);
+        trackArray.add(track);
+        composition.set("tracks", trackArray);
+        root.set("composition", composition);
+        try {
+            return mapper.writeValueAsString(root);
+        } catch (Exception e) {
+            throw new IllegalStateException("internal payload serialization failed", e);
+        }
     }
 }

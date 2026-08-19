@@ -71,12 +71,22 @@ class TimelineMergeEngineTest {
                 new com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector());
         TimelineNonConflictingMergePlanner planner =
                 new TimelineNonConflictingMergePlanner(previewService);
-        engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
+        org.jooq.DSLContext dslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class);
+org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Configuration.class);
+        org.jooq.DSLContext txDsldslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class, org.mockito.Answers.RETURNS_DEEP_STUBS);
+        org.mockito.Mockito.when(cfgdslMockTime0.dsl()).thenReturn(txDsldslMockTime0);
+        org.mockito.Mockito.when(dslMockTime0.transactionResult(org.mockito.ArgumentMatchers.<org.jooq.TransactionalCallable<Object>>any()))
+                .thenAnswer(inv -> {
+                    org.jooq.TransactionalCallable<Object> callable = inv.getArgument(0);
+                    return callable.run(cfgdslMockTime0);
+                });
+engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
                 previewService, planner,
                 new com.example.platform.timeline.diff.application.TimelinePatchApplier(),
                 mapper,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
+                dslMockTime0);
         persistedRow = null;
     }
 
@@ -180,9 +190,9 @@ class TimelineMergeEngineTest {
 
     private void captureInsert() {
         org.mockito.Mockito.doAnswer(inv -> {
-            persistedRow = inv.getArgument(0);
+            persistedRow = inv.getArgument(1);
             return null;
-        }).when(revisionRepository).insert(any(TimelineRevisionRepository.RevisionRow.class));
+        }).when(revisionRepository).insertTx(any(org.jooq.DSLContext.class), any(TimelineRevisionRepository.RevisionRow.class));
     }
 
     /** Read the merged payload (internal-1.0) and return the first track's first clip. */

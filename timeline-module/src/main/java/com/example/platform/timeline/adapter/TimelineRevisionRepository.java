@@ -137,7 +137,17 @@ public class TimelineRevisionRepository {
     }
 
     public int nextRevisionNumber(String projectId) {
-        Integer max = dsl.select(TIMELINE_REVISION.REVISION_NUMBER)
+        return nextRevisionNumberTx(dsl, projectId);
+    }
+
+    /**
+     * FINAL_CLOSURE_F1: transaction-aware revision-number allocation — reads
+     * the max through the caller's DSLContext so the number allocation and the
+     * revision insert share one physical transaction (no gap between
+     * allocation and insert).
+     */
+    public int nextRevisionNumberTx(org.jooq.DSLContext tx, String projectId) {
+        Integer max = tx.select(TIMELINE_REVISION.REVISION_NUMBER)
                 .from(TIMELINE_REVISION)
                 .where(projectScope(projectId))
                 .orderBy(TIMELINE_REVISION.REVISION_NUMBER.desc())
@@ -147,7 +157,18 @@ public class TimelineRevisionRepository {
     }
 
     public void insert(RevisionRow row) {
-        dsl.insertInto(TIMELINE_REVISION)
+        insertTx(dsl, row);
+    }
+
+    /**
+     * FINAL_CLOSURE_F1 (CHECKPOINT_A post-Round-5): transaction-aware insert —
+     * writes through the caller's DSLContext so the revision row joins the SAME
+     * physical DB transaction as snapshot/pin/head writes in the persistent
+     * merge path. Never assumed to participate in a caller transaction via the
+     * root DSLContext.
+     */
+    public void insertTx(org.jooq.DSLContext tx, RevisionRow row) {
+        tx.insertInto(TIMELINE_REVISION)
                 .columns(
                         TIMELINE_REVISION.ID,
                         TIMELINE_REVISION.PROJECT_ID,

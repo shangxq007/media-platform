@@ -104,13 +104,15 @@ public class TimelineMergeEngine {
     private final ObjectMapper objectMapper;
     private final TimelineArtifactPinValidator artifactPinValidator;
     private final com.example.platform.artifact.app.ArtifactPinService artifactPinService;
+    private final org.jooq.DSLContext dsl;
 
     /**
-     * R5-C (CHECKPOINT_A Round 5): the ONLY production constructor. The
-     * Timeline artifact-pin invariant boundary is REQUIRED BY CONSTRUCTION —
-     * every dependency is {@link Objects#requireNonNull}; there is NO
-     * constructor that permits a persistent merge with a null pin boundary.
-     * PERSISTENT_MERGE_WITHOUT_PIN_BOUNDARY = IMPOSSIBLE BY CONSTRUCTION.
+     * R5-C (CHECKPOINT_A Round 5) + FINAL_CLOSURE_F1: the ONLY production
+     * constructor. The Timeline artifact-pin invariant boundary is REQUIRED BY
+     * CONSTRUCTION — every dependency is {@link Objects#requireNonNull}; there
+     * is NO constructor that permits a persistent merge with a null pin
+     * boundary. PERSISTENT_MERGE_WITHOUT_PIN_BOUNDARY =
+     * IMPOSSIBLE_BY_CONSTRUCTION.
      *
      * <p>CONSTRUCTOR_INJECTION_WITHOUT_EXPLICIT_AUTOWIRED_V1 (R5 addendum):
      * exactly ONE public constructor, constructor injection, NO @Autowired
@@ -118,12 +120,12 @@ public class TimelineMergeEngine {
      * test convenience constructor. Tests that need lighter wiring pass
      * explicit mocks/fakes.
      *
-     * <p>The PERSISTENT merge path extracts typed pins from the merged payload,
-     * validates them (existence/tenant/digest), and registers protection rows
-     * for the NEW merge revision identity inside the same transaction — a
-     * merge revision is a NEW historical identity and must protect every exact
-     * artifact it consumes. Zero pins is a normal no-op; a missing dependency
-     * is not.
+     * <p>FINAL_CLOSURE_F1 (post-Round-5): {@code dsl} is the root DSLContext
+     * used ONLY to open the EXPLICIT jOOQ write transaction for the persistent
+     * merge phase (dsl.transactionResult) — the transaction's own DSLContext
+     * flows through snapshot/revision/pin/head writes. The persistent merge
+     * transaction boundary is therefore proxy-independent and mechanically
+     * inspectable (no reliance on Spring @Transactional self-invocation).
      */
     public TimelineMergeEngine(
             TimelineRevisionRepository revisionRepository,
@@ -134,7 +136,8 @@ public class TimelineMergeEngine {
             TimelinePatchApplier patchApplier,
             ObjectMapper objectMapper,
             TimelineArtifactPinValidator artifactPinValidator,
-            com.example.platform.artifact.app.ArtifactPinService artifactPinService) {
+            com.example.platform.artifact.app.ArtifactPinService artifactPinService,
+            org.jooq.DSLContext dsl) {
         this.revisionRepository = Objects.requireNonNull(revisionRepository, "revisionRepository");
         this.snapshotService = Objects.requireNonNull(snapshotService, "snapshotService");
         this.currentRevisionService = Objects.requireNonNull(currentRevisionService, "currentRevisionService");
@@ -144,6 +147,7 @@ public class TimelineMergeEngine {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.artifactPinValidator = Objects.requireNonNull(artifactPinValidator, "artifactPinValidator");
         this.artifactPinService = Objects.requireNonNull(artifactPinService, "artifactPinService");
+        this.dsl = Objects.requireNonNull(dsl, "dsl");
     }
 
     public TimelineMergeResult merge(TimelineMergeRequest request) {
@@ -248,7 +252,16 @@ public class TimelineMergeEngine {
         }
     }
 
-    @Transactional
+    /**
+     * FINAL_CLOSURE_F1 (post-Round-5): the persistent merge entrypoint. NO
+     * Spring @Transactional on this method — the persistent write phase opens
+     * an EXPLICIT jOOQ transaction ({@code dsl.transactionResult}) whose own
+     * DSLContext flows through snapshot/revision/pin/head writes. The
+     * transaction boundary is therefore proxy-independent and mechanically
+     * inspectable; {@code merge(request)} cannot bypass it via Spring
+     * self-invocation (PERSISTENT_MERGE_SELF_INVOCATION_TRANSACTION_BYPASS =
+     * 0).
+     */
     public TimelineMergeResult merge(
             TimelineMergeRequest request,
             Map<String, TimelineResolutionIntent> resolutions) {
@@ -397,79 +410,99 @@ public class TimelineMergeEngine {
             String message = request.message() != null ? request.message()
                     : "Merge " + request.sourceRevisionId() + " into " + request.targetRevisionId();
 
-            String snapshotId = snapshotService.save(
-                    request.projectId(), effectiveTenant, mergedPayload, "internal-1.0");
-            String mergeRevisionId = Ids.newId("trev");
-            int revNum = revisionRepository.nextRevisionNumber(request.projectId());
-            String mergeParentIds = request.sourceRevisionId() + "," + request.targetRevisionId();
+            // R4-D4 + R5-C: pins are extracted from the merged payload and
+            // VALIDATED (existence/tenant/digest) BEFORE the write transaction
+            // opens — pure computation, fail-early. Registration runs inside
+            // the write transaction via registerRevisionPinsTx.
+            java.util.List<TimelineArtifactPinExtractor.ArtifactPin> mergedPins =
+                    TimelineArtifactPinExtractor.extract(mergedPayload);
+            if (!mergedPins.isEmpty()) {
+                TimelineArtifactPinValidator.ValidationResult pinValidation =
+                        artifactPinValidator.validate(effectiveTenant, mergedPins);
+                if (!pinValidation.valid()) {
+                    throw new TimelineCanonicalRejectionException(
+                            new TimelineCanonicalRejectionException.AdapterDiagnostic(
+                                    TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                                    com.example.platform.timeline.canonicalmodel.TimelineModelPath.root()
+                                            .field("sourceBinding"),
+                                    "Merge artifact pin reference-integrity: "
+                                            + String.join("; ", pinValidation.violations())));
+                }
+            }
 
-            TimelineRevisionRepository.RevisionRow mergeRow = new TimelineRevisionRepository.RevisionRow(
-                    mergeRevisionId, request.projectId(), effectiveTenant,
-                    request.targetRevisionId(), revNum, snapshotId, 0,
-                    mergedPayloadHash,
-                    "internal-1.0", TimelineMergeRequest.SOURCE_MERGE,
-                    request.authorUserId(), null, message,
-                    null, null, null,
-                    true, mergeParentIds, request.baseRevisionId(),
-                    OffsetDateTime.now());
-            revisionRepository.insert(mergeRow);
-            log.info("Canonical merge revision created: id={} project={} rev={}",
-                    mergeRevisionId, request.projectId(), revNum);
+            // FINAL_CLOSURE_F1: ONE explicit jOOQ write transaction covering
+            // snapshot write → merge revision insert → pin registration →
+            // head CAS. The transaction's OWN DSLContext flows through every
+            // write (saveTx / insertTx / registerRevisionPinsTx /
+            // updateCurrentRevisionTx). Pin persistence failure (real DB) rolls
+            // back snapshot + revision + pins + head together. The head CAS
+            // (updateCurrentRevisionTx) performs the authoritative
+            // expected-vs-actual check INSIDE the transaction — no
+            // check-then-act race.
+            // (effective-final copies for lambda capture)
+            final String effectiveTenantFinal = effectiveTenant;
+            final String mergedPayloadFinal = mergedPayload;
+            final String mergedPayloadHashFinal = mergedPayloadHash;
+            final String messageFinal = message;
+            final int sourceAppliedFinal = sourceApplied;
+            final int targetAppliedFinal = targetApplied;
+            final List<TimelineArtifactPinExtractor.ArtifactPin> mergedPinsFinal = mergedPins;
+            return dsl.transactionResult(tx -> {
+                String snapshotId = snapshotService.saveTx(
+                        tx.dsl(), request.projectId(), effectiveTenantFinal, mergedPayloadFinal, "internal-1.0");
+                String mergeRevisionId = Ids.newId("trev");
+                int revNum = revisionRepository.nextRevisionNumberTx(tx.dsl(), request.projectId());
+                String mergeParentIds = request.sourceRevisionId() + "," + request.targetRevisionId();
+                TimelineRevisionRepository.RevisionRow mergeRow = new TimelineRevisionRepository.RevisionRow(
+                        mergeRevisionId, request.projectId(), effectiveTenantFinal,
+                        request.targetRevisionId(), revNum, snapshotId, 0,
+                        mergedPayloadHashFinal,
+                        "internal-1.0", TimelineMergeRequest.SOURCE_MERGE,
+                        request.authorUserId(), null, message,
+                        null, null, null,
+                        true, mergeParentIds, request.baseRevisionId(),
+                        OffsetDateTime.now());
+                revisionRepository.insertTx(tx.dsl(), mergeRow);
+                log.info("Canonical merge revision created: id={} project={} rev={}",
+                        mergeRevisionId, request.projectId(), revNum);
 
-            // R4-D4 (CHECKPOINT_A Round 4): the merge revision is a NEW
-            // historical identity — it must itself protect every exact artifact
-            // the merged payload consumes. Extract typed pins from the merged
-            // payload, validate existence/tenant/digest, and register pin rows
-            // for the NEW merge revision id. Failure (validation or
-            // registration) aborts the merge before head advance — the merge
-            // transaction (@Transactional) rolls back: no visible merge
-            // revision, head unchanged, no partial pins.
-            // R5-C: the pin boundary is REQUIRED BY CONSTRUCTION (non-null
-            // dependencies); zero pins in the merged payload is a normal no-op,
-            // a missing dependency is not — there is no nullable skip.
-            {
-                java.util.List<TimelineArtifactPinExtractor.ArtifactPin> mergedPins =
-                        TimelineArtifactPinExtractor.extract(mergedPayload);
-                if (!mergedPins.isEmpty()) {
-                    TimelineArtifactPinValidator.ValidationResult pinValidation =
-                            artifactPinValidator.validate(effectiveTenant, mergedPins);
-                    if (!pinValidation.valid()) {
-                        throw new TimelineCanonicalRejectionException(
-                                new TimelineCanonicalRejectionException.AdapterDiagnostic(
-                                        TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
-                                        com.example.platform.timeline.canonicalmodel.TimelineModelPath.root()
-                                                .field("sourceBinding"),
-                                        "Merge artifact pin reference-integrity: "
-                                                + String.join("; ", pinValidation.violations())));
-                    }
-                    artifactPinService.registerRevisionPins(
-                            request.projectId(), mergeRevisionId, effectiveTenant,
-                            mergedPins.stream()
+                // R4-D4 + R5-C + FINAL_CLOSURE_F1: the merge revision is a NEW
+                // historical identity — it must itself protect every exact
+                // artifact the merged payload consumes. Pins were extracted and
+                // VALIDATED before the write transaction opened (pure
+                // computation, fail-early); registration runs inside the SAME
+                // physical transaction via registerRevisionPinsTx. Zero pins is
+                // a normal no-op; a missing dependency is not (non-null by
+                // construction).
+                if (!mergedPinsFinal.isEmpty()) {
+                    artifactPinService.registerRevisionPinsTx(
+                            tx.dsl(), request.projectId(), mergeRevisionId, effectiveTenantFinal,
+                            mergedPinsFinal.stream()
                                     .map(p -> new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
                                             p.artifactId(), p.contentDigest()))
                                     .toList());
                 }
-            }
 
-            currentRevisionService.updateCurrentRevision(
-                    request.projectId(), request.targetRevisionId(), mergeRevisionId);
+                currentRevisionService.updateCurrentRevisionTx(
+                        tx.dsl(), request.projectId(), request.targetRevisionId(), mergeRevisionId);
 
-            List<SemanticChange> autoMerged = applyOps.stream()
-                    .map(op -> SemanticChange.of(
-                            toSemanticChangeType(op),
-                            toEntityRef(op),
-                            "canonical merge applied " + op.type() + " on " + op.path().value()))
-                    .toList();
-            List<String> entityIds = autoMerged.stream()
-                    .map(c -> c.entity().key())
-                    .distinct()
-                    .toList();
-            TimelineMergeSummary summary = TimelineMergeSummary.merged(
-                    sourceApplied, targetApplied, entityIds);
+                List<SemanticChange> autoMerged = applyOps.stream()
+                        .map(op -> SemanticChange.of(
+                                toSemanticChangeType(op),
+                                toEntityRef(op),
+                                "canonical merge applied " + op.type() + " on " + op.path().value()))
+                        .toList();
+                List<String> entityIds = autoMerged.stream()
+                        .map(c -> c.entity().key())
+                        .distinct()
+                        .toList();
+                TimelineMergeSummary summary = TimelineMergeSummary.merged(
+                        sourceAppliedFinal, targetAppliedFinal, entityIds);
 
-            return new TimelineMergeResult(TimelineMergeResult.MergeStatus.MERGED,
-                    request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
-                    mergeRevisionId, autoMerged, List.of(), summary, message, mergedPayload);
+                return new TimelineMergeResult(TimelineMergeResult.MergeStatus.MERGED,
+                        request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
+                        mergeRevisionId, autoMerged, List.of(), summary, messageFinal, mergedPayloadFinal);
+            });
         } catch (RuntimeException e) {
             log.error("Merge failed: base={} source={} target={}",
                     request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(), e);
