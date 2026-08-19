@@ -112,7 +112,16 @@ class ModularityTest {
         "timeline' depends on non-exposed type com.example.platform.media",
         "operation' depends on non-exposed type com.example.platform.timeline",
         "operation' depends on non-exposed type com.example.platform.audio",
-        "operation' depends on non-exposed type com.example.platform.fonttext"
+        "operation' depends on non-exposed type com.example.platform.fonttext",
+        // ROADMAP20 (C14/C30): render-planning consumes color-image-module value
+        // semantics (ColorDescription, RasterSampleDescription) for typed output
+        // requirements and delegates graph mechanics to platform-algorithms:graph.
+        // Both are frozen dependency directions (Render -> ColorImage, Render -> Graph);
+        // neither target depends on render. The graph module is a deliberately
+        // non-Spring library module (no @ApplicationModule), so Modulith cannot
+        // express it in allowedDependencies; registered here per debt-register pattern.
+        "render' depends on module 'colorimage",
+        "render' depends on module 'graph"
     );
 
     @Test

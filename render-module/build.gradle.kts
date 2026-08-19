@@ -9,6 +9,8 @@ dependencies {
     implementation(project(":media-module")) // MCMV2-C: Media Canonical Model (frozen direction: Render -> Media)
     implementation(project(":audio-module")) // AUDIO_V2: canonical Audio Mix authority (frozen direction: Render -> Audio)
     implementation(project(":font-text-module")) // ROADMAP_19: canonical Font/Text value semantics (frozen direction: Render -> FontText)
+    implementation(project(":color-image-module")) // ROADMAP20: typed color/image value semantics (frozen direction: Render -> ColorImage)
+    implementation(project(":platform-algorithms:graph")) // ROADMAP20: graph kernel mechanics for RenderGraph (C30)
     api(project(":timeline-module")) // GCR-1: canonical Timeline semantics (frozen direction: Render -> Timeline)
     api(project(":operation-module")) // GCR-1: canonical Operation semantics (frozen direction: Render -> Operation)
     implementation(project(":notification-module")) // NotificationEventPublisher rehomed to notification (K2)
@@ -55,4 +57,56 @@ tasks.register<Test>("nativeMediaTest") {
     shouldRunAfter(tasks.test)
     maxParallelForks = 1
     forkEvery = 1
+}
+
+tasks.register("verifyC20RenderPlanBoundaryGuard") {
+    group = "verification"
+    description = "ROADMAP20-C20: logical RenderPlan/RenderGraph package is provider-neutral, kernel-delegation-bound, and free of forbidden physical/legacy tokens (C18/C30)"
+    doLast {
+        val pkgDir = file("src/main/java/com/example/platform/render/domain/renderplan")
+        require(pkgDir.exists() && pkgDir.isDirectory) {
+            "FAIL: renderplan package dir missing: ${pkgDir.path}"
+        }
+        val javaFiles = fileTree(pkgDir) { include("**/*.java") }.files
+        require(javaFiles.isNotEmpty()) {
+            "FAIL: no .java files found under ${pkgDir.path}"
+        }
+
+        // Forbidden tokens (C18 provider neutrality + C30 kernel delegation): none of
+        // these may appear outside of comment lines. Comment lines (starting with //
+        // or *) are excluded so that javadoc/class-header mentions do not trip the gate.
+        val forbidden = listOf(
+            "ffmpeg", "Ffmpeg", "vulkan", "Vulkan", "webgpu", "WebGPU", "cuda", "CUDA",
+            "opencue", "OpenCue", "org.springframework", "org.jooq",
+            "com.example.platform.workflow", "com.example.platform.execution",
+            "com.example.platform.typedschema", "Map<String", "HashMap", "HashSet",
+            "UUID.randomUUID", "topologicalSort", "Kahn"
+        )
+        val violations = mutableListOf<String>()
+        for (javaFile in javaFiles) {
+            val lines = javaFile.readLines()
+            for ((index, line) in lines.withIndex()) {
+                val trimmed = line.trimStart()
+                if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) {
+                    continue
+                }
+                for (token in forbidden) {
+                    if (line.contains(token)) {
+                        violations.add("${javaFile.name}:${index + 1}: forbidden token '$token'")
+                    }
+                }
+            }
+        }
+        require(violations.isEmpty()) {
+            "FAIL: forbidden tokens present in renderplan package:\n" + violations.joinToString("\n")
+        }
+
+        // REQUIRED: at least one reference to the graph kernel (C30 delegation)
+        val kernelRef = javaFiles.any { it.readText().contains("com.example.platform.graph") }
+        require(kernelRef) {
+            "FAIL: no reference to com.example.platform.graph (graph kernel delegation) in renderplan package"
+        }
+
+        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, ${javaFiles.size} files)")
+    }
 }

@@ -606,7 +606,8 @@ tasks.register("jooqFoundationCheck") {
         "verifyJooqNoNewUntypedIdentifiers",
         "verifyJooqPlainSqlAllowlist",
         "verifyJooqDynamicIdentifierAllowlist",
-        "verifyJooqAllowlistIntegrity"
+        "verifyJooqAllowlistIntegrity",
+        ":render-module:verifyC20RenderPlanBoundaryGuard"
     )
 }
 

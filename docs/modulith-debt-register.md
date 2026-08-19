@@ -14,9 +14,9 @@
 ## 当前状态
 
 - **ModularityTest:** ✅ 已重新启用（2026-06-22，issue-003b）
-- **ALLOWED_VIOLATIONS:** 9 条（pattern-based 过滤）
+- **ALLOWED_VIOLATIONS:** 39 条（pattern-based 过滤）
 - **意外违规:** 0
-- **总违规数:** 131 条（2026-07-16 验证）
+- **总违规数:** 1641 条（2026-08-19 验证，ROADMAP20 新增 colorimage / graph 两条）
 
 ## 当前已允许违规
 
@@ -27,6 +27,8 @@
 | `render' depends on module 'outbox` | render 模块使用 outbox 协调服务（task execution, marketplace, search） | Backend Team | GA 前 |
 | `render' depends on named interface(s) 'outbox` | render 使用 OutboxEventService 发布事件 | Backend Team | GA 前 |
 | `render' depends on named interface(s) 'storage :: infrastructure` | render 需要 S3ObjectMaterializer/Writer 进行 artifact I/O | Backend Team | GA 前 |
+| `render' depends on module 'colorimage` | ROADMAP20 (C14): render-planning consumes color-image-module value semantics (ColorDescription, RasterSampleDescription) for typed output requirements; frozen direction Render -> ColorImage | Backend Team | GA 前 |
+| `render' depends on module 'graph` | ROADMAP20 (C30): render-planning delegates graph mechanics to platform-algorithms:graph kernel; graph is a deliberately non-Spring library module, so Modulith cannot express it in allowedDependencies | Backend Team | GA 前 |
 | `web' depends on module 'render` | web 控制器委托 render app/domain 服务 | Backend Team | GA 前 |
 | `web' depends on named interface(s) 'outbox` | ProjectDashboardController 使用 OutboxEventService | Backend Team | GA 前 |
 | `web' depends on module 'ingest` | DevIngestPreflightPolicyDiagnosticsController 使用 ingest 诊断服务 | Backend Team | GA 前 |
@@ -40,6 +42,8 @@
 | identity → artifact | identity | artifact | 3 | 已登记（2026-06-22） |
 | identity → storage | identity | storage | 3 | 已登记（2026-06-22） |
 | render → outbox | render | outbox | ~60 | 新增（render 协调架构） |
+| render → colorimage | render | colorimage | ~3 | ROADMAP20（C14 类型化输出需求） |
+| render → graph | render | graph | ~8 | ROADMAP20（C30 图内核委托） |
 | render → storage infra | render | storage :: infrastructure | ~5 | 新增（artifact I/O） |
 | web → render | web | render | ~50 | 新增（web 控制器委托） |
 | web → outbox | web | outbox | 1 | 新增（Dashboard 事件） |
