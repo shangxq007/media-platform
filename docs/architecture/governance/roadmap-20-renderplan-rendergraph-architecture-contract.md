@@ -10,6 +10,9 @@ Companion documents:
 - roadmap-20-algorithm-boundary-review.md (PASS)
 - roadmap-20-graph-backend-adoption-review.md (PASS)
 - roadmap-20-render-architecture-research-review.md (PASS)
+- roadmap-20-post-decision-recovery-mandatory-refinement.md (FROZEN 2026-08-19,
+  NON_CONFLICTING_BOUNDED_REFINEMENT; append-forward, C1-C38 untouched;
+  FINAL_ROADMAP20_IMPLEMENTATION_CONTRACT = this contract + that refinement)
 
 Frozen principle (verbatim from task):
 RENDERPLAN_AND_RENDERGRAPH_ARE_DERIVED_EXECUTION_STATE_NOT_AUTHORED_DOMAIN_AUTHORITY_V1
