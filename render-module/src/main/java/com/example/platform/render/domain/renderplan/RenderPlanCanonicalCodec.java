@@ -272,7 +272,11 @@ public final class RenderPlanCanonicalCodec {
         return sb.toString();
     }
 
-    /** Explicit encoding of sealed {@code ColorPrimaries} (WellKnown vs Custom). */
+    /**
+     * Explicit encoding of sealed {@code ColorPrimaries} (WellKnown vs Custom).
+     * R3-M1: unknown future variants FAIL CLOSED — never collapse to a generic
+     * fallback token (a future subtype must not silently share canonical bytes).
+     */
     private String colorPrimariesCanonical(ColorPrimaries primaries) {
         if (primaries instanceof ColorPrimaries.WellKnown wellKnown) {
             return "WELL_KNOWN:" + wellKnown.name();
@@ -283,7 +287,9 @@ public final class RenderPlanCanonicalCodec {
                     + ":" + chromaticityCanonical(custom.blue())
                     + ":" + chromaticityCanonical(custom.whitePoint());
         }
-        return "UNKNOWN_VARIANT";
+        throw new IllegalArgumentException(
+                "Unsupported ColorPrimaries variant: " + primaries.getClass().getName()
+                        + " — canonical encoding fails closed (R3-M1)");
     }
 
     /** Explicit encoding of {@code Chromaticity} (rational x/y). */
@@ -325,10 +331,9 @@ public final class RenderPlanCanonicalCodec {
         s(sb, requirement.variantKey());
         if (requirement instanceof EffectMaterializationRequirement effect) {
             s(sb, effect.category().name());
-            for (EffectMaterializationRequirement.EffectParameter parameter : effect.sortedParameters()) {
-                s(sb, parameter.key());
-                s(sb, parameter.value());
-            }
+            // R3-B2: typed parameters count-framed (sorted by key).
+            counted(sb, effect.sortedParameters().stream()
+                    .map(p -> p.key() + ":" + p.value()).toList());
         } else if (requirement instanceof AudioProcessMaterializationRequirement audio) {
             // AudioGain/AudioMute/StereoBalance define explicit canonical
             // toString() contracts (value-only, deterministic); enumerated as
@@ -345,6 +350,13 @@ public final class RenderPlanCanonicalCodec {
             fontFallbackPolicyCanonical(sb, text.fallbackPolicy());
             list(sb, sortedEncodings(text.resolvedFontRuns().stream()
                     .map(this::resolvedFontRunCanonical).toList()));
+        } else {
+            // R3-M1: unknown sealed variant fails closed — a future
+            // materialization variant must never silently share canonical bytes.
+            throw new IllegalArgumentException(
+                    "Unsupported RenderMaterializationRequirement variant: "
+                            + requirement.getClass().getName()
+                            + " — canonical encoding fails closed (R3-M1)");
         }
         return sb.toString();
     }
@@ -358,27 +370,29 @@ public final class RenderPlanCanonicalCodec {
      */
     private void styledTextCanonical(StringBuilder sb, StyledText styledText) {
         s(sb, styledText.content().value());
-        // semantic runs: ordered (canonical StyledText sorts by range start)
-        for (TextSemanticRun run : styledText.semanticRuns()) {
-            textSemanticRunCanonical(sb, run);
-        }
-        // style runs: ordered (canonical StyledText sorts by range start)
-        for (TextStyleRun run : styledText.styleRuns()) {
-            textStyleRunCanonical(sb, run);
-        }
+        // R3-B2: count-framed sections — semantic runs vs style runs cannot
+        // collide (each section carries explicit cardinality).
+        countedSorted(sb, styledText.semanticRuns().stream()
+                .map(this::textSemanticRunCanonical).toList());
+        countedSorted(sb, styledText.styleRuns().stream()
+                .map(this::textStyleRunCanonical).toList());
         paragraphStyleCanonical(sb, styledText.paragraphStyle());
     }
 
-    private void textSemanticRunCanonical(StringBuilder sb, TextSemanticRun run) {
+    private String textSemanticRunCanonical(TextSemanticRun run) {
+        StringBuilder sb = new StringBuilder();
         s(sb, textRangeCanonical(run.range()));
         s(sb, run.language() != null ? run.language().toString() : "");
         s(sb, run.script() != null ? run.script().toString() : "");
         s(sb, run.directionOverride().name());
+        return sb.toString();
     }
 
-    private void textStyleRunCanonical(StringBuilder sb, TextStyleRun run) {
+    private String textStyleRunCanonical(TextStyleRun run) {
+        StringBuilder sb = new StringBuilder();
         s(sb, textRangeCanonical(run.range()));
         textStyleCanonical(sb, run.style());
+        return sb.toString();
     }
 
     /** Explicit encoding of {@code TextStyle}: font selection, size, tracking, features. */
@@ -386,18 +400,16 @@ public final class RenderPlanCanonicalCodec {
         fontSelectionIntentCanonical(sb, style.fontSelection());
         s(sb, fontRationalCanonical(style.fontSize().value()));
         s(sb, fontRationalCanonical(style.tracking()));
-        // OpenTypeFeatureIntent: ordered settings
-        for (OpenTypeFeatureIntent.OpenTypeFeatureSetting setting : style.features().settings()) {
-            s(sb, setting.tag().toString());
-            s(sb, setting.state().name());
-        }
+        // R3-B2: OpenType feature settings count-framed (cardinality explicit).
+        countedSorted(sb, style.features().settings().stream()
+                .map(setting -> setting.tag().toString() + ":" + setting.state().name())
+                .toList());
     }
 
     private void fontSelectionIntentCanonical(StringBuilder sb, FontSelectionIntent intent) {
-        // family preferences: ordered preference list
-        for (FontFamilyName family : intent.familyPreferences()) {
-            s(sb, family.toString());
-        }
+        // R3-B2: family preferences count-framed (ordered preference list).
+        counted(sb, intent.familyPreferences().stream()
+                .map(FontFamilyName::toString).toList());
         s(sb, intent.weight().name());
         s(sb, intent.stretch().name());
         s(sb, intent.slant().name());
@@ -408,11 +420,11 @@ public final class RenderPlanCanonicalCodec {
         } else {
             s(sb, "");
         }
-        // explicit axis overrides: sorted by axis tag (canonical immutable)
-        for (VariationCoordinate coordinate : intent.explicitAxisOverrides()) {
-            s(sb, coordinate.axis().toString());
-            s(sb, fontRationalCanonical(coordinate.coordinate()));
-        }
+        // R3-B2: explicit axis overrides count-framed (sorted by tag).
+        countedSorted(sb, intent.explicitAxisOverrides().stream()
+                .map(coordinate -> coordinate.axis().toString() + ":"
+                        + fontRationalCanonical(coordinate.coordinate()))
+                .toList());
     }
 
     /** Explicit encoding of {@code ParagraphStyle}: all six semantic fields. */
@@ -436,26 +448,36 @@ public final class RenderPlanCanonicalCodec {
         s(sb, frame.overflowBehavior().name());
     }
 
-    /** Explicit encoding of {@code FontFallbackPolicy}: ordered chains. */
+    /**
+     * Explicit encoding of {@code FontFallbackPolicy} (R2 B3 + R3-B2 framing):
+     * defaultChain, scriptOverrides, languageOverrides, emojiChain are FOUR
+     * adjacent variable-length sections — each is count-framed so
+     * {@code defaultChain=[A,B,C], scriptOverrides=[]} can NEVER collide with
+     * {@code defaultChain=[A], scriptOverrides=[{script=B, chain=[C]}]}.
+     */
     private void fontFallbackPolicyCanonical(StringBuilder sb, FontFallbackPolicy policy) {
-        for (FontFamilyName family : policy.defaultChain()) {
-            s(sb, family.toString());
-        }
-        for (FontFallbackPolicy.ScriptOverride override : policy.scriptOverrides()) {
-            s(sb, override.script().toString());
-            for (FontFamilyName family : override.chain()) {
-                s(sb, family.toString());
-            }
-        }
-        for (FontFallbackPolicy.LanguageOverride override : policy.languageOverrides()) {
-            s(sb, override.language().toString());
-            for (FontFamilyName family : override.chain()) {
-                s(sb, family.toString());
-            }
-        }
-        for (FontFamilyName family : policy.emojiChain()) {
-            s(sb, family.toString());
-        }
+        counted(sb, policy.defaultChain().stream()
+                .map(FontFamilyName::toString).toList());
+        countedSorted(sb, policy.scriptOverrides().stream()
+                .map(this::scriptOverrideCanonical).toList());
+        countedSorted(sb, policy.languageOverrides().stream()
+                .map(this::languageOverrideCanonical).toList());
+        counted(sb, policy.emojiChain().stream()
+                .map(FontFamilyName::toString).toList());
+    }
+
+    private String scriptOverrideCanonical(FontFallbackPolicy.ScriptOverride override) {
+        StringBuilder sb = new StringBuilder();
+        s(sb, override.script().toString());
+        counted(sb, override.chain().stream().map(FontFamilyName::toString).toList());
+        return sb.toString();
+    }
+
+    private String languageOverrideCanonical(FontFallbackPolicy.LanguageOverride override) {
+        StringBuilder sb = new StringBuilder();
+        s(sb, override.language().toString());
+        counted(sb, override.chain().stream().map(FontFamilyName::toString).toList());
+        return sb.toString();
     }
 
     /** Explicit encoding of {@code ResolvedFontRun}: range + complete font instance (R2 B3). */
@@ -467,11 +489,11 @@ public final class RenderPlanCanonicalCodec {
         s(sb, run.font().executionReference().securityState().name());
         s(sb, run.font().executionReference().format().name());
         s(sb, run.font().executionReference().faceIndex().toString());
-        // variation coordinates: sorted by tag (canonical immutable)
-        for (VariationCoordinate coordinate : run.font().variationCoordinates()) {
-            s(sb, coordinate.axis().toString());
-            s(sb, fontRationalCanonical(coordinate.coordinate()));
-        }
+        // R3-B2: variation coordinates count-framed (sorted by tag).
+        countedSorted(sb, run.font().variationCoordinates().stream()
+                .map(coordinate -> coordinate.axis().toString() + ":"
+                        + fontRationalCanonical(coordinate.coordinate()))
+                .toList());
         return sb.toString();
     }
 
@@ -493,6 +515,26 @@ public final class RenderPlanCanonicalCodec {
     private String mediaTimeCanonical(MediaTime time) {
         // MediaTime.toString() IS canonical: "ticks/timeScale" or "0"
         return time.toString();
+    }
+
+    // ── R3 test visibility: package-private canonical encoders ───────────────
+
+    String fallbackPolicyCanonicalForTest(FontFallbackPolicy policy) {
+        StringBuilder sb = new StringBuilder();
+        fontFallbackPolicyCanonical(sb, policy);
+        return sb.toString();
+    }
+
+    String styledTextCanonicalForTest(StyledText styled) {
+        StringBuilder sb = new StringBuilder();
+        styledTextCanonical(sb, styled);
+        return sb.toString();
+    }
+
+    String fontSelectionCanonicalForTest(FontSelectionIntent intent) {
+        StringBuilder sb = new StringBuilder();
+        fontSelectionIntentCanonical(sb, intent);
+        return sb.toString();
     }
 
     private String frameRateCanonical(FrameRate rate) {
@@ -519,6 +561,26 @@ public final class RenderPlanCanonicalCodec {
             s(sb, sortedEncodings.get(i));
         }
         sb.append(LIST_END);
+    }
+
+    /**
+     * R3-B2: count-framed variable-length section. Emits the element count
+     * (length-prefixed) followed by each element's canonical encoding
+     * (length-prefixed). Adjacent variable-length sections therefore cannot
+     * collide: every section boundary carries an explicit cardinality.
+     */
+    private void counted(StringBuilder sb, List<String> elementEncodings) {
+        s(sb, Integer.toString(elementEncodings.size()));
+        for (String encoding : elementEncodings) {
+            s(sb, encoding);
+        }
+    }
+
+    /**
+     * R3-B2: count-framed section helper for encodings that are already sorted.
+     */
+    private void countedSorted(StringBuilder sb, List<String> encodings) {
+        counted(sb, sortedEncodings(encodings));
     }
 
     private void optional(StringBuilder sb, Optional<String> value) {

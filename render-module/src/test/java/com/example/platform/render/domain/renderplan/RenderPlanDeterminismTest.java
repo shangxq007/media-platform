@@ -47,7 +47,7 @@ class RenderPlanDeterminismTest {
                 new RenderExtent(MediaTime.ofRational(0, 1), MediaTime.ofRational(3, 1), req.extent().frameRate()),
                 req.outputs());
         RenderPlanningInput changedInput = new RenderPlanningInput(
-                base.verifiedRevision(), base.effects(), base.effectDefinitions(),
+                base.authoredSnapshot(),
                 changed, base.resolution(), base.capabilities());
         String changedFp = planner.plan(changedInput).plan().fingerprint().sha256Hex();
 
@@ -64,7 +64,7 @@ class RenderPlanDeterminismTest {
         RenderRequest changed = new RenderRequest(req.id(), req.extent(),
                 List.of(RenderOutputRequirement.of(RenderOutputRole.DELIVERY_RENDITION)));
         RenderPlanningInput changedInput = new RenderPlanningInput(
-                base.verifiedRevision(), base.effects(), base.effectDefinitions(),
+                base.authoredSnapshot(),
                 changed, base.resolution(), base.capabilities());
         String changedFp = planner.plan(changedInput).plan().fingerprint().sha256Hex();
 
@@ -144,7 +144,7 @@ class RenderPlanDeterminismTest {
         VerifiedTimelineRevision otherVerified = VerifiedTimelineRevisionFactory.verified(
                 otherTimelineRevision, digester);
         RenderPlanningInput changed = new RenderPlanningInput(
-                otherVerified, base.effects(), base.effectDefinitions(),
+                new VerifiedRenderSemanticSnapshot(otherVerified, base.effectSemanticSnapshot()),
                 base.request(), base.resolution(), base.capabilities());
 
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),

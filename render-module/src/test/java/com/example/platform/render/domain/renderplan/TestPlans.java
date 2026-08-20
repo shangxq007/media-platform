@@ -94,19 +94,33 @@ final class TestPlans {
     /** The canonical planning input described in brief §13 (source RESOLVED). */
     static RenderPlanningInput canonicalInput() {
         return new RenderPlanningInput(
-                verifiedRevision(),
-                List.of(gaussianBlurEffect()),
-                List.of(effectDefinition()),
+                verifiedAuthoredSnapshot(),
                 renderRequest(),
                 new SourceResolutionInput(Map.of(artifactId(), RenderSourceResolutionState.RESOLVED)),
                 fullCapabilityContext());
+    }
+
+    /**
+     * R3-B1: the ONE immutable integrity-bound authored semantic snapshot
+     * (verified Timeline revision projection + verified authored effect
+     * snapshot) built through the production factory.
+     */
+    static VerifiedRenderSemanticSnapshot verifiedAuthoredSnapshot() {
+        TimelineDocument document = canonicalDocument();
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        TimelineRevision revision = new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+        return VerifiedRenderSemanticSnapshotFactory.verified(
+                revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()));
     }
 
     /** Canonical input with the source in the given resolution state. */
     static RenderPlanningInput inputWithSourceState(RenderSourceResolutionState state) {
         RenderPlanningInput base = canonicalInput();
         return new RenderPlanningInput(
-                base.verifiedRevision(), base.effects(), base.effectDefinitions(), base.request(),
+                base.authoredSnapshot(), base.request(),
                 new SourceResolutionInput(Map.of(artifactId(), state)),
                 base.capabilities());
     }
@@ -115,7 +129,7 @@ final class TestPlans {
     static RenderPlanningInput inputWithCapabilities(CapabilityContext capabilities) {
         RenderPlanningInput base = canonicalInput();
         return new RenderPlanningInput(
-                base.verifiedRevision(), base.effects(), base.effectDefinitions(), base.request(),
+                base.authoredSnapshot(), base.request(),
                 base.resolution(), capabilities);
     }
 
@@ -124,9 +138,37 @@ final class TestPlans {
         RenderPlanningInput base = canonicalInput();
         RenderRequest req = base.request();
         return new RenderPlanningInput(
-                base.verifiedRevision(), base.effects(), base.effectDefinitions(),
+                base.authoredSnapshot(),
                 new RenderRequest(new RenderRequestId(requestId), req.extent(), req.outputs()),
                 base.resolution(), base.capabilities());
+    }
+
+    /** Canonical input with a custom verified timeline revision projection. */
+    static RenderPlanningInput inputWithTimeline(VerifiedTimelineRevision timeline) {
+        RenderPlanningInput base = canonicalInput();
+        return new RenderPlanningInput(
+                new VerifiedRenderSemanticSnapshot(timeline, base.effectSemanticSnapshot()),
+                base.request(), base.resolution(), base.capabilities());
+    }
+
+    /** Canonical input with a custom verified authored effect snapshot. */
+    static RenderPlanningInput inputWithEffects(VerifiedEffectSemanticSnapshot effects) {
+        RenderPlanningInput base = canonicalInput();
+        return new RenderPlanningInput(
+                new VerifiedRenderSemanticSnapshot(base.verifiedRevision(), effects),
+                base.request(), base.resolution(), base.capabilities());
+    }
+
+    /**
+     * Canonical input with custom authored effect state (verified through the
+     * production factory — definition reference/version integrity enforced).
+     */
+    static RenderPlanningInput inputWithEffectState(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions) {
+        RenderPlanningInput base = canonicalInput();
+        VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
+                effects, definitions);
+        return inputWithEffects(snapshot);
     }
 
     /**
@@ -179,6 +221,30 @@ final class TestPlans {
                 REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
                 document, digest, java.time.Instant.EPOCH, "test");
         return VerifiedTimelineRevisionFactory.verified(revision, digester);
+    }
+
+    /**
+     * R3-B1: authored snapshot with a custom timeline clip (exact-time mapping
+     * tests): the authoritative document's digest is recomputed over the custom
+     * clip, and the effect state is the canonical fixture (verified).
+     */
+    static VerifiedRenderSemanticSnapshot verifiedAuthoredSnapshotWithClip(
+            com.example.platform.timeline.canonical.TimelineClip customClip) {
+        TimelineDocument document = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(TRACK_ID, "v1",
+                        TrackType.VIDEO, List.of(customClip))),
+                TimelineMetadata.empty(),
+                audioMix(),
+                List.of(),
+                List.of(textElement()));
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        TimelineRevision revision = new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+        return VerifiedRenderSemanticSnapshotFactory.verified(
+                revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()));
     }
 
     /** TimelineClip with a REVERSE constant-rate mapping. */

@@ -108,7 +108,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
             // ── chained EFFECT nodes for enabled video effects on this clip ──
             RenderNodeId prevProducer = decodeId;
-            for (EffectInstance effect : effectsForClip(input.effects(), clip)) {
+            for (EffectInstance effect : effectsForClip(input.effectSemanticSnapshot().effects(), clip)) {
                 if (!effect.enabled() || !effect.isVideoEffect()) {
                     continue;
                 }
@@ -410,7 +410,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
     private EffectInstance.EffectCategory resolveEffectCategory(
             EffectInstance effect, RenderPlanningInput input,
             List<RenderPlanningDiagnostic> diagnostics) {
-        for (EffectInstance.EffectDefinition definition : input.effectDefinitions()) {
+        for (EffectInstance.EffectDefinition definition : input.effectSemanticSnapshot().effectDefinitions()) {
             if (definition.definitionId().equals(effect.effectDefinitionId())) {
                 return definition.category();
             }

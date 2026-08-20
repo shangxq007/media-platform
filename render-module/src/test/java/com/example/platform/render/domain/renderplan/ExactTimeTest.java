@@ -40,8 +40,7 @@ class ExactTimeTest {
                 new RenderExtent(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 3), FrameRate.of(30, 1)),
                 req.outputs());
         RenderPlanningInput input = new RenderPlanningInput(
-                TestPlans.verifiedRevision(), List.of(TestPlans.gaussianBlurEffect()),
-                List.of(TestPlans.effectDefinition()), sub,
+                TestPlans.verifiedAuthoredSnapshot(), sub,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);
@@ -56,9 +55,9 @@ class ExactTimeTest {
         // ConstantRate REVERSE -> same exact window (direction only changes sample order)
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderRequest req = TestPlans.renderRequest();
-        VerifiedTimelineRevision rev = TestPlans.verifiedRevisionWithClip(TestPlans.reverseTimelineClip());
         RenderPlanningInput input = new RenderPlanningInput(
-                rev, List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()), req,
+                TestPlans.verifiedAuthoredSnapshotWithClip(TestPlans.reverseTimelineClip()),
+                req,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);
@@ -72,9 +71,9 @@ class ExactTimeTest {
     void freezeMappingYieldsPointWindow() {
         RenderRequest req = TestPlans.renderRequest();
         RenderPlanner planner = new DefaultRenderPlanner();
-        VerifiedTimelineRevision rev = TestPlans.verifiedRevisionWithClip(TestPlans.freezeTimelineClip());
         RenderPlanningInput input = new RenderPlanningInput(
-                rev, List.of(), List.of(), req,
+                TestPlans.verifiedAuthoredSnapshotWithClip(TestPlans.freezeTimelineClip()),
+                req,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);

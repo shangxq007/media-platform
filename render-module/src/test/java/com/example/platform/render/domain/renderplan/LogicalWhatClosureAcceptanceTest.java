@@ -139,7 +139,7 @@ class LogicalWhatClosureAcceptanceTest {
         VerifiedTimelineRevision otherVerified = VerifiedTimelineRevisionFactory.verified(
                 other, digester);
         RenderPlanningInput changed = new RenderPlanningInput(
-                otherVerified, base.effects(), base.effectDefinitions(),
+                new VerifiedRenderSemanticSnapshot(otherVerified, base.effectSemanticSnapshot()),
                 base.request(), base.resolution(), base.capabilities());
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "revision change -> fingerprint changes");
@@ -351,9 +351,8 @@ class LogicalWhatClosureAcceptanceTest {
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("radiusPixels", "8"), Map.of(),
                 TestPlans.gaussianBlurEffect().provenance());
-        RenderPlanningInput changed = new RenderPlanningInput(
-                base.verifiedRevision(), List.of(changedEffect), base.effectDefinitions(),
-                base.request(), base.resolution(), base.capabilities());
+        RenderPlanningInput changed = TestPlans.inputWithEffectState(
+                List.of(changedEffect), base.effectSemanticSnapshot().effectDefinitions());
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "effect parameter semantic change -> fingerprint changes");
     }
@@ -373,9 +372,8 @@ class LogicalWhatClosureAcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of(), Map.of(), TestPlans.gaussianBlurEffect().provenance());
-        RenderPlanningInput changed = new RenderPlanningInput(
-                base.verifiedRevision(), List.of(fadeEffect), List.of(fadeDef),
-                base.request(), base.resolution(), base.capabilities());
+        RenderPlanningInput changed = TestPlans.inputWithEffectState(
+                List.of(fadeEffect), List.of(fadeDef));
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "effect category change -> fingerprint changes");
     }
@@ -386,25 +384,21 @@ class LogicalWhatClosureAcceptanceTest {
         RenderPlanningInput base = TestPlans.canonicalInput();
         String baseFp = planner.plan(base).plan().fingerprint().sha256Hex();
 
-        RenderPlanningInput changed = new RenderPlanningInput(
-                TestPlans.verifiedRevisionWithAudioMix(TestPlans.audioMixWithGain(0.5)),
-                base.effects(), base.effectDefinitions(),
-                base.request(), base.resolution(), base.capabilities());
+        RenderPlanningInput changed = TestPlans.inputWithTimeline(
+                TestPlans.verifiedRevisionWithAudioMix(TestPlans.audioMixWithGain(0.5)));
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "audio gain change -> fingerprint changes");
     }
 
     @Test
     void missingEffectDefinitionFailsClosed() {
-        RenderPlanner planner = new DefaultRenderPlanner();
-        RenderPlanningInput base = TestPlans.canonicalInput();
-        RenderPlanningInput input = new RenderPlanningInput(
-                base.verifiedRevision(), base.effects(), List.of(),
-                base.request(), base.resolution(), base.capabilities());
-        RenderPlanningResult result = planner.plan(input);
-        assertTrue(result.diagnostics().stream().anyMatch(
-                        d -> d.code() == RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED),
-                "missing EffectDefinition -> PLANNING_UNSUPPORTED (fail closed)");
+        // R3-B1: an effect referencing an unknown definition now fails closed at
+        // the verified authored snapshot factory boundary (BEFORE planning) —
+        // even earlier and stronger than the R2 PLANNING_UNSUPPORTED behavior.
+        assertThrows(IllegalArgumentException.class,
+                () -> TestPlans.inputWithEffectState(
+                        TestPlans.canonicalInput().effectSemanticSnapshot().effects(), List.of()),
+                "missing EffectDefinition -> verified snapshot factory fails closed (R3-B1)");
     }
 
     // ── F3: platform capability authority ───────────────────────────────────
@@ -488,10 +482,8 @@ class LogicalWhatClosureAcceptanceTest {
 
         // Independently rebuild the SAME canonical text element (fresh instances).
         TextElement freshText = TestPlans.textElementWithContent("Hello");
-        RenderPlanningInput rebuilt = new RenderPlanningInput(
-                TestPlans.verifiedRevisionWithText(freshText),
-                base.effects(), base.effectDefinitions(),
-                base.request(), base.resolution(), base.capabilities());
+        RenderPlanningInput rebuilt = TestPlans.inputWithTimeline(
+                TestPlans.verifiedRevisionWithText(freshText));
         assertEquals(baseFp, planner.plan(rebuilt).plan().fingerprint().sha256Hex(),
                 "semantically equal independently constructed input -> identical fingerprint");
     }
@@ -501,10 +493,8 @@ class LogicalWhatClosureAcceptanceTest {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
         String baseFp = planner.plan(base).plan().fingerprint().sha256Hex();
-        RenderPlanningInput changed = new RenderPlanningInput(
-                TestPlans.verifiedRevisionWithText(TestPlans.textElementWithContent("Different")),
-                base.effects(), base.effectDefinitions(),
-                base.request(), base.resolution(), base.capabilities());
+        RenderPlanningInput changed = TestPlans.inputWithTimeline(
+                TestPlans.verifiedRevisionWithText(TestPlans.textElementWithContent("Different")));
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "semantically different values -> different fingerprint");
     }
@@ -518,10 +508,8 @@ class LogicalWhatClosureAcceptanceTest {
         String baseFp = planner.plan(base).plan().fingerprint().sha256Hex();
         // The supplied factory must produce a text element that DIFFERS from the
         // canonical "Hello" fixture (e.g. different content or styling).
-        RenderPlanningInput changed = new RenderPlanningInput(
-                TestPlans.verifiedRevisionWithText(textFactory.apply("Different")),
-                base.effects(), base.effectDefinitions(),
-                base.request(), base.resolution(), base.capabilities());
+        RenderPlanningInput changed = TestPlans.inputWithTimeline(
+                TestPlans.verifiedRevisionWithText(textFactory.apply("Different")));
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 label + " -> fingerprint changes");
     }
@@ -530,10 +518,8 @@ class LogicalWhatClosureAcceptanceTest {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
         String baseFp = planner.plan(base).plan().fingerprint().sha256Hex();
-        RenderPlanningInput changed = new RenderPlanningInput(
-                TestPlans.verifiedRevisionWithText(element),
-                base.effects(), base.effectDefinitions(),
-                base.request(), base.resolution(), base.capabilities());
+        RenderPlanningInput changed = TestPlans.inputWithTimeline(
+                TestPlans.verifiedRevisionWithText(element));
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 label + " -> fingerprint changes");
     }

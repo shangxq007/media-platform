@@ -30,8 +30,7 @@ class RenderGraphValidationNegativeTest {
                 new RenderExtent(MediaTime.ofRational(1, 1), MediaTime.ofRational(1, 1), FrameRate.of(30, 1)),
                 req.outputs());
         RenderPlanningInput input = new RenderPlanningInput(
-                TestPlans.verifiedRevision(),
-                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()),
+                TestPlans.verifiedAuthoredSnapshot(),
                 bad,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());

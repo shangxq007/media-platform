@@ -149,6 +149,33 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
             "FAIL: RenderPlanCanonicalCodec must explicitly encode TextFrame/ResolvedFontRun/StyledText (R2 B3 value-deterministic)"
         }
 
-        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, ${javaFiles.size} files)")
+        // R3-G1: primary planning input consumes ONE verified authored snapshot;
+        // arbitrary EffectInstance/EffectDefinition fragments cannot enter the
+        // planning API independently of the verified boundary.
+        val planningInputSource = javaFiles.find { it.name == "RenderPlanningInput.java" }?.readText()
+        require(planningInputSource != null && planningInputSource.contains("VerifiedRenderSemanticSnapshot authoredSnapshot")
+                && !planningInputSource.contains("List<EffectInstance>")) {
+            "FAIL: RenderPlanningInput must consume VerifiedRenderSemanticSnapshot and expose no List<EffectInstance> fragment (R3-G1)"
+        }
+        val authoredSnapshotPresent = javaFiles.any { it.name == "VerifiedRenderSemanticSnapshot.java" }
+        require(authoredSnapshotPresent) {
+            "FAIL: VerifiedRenderSemanticSnapshot.java missing (R3-G1 complete authored semantics boundary)"
+        }
+        val effectSnapshotFactoryPresent = javaFiles.any { it.name == "VerifiedEffectSemanticSnapshotFactory.java" }
+        require(effectSnapshotFactoryPresent) {
+            "FAIL: VerifiedEffectSemanticSnapshotFactory.java missing (R3-G1 effect state verification)"
+        }
+
+        // R3-G2: no generic unknown canonical fallback token in fingerprint paths.
+        require(codec != null && !codec.readText().contains("UNKNOWN_VARIANT")) {
+            "FAIL: RenderPlanCanonicalCodec must not contain UNKNOWN_VARIANT generic fallback (R3-G2/M1 fail-closed)"
+        }
+
+        // R3-G3: variable-length canonical sections must use explicit count framing.
+        require(codec != null && codec.readText().contains("private void counted(StringBuilder")) {
+            "FAIL: RenderPlanCanonicalCodec must use count-framed variable-length sections (R3-G2/B2 structural framing)"
+        }
+
+        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, ${javaFiles.size} files)")
     }
 }
