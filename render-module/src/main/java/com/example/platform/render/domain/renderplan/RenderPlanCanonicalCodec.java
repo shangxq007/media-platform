@@ -21,12 +21,15 @@ import com.example.platform.fonttext.typography.VariationCoordinate;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.time.FrameRate;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
+import com.example.platform.extension.domain.CapabilityRequirement;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -346,16 +349,50 @@ public final class RenderPlanCanonicalCodec {
      * on Object.toString() — every nested value type is encoded explicitly by
      * its semantic fields (R2 B3).
      */
+    /**
+     * R6-C2: THE single canonical encoder for an effect node's complete
+     * semantic identity — used by BOTH the effect node requirement fingerprint
+     * (node identity) and the final RenderPlan canonical serialization. One
+     * grammar, multiple consumers; no second ad-hoc node grammar.
+     *
+     * @param requirement  the complete typed Logical Effect WHAT
+     * @param capabilities the effective node capability requirements
+     *                     (category baseline UNION definition-required)
+     * @return canonical bytes for the node's semantic identity
+     */
+    public String effectMaterializationRequirementCanonical(
+            EffectMaterializationRequirement requirement,
+            List<CapabilityRequirement> capabilities) {
+        Objects.requireNonNull(requirement, "requirement");
+        Objects.requireNonNull(capabilities, "capabilities");
+        StringBuilder sb = new StringBuilder();
+        // effect semantic WHAT first (single canonical encoding).
+        sb.append(materializationRequirementCanonical(requirement));
+        // effective capabilities participate in node identity (R6-B/R6-C).
+        s(sb, "CAPS");
+        countedSorted(sb, capabilities.stream()
+                .map(c -> c.capabilityId().value()).toList());
+        return sb.toString();
+    }
+
+    /** Canonical encoding of one materialization requirement (semantic fields only). */
     private String materializationRequirementCanonical(RenderMaterializationRequirement requirement) {
         StringBuilder sb = new StringBuilder();
+        materializationRequirementCanonicalInto(sb, requirement);
+        return sb.toString();
+    }
+
+    private void materializationRequirementCanonicalInto(
+            StringBuilder sb, RenderMaterializationRequirement requirement) {
         s(sb, requirement.variantKey());
         if (requirement instanceof EffectMaterializationRequirement effect) {
             s(sb, effect.category().name());
-            // R5-B: complete typed Logical Effect WHAT — definition identity +
-            // version, instance identity, enabled, exact application range,
-            // automation references, temporal behavior — length-prefixed explicit
-            // framing (no delimiter flattening). Deterministic for
-            // semantic-equal state; distinct for semantic-distinct state.
+            // R5-B + R6-C2: complete typed Logical Effect WHAT — definition
+            // identity + version, instance identity, enabled, exact application
+            // range, automation references, temporal behavior, typed authored
+            // target — length-prefixed explicit framing (no delimiter
+            // flattening). Deterministic for semantic-equal state; distinct for
+            // semantic-distinct state.
             s(sb, effect.effectInstanceId());
             s(sb, effect.effectDefinitionId());
             s(sb, effect.effectDefinitionVersion());
@@ -363,6 +400,13 @@ public final class RenderPlanCanonicalCodec {
             s(sb, effect.applicationRange().start().toString());
             s(sb, effect.applicationRange().end().toString());
             s(sb, effect.temporalBehavior().name());
+            // R6-F: typed authored target participates in canonical semantics.
+            if (effect.target() instanceof ClipEffectTarget clipTarget) {
+                s(sb, clipTarget.trackId());
+                s(sb, clipTarget.clipId());
+            } else {
+                s(sb, "NO_TARGET");
+            }
             // R4-B: effect parameter pairs use the SINGLE shared pair encoder
             // (timeline/effect domain authority) — key and value are framed
             // independently, no key + ":" + value delimiter flattening.
@@ -400,7 +444,6 @@ public final class RenderPlanCanonicalCodec {
                             + requirement.getClass().getName()
                             + " — canonical encoding fails closed (R3-M1)");
         }
-        return sb.toString();
     }
 
     // ── R2 B3 explicit value encoding for font-text value types ──────────────

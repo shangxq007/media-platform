@@ -57,6 +57,16 @@ public final class EffectSemanticStateCanonicalSemantics {
         field(sb, "instanceId", effect.effectInstanceId());
         field(sb, "definitionId", effect.effectDefinitionId());
         field(sb, "definitionVersion", effect.effectDefinitionVersion());
+        // R6-F: typed authored target participates in the domain semantic
+        // digest — two effects with identical parameters but different targets
+        // must have different semantic identity.
+        if (effect.target() instanceof ClipEffectTarget clipTarget) {
+            field(sb, "targetTrack", clipTarget.trackId());
+            field(sb, "targetClip", clipTarget.clipId());
+        } else {
+            field(sb, "targetKind", effect.target() != null
+                    ? effect.target().getClass().getSimpleName() : "NONE");
+        }
         field(sb, "mediaType", effect.mediaType().name());
         field(sb, "enabled", Boolean.toString(effect.enabled()));
         field(sb, "rangeStart", effect.applicationRange().start().toString());
@@ -125,18 +135,20 @@ public final class EffectSemanticStateCanonicalSemantics {
 
     /**
      * The ONE canonical encoding of the complete authored Effect semantic
-     * state: instances sorted by instance id, definitions sorted by definition
-     * id, sections count-framed (R3-B2/R4-B framing rules).
+     * state. Definitions sorted by definition id (unordered catalog), sections
+     * count-framed (R3-B2/R4-B framing rules).
+     *
+     * <p>R6-H: {@code EFFECT_STACK_ORDER_SEMANTICS = ORDERED} — the authored
+     * effect stack order (wire {@code clip.effects[]} list order) is authored
+     * semantics; effects are encoded in the supplied (projection-preserved)
+     * order, NOT re-sorted.
      */
     public static String canonicalEffectState(
             List<EffectInstance> effects,
             List<EffectInstance.EffectDefinition> effectDefinitions) {
         StringBuilder sb = new StringBuilder();
-        List<EffectInstance> sortedEffects = effects.stream()
-                .sorted(java.util.Comparator.comparing(EffectInstance::effectInstanceId))
-                .toList();
-        field(sb, "effects", Integer.toString(sortedEffects.size()));
-        for (EffectInstance effect : sortedEffects) {
+        field(sb, "effects", Integer.toString(effects.size()));
+        for (EffectInstance effect : effects) {
             field(sb, "effect", canonicalEffectInstance(effect));
         }
         List<EffectInstance.EffectDefinition> sortedDefinitions = effectDefinitions.stream()

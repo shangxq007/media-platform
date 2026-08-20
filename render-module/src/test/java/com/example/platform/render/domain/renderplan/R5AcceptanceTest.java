@@ -5,6 +5,7 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
@@ -46,28 +47,30 @@ class R5AcceptanceTest {
                 "no public constructor on EffectSemanticBinding (R5-A)");
         // the only public factory is the authority
         assertTrue(java.util.Arrays.stream(AuthoredEffectSemanticAuthority.class.getDeclaredMethods())
-                        .anyMatch(m -> m.getName().equals("issue") && m.getParameterCount() == 3),
+                        .anyMatch(m -> m.getName().equals("issue") && m.getParameterCount() == 4),
                 "single public issuance path: AuthoredEffectSemanticAuthority.issue (R5-A)");
     }
 
     @Test
     void relabelAttackFailsClosedOwnershipCheck() {
-        // Attacker has timeline revision R1 (clip range [0,2]) and an
-        // INDEPENDENT effect state R2 whose application range does not overlap
-        // R1's clips (e.g. [5,6) — outside the revision). Relabeling R2 as R1
-        // must FAIL CLOSED at the authority issuance boundary (ownership check
-        // over the revision's actual clips).
-        TimelineRevision r1 = TestPlans.timelineRevision(); // clip [0,2]
+        // Attacker has timeline revision R1 (clip c1 [0,2]) and an INDEPENDENT
+        // effect state R2 that is NOT a revision-owned member of c1 (no wire
+        // membership entry in the projection). Relabeling R2 as R1/c1 must
+        // FAIL CLOSED at the authority issuance boundary (membership check
+        // against the revision-owned projection).
+        TimelineRevision r1 = TestPlans.timelineRevision();
         EffectInstance foreign = new EffectInstance(
                 "eff-foreign", "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
-                new MediaClip.TimeRange(MediaTime.ofRational(5, 1), MediaTime.ofRational(6, 1)),
+                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(1, 1)),
                 Map.of("radiusPixels", "4"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         assertThrows(IllegalArgumentException.class,
                 () -> AuthoredEffectSemanticAuthority.issue(
-                        r1, List.of(foreign), List.of(TestPlans.effectDefinition())),
-                "R2 effect state with ranges outside R1 clips -> ownership FAIL CLOSED (R5-A)");
+                        r1, TestPlans.revisionOwnedProjection(),
+                        List.of(foreign), List.of(TestPlans.effectDefinition())),
+                "foreign effect R2 is not a revision-owned member of R1/c1 -> membership FAIL CLOSED (R6-A)");
     }
 
     @Test
@@ -80,7 +83,8 @@ class R5AcceptanceTest {
         // extracted), and the caller cannot choose "other-rev".
         TimelineRevision r1 = TestPlans.timelineRevision();
         EffectSemanticBinding binding = AuthoredEffectSemanticAuthority.issue(
-                r1, List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+                r1, TestPlans.revisionOwnedProjection(),
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertEquals(r1.revisionId(), binding.revisionId(),
                 "binding revision identity comes from the authoritative object (R5-A)");
         assertEquals(EffectSemanticBinding.CONTRACT_VERSION, binding.semanticContractVersion());
@@ -92,7 +96,7 @@ class R5AcceptanceTest {
         // Valid authority-issued snapshot for R1 combined with timeline revision
         // R2 -> fail closed at the render factory (revision mismatch).
         EffectSemanticBinding r1Binding = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(),
+                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         TimelineRevision r2 = TestPlans.timelineRevisionWithId("rev-2");
         assertThrows(IllegalArgumentException.class,
@@ -108,13 +112,14 @@ class R5AcceptanceTest {
         // Authority-issued binding for effect state A; verification with
         // tampered state B must fail the digest check.
         EffectSemanticBinding binding = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(),
+                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         EffectInstance tampered = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("radiusPixels", "99"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
@@ -127,9 +132,10 @@ class R5AcceptanceTest {
         // Same authoritative semantic value freshly reconstructed -> same digest.
         TimelineRevision r1 = TestPlans.timelineRevision();
         EffectSemanticBinding a = AuthoredEffectSemanticAuthority.issue(
-                r1, List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+                r1, TestPlans.revisionOwnedProjection(),
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         EffectSemanticBinding b = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), List.of(TestPlans.gaussianBlurEffect()),
+                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(TestPlans.gaussianBlurEffect()),
                 List.of(TestPlans.effectDefinition()));
         assertEquals(a.effectStateDigest(), b.effectStateDigest(),
                 "semantic-equal reconstruction -> same authoritative digest (R5-A)");
@@ -151,6 +157,7 @@ class R5AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(1, 1)),
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput narrowInput = TestPlans.inputWithEffectState(
                 List.of(narrow), base.effectSemanticSnapshot().effectDefinitions());
@@ -185,6 +192,7 @@ class R5AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlan planV2 = planner.plan(TestPlans.inputWithEffectState(
                 List.of(instanceV2), List.of(defV2))).plan();
@@ -206,6 +214,7 @@ class R5AcceptanceTest {
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 TestPlans.gaussianBlurEffect().parameters(),
                 Map.of("radius", "auto.radius"),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlan automatedPlan = planner.plan(TestPlans.inputWithEffectState(
                 List.of(automated), base.effectSemanticSnapshot().effectDefinitions())).plan();
@@ -238,6 +247,7 @@ class R5AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, false,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput input = TestPlans.inputWithEffectState(
                 List.of(disabled), base.effectSemanticSnapshot().effectDefinitions());

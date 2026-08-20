@@ -28,6 +28,7 @@ import com.example.platform.fonttext.typography.ParagraphStyle;
 import com.example.platform.fonttext.typography.TextFrame;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.canonical.TextElementId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -350,6 +351,7 @@ class LogicalWhatClosureAcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("radiusPixels", "8"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changed = TestPlans.inputWithEffectState(
                 List.of(changedEffect), base.effectSemanticSnapshot().effectDefinitions());
@@ -371,9 +373,11 @@ class LogicalWhatClosureAcceptanceTest {
                 "eff-fade", "def-fade", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
-                Map.of(), Map.of(), TestPlans.gaussianBlurEffect().provenance());
-        RenderPlanningInput changed = TestPlans.inputWithEffectState(
-                List.of(fadeEffect), List.of(fadeDef));
+                Map.of(), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
+                TestPlans.gaussianBlurEffect().provenance());
+        RenderPlanningInput changed = TestPlans.inputWithEffectStateAndProjection(
+                List.of(fadeEffect), List.of(fadeDef), TestPlans.projectionWithFade());
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "effect category change -> fingerprint changes");
     }

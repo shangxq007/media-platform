@@ -1,6 +1,7 @@
 package com.example.platform.render.domain.renderplan;
 
 import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import org.junit.jupiter.api.Test;
@@ -45,10 +46,11 @@ class R3AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.mediaClip().timelineRange(), Map.of(), Map.of(),
                 TestPlans.gaussianBlurEffect().provenance());
+                // target removed
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
                         List.of(orphan), List.of(TestPlans.effectDefinition()),
-                        AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), List.of(orphan), List.of(TestPlans.effectDefinition()))),
+                        AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(orphan), List.of(TestPlans.effectDefinition()))),
                 "unknown effectDefinitionId -> fail closed (R3-B1)");
     }
 
@@ -60,10 +62,11 @@ class R3AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.mediaClip().timelineRange(), Map.of(), Map.of(),
                 TestPlans.gaussianBlurEffect().provenance());
+                // target removed
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
                         List.of(versionMismatch), List.of(TestPlans.effectDefinition()),
-                        AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), List.of(versionMismatch), List.of(TestPlans.effectDefinition()))),
+                        AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(versionMismatch), List.of(TestPlans.effectDefinition()))),
                 "effectDefinitionVersion mismatch -> fail closed (R3-B1)");
     }
 
@@ -89,20 +92,22 @@ class R3AcceptanceTest {
         EffectInstance e2 = TestPlans.gaussianBlurEffect();
         VerifiedEffectSemanticSnapshot s1 = VerifiedEffectSemanticSnapshotFactory.verified(
                 List.of(e1), List.of(TestPlans.effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), List.of(e1), List.of(TestPlans.effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(e1), List.of(TestPlans.effectDefinition())));
         VerifiedEffectSemanticSnapshot s2 = VerifiedEffectSemanticSnapshotFactory.verified(
                 List.of(e2), List.of(TestPlans.effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), List.of(e2), List.of(TestPlans.effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(e2), List.of(TestPlans.effectDefinition())));
         assertEquals(s1.contentPin(), s2.contentPin(),
                 "semantic-equal effect state -> identical content pin");
         // distinct state -> distinct pin
         EffectInstance changed = new EffectInstance(
                 e1.effectInstanceId(), e1.effectDefinitionId(), e1.effectDefinitionVersion(),
                 e1.mediaType(), e1.enabled(), e1.applicationRange(),
-                Map.of("radiusPixels", "8"), e1.automationBindings(), e1.provenance());
+                Map.of("radiusPixels", "8"), e1.automationBindings(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
+                e1.provenance());
         VerifiedEffectSemanticSnapshot s3 = VerifiedEffectSemanticSnapshotFactory.verified(
                 List.of(changed), List.of(TestPlans.effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), List.of(changed), List.of(TestPlans.effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(changed), List.of(TestPlans.effectDefinition())));
         assertNotEquals(s1.contentPin(), s3.contentPin(),
                 "distinct effect state -> distinct content pin");
     }
@@ -130,6 +135,7 @@ class R3AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("radiusPixels", "8"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changedInput = TestPlans.inputWithEffectState(
                 List.of(changed), base.effectSemanticSnapshot().effectDefinitions());
@@ -211,7 +217,9 @@ class R3AcceptanceTest {
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
-                Map.of(), Map.of(), TestPlans.gaussianBlurEffect().provenance());
+                Map.of(), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
+                TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput without = TestPlans.inputWithEffectState(
                 List.of(noParams), base.effectSemanticSnapshot().effectDefinitions());
         assertNotEquals(withParam, planner.plan(without).plan().fingerprint().sha256Hex(),

@@ -205,8 +205,8 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
         val materializerSource = javaFiles.find { it.name == "DefaultRenderMaterializer.java" }?.readText()
         require(materializerSource != null
                 && !materializerSource.contains("parameter.key() + \"=\" + parameter.value()")
-                && materializerSource.contains("EffectSemanticStateCanonicalSemantics.encodeParameterPair")) {
-            "FAIL: node requirement identity must reuse the shared pair encoder (R4-B/M2)"
+                && !materializerSource.contains("parameter.key() + \":\" + parameter.value()")) {
+            "FAIL: node requirement identity must not use delimiter flattening (R4-B/M2; R6-C2 single encoder)"
         }
 
         // R4-M: ColorDescription canonicalizer has explicit fail-closed branch.
@@ -227,10 +227,11 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
             "FAIL: AuthoredEffectSemanticAuthority (single issuance path) missing (R5-A)"
         }
         val materializerSource2 = javaFiles.find { it.name == "DefaultRenderMaterializer.java" }?.readText()
-        require(materializerSource2 != null && materializerSource2.contains("ofComplete(")
-                && materializerSource2.contains("effectInstanceId")
-                && materializerSource2.contains("applicationRange")) {
-            "FAIL: materializer must build complete Logical Effect WHAT (instance/definition/range) (R5-B)"
+        require(materializerSource2 != null
+                && materializerSource2.contains("ofComplete(")
+                && materializerSource2.contains("effect.effectInstanceId()")
+                && materializerSource2.contains("target() instanceof ClipEffectTarget")) {
+            "FAIL: materializer must build complete Logical Effect WHAT via ofComplete + typed target (R5-B/R6-A)"
         }
         require(codec != null && codec.readText().contains("effect.effectInstanceId()")
                 && codec.readText().contains("effect.effectDefinitionVersion()")
@@ -246,6 +247,80 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
             "FAIL: unordered Effect collections must be deep-sorted (R5-F)"
         }
 
-        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, R5 A/B/E/F, ${javaFiles.size} files)")
+        // ── R6 structural guard ─────────────────────────────────────────────
+        // 1. EffectTarget + ClipEffectTarget exist in the Effect domain.
+        require(timelineEffectFiles.any { it.name == "EffectTarget.java" }
+                && timelineEffectFiles.any { it.name == "ClipEffectTarget.java" }) {
+            "FAIL: typed EffectTarget root + ClipEffectTarget variant required (R6-A)"
+        }
+        // 2. RevisionOwnedEffectProjection (revision-owned membership authority).
+        require(timelineEffectFiles.any { it.name == "RevisionOwnedEffectProjection.java" }) {
+            "FAIL: RevisionOwnedEffectProjection (revision-owned membership) required (R6-A)"
+        }
+        // 3. authority verifies membership via the projection (no overlap-only).
+        val r6AuthoritySource = timelineEffectFiles.find { it.name == "AuthoredEffectSemanticAuthority.java" }?.readText()
+        require(r6AuthoritySource != null && r6AuthoritySource.contains("projection.contains(")
+                && r6AuthoritySource.contains("has no explicit authored")) {
+            "FAIL: authority must verify membership via revision-owned projection, fail closed on target-less (R6-A)"
+        }
+        // 4. no overlap-only ownership heuristic in the authority.
+        require(r6AuthoritySource != null && !r6AuthoritySource.contains("overlaps(")) {
+            "FAIL: authority must not use temporal overlap as ownership (R6-A)"
+        }
+        // 5. EffectInstance carries typed target.
+        val r6EffectInstanceSource = timelineEffectFiles.find { it.name == "EffectInstance.java" }?.readText()
+        require(r6EffectInstanceSource != null && r6EffectInstanceSource.contains("EffectTarget target")) {
+            "FAIL: EffectInstance must carry typed EffectTarget (R6-A)"
+        }
+        // 6. target participates in domain canonical semantics.
+        require(effectSemanticsSource != null && effectSemanticsSource.readText().contains("targetTrack")) {
+            "FAIL: Effect target must participate in domain canonical digest (R6-F)"
+        }
+        // 7. no effectsForClip overlap association in the materializer.
+        val r6MaterializerSource = javaFiles.find { it.name == "DefaultRenderMaterializer.java" }?.readText()
+        require(r6MaterializerSource != null && r6MaterializerSource.contains("target() instanceof ClipEffectTarget")
+                && !r6MaterializerSource.contains("applicationRange().overlaps(")) {
+            "FAIL: effectsForClip must select by typed target, not overlap (R6-A6)"
+        }
+        // 8. EffectMaterializationRequirement contains target; no broken factories.
+        val r6EffectReqSource = javaFiles.find { it.name == "EffectMaterializationRequirement.java" }?.readText()
+        require(r6EffectReqSource != null && r6EffectReqSource.contains("EffectTarget target")
+                && !r6EffectReqSource.contains("static EffectMaterializationRequirement of(")
+                && !r6EffectReqSource.contains("ofSorted(")) {
+            "FAIL: EffectMaterializationRequirement requires target; of()/ofSorted() must be gone (R6-D)"
+        }
+        // 9. requiredCapabilities consumed by capability lowering (union rule).
+        val r6VocabSource = javaFiles.find { it.name == "RenderCapabilityVocabulary.java" }?.readText()
+        require(r6VocabSource != null && r6VocabSource.contains("forRequiredCapability")
+                && r6VocabSource.contains("definitionRequiredCapabilities")) {
+            "FAIL: definition requiredCapabilities must be lowered via platform authority (R6-B)"
+        }
+        val r6MaterializerSource2 = javaFiles.find { it.name == "DefaultRenderMaterializer.java" }?.readText()
+        require(r6MaterializerSource2 != null && r6MaterializerSource2.contains("definition.requiredCapabilities()")) {
+            "FAIL: materializer must consume EffectDefinition.requiredCapabilities (R6-B)"
+        }
+        // 10. node identity uses the complete effect logical requirement canonical
+        // (single encoder shared with final plan serialization).
+        require(codec != null && codec.readText().contains("effectMaterializationRequirementCanonical")) {
+            "FAIL: single effect logical requirement canonical encoder required (R6-C2)"
+        }
+        require(r6MaterializerSource2 != null
+                && r6MaterializerSource2.contains("CODEC.effectMaterializationRequirementCanonical(")) {
+            "FAIL: effect node identity must use the single canonical encoder (R6-C)"
+        }
+        // 11. R6-H: effect stack order is ORDERED — canonical state must NOT
+        // re-sort EffectInstance by id.
+        require(effectSemanticsSource != null
+                && !effectSemanticsSource.readText()
+                        .contains("sorted(java.util.Comparator.comparing(EffectInstance::effectInstanceId))")) {
+            "FAIL: authored effect stack order must be preserved (R6-H ORDERED); no instance-id re-sort"
+        }
+        // 12. final plan still carries the global EffectSemanticReference (R4-A2).
+        val r6RenderPlanSource = javaFiles.find { it.name == "RenderPlan.java" }?.readText()
+        require(r6RenderPlanSource != null && r6RenderPlanSource.contains("EffectSemanticReference")) {
+            "FAIL: final RenderPlan must retain EffectSemanticReference (R4-A2 preserved)"
+        }
+
+        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, R5 A/B/E/F, R6 A/B/C/D/F/H, ${javaFiles.size} files)")
     }
 }

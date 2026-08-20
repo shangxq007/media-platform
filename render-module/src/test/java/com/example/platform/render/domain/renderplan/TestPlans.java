@@ -48,6 +48,12 @@ import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
+import com.example.platform.timeline.canonicalmodel.TimelineSourceRef;
+import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
+import com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile;
+import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
+import com.example.platform.timeline.semantics.effect.RevisionOwnedEffectProjection;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
@@ -99,7 +105,7 @@ final class TestPlans {
      */
     static EffectSemanticReference testEffectReference() {
         return new EffectSemanticReference(
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), revisionOwnedProjection(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
     }
 
     /** The canonical planning input described in brief §13 (source RESOLVED). */
@@ -125,7 +131,7 @@ final class TestPlans {
                 document, digest, java.time.Instant.EPOCH, "test");
         return VerifiedRenderSemanticSnapshotFactory.verified(
                 revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), revisionOwnedProjection(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
     }
 
     /** Canonical input with the source in the given resolution state. */
@@ -180,8 +186,70 @@ final class TestPlans {
         RenderPlanningInput base = canonicalInput();
         VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
                 effects, definitions,
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), effects, definitions));
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), revisionOwnedProjection(), effects, definitions));
         return inputWithEffects(snapshot);
+    }
+
+    /**
+     * R6-A: planning input with a CUSTOM effect state + CUSTOM revision-owned
+     * membership projection (the authority verifies membership against the
+     * supplied projection). Used by tests that introduce effects beyond the
+     * canonical fixture (e.g. a fade effect with its own wire membership).
+     */
+    static RenderPlanningInput inputWithEffectStateAndProjection(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions,
+            RevisionOwnedEffectProjection projection) {
+        RenderPlanningInput base = canonicalInput();
+        VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
+                effects, definitions,
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), projection, effects, definitions));
+        return inputWithEffects(snapshot);
+    }
+
+    /**
+     * R6: plans with the given authored effect state + definitions, using the
+     * canonical revision-owned membership projection. Goes through the
+     * production authority path only.
+     */
+    static RenderPlan planForEffects(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions) {
+        RenderPlanningInput input = inputWithEffectStateAndProjection(
+                effects, definitions, revisionOwnedProjection());
+        return new DefaultRenderPlanner().plan(input).plan();
+    }
+
+    /**
+     * R6: plans with the given authored effect state + definitions + a CUSTOM
+     * revision-owned membership projection. Goes through the production
+     * authority path only.
+     */
+    static RenderPlan planForEffects(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions,
+            RevisionOwnedEffectProjection projection) {
+        RenderPlanningInput input = inputWithEffectStateAndProjection(
+                effects, definitions, projection);
+        return new DefaultRenderPlanner().plan(input).plan();
+    }
+
+    /**
+     * R6: plans with the given authored effect state + definitions + a CUSTOM
+     * revision-owned membership projection + CUSTOM TimelineRevision (target
+     * clip must exist in the revision's canonical timeline — R6-A5). Goes
+     * through the production authority path only.
+     */
+    static RenderPlan planForEffects(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions,
+            TimelineRevision timelineRevision, RevisionOwnedEffectProjection projection) {
+        RenderPlanningInput base = canonicalInput();
+        VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
+                effects, definitions,
+                AuthoredEffectSemanticAuthority.issue(timelineRevision, projection, effects, definitions));
+        VerifiedTimelineRevision verifiedRevision =
+                VerifiedTimelineRevisionFactory.verified(timelineRevision, timelineDigester());
+        RenderPlanningInput input = new RenderPlanningInput(
+                new VerifiedRenderSemanticSnapshot(verifiedRevision, snapshot),
+                base.request(), base.resolution(), base.capabilities());
+        return new DefaultRenderPlanner().plan(input).plan();
     }
 
     /**
@@ -254,6 +322,60 @@ final class TestPlans {
         return new TimelineContentDigester();
     }
 
+    /**
+     * R6-A: the revision-owned authored effect membership projection for the
+     * canonical fixture — effect {@code eff-1} (wire id) belongs to clip
+     * {@code c1} on track {@code t1}, definition key {@code def-blur}.
+     * Derived from the revision-owned wire aggregate shape
+     * ({@code TimelineCandidate.Track.Clip.effects[]}).
+     */
+    static RevisionOwnedEffectProjection revisionOwnedProjection() {
+        return RevisionOwnedEffectProjection.fromCandidate(
+                new TimelineCandidate(
+                        "timeline-1", "product-1",
+                        TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
+                        List.of(new TimelineCandidate.Track(
+                                TRACK_ID, TimelineCandidate.TrackType.VIDEO, 0, null,
+                                List.of(new TimelineCandidate.Clip(
+                                        CLIP_ID, TimelineSourceRef.of("asset-1"),
+                                        MediaTime.ofRational(0, 1),
+                                        MediaTime.ofRational(0, 1),
+                                        MediaTime.ofRational(2, 1),
+                                        FrameRate.of(30, 1),
+                                        List.of(new TimelineClipEffect(
+                                                EFFECT_INSTANCE_ID, "def-blur", Map.of())),
+                                        List.of(), null, null)))),
+                        List.of(), List.of(), List.of(),
+                        com.example.platform.audio.domain.mix.AudioMix.empty(), List.of()));
+    }
+
+    /**
+     * R6-A: revision-owned projection containing the canonical fixture effect
+     * (eff-1) AND a fade effect (eff-fade) on the same clip — for tests that
+     * vary the effect category / introduce additional authored effects.
+     */
+    static RevisionOwnedEffectProjection projectionWithFade() {
+        return RevisionOwnedEffectProjection.fromCandidate(
+                new TimelineCandidate(
+                        "timeline-1", "product-1",
+                        TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
+                        List.of(new TimelineCandidate.Track(
+                                TRACK_ID, TimelineCandidate.TrackType.VIDEO, 0, null,
+                                List.of(new TimelineCandidate.Clip(
+                                        CLIP_ID, TimelineSourceRef.of("asset-1"),
+                                        MediaTime.ofRational(0, 1),
+                                        MediaTime.ofRational(0, 1),
+                                        MediaTime.ofRational(2, 1),
+                                        FrameRate.of(30, 1),
+                                        List.of(new TimelineClipEffect(
+                                                        EFFECT_INSTANCE_ID, "def-blur", Map.of()),
+                                                new TimelineClipEffect(
+                                                        "eff-fade", "def-fade", Map.of())),
+                                        List.of(), null, null)))),
+                        List.of(), List.of(), List.of(),
+                        com.example.platform.audio.domain.mix.AudioMix.empty(), List.of()));
+    }
+
     /** R5-A: authoritative TimelineRevision with a custom revision id. */
     static TimelineRevision timelineRevisionWithId(String revisionId) {
         TimelineDocument document = canonicalDocument();
@@ -261,6 +383,147 @@ final class TestPlans {
         String digest = digester.digest(document);
         return new TimelineRevision(
                 revisionId, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+    }
+
+    /**
+     * R6-A/N9: revision-owned projection containing TWO authored effects
+     * (eff-1 and eff-2) on the same clip — for node-identity locality tests.
+     */
+    static RevisionOwnedEffectProjection projectionWithSecondEffect() {
+        return RevisionOwnedEffectProjection.fromCandidate(
+                new TimelineCandidate(
+                        "timeline-1", "product-1",
+                        TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
+                        List.of(new TimelineCandidate.Track(
+                                TRACK_ID, TimelineCandidate.TrackType.VIDEO, 0, null,
+                                List.of(new TimelineCandidate.Clip(
+                                        CLIP_ID, TimelineSourceRef.of("asset-1"),
+                                        MediaTime.ofRational(0, 1),
+                                        MediaTime.ofRational(0, 1),
+                                        MediaTime.ofRational(2, 1),
+                                        FrameRate.of(30, 1),
+                                        List.of(new TimelineClipEffect(
+                                                        EFFECT_INSTANCE_ID, "def-blur", Map.of()),
+                                                new TimelineClipEffect(
+                                                        "eff-2", "def-blur", Map.of())),
+                                        List.of(), null, null)))),
+                        List.of(), List.of(), List.of(),
+                        com.example.platform.audio.domain.mix.AudioMix.empty(), List.of()));
+    }
+
+    /**
+     * R6-A/N6: authoritative TimelineRevision whose canonical timeline carries
+     * TWO clips (canonical c1 and the given second clip id) so effect target
+     * variation can be observed within one plan. Digest recomputed.
+     */
+    static TimelineRevision timelineRevisionWithTwoClips(String secondClipId) {
+        TimelineDocument document = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(TRACK_ID, "v1",
+                        TrackType.VIDEO,
+                        List.of(canonicalTimelineClip(),
+                                new TimelineClip(
+                                        secondClipId, "asset-1", "stream-1",
+                                        ARTIFACT_ID, ARTIFACT_DIGEST_HEX,
+                                        MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                                        MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                                        "MEDIA_STREAM",
+                                        ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD))))),
+                TimelineMetadata.empty(),
+                audioMix(),
+                List.of(),
+                List.of(textElement()));
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        return new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+    }
+
+    /**
+     * R6-A/N6: revision-owned projection with eff-1 owned by c1 AND eff-2
+     * owned by the given second clip — lets the planner observe effect target
+     * variation within one plan (both memberships authentic).
+     */
+    static RevisionOwnedEffectProjection projectionWithClips(String secondClipId) {
+        return RevisionOwnedEffectProjection.fromCandidate(
+                new TimelineCandidate(
+                        "timeline-1", "product-1",
+                        TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
+                        List.of(new TimelineCandidate.Track(
+                                TRACK_ID, TimelineCandidate.TrackType.VIDEO, 0, null,
+                                List.of(new TimelineCandidate.Clip(
+                                                CLIP_ID, TimelineSourceRef.of("asset-1"),
+                                                MediaTime.ofRational(0, 1),
+                                                MediaTime.ofRational(0, 1),
+                                                MediaTime.ofRational(2, 1),
+                                                FrameRate.of(30, 1),
+                                                List.of(new TimelineClipEffect(
+                                                        EFFECT_INSTANCE_ID, "def-blur", Map.of())),
+                                                List.of(), null, null),
+                                        new TimelineCandidate.Clip(
+                                                secondClipId, TimelineSourceRef.of("asset-1"),
+                                                MediaTime.ofRational(0, 1),
+                                                MediaTime.ofRational(0, 1),
+                                                MediaTime.ofRational(2, 1),
+                                                FrameRate.of(30, 1),
+                                                List.of(new TimelineClipEffect(
+                                                        "eff-2", "def-blur", Map.of())),
+                                                List.of(), null, null)))),
+                        List.of(), List.of(), List.of(),
+                        com.example.platform.audio.domain.mix.AudioMix.empty(), List.of()));
+    }
+
+    /**
+     * R6-A/T3: revision-owned membership projection with the fixture effect
+     * owned by a DIFFERENT clip id (same time range) — proves membership is
+     * not temporal equivalence.
+     */
+    static RevisionOwnedEffectProjection revisionOwnedProjectionWithClipId(String clipId) {
+        return RevisionOwnedEffectProjection.fromCandidate(
+                new TimelineCandidate(
+                        "timeline-1", "product-1",
+                        TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1,
+                        List.of(new TimelineCandidate.Track(
+                                TRACK_ID, TimelineCandidate.TrackType.VIDEO, 0, null,
+                                List.of(new TimelineCandidate.Clip(
+                                        clipId, TimelineSourceRef.of("asset-1"),
+                                        MediaTime.ofRational(0, 1),
+                                        MediaTime.ofRational(0, 1),
+                                        MediaTime.ofRational(2, 1),
+                                        FrameRate.of(30, 1),
+                                        List.of(new TimelineClipEffect(
+                                                EFFECT_INSTANCE_ID, "def-blur", Map.of())),
+                                        List.of(), null, null)))),
+                        List.of(), List.of(), List.of(),
+                        com.example.platform.audio.domain.mix.AudioMix.empty(), List.of()));
+    }
+
+    /**
+     * R6-A/T3: authoritative TimelineRevision whose canonical timeline carries
+     * a clip with the given clip id (same time range as the canonical clip).
+     * Digest recomputed over the custom document so verification succeeds.
+     */
+    static TimelineRevision timelineRevisionWithClipId(String clipId) {
+        TimelineDocument document = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(TRACK_ID, "v1",
+                        TrackType.VIDEO,
+                        List.of(new TimelineClip(
+                                clipId, "asset-1", "stream-1", ARTIFACT_ID, ARTIFACT_DIGEST_HEX,
+                                MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                                MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                                "MEDIA_STREAM",
+                                ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD))))),
+                TimelineMetadata.empty(),
+                audioMix(),
+                List.of(),
+                List.of(textElement()));
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        return new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
                 document, digest, java.time.Instant.EPOCH, "test");
     }
 
@@ -286,7 +549,7 @@ final class TestPlans {
                 document, digest, java.time.Instant.EPOCH, "test");
         return VerifiedRenderSemanticSnapshotFactory.verified(
                 revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), revisionOwnedProjection(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
     }
 
     /** TimelineClip with a REVERSE constant-rate mapping. */
@@ -425,6 +688,7 @@ final class TestPlans {
                 // parameter — it is resolved from the EffectDefinition catalog.
                 Map.of("radiusPixels", "4"),
                 Map.of(),
+                new ClipEffectTarget(TRACK_ID, CLIP_ID),
                 new EffectInstance.EffectProvenance("test", "t", 0L));
     }
 
@@ -439,6 +703,23 @@ final class TestPlans {
                 EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION,
                 List.of(),
                 List.of(),
+                List.of());
+    }
+
+    /**
+     * R6-B: canonical effect definition with an ADDITIONAL definition-required
+     * capability (lowered to a typed platform CapabilityRequirement).
+     */
+    static EffectInstance.EffectDefinition effectDefinitionWithRequiredCapability(String capability) {
+        return new EffectInstance.EffectDefinition(
+                "def-blur",
+                "1",
+                EffectInstance.EffectCategory.GAUSSIAN_BLUR,
+                List.of(EffectInstance.EffectMediaType.VIDEO),
+                Map.of(),
+                EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION,
+                List.of(),
+                List.of(capability),
                 List.of());
     }
 

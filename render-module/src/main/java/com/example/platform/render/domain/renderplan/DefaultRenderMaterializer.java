@@ -11,6 +11,7 @@ import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.clip.TimelineSourceBinding;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
@@ -124,8 +125,15 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     continue; // diagnostic already recorded
                 }
                 String opKey = category.name().toLowerCase();
-                CapabilityRequirement cap = RenderCapabilityVocabulary.forEffect(category);
-                List<CapabilityRequirement> effectCaps = List.of(cap);
+                // R6-B: effective capabilities = category baseline UNION
+                // definition-required capabilities (typed CapabilityId lowering).
+                EffectInstance.EffectDefinition definition = resolveEffectDefinition(
+                        effect, input, diagnostics);
+                if (definition == null) {
+                    continue; // diagnostic already recorded (definition missing)
+                }
+                List<CapabilityRequirement> effectCaps = RenderCapabilityVocabulary.forEffect(
+                        category, definition.requiredCapabilities());
                 // F1 + R5-B: typed materialized WHAT — authoritative category +
                 // supported parameters as typed immutable values PLUS the
                 // complete downstream-relevant authored Effect WHAT (instance id,
@@ -135,11 +143,6 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 // Authored Map<String,String> parameters are converted here into the
                 // typed EffectParameter list (deterministic sorted by key); the
                 // renderplan model itself never carries a raw map payload.
-                EffectInstance.EffectDefinition definition = resolveEffectDefinition(
-                        effect, input, diagnostics);
-                if (definition == null) {
-                    continue; // diagnostic already recorded (definition missing)
-                }
                 List<EffectMaterializationRequirement.AutomationBinding> automationBindings =
                         effect.automationBindings().entrySet().stream()
                                 .map(entry -> new EffectMaterializationRequirement.AutomationBinding(
@@ -153,15 +156,13 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                                 entry.getKey(), entry.getValue()))
                                         .toList(),
                                 automationBindings);
-                List<String> paramEncodings = effectRequirement.sortedParameters().stream()
-                        // R4-B: node requirement identity uses the SAME shared
-                        // pair encoder as the final plan canonical serialization
-                        // (single framing implementation — no key + "=" + value).
-                        .map(parameter -> EffectSemanticStateCanonicalSemantics.encodeParameterPair(
-                                parameter.key(), parameter.value()))
-                        .toList();
-                String effectReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
-                        List.of(), effectCaps, List.of(), paramEncodings));
+                // R6-C2: node identity fingerprint uses the SAME complete
+                // canonical encoder as the final RenderPlan serialization
+                // (single grammar, multiple consumers) — application range,
+                // automation, definition version, temporal behavior, target and
+                // effective capabilities all participate in the node identity.
+                String effectReqFp = CODEC.sha256Hex(CODEC.effectMaterializationRequirementCanonical(
+                        effectRequirement, effectCaps));
                 RenderNodeId effectId = RenderNodeId.of(
                         new RenderNodeKind.Effect(), effectPath, opKey, effectReqFp);
                 RenderNode effectNode = new RenderNode(
@@ -344,10 +345,18 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
      * by application-range overlap with the clip's timeline range (authored
      * order preserved — it is input, never re-derived).
      */
+    /**
+     * R6-A6: selects effects for a clip by EXPLICIT typed authored target
+     * membership — {@code effect.target() == (clip.trackId, clip.clipId)} —
+     * NOT by temporal overlap. The authored effect stack order is preserved
+     * (input order; R6-H ORDERED semantics).
+     */
     private List<EffectInstance> effectsForClip(List<EffectInstance> effects, MediaClip clip) {
         List<EffectInstance> result = new ArrayList<>();
         for (EffectInstance effect : effects) {
-            if (effect.applicationRange().overlaps(clip.timelineRange())) {
+            if (effect.target() instanceof ClipEffectTarget target
+                    && target.trackId().equals(clip.trackId())
+                    && target.clipId().equals(clip.clipId())) {
                 result.add(effect);
             }
         }

@@ -36,6 +36,60 @@ public final class RenderCapabilityVocabulary {
         return requirement(CapabilityId.of("video.decode"));
     }
 
+    /**
+     * R6-B: lowers an authored {@code EffectDefinition.requiredCapabilities}
+     * entry (a capability identity String) into a typed platform
+     * {@link CapabilityRequirement} via the platform capability authority
+     * ({@link CapabilityId#of} validation + exact platform contract 1.0).
+     *
+     * <p>Bounded lowering rule (R6-B2): the authored String is interpreted as a
+     * {@code CapabilityId}; if it does not parse as a valid platform capability
+     * id this FAILS CLOSED (no raw-string capability authority in render, no
+     * invented per-provider semantics). The contract range is the exact
+     * platform contract 1.0 — a documented R6 bounded default, not a
+     * per-provider invention.
+     *
+     * @param requiredCapability authored capability identity String
+     * @return typed capability requirement
+     * @throws IllegalArgumentException if the string is not a valid CapabilityId
+     */
+    public static CapabilityRequirement forRequiredCapability(String requiredCapability) {
+        Objects.requireNonNull(requiredCapability, "requiredCapability");
+        return requirement(CapabilityId.of(requiredCapability));
+    }
+
+    /**
+     * R6-B: effective capability requirements for an EFFECT node =
+     * category baseline capability UNION definition-required capabilities
+     * (deduplicated by capability id, deterministic order).
+     *
+     * <p>The category mapping is the Render-owned bounded baseline; the
+     * definition's authored {@code requiredCapabilities} are the authoritative
+     * definition semantics and MUST NOT be replaced by the category mapping.
+     */
+    public static java.util.List<CapabilityRequirement> forEffect(
+            EffectCategory category,
+            java.util.List<String> definitionRequiredCapabilities) {
+        Objects.requireNonNull(category, "category");
+        Objects.requireNonNull(definitionRequiredCapabilities, "definitionRequiredCapabilities");
+        // deterministic union: category baseline FIRST, then definition-required
+        // capabilities, deduplicated by capability id preserving first-seen order
+        // (no map token in the renderplan package — C20 guard).
+        java.util.ArrayList<CapabilityRequirement> result = new java.util.ArrayList<>();
+        java.util.ArrayList<String> seen = new java.util.ArrayList<>();
+        CapabilityRequirement baseline = forEffect(category);
+        result.add(baseline);
+        seen.add(baseline.capabilityId().value());
+        for (String required : definitionRequiredCapabilities) {
+            CapabilityRequirement lowered = forRequiredCapability(required);
+            if (!seen.contains(lowered.capabilityId().value())) {
+                seen.add(lowered.capabilityId().value());
+                result.add(lowered);
+            }
+        }
+        return java.util.List.copyOf(result);
+    }
+
     /** EFFECT node: maps an authoritative effect category to a platform capability. */
     public static CapabilityRequirement forEffect(EffectCategory category) {
         Objects.requireNonNull(category, "category");

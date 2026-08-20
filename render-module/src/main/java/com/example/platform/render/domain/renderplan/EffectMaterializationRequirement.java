@@ -2,6 +2,8 @@ package com.example.platform.render.domain.renderplan;
 
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.semantics.clip.MediaClip;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
+import com.example.platform.timeline.semantics.effect.EffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import java.util.List;
 import java.util.Objects;
@@ -46,7 +48,8 @@ public record EffectMaterializationRequirement(
         boolean enabled,
         MediaClip.TimeRange applicationRange,
         List<AutomationBinding> automationBindings,
-        EffectInstance.EffectTemporalBehavior temporalBehavior)
+        EffectInstance.EffectTemporalBehavior temporalBehavior,
+        EffectTarget target)
         implements RenderMaterializationRequirement {
 
     public EffectMaterializationRequirement {
@@ -56,6 +59,7 @@ public record EffectMaterializationRequirement(
         Objects.requireNonNull(effectDefinitionVersion, "effectDefinitionVersion");
         Objects.requireNonNull(applicationRange, "applicationRange");
         Objects.requireNonNull(temporalBehavior, "temporalBehavior");
+        Objects.requireNonNull(target, "target"); // R6-A: typed authored target mandatory
         if (effectInstanceId.isBlank()) {
             throw new IllegalArgumentException("effectInstanceId must not be blank");
         }
@@ -114,24 +118,23 @@ public record EffectMaterializationRequirement(
         }
     }
 
-    public static EffectMaterializationRequirement of(
-            EffectInstance.EffectCategory category,
-            List<EffectParameter> parameters) {
-        return new EffectMaterializationRequirement(category, parameters, "", "", "", false,
-                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(0, 1)),
-                List.of(), EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION);
-    }
-
     /**
-     * R5-B: complete factory from authored effect state + resolved definition.
-     * Resolves the category from the authoritative definition (never reread
-     * downstream) and carries the full typed WHAT.
+     * R6-D: the ONLY public factory — complete typed Logical Effect WHAT,
+     * resolved from the authored effect instance + authoritative definition
+     * (which carries the typed authored target). No partial/incomplete
+     * construction path exists.
      */
     public static EffectMaterializationRequirement ofComplete(
             EffectInstance effect,
             EffectInstance.EffectDefinition definition,
             List<EffectParameter> parameters,
             List<AutomationBinding> automationBindings) {
+        Objects.requireNonNull(effect, "effect");
+        if (effect.target() == null) {
+            throw new IllegalArgumentException(
+                    "EffectInstance " + effect.effectInstanceId()
+                            + " carries no authored EffectTarget (R6-D fail closed)");
+        }
         return new EffectMaterializationRequirement(
                 definition.category(),
                 parameters,
@@ -141,17 +144,8 @@ public record EffectMaterializationRequirement(
                 effect.enabled(),
                 effect.applicationRange(),
                 automationBindings,
-                definition.temporalBehavior());
-    }
-
-    /** Convenience factory from authored parameter entries (deterministic sorted). */
-    public static EffectMaterializationRequirement ofSorted(
-            EffectInstance.EffectCategory category,
-            java.util.Collection<EffectParameter> parameters) {
-        List<EffectParameter> sorted = parameters.stream().sorted().toList();
-        return new EffectMaterializationRequirement(category, sorted, "", "", "", false,
-                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(0, 1)),
-                List.of(), EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION);
+                definition.temporalBehavior(),
+                effect.target());
     }
 
     /** Deterministic sorted parameter list for canonical encoding. */

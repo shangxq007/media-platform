@@ -5,6 +5,7 @@ import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
+import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
@@ -42,7 +43,8 @@ class R4AcceptanceTest {
         // Effect state bound to revision "other-rev" cannot be combined with
         // timeline revision REVISION_ID.
         EffectSemanticBinding foreignBinding = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevisionWithId("other-rev"), List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+                TestPlans.timelineRevisionWithId("other-rev"), TestPlans.revisionOwnedProjection(),
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedRenderSemanticSnapshotFactory.verified(
                         TestPlans.timelineRevision(), TestPlans.timelineDigester(),
@@ -59,9 +61,10 @@ class R4AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("radiusPixels", "99"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         EffectSemanticBinding bindingForDifferent = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), List.of(different), List.of(TestPlans.effectDefinition()));
+                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(different), List.of(TestPlans.effectDefinition()));
         // supplying the canonical effect with a binding computed over different state
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
@@ -94,6 +97,7 @@ class R4AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("radiusPixels", "8"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changedInput = TestPlans.inputWithEffectState(
                 List.of(changed), base.effectSemanticSnapshot().effectDefinitions());
@@ -154,6 +158,7 @@ class R4AcceptanceTest {
                 new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(1, 1)),
                 TestPlans.gaussianBlurEffect().parameters(),
                 TestPlans.gaussianBlurEffect().automationBindings(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changed = TestPlans.inputWithEffectState(
                 List.of(rangeChanged), base.effectSemanticSnapshot().effectDefinitions());
@@ -182,6 +187,7 @@ class R4AcceptanceTest {
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 TestPlans.gaussianBlurEffect().parameters(),
                 TestPlans.gaussianBlurEffect().automationBindings(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changed = TestPlans.inputWithEffectState(
                 List.of(instanceV2), List.of(defV2));
@@ -200,6 +206,7 @@ class R4AcceptanceTest {
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 TestPlans.gaussianBlurEffect().parameters(),
                 Map.of("radius", "auto.radius"), // automation binding added
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changed = TestPlans.inputWithEffectState(
                 List.of(automationChanged), base.effectSemanticSnapshot().effectDefinitions());
@@ -218,6 +225,7 @@ class R4AcceptanceTest {
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 TestPlans.gaussianBlurEffect().parameters(),
                 TestPlans.gaussianBlurEffect().automationBindings(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changed = TestPlans.inputWithEffectState(
                 List.of(disabled), base.effectSemanticSnapshot().effectDefinitions());
@@ -263,12 +271,14 @@ class R4AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("a", "1", "b", "2"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         EffectInstance e2 = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("b", "2", "a", "1"), Map.of(), // reversed insertion order
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         assertEquals(
                 EffectSemanticStateCanonicalSemantics.canonicalEffectState(
@@ -290,6 +300,7 @@ class R4AcceptanceTest {
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("a:b", "c"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput input = TestPlans.inputWithEffectState(
                 List.of(hostile), List.of(TestPlans.effectDefinition()));
@@ -335,6 +346,8 @@ class R4AcceptanceTest {
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 TestPlans.gaussianBlurEffect().parameters(),
                 Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
+
                 new EffectInstance.EffectProvenance("src-A", "id-1", 1000L));
         EffectInstance b = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
@@ -342,6 +355,8 @@ class R4AcceptanceTest {
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 TestPlans.gaussianBlurEffect().parameters(),
                 Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
+
                 new EffectInstance.EffectProvenance("src-B", "id-2", 9999L));
         assertEquals(
                 EffectSemanticStateCanonicalSemantics.canonicalEffectState(
