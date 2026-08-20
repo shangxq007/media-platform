@@ -16,8 +16,8 @@ correction (ROADMAP20_LOGICAL_WHAT_CLOSURE_CORRECTION).
 
 ## Correction
 
-- Correction implementation SHA: (recorded at freeze)
-- Correction implementation tree: (recorded at freeze)
+- Correction implementation SHA: `8e0a11f488f0a5094f5ff5c63ef68ca9f78f064f`
+- Correction implementation tree: `f87fd0ec383521bc9957623192952b704a015531`
 - Correction parent: `9538e73ebef87ed71cf4cf92ba9cd6a4c6238821`
 
 ## Findings disposition
@@ -79,7 +79,8 @@ expectation.
 - extension-module: 314 / 0 / 0
 - timeline-module: 771 / 0 / 0
 - audio-module: 22 / 0 / 0
-- full suite: (recorded at FCV)
+- full suite: 7503 tests / 0 failures / 0 errors / 43 skipped (at FCV on
+  `8e0a11f4`)
 - bootJar: PASS
 - pfirr1RemediationCheck: PASS
 - verifyC20RenderPlanBoundaryGuard: PASS
