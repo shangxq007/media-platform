@@ -57,7 +57,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         List<RenderDependencyEdge> edges = new ArrayList<>();
         List<RenderPlanningDiagnostic> diagnostics = new ArrayList<>();
 
-        List<MediaClip> clips = input.hydratedRevision().clips();
+        List<MediaClip> clips = input.verifiedRevision().clips();
         RenderRequest request = input.request();
 
         if (clips.isEmpty() || request.outputs().isEmpty()) {
@@ -108,7 +108,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
             // ── chained EFFECT nodes for enabled video effects on this clip ──
             RenderNodeId prevProducer = decodeId;
-            for (EffectInstance effect : effectsForClip(input.hydratedRevision().effects(), clip)) {
+            for (EffectInstance effect : effectsForClip(input.effects(), clip)) {
                 if (!effect.enabled() || !effect.isVideoEffect()) {
                     continue;
                 }
@@ -156,7 +156,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         }
 
         // ── Audio nodes (from AudioMix) ──
-        AudioMix audioMix = input.hydratedRevision().audioMix();
+        AudioMix audioMix = input.verifiedRevision().audioMix();
         List<RenderNodeId> audioProcessNodes = new ArrayList<>();
         if (audioMix != null && !audioMix.routes().isEmpty()) {
             for (AudioRoute route : audioMix.routes()) {
@@ -219,7 +219,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
         // ── TIMED_TEXT nodes (F2: typed materialization, connected to COMPOSITE) ──
         List<RenderNodeId> timedTextNodes = new ArrayList<>();
-        for (TextElement textElement : input.hydratedRevision().textElements()) {
+        for (TextElement textElement : input.verifiedRevision().textElements()) {
             RenderComponentPath textPath = RenderComponentPath.of(
                     RenderComponentKind.TEXT_ELEMENT, textElement.id().value());
             List<CapabilityRequirement> textCaps = List.of(
@@ -410,7 +410,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
     private EffectInstance.EffectCategory resolveEffectCategory(
             EffectInstance effect, RenderPlanningInput input,
             List<RenderPlanningDiagnostic> diagnostics) {
-        for (EffectInstance.EffectDefinition definition : input.hydratedRevision().effectDefinitions()) {
+        for (EffectInstance.EffectDefinition definition : input.effectDefinitions()) {
             if (definition.definitionId().equals(effect.effectDefinitionId())) {
                 return definition.category();
             }

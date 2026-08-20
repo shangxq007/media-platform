@@ -2,6 +2,8 @@ package com.example.platform.render.domain.renderplan;
 
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping;
@@ -38,7 +40,8 @@ class ExactTimeTest {
                 new RenderExtent(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 3), FrameRate.of(30, 1)),
                 req.outputs());
         RenderPlanningInput input = new RenderPlanningInput(
-                TestPlans.hydratedRevision(), sub,
+                TestPlans.verifiedRevision(), List.of(TestPlans.gaussianBlurEffect()),
+                List.of(TestPlans.effectDefinition()), sub,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);
@@ -52,15 +55,10 @@ class ExactTimeTest {
     void reverseMappingYieldsSameWindow() {
         // ConstantRate REVERSE -> same exact window (direction only changes sample order)
         RenderPlanner planner = new DefaultRenderPlanner();
-        MediaClip clip = TestPlans.mediaClip();
-        MediaClip reverseClip = reverseClip(clip);
         RenderRequest req = TestPlans.renderRequest();
-        HydratedTimelineRevision rev = TestPlans.hydratedRevision();
-        HydratedTimelineRevision reverseRev = new HydratedTimelineRevision(
-                rev.revision(), List.of(reverseClip), rev.effects(), rev.effectDefinitions(),
-                rev.audioMix(), rev.textElements());
+        VerifiedTimelineRevision rev = TestPlans.verifiedRevisionWithClip(TestPlans.reverseTimelineClip());
         RenderPlanningInput input = new RenderPlanningInput(
-                reverseRev, req,
+                rev, List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()), req,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);
@@ -72,16 +70,11 @@ class ExactTimeTest {
 
     @Test
     void freezeMappingYieldsPointWindow() {
-        MediaClip clip = TestPlans.mediaClip();
-        MediaClip freezeClip = freezeClip(clip);
         RenderRequest req = TestPlans.renderRequest();
         RenderPlanner planner = new DefaultRenderPlanner();
-        HydratedTimelineRevision rev = TestPlans.hydratedRevision();
-        HydratedTimelineRevision freezeRev = new HydratedTimelineRevision(
-                rev.revision(), List.of(freezeClip), List.of(), List.of(),
-                TestPlans.audioMix(), List.of(TestPlans.textElement()));
+        VerifiedTimelineRevision rev = TestPlans.verifiedRevisionWithClip(TestPlans.freezeTimelineClip());
         RenderPlanningInput input = new RenderPlanningInput(
-                freezeRev, req,
+                rev, List.of(), List.of(), req,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);

@@ -107,6 +107,48 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
             "FAIL: no reference to com.example.platform.graph (graph kernel delegation) in renderplan package"
         }
 
-        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, ${javaFiles.size} files)")
+        // R2 B1: verified revision projection boundary must be the primary
+        // planning input; the old arbitrarily-assembled hydrated record must not
+        // be resurrected as a planning input type.
+        val verifiedTypePresent = javaFiles.any { it.name == "VerifiedTimelineRevision.java" }
+        require(verifiedTypePresent) {
+            "FAIL: VerifiedTimelineRevision.java missing (R2 B1 verified projection boundary)"
+        }
+        val factoryPresent = javaFiles.any { it.name == "VerifiedTimelineRevisionFactory.java" }
+        require(factoryPresent) {
+            "FAIL: VerifiedTimelineRevisionFactory.java missing (R2 B1 verified hydration boundary)"
+        }
+        val hydratedGone = javaFiles.none { it.name == "HydratedTimelineRevision.java" }
+        require(hydratedGone) {
+            "FAIL: HydratedTimelineRevision.java must be removed (R2 B1: arbitrary assembly is not a verified boundary)"
+        }
+        val planningInputUsesVerified = javaFiles.any {
+            it.name == "RenderPlanningInput.java"
+                    && it.readText().contains("VerifiedTimelineRevision")
+        }
+        require(planningInputUsesVerified) {
+            "FAIL: RenderPlanningInput must consume VerifiedTimelineRevision (R2 B1)"
+        }
+
+        // R2 B2: TimedText materialization must carry complete StyledText
+        // semantics (content + semantic runs + style runs + paragraph style).
+        val timedTextHasStyledText = javaFiles.any {
+            it.name == "TimedTextMaterializationRequirement.java"
+                    && it.readText().contains("StyledText styledText")
+        }
+        require(timedTextHasStyledText) {
+            "FAIL: TimedTextMaterializationRequirement must carry StyledText (R2 B2 complete text WHAT)"
+        }
+
+        // R2 B3: no Object.toString() reliance in the canonical codec's
+        // fingerprint path — frame/run/fallback must be encoded explicitly.
+        val codec = javaFiles.find { it.name == "RenderPlanCanonicalCodec.java" }
+        require(codec != null && codec.readText().contains("textFrameCanonical")
+                && codec.readText().contains("resolvedFontRunCanonical")
+                && codec.readText().contains("styledTextCanonical")) {
+            "FAIL: RenderPlanCanonicalCodec must explicitly encode TextFrame/ResolvedFontRun/StyledText (R2 B3 value-deterministic)"
+        }
+
+        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, ${javaFiles.size} files)")
     }
 }

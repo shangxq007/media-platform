@@ -3,6 +3,12 @@ package com.example.platform.render.domain.renderplan;
 import com.example.platform.extension.domain.CapabilityId;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.version.TimelineRevision;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -11,9 +17,11 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * B. Determinism (brief §13B): same input 100+ times -> identical fingerprint;
- * shuffled construction -> identical; semantic changes -> different; non-semantic
- * changes (resolution state, capability context, request id) -> UNCHANGED.
+ * B. Determinism (brief §13B, R2 B1/B3): same input 100+ times -> identical
+ * fingerprint; semantic changes -> different; non-semantic changes (resolution
+ * state, capability context, request id) -> UNCHANGED. R2 B1: revision change
+ * is expressed through a separate verified revision projection (constructed via
+ * the authoritative factory); fragments cannot be mixed arbitrarily.
  */
 class RenderPlanDeterminismTest {
 
@@ -39,7 +47,8 @@ class RenderPlanDeterminismTest {
                 new RenderExtent(MediaTime.ofRational(0, 1), MediaTime.ofRational(3, 1), req.extent().frameRate()),
                 req.outputs());
         RenderPlanningInput changedInput = new RenderPlanningInput(
-                base.hydratedRevision(), changed, base.resolution(), base.capabilities());
+                base.verifiedRevision(), base.effects(), base.effectDefinitions(),
+                changed, base.resolution(), base.capabilities());
         String changedFp = planner.plan(changedInput).plan().fingerprint().sha256Hex();
 
         assertNotEquals(baseFp, changedFp, "extent change -> different fingerprint");
@@ -55,7 +64,8 @@ class RenderPlanDeterminismTest {
         RenderRequest changed = new RenderRequest(req.id(), req.extent(),
                 List.of(RenderOutputRequirement.of(RenderOutputRole.DELIVERY_RENDITION)));
         RenderPlanningInput changedInput = new RenderPlanningInput(
-                base.hydratedRevision(), changed, base.resolution(), base.capabilities());
+                base.verifiedRevision(), base.effects(), base.effectDefinitions(),
+                changed, base.resolution(), base.capabilities());
         String changedFp = planner.plan(changedInput).plan().fingerprint().sha256Hex();
 
         assertNotEquals(baseFp, changedFp, "output requirement change -> different fingerprint");
@@ -106,20 +116,38 @@ class RenderPlanDeterminismTest {
     }
 
     @Test
-    void fingerprintDependsOnRevision() {
+    void revisionChangeChangesFingerprint() {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
-        HydratedTimelineRevision otherRevision = new HydratedTimelineRevision(
-                new TimelineRevisionReference("rev-2", ContentDigest.sha256(TestPlans.REVISION_DIGEST_HEX)),
-                base.hydratedRevision().clips(),
-                base.hydratedRevision().effects(),
-                base.hydratedRevision().effectDefinitions(),
-                base.hydratedRevision().audioMix(),
-                base.hydratedRevision().textElements());
+        String baseFp = planner.plan(base).plan().fingerprint().sha256Hex();
+
+        // R2 B1: a different revision is a DIFFERENT verified projection built
+        // through the authoritative factory (its own digest is verified), NOT an
+        // arbitrary assembly of base fragments under a different id. The rev-2
+        // document has different content (different text), so its canonical
+        // digest differs and is recorded on the revision.
+        TimelineDocument rev2Doc = new TimelineDocument(
+                com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new com.example.platform.timeline.canonical.TimelineTrack(
+                        TestPlans.TRACK_ID, "v1",
+                        com.example.platform.timeline.canonical.TrackType.VIDEO,
+                        List.of(TestPlans.canonicalTimelineClip()))),
+                com.example.platform.timeline.canonical.TimelineMetadata.empty(),
+                TestPlans.audioMix(),
+                List.of(),
+                List.of(TestPlans.textElementWithContent("rev-2-content")));
+        TimelineContentDigester digester = new TimelineContentDigester();
+        TimelineRevision otherTimelineRevision = new TimelineRevision(
+                "rev-2", "product-1", null,
+                com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION,
+                rev2Doc, digester.digest(rev2Doc), java.time.Instant.EPOCH, "test");
+        VerifiedTimelineRevision otherVerified = VerifiedTimelineRevisionFactory.verified(
+                otherTimelineRevision, digester);
         RenderPlanningInput changed = new RenderPlanningInput(
-                otherRevision, base.request(), base.resolution(), base.capabilities());
-        assertNotEquals(planner.plan(base).plan().fingerprint().sha256Hex(),
-                planner.plan(changed).plan().fingerprint().sha256Hex(),
+                otherVerified, base.effects(), base.effectDefinitions(),
+                base.request(), base.resolution(), base.capabilities());
+
+        assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "revision change -> different fingerprint");
     }
 }

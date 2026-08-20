@@ -39,25 +39,38 @@ import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.canonical.TextElementId;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
+import com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
+import com.example.platform.timeline.version.TimelineRevision;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Package-private canonical test fixtures (brief §13). Builds one canonical
- * {@link RenderPlanningInput}: one MediaClip (t1/c1), one enabled video
- * GAUSSIAN_BLUR effect, one AudioMix route, one TextElement, a RENDER_MASTER
- * output request, fully-resolved source, and a full capability context.
+ * Package-private canonical test fixtures (brief §13, R2 B1/B2/B3). Builds one
+ * canonical {@link RenderPlanningInput}: one MediaClip (t1/c1), one enabled
+ * video GAUSSIAN_BLUR effect, one AudioMix route, one TextElement, a
+ * RENDER_MASTER output request, fully-resolved source, and a full capability
+ * context.
  *
- * <p>ROADMAP20 correction F4: all authored fragments are integrity-bound inside
- * one {@link HydratedTimelineRevision}; F3: capability context uses platform
- * {@link CapabilityId}s.
+ * <p>R2 B1: all clip/audio/text fragments are integrity-bound inside a
+ * {@link VerifiedTimelineRevision} produced by
+ * {@link VerifiedTimelineRevisionFactory} from an authoritative
+ * {@link TimelineRevision} (canonical content digest verified). Effects and
+ * effect definitions are separate explicit planning inputs (repository
+ * reality: TimelineDocument does not carry effects). F3: capability context
+ * uses platform {@link CapabilityId}s.
  */
 final class TestPlans {
 
@@ -81,7 +94,9 @@ final class TestPlans {
     /** The canonical planning input described in brief §13 (source RESOLVED). */
     static RenderPlanningInput canonicalInput() {
         return new RenderPlanningInput(
-                hydratedRevision(),
+                verifiedRevision(),
+                List.of(gaussianBlurEffect()),
+                List.of(effectDefinition()),
                 renderRequest(),
                 new SourceResolutionInput(Map.of(artifactId(), RenderSourceResolutionState.RESOLVED)),
                 fullCapabilityContext());
@@ -91,7 +106,7 @@ final class TestPlans {
     static RenderPlanningInput inputWithSourceState(RenderSourceResolutionState state) {
         RenderPlanningInput base = canonicalInput();
         return new RenderPlanningInput(
-                base.hydratedRevision(), base.request(),
+                base.verifiedRevision(), base.effects(), base.effectDefinitions(), base.request(),
                 new SourceResolutionInput(Map.of(artifactId(), state)),
                 base.capabilities());
     }
@@ -100,7 +115,8 @@ final class TestPlans {
     static RenderPlanningInput inputWithCapabilities(CapabilityContext capabilities) {
         RenderPlanningInput base = canonicalInput();
         return new RenderPlanningInput(
-                base.hydratedRevision(), base.request(), base.resolution(), capabilities);
+                base.verifiedRevision(), base.effects(), base.effectDefinitions(), base.request(),
+                base.resolution(), capabilities);
     }
 
     /** Canonical input with a different request id. */
@@ -108,20 +124,144 @@ final class TestPlans {
         RenderPlanningInput base = canonicalInput();
         RenderRequest req = base.request();
         return new RenderPlanningInput(
-                base.hydratedRevision(),
+                base.verifiedRevision(), base.effects(), base.effectDefinitions(),
                 new RenderRequest(new RenderRequestId(requestId), req.extent(), req.outputs()),
                 base.resolution(), base.capabilities());
     }
 
-    /** Coherent hydrated revision projection (F4): one revision + its authored fragments. */
-    static HydratedTimelineRevision hydratedRevision() {
-        return new HydratedTimelineRevision(
-                revisionRef(),
-                List.of(mediaClip()),
-                List.of(gaussianBlurEffect()),
-                List.of(effectDefinition()),
+    /**
+     * The canonical VERIFIED revision projection (R2 B1): constructed via the
+     * authoritative hydration factory from a {@link TimelineRevision} whose
+     * canonical content digest is computed by {@link TimelineContentDigester}
+     * and recorded on the revision — the digest MUST match for construction to
+     * succeed (fail closed).
+     */
+    static VerifiedTimelineRevision verifiedRevision() {
+        TimelineDocument document = canonicalDocument();
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        TimelineRevision revision = new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+        return VerifiedTimelineRevisionFactory.verified(revision, digester);
+    }
+
+    /**
+     * An authoritative TimelineRevision with a deliberately WRONG content digest
+     * (for B1 digest-mismatch fail-closed tests).
+     */
+    static TimelineRevision tamperedRevision() {
+        TimelineDocument document = canonicalDocument();
+        TimelineRevision revision = new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, "tampered-digest-value", java.time.Instant.EPOCH, "test");
+        return revision;
+    }
+
+    /**
+     * Verified revision with a custom clip (for exact-time mapping tests): the
+     * authoritative document's digest is recomputed over the custom clip, so
+     * verification succeeds against the SAME document the projection is
+     * extracted from (B1 invariant).
+     */
+    static VerifiedTimelineRevision verifiedRevisionWithClip(com.example.platform.timeline.canonical.TimelineClip customClip) {
+        TimelineDocument document = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(TRACK_ID, "v1",
+                        TrackType.VIDEO, List.of(customClip))),
+                TimelineMetadata.empty(),
                 audioMix(),
+                List.of(),
                 List.of(textElement()));
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        TimelineRevision revision = new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+        return VerifiedTimelineRevisionFactory.verified(revision, digester);
+    }
+
+    /** TimelineClip with a REVERSE constant-rate mapping. */
+    static com.example.platform.timeline.canonical.TimelineClip reverseTimelineClip() {
+        return new TimelineClip(
+                CLIP_ID, "asset-1", "stream-1", ARTIFACT_ID, ARTIFACT_DIGEST_HEX,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                "MEDIA_STREAM",
+                ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.REVERSE));
+    }
+
+    /** TimelineClip with a FREEZE mapping. */
+    static com.example.platform.timeline.canonical.TimelineClip freezeTimelineClip() {
+        return new TimelineClip(
+                CLIP_ID, "asset-1", "stream-1", ARTIFACT_ID, ARTIFACT_DIGEST_HEX,
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                "MEDIA_STREAM",
+                new FreezeTemporalMapping(MediaTime.ofRational(1, 1)));
+    }
+
+    /** Verified revision with a custom TextElement (B2 fingerprint tests). */
+    static VerifiedTimelineRevision verifiedRevisionWithText(TextElement customText) {
+        TimelineDocument document = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(TRACK_ID, "v1",
+                        TrackType.VIDEO, List.of(canonicalTimelineClip()))),
+                TimelineMetadata.empty(),
+                audioMix(),
+                List.of(),
+                List.of(customText));
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        TimelineRevision revision = new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+        return VerifiedTimelineRevisionFactory.verified(revision, digester);
+    }
+
+    /** Verified revision with a custom AudioMix (F1 audio fingerprint tests). */
+    static VerifiedTimelineRevision verifiedRevisionWithAudioMix(AudioMix customMix) {
+        TimelineDocument document = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(TRACK_ID, "v1",
+                        TrackType.VIDEO, List.of(canonicalTimelineClip()))),
+                TimelineMetadata.empty(),
+                customMix,
+                List.of(),
+                List.of(textElement()));
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        TimelineRevision revision = new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+        return VerifiedTimelineRevisionFactory.verified(revision, digester);
+    }
+
+    /** Canonical TimelineDocument backing the verified projection (R2 B1). */
+    static TimelineDocument canonicalDocument() {
+        return new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(TRACK_ID, "v1",
+                        TrackType.VIDEO, List.of(canonicalTimelineClip()))),
+                TimelineMetadata.empty(),
+                audioMix(),
+                List.of(),
+                List.of(textElement()));
+    }
+
+    static TimelineClip canonicalTimelineClip() {
+        return new TimelineClip(
+                CLIP_ID,
+                "asset-1",
+                "stream-1",
+                ARTIFACT_ID,
+                ARTIFACT_DIGEST_HEX,
+                MediaTime.ofRational(0, 1),
+                MediaTime.ofRational(2, 1),
+                MediaTime.ofRational(0, 1),
+                MediaTime.ofRational(2, 1),
+                "MEDIA_STREAM",
+                ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD));
     }
 
     static TimelineRevisionReference revisionRef() {
@@ -134,6 +274,20 @@ final class TestPlans {
 
     static ContentDigest artifactDigest() {
         return ContentDigest.sha256(ARTIFACT_DIGEST_HEX);
+    }
+
+    /** Canonical digest of a document variant (for multi-revision fixtures). */
+    static String canonicalDigest(String salt) {
+        // Build a document with a distinct text element id so the digest differs.
+        TimelineDocument doc = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(TRACK_ID, "v1",
+                        TrackType.VIDEO, List.of(canonicalTimelineClip()))),
+                TimelineMetadata.empty(),
+                audioMix(),
+                List.of(),
+                List.of(textElementWithContent(salt)));
+        return new TimelineContentDigester().digest(doc);
     }
 
     static MediaClip mediaClip() {
