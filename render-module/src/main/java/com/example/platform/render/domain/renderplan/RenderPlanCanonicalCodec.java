@@ -21,6 +21,7 @@ import com.example.platform.fonttext.typography.VariationCoordinate;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.time.FrameRate;
+import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -65,14 +66,17 @@ public final class RenderPlanCanonicalCodec {
 
     /**
      * Canonical string whose digest is the {@link RenderPlanFingerprint}.
-     * Participants: formatVersion, revision.revisionId, revision.contentDigest,
-     * request.extent, request.outputs, sorted nodes, sorted edges.
+     * Participants (R4-A3): formatVersion, revision.revisionId,
+     * revision.contentDigest, authored Effect semantic reference (contract
+     * version + content pin), request.extent, request.outputs, sorted nodes,
+     * sorted edges.
      * EXCLUDED: request.id, plan id, status, diagnostics, resolution state,
      * capability context, provenance, execution requirements, timestamps,
      * provider/worker/device anything.
      */
     public String planFingerprintCanonical(RenderPlan plan) {
-        return planFingerprintCanonical(plan.revision(), plan.request(), plan.nodes(), plan.edges());
+        return planFingerprintCanonical(plan.revision(), plan.effectSemanticReference(),
+                plan.request(), plan.nodes(), plan.edges());
     }
 
     /**
@@ -83,6 +87,7 @@ public final class RenderPlanCanonicalCodec {
      */
     public String planFingerprintCanonical(
             TimelineRevisionReference revision,
+            EffectSemanticReference effectSemanticReference,
             RenderRequest request,
             List<RenderNode> nodes,
             List<RenderDependencyEdge> edges) {
@@ -90,6 +95,11 @@ public final class RenderPlanCanonicalCodec {
         s(sb, PLAN_FORMAT_VERSION);
         s(sb, revision.revisionId());
         s(sb, contentDigestCanonical(revision.contentDigest()));
+        // R4-A3: the authored Effect semantic reference is a canonical
+        // fingerprint participant — authored Effect semantic change ALWAYS
+        // changes the fingerprint even when materialized nodes stay identical.
+        s(sb, effectSemanticReference.semanticContractVersion());
+        s(sb, contentDigestCanonical(effectSemanticReference.effectStateDigest()));
         s(sb, extentCanonical(request.extent()));
         s(sb, outputsCanonical(request.outputs()));
 
@@ -255,7 +265,11 @@ public final class RenderPlanCanonicalCodec {
         return sb.toString();
     }
 
-    /** Explicit value encoding of the sealed {@code ColorDescription} (R2 B3). */
+    /**
+     * Explicit value encoding of the sealed {@code ColorDescription} (R2 B3 +
+     * R4-M1). Unknown future variants FAIL CLOSED — no empty encoding, no
+     * generic fallback, no default-to-existing-subtype semantics.
+     */
     private String colorDescriptionCanonical(ColorDescription description) {
         StringBuilder sb = new StringBuilder();
         if (description instanceof ColorDescription.ParametricColorDescription parametric) {
@@ -268,6 +282,12 @@ public final class RenderPlanCanonicalCodec {
             s(sb, "PROFILE");
             s(sb, profile.profileFormat().name());
             s(sb, profile.profileContentDigest().toString());
+        } else {
+            // R4-M1: future sealed subtype must never silently share canonical
+            // bytes or produce empty encoding.
+            throw new IllegalArgumentException(
+                    "Unsupported ColorDescription variant: " + description.getClass().getName()
+                            + " — canonical encoding fails closed (R4-M1)");
         }
         return sb.toString();
     }
@@ -331,9 +351,13 @@ public final class RenderPlanCanonicalCodec {
         s(sb, requirement.variantKey());
         if (requirement instanceof EffectMaterializationRequirement effect) {
             s(sb, effect.category().name());
-            // R3-B2: typed parameters count-framed (sorted by key).
+            // R4-B: effect parameter pairs use the SINGLE shared pair encoder
+            // (timeline/effect domain authority) — key and value are framed
+            // independently, no key + ":" + value delimiter flattening.
             counted(sb, effect.sortedParameters().stream()
-                    .map(p -> p.key() + ":" + p.value()).toList());
+                    .map(p -> EffectSemanticStateCanonicalSemantics.encodeParameterPair(
+                            p.key(), p.value()))
+                    .toList());
         } else if (requirement instanceof AudioProcessMaterializationRequirement audio) {
             // AudioGain/AudioMute/StereoBalance define explicit canonical
             // toString() contracts (value-only, deterministic); enumerated as
@@ -400,9 +424,11 @@ public final class RenderPlanCanonicalCodec {
         fontSelectionIntentCanonical(sb, style.fontSelection());
         s(sb, fontRationalCanonical(style.fontSize().value()));
         s(sb, fontRationalCanonical(style.tracking()));
-        // R3-B2: OpenType feature settings count-framed (cardinality explicit).
+        // R4-B: OpenType feature settings pairs framed via the shared pair
+        // encoder (tag/state independent framing, no delimiter flattening).
         countedSorted(sb, style.features().settings().stream()
-                .map(setting -> setting.tag().toString() + ":" + setting.state().name())
+                .map(setting -> EffectSemanticStateCanonicalSemantics.encodeParameterPair(
+                        setting.tag().toString(), setting.state().name()))
                 .toList());
     }
 

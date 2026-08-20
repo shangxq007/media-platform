@@ -25,13 +25,16 @@ public final class RenderPlanFingerprintCalculator {
      * Computes the plan fingerprint directly from the plan's ingredients (C7),
      * without requiring a constructed RenderPlan. Used by the planner, which must
      * compute the fingerprint before assembling the plan record.
+     * R4-A3: the authored Effect semantic reference participates.
      */
     public static RenderPlanFingerprint compute(
             TimelineRevisionReference revision,
+            EffectSemanticReference effectSemanticReference,
             RenderRequest request,
             List<RenderNode> nodes,
             List<RenderDependencyEdge> edges) {
-        String canonical = CODEC.planFingerprintCanonical(revision, request, nodes, edges);
+        String canonical = CODEC.planFingerprintCanonical(
+                revision, effectSemanticReference, request, nodes, edges);
         return new RenderPlanFingerprint(CODEC.sha256Hex(canonical));
     }
 

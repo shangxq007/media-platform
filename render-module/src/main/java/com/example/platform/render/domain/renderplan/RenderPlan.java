@@ -14,6 +14,7 @@ public record RenderPlan(
         RenderPlanId id,
         String formatVersion,
         TimelineRevisionReference revision,
+        EffectSemanticReference effectSemanticReference,
         RenderRequest request,
         List<RenderNode> nodes,
         List<RenderDependencyEdge> edges,
@@ -27,6 +28,7 @@ public record RenderPlan(
             throw new IllegalArgumentException("formatVersion must not be blank");
         }
         Objects.requireNonNull(revision, "revision");
+        Objects.requireNonNull(effectSemanticReference, "effectSemanticReference");
         Objects.requireNonNull(request, "request");
         Objects.requireNonNull(nodes, "nodes");
         Objects.requireNonNull(edges, "edges");

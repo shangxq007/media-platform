@@ -176,6 +176,44 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
             "FAIL: RenderPlanCanonicalCodec must use count-framed variable-length sections (R3-G2/B2 structural framing)"
         }
 
-        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, ${javaFiles.size} files)")
+        // R4-M2: RenderPlan carries the authoritative Effect semantic reference
+        // and the fingerprint includes it (structural assertions).
+        val renderPlanSource = javaFiles.find { it.name == "RenderPlan.java" }?.readText()
+        require(renderPlanSource != null && renderPlanSource.contains("EffectSemanticReference effectSemanticReference")) {
+            "FAIL: RenderPlan must carry the authoritative Effect semantic reference (R4-A2/M2)"
+        }
+        require(codec != null && codec.readText().contains("effectSemanticReference.effectStateDigest()")) {
+            "FAIL: RenderPlan fingerprint must include the authored Effect semantic digest (R4-A3/M2)"
+        }
+        val provenanceSource = javaFiles.find { it.name == "RenderPlanProvenance.java" }?.readText()
+        require(provenanceSource != null && provenanceSource.contains("EffectSemanticReference effectSemanticReference")) {
+            "FAIL: RenderPlanProvenance must expose the Effect semantic reference (R4-A4/M2)"
+        }
+        val bindingFactorySource = javaFiles.find { it.name == "VerifiedRenderSemanticSnapshotFactory.java" }?.readText()
+        require(bindingFactorySource != null && bindingFactorySource.contains("effectBinding.revisionId().equals(timelineRevision.revisionId())")) {
+            "FAIL: authored snapshot factory must fail closed on cross-revision effect binding (R4-A1/M2)"
+        }
+
+        // R4-B: no delimiter-based pair flattening in Effect canonical/identity
+        // paths; the single shared pair encoder must be used.
+        require(codec != null
+                && !codec.readText().contains("p.key() + \":\" + p.value()")
+                && !codec.readText().contains("parameter.key() + \"=\" + parameter.value()")
+                && codec.readText().contains("EffectSemanticStateCanonicalSemantics.encodeParameterPair")) {
+            "FAIL: Effect parameter pairs must use the single shared pair encoder (R4-B/M2)"
+        }
+        val materializerSource = javaFiles.find { it.name == "DefaultRenderMaterializer.java" }?.readText()
+        require(materializerSource != null
+                && !materializerSource.contains("parameter.key() + \"=\" + parameter.value()")
+                && materializerSource.contains("EffectSemanticStateCanonicalSemantics.encodeParameterPair")) {
+            "FAIL: node requirement identity must reuse the shared pair encoder (R4-B/M2)"
+        }
+
+        // R4-M: ColorDescription canonicalizer has explicit fail-closed branch.
+        require(codec != null && codec.readText().contains("Unsupported ColorDescription variant")) {
+            "FAIL: ColorDescription canonicalizer must fail closed on unknown variant (R4-M1/M2)"
+        }
+
+        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, ${javaFiles.size} files)")
     }
 }

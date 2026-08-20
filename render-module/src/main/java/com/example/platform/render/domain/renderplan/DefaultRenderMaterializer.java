@@ -12,6 +12,7 @@ import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.clip.TimelineSourceBinding;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
+import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.TemporalMapping;
@@ -137,7 +138,11 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                                                 entry.getKey(), entry.getValue()))
                                         .toList());
                 List<String> paramEncodings = effectRequirement.sortedParameters().stream()
-                        .map(parameter -> parameter.key() + "=" + parameter.value())
+                        // R4-B: node requirement identity uses the SAME shared
+                        // pair encoder as the final plan canonical serialization
+                        // (single framing implementation — no key + "=" + value).
+                        .map(parameter -> EffectSemanticStateCanonicalSemantics.encodeParameterPair(
+                                parameter.key(), parameter.value()))
                         .toList();
                 String effectReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
                         List.of(), effectCaps, List.of(), paramEncodings));

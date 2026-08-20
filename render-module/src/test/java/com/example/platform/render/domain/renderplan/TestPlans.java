@@ -48,6 +48,7 @@ import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
+import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
@@ -91,6 +92,15 @@ final class TestPlans {
     private TestPlans() {
     }
 
+    /**
+     * R4-A2: a canonical Effect semantic reference for test plan construction
+     * (authoritative binding over the canonical fixture effect state).
+     */
+    static EffectSemanticReference testEffectReference() {
+        return new EffectSemanticReference(
+                EffectSemanticBinding.of(REVISION_ID, List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+    }
+
     /** The canonical planning input described in brief §13 (source RESOLVED). */
     static RenderPlanningInput canonicalInput() {
         return new RenderPlanningInput(
@@ -113,7 +123,8 @@ final class TestPlans {
                 REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
                 document, digest, java.time.Instant.EPOCH, "test");
         return VerifiedRenderSemanticSnapshotFactory.verified(
-                revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()));
+                revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()),
+                EffectSemanticBinding.of(REVISION_ID, List.of(gaussianBlurEffect()), List.of(effectDefinition())));
     }
 
     /** Canonical input with the source in the given resolution state. */
@@ -167,7 +178,8 @@ final class TestPlans {
             List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions) {
         RenderPlanningInput base = canonicalInput();
         VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
-                effects, definitions);
+                effects, definitions,
+                EffectSemanticBinding.of(REVISION_ID, effects, definitions));
         return inputWithEffects(snapshot);
     }
 
@@ -224,6 +236,24 @@ final class TestPlans {
     }
 
     /**
+     * R4-A1: the authoritative TimelineRevision built over the canonical
+     * document (digest recomputed so verification succeeds).
+     */
+    static TimelineRevision timelineRevision() {
+        TimelineDocument document = canonicalDocument();
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        return new TimelineRevision(
+                REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+    }
+
+    /** R4-A1: the timeline canonical content digester. */
+    static TimelineContentDigester timelineDigester() {
+        return new TimelineContentDigester();
+    }
+
+    /**
      * R3-B1: authored snapshot with a custom timeline clip (exact-time mapping
      * tests): the authoritative document's digest is recomputed over the custom
      * clip, and the effect state is the canonical fixture (verified).
@@ -244,7 +274,8 @@ final class TestPlans {
                 REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
                 document, digest, java.time.Instant.EPOCH, "test");
         return VerifiedRenderSemanticSnapshotFactory.verified(
-                revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()));
+                revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()),
+                EffectSemanticBinding.of(REVISION_ID, List.of(gaussianBlurEffect()), List.of(effectDefinition())));
     }
 
     /** TimelineClip with a REVERSE constant-rate mapping. */

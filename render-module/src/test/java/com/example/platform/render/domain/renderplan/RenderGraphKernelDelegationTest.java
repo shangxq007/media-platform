@@ -92,13 +92,15 @@ class RenderGraphKernelDelegationTest {
                 new RenderDependencyEdge(b, a, new RenderDependency.EffectInput()));
 
         RenderPlanId planId = RenderPlanId.of("rev", "req");
+        EffectSemanticReference effectRef = TestPlans.testEffectReference();
         RenderPlanFingerprint cyclicFp = RenderPlanFingerprintCalculator.compute(
-                TestPlans.revisionRef(), TestPlans.renderRequest(), List.of(nodeA, nodeB), cyclicEdges);
+                TestPlans.revisionRef(), effectRef, TestPlans.renderRequest(), List.of(nodeA, nodeB), cyclicEdges);
         RenderPlan plan = new RenderPlan(planId, RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
-                TestPlans.revisionRef(), TestPlans.renderRequest(),
+                TestPlans.revisionRef(), effectRef, TestPlans.renderRequest(),
                 List.of(nodeA, nodeB), cyclicEdges,
                 cyclicFp,
-                new RenderPlanProvenance(RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION));
+                new RenderPlanProvenance(RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
+                        TestPlans.revisionRef().revisionId(), effectRef));
 
         RenderGraphBuilder builder = new RenderGraphBuilder();
         RenderGraphBuildResult buildResult = builder.build(plan);

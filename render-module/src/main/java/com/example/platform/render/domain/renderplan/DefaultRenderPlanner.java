@@ -86,17 +86,26 @@ public final class DefaultRenderPlanner implements RenderPlanner {
         // identity (fingerprint computed from plan semantics, independent of graph)
         RenderPlanId id = RenderPlanId.of(input.revision().revisionId(), input.request().id().value());
 
+        // R4-A2/A4: the authored Effect semantic reference is retained by the
+        // final plan, participates in the fingerprint (R4-A3), and is explained
+        // in provenance.
+        EffectSemanticReference effectReference =
+                input.effectSemanticSnapshot().toReference();
+
         // 6. compute plan fingerprint directly from ingredients (C7): avoids constructing
         // a provisional plan with a non-semantic placeholder fingerprint.
         RenderPlanFingerprint planFingerprint = RenderPlanFingerprintCalculator.compute(
-                input.revision(), input.request(),
+                input.revision(), effectReference, input.request(),
                 materialization.nodes(), materialization.edges());
         RenderPlan planWithFingerprint = new RenderPlan(
                 id, RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
-                input.revision(), input.request(),
+                input.revision(), effectReference, input.request(),
                 materialization.nodes(), materialization.edges(),
                 planFingerprint,
-                new RenderPlanProvenance(RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION));
+                new RenderPlanProvenance(
+                        RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
+                        input.revision().revisionId(),
+                        effectReference));
 
         // 4. build graph (kernel delegation)
         RenderGraphBuilder graphBuilder = new RenderGraphBuilder();
@@ -170,14 +179,19 @@ public final class DefaultRenderPlanner implements RenderPlanner {
     /** Builds a minimal failure result when extent validation fails before materialization. */
     private RenderPlanningResult failureResult(RenderPlanningInput input, List<RenderPlanningDiagnostic> diagnostics) {
         RenderPlanId id = RenderPlanId.of(input.revision().revisionId(), input.request().id().value());
+        EffectSemanticReference effectReference =
+                input.effectSemanticSnapshot().toReference();
         RenderPlanFingerprint fp = RenderPlanFingerprintCalculator.compute(
-                input.revision(), input.request(), List.of(), List.of());
+                input.revision(), effectReference, input.request(), List.of(), List.of());
         RenderPlan plan = new RenderPlan(
                 id, RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
-                input.revision(), input.request(),
+                input.revision(), effectReference, input.request(),
                 List.of(), List.of(),
                 fp,
-                new RenderPlanProvenance(RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION));
+                new RenderPlanProvenance(
+                        RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
+                        input.revision().revisionId(),
+                        effectReference));
         RenderGraphBuilder graphBuilder = new RenderGraphBuilder();
         RenderGraph graph = graphBuilder.build(plan).graph();
         List<RenderPlanningDiagnostic> ordered = diagnostics.stream()

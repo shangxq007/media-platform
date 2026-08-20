@@ -145,15 +145,17 @@ class RenderGraphValidationNegativeTest {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private RenderPlan planWith(List<RenderNode> nodes, List<RenderDependencyEdge> edges) {
+        EffectSemanticReference effectRef = TestPlans.testEffectReference();
         RenderPlanFingerprint fp = RenderPlanFingerprintCalculator.compute(
-                TestPlans.revisionRef(), TestPlans.renderRequest(), nodes, edges);
+                TestPlans.revisionRef(), effectRef, TestPlans.renderRequest(), nodes, edges);
         return new RenderPlan(
                 RenderPlanId.of("rev", "req"),
                 RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
-                TestPlans.revisionRef(), TestPlans.renderRequest(),
+                TestPlans.revisionRef(), effectRef, TestPlans.renderRequest(),
                 nodes, edges,
                 fp,
-                new RenderPlanProvenance(RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION));
+                new RenderPlanProvenance(RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
+                        TestPlans.revisionRef().revisionId(), effectRef));
     }
 
     private RenderGraph buildGraph(RenderPlan plan) {

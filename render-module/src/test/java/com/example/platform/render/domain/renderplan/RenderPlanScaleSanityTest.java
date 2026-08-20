@@ -44,15 +44,17 @@ class RenderPlanScaleSanityTest {
             prev = id;
         }
 
+        EffectSemanticReference effectRef = TestPlans.testEffectReference();
         RenderPlanFingerprint fp = RenderPlanFingerprintCalculator.compute(
-                TestPlans.revisionRef(), TestPlans.renderRequest(), nodes, edges);
+                TestPlans.revisionRef(), effectRef, TestPlans.renderRequest(), nodes, edges);
         RenderPlan plan = new RenderPlan(
                 RenderPlanId.of("rev", "req"),
                 RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
-                TestPlans.revisionRef(), TestPlans.renderRequest(),
+                TestPlans.revisionRef(), effectRef, TestPlans.renderRequest(),
                 nodes, edges,
                 fp,
-                new RenderPlanProvenance(RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION));
+                new RenderPlanProvenance(RenderPlanCanonicalCodec.PLAN_FORMAT_VERSION,
+                        TestPlans.revisionRef().revisionId(), effectRef));
 
         long start = System.currentTimeMillis();
         RenderGraph graph = new RenderGraphBuilder().build(plan).graph();
