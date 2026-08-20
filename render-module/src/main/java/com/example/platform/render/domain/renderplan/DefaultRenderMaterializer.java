@@ -126,17 +126,33 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 String opKey = category.name().toLowerCase();
                 CapabilityRequirement cap = RenderCapabilityVocabulary.forEffect(category);
                 List<CapabilityRequirement> effectCaps = List.of(cap);
-                // F1: typed materialized WHAT — authoritative category + supported
-                // parameters as typed immutable values (no opaque hash-only semantics).
+                // F1 + R5-B: typed materialized WHAT — authoritative category +
+                // supported parameters as typed immutable values PLUS the
+                // complete downstream-relevant authored Effect WHAT (instance id,
+                // definition id/version, enabled, exact application range,
+                // automation bindings, temporal behavior) so a future physical
+                // planner never re-reads authored Effect state.
                 // Authored Map<String,String> parameters are converted here into the
                 // typed EffectParameter list (deterministic sorted by key); the
                 // renderplan model itself never carries a raw map payload.
+                EffectInstance.EffectDefinition definition = resolveEffectDefinition(
+                        effect, input, diagnostics);
+                if (definition == null) {
+                    continue; // diagnostic already recorded (definition missing)
+                }
+                List<EffectMaterializationRequirement.AutomationBinding> automationBindings =
+                        effect.automationBindings().entrySet().stream()
+                                .map(entry -> new EffectMaterializationRequirement.AutomationBinding(
+                                        entry.getKey(), entry.getValue()))
+                                .sorted()
+                                .toList();
                 EffectMaterializationRequirement effectRequirement =
-                        EffectMaterializationRequirement.ofSorted(category,
+                        EffectMaterializationRequirement.ofComplete(effect, definition,
                                 effect.parameters().entrySet().stream()
                                         .map(entry -> new EffectMaterializationRequirement.EffectParameter(
                                                 entry.getKey(), entry.getValue()))
-                                        .toList());
+                                        .toList(),
+                                automationBindings);
                 List<String> paramEncodings = effectRequirement.sortedParameters().stream()
                         // R4-B: node requirement identity uses the SAME shared
                         // pair encoder as the final plan canonical serialization
@@ -418,6 +434,32 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         for (EffectInstance.EffectDefinition definition : input.effectSemanticSnapshot().effectDefinitions()) {
             if (definition.definitionId().equals(effect.effectDefinitionId())) {
                 return definition.category();
+            }
+        }
+        diagnostics.add(RenderPlanningDiagnostic.forNode(
+                RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED,
+                RenderNodeId.of(new RenderNodeKind.Effect(),
+                        new RenderComponentPath(RenderComponentKind.EFFECT,
+                                List.of(effect.effectInstanceId())),
+                        "effect", "missing-definition"),
+                RenderDiagnosticSeverity.ERROR,
+                "Effect definition not found in catalog: " + effect.effectDefinitionId()));
+        return null;
+    }
+
+    /**
+     * R5-B: resolves the authoritative EffectDefinition for an effect instance
+     * (definition identity + version + temporal behavior are authored WHAT a
+     * physical planner must recover without re-reading the authored catalog).
+     * Fails closed: unknown definition -> PLANNING_UNSUPPORTED diagnostic and
+     * null (caller skips the effect).
+     */
+    private EffectInstance.EffectDefinition resolveEffectDefinition(
+            EffectInstance effect, RenderPlanningInput input,
+            List<RenderPlanningDiagnostic> diagnostics) {
+        for (EffectInstance.EffectDefinition definition : input.effectSemanticSnapshot().effectDefinitions()) {
+            if (definition.definitionId().equals(effect.effectDefinitionId())) {
+                return definition;
             }
         }
         diagnostics.add(RenderPlanningDiagnostic.forNode(

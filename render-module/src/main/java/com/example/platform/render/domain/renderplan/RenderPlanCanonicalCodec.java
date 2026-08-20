@@ -351,12 +351,30 @@ public final class RenderPlanCanonicalCodec {
         s(sb, requirement.variantKey());
         if (requirement instanceof EffectMaterializationRequirement effect) {
             s(sb, effect.category().name());
+            // R5-B: complete typed Logical Effect WHAT — definition identity +
+            // version, instance identity, enabled, exact application range,
+            // automation references, temporal behavior — length-prefixed explicit
+            // framing (no delimiter flattening). Deterministic for
+            // semantic-equal state; distinct for semantic-distinct state.
+            s(sb, effect.effectInstanceId());
+            s(sb, effect.effectDefinitionId());
+            s(sb, effect.effectDefinitionVersion());
+            s(sb, Boolean.toString(effect.enabled()));
+            s(sb, effect.applicationRange().start().toString());
+            s(sb, effect.applicationRange().end().toString());
+            s(sb, effect.temporalBehavior().name());
             // R4-B: effect parameter pairs use the SINGLE shared pair encoder
             // (timeline/effect domain authority) — key and value are framed
             // independently, no key + ":" + value delimiter flattening.
             counted(sb, effect.sortedParameters().stream()
                     .map(p -> EffectSemanticStateCanonicalSemantics.encodeParameterPair(
                             p.key(), p.value()))
+                    .toList());
+            // R5-B: automation binding references (sorted by parameter key;
+            // semantically unordered collection -> deterministic order).
+            countedSorted(sb, effect.sortedAutomationBindings().stream()
+                    .map(b -> EffectSemanticStateCanonicalSemantics.encodeParameterPair(
+                            b.parameterKey(), b.automationReference()))
                     .toList());
         } else if (requirement instanceof AudioProcessMaterializationRequirement audio) {
             // AudioGain/AudioMute/StereoBalance define explicit canonical

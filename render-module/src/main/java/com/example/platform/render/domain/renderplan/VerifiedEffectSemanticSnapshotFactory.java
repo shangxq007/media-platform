@@ -46,12 +46,12 @@ public final class VerifiedEffectSemanticSnapshotFactory {
      *
      * @param effects           typed effect instances (authored WHAT)
      * @param effectDefinitions effect definition catalog
-     * @param binding           authoritative Effect semantic binding
-     *                          (revision id + digest, domain-computed)
+     * @param binding           authoritative Effect semantic binding issued by
+     *                          {@link AuthoredEffectSemanticAuthority}
      * @return immutable verified effect semantic snapshot
      * @throws IllegalArgumentException on unknown definition reference, version
-     *                                  mismatch, or binding digest/revision
-     *                                  mismatch (fail closed)
+     *                                  mismatch, or binding digest mismatch
+     *                                  (fail closed)
      */
     public static VerifiedEffectSemanticSnapshot verified(
             List<EffectInstance> effects,
@@ -81,12 +81,15 @@ public final class VerifiedEffectSemanticSnapshotFactory {
             }
         }
 
-        // 3. authoritative binding recomputation (single domain authority).
-        EffectSemanticBinding recomputed = EffectSemanticBinding.of(
-                binding.revisionId(), effects, effectDefinitions);
-        if (!recomputed.effectStateDigest().equals(binding.effectStateDigest())) {
+        // 3. authoritative digest recomputation against the binding (the digest
+        // contract is the same single domain authority the issuer used).
+        String canonical = EffectSemanticStateCanonicalSemantics.canonicalEffectState(
+                effects, effectDefinitions);
+        ContentDigest recomputed = ContentDigest.sha256(
+                EffectSemanticStateCanonicalSemantics.sha256Hex(canonical));
+        if (!recomputed.equals(binding.effectStateDigest())) {
             throw new IllegalArgumentException(
-                    "Effect semantic binding digest mismatch (R4-A1): supplied effect state "
+                    "Effect semantic binding digest mismatch (R5-A): supplied effect state "
                             + "does not match the authoritative binding for revision "
                             + binding.revisionId() + " — cross-revision/context effect "
                             + "assembly is rejected");

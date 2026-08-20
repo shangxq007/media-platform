@@ -214,6 +214,38 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
             "FAIL: ColorDescription canonicalizer must fail closed on unknown variant (R4-M1/M2)"
         }
 
-        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, ${javaFiles.size} files)")
+        // R5-M2: no public caller-mintable binding path — the only issuance is
+        // the Timeline/Effect domain authority (authority types live in the
+        // timeline-module semantics/effect package; render consumes them).
+        val timelineEffectDir = file("../timeline-module/src/main/java/com/example/platform/timeline/semantics/effect")
+        val timelineEffectFiles = fileTree(timelineEffectDir) { include("*.java") }.files
+        val bindingSource = timelineEffectFiles.find { it.name == "EffectSemanticBinding.java" }
+        require(bindingSource != null && bindingSource.readText().contains("private EffectSemanticBinding(")) {
+            "FAIL: EffectSemanticBinding constructor must be private (R5-A no mint path)"
+        }
+        require(timelineEffectFiles.any { it.name == "AuthoredEffectSemanticAuthority.java" }) {
+            "FAIL: AuthoredEffectSemanticAuthority (single issuance path) missing (R5-A)"
+        }
+        val materializerSource2 = javaFiles.find { it.name == "DefaultRenderMaterializer.java" }?.readText()
+        require(materializerSource2 != null && materializerSource2.contains("ofComplete(")
+                && materializerSource2.contains("effectInstanceId")
+                && materializerSource2.contains("applicationRange")) {
+            "FAIL: materializer must build complete Logical Effect WHAT (instance/definition/range) (R5-B)"
+        }
+        require(codec != null && codec.readText().contains("effect.effectInstanceId()")
+                && codec.readText().contains("effect.effectDefinitionVersion()")
+                && codec.readText().contains("effect.applicationRange()")
+                && codec.readText().contains("effect.temporalBehavior()")) {
+            "FAIL: RenderPlan canonical encoding must include complete Effect WHAT fields (R5-B)"
+        }
+        // R5-F: unordered collections deep-sorted in the domain authority.
+        val effectSemanticsSource = timelineEffectFiles.find { it.name == "EffectSemanticStateCanonicalSemantics.java" }
+        require(effectSemanticsSource != null
+                && effectSemanticsSource.readText().contains(".sorted(java.util.Comparator.comparing(Enum::name))")
+                && effectSemanticsSource.readText().contains(".stream().sorted()")) {
+            "FAIL: unordered Effect collections must be deep-sorted (R5-F)"
+        }
+
+        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, R5 A/B/E/F, ${javaFiles.size} files)")
     }
 }

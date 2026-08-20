@@ -4,6 +4,7 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.semantics.clip.MediaClip;
+import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
@@ -40,8 +41,8 @@ class R4AcceptanceTest {
     void crossRevisionEffectBindingFailsClosed() {
         // Effect state bound to revision "other-rev" cannot be combined with
         // timeline revision REVISION_ID.
-        EffectSemanticBinding foreignBinding = EffectSemanticBinding.of(
-                "other-rev", List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        EffectSemanticBinding foreignBinding = AuthoredEffectSemanticAuthority.issue(
+                TestPlans.timelineRevisionWithId("other-rev"), List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedRenderSemanticSnapshotFactory.verified(
                         TestPlans.timelineRevision(), TestPlans.timelineDigester(),
@@ -59,8 +60,8 @@ class R4AcceptanceTest {
                 TestPlans.gaussianBlurEffect().applicationRange(),
                 Map.of("radiusPixels", "99"), Map.of(),
                 TestPlans.gaussianBlurEffect().provenance());
-        EffectSemanticBinding bindingForDifferent = EffectSemanticBinding.of(
-                TestPlans.REVISION_ID, List.of(different), List.of(TestPlans.effectDefinition()));
+        EffectSemanticBinding bindingForDifferent = AuthoredEffectSemanticAuthority.issue(
+                TestPlans.timelineRevision(), List.of(different), List.of(TestPlans.effectDefinition()));
         // supplying the canonical effect with a binding computed over different state
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(

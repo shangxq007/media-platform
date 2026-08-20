@@ -84,7 +84,11 @@ public final class EffectSemanticStateCanonicalSemantics {
         field(sb, "category", definition.category().name());
         field(sb, "temporalBehavior", definition.temporalBehavior().name());
         field(sb, "supportedMediaCount", Integer.toString(definition.supportedMediaTypes().size()));
-        for (EffectInstance.EffectMediaType mediaType : definition.supportedMediaTypes()) {
+        // R5-F: supportedMediaTypes is a semantically UNORDERED set-like
+        // collection — deep-sorted so semantic-equal definitions (different
+        // insertion order) yield identical canonical bytes.
+        for (EffectInstance.EffectMediaType mediaType : definition.supportedMediaTypes().stream()
+                .sorted(java.util.Comparator.comparing(Enum::name)).toList()) {
             field(sb, "mediaType", mediaType.name());
         }
         field(sb, "parameterSchemaCount", Integer.toString(definition.parameterSchema().size()));
@@ -98,16 +102,22 @@ public final class EffectSemanticStateCanonicalSemantics {
             field(sb, "schemaMax", schema.maxValue() != null ? schema.maxValue().toString() : "");
             field(sb, "schemaDefault", schema.defaultValue() != null ? schema.defaultValue() : "");
             field(sb, "schemaEnumCount", Integer.toString(schema.enumValues().size()));
-            for (String enumValue : schema.enumValues()) {
+            // R5-F: enumValues is a semantically UNORDERED set-like collection —
+            // deep-sorted.
+            for (String enumValue : schema.enumValues().stream().sorted().toList()) {
                 field(sb, "schemaEnumValue", enumValue);
             }
         }
         field(sb, "deterministicCount", Integer.toString(definition.deterministicProperties().size()));
-        for (String property : definition.deterministicProperties()) {
+        // R5-F: deterministicProperties is a semantically UNORDERED set-like
+        // collection — deep-sorted.
+        for (String property : definition.deterministicProperties().stream().sorted().toList()) {
             field(sb, "deterministicProperty", property);
         }
         field(sb, "requiredCapabilityCount", Integer.toString(definition.requiredCapabilities().size()));
-        for (String capability : definition.requiredCapabilities()) {
+        // R5-F: requiredCapabilities is a semantically UNORDERED set-like
+        // collection — deep-sorted.
+        for (String capability : definition.requiredCapabilities().stream().sorted().toList()) {
             field(sb, "requiredCapability", capability);
         }
         return sb.toString();

@@ -47,6 +47,7 @@ import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
+import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
@@ -98,7 +99,7 @@ final class TestPlans {
      */
     static EffectSemanticReference testEffectReference() {
         return new EffectSemanticReference(
-                EffectSemanticBinding.of(REVISION_ID, List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
     }
 
     /** The canonical planning input described in brief §13 (source RESOLVED). */
@@ -124,7 +125,7 @@ final class TestPlans {
                 document, digest, java.time.Instant.EPOCH, "test");
         return VerifiedRenderSemanticSnapshotFactory.verified(
                 revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()),
-                EffectSemanticBinding.of(REVISION_ID, List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
     }
 
     /** Canonical input with the source in the given resolution state. */
@@ -179,7 +180,7 @@ final class TestPlans {
         RenderPlanningInput base = canonicalInput();
         VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
                 effects, definitions,
-                EffectSemanticBinding.of(REVISION_ID, effects, definitions));
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), effects, definitions));
         return inputWithEffects(snapshot);
     }
 
@@ -253,6 +254,16 @@ final class TestPlans {
         return new TimelineContentDigester();
     }
 
+    /** R5-A: authoritative TimelineRevision with a custom revision id. */
+    static TimelineRevision timelineRevisionWithId(String revisionId) {
+        TimelineDocument document = canonicalDocument();
+        TimelineContentDigester digester = new TimelineContentDigester();
+        String digest = digester.digest(document);
+        return new TimelineRevision(
+                revisionId, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
+                document, digest, java.time.Instant.EPOCH, "test");
+    }
+
     /**
      * R3-B1: authored snapshot with a custom timeline clip (exact-time mapping
      * tests): the authoritative document's digest is recomputed over the custom
@@ -275,7 +286,7 @@ final class TestPlans {
                 document, digest, java.time.Instant.EPOCH, "test");
         return VerifiedRenderSemanticSnapshotFactory.verified(
                 revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()),
-                EffectSemanticBinding.of(REVISION_ID, List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                AuthoredEffectSemanticAuthority.issue(timelineRevision(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
     }
 
     /** TimelineClip with a REVERSE constant-rate mapping. */
