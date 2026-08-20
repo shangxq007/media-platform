@@ -101,8 +101,8 @@ public final class RenderPlanCanonicalCodec {
         // R4-A3: the authored Effect semantic reference is a canonical
         // fingerprint participant — authored Effect semantic change ALWAYS
         // changes the fingerprint even when materialized nodes stay identical.
-        s(sb, effectSemanticReference.semanticContractVersion());
-        s(sb, contentDigestCanonical(effectSemanticReference.effectStateDigest()));
+        s(sb, effectSemanticReference.semanticContractVersion().value());
+        s(sb, effectSemanticReference.effectStateDigest());
         s(sb, extentCanonical(request.extent()));
         s(sb, outputsCanonical(request.outputs()));
 
@@ -368,10 +368,12 @@ public final class RenderPlanCanonicalCodec {
         StringBuilder sb = new StringBuilder();
         // effect semantic WHAT first (single canonical encoding).
         sb.append(materializationRequirementCanonical(requirement));
-        // effective capabilities participate in node identity (R6-B/R6-C).
+        // effective capabilities participate in node identity (R6-B/R6-C) —
+        // ONE canonical CapabilityRequirement identity = CapabilityId +
+        // ContractVersionRange (shared with final plan serialization; §33).
         s(sb, "CAPS");
         countedSorted(sb, capabilities.stream()
-                .map(c -> c.capabilityId().value()).toList());
+                .map(this::capabilityRequirementCanonical).toList());
         return sb.toString();
     }
 

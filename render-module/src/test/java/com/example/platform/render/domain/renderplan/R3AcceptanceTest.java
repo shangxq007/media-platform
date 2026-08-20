@@ -48,9 +48,8 @@ class R3AcceptanceTest {
                 TestPlans.gaussianBlurEffect().provenance());
                 // target removed
         assertThrows(IllegalArgumentException.class,
-                () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        List.of(orphan), List.of(TestPlans.effectDefinition()),
-                        AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(orphan), List.of(TestPlans.effectDefinition()))),
+                () -> TestPlans.verifiedEffectSnapshot(
+                        List.of(orphan), List.of(TestPlans.effectDefinition())),
                 "unknown effectDefinitionId -> fail closed (R3-B1)");
     }
 
@@ -64,9 +63,8 @@ class R3AcceptanceTest {
                 TestPlans.gaussianBlurEffect().provenance());
                 // target removed
         assertThrows(IllegalArgumentException.class,
-                () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        List.of(versionMismatch), List.of(TestPlans.effectDefinition()),
-                        AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(versionMismatch), List.of(TestPlans.effectDefinition()))),
+                () -> TestPlans.verifiedEffectSnapshot(
+                        List.of(versionMismatch), List.of(TestPlans.effectDefinition())),
                 "effectDefinitionVersion mismatch -> fail closed (R3-B1)");
     }
 
@@ -90,12 +88,10 @@ class R3AcceptanceTest {
         // semantic-equal reconstructed effect state -> same pin
         EffectInstance e1 = TestPlans.gaussianBlurEffect();
         EffectInstance e2 = TestPlans.gaussianBlurEffect();
-        VerifiedEffectSemanticSnapshot s1 = VerifiedEffectSemanticSnapshotFactory.verified(
-                List.of(e1), List.of(TestPlans.effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(e1), List.of(TestPlans.effectDefinition())));
-        VerifiedEffectSemanticSnapshot s2 = VerifiedEffectSemanticSnapshotFactory.verified(
-                List.of(e2), List.of(TestPlans.effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(e2), List.of(TestPlans.effectDefinition())));
+        VerifiedEffectSemanticSnapshot s1 = TestPlans.verifiedEffectSnapshot(
+                List.of(e1), List.of(TestPlans.effectDefinition()));
+        VerifiedEffectSemanticSnapshot s2 = TestPlans.verifiedEffectSnapshot(
+                List.of(e2), List.of(TestPlans.effectDefinition()));
         assertEquals(s1.contentPin(), s2.contentPin(),
                 "semantic-equal effect state -> identical content pin");
         // distinct state -> distinct pin
@@ -105,9 +101,8 @@ class R3AcceptanceTest {
                 Map.of("radiusPixels", "8"), e1.automationBindings(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 e1.provenance());
-        VerifiedEffectSemanticSnapshot s3 = VerifiedEffectSemanticSnapshotFactory.verified(
-                List.of(changed), List.of(TestPlans.effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(changed), List.of(TestPlans.effectDefinition())));
+        VerifiedEffectSemanticSnapshot s3 = TestPlans.verifiedEffectSnapshot(
+                List.of(changed), List.of(TestPlans.effectDefinition()));
         assertNotEquals(s1.contentPin(), s3.contentPin(),
                 "distinct effect state -> distinct content pin");
     }

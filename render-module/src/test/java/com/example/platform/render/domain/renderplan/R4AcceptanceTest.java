@@ -8,6 +8,8 @@ import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuth
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
 import com.example.platform.timeline.version.TimelineRevision;
 import org.junit.jupiter.api.Test;
@@ -40,22 +42,24 @@ class R4AcceptanceTest {
 
     @Test
     void crossRevisionEffectBindingFailsClosed() {
-        // Effect state bound to revision "other-rev" cannot be combined with
-        // timeline revision REVISION_ID.
-        EffectSemanticBinding foreignBinding = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevisionWithId("other-rev"), TestPlans.revisionOwnedProjection(),
+        // A snapshot minted for revision "other-rev" (distinct handle) cannot
+        // satisfy the canonical revision's pin — binding identity is exact and
+        // immutable (RP3-C/BI2).
+        EffectSemanticSnapshot foreignSnapshot = TestPlans.effectSnapshot(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        EffectSemanticSnapshotReference canonicalPin = TestPlans.effectSnapshotReference(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedRenderSemanticSnapshotFactory.verified(
                         TestPlans.timelineRevision(), TestPlans.timelineDigester(),
-                        List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()),
-                        foreignBinding),
-                "cross-revision effect binding -> fail closed (R4-A1)");
+                        foreignSnapshot, canonicalPin),
+                "cross-revision effect binding -> fail closed (R4-A1/RP3-C)");
     }
 
     @Test
     void effectDigestMismatchFailsClosed() {
-        // Binding digest computed over DIFFERENT effect state cannot pass.
+        // Tampered effect state (radiusPixels=99) cannot satisfy the pin over
+        // the canonical state (digest mismatch).
         EffectInstance different = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
@@ -63,14 +67,14 @@ class R4AcceptanceTest {
                 Map.of("radiusPixels", "99"), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
-        EffectSemanticBinding bindingForDifferent = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(different), List.of(TestPlans.effectDefinition()));
-        // supplying the canonical effect with a binding computed over different state
+        EffectSemanticSnapshot tamperedSnapshot = TestPlans.effectSnapshot(
+                List.of(different), List.of(TestPlans.effectDefinition()));
+        EffectSemanticSnapshotReference canonicalPin = TestPlans.effectSnapshotReference(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()),
-                        bindingForDifferent),
-                "effect state digest mismatch -> fail closed (R4-A1)");
+                        tamperedSnapshot, canonicalPin, TestPlans.REVISION_ID),
+                "effect state digest mismatch -> fail closed (R4-A1/RP2)");
     }
 
     @Test
@@ -120,7 +124,7 @@ class R4AcceptanceTest {
         EffectSemanticReference ref = plan.effectSemanticReference();
         assertNotNull(ref, "final RenderPlan retains the Effect semantic reference (R4-A2)");
         assertEquals(TestPlans.REVISION_ID, ref.revisionId());
-        assertEquals(EffectSemanticBinding.CONTRACT_VERSION, ref.semanticContractVersion());
+        assertEquals("effect-semantics-v1", ref.semanticContractVersion().value());
         assertNotNull(ref.effectStateDigest(), "reference carries the immutable content digest");
         // provenance explains the same pin
         assertEquals(ref, plan.provenance().effectSemanticReference(),
@@ -150,8 +154,10 @@ class R4AcceptanceTest {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
         String baseFp = planner.plan(base).plan().fingerprint().sha256Hex();
-        // Change applicationRange but keep it overlapping the same clip
-        // (clip timelineRange is [0,2]; effect range narrows to [0,1]).
+        // FINAL V1: applicationRange is DERIVED from the target clip extent
+        // (APPLICATION_RANGE_AUTHORITY_V1) — a caller-supplied narrower range
+        // is NOT authority (SA3): the derived extent is materialized and the
+        // fingerprint is UNCHANGED.
         EffectInstance rangeChanged = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
@@ -162,8 +168,8 @@ class R4AcceptanceTest {
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changed = TestPlans.inputWithEffectState(
                 List.of(rangeChanged), base.effectSemanticSnapshot().effectDefinitions());
-        assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
-                "applicationRange change -> fingerprint MUST change (R4-A3)");
+        assertEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
+                "FINAL V1: caller-supplied applicationRange is ignored (DERIVED) — fingerprint stable");
     }
 
     @Test
@@ -200,6 +206,10 @@ class R4AcceptanceTest {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
         String baseFp = planner.plan(base).plan().fingerprint().sha256Hex();
+        // FINAL V1 (UNVERIFIED_EFFECT_AUTOMATION_REFERENCES_FAIL_CLOSED_V1):
+        // non-empty automationBindings are UNSUPPORTED — the domain authority
+        // FAILS CLOSED (SA5); there is no caller-controlled automation to
+        // change the fingerprint.
         EffectInstance automationChanged = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
@@ -208,10 +218,10 @@ class R4AcceptanceTest {
                 Map.of("radius", "auto.radius"), // automation binding added
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
-        RenderPlanningInput changed = TestPlans.inputWithEffectState(
-                List.of(automationChanged), base.effectSemanticSnapshot().effectDefinitions());
-        assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
-                "automation binding change -> fingerprint MUST change (R4-A3)");
+        assertThrows(IllegalArgumentException.class,
+                () -> TestPlans.inputWithEffectState(
+                        List.of(automationChanged), base.effectSemanticSnapshot().effectDefinitions()),
+                "FINAL V1: non-empty unverified automation -> FAIL CLOSED (R4-A3/SA5)");
     }
 
     @Test

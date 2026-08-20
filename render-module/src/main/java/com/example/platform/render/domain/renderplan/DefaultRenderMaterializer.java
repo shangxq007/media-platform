@@ -110,7 +110,8 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
             // ── chained EFFECT nodes for enabled video effects on this clip ──
             RenderNodeId prevProducer = decodeId;
-            for (EffectInstance effect : effectsForClip(input.effectSemanticSnapshot().effects(), clip)) {
+            for (EffectInstance effect : effectsForClip(
+                    input.effectSemanticSnapshot().effectsForClip(clip), clip)) {
                 if (!effect.enabled() || !effect.isVideoEffect()) {
                     continue;
                 }
@@ -346,10 +347,12 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
      * order preserved — it is input, never re-derived).
      */
     /**
-     * R6-A6: selects effects for a clip by EXPLICIT typed authored target
-     * membership — {@code effect.target() == (clip.trackId, clip.clipId)} —
+     * R6-A6 + FINAL: selects effects for a clip by EXPLICIT typed authored
+     * target membership — {@code effect.target() == (clip.trackId, clip.clipId)} —
      * NOT by temporal overlap. The authored effect stack order is preserved
-     * (input order; R6-H ORDERED semantics).
+     * (input order; R6-H ORDERED semantics). The typed EffectInstance view is
+     * DERIVED from the verified snapshot entries (applicationRange derived
+     * from the target clip extent — APPLICATION_RANGE_AUTHORITY_V1).
      */
     private List<EffectInstance> effectsForClip(List<EffectInstance> effects, MediaClip clip) {
         List<EffectInstance> result = new ArrayList<>();

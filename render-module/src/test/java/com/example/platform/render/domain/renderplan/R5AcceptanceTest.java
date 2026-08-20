@@ -8,6 +8,8 @@ import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuth
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
 import com.example.platform.timeline.version.TimelineRevision;
 import org.junit.jupiter.api.Test;
@@ -93,26 +95,25 @@ class R5AcceptanceTest {
 
     @Test
     void crossRevisionCombinationFailsClosed() {
-        // Valid authority-issued snapshot for R1 combined with timeline revision
-        // R2 -> fail closed at the render factory (revision mismatch).
-        EffectSemanticBinding r1Binding = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+        // R1's snapshot offered against R2's pin -> fail closed (binding
+        // identity is exact and immutable — RP3-C/BI2).
+        EffectSemanticSnapshot r1Snapshot = TestPlans.effectSnapshot(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        EffectSemanticSnapshot r2Snapshot = TestPlans.effectSnapshot(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         TimelineRevision r2 = TestPlans.timelineRevisionWithId("rev-2");
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedRenderSemanticSnapshotFactory.verified(
                         r2, TestPlans.timelineDigester(),
-                        List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()),
-                        r1Binding),
-                "R1 binding + R2 timeline -> fail closed (R5-A cross-revision)");
+                        r1Snapshot, r2Snapshot.reference()),
+                "R1 snapshot + R2 pin -> fail closed (R5-A cross-revision)");
     }
 
     @Test
     void stateTamperFailsDigest() {
-        // Authority-issued binding for effect state A; verification with
-        // tampered state B must fail the digest check.
-        EffectSemanticBinding binding = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+        // Pin over canonical state A; tampered state B cannot satisfy it
+        // (recomputed digest mismatch — RP2/BI3).
+        EffectSemanticSnapshotReference canonicalPin = TestPlans.effectSnapshotReference(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         EffectInstance tampered = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
@@ -121,10 +122,12 @@ class R5AcceptanceTest {
                 Map.of("radiusPixels", "99"), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
+        EffectSemanticSnapshot tamperedSnapshot = TestPlans.effectSnapshot(
+                List.of(tampered), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        List.of(tampered), List.of(TestPlans.effectDefinition()), binding),
-                "state tamper -> digest mismatch fail closed (R5-A)");
+                        tamperedSnapshot, canonicalPin, TestPlans.REVISION_ID),
+                "state tamper -> digest mismatch fail closed (R5-A/RP2)");
     }
 
     @Test
@@ -162,10 +165,14 @@ class R5AcceptanceTest {
         RenderPlanningInput narrowInput = TestPlans.inputWithEffectState(
                 List.of(narrow), base.effectSemanticSnapshot().effectDefinitions());
         RenderPlan narrowPlan = planner.plan(narrowInput).plan();
-        assertEquals(1, effectRequirementOf(narrowPlan).applicationRange().end().ticks(),
-                "exact application range [0,1) recoverable from final plan (R5-B)");
-        assertNotEquals(plan.fingerprint(), narrowPlan.fingerprint(),
-                "range change -> fingerprint differs");
+        // FINAL V1: applicationRange is DERIVED from the target clip extent
+        // (APPLICATION_RANGE_AUTHORITY_V1) — caller-supplied [0,1) is ignored;
+        // the derived extent [0,2) is materialized.
+        assertEquals(2, effectRequirementOf(narrowPlan).applicationRange().end().ticks(),
+                "FINAL V1: applicationRange derived from clip extent [0,2) (R5-B/SA3)");
+        // range is NOT caller-authoritative -> fingerprint equals canonical
+        assertEquals(plan.fingerprint(), narrowPlan.fingerprint(),
+                "FINAL V1: caller-supplied range is ignored -> fingerprint unchanged");
     }
 
     @Test
@@ -207,7 +214,12 @@ class R5AcceptanceTest {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
         RenderPlan plan = planner.plan(base).plan();
-        // base has no automation; add one
+        // FINAL V1 (UNVERIFIED_EFFECT_AUTOMATION_REFERENCES_FAIL_CLOSED_V1):
+        // automationBindings are EMPTY; a caller-supplied non-empty automation
+        // map FAILS CLOSED at the domain authority (SA5).
+        EffectMaterializationRequirement req = effectRequirementOf(plan);
+        assertEquals(0, req.automationBindings().size(),
+                "FINAL V1: automation bindings are EMPTY (R5-B)");
         EffectInstance automated = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
@@ -216,14 +228,10 @@ class R5AcceptanceTest {
                 Map.of("radius", "auto.radius"),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
-        RenderPlan automatedPlan = planner.plan(TestPlans.inputWithEffectState(
-                List.of(automated), base.effectSemanticSnapshot().effectDefinitions())).plan();
-        EffectMaterializationRequirement req = effectRequirementOf(automatedPlan);
-        assertEquals(1, req.automationBindings().size());
-        assertEquals("radius", req.automationBindings().get(0).parameterKey());
-        assertEquals("auto.radius", req.automationBindings().get(0).automationReference(),
-                "automation reference recoverable, not hash-only (R5-B)");
-        assertNotEquals(plan.fingerprint(), automatedPlan.fingerprint());
+        assertThrows(IllegalArgumentException.class,
+                () -> TestPlans.verifiedEffectSnapshot(
+                        List.of(automated), base.effectSemanticSnapshot().effectDefinitions()),
+                "FINAL V1: non-empty unverified automation -> FAIL CLOSED (SA5)");
     }
 
     @Test

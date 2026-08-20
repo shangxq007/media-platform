@@ -1,39 +1,34 @@
 package com.example.platform.render.domain.renderplan;
 
-import com.example.platform.shared.digest.ContentDigest;
-import com.example.platform.timeline.semantics.effect.EffectInstance;
-import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
-import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
-import java.util.List;
+import com.example.platform.timeline.semantics.effect.EffectDefinitionCanonicalSemantics;
+import com.example.platform.timeline.semantics.effect.EffectSemanticEntry;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotCanonicalSemantics;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
 import java.util.Objects;
 
 /**
- * ROADMAP20 correction R4-A1/R4-C: verification factory for the immutable
- * authored effect semantic snapshot.
+ * ROADMAP20 final implementation: the ONLY public construction path for
+ * {@link VerifiedEffectSemanticSnapshot} — verification against the revision's
+ * EXACT Effect snapshot pin (RENDER_CONSUMES_VERIFIED_EFFECT_SNAPSHOT_NOT_CALLER_EFFECT_LISTS_V1).
  *
- * <p>This is the ONLY public construction path for
- * {@link VerifiedEffectSemanticSnapshot}. Integrity checks are REAL (not
- * caller-trust documentation):
- * <ul>
- *   <li>every {@code EffectInstance.effectDefinitionId} must resolve to a
- *       definition in the supplied catalog (else FAIL CLOSED),</li>
- *   <li>every {@code EffectInstance.effectDefinitionVersion} must equal the
- *       referenced definition's version (else FAIL CLOSED),</li>
- *   <li>the authoritative {@link EffectSemanticBinding} is recomputed by the
- *       single Timeline/Effect domain authority
- *       ({@link EffectSemanticStateCanonicalSemantics}) over the supplied typed
- *       state and must equal the caller-provided binding's digest AND revision
- *       id (else FAIL CLOSED) — this prevents verified timeline revision R1 +
- *       unrelated but internally-valid effect state R2 from passing the
- *       boundary,</li>
- *   <li>the content pin is the authoritative binding digest (value-bound:
- *       semantic-equal reconstructed state yields the same digest; distinct
- *       state yields a distinct digest).</li>
- * </ul>
+ * <p>Verifier checks (all fail closed):
+ * <ol>
+ *   <li>binding integrity — supplied snapshot id == expected pin snapshotId
+ *       (RP1/BI2: semantically identical but different-id snapshot is REJECTED
+ *       for an existing historical pin),</li>
+ *   <li>semantic integrity — supplied contentDigest == expected pin contentDigest
+ *       AND recomputed canonical digest == expected contentDigest (RP2/BI3:
+ *       tampered content fails even with an unchanged reference),</li>
+ *   <li>contract version — supplied version == expected pin version (BI5),</li>
+ *   <li>structural integrity — every embedded definition digest verifies and
+ *       every entry satisfies the V1 automation rule.</li>
+ * </ol>
  *
- * <p>R4-C: this factory performs NO Effect domain semantic grammar of its own —
- * the complete typed Effect semantic encoding lives in the Timeline/Effect
- * domain authority. Render consumes that authority only.
+ * <p>This factory performs NO Effect semantic grammar of its own — the single
+ * canonical encoders live in the Timeline/Effect domain authority
+ * ({@link EffectSemanticSnapshotCanonicalSemantics} /
+ * {@link EffectDefinitionCanonicalSemantics}); Render only verifies.
  */
 public final class VerifiedEffectSemanticSnapshotFactory {
 
@@ -41,63 +36,52 @@ public final class VerifiedEffectSemanticSnapshotFactory {
     }
 
     /**
-     * Verifies and pins the authored effect semantic state against an
-     * authoritative binding.
+     * Verifies the supplied snapshot against the revision's exact pin.
      *
-     * @param effects           typed effect instances (authored WHAT)
-     * @param effectDefinitions effect definition catalog
-     * @param binding           authoritative Effect semantic binding issued by
-     *                          {@link AuthoredEffectSemanticAuthority}
-     * @return immutable verified effect semantic snapshot
-     * @throws IllegalArgumentException on unknown definition reference, version
-     *                                  mismatch, or binding digest mismatch
-     *                                  (fail closed)
+     * @param snapshot          the immutable Effect semantic snapshot to verify
+     * @param expectedReference the EXACT reference pinned by the Timeline
+     *                          revision (from the revision's semantic context)
+     * @param revisionId        the owning Timeline revision id
+     * @return verified effect semantic snapshot
+     * @throws IllegalArgumentException on any verification failure (fail closed)
      */
     public static VerifiedEffectSemanticSnapshot verified(
-            List<EffectInstance> effects,
-            List<EffectInstance.EffectDefinition> effectDefinitions,
-            EffectSemanticBinding binding) {
-        Objects.requireNonNull(effects, "effects");
-        Objects.requireNonNull(effectDefinitions, "effectDefinitions");
-        Objects.requireNonNull(binding, "binding");
+            EffectSemanticSnapshot snapshot,
+            EffectSemanticSnapshotReference expectedReference,
+            String revisionId) {
+        Objects.requireNonNull(snapshot, "snapshot");
+        Objects.requireNonNull(expectedReference, "expectedReference");
+        Objects.requireNonNull(revisionId, "revisionId");
 
-        // 1/2. definition reference + version integrity (fail closed).
-        for (EffectInstance effect : effects) {
-            EffectInstance.EffectDefinition definition = effectDefinitions.stream()
-                    .filter(d -> d.definitionId().equals(effect.effectDefinitionId()))
-                    .findFirst()
-                    .orElse(null);
-            if (definition == null) {
-                throw new IllegalArgumentException(
-                        "Effect " + effect.effectInstanceId() + " references unknown "
-                                + "effectDefinitionId '" + effect.effectDefinitionId() + "'");
-            }
-            if (!definition.version().equals(effect.effectDefinitionVersion())) {
-                throw new IllegalArgumentException(
-                        "Effect " + effect.effectInstanceId() + " version mismatch: "
-                                + "instance requests '" + effect.effectDefinitionVersion()
-                                + "' but definition '" + effect.effectDefinitionId()
-                                + "' is version '" + definition.version() + "'");
-            }
-        }
-
-        // 3. authoritative digest recomputation against the binding (the digest
-        // contract is the same single domain authority the issuer used).
-        String canonical = EffectSemanticStateCanonicalSemantics.canonicalEffectState(
-                effects, effectDefinitions);
-        ContentDigest recomputed = ContentDigest.sha256(
-                EffectSemanticStateCanonicalSemantics.sha256Hex(canonical));
-        if (!recomputed.equals(binding.effectStateDigest())) {
+        // 1. binding integrity: exact snapshot id (RP1, BI2, RP3-C).
+        if (!snapshot.id().equals(expectedReference.snapshotId())) {
             throw new IllegalArgumentException(
-                    "Effect semantic binding digest mismatch (R5-A): supplied effect state "
-                            + "does not match the authoritative binding for revision "
-                            + binding.revisionId() + " — cross-revision/context effect "
-                            + "assembly is rejected");
+                    "Effect snapshot binding mismatch (RP1/BI2): revision pins snapshot '"
+                            + expectedReference.snapshotId().value() + "' but supplied snapshot is '"
+                            + snapshot.id().value() + "' — semantic equivalence does not authorize "
+                            + "historical binding substitution");
+        }
+        // 2. semantic integrity: stored digest == pin digest.
+        if (!snapshot.contentDigest().equals(expectedReference.contentDigest())) {
+            throw new IllegalArgumentException(
+                    "Effect snapshot digest mismatch (RP2): stored digest '"
+                            + snapshot.contentDigest() + "' != pinned digest '"
+                            + expectedReference.contentDigest() + "'");
+        }
+        // 3. contract version (BI5).
+        if (!snapshot.semanticContractVersion().equals(expectedReference.semanticContractVersion())) {
+            throw new IllegalArgumentException(
+                    "Effect snapshot contract version mismatch (BI5): snapshot '"
+                            + snapshot.semanticContractVersion().value() + "' != pinned '"
+                            + expectedReference.semanticContractVersion().value() + "'");
+        }
+        // 4. tamper detection: recompute canonical digest over content (BI3).
+        EffectSemanticSnapshotCanonicalSemantics.verifySnapshotDigest(snapshot);
+        // 5. structural integrity: definition digests + V1 automation rule.
+        for (EffectSemanticEntry entry : snapshot.entries()) {
+            EffectDefinitionCanonicalSemantics.verifyDefinitionDigest(entry.definitionSnapshot());
         }
 
-        // 4. pin = authoritative binding digest (value-bound).
-        ContentDigest pin = binding.effectStateDigest();
-        return VerifiedEffectSemanticSnapshot.create(
-                effects, effectDefinitions, pin, binding);
+        return VerifiedEffectSemanticSnapshot.create(snapshot, expectedReference, revisionId);
     }
 }

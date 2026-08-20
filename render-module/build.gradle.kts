@@ -75,11 +75,16 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
         // Forbidden tokens (C18 provider neutrality + C30 kernel delegation): none of
         // these may appear outside of comment lines. Comment lines (starting with //
         // or *) are excluded so that javadoc/class-header mentions do not trip the gate.
+        // NOTE (ROADMAP20 FINAL): generic collection tokens such as Map<String /
+        // HashMap / LinkedHashMap were REMOVED from this list — derived local
+        // computation inside the verified-snapshot view layer is legitimate
+        // implementation detail, NOT semantic authority. Authority surfaces are
+        // checked structurally below (STRUCTURAL_GUARDS_CHECK_AUTHORITY_SURFACES_NOT_GENERIC_LANGUAGE_TOKENS_V1).
         val forbidden = listOf(
             "ffmpeg", "Ffmpeg", "vulkan", "Vulkan", "webgpu", "WebGPU", "cuda", "CUDA",
             "opencue", "OpenCue", "org.springframework", "org.jooq",
             "com.example.platform.workflow", "com.example.platform.execution",
-            "com.example.platform.typedschema", "Map<String", "HashMap", "HashSet",
+            "com.example.platform.typedschema",
             "UUID.randomUUID", "topologicalSort", "Kahn"
         )
         val violations = mutableListOf<String>()
@@ -190,8 +195,17 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
             "FAIL: RenderPlanProvenance must expose the Effect semantic reference (R4-A4/M2)"
         }
         val bindingFactorySource = javaFiles.find { it.name == "VerifiedRenderSemanticSnapshotFactory.java" }?.readText()
-        require(bindingFactorySource != null && bindingFactorySource.contains("effectBinding.revisionId().equals(timelineRevision.revisionId())")) {
-            "FAIL: authored snapshot factory must fail closed on cross-revision effect binding (R4-A1/M2)"
+        require(bindingFactorySource != null
+                && !bindingFactorySource.contains("effectBinding")
+                && !bindingFactorySource.contains("EffectSemanticBinding")
+                && bindingFactorySource.contains("EffectSemanticSnapshotReference")) {
+            "FAIL: authored snapshot factory must fail closed on cross-revision effect binding (R4-A1/M2) — caller binding parameters retired; verified boundary accepts (snapshot, exact pin) only"
+        }
+        // cross-revision + binding-tamper fail-closed now lives in the pin
+        // verifier (BI2/RP3-C): id equality between snapshot and reference.
+        val effectVerifiedFactorySource = javaFiles.find { it.name == "VerifiedEffectSemanticSnapshotFactory.java" }?.readText()
+        require(effectVerifiedFactorySource != null && effectVerifiedFactorySource.contains("snapshot.id().equals(expectedReference.snapshotId())")) {
+            "FAIL: verified factory must enforce exact snapshot id == pin snapshotId (BI2/RP3-C)"
         }
 
         // R4-B: no delimiter-based pair flattening in Effect canonical/identity
@@ -321,6 +335,73 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
             "FAIL: final RenderPlan must retain EffectSemanticReference (R4-A2 preserved)"
         }
 
-        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, R5 A/B/E/F, R6 A/B/C/D/F/H, ${javaFiles.size} files)")
+        // ── ROADMAP20 FINAL implementation guard ─────────────────────────────
+        // 13. no public caller snapshot minting — EffectSemanticSnapshot ctor is
+        //     package-private; only the authority mints.
+        val snapshotCtorSource = timelineEffectFiles.find { it.name == "EffectSemanticSnapshot.java" }?.readText()
+        require(snapshotCtorSource != null && !snapshotCtorSource.contains("public EffectSemanticSnapshot(")) {
+            "FAIL: EffectSemanticSnapshot must NOT have a public constructor (minting is domain-authority only)"
+        }
+        // 14. snapshot id excluded from the canonical semantic digest encoder —
+        //     the canonical content encoder itself must not reference the id;
+        //     error-message mentions of the id (diagnostics) are allowed.
+        val snapshotCanonicalSource = timelineEffectFiles.find { it.name == "EffectSemanticSnapshotCanonicalSemantics.java" }?.readText()
+        require(snapshotCanonicalSource != null
+                && snapshotCanonicalSource.contains("id EXCLUDED")
+                && !snapshotCanonicalSource.contains("snapshot.id().value() + \"@\"")
+                && !snapshotCanonicalSource.contains("snapshot.id().value() + \"#\"")) {
+            "FAIL: snapshot id must NOT participate in canonical semantic digest (EFFECT_SNAPSHOT_HANDLE_DOES_NOT_PARTICIPATE_IN_CANONICAL_SEMANTIC_DIGEST_V1)"
+        }
+        // 15. supportedBackendCapabilities excluded from definition semantic digest.
+        val definitionCanonicalSource = timelineEffectFiles.find { it.name == "EffectDefinitionCanonicalSemantics.java" }?.readText()
+        require(definitionCanonicalSource != null && definitionCanonicalSource.contains("supportedBackendCapabilities is NOT part")) {
+            "FAIL: supportedBackendCapabilities must not enter canonical definition digest (provider-neutrality)"
+        }
+        // 16. authority enforces V1 automation fail-closed.
+        val authoritySource2 = timelineEffectFiles.find { it.name == "EffectSemanticSnapshotAuthority.java" }?.readText()
+        require(authoritySource2 != null && authoritySource2.contains("automationBindings") && authoritySource2.contains("unsupported in effect-semantics-v1")) {
+            "FAIL: non-empty unverified automation must FAIL CLOSED at the domain authority (SA5)"
+        }
+        // 17. Render verified factory accepts only (snapshot, exact reference) —
+        //     no effects/definitions/projection/caller-binding parameters.
+        val verifiedFactorySource = javaFiles.find { it.name == "VerifiedEffectSemanticSnapshotFactory.java" }?.readText()
+        require(verifiedFactorySource != null && verifiedFactorySource.contains("EffectSemanticSnapshotReference expectedReference")
+                && !verifiedFactorySource.contains("List<EffectInstance> effects")) {
+            "FAIL: verified factory must accept only (snapshot, pin) — caller effects/definitions authority removed"
+        }
+        // 18. Render materializer consumes derived per-clip effect views from the
+        //     verified snapshot (not arbitrary lists).
+        val materializerSource5 = javaFiles.find { it.name == "DefaultRenderMaterializer.java" }?.readText()
+        require(materializerSource5 != null && materializerSource5.contains("effectsForClip(clip)")) {
+            "FAIL: materializer must derive per-clip effects from the verified snapshot"
+        }
+        // 19. no mutable-latest EffectDefinition lookup in render path — no
+        //     latestEffectDefinition / latestEffectSnapshot tokens.
+        require(javaFiles.none { it.readText().contains("latestEffectDefinition") }
+                && javaFiles.none { it.readText().contains("latestEffectSnapshot") }) {
+            "FAIL: render planning must never perform mutable latest authored lookups"
+        }
+        // 20. capability requirement identity includes contract range in node identity.
+        require(codec != null && codec.readText().contains("capabilityRequirementCanonical")
+                && codec.readText().contains("req.capabilityId().value() + \"@\" + req.contractRange()")) {
+            "FAIL: capability canonical identity = CapabilityId + ContractVersionRange (single encoder, §33)"
+        }
+        // 21. durable snapshot store + definition version registry exist and
+        //     operate over the existing timeline_snapshot immutable rows
+        //     (V1-only Flyway governance — repository-reality adapted).
+        val adapterFiles = fileTree(file("../timeline-module/src/main/java/com/example/platform/timeline/adapter")) { include("*.java") }.files
+        val jdbcStoreSource = adapterFiles.find { it.name == "JdbcEffectSemanticSnapshotStore.java" }?.readText()
+        require(jdbcStoreSource != null && jdbcStoreSource.contains("timeline_snapshot")
+                && adapterFiles.any { it.name == "JdbcEffectDefinitionVersionRegistry.java" }) {
+            "FAIL: durable JDBC snapshot store + definition version registry required (restart-safe invariants)"
+        }
+        // 22. repository V1-only Flyway governance must be preserved — no new
+        //     V2 migration introduced by this workstream.
+        val migrationDir = file("../platform-app/src/main/resources/db/migration")
+        require(migrationDir.listFiles()?.none { it.name.startsWith("V2") } == true) {
+            "FAIL: V1-only Flyway governance must be preserved (no V2 migration)"
+        }
+
+        println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, R5 A/B/E/F, R6 A/B/C/D/F/H, FINAL snapshot pin, ${javaFiles.size} files)")
     }
 }

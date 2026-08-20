@@ -49,6 +49,11 @@ import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotId;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
+import com.example.platform.timeline.semantics.effect.EffectDefinitionVersionRegistry;
 import com.example.platform.timeline.canonicalmodel.TimelineSourceRef;
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile;
@@ -105,7 +110,88 @@ final class TestPlans {
      */
     static EffectSemanticReference testEffectReference() {
         return new EffectSemanticReference(
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), revisionOwnedProjection(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                effectSnapshotReference(List.of(gaussianBlurEffect()), List.of(effectDefinition())),
+                REVISION_ID);
+    }
+
+    /**
+     * FINAL: domain-only minted Effect semantic snapshot reference over the
+     * given authored effect state + definitions (production authority path).
+     */
+    static EffectSemanticSnapshotReference effectSnapshotReference(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions) {
+        return effectSnapshot(effects, definitions).reference();
+    }
+
+    /** FINAL: domain-only minted snapshot over the given state (authority path). */
+    static EffectSemanticSnapshot effectSnapshot(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions) {
+        return EffectSemanticSnapshotAuthority.mint(
+                effects, definitions, TestPlans::clipFor,
+                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
+    }
+
+    /**
+     * FINAL: domain-only minted snapshot with an EXTRA clip in the target
+     * context (e.g. clip c2 alongside the canonical c1) — authority path.
+     */
+    static EffectSemanticSnapshot effectSnapshotWithContext(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions,
+            List<MediaClip> extraClips) {
+        List<MediaClip> clips = new java.util.ArrayList<>(canonicalClips());
+        clips.addAll(extraClips);
+        return EffectSemanticSnapshotAuthority.mint(
+                effects, definitions,
+                key -> clips.stream()
+                        .filter(c -> c.trackId().equals(key.trackId()) && c.clipId().equals(key.clipId()))
+                        .findFirst().orElse(null),
+                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
+    }
+
+    /** A second clip fixture (same-range c2 on the canonical track) for target tests. */
+    static MediaClip secondClip() {
+        MediaTime start = MediaTime.ofRational(0, 1);
+        MediaTime end = MediaTime.ofRational(2, 1);
+        MediaClip.TimeRange timelineRange = new MediaClip.TimeRange(start, end);
+        MediaStreamSourceBinding binding = new MediaStreamSourceBinding(
+                MediaAssetId.of("asset-2"), MediaStreamId.of("stream-2"),
+                artifactId(), artifactDigest(), timelineRange);
+        return new MediaClip("c2", TRACK_ID, timelineRange, timelineRange,
+                com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping.of(
+                        1, 1, com.example.platform.timeline.semantics.temporal.PlaybackDirection.FORWARD),
+                binding);
+    }
+
+    /** Clip context for snapshot minting: resolves (trackId, clipId) -> MediaClip. */
+    static MediaClip clipFor(EffectSemanticSnapshotAuthority.ClipTargetKey key) {
+        for (MediaClip clip : canonicalClips()) {
+            if (clip.trackId().equals(key.trackId()) && clip.clipId().equals(key.clipId())) {
+                return clip;
+            }
+        }
+        return null;
+    }
+
+    /** Canonical MediaClip list (from the canonical TimelineDocument projection). */
+    static List<MediaClip> canonicalClips() {
+        return VerifiedTimelineRevisionFactory.verified(timelineRevision(), timelineDigester()).clips();
+    }
+
+    /**
+     * FINAL: verified effect semantic snapshot through the production verified
+     * boundary (mint -> pin -> verify against the pin).
+     */
+    static VerifiedEffectSemanticSnapshot verifiedEffectSnapshot(
+            List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions) {
+        EffectSemanticSnapshot snapshot = effectSnapshot(effects, definitions);
+        return VerifiedEffectSemanticSnapshotFactory.verified(
+                snapshot, snapshot.reference(), REVISION_ID);
+    }
+
+    /** FINAL: verified effect semantic snapshot against a CUSTOM pin (RP/BI attacks). */
+    static VerifiedEffectSemanticSnapshot verifiedEffectSnapshotAgainst(
+            EffectSemanticSnapshot snapshot, EffectSemanticSnapshotReference pin) {
+        return VerifiedEffectSemanticSnapshotFactory.verified(snapshot, pin, REVISION_ID);
     }
 
     /** The canonical planning input described in brief §13 (source RESOLVED). */
@@ -129,9 +215,10 @@ final class TestPlans {
         TimelineRevision revision = new TimelineRevision(
                 REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
                 document, digest, java.time.Instant.EPOCH, "test");
+        EffectSemanticSnapshot snap = effectSnapshot(
+                List.of(gaussianBlurEffect()), List.of(effectDefinition()));
         return VerifiedRenderSemanticSnapshotFactory.verified(
-                revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), revisionOwnedProjection(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                revision, digester, snap, snap.reference());
     }
 
     /** Canonical input with the source in the given resolution state. */
@@ -178,31 +265,26 @@ final class TestPlans {
     }
 
     /**
-     * Canonical input with custom authored effect state (verified through the
-     * production factory — definition reference/version integrity enforced).
+     * Canonical input with custom authored effect state (minted + verified
+     * through the production authority + verified boundary).
      */
     static RenderPlanningInput inputWithEffectState(
             List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions) {
         RenderPlanningInput base = canonicalInput();
-        VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
-                effects, definitions,
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), revisionOwnedProjection(), effects, definitions));
+        VerifiedEffectSemanticSnapshot snapshot = verifiedEffectSnapshot(effects, definitions);
         return inputWithEffects(snapshot);
     }
 
     /**
-     * R6-A: planning input with a CUSTOM effect state + CUSTOM revision-owned
-     * membership projection (the authority verifies membership against the
-     * supplied projection). Used by tests that introduce effects beyond the
-     * canonical fixture (e.g. a fade effect with its own wire membership).
+     * R6-A: planning input with a CUSTOM effect state + a CUSTOM clip context
+     * (target clip existence is verified against the supplied context at
+     * mint time — the authority path).
      */
     static RenderPlanningInput inputWithEffectStateAndProjection(
             List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions,
             RevisionOwnedEffectProjection projection) {
         RenderPlanningInput base = canonicalInput();
-        VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
-                effects, definitions,
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), projection, effects, definitions));
+        VerifiedEffectSemanticSnapshot snapshot = verifiedEffectSnapshot(effects, definitions);
         return inputWithEffects(snapshot);
     }
 
@@ -241,15 +323,28 @@ final class TestPlans {
             List<EffectInstance> effects, List<EffectInstance.EffectDefinition> definitions,
             TimelineRevision timelineRevision, RevisionOwnedEffectProjection projection) {
         RenderPlanningInput base = canonicalInput();
-        VerifiedEffectSemanticSnapshot snapshot = VerifiedEffectSemanticSnapshotFactory.verified(
+        // mint context derived from the REVISION's own canonical timeline (so
+        // target clips must exist in THAT revision — authentic membership).
+        List<MediaClip> revisionClips = revisionClipsOf(timelineRevision);
+        EffectSemanticSnapshot snapshot = EffectSemanticSnapshotAuthority.mint(
                 effects, definitions,
-                AuthoredEffectSemanticAuthority.issue(timelineRevision, projection, effects, definitions));
+                key -> revisionClips.stream()
+                        .filter(c -> c.trackId().equals(key.trackId()) && c.clipId().equals(key.clipId()))
+                        .findFirst().orElse(null),
+                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
+        VerifiedEffectSemanticSnapshot verifiedSnapshot = VerifiedEffectSemanticSnapshotFactory.verified(
+                snapshot, snapshot.reference(), timelineRevision.revisionId());
         VerifiedTimelineRevision verifiedRevision =
                 VerifiedTimelineRevisionFactory.verified(timelineRevision, timelineDigester());
         RenderPlanningInput input = new RenderPlanningInput(
-                new VerifiedRenderSemanticSnapshot(verifiedRevision, snapshot),
+                new VerifiedRenderSemanticSnapshot(verifiedRevision, verifiedSnapshot),
                 base.request(), base.resolution(), base.capabilities());
         return new DefaultRenderPlanner().plan(input).plan();
+    }
+
+    /** MediaClip list derived from a TimelineRevision's canonical document. */
+    static List<MediaClip> revisionClipsOf(TimelineRevision revision) {
+        return VerifiedTimelineRevisionFactory.verified(revision, timelineDigester()).clips();
     }
 
     /**
@@ -547,9 +642,10 @@ final class TestPlans {
         TimelineRevision revision = new TimelineRevision(
                 REVISION_ID, "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
                 document, digest, java.time.Instant.EPOCH, "test");
+        EffectSemanticSnapshot snap = effectSnapshot(
+                List.of(gaussianBlurEffect()), List.of(effectDefinition()));
         return VerifiedRenderSemanticSnapshotFactory.verified(
-                revision, digester, List.of(gaussianBlurEffect()), List.of(effectDefinition()),
-                AuthoredEffectSemanticAuthority.issue(timelineRevision(), revisionOwnedProjection(), List.of(gaussianBlurEffect()), List.of(effectDefinition())));
+                revision, digester, snap, snap.reference());
     }
 
     /** TimelineClip with a REVERSE constant-rate mapping. */

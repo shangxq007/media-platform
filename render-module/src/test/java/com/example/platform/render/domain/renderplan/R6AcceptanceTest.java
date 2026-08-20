@@ -13,6 +13,11 @@ import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuth
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotId;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
+import com.example.platform.timeline.semantics.effect.EffectDefinitionVersionRegistry;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
 import com.example.platform.timeline.semantics.effect.EffectTarget;
 import com.example.platform.timeline.semantics.effect.RevisionOwnedEffectProjection;
@@ -51,9 +56,10 @@ class R6AcceptanceTest {
 
     @Test
     void t1_sameTimeForeignEffectFailsClosed() {
-        // Foreign effect overlaps R1 clip time [0,2) but is not a revision-owned
-        // member -> FAIL CLOSED (membership, not temporal overlap).
-        TimelineRevision r1 = TestPlans.timelineRevision();
+        // Foreign effect overlaps R1 clip time but is NOT the revision's pinned
+        // authored state -> the verified boundary FAILS CLOSED: the revision pin
+        // (over the canonical state) cannot be satisfied by foreign content
+        // (RP1: wrong snapshot; membership is the pin, not temporal overlap).
         EffectInstance foreign = new EffectInstance(
                 "eff-foreign", "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
@@ -61,61 +67,74 @@ class R6AcceptanceTest {
                 Map.of(), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
+        EffectSemanticSnapshot foreignSnapshot = TestPlans.effectSnapshot(
+                List.of(foreign), List.of(TestPlans.effectDefinition()));
+        EffectSemanticSnapshotReference canonicalPin = TestPlans.effectSnapshotReference(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        r1, TestPlans.revisionOwnedProjection(),
-                        List.of(foreign), List.of(TestPlans.effectDefinition())),
-                "T1: same-time foreign effect -> membership FAIL CLOSED");
+                () -> VerifiedEffectSemanticSnapshotFactory.verified(
+                        foreignSnapshot, canonicalPin, TestPlans.REVISION_ID),
+                "T1: same-time foreign effect cannot satisfy the revision pin -> FAIL CLOSED");
     }
 
     @Test
     void t2_forgedClipIdFailsClosed() {
-        // Caller labels a foreign effect with target=c1 but the revision-owned
-        // source aggregate has NO such membership -> FAIL CLOSED (clip id
-        // existence alone is not membership).
-        TimelineRevision r1 = TestPlans.timelineRevision();
+        // Caller labels an effect with a target clip id that does not exist in
+        // the revision context -> the domain authority FAILS CLOSED at mint
+        // (clip id existence is checked against the revision-owned context).
         EffectInstance forged = new EffectInstance(
                 "eff-forged", "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
                 new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
                 Map.of(), Map.of(),
-                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
+                new ClipEffectTarget(TestPlans.TRACK_ID, "c99"),
                 TestPlans.gaussianBlurEffect().provenance());
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        r1, TestPlans.revisionOwnedProjection(),
+                () -> TestPlans.effectSnapshot(
                         List.of(forged), List.of(TestPlans.effectDefinition())),
-                "T2: forged clip id -> membership FAIL CLOSED");
+                "T2: forged clip id -> FAIL CLOSED at domain mint");
     }
 
     @Test
     void t3_wrongClipSameRangeFailsClosed() {
-        // Two clips c1 [0,2) and c2 [0,2). Effect belongs to c1; attacker
-        // assigns c2 -> FAIL CLOSED (membership is not temporal equivalence).
-        TimelineRevision r1 = TestPlans.timelineRevisionWithClipId("c2");
-        EffectInstance effect = TestPlans.gaussianBlurEffect(); // membership: t1/c1
+        // Effect snapshot for clip c2 (same time range semantics as c1) is
+        // offered against the revision pin for c1 -> the verified boundary
+        // FAILS CLOSED (BI2/RP3-C: binding identity is not temporal
+        // equivalence — same semantics, different handle, FAIL).
+        EffectInstance c2Effect = new EffectInstance(
+                "eff-c2", "def-blur", "1",
+                EffectInstance.EffectMediaType.VIDEO, true,
+                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
+                Map.of("radiusPixels", "4"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, "c2"),
+                TestPlans.gaussianBlurEffect().provenance());
+        EffectSemanticSnapshot c2Snapshot = TestPlans.effectSnapshotWithContext(
+                List.of(c2Effect), List.of(TestPlans.effectDefinition()),
+                List.of(TestPlans.secondClip()));
+        EffectSemanticSnapshotReference c1Pin = TestPlans.effectSnapshotReference(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        r1, TestPlans.revisionOwnedProjectionWithClipId("c2"),
-                        List.of(effect), List.of(TestPlans.effectDefinition())),
-                "T3: effect belongs to c1, assigned c2 -> membership FAIL CLOSED");
+                () -> VerifiedEffectSemanticSnapshotFactory.verified(
+                        c2Snapshot, c1Pin, TestPlans.REVISION_ID),
+                "T3: wrong clip (same range) cannot satisfy the c1 pin -> FAIL CLOSED");
     }
 
     @Test
     void t4_validRevisionOwnedMembershipPasses() {
-        // Revision-owned wire membership c1/eff-1 -> semantic target c1/eff-1 ->
-        // verification succeeds.
-        TimelineRevision r1 = TestPlans.timelineRevision();
-        EffectSemanticBinding binding = AuthoredEffectSemanticAuthority.issue(
-                r1, TestPlans.revisionOwnedProjection(),
+        // Valid authored state with target clip c1 -> domain mint + verified
+        // boundary against the snapshot's own pin succeed.
+        EffectSemanticSnapshot snapshot = TestPlans.effectSnapshot(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
-        assertEquals(r1.revisionId(), binding.revisionId());
-        assertTrue(binding.effectStateDigest().canonicalValue().length() == 64);
+        VerifiedEffectSemanticSnapshot verified = TestPlans.verifiedEffectSnapshot(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        assertEquals(snapshot.contentDigest(), verified.contentPin());
+        assertEquals(64, snapshot.contentDigest().length());
     }
 
     @Test
     void t5_missingTargetFailsClosed() {
-        // Effect target references a deleted/nonexistent clip c9.
+        // Effect target references a deleted/nonexistent clip c9 -> the domain
+        // authority FAILS CLOSED at mint (clip must exist in the context).
         EffectInstance orphan = new EffectInstance(
                 TestPlans.EFFECT_INSTANCE_ID, "def-blur", "1",
                 EffectInstance.EffectMediaType.VIDEO, true,
@@ -124,25 +143,145 @@ class R6AcceptanceTest {
                 new ClipEffectTarget(TestPlans.TRACK_ID, "c9"),
                 TestPlans.gaussianBlurEffect().provenance());
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+                () -> TestPlans.effectSnapshot(
                         List.of(orphan), List.of(TestPlans.effectDefinition())),
                 "T5: missing target clip -> FAIL CLOSED");
     }
 
     @Test
     void t6_crossRevisionFailsClosed() {
-        // Valid revision-owned effect from R1 combined with R2 -> FAIL CLOSED.
-        EffectSemanticBinding r1Binding = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+        // R1's snapshot offered against R2's pin -> FAIL CLOSED: the R2 pin
+        // points at R2's own snapshot (different handle), and binding identity
+        // is immutable (RP3-C/BI2).
+        EffectSemanticSnapshotReference r1Pin = TestPlans.effectSnapshotReference(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
-        TimelineRevision r2 = TestPlans.timelineRevisionWithId("rev-2");
+        EffectSemanticSnapshot r1Snapshot = TestPlans.effectSnapshot(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        // R2 has a DIFFERENT snapshot handle (fresh mint) with the same content.
+        EffectSemanticSnapshot r2Snapshot = TestPlans.effectSnapshot(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        EffectSemanticSnapshotReference r2Pin = r2Snapshot.reference();
+        assertThrows(IllegalArgumentException.class,
+                () -> VerifiedEffectSemanticSnapshotFactory.verified(
+                        r1Snapshot, r2Pin, "rev-2"),
+                "T6: R1 snapshot cannot satisfy R2 pin -> FAIL CLOSED");
+    }
+
+    @Test
+    void rp4_dbOnlyBindingTamperFailsClosed() {
+        // RP4: persistence relation mutated R1:S1 -> R1:S2 without a new
+        // revision semantic commitment -> verification FAIL CLOSED. Simulated
+        // by tampering the pin reference while the snapshot stays S1.
+        EffectSemanticSnapshot snapshot = TestPlans.effectSnapshot(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        EffectSemanticSnapshot other = TestPlans.effectSnapshot(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        // DB row now points at the OTHER snapshot's reference (S1 -> S2).
+        assertThrows(IllegalArgumentException.class,
+                () -> VerifiedEffectSemanticSnapshotFactory.verified(
+                        snapshot, other.reference(), TestPlans.REVISION_ID),
+                "RP4: DB-only binding tamper -> FAIL CLOSED (no new revision commitment)");
+    }
+
+    @Test
+    void rp5_legacyNoPinNeverLoadsLatest() {
+        // RP5: a legacy revision without an Effect snapshot pin must NOT
+        // silently load latest Effect state and MUST NOT accept caller
+        // completion. Legacy policy: no authoritative typed Effect semantics
+        // under the pin contract (distinct from canonical EMPTY semantics).
+        TimelineRevision legacy = TestPlans.timelineRevision(); // no pin field
+        // The render boundary has NO path that synthesizes an Effect snapshot
+        // from "latest" — verification always requires the EXACT pinned
+        // snapshot; caller-completion APIs were retired.
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedRenderSemanticSnapshotFactory.verified(
-                        r2, TestPlans.timelineDigester(),
-                        List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()),
-                        r1Binding),
-                "T6: R1-owned effect + R2 revision -> FAIL CLOSED");
+                        legacy, TestPlans.timelineDigester(),
+                        TestPlans.effectSnapshot(List.of(TestPlans.gaussianBlurEffect()),
+                                List.of(TestPlans.effectDefinition())),
+                        TestPlans.effectSnapshotReference(List.of(TestPlans.gaussianBlurEffect()),
+                                List.of(TestPlans.effectDefinition()))),
+                "RP5: legacy revision cannot be combined with caller-supplied Effect state (no latest lookup)");
+    }
+
+    @Test
+    void so4_crossClipLocalityC1StableWhenC2Changes() {
+        // Track has C1 + C2. C1 stack [e1]; C2 stack [e2]. Change ONLY C2
+        // semantics ([e2] -> [e2, e3]): C1 local Effect node semantic id MUST
+        // be unchanged (no global snapshot id/digest/revision id contamination).
+        EffectInstance e1 = TestPlans.gaussianBlurEffect(); // target c1
+        EffectInstance e2 = new EffectInstance(
+                "eff-2", "def-blur", "1",
+                EffectInstance.EffectMediaType.VIDEO, true,
+                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
+                Map.of("radiusPixels", "2"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, "c2"),
+                TestPlans.gaussianBlurEffect().provenance());
+        RenderPlan p1 = TestPlans.planForEffects(
+                List.of(e1, e2), List.of(TestPlans.effectDefinition()),
+                TestPlans.timelineRevisionWithTwoClips("c2"),
+                TestPlans.projectionWithClips("c2"));
+        String c1NodeIdP1 = effectNodeIdOf(p1, "eff-1");
+        // C2 stack changes: [e2] -> [e2, e3]
+        EffectInstance e3 = new EffectInstance(
+                "eff-3", "def-blur", "1",
+                EffectInstance.EffectMediaType.VIDEO, true,
+                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
+                Map.of("radiusPixels", "3"), Map.of(),
+                new ClipEffectTarget(TestPlans.TRACK_ID, "c2"),
+                TestPlans.gaussianBlurEffect().provenance());
+        RenderPlan p2 = TestPlans.planForEffects(
+                List.of(e1, e2, e3), List.of(TestPlans.effectDefinition()),
+                TestPlans.timelineRevisionWithTwoClips("c2"),
+                TestPlans.projectionWithClips("c2"));
+        assertEquals(c1NodeIdP1, effectNodeIdOf(p2, "eff-1"),
+                "SO4: C1 local Effect node semantic id UNCHANGED when only C2 changes");
+        assertNotEquals(p1.fingerprint(), p2.fingerprint(),
+                "SO4: plan fingerprint changes with C2 stack change");
+    }
+
+    @Test
+    void empty1_emptySnapshotDigestDeterministicAcrossIds() {
+        // EMPTY1: mint empty Effect semantics twice with different ids ->
+        // same version, same canonical empty content -> SAME semantic digest.
+        EffectSemanticSnapshot a = EffectSemanticSnapshotAuthority.mint(
+                List.of(), List.of(), TestPlans::clipFor,
+                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
+        EffectSemanticSnapshot b = EffectSemanticSnapshotAuthority.mint(
+                List.of(), List.of(), TestPlans::clipFor,
+                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
+        assertNotEquals(a.id(), b.id(), "distinct authority handles");
+        assertEquals(a.contentDigest(), b.contentDigest(),
+                "EMPTY1: deterministic empty semantic digest across ids (BI1)");
+        assertEquals(0, a.entries().size(), "authoritative EMPTY has zero entries");
+    }
+
+    @Test
+    void empty5_emptySnapshotPlansWithNoEffectNodes() {
+        // EMPTY5: render planning for a NEW authoritative EMPTY snapshot
+        // succeeds with zero Effect nodes (no mutable/latest lookup).
+        EffectSemanticSnapshot empty = EffectSemanticSnapshotAuthority.mint(
+                List.of(), List.of(), TestPlans::clipFor,
+                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
+        VerifiedRenderSemanticSnapshot verified = VerifiedRenderSemanticSnapshotFactory.verified(
+                TestPlans.timelineRevision(), TestPlans.timelineDigester(), empty, empty.reference());
+        RenderPlanningInput input = new RenderPlanningInput(
+                verified, TestPlans.renderRequest(),
+                new SourceResolutionInput(
+                        Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
+                TestPlans.fullCapabilityContext());
+        RenderPlan plan = new DefaultRenderPlanner().plan(input).plan();
+        assertEquals(0, plan.nodes().stream()
+                        .filter(n -> n.kind() instanceof RenderNodeKind.Effect).count(),
+                "EMPTY5: authoritative empty snapshot plans with zero Effect nodes");
+        assertNotNull(plan.effectSemanticReference(), "EMPTY5: plan carries the empty snapshot pin");
+    }
+
+    private static String effectNodeIdOf(RenderPlan plan, String instanceId) {
+        return plan.nodes().stream()
+                .filter(n -> n.kind() instanceof RenderNodeKind.Effect)
+                .filter(n -> n.componentPath().segments().contains(instanceId))
+                .map(n -> n.id().value())
+                .findFirst().orElseThrow(() -> new AssertionError("no effect node for " + instanceId));
     }
 
     // ── C1-C5: CAPABILITY LOWERING ──────────────────────────────────────────
@@ -268,7 +407,10 @@ class R6AcceptanceTest {
     }
 
     @Test
-    void n3_rangeChangeChangesEffectNodeId() {
+    void n3_rangeIsDerivedFromClipExtent() {
+        // FINAL V1 semantics (APPLICATION_RANGE_AUTHORITY_V1): applicationRange
+        // is DERIVED from the target clip extent — caller-supplied range is NOT
+        // authority (SA3). The derived node id equals the canonical one.
         String baseId = effectNodeId(TestPlans.planForEffects(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition())));
         EffectInstance changed = new EffectInstance(
@@ -278,20 +420,34 @@ class R6AcceptanceTest {
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
+        // The snapshot mints the DERIVED clip extent — materialization uses it.
+        EffectSemanticSnapshot snap = TestPlans.effectSnapshot(
+                List.of(changed), List.of(TestPlans.effectDefinition()));
+        assertEquals(new MediaClip.TimeRange(
+                        MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
+                snap.entries().get(0).target() instanceof ClipEffectTarget
+                        ? TestPlans.clipFor(new EffectSemanticSnapshotAuthority.ClipTargetKey(
+                                TestPlans.TRACK_ID, TestPlans.CLIP_ID)).timelineRange()
+                        : null,
+                "N3: caller applicationRange is NOT authority — range derives from clip extent");
+        // derived range equals canonical -> same materialized node id
         String changedId = effectNodeId(TestPlans.planForEffects(
                 List.of(changed), List.of(TestPlans.effectDefinition())));
-        assertNotEquals(baseId, changedId, "N3: applicationRange change -> node id changes");
+        assertEquals(baseId, changedId,
+                "N3: caller-supplied range is ignored (DERIVED) — node id stable (V1)");
     }
 
     @Test
-    void n4_automationChangeChangesEffectNodeId() {
-        String baseId = effectNodeId(TestPlans.planForEffects(
-                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition())));
+    void n4_nonEmptyAutomationFailsClosed() {
+        // FINAL V1 semantics (UNVERIFIED_EFFECT_AUTOMATION_REFERENCES_FAIL_CLOSED_V1):
+        // non-empty automationBindings are UNSUPPORTED — the domain authority
+        // FAILS CLOSED at snapshot construction (SA5).
         EffectInstance changed = effectWith(TestPlans.gaussianBlurEffect().parameters(),
                 Map.of("radius", "auto.radius"));
-        String changedId = effectNodeId(TestPlans.planForEffects(
-                List.of(changed), List.of(TestPlans.effectDefinition())));
-        assertNotEquals(baseId, changedId, "N4: automation binding change -> node id changes");
+        assertThrows(IllegalArgumentException.class,
+                () -> TestPlans.effectSnapshot(
+                        List.of(changed), List.of(TestPlans.effectDefinition())),
+                "N4/SA5: non-empty unverified automation -> FAIL CLOSED (V1)");
     }
 
     @Test
@@ -499,14 +655,12 @@ class R6AcceptanceTest {
 
     @Test
     void k4_sameSemanticTargetReconstructionDeterministic() {
-        EffectSemanticBinding a = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+        EffectSemanticSnapshot a = TestPlans.effectSnapshot(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
-        EffectSemanticBinding b = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+        EffectSemanticSnapshot b = TestPlans.effectSnapshot(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
-        assertEquals(a.effectStateDigest(), b.effectStateDigest(),
-                "K4: same semantic target reconstruction -> deterministic digest");
+        assertEquals(a.contentDigest(), b.contentDigest(),
+                "K4: same semantic target reconstruction -> deterministic digest (BI1)");
     }
 
     // ── I1-I5: INTEGRITY (fail closed) ──────────────────────────────────────
@@ -522,8 +676,7 @@ class R6AcceptanceTest {
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+                () -> TestPlans.effectSnapshot(
                         List.of(dup1, dup2), List.of(TestPlans.effectDefinition())),
                 "I1: duplicate effectInstanceId -> FAIL CLOSED");
     }
@@ -538,12 +691,21 @@ class R6AcceptanceTest {
                 TestPlans.effectDefinition().deterministicProperties(),
                 TestPlans.effectDefinition().requiredCapabilities(),
                 TestPlans.effectDefinition().supportedBackendCapabilities());
+        // I2/D1: same (definitionId, version) with DIFFERENT semantic content
+        // digest -> FAIL CLOSED (EFFECT_DEFINITION_VERSION_CONTENT_IS_IMMUTABLE_V1).
+        EffectInstance.EffectDefinition defDupDiff = new EffectInstance.EffectDefinition(
+                "def-blur", "1", EffectInstance.EffectCategory.GAUSSIAN_BLUR,
+                List.of(EffectInstance.EffectMediaType.VIDEO),
+                TestPlans.effectDefinition().parameterSchema(),
+                EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION,
+                List.of("changed-property"),
+                TestPlans.effectDefinition().requiredCapabilities(),
+                TestPlans.effectDefinition().supportedBackendCapabilities());
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+                () -> TestPlans.effectSnapshot(
                         List.of(TestPlans.gaussianBlurEffect()),
-                        List.of(TestPlans.effectDefinition(), defDup)),
-                "I2: duplicate (definitionId, version) -> FAIL CLOSED");
+                        List.of(TestPlans.effectDefinition(), defDupDiff)),
+                "I2: same (id, version) different content digest -> FAIL CLOSED");
     }
 
     @Test
@@ -556,11 +718,33 @@ class R6AcceptanceTest {
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
+        // I3: mediaType is DERIVED from track kind ∩ definition supportedMediaTypes.
+        // An AUDIO-track effect with a VIDEO-only definition fails closed.
+        EffectInstance audioTrackInstance = new EffectInstance(
+                "eff-audio", "def-blur", "1",
+                EffectInstance.EffectMediaType.AUDIO, true,
+                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
+                TestPlans.gaussianBlurEffect().parameters(), Map.of(),
+                new ClipEffectTarget("audio", "ac1"),
+                TestPlans.gaussianBlurEffect().provenance());
+        EffectSemanticSnapshotAuthority.ClipTargetKey audioKey =
+                new EffectSemanticSnapshotAuthority.ClipTargetKey("audio", "ac1");
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
-                        List.of(audioInstance), List.of(TestPlans.effectDefinition())),
-                "I3: mediaType not in definition supportedMediaTypes -> FAIL CLOSED");
+                () -> EffectSemanticSnapshotAuthority.mint(
+                        List.of(audioTrackInstance), List.of(TestPlans.effectDefinition()),
+                        key -> new MediaClip(
+                                "ac1", "audio",
+                                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
+                                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
+                                com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping.of(
+                                        1, 1, com.example.platform.timeline.semantics.temporal.PlaybackDirection.FORWARD),
+                                new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
+                                        com.example.platform.media.domain.identity.MediaAssetId.of("asset-audio"),
+                                        com.example.platform.media.domain.stream.MediaStreamId.of("stream-audio"),
+                                        TestPlans.artifactId(), TestPlans.artifactDigest(),
+                                        new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)))),
+                        new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate()),
+                "I3: track kind incompatible with definition supportedMediaTypes -> FAIL CLOSED");
     }
 
     @Test
@@ -573,8 +757,7 @@ class R6AcceptanceTest {
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+                () -> TestPlans.effectSnapshot(
                         List.of(versionMismatch), List.of(TestPlans.effectDefinition())),
                 "I4: definition version mismatch -> FAIL CLOSED");
     }
@@ -589,8 +772,7 @@ class R6AcceptanceTest {
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(),
+                () -> TestPlans.effectSnapshot(
                         List.of(unknown), List.of(TestPlans.effectDefinition())),
                 "I5: unknown definition -> FAIL CLOSED");
     }
