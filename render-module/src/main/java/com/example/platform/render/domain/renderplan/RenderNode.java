@@ -1,14 +1,17 @@
 package com.example.platform.render.domain.renderplan;
 
+import com.example.platform.extension.domain.CapabilityRequirement;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
  * A typed render node (C3/C6). Declarative semantic step: kind, component path,
- * operation key, artifact references, capability/output requirements, and an
- * exact sample window where relevant (DECODE nodes). No Map<String,Object>; no
- * provider/worker/device/tier/price fields.
+ * operation key, artifact references, capability/output requirements, typed
+ * materialization requirements (ROADMAP20 correction F1 — the materialized
+ * logical WHAT), and an exact sample window where relevant (DECODE nodes).
+ * Capability requirements use the platform capability authority (ROADMAP_16,
+ * correction F3). No Map&lt;String,Object&gt;; no provider/worker/device/tier/price fields.
  */
 public record RenderNode(
         RenderNodeId id,
@@ -16,9 +19,10 @@ public record RenderNode(
         RenderComponentPath componentPath,
         String operationKey,
         List<RenderArtifactReference> artifactReferences,
-        List<RenderCapabilityRequirement> capabilityRequirements,
+        List<CapabilityRequirement> capabilityRequirements,
         List<RenderOutputRequirement> outputRequirements,
         List<RenderExecutionRequirement> executionRequirements,
+        List<RenderMaterializationRequirement> materializationRequirements,
         Optional<RenderSampleWindow> requiredSampleWindow) {
 
     public RenderNode {
@@ -33,6 +37,24 @@ public record RenderNode(
         capabilityRequirements = capabilityRequirements != null ? List.copyOf(capabilityRequirements) : List.of();
         outputRequirements = outputRequirements != null ? List.copyOf(outputRequirements) : List.of();
         executionRequirements = executionRequirements != null ? List.copyOf(executionRequirements) : List.of();
+        materializationRequirements = materializationRequirements != null
+                ? List.copyOf(materializationRequirements) : List.of();
         requiredSampleWindow = requiredSampleWindow != null ? requiredSampleWindow : Optional.empty();
+    }
+
+    /** Backwards-compatible factory without materialization requirements. */
+    public static RenderNode of(
+            RenderNodeId id,
+            RenderNodeKind kind,
+            RenderComponentPath componentPath,
+            String operationKey,
+            List<RenderArtifactReference> artifactReferences,
+            List<CapabilityRequirement> capabilityRequirements,
+            List<RenderOutputRequirement> outputRequirements,
+            List<RenderExecutionRequirement> executionRequirements,
+            Optional<RenderSampleWindow> requiredSampleWindow) {
+        return new RenderNode(id, kind, componentPath, operationKey, artifactReferences,
+                capabilityRequirements, outputRequirements, executionRequirements,
+                List.of(), requiredSampleWindow);
     }
 }

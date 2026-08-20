@@ -1,5 +1,6 @@
 package com.example.platform.render.domain.renderplan;
 
+import com.example.platform.fonttext.resolution.ResolvedFontRun;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.time.FrameRate;
@@ -10,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -154,7 +156,7 @@ public final class RenderPlanCanonicalCodec {
      */
     public String requirementsFingerprintCanonical(
             List<RenderArtifactReference> artifactReferences,
-            List<RenderCapabilityRequirement> capabilityRequirements,
+            List<com.example.platform.extension.domain.CapabilityRequirement> capabilityRequirements,
             List<RenderOutputRequirement> outputRequirements,
             List<String> paramEncodings) {
         StringBuilder sb = new StringBuilder();
@@ -190,6 +192,9 @@ public final class RenderPlanCanonicalCodec {
                 .map(this::capabilityRequirementCanonical).toList()));
         list(sb, sortedEncodings(node.outputRequirements().stream()
                 .map(this::outputRequirementCanonical).toList()));
+        // F1: typed materialized WHAT participates in node canonical encoding.
+        list(sb, sortedEncodings(node.materializationRequirements().stream()
+                .map(this::materializationRequirementCanonical).toList()));
         optionalSampleWindow(sb, node.requiredSampleWindow());
         return sb.toString();
     }
@@ -236,8 +241,42 @@ public final class RenderPlanCanonicalCodec {
         return ref.variantKey();
     }
 
-    private String capabilityRequirementCanonical(RenderCapabilityRequirement req) {
-        return req.capabilityId().name();
+    private String capabilityRequirementCanonical(
+            com.example.platform.extension.domain.CapabilityRequirement req) {
+        // Platform capability authority (F3): capability id + contract range.
+        return req.capabilityId().value() + "@" + req.contractRange();
+    }
+
+    /**
+     * F1: typed materialized WHAT canonical encoding. Deterministic per-variant
+     * field order; every scalar length-prefixed. No locale-sensitive formatting;
+     * no object identity/hashCode-based serialization.
+     */
+    private String materializationRequirementCanonical(RenderMaterializationRequirement requirement) {
+        StringBuilder sb = new StringBuilder();
+        s(sb, requirement.variantKey());
+        if (requirement instanceof EffectMaterializationRequirement effect) {
+            s(sb, effect.category().name());
+            for (EffectMaterializationRequirement.EffectParameter parameter : effect.sortedParameters()) {
+                s(sb, parameter.key());
+                s(sb, parameter.value());
+            }
+        } else if (requirement instanceof AudioProcessMaterializationRequirement audio) {
+            s(sb, audio.gain().toString());
+            s(sb, audio.mute().toString());
+            s(sb, audio.balance().toString());
+        } else if (requirement instanceof TimedTextMaterializationRequirement text) {
+            s(sb, text.id().value());
+            s(sb, text.start().toString());
+            s(sb, text.duration().toString());
+            s(sb, text.textContent().value());
+            s(sb, text.frame().toString());
+            s(sb, text.fallbackPolicy().toString());
+            for (ResolvedFontRun run : text.resolvedFontRuns()) {
+                s(sb, run.toString());
+            }
+        }
+        return sb.toString();
     }
 
     private String mediaTimeCanonical(MediaTime time) {

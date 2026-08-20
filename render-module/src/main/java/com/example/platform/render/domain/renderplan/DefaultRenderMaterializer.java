@@ -3,6 +3,7 @@ package com.example.platform.render.domain.renderplan;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.audio.domain.mix.AudioRoute;
+import com.example.platform.extension.domain.CapabilityRequirement;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
@@ -21,10 +22,20 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Default materializer (C16). For each clip: a DECODE node + chained EFFECT nodes
- * for enabled video effects; from AudioMix: AUDIO_PROCESS + AUDIO_MIX nodes; for
- * each TextElement: a TIMED_TEXT node; one OUTPUT node. All time math is exact
- * rational (C11). Provider-neutral: no provider/worker/device/tier/price fields.
+ * Default materializer (C16, ROADMAP20 correction F1/F2/F3/F5).
+ *
+ * <p>For each clip: a DECODE node + chained EFFECT nodes for enabled video
+ * effects; from AudioMix: AUDIO_PROCESS + AUDIO_MIX nodes; for each
+ * TextElement: a TIMED_TEXT node with a typed {@link TimedTextMaterializationRequirement}
+ * wired into a COMPOSITE node that feeds OUTPUT; one OUTPUT node. All time math
+ * is exact rational (C11). Provider-neutral: no provider/worker/device/tier/price
+ * fields. Capability requirements use the platform capability authority (F3).
+ *
+ * <p>F1: effect/audio/text nodes carry typed immutable
+ * {@link RenderMaterializationRequirement} values (the materialized logical WHAT)
+ * rather than opaque hashes only. F2: TIMED_TEXT is not orphaned — it feeds the
+ * visual composition/output path. F5: unknown TemporalMapping fails closed with
+ * PLANNING_UNSUPPORTED (no silent full-source-range fallback).
  */
 public final class DefaultRenderMaterializer implements RenderMaterializer {
 
@@ -37,6 +48,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
     private static final String OP_GAIN = "gain";
     private static final String OP_MIX = "mix";
     private static final String OP_RASTER = "raster";
+    private static final String OP_COMPOSITE = "composite";
     private static final String OP_ENCODE = "encode";
 
     @Override
@@ -45,7 +57,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         List<RenderDependencyEdge> edges = new ArrayList<>();
         List<RenderPlanningDiagnostic> diagnostics = new ArrayList<>();
 
-        List<MediaClip> clips = input.clips();
+        List<MediaClip> clips = input.hydratedRevision().clips();
         RenderRequest request = input.request();
 
         if (clips.isEmpty() || request.outputs().isEmpty()) {
@@ -79,16 +91,16 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             List<RenderArtifactReference> decodeArtifacts = List.of(
                     new RenderArtifactReference.SourceArtifact(
                             mediaBinding.artifactId(), mediaBinding.contentDigest()));
-            List<RenderCapabilityRequirement> decodeCaps = List.of(
-                    new RenderCapabilityRequirement(RenderCapabilityId.DECODE));
+            List<CapabilityRequirement> decodeCaps = List.of(
+                    RenderCapabilityVocabulary.videoDecode());
             String decodeReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
                     decodeArtifacts, decodeCaps, List.of(), List.of()));
             RenderNodeId decodeId = RenderNodeId.of(
                     new RenderNodeKind.Decode(), decodePath, OP_DECODE, decodeReqFp);
-            RenderSampleWindow decodeWindow = computeDecodeWindow(clip, request);
+            RenderSampleWindow decodeWindow = computeDecodeWindow(clip, request, diagnostics);
             RenderNode decodeNode = new RenderNode(
                     decodeId, new RenderNodeKind.Decode(), decodePath, OP_DECODE,
-                    decodeArtifacts, decodeCaps, List.of(), List.of(),
+                    decodeArtifacts, decodeCaps, List.of(), List.of(), List.of(),
                     Optional.of(decodeWindow));
             nodes.add(decodeNode);
             putEntry(decodeKeys, decodeValues, clip.clipId(), decodeId);
@@ -96,7 +108,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
             // ── chained EFFECT nodes for enabled video effects on this clip ──
             RenderNodeId prevProducer = decodeId;
-            for (EffectInstance effect : effectsForClip(input.effects(), clip)) {
+            for (EffectInstance effect : effectsForClip(input.hydratedRevision().effects(), clip)) {
                 if (!effect.enabled() || !effect.isVideoEffect()) {
                     continue;
                 }
@@ -111,14 +123,21 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     continue; // diagnostic already recorded
                 }
                 String opKey = category.name().toLowerCase();
-                RenderCapabilityId cap = effectCategoryToCapability(category);
-                List<RenderCapabilityRequirement> effectCaps = List.of(
-                        new RenderCapabilityRequirement(cap));
-                // encode effect parameters deterministically (sorted "key=value"); uses
-                // Map.Entry (allowed) — never the forbidden Map<String token (C8).
-                List<String> paramEncodings = effect.parameters().entrySet().stream()
-                        .sorted(Map.Entry.comparingByKey())
-                        .map(entry -> entry.getKey() + "=" + entry.getValue())
+                CapabilityRequirement cap = RenderCapabilityVocabulary.forEffect(category);
+                List<CapabilityRequirement> effectCaps = List.of(cap);
+                // F1: typed materialized WHAT — authoritative category + supported
+                // parameters as typed immutable values (no opaque hash-only semantics).
+                // Authored Map<String,String> parameters are converted here into the
+                // typed EffectParameter list (deterministic sorted by key); the
+                // renderplan model itself never carries a raw map payload.
+                EffectMaterializationRequirement effectRequirement =
+                        EffectMaterializationRequirement.ofSorted(category,
+                                effect.parameters().entrySet().stream()
+                                        .map(entry -> new EffectMaterializationRequirement.EffectParameter(
+                                                entry.getKey(), entry.getValue()))
+                                        .toList());
+                List<String> paramEncodings = effectRequirement.sortedParameters().stream()
+                        .map(parameter -> parameter.key() + "=" + parameter.value())
                         .toList();
                 String effectReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
                         List.of(), effectCaps, List.of(), paramEncodings));
@@ -126,7 +145,8 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         new RenderNodeKind.Effect(), effectPath, opKey, effectReqFp);
                 RenderNode effectNode = new RenderNode(
                         effectId, new RenderNodeKind.Effect(), effectPath, opKey,
-                        List.of(), effectCaps, List.of(), List.of(), Optional.empty());
+                        List.of(), effectCaps, List.of(), List.of(),
+                        List.of(effectRequirement), Optional.empty());
                 nodes.add(effectNode);
                 // data-flow direction: producer (data source) -> consumer (data sink)
                 edges.add(new RenderDependencyEdge(prevProducer, effectId, new RenderDependency.EffectInput()));
@@ -136,18 +156,20 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         }
 
         // ── Audio nodes (from AudioMix) ──
-        AudioMix audioMix = input.audioMix();
+        AudioMix audioMix = input.hydratedRevision().audioMix();
         List<RenderNodeId> audioProcessNodes = new ArrayList<>();
         if (audioMix != null && !audioMix.routes().isEmpty()) {
             for (AudioRoute route : audioMix.routes()) {
                 AudioMixInput mixInput = route.input();
                 RenderComponentPath audioPath = new RenderComponentPath(
                         RenderComponentKind.AUDIO_ROUTE, List.of(mixInput.trackId(), mixInput.clipId()));
-                List<RenderCapabilityRequirement> audioCaps = List.of(
-                        new RenderCapabilityRequirement(RenderCapabilityId.AUDIO_PROCESS));
-                // typed gain/mute/balance participate in the node's requirement
-                // fingerprint (C12): a gain/mute/balance change changes node
-                // identity and plan fingerprint (C6/C24). Sorted key=value, exact.
+                List<CapabilityRequirement> audioCaps = List.of(
+                        RenderCapabilityVocabulary.audioProcess());
+                // F1: typed materialized WHAT — gain/mute/balance as typed immutable
+                // values (recoverable from the Logical RenderPlan, no re-read of AudioRoute).
+                AudioProcessMaterializationRequirement audioRequirement =
+                        AudioProcessMaterializationRequirement.of(
+                                route.gain(), route.mute(), route.balance());
                 List<String> audioParamEncodings = List.of(
                         "gain=" + route.gain().linear(),
                         "mute=" + route.mute().muted(),
@@ -158,7 +180,8 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         new RenderNodeKind.AudioProcess(), audioPath, OP_GAIN, audioReqFp);
                 RenderNode audioNode = new RenderNode(
                         audioId, new RenderNodeKind.AudioProcess(), audioPath, OP_GAIN,
-                        List.of(), audioCaps, List.of(), List.of(), Optional.empty());
+                        List.of(), audioCaps, List.of(), List.of(),
+                        List.of(audioRequirement), Optional.empty());
                 nodes.add(audioNode);
                 audioProcessNodes.add(audioId);
 
@@ -178,15 +201,15 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             // AUDIO_MIX node
             RenderComponentPath mixPath = RenderComponentPath.of(
                     RenderComponentKind.AUDIO_MIX, "master");
-            List<RenderCapabilityRequirement> mixCaps = List.of(
-                    new RenderCapabilityRequirement(RenderCapabilityId.MIX_AUDIO));
+            List<CapabilityRequirement> mixCaps = List.of(
+                    RenderCapabilityVocabulary.audioMix());
             String mixReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
                     List.of(), mixCaps, List.of(), List.of()));
             RenderNodeId mixId = RenderNodeId.of(
                     new RenderNodeKind.AudioMix(), mixPath, OP_MIX, mixReqFp);
             RenderNode mixNode = new RenderNode(
                     mixId, new RenderNodeKind.AudioMix(), mixPath, OP_MIX,
-                    List.of(), mixCaps, List.of(), List.of(), Optional.empty());
+                    List.of(), mixCaps, List.of(), List.of(), List.of(), Optional.empty());
             nodes.add(mixNode);
             for (RenderNodeId audioProcessId : audioProcessNodes) {
                 edges.add(new RenderDependencyEdge(audioProcessId, mixId,
@@ -194,27 +217,66 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             }
         }
 
-        // ── TIMED_TEXT nodes ──
-        for (TextElement textElement : input.textElements()) {
+        // ── TIMED_TEXT nodes (F2: typed materialization, connected to COMPOSITE) ──
+        List<RenderNodeId> timedTextNodes = new ArrayList<>();
+        for (TextElement textElement : input.hydratedRevision().textElements()) {
             RenderComponentPath textPath = RenderComponentPath.of(
                     RenderComponentKind.TEXT_ELEMENT, textElement.id().value());
-            List<RenderCapabilityRequirement> textCaps = List.of(
-                    new RenderCapabilityRequirement(RenderCapabilityId.RASTERIZE_TIMED_TEXT));
+            List<CapabilityRequirement> textCaps = List.of(
+                    RenderCapabilityVocabulary.timedTextRasterize());
+            // F2: typed materialized WHAT — exact text, timing, layout, fallback
+            // policy and resolved font runs (consumed, never recomputed).
+            TimedTextMaterializationRequirement textRequirement =
+                    TimedTextMaterializationRequirement.from(textElement);
+            List<String> textParamEncodings = List.of(
+                    "text=" + textElement.styledText().content().value(),
+                    "start=" + textElement.start(),
+                    "duration=" + textElement.duration());
             String textReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
-                    List.of(), textCaps, List.of(), List.of()));
+                    List.of(), textCaps, List.of(), textParamEncodings));
             RenderNodeId textId = RenderNodeId.of(
                     new RenderNodeKind.TimedText(), textPath, OP_RASTER, textReqFp);
             RenderNode textNode = new RenderNode(
                     textId, new RenderNodeKind.TimedText(), textPath, OP_RASTER,
-                    List.of(), textCaps, List.of(), List.of(), Optional.empty());
+                    List.of(), textCaps, List.of(), List.of(),
+                    List.of(textRequirement), Optional.empty());
             nodes.add(textNode);
-            // No incoming edge in this slice (SUBTITLE_RASTER reserved)
+            timedTextNodes.add(textId);
+        }
+
+        // ── COMPOSITE node (F2: visual composition of video + timed text) ──
+        RenderNodeId compositeId = null;
+        if (!timedTextNodes.isEmpty()) {
+            RenderComponentPath compositePath = RenderComponentPath.of(
+                    RenderComponentKind.COMPOSITE, "video");
+            List<CapabilityRequirement> compositeCaps = List.of(
+                    RenderCapabilityVocabulary.composite());
+            String compositeReqFp = CODEC.sha256Hex(CODEC.requirementsFingerprintCanonical(
+                    List.of(), compositeCaps, List.of(), List.of()));
+            compositeId = RenderNodeId.of(
+                    new RenderNodeKind.Composite(), compositePath, OP_COMPOSITE, compositeReqFp);
+            RenderNode compositeNode = new RenderNode(
+                    compositeId, new RenderNodeKind.Composite(), compositePath, OP_COMPOSITE,
+                    List.of(), compositeCaps, List.of(), List.of(), List.of(), Optional.empty());
+            nodes.add(compositeNode);
+            // COMPOSITE depends on the final video producer of the primary clip
+            MediaClip primaryClip = clips.get(0);
+            RenderNodeId primaryProducer = getEntry(producerKeys, producerValues, primaryClip.clipId());
+            if (primaryProducer != null) {
+                edges.add(new RenderDependencyEdge(primaryProducer, compositeId,
+                        new RenderDependency.CompositeInput()));
+            }
+            // TIMED_TEXT -> COMPOSITE: typed subtitle/text raster dependency
+            for (RenderNodeId textId : timedTextNodes) {
+                edges.add(new RenderDependencyEdge(textId, compositeId,
+                        new RenderDependency.CompositeInput()));
+            }
         }
 
         // ── OUTPUT node ──
         RenderComponentPath outputPath = RenderComponentPath.of(RenderComponentKind.OUTPUT, "master");
-        List<RenderCapabilityRequirement> outputCaps = List.of(
-                new RenderCapabilityRequirement(RenderCapabilityId.OUTPUT_ENCODE));
+        List<CapabilityRequirement> outputCaps = List.of(
+                RenderCapabilityVocabulary.outputEncode());
         List<RenderArtifactReference> outputArtifacts = new ArrayList<>();
         for (RenderOutputRequirement output : request.outputs()) {
             outputArtifacts.add(new RenderArtifactReference.FinalArtifactExpectation(output.role()));
@@ -225,14 +287,22 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 new RenderNodeKind.Output(), outputPath, OP_ENCODE, outputReqFp);
         RenderNode outputNode = new RenderNode(
                 outputId, new RenderNodeKind.Output(), outputPath, OP_ENCODE,
-                outputArtifacts, outputCaps, List.copyOf(request.outputs()), List.of(), Optional.empty());
+                outputArtifacts, outputCaps, List.copyOf(request.outputs()), List.of(),
+                List.of(), Optional.empty());
         nodes.add(outputNode);
 
-        // OUTPUT --EffectInput--> final video producer of the primary (first) clip
+        // OUTPUT --CompositeInput--> COMPOSITE when timed text participates,
+        // otherwise --EffectInput--> final video producer of the primary clip
         MediaClip primaryClip = clips.get(0);
-        RenderNodeId primaryProducer = getEntry(producerKeys, producerValues, primaryClip.clipId());
-        if (primaryProducer != null) {
-            edges.add(new RenderDependencyEdge(primaryProducer, outputId, new RenderDependency.EffectInput()));
+        if (compositeId != null) {
+            edges.add(new RenderDependencyEdge(compositeId, outputId,
+                    new RenderDependency.CompositeInput()));
+        } else {
+            RenderNodeId primaryProducer = getEntry(producerKeys, producerValues, primaryClip.clipId());
+            if (primaryProducer != null) {
+                edges.add(new RenderDependencyEdge(primaryProducer, outputId,
+                        new RenderDependency.EffectInput()));
+            }
         }
         // OUTPUT --AudioInput--> AUDIO_MIX (if audio nodes exist)
         if (audioMix != null && !audioMix.routes().isEmpty()) {
@@ -264,12 +334,15 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
     }
 
     /**
-     * Computes the DECODE sample window (C11): exact intersection of the clip's
-     * source range with the extent-mapped source window. ConstantRate: window =
-     * sourceRange clipped to the portion overlapped by the request extent. Freeze:
-     * point window [pos, pos]. All exact rational — no double.
+     * Computes the DECODE sample window (C11, F5): exact intersection of the
+     * clip's source range with the extent-mapped source window. ConstantRate:
+     * window = sourceRange clipped to the portion overlapped by the request
+     * extent. Freeze: point window [pos, pos]. All exact rational — no double.
+     * Unknown/unsupported TemporalMapping fails closed with PLANNING_UNSUPPORTED
+     * (no silent full-source-range fallback).
      */
-    private RenderSampleWindow computeDecodeWindow(MediaClip clip, RenderRequest request) {
+    private RenderSampleWindow computeDecodeWindow(
+            MediaClip clip, RenderRequest request, List<RenderPlanningDiagnostic> diagnostics) {
         FrameRate frameRate = request.extent().frameRate();
         MediaClip.TimeRange sourceRange = clip.sourceRange();
         TemporalMapping mapping = clip.temporalMapping();
@@ -299,8 +372,19 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             return new RenderSampleWindow(winStart, winEnd, frameRate);
         }
 
-        // unknown mapping kind: fall back to full source range
-        return new RenderSampleWindow(sourceRange.start(), sourceRange.end(), frameRate);
+        // F5: unsupported/unknown mapping — FAIL CLOSED. Do not silently
+        // reinterpret a new mapping subtype as identity or full-range sampling.
+        diagnostics.add(RenderPlanningDiagnostic.forNode(
+                RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED,
+                RenderNodeId.of(new RenderNodeKind.Decode(),
+                        new RenderComponentPath(RenderComponentKind.CLIP,
+                                List.of(clip.trackId(), clip.clipId())),
+                        OP_DECODE, "unsupported-temporal-mapping"),
+                RenderDiagnosticSeverity.ERROR,
+                "Unsupported TemporalMapping kind for clip " + clip.clipId()
+                        + ": " + mapping.getClass().getSimpleName()));
+        // Degenerate zero-length window (fail-closed; planner will surface the ERROR diagnostic)
+        return new RenderSampleWindow(sourceRange.start(), sourceRange.start(), frameRate);
     }
 
     /**
@@ -326,7 +410,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
     private EffectInstance.EffectCategory resolveEffectCategory(
             EffectInstance effect, RenderPlanningInput input,
             List<RenderPlanningDiagnostic> diagnostics) {
-        for (EffectInstance.EffectDefinition definition : input.effectDefinitions()) {
+        for (EffectInstance.EffectDefinition definition : input.hydratedRevision().effectDefinitions()) {
             if (definition.definitionId().equals(effect.effectDefinitionId())) {
                 return definition.category();
             }
@@ -340,22 +424,6 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                 RenderDiagnosticSeverity.ERROR,
                 "Effect definition not found in catalog: " + effect.effectDefinitionId()));
         return null;
-    }
-
-    private RenderCapabilityId effectCategoryToCapability(EffectInstance.EffectCategory category) {
-        return switch (category) {
-            case TRANSFORM -> RenderCapabilityId.EFFECT_TRANSFORM;
-            case CROP -> RenderCapabilityId.EFFECT_CROP;
-            case OPACITY -> RenderCapabilityId.EFFECT_OPACITY;
-            case BLEND_MODE -> RenderCapabilityId.EFFECT_BLEND_MODE;
-            case COLOR_ADJUSTMENT -> RenderCapabilityId.EFFECT_COLOR_ADJUSTMENT;
-            case GAUSSIAN_BLUR -> RenderCapabilityId.EFFECT_GAUSSIAN_BLUR;
-            case FADE -> RenderCapabilityId.EFFECT_FADE;
-            // audio DSP categories are not effect nodes in this slice (C12): they
-            // belong to audio processing, which the slice does not materialize.
-            case GAIN, PAN, EQUALIZER, COMPRESSOR, LIMITER -> throw new IllegalArgumentException(
-                    "audio DSP category is not a video effect capability: " + category);
-        };
     }
 
     private RenderNodeId findAudioMixNode(List<RenderNode> nodes) {

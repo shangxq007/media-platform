@@ -38,9 +38,7 @@ class ExactTimeTest {
                 new RenderExtent(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 3), FrameRate.of(30, 1)),
                 req.outputs());
         RenderPlanningInput input = new RenderPlanningInput(
-                TestPlans.revisionRef(), List.of(TestPlans.mediaClip()),
-                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()), TestPlans.audioMix(),
-                List.of(TestPlans.textElement()), sub,
+                TestPlans.hydratedRevision(), sub,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);
@@ -57,10 +55,12 @@ class ExactTimeTest {
         MediaClip clip = TestPlans.mediaClip();
         MediaClip reverseClip = reverseClip(clip);
         RenderRequest req = TestPlans.renderRequest();
+        HydratedTimelineRevision rev = TestPlans.hydratedRevision();
+        HydratedTimelineRevision reverseRev = new HydratedTimelineRevision(
+                rev.revision(), List.of(reverseClip), rev.effects(), rev.effectDefinitions(),
+                rev.audioMix(), rev.textElements());
         RenderPlanningInput input = new RenderPlanningInput(
-                TestPlans.revisionRef(), List.of(reverseClip),
-                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()), TestPlans.audioMix(),
-                List.of(TestPlans.textElement()), req,
+                reverseRev, req,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);
@@ -76,10 +76,12 @@ class ExactTimeTest {
         MediaClip freezeClip = freezeClip(clip);
         RenderRequest req = TestPlans.renderRequest();
         RenderPlanner planner = new DefaultRenderPlanner();
+        HydratedTimelineRevision rev = TestPlans.hydratedRevision();
+        HydratedTimelineRevision freezeRev = new HydratedTimelineRevision(
+                rev.revision(), List.of(freezeClip), List.of(), List.of(),
+                TestPlans.audioMix(), List.of(TestPlans.textElement()));
         RenderPlanningInput input = new RenderPlanningInput(
-                TestPlans.revisionRef(), List.of(freezeClip),
-                List.of(), List.of(), TestPlans.audioMix(),
-                List.of(TestPlans.textElement()), req,
+                freezeRev, req,
                 new SourceResolutionInput(Map.of(TestPlans.artifactId(), RenderSourceResolutionState.RESOLVED)),
                 TestPlans.fullCapabilityContext());
         RenderPlanningResult result = planner.plan(input);

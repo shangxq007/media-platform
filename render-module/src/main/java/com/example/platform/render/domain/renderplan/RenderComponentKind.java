@@ -10,6 +10,7 @@ public enum RenderComponentKind {
     TEXT_ELEMENT,
     AUDIO_ROUTE,
     AUDIO_MIX,
+    COMPOSITE,
     OUTPUT,
     PLAN
 }

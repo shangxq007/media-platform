@@ -1,27 +1,33 @@
 package com.example.platform.render.domain.renderplan;
 
+import com.example.platform.extension.domain.CapabilityId;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * F. Capability boundary (brief §13F): capability enum ids contain no provider/
- * worker/tier/price strings; plan fingerprint unchanged when CapabilityContext
- * changes; no node carries provider fields (structural assertions on RenderNode).
+ * F. Capability boundary (brief §13F, correction F3): platform capability ids
+ * contain no provider/worker/tier/price strings; plan fingerprint unchanged when
+ * CapabilityContext changes; no node carries provider fields (structural
+ * assertions on RenderNode); logical nodes carry platform CapabilityRequirement.
  */
 class CapabilityBoundaryTest {
 
     @Test
-    void capabilityEnumHasNoProviderStrings() {
-        for (RenderCapabilityId id : RenderCapabilityId.values()) {
-            String name = id.name();
+    void capabilityIdsHaveNoProviderStrings() {
+        // All ids produced by the render capability vocabulary are platform-reserved
+        // CapabilityIds. Structural check: every id in the vocabulary is valid and
+        // contains no provider/worker/tier/price terms.
+        for (CapabilityId id : RenderCapabilityVocabularyIds.all()) {
+            String name = id.value();
             assertFalse(name.toLowerCase().contains("ffmpeg"), "no ffmpeg in " + name);
             assertFalse(name.toLowerCase().contains("worker"), "no worker in " + name);
             assertFalse(name.toLowerCase().contains("tier"), "no tier in " + name);
             assertFalse(name.toLowerCase().contains("price"), "no price in " + name);
             assertFalse(name.toLowerCase().contains("provider"), "no provider in " + name);
+            assertTrue(id.isPlatformReserved(), "platform-reserved namespace: " + name);
         }
     }
 
@@ -30,7 +36,7 @@ class CapabilityBoundaryTest {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
         RenderPlanningInput changed = TestPlans.inputWithCapabilities(new CapabilityContext(
-                java.util.Set.of(RenderCapabilityId.DECODE)));
+                Set.of(CapabilityId.of("video.decode"))));
         assertEquals(planner.plan(base).plan().fingerprint().sha256Hex(),
                 planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "fingerprint excludes capability context");
@@ -55,15 +61,29 @@ class CapabilityBoundaryTest {
     }
 
     @Test
-    void capabilityEnumCountIsBounded() {
-        // V1 vocabulary is bounded (13 ids); not open-ended
-        assertTrue(RenderCapabilityId.values().length <= 20, "bounded capability vocabulary");
-        assertEquals(13, RenderCapabilityId.values().length, "exactly 13 V1 capabilities");
+    void logicalNodesCarryPlatformCapabilityRequirements() {
+        RenderPlanner planner = new DefaultRenderPlanner();
+        RenderPlanningResult result = planner.plan(TestPlans.canonicalInput());
+        assertFalse(result.plan().nodes().isEmpty());
+        for (RenderNode node : result.plan().nodes()) {
+            for (var cap : node.capabilityRequirements()) {
+                // F3: every capability requirement is the platform CapabilityRequirement
+                // (typed CapabilityId + explicit contract version range)
+                assertNotNull(cap.capabilityId());
+                assertNotNull(cap.contractRange());
+                assertTrue(cap.capabilityId().isPlatformReserved(),
+                        "logical plan capability must be platform-reserved: " + cap.capabilityId());
+            }
+        }
     }
 
     @Test
-    void allCapabilityIdsAreUppercaseEnumConvention() {
-        Arrays.stream(RenderCapabilityId.values()).forEach(id ->
-                assertEquals(id.name(), id.name().toUpperCase(), "uppercase enum name"));
+    void capabilityAvailabilityDoesNotAlterLogicalFingerprint() {
+        RenderPlanner planner = new DefaultRenderPlanner();
+        RenderPlanningInput full = TestPlans.canonicalInput();
+        RenderPlanningInput minimal = TestPlans.inputWithCapabilities(new CapabilityContext(Set.of()));
+        assertEquals(planner.plan(full).plan().fingerprint().sha256Hex(),
+                planner.plan(minimal).plan().fingerprint().sha256Hex(),
+                "capability availability is transient — never in the logical fingerprint");
     }
 }

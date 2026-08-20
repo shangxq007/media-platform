@@ -1,9 +1,9 @@
 package com.example.platform.render.domain.renderplan.graph;
 
+import com.example.platform.extension.domain.CapabilityRequirement;
 import com.example.platform.graph.api.DirectedGraphView;
 import com.example.platform.graph.api.GraphAlgorithms;
 import com.example.platform.graph.result.CycleDetectionResult;
-import com.example.platform.render.domain.renderplan.RenderCapabilityRequirement;
 import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderDependencyEdge;
 import com.example.platform.render.domain.renderplan.RenderDiagnosticSeverity;
@@ -154,7 +154,7 @@ public final class RenderGraphValidator {
 
     private void validateCapabilityRequirements(
             RenderNode node, List<RenderPlanningDiagnostic> diagnostics) {
-        for (RenderCapabilityRequirement cap : node.capabilityRequirements()) {
+        for (CapabilityRequirement cap : node.capabilityRequirements()) {
             if (cap.capabilityId() == null) {
                 diagnostics.add(RenderPlanningDiagnostic.forNode(
                         RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED,
@@ -168,6 +168,7 @@ public final class RenderGraphValidator {
                 || node.kind() instanceof RenderNodeKind.AudioProcess
                 || node.kind() instanceof RenderNodeKind.AudioMix
                 || node.kind() instanceof RenderNodeKind.TimedText
+                || node.kind() instanceof RenderNodeKind.Composite
                 || node.kind() instanceof RenderNodeKind.Output;
         if (requiresCapability && node.capabilityRequirements().isEmpty()) {
             diagnostics.add(RenderPlanningDiagnostic.forNode(

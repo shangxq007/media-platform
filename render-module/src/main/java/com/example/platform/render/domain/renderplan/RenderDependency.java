@@ -10,7 +10,8 @@ public sealed interface RenderDependency permits
         RenderDependency.DecodedFrames,
         RenderDependency.EffectInput,
         RenderDependency.AudioInput,
-        RenderDependency.SubtitleRaster {
+        RenderDependency.SubtitleRaster,
+        RenderDependency.CompositeInput {
 
     /**
      * Canonical variant key for deterministic edge ordering.
@@ -55,6 +56,17 @@ public sealed interface RenderDependency permits
         @Override
         public String variantKey() {
             return "SUBTITLE_RASTER";
+        }
+    }
+
+    /**
+     * ROADMAP20 correction F2: COMPOSITE/OUTPUT consumer depends on the typed
+     * visual composition input (video producer and/or TIMED_TEXT raster output).
+     */
+    record CompositeInput() implements RenderDependency {
+        @Override
+        public String variantKey() {
+            return "COMPOSITE_INPUT";
         }
     }
 }

@@ -79,12 +79,13 @@ class RenderGraphKernelDelegationTest {
                 new RenderComponentPath(RenderComponentKind.EFFECT, List.of("c1", "e1")), "blur", "fp-b");
         RenderNode nodeA = new RenderNode(a, new RenderNodeKind.Decode(),
                 RenderComponentPath.of(RenderComponentKind.CLIP, "t1/c1"), "decode",
-                List.of(), List.of(new RenderCapabilityRequirement(RenderCapabilityId.DECODE)),
-                List.of(), List.of(), java.util.Optional.empty());
+                List.of(), List.of(RenderCapabilityVocabulary.videoDecode()),
+                List.of(), List.of(), List.of(), java.util.Optional.empty());
         RenderNode nodeB = new RenderNode(b, new RenderNodeKind.Effect(),
                 new RenderComponentPath(RenderComponentKind.EFFECT, List.of("c1", "e1")), "blur",
-                List.of(), List.of(new RenderCapabilityRequirement(RenderCapabilityId.EFFECT_GAUSSIAN_BLUR)),
-                List.of(), List.of(), java.util.Optional.empty());
+                List.of(), List.of(RenderCapabilityVocabulary.forEffect(
+                        com.example.platform.timeline.semantics.effect.EffectInstance.EffectCategory.GAUSSIAN_BLUR)),
+                List.of(), List.of(), List.of(), java.util.Optional.empty());
         // 2-cycle: a->b, b->a
         List<RenderDependencyEdge> cyclicEdges = List.of(
                 new RenderDependencyEdge(a, b, new RenderDependency.EffectInput()),

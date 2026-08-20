@@ -72,7 +72,8 @@ public final class DefaultRenderPlanner implements RenderPlanner {
 
         // capability check -> CAPABILITY_UNAVAILABLE diagnostics
         for (RenderNode node : materialization.nodes()) {
-            for (RenderCapabilityRequirement cap : node.capabilityRequirements()) {
+            for (com.example.platform.extension.domain.CapabilityRequirement cap
+                    : node.capabilityRequirements()) {
                 if (!input.capabilities().supports(cap.capabilityId())) {
                     diagnostics.add(RenderPlanningDiagnostic.forNode(
                             RenderPlanningDiagnosticCode.CAPABILITY_UNAVAILABLE,

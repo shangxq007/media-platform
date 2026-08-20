@@ -32,8 +32,9 @@ class RenderPlanScaleSanityTest {
                     new RenderComponentPath(RenderComponentKind.EFFECT, List.of("c1", "e" + i)),
                     "blur",
                     List.of(),
-                    List.of(new RenderCapabilityRequirement(RenderCapabilityId.EFFECT_GAUSSIAN_BLUR)),
-                    List.of(), List.of(), Optional.empty());
+                    List.of(RenderCapabilityVocabulary.forEffect(
+                            com.example.platform.timeline.semantics.effect.EffectInstance.EffectCategory.GAUSSIAN_BLUR)),
+                    List.of(), List.of(), List.of(), Optional.empty());
             nodes.add(node);
             if (prev != null) {
                 edges.add(new RenderDependencyEdge(prev, id, new RenderDependency.EffectInput()));

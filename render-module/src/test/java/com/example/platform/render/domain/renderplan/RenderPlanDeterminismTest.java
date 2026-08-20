@@ -1,10 +1,12 @@
 package com.example.platform.render.domain.renderplan;
 
+import com.example.platform.extension.domain.CapabilityId;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -37,8 +39,7 @@ class RenderPlanDeterminismTest {
                 new RenderExtent(MediaTime.ofRational(0, 1), MediaTime.ofRational(3, 1), req.extent().frameRate()),
                 req.outputs());
         RenderPlanningInput changedInput = new RenderPlanningInput(
-                base.revision(), base.clips(), base.effects(), base.effectDefinitions(), base.audioMix(),
-                base.textElements(), changed, base.resolution(), base.capabilities());
+                base.hydratedRevision(), changed, base.resolution(), base.capabilities());
         String changedFp = planner.plan(changedInput).plan().fingerprint().sha256Hex();
 
         assertNotEquals(baseFp, changedFp, "extent change -> different fingerprint");
@@ -54,8 +55,7 @@ class RenderPlanDeterminismTest {
         RenderRequest changed = new RenderRequest(req.id(), req.extent(),
                 List.of(RenderOutputRequirement.of(RenderOutputRole.DELIVERY_RENDITION)));
         RenderPlanningInput changedInput = new RenderPlanningInput(
-                base.revision(), base.clips(), base.effects(), base.effectDefinitions(), base.audioMix(),
-                base.textElements(), changed, base.resolution(), base.capabilities());
+                base.hydratedRevision(), changed, base.resolution(), base.capabilities());
         String changedFp = planner.plan(changedInput).plan().fingerprint().sha256Hex();
 
         assertNotEquals(baseFp, changedFp, "output requirement change -> different fingerprint");
@@ -76,7 +76,7 @@ class RenderPlanDeterminismTest {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
         RenderPlanningInput caps = TestPlans.inputWithCapabilities(new CapabilityContext(
-                java.util.Set.of(RenderCapabilityId.DECODE)));
+                Set.of(CapabilityId.of("video.decode"))));
         assertEquals(planner.plan(base).plan().fingerprint().sha256Hex(),
                 planner.plan(caps).plan().fingerprint().sha256Hex(),
                 "capability context change -> fingerprint UNCHANGED");
@@ -109,10 +109,15 @@ class RenderPlanDeterminismTest {
     void fingerprintDependsOnRevision() {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningInput base = TestPlans.canonicalInput();
-        RenderPlanningInput changed = new RenderPlanningInput(
+        HydratedTimelineRevision otherRevision = new HydratedTimelineRevision(
                 new TimelineRevisionReference("rev-2", ContentDigest.sha256(TestPlans.REVISION_DIGEST_HEX)),
-                base.clips(), base.effects(), base.effectDefinitions(), base.audioMix(), base.textElements(),
-                base.request(), base.resolution(), base.capabilities());
+                base.hydratedRevision().clips(),
+                base.hydratedRevision().effects(),
+                base.hydratedRevision().effectDefinitions(),
+                base.hydratedRevision().audioMix(),
+                base.hydratedRevision().textElements());
+        RenderPlanningInput changed = new RenderPlanningInput(
+                otherRevision, base.request(), base.resolution(), base.capabilities());
         assertNotEquals(planner.plan(base).plan().fingerprint().sha256Hex(),
                 planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "revision change -> different fingerprint");

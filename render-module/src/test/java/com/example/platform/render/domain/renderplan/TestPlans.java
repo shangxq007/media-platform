@@ -6,6 +6,7 @@ import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.audio.domain.mix.AudioMute;
 import com.example.platform.audio.domain.mix.AudioRoute;
 import com.example.platform.audio.domain.mix.StereoBalance;
+import com.example.platform.extension.domain.CapabilityId;
 import com.example.platform.fonttext.resolution.FontFallbackPolicy;
 import com.example.platform.fonttext.resolution.ResolvedFontInstance;
 import com.example.platform.fonttext.resolution.ResolvedFontRun;
@@ -53,6 +54,10 @@ import java.util.Set;
  * {@link RenderPlanningInput}: one MediaClip (t1/c1), one enabled video
  * GAUSSIAN_BLUR effect, one AudioMix route, one TextElement, a RENDER_MASTER
  * output request, fully-resolved source, and a full capability context.
+ *
+ * <p>ROADMAP20 correction F4: all authored fragments are integrity-bound inside
+ * one {@link HydratedTimelineRevision}; F3: capability context uses platform
+ * {@link CapabilityId}s.
  */
 final class TestPlans {
 
@@ -76,12 +81,7 @@ final class TestPlans {
     /** The canonical planning input described in brief §13 (source RESOLVED). */
     static RenderPlanningInput canonicalInput() {
         return new RenderPlanningInput(
-                revisionRef(),
-                List.of(mediaClip()),
-                List.of(gaussianBlurEffect()),
-                List.of(effectDefinition()),
-                audioMix(),
-                List.of(textElement()),
+                hydratedRevision(),
                 renderRequest(),
                 new SourceResolutionInput(Map.of(artifactId(), RenderSourceResolutionState.RESOLVED)),
                 fullCapabilityContext());
@@ -91,8 +91,7 @@ final class TestPlans {
     static RenderPlanningInput inputWithSourceState(RenderSourceResolutionState state) {
         RenderPlanningInput base = canonicalInput();
         return new RenderPlanningInput(
-                base.revision(), base.clips(), base.effects(), base.effectDefinitions(), base.audioMix(),
-                base.textElements(), base.request(),
+                base.hydratedRevision(), base.request(),
                 new SourceResolutionInput(Map.of(artifactId(), state)),
                 base.capabilities());
     }
@@ -101,8 +100,7 @@ final class TestPlans {
     static RenderPlanningInput inputWithCapabilities(CapabilityContext capabilities) {
         RenderPlanningInput base = canonicalInput();
         return new RenderPlanningInput(
-                base.revision(), base.clips(), base.effects(), base.effectDefinitions(), base.audioMix(),
-                base.textElements(), base.request(), base.resolution(), capabilities);
+                base.hydratedRevision(), base.request(), base.resolution(), capabilities);
     }
 
     /** Canonical input with a different request id. */
@@ -110,10 +108,20 @@ final class TestPlans {
         RenderPlanningInput base = canonicalInput();
         RenderRequest req = base.request();
         return new RenderPlanningInput(
-                base.revision(), base.clips(), base.effects(), base.effectDefinitions(), base.audioMix(),
-                base.textElements(),
+                base.hydratedRevision(),
                 new RenderRequest(new RenderRequestId(requestId), req.extent(), req.outputs()),
                 base.resolution(), base.capabilities());
+    }
+
+    /** Coherent hydrated revision projection (F4): one revision + its authored fragments. */
+    static HydratedTimelineRevision hydratedRevision() {
+        return new HydratedTimelineRevision(
+                revisionRef(),
+                List.of(mediaClip()),
+                List.of(gaussianBlurEffect()),
+                List.of(effectDefinition()),
+                audioMix(),
+                List.of(textElement()));
     }
 
     static TimelineRevisionReference revisionRef() {
@@ -173,18 +181,28 @@ final class TestPlans {
     }
 
     static AudioMix audioMix() {
+        return audioMixWithGain(0.8);
+    }
+
+    /** Audio mix with the given route gain (for fingerprint-change tests). */
+    static AudioMix audioMixWithGain(double gain) {
         return new AudioMix(
                 com.example.platform.audio.domain.mix.AudioMasterBus.master(),
                 List.of(new AudioRoute(
                         AudioMixInput.of(TRACK_ID, CLIP_ID),
-                        AudioGain.of(0.8),
+                        AudioGain.of(gain),
                         AudioMute.of(false),
                         StereoBalance.of(0.0),
                         List.of())));
     }
 
     static TextElement textElement() {
-        TextContent content = new TextContent("Hello");
+        return textElementWithContent("Hello");
+    }
+
+    /** TextElement with the given text content (for fingerprint-change tests). */
+    static TextElement textElementWithContent(String contentText) {
+        TextContent content = new TextContent(contentText);
         FontContentDigest digest = FontContentDigest.ofText("inter-v1");
         ValidatedFontExecutionReference ref = new ValidatedFontExecutionReference(
                 digest, digest, FontSecurityState.VALIDATED_EXECUTION_FONT,
@@ -228,14 +246,15 @@ final class TestPlans {
                 List.of(RenderOutputRequirement.of(RenderOutputRole.RENDER_MASTER)));
     }
 
-    /** Capability context that supports every capability used by the canonical fixture. */
+    /** Capability context that supports every capability used by the canonical fixture (F3). */
     static CapabilityContext fullCapabilityContext() {
         return new CapabilityContext(Set.of(
-                RenderCapabilityId.DECODE,
-                RenderCapabilityId.EFFECT_GAUSSIAN_BLUR,
-                RenderCapabilityId.AUDIO_PROCESS,
-                RenderCapabilityId.MIX_AUDIO,
-                RenderCapabilityId.RASTERIZE_TIMED_TEXT,
-                RenderCapabilityId.OUTPUT_ENCODE));
+                CapabilityId.of("video.decode"),
+                CapabilityId.of("video.effect.gaussian-blur"),
+                CapabilityId.of("audio.process"),
+                CapabilityId.of("audio.mix"),
+                CapabilityId.of("subtitle.rasterize"),
+                CapabilityId.of("render.composite"),
+                CapabilityId.of("render.output")));
     }
 }
