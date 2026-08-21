@@ -30,7 +30,10 @@ Targets:
   RenderJobExecutionService:590, BaseJobTimelineLoader:56,
   TimelineRevisionRenderService:129, PlanBasedTimelineRevisionRenderService:187,
   TimelineAssetLifecycleService:115, TimelineEditorSyncService:70.
-- Resolve BaseJobTimelineLoader project-context gap (tenant-only today).
+- BaseJobTimelineLoader ownership value-flow FROZEN:
+  THREAD_EXISTING_PROJECT_CONTEXT_TO_LOADER — TimelineData gains project_id
+  projection from render_job.PROJECT_ID; loader switches findPayload(snapshotId)
+  → findOwnedById(projectId, tenantId, snapshotId) (I2-B, unresolved=0).
 
 ### CFRH-I2-C — CONTROLLER_AND_RENDER_CALLER_MIGRATION
 - TimelineRevisionController: 11 query endpoints switch to query services

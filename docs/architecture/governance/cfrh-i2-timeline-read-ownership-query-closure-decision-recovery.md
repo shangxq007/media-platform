@@ -154,3 +154,45 @@ READY_FOR_CFRH_I2_BOUNDED_IMPLEMENTATION = YES
 - system-authority-exception-evidence.md (listDistinctProjectIds)
 - cfrh-i2-execution-plan.md (waves I2-A..G)
 - decision-summary.md
+
+
+---
+
+## 11. CFRH-I2 INVENTORY + OWNERSHIP EXECUTION-CONTRACT CORRECTION (append-forward)
+
+Predecessor: 93650e19. Correction of evidence accounting ONLY; accepted
+architecture (I2-C1..C15, system authority, A..G waves) unchanged.
+
+### 11.1 Caller accounting correction
+- PRODUCTION_CALLER_COUNT = 19 REJECTED (conflated methods/sites/rows/endpoints).
+- Exact units: LEGACY_QUERY_INVOCATION_SITE_COUNT = 22,
+  LEGACY_QUERY_CALLER_METHOD_COUNT = 18, CALLER_INVENTORY_ROW_COUNT = 22,
+  HTTP_ENDPOINT_COUNT = 15, HTTP_ENDPOINT_WITH_LEGACY_QUERY_DEPENDENCY_COUNT = 11.
+- Caller TSV: one row per physical invocation site (CS-01..CS-22);
+  patchPreview findById (CS-07), patchSteps findById (CS-09), restore
+  response deps (CS-13/CS-14), mergeDiff split (CS-17/CS-18) newly accounted.
+
+### 11.2 Endpoint dependency model
+- Restore: write=CANONICAL, direct legacy=NO, transitive legacy=YES,
+  effective legacy=YES; disposition = MIGRATE_RESPONSE_QUERY_DEPENDENCY_BEFORE_I2_E.
+
+### 11.3 BaseJob ownership (FROZEN)
+- Disposition: THREAD_EXISTING_PROJECT_CONTEXT_TO_LOADER.
+- Authoritative project source: render_job.PROJECT_ID (TimelineData gains
+  projection); tenant: parameter + TimelineData.tenantId.
+- Target: findOwnedById(projectId, tenantId, snapshotId); wave I2-B;
+  UNRESOLVED_COUNT = 0. Evidence:
+  base-job-timeline-loader-ownership-value-flow.md.
+
+### 11.4 Refinements (appended; I2-C1..C15 unchanged)
+- CALLER_METRICS_MUST_DECLARE_THEIR_COUNTING_UNIT_V1
+- ONE_INVOCATION_SITE_ONE_LEDGER_ROW_V1
+- ENDPOINT_AUTHORITY_AND_QUERY_DEPENDENCY_ARE_DISTINCT_V1
+- OWNERSHIP_EXECUTION_CONTEXT_MUST_BE_RESOLVED_BEFORE_IMPLEMENTATION_V1
+
+### 11.5 Result
+- BLOCKERS = 0; UNRESOLVED_DISPOSITION_COUNT = 0;
+  ARCHITECTURE_PREMISE_FAILURE = NO; ARCHITECTURE_ESCALATION = NONE;
+  PRODUCTION_CHANGES = 0.
+- Mechanical validator: verify-cfrh-i2-inventory-contract.py (RED 10/10,
+  GREEN PASS).

@@ -1,20 +1,23 @@
-behavior_id	caller_type	caller_file	caller_symbol	caller_line	ownership_context_at_caller
-TRQ-01	controller	TimelineRevisionController	list	145	projectId (path var); tenantId (TenantContext)
-TRQ-01	application	TimelineEditorSyncService	pullByProject	58	projectId
-TRQ-01	application	TimelineEditorSyncService	pullSnapshot	99	projectId (from snapshot)
-TRQ-02	render	TimelineRevisionRenderService	render	113	revisionId only (no project/tenant)
-TRQ-02	render	PlanBasedTimelineRevisionRenderService	render	174	revisionId only (no project/tenant)
-TRQ-03	controller	TimelineRevisionController	getSnapshot	177	projectId + revisionId
-TRQ-03	controller	TimelineRevisionController	toRestoreResponse	423	projectId + newRevisionId
-TRQ-04	controller	TimelineRevisionController	list	89	projectId
-TRQ-05	controller	TimelineRevisionController	updateAnnotation	113	projectId + revisionId
-TRQ-06	controller	TimelineRevisionController	facets	98	projectId
-TRQ-06	controller	TimelineWorkbenchController	facets	40	projectId
-TRQ-07	controller	TimelineRevisionController	editSessions	126	projectId
-TRQ-08	controller	TimelineRevisionController	compare	137	projectId + from + to
-TRQ-08	controller	TimelineWorkbenchController	compare	91	projectId + from + to
-TRQ-08	controller	TimelineWorkbenchController	mergeDiff	101,102	projectId + base + source + target
-TRQ-09	controller	TimelineRevisionController	patchPreview	157	revisionId only
-TRQ-10	controller	TimelineRevisionController	patchSteps	168	revisionId only
-TRQ-11	controller	TimelineRevisionController	get	188	revisionId only (projectId in path but not passed)
-TRQ-11	controller	TimelineRevisionController	toRestoreResponse	421	projectId + newRevisionId
+site_id	behavior_id	caller_type	caller_file	caller_symbol	caller_line	callee_symbol	ownership_context_at_caller	direct_or_transitive	target_wave	disposition
+CS-01	TRQ-04	controller	TimelineRevisionController	list	89	listHistory	projectId (path var); tenantId (TenantContext)	direct	I2-A	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-02	TRQ-06	controller	TimelineRevisionController	facets	98	listFacets	projectId	direct	I2-A	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-03	TRQ-05	controller	TimelineRevisionController	updateAnnotation	113	updateAnnotation	projectId + revisionId	direct	I2-B	RETAIN_AS_OWNERSHIP_SCOPED_METADATA_COMMAND
+CS-04	TRQ-07	controller	TimelineRevisionController	editSessions	126	listEditSessions	projectId	direct	I2-A	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-05	TRQ-08	controller	TimelineRevisionController	compare	137	compareRevisions	projectId + from + to	direct	I2-D	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-06	TRQ-01	controller	TimelineRevisionController	head	145	findHead	projectId	direct	I2-B	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-07	TRQ-02	controller	TimelineRevisionController	patchPreview	155	findById	revisionId only (global)	direct	I2-D	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-08	TRQ-09	controller	TimelineRevisionController	patchPreview	157	previewPatchReplay	revisionId only	direct	I2-D	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-09	TRQ-02	controller	TimelineRevisionController	patchSteps	166	findById	revisionId only (global)	direct	I2-D	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-10	TRQ-10	controller	TimelineRevisionController	patchSteps	168	previewPatchSteps	revisionId only	direct	I2-D	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-11	TRQ-03	controller	TimelineRevisionController	snapshot	177	getRevisionSnapshotPayload	projectId + revisionId	direct	I2-A	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-12	TRQ-11	controller	TimelineRevisionController	get	188	getDetail	revisionId only (load-then-check)	direct	I2-A	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-13	TRQ-11	controller	TimelineRevisionController	toRestoreResponse	421	getDetail	projectId + newRevisionId	transitive	I2-C	MIGRATE_RESPONSE_QUERY_DEPENDENCY_BEFORE_I2_E
+CS-14	TRQ-03	controller	TimelineRevisionController	toRestoreResponse	423	getRevisionSnapshotPayload	projectId + newRevisionId	transitive	I2-C	MIGRATE_RESPONSE_QUERY_DEPENDENCY_BEFORE_I2_E
+CS-15	TRQ-06	controller	TimelineWorkbenchController	facets	40	listFacets	projectId	direct	I2-A	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-16	TRQ-08	controller	TimelineWorkbenchController	compare	91	compareRevisions	projectId + from + to	direct	I2-D	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-17	TRQ-08	controller	TimelineWorkbenchController	mergeDiff	101	compareRevisions	projectId + base + source	direct	I2-D	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-18	TRQ-08	controller	TimelineWorkbenchController	mergeDiff	102	compareRevisions	projectId + base + target	direct	I2-D	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-19	TRQ-01	application	TimelineEditorSyncService	pullByProject	58	findHead	projectId	direct	I2-B	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-20	TRQ-01	application	TimelineEditorSyncService	pullSnapshot	99	findHead	projectId (from snapshot)	direct	I2-B	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-21	TRQ-02	render	TimelineRevisionRenderService	render	113	findById	revisionId only (global)	direct	I2-C	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
+CS-22	TRQ-02	render	PlanBasedTimelineRevisionRenderService	render	174	findById	revisionId only (global)	direct	I2-C	MIGRATE_TO_OWNERSHIP_SCOPED_QUERY
