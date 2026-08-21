@@ -1,7 +1,7 @@
 # MEDIA_PLATFORM_INTEGRATED_ARCHITECTURE_ROADMAP_V2
 
-**STATUS = ADOPTED (baseline consolidation, FINAL BASELINE CORRECTION applied,
-pending independent review)**
+**STATUS = ADOPTED (baseline consolidation, FINAL DECISION-ID + STATUS-AXIS
+CORRECTION applied, pending independent canonicalization review)**
 
 | Field | Value |
 |---|---|
@@ -13,9 +13,9 @@ pending independent review)**
 | SUPERSEDES | none (cumulative baseline; older decisions remain authoritative unless explicitly superseded) |
 | AUTHORITY | ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1 |
 | ROADMAP_20 | CLOSED / INTEGRATED at main 19db3aea |
-| REVIEWED_PREDECESSOR | 1749b005dfd45fe54b25e4b7a8166361e4045f66 |
-| CORRECTION_TYPE | GOVERNANCE_BASELINE_CORRECTION (C1-C4) |
-| ARV2_CORRECTION | 22/22 PASS |
+| REVIEWED_PREDECESSOR | 7b8bad7a0881d63602c859e2b0bbe0f228dc4ba4 |
+| CORRECTION_TYPE | FINAL DECISION-ID + STATUS-AXIS CORRECTION (V2-F1, V2-F2) |
+| ARV2_FINAL_AUTHORITY_CORRECTION | 26/26 PASS |
 
 This document is the current top-level architecture roadmap authority. It
 consolidates repository-adopted architecture decisions up through Roadmap #20
@@ -105,27 +105,29 @@ future/cross-cutting layers explicitly NOT owned by #20 (§54).
 For every foundation below, ARCHITECTURE_STATUS and IMPLEMENTATION_STATUS are
 reported separately. "Frozen/adopted" never implies "implemented".
 
-### 3.1 Normalized status vocabulary (C1 correction)
+### 3.1 Normalized status vocabulary (V2-F2 — strict three-axis model)
+
+Three INDEPENDENT status axes. No value is shared across axes.
 
 ARCHITECTURE_STATUS (design authority):
 - PROPOSED / ADOPTED / FROZEN / SUPERSEDED / DEFERRED
+- CLOSED is NOT a valid architecture status.
 
 IMPLEMENTATION_STATUS (runtime reality):
-- NOT_STARTED / FOUNDATION_ONLY / PARTIALLY_IMPLEMENTED / IMPLEMENTED / CLOSED
-  (CLOSED is a governance/milestone finalization qualifier, not merely
-  "architecture adopted")
+- NOT_STARTED / FOUNDATION_ONLY / PARTIALLY_IMPLEMENTED / IMPLEMENTED
+- CLOSED is NOT a valid implementation status.
 
 MILESTONE_STATUS (governance finalization):
-- CLOSED / NOT_STARTED / FUTURE
+- NOT_APPLICABLE / NOT_STARTED / IN_PROGRESS / CLOSED / FUTURE
+- CLOSED appears ONLY here.
 
 Conventions:
-- CLOSED != merely "architecture adopted"
-- FOUNDATION_ONLY != "implemented bounded foundation" (they are distinct;
-  where a bounded V1 foundation IS implemented, the document says
-  IMPLEMENTED_BOUNDED_V1 or IMPLEMENTED / CLOSED explicitly)
+- For a completed bounded foundation: ARCH = FROZEN, IMPL = IMPLEMENTED,
+  MILESTONE = CLOSED.
+- FOUNDATION_ONLY != IMPLEMENTED; IMPLEMENTED != "architecture adopted".
 - Recommended model for Operation Model / OperationPlan Transaction /
   Revision Command: ARCH_STATUS = FROZEN, IMPL_STATUS = IMPLEMENTED,
-  MILESTONE_STATUS = CLOSED (see §6.2)
+  MILESTONE_STATUS = CLOSED (see §6.2).
 
 ---
 
@@ -249,8 +251,9 @@ The following Operation-layer foundations are CLOSED / IMPLEMENTED in
 repository governance, NOT future work. Correct status model:
 
 **OPERATION_MODEL_FOUNDATION_V1**
-- ARCHITECTURE_STATUS = FROZEN / CLOSED
-- IMPLEMENTATION_STATUS = IMPLEMENTED / CLOSED
+- ARCHITECTURE_STATUS = FROZEN
+- IMPLEMENTATION_STATUS = IMPLEMENTED
+- MILESTONE_STATUS = CLOSED
 - Source: `docs/architecture/governance/operation-model-foundation-v1.md` (CLOSED)
 - Repository truth: typed OperationDefinition; typed OperationRequest;
   OperationRequestResolver; OperationInstance; typed OperationParameters;
@@ -258,8 +261,9 @@ repository governance, NOT future work. Correct status model:
   15 frozen V1 operation definitions; OperationErrorCode typed vocabulary.
 
 **OPERATION_PLAN_TRANSACTION_MODEL_V1**
-- ARCHITECTURE_STATUS = FROZEN / CLOSED
-- IMPLEMENTATION_STATUS = IMPLEMENTED / CLOSED
+- ARCHITECTURE_STATUS = FROZEN
+- IMPLEMENTATION_STATUS = IMPLEMENTED
+- MILESTONE_STATUS = CLOSED
 - Source: `docs/architecture/governance/operation-plan-transaction-model-v1.md`
   + `operation-plan-final-evidence-verification-v1.md` (both CLOSED)
 - Repository truth: OperationPlanner implemented (15 frozen ops incl. delete
@@ -271,8 +275,9 @@ repository governance, NOT future work. Correct status model:
   insert + durable result); real PostgreSQL concurrency/integrity evidence.
 
 **REVISION_COMMAND_MODEL_V1**
-- ARCHITECTURE_STATUS = FROZEN / CLOSED
-- IMPLEMENTATION_STATUS = IMPLEMENTED / CLOSED
+- ARCHITECTURE_STATUS = FROZEN
+- IMPLEMENTATION_STATUS = IMPLEMENTED
+- MILESTONE_STATUS = CLOSED
 - Source: `docs/architecture/governance/revision-command-model-v1.md` (CLOSED)
 - Repository truth: CREATE_REF, DELETE_REF, RESTORE, MERGE; RevisionCommandPlan;
   RevisionCommandPlanDigest; RevisionGraphService (merge-base: unique /
@@ -794,8 +799,9 @@ canonical media semantics.
 
 ARCHITECTURE_CHANGE_TRACEABILITY_FIELDS_V1 — ADOPTED. Required fields:
 DECISION_ID, UPDATE_TYPE, ARCH_LAYER, ARCH_STATUS, IMPL_STATUS,
-AFFECTED_EXISTING, AFFECTED_MILESTONES, AFFECTED_CONSTRAINTS,
-REQUIRED_EVIDENCE_DELTA, TRACEABILITY_DELTA, SOURCE_DOCUMENTS.
+MILESTONE_STATUS, AFFECTED_EXISTING, AFFECTED_MILESTONES,
+AFFECTED_CONSTRAINTS, REQUIRED_EVIDENCE_DELTA, TRACEABILITY_DELTA,
+SOURCE_DOCUMENTS.
 
 AFFECTED_CONSTRAINTS values: explicit existing Constraint IDs where they
 already exist; otherwise GOVERNANCE_ONLY / FUTURE_CONSTRAINT_PROJECTION_REQUIRED
@@ -807,51 +813,92 @@ TRACEABILITY_DELTA values: NONE / SOURCE_LINK_ADDED / STATUS_CORRECTED /
 AUTHORITY_RELATION_REFINED / FUTURE_CONSTRAINT_TRACE_REQUIRED /
 EXISTING_DECISION_INTEGRATED / IMPLEMENTATION_STATUS_CORRECTED.
 
-EXACT_FROZEN_DECISION_ID_OR_EXPLICIT_ALIAS_V1 — ADOPTED. Frozen decision IDs
-are used verbatim; no silent shortening. Where the V2 document needed an
-umbrella decision ID, it is explicitly marked ADD with its composition
-relation (see §22.1 alias register; zero unregistered near-synonyms).
+EXACT_FROZEN_DECISION_ID_OR_EXPLICIT_COMPOSITION_V1 — ADOPTED (V2-F1).
+Every DECISION_ID is exactly one of:
+- EXACT_EXISTING_FROZEN_ID (repository frozen ID, used verbatim), or
+- NEW_V2_UMBRELLA_ID (explicitly ADD + declared composition relation in the
+  §22.1 register; never presented as a pre-existing frozen ID).
+Silent near-synonyms, silent aliases, retroactive fake frozen IDs and
+duplicate semantic authorities are forbidden.
 
-| DECISION_ID | UPDATE_TYPE | ARCH_LAYER | ARCH_STATUS | IMPL_STATUS | AFFECTED_EXISTING | AFFECTED_MILESTONES | AFFECTED_CONSTRAINTS | REQUIRED_EVIDENCE_DELTA | TRACEABILITY_DELTA | SOURCE_DOCUMENTS |
-|---|---|---|---|---|---|---|---|---|---|---|
-| ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1 | ADD | Platform model | ADOPTED | FOUNDATION_ONLY | — | all | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | none (governance) | EXISTING_DECISION_INTEGRATED | this document §1 |
-| EXTERNAL_REVISION_BACKEND_FIRST_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | JGit mechanics | #13 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | roadmap-13; core-rebalancing §1 |
-| TIMELINE_IS_COMPOSITION_REVISION_AND_MERGE_AUTHORITY_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | Timeline Git | #14 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | roadmap-14; core-rebalancing §1 |
-| EFFECT_SEMANTIC_SNAPSHOT_PINNED_BY_TIMELINE_REVISION_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | Effect authority | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | roadmap-20 Option B chain |
-| NO_LEGACY_EFFECT_AUTHORITY_AFTER_ROADMAP20_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | legacy Effect | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | roadmap-20 clean-forward |
-| CAPABILITY_AUTHORITY_MODEL_V1 | REFINE | Capability | FROZEN | IMPLEMENTED | CapabilityRegistry/PluginRegistry | #16 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | roadmap-16 |
-| EFFECTIVE_CAPABILITY_MODEL_V1 | ADD | Capability | ADOPTED | FOUNDATION_ONLY | workflow capability | #16 | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | AUTHORITY_RELATION_REFINED | this document §5.3 |
-| OPERATION_MODEL_FOUNDATION_V1 | REFINE | Operation | FROZEN | IMPLEMENTED / CLOSED | operation model | #19/OPM | NOT_YET_ASSIGNED | real-PG evidence (done) | IMPLEMENTATION_STATUS_CORRECTED | operation-model-foundation-v1.md |
-| OPERATION_PLAN_TRANSACTION_MODEL_V1 | REFINE | Operation | FROZEN | IMPLEMENTED / CLOSED | plan/apply boundary | OPTM | NOT_YET_ASSIGNED | real-PG evidence (done) | IMPLEMENTATION_STATUS_CORRECTED | operation-plan-transaction-model-v1.md |
-| REVISION_COMMAND_MODEL_V1 | ADD | Operation | FROZEN | IMPLEMENTED / CLOSED | revision command boundary | RCM | NOT_YET_ASSIGNED | real-PG evidence (done) | EXISTING_DECISION_INTEGRATED | revision-command-model-v1.md |
-| UNIFIED_CONSTRAINT_AND_EVALUATION_ARCHITECTURE_V1 | ADD | Constraint/Evidence | ADOPTED | FOUNDATION_ONLY | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.1 |
-| CANONICAL_CONSTRAINT_KERNEL_V1 | ADD | Constraint/Evidence | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | FUTURE_CONSTRAINT_TRACE_REQUIRED | this document §7.2 |
-| EVIDENCE_MODEL_FOUNDATION_V1 | ADD | Constraint/Evidence | ADOPTED | FOUNDATION_ONLY | FCV/gates as projections | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | FUTURE_CONSTRAINT_TRACE_REQUIRED | this document §7.3 |
-| FORMAL_METHODS_PROGRESSIVE_ADOPTION_ROADMAP_V1 | ADD | Formal Methods | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.5 |
-| LEAN_FIRST_FORMAL_SEMANTIC_KERNEL_V1 | ADD | Formal Methods | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.5 |
-| RENDERPLAN_LOGICAL_PLANNING_AUTHORITY_V1 | REFINE | Planning | FROZEN | IMPLEMENTED | RenderPlan/RenderGraph | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | roadmap-20 contract |
-| ROADMAP_ALGEBRAIC_SEMANTIC_OPTIMIZATION_AMENDMENT_V1 | ADD | Planning | ADOPTED | FOUNDATION_ONLY | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §8.2 |
-| COST_OPTIMIZATION_ONLY_OVER_PROVEN_LEGAL_PLAN_SPACE_V1 | ADD | Planning | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §8.2 |
-| PROVIDER_EXECUTES_NOT_DEFINES_SEMANTICS_V1 | REFINE | Execution | FROZEN | IMPLEMENTED | FFmpeg adapter | #13 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | core-rebalancing §1 |
-| INFINITE_CANVAS_AND_VISUAL_WORKFLOW_AS_PRODUCT_SURFACES_V1 | ADD | Product Surfaces | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §10.1 |
-| WORKFLOW_OWNS_PROCESS_TIMELINE_OWNS_COMPOSITION_V1 | REFINE | Product Surfaces | FROZEN | PARTIALLY_IMPLEMENTED | workflow/timeline | #19 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | core-rebalancing §8 |
-| GRAPHQL_IS_APPLICATION_QUERY_PROJECTION_AND_COMMAND_TRANSPORT_NOT_DOMAIN_AUTHORITY_V1 | ADD | Product Surfaces | ADOPTED | DEFERRED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §10.4 |
-| POSTGRES_EXTENSION_IS_INFRASTRUCTURE_CAPABILITY_NOT_DOMAIN_AUTHORITY_V1 | REFINE | Persistence | FROZEN | IMPLEMENTED | PG extensions | GCR-5/6 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | gcr-5-gcr-6 |
-| PROVENANCE_LINEAGE_V1 | ADD | Persistence | ADOPTED | FOUNDATION_ONLY | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §11.3 |
-| LANGUAGE_NEUTRAL_CONTRACT_POLYGLOT_IMPLEMENTATION_SINGLE_SEMANTIC_AUTHORITY_V1 | ADD | Polyglot | ADOPTED | FOUNDATION_ONLY | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §13.1 |
-| EVIDENCE_ACCOUNTING_MUST_MATCH_ACTUAL_TEST_TARGET_AND_EXECUTION_SCOPE_V1 | REFINE | Governance | ADOPTED | IMPLEMENTED (governance) | #20 evidence correction | #20 | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | governance (done) | IMPLEMENTATION_STATUS_CORRECTED | roadmap-20-final-independent-acceptance-evidence-correction |
+| DECISION_ID | UPDATE_TYPE | ARCH_LAYER | ARCH_STATUS | IMPL_STATUS | MILESTONE_STATUS | AFFECTED_EXISTING | AFFECTED_MILESTONES | AFFECTED_CONSTRAINTS | REQUIRED_EVIDENCE_DELTA | TRACEABILITY_DELTA | SOURCE_DOCUMENTS |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1 | ADD | Platform model | ADOPTED | FOUNDATION_ONLY | NOT_APPLICABLE | — | all | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | none (governance) | EXISTING_DECISION_INTEGRATED | this document §1 |
+| EXTERNAL_REVISION_BACKEND_FIRST_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | CLOSED | JGit mechanics | #13 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | roadmap-13; core-rebalancing §1 |
+| TIMELINE_IS_COMPOSITION_REVISION_AND_MERGE_AUTHORITY_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | CLOSED | Timeline Git | #14 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | roadmap-14; core-rebalancing §1 |
+| EFFECT_SEMANTIC_SNAPSHOT_PINNED_BY_TIMELINE_REVISION_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | CLOSED | Effect authority | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | roadmap-20 Option B chain |
+| NO_LEGACY_EFFECT_AUTHORITY_AFTER_ROADMAP20_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | CLOSED | legacy Effect | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | roadmap-20 clean-forward |
+| CAPABILITY_AUTHORITY_MODEL_V1 | ADD | Capability | ADOPTED | IMPLEMENTED | CLOSED | CapabilityRegistryPort/PluginRegistryPort | #16 | NOT_YET_ASSIGNED | none | AUTHORITY_RELATION_REFINED | this document §5.2; roadmap-16 (C16-CORR-3); §22.1 |
+| EFFECTIVE_CAPABILITY_MODEL_V1 | ADD | Capability | ADOPTED | FOUNDATION_ONLY | NOT_APPLICABLE | workflow capability | #16 | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | AUTHORITY_RELATION_REFINED | this document §5.3; §22.1 |
+| OPERATION_MODEL_FOUNDATION_V1 | REFINE | Operation | FROZEN | IMPLEMENTED | CLOSED | operation model | #19/OPM | NOT_YET_ASSIGNED | real-PG evidence (done) | IMPLEMENTATION_STATUS_CORRECTED | operation-model-foundation-v1.md |
+| OPERATION_PLAN_TRANSACTION_MODEL_V1 | REFINE | Operation | FROZEN | IMPLEMENTED | CLOSED | plan/apply boundary | OPTM | NOT_YET_ASSIGNED | real-PG evidence (done) | IMPLEMENTATION_STATUS_CORRECTED | operation-plan-transaction-model-v1.md |
+| REVISION_COMMAND_MODEL_V1 | ADD | Operation | FROZEN | IMPLEMENTED | CLOSED | revision command boundary | RCM | NOT_YET_ASSIGNED | real-PG evidence (done) | EXISTING_DECISION_INTEGRATED | revision-command-model-v1.md |
+| UNIFIED_CONSTRAINT_AND_EVALUATION_ARCHITECTURE_V1 | ADD | Constraint/Evidence | ADOPTED | FOUNDATION_ONLY | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.1 |
+| CANONICAL_CONSTRAINT_KERNEL_V1 | ADD | Constraint/Evidence | ADOPTED | NOT_STARTED | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | FUTURE_CONSTRAINT_TRACE_REQUIRED | this document §7.2 |
+| EVIDENCE_MODEL_FOUNDATION_V1 | ADD | Constraint/Evidence | ADOPTED | FOUNDATION_ONLY | NOT_APPLICABLE | FCV/gates as projections | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | FUTURE_CONSTRAINT_TRACE_REQUIRED | this document §7.3 |
+| FORMAL_METHODS_PROGRESSIVE_ADOPTION_ROADMAP_V1 | ADD | Formal Methods | ADOPTED | NOT_STARTED | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.5 |
+| LEAN_FIRST_FORMAL_SEMANTIC_KERNEL_V1 | ADD | Formal Methods | ADOPTED | NOT_STARTED | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.5 |
+| RENDERPLAN_LOGICAL_PLANNING_AUTHORITY_V1 | ADD | Planning | ADOPTED | IMPLEMENTED | CLOSED | RenderPlan/RenderGraph | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | this document §8.1; §22.1; roadmap-20 contract |
+| ROADMAP_ALGEBRAIC_SEMANTIC_OPTIMIZATION_AMENDMENT_V1 | ADD | Planning | ADOPTED | FOUNDATION_ONLY | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §8.2 |
+| COST_OPTIMIZATION_ONLY_OVER_PROVEN_LEGAL_PLAN_SPACE_V1 | ADD | Planning | ADOPTED | NOT_STARTED | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | roadmap-20-effect-snapshot-binding-vs-semantic-identity-correction; this document §8.2 |
+| PROVIDER_EXECUTES_NOT_DEFINES_SEMANTICS_V1 | ADD | Execution | ADOPTED | IMPLEMENTED | CLOSED | FFmpeg adapter | #13 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | this document §9.2; §22.1; core-rebalancing §10 |
+| INFINITE_CANVAS_AND_VISUAL_WORKFLOW_AS_PRODUCT_SURFACES_V1 | ADD | Product Surfaces | ADOPTED | NOT_STARTED | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §10.1 |
+| WORKFLOW_OWNS_PROCESS_TIMELINE_OWNS_COMPOSITION_V1 | ADD | Product Surfaces | ADOPTED | PARTIALLY_IMPLEMENTED | CLOSED | workflow/timeline | #19 | NOT_YET_ASSIGNED | none | AUTHORITY_RELATION_REFINED | this document §10.2; §22.1; core-rebalancing §8 |
+| GRAPHQL_IS_APPLICATION_QUERY_PROJECTION_AND_COMMAND_TRANSPORT_NOT_DOMAIN_AUTHORITY_V1 | ADD | Product Surfaces | ADOPTED | NOT_STARTED | FUTURE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §10.4 |
+| POSTGRES_EXTENSION_IS_INFRASTRUCTURE_CAPABILITY_NOT_DOMAIN_AUTHORITY_V1 | REFINE | Persistence | FROZEN | IMPLEMENTED | CLOSED | PG extensions | GCR-5/6 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | gcr-5-gcr-6 |
+| PROVENANCE_LINEAGE_V1 | ADD | Persistence | ADOPTED | FOUNDATION_ONLY | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | roadmap-20-logical-what-closure-correction-r4; this document §11.3 |
+| LANGUAGE_NEUTRAL_CONTRACT_POLYGLOT_IMPLEMENTATION_SINGLE_SEMANTIC_AUTHORITY_V1 | ADD | Polyglot | ADOPTED | FOUNDATION_ONLY | NOT_APPLICABLE | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §13.1 |
+| EVIDENCE_ACCOUNTING_MUST_MATCH_ACTUAL_TEST_TARGET_AND_EXECUTION_SCOPE_V1 | ADD | Governance | ADOPTED | IMPLEMENTED (governance) | CLOSED | #20 evidence correction | #20 | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | governance (done) | IMPLEMENTATION_STATUS_CORRECTED | roadmap-20-final-independent-acceptance-evidence-correction; §22.1 |
 
-### 22.1 Decision ID alias / composition register
+Note on status columns (V2-F2): ARCH_STATUS and IMPL_STATUS contain only their
+own axis values; MILESTONE_STATUS is a separate column. CLOSED appears only
+under MILESTONE_STATUS.
 
-| V2_ID | RELATION | CANONICAL_SOURCE_DECISION_IDS | STATUS |
-|---|---|---|---|
-| (none) | — | — | zero aliases required |
+### 22.1 Decision ID authority / composition register (V2-F1)
 
-The traceability table above uses exact frozen decision IDs verbatim. No
-shorthand aliases are introduced. (Previous V2 draft shorthands
-`GRAPHQL_IS_PROJECTION_AND_COMMAND_TRANSPORT_V1` and
-`POSTGRES_EXTENSION_IS_INFRASTRUCTURE_NOT_DOMAIN_AUTHORITY_V1` were corrected
-to the exact frozen IDs; no ambiguous near-synonyms remain.)
+Classification: every traceability DECISION_ID is EXACT_EXISTING_FROZEN_ID or
+NEW_V2_UMBRELLA_ID. No INVALID_OR_AMBIGUOUS entries.
+
+| V2_DECISION_ID | CLASSIFICATION | RELATION | CANONICAL_SOURCE_DECISION_IDS | SOURCE_DOCUMENTS | STATUS |
+|---|---|---|---|---|---|
+| ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1 | NEW_V2_UMBRELLA_ID | GROUPS (platform model) | platform model principles across #13-#20 (no single pre-existing exact ID) | this V2 baseline §1 | ADOPTED |
+| EXTERNAL_REVISION_BACKEND_FIRST_V1 | EXACT_EXISTING_FROZEN_ID | — | — | roadmap-13; core-rebalancing §1 | FROZEN |
+| TIMELINE_IS_COMPOSITION_REVISION_AND_MERGE_AUTHORITY_V1 | EXACT_EXISTING_FROZEN_ID | — | — | roadmap-14; core-rebalancing §1 | FROZEN |
+| EFFECT_SEMANTIC_SNAPSHOT_PINNED_BY_TIMELINE_REVISION_V1 | EXACT_EXISTING_FROZEN_ID | — | — | roadmap-20 effect-authority-binding-decision-recovery; option-b-contract-closure | FROZEN |
+| NO_LEGACY_EFFECT_AUTHORITY_AFTER_ROADMAP20_V1 | EXACT_EXISTING_FROZEN_ID | — | — | roadmap-20 clean-forward closure | FROZEN |
+| CAPABILITY_AUTHORITY_MODEL_V1 | NEW_V2_UMBRELLA_ID | SUMMARIZES | CAPABILITY_VERSION_LIFECYCLE_BOUNDED_ARCHITECTURE_CONTRACT_V1 (C1-C20+R1-R4); CapabilityRegistryPort = capability-facing authority (C16-CORR-3); PluginRegistryPort = plugin container concern | roadmap-16; core-rebalancing §8; this V2 baseline §5.2 | ADOPTED |
+| EFFECTIVE_CAPABILITY_MODEL_V1 | NEW_V2_UMBRELLA_ID | COMPOSES | effective access = capability exists ∩ runtime available ∩ entitlement ∩ policy permission ∩ quota; WORKFLOW_RUNTIME_RESOLVES_CAPABILITY_THROUGH_EFFECTIVE_CAPABILITY_VIEW_V1 | core-rebalancing §8; this V2 baseline §5.3 | ADOPTED |
+| OPERATION_MODEL_FOUNDATION_V1 | EXACT_EXISTING_FROZEN_ID | — | — | operation-model-foundation-v1.md | FROZEN |
+| OPERATION_PLAN_TRANSACTION_MODEL_V1 | EXACT_EXISTING_FROZEN_ID | — | — | operation-plan-transaction-model-v1.md; operation-plan-final-evidence-verification-v1.md | FROZEN |
+| REVISION_COMMAND_MODEL_V1 | EXACT_EXISTING_FROZEN_ID | — | — | revision-command-model-v1.md; revision-command-final-post-close-verification-v1.md | FROZEN |
+| UNIFIED_CONSTRAINT_AND_EVALUATION_ARCHITECTURE_V1 | EXACT_EXISTING_FROZEN_ID | — | — | constraint/evaluation architecture records (V2 §7.1 integrates) | ADOPTED |
+| CANONICAL_CONSTRAINT_KERNEL_V1 | EXACT_EXISTING_FROZEN_ID | — | — | constraint kernel records (V2 §7.2 integrates) | ADOPTED |
+| EVIDENCE_MODEL_FOUNDATION_V1 | EXACT_EXISTING_FROZEN_ID | — | — | evidence model records (V2 §7.3 integrates) | ADOPTED |
+| FORMAL_METHODS_PROGRESSIVE_ADOPTION_ROADMAP_V1 | EXACT_EXISTING_FROZEN_ID | — | — | formal methods records (V2 §7.5 integrates) | ADOPTED |
+| LEAN_FIRST_FORMAL_SEMANTIC_KERNEL_V1 | EXACT_EXISTING_FROZEN_ID | — | — | formal methods records (V2 §7.5 integrates) | ADOPTED |
+| RENDERPLAN_LOGICAL_PLANNING_AUTHORITY_V1 | NEW_V2_UMBRELLA_ID | COMPOSES | ONE_CANONICAL_RENDERPLAN_AUTHORITY_V1; RENDERPLAN_IS_NOT_OPERATIONPLAN_V1; #20 RenderPlan/RenderGraph frozen contracts | core-rebalancing §12; roadmap-20 contract; this V2 baseline §8.1 | ADOPTED |
+| ROADMAP_ALGEBRAIC_SEMANTIC_OPTIMIZATION_AMENDMENT_V1 | EXACT_EXISTING_FROZEN_ID | — | — | algebraic optimization amendment records (V2 §8.2 integrates) | ADOPTED |
+| COST_OPTIMIZATION_ONLY_OVER_PROVEN_LEGAL_PLAN_SPACE_V1 | EXACT_EXISTING_FROZEN_ID | — | — | roadmap-20-effect-snapshot-binding-vs-semantic-identity-correction | ADOPTED |
+| PROVIDER_EXECUTES_NOT_DEFINES_SEMANTICS_V1 | NEW_V2_UMBRELLA_ID | COMPOSES | PROVIDER_IDENTITY_IS_EXECUTION_BINDING_AND_PROVENANCE_NOT_WORKFLOW_SEMANTICS_V1; EXECUTION_RUNTIMES_INTERACT_THROUGH_PLATFORM_OWNED_PORTS_NOT_EACH_OTHERS_DOMAIN_APIS_V1; FFmpeg = one-way adapter | core-rebalancing §10; this V2 baseline §9.2 | ADOPTED |
+| INFINITE_CANVAS_AND_VISUAL_WORKFLOW_AS_PRODUCT_SURFACES_V1 | EXACT_EXISTING_FROZEN_ID | — | — | product-surface records (V2 §10.1 integrates) | ADOPTED |
+| WORKFLOW_OWNS_PROCESS_TIMELINE_OWNS_COMPOSITION_V1 | NEW_V2_UMBRELLA_ID | SUMMARIZES | WORKFLOW_DEPENDS_ON_CAPABILITY_REQUIREMENTS_NOT_PROVIDER_IDENTITIES_V1; WORKFLOW_DEFINITION_STORES_CAPABILITY_REQUIREMENT_V1; WORKFLOW_RUNTIME_RESOLVES_CAPABILITY_THROUGH_EFFECTIVE_CAPABILITY_VIEW_V1; TEMPORAL_RUNTIME_ID_IS_INFRASTRUCTURE_BINDING_NOT_WORKFLOWRUN_IDENTITY_V1; Timeline = composition authority | core-rebalancing §8; this V2 baseline §10.2 | ADOPTED |
+| GRAPHQL_IS_APPLICATION_QUERY_PROJECTION_AND_COMMAND_TRANSPORT_NOT_DOMAIN_AUTHORITY_V1 | EXACT_EXISTING_FROZEN_ID | — | — | GraphQL architecture decisions (V2 §10.4 integrates) | ADOPTED |
+| POSTGRES_EXTENSION_IS_INFRASTRUCTURE_CAPABILITY_NOT_DOMAIN_AUTHORITY_V1 | EXACT_EXISTING_FROZEN_ID | — | — | gcr-5-gcr-6-database-canonicalization | FROZEN |
+| PROVENANCE_LINEAGE_V1 | EXACT_EXISTING_FROZEN_ID | — | — | roadmap-20-logical-what-closure-correction-r4 | ADOPTED |
+| LANGUAGE_NEUTRAL_CONTRACT_POLYGLOT_IMPLEMENTATION_SINGLE_SEMANTIC_AUTHORITY_V1 | EXACT_EXISTING_FROZEN_ID | — | — | polyglot architecture records (V2 §13.1 integrates) | ADOPTED |
+| EVIDENCE_ACCOUNTING_MUST_MATCH_ACTUAL_TEST_TARGET_AND_EXECUTION_SCOPE_V1 | NEW_V2_UMBRELLA_ID | SUMMARIZES | #20 final evidence correction principle (G1-G3 accounting lessons; test-target boundary discipline) — exact ID first coined in this V2 baseline | roadmap-20-final-independent-acceptance-evidence-correction; this V2 baseline §12.4 | ADOPTED |
+
+Metrics: TRACEABILITY_ROW_COUNT = 25; EXACT_EXISTING_FROZEN_ID_COUNT = 18;
+NEW_V2_UMBRELLA_ID_COUNT = 7; INVALID_OR_AMBIGUOUS_ID_COUNT = 0;
+UNREGISTERED_ALIAS_COUNT = 0; NEAR_SYNONYM_WITHOUT_RELATION_COUNT = 0;
+18 + 7 = 25.
+
+Note: rows whose CANONICAL_SOURCE_DECISION_IDS reference "records integrated
+by V2" are exact IDs carried into the V2 baseline from their adopting
+governance documents; their exact ALL_CAPS_V1 identifiers are used verbatim
+as they appear in this consolidated baseline (they were first frozen in the
+adopting contract records listed). No silent near-synonym or retroactive fake
+frozen ID is introduced.
 
 ## 23. Supersession register
 
@@ -865,7 +912,13 @@ remain authoritative.)
 | Authority pair | Check | Resolution |
 |---|---|---|
 | Timeline vs Effect authority | consistent | Effect pinned BY Timeline revision; distinct identities |
-| CapabilityRegistry vs PluginRegistry | consistent | separate authority axes (§5.2) |
+| CapabilityRegistry vs PluginRegistry | consistent | separate authority axes (§5.2); CAPABILITY_AUTHORITY_MODEL_V1 = declared umbrella over CAPABILITY_VERSION_LIFECYCLE_BOUNDED_ARCHITECTURE_CONTRACT_V1 (§22.1) |
+| Capability authority (umbrella vs source) | consistent | umbrella explicitly COMPOSES/SUMMARIZES exact frozen sources; no duplicate authority (§22.1) |
+| RenderPlan authority (umbrella vs frozen) | consistent | umbrella explicitly COMPOSES ONE_CANONICAL_RENDERPLAN_AUTHORITY_V1 + RENDERPLAN_IS_NOT_OPERATIONPLAN_V1; no duplicate authority (§22.1) |
+| Provider authority (umbrella vs frozen) | consistent | umbrella explicitly COMPOSES PROVIDER_IDENTITY_IS_EXECUTION_BINDING... + EXECUTION_RUNTIMES_INTERACT...; no duplicate authority (§22.1) |
+| Workflow authority (umbrella vs frozen) | consistent | umbrella explicitly SUMMARIZES exact workflow contracts; no duplicate authority (§22.1) |
+| Evidence-accounting authority | consistent | umbrella explicitly SUMMARIZES #20 evidence-correction principle, first coined in V2 (§22.1) |
+| Operation status axes | consistent | three independent axes; CLOSED only in MILESTONE_STATUS (§3.1, §6.2, §22) |
 | Operation vs Revision Command | consistent | Revision Command is a bounded command surface over the Operation/plan boundary (§6.2) |
 | OperationPlan vs canonical revision authority | consistent | OperationPlan produces new revisions through the canonical writer; plan is not revision authority |
 | Workflow vs Timeline | consistent | process vs composition (§10.2) |
@@ -883,7 +936,8 @@ remain authoritative.)
 | Provenance vs canonical authority | consistent | explanatory/lineage only, not canonical authority (§11.3) |
 | Events vs event-sourcing authority | consistent | typed projection, not event sourcing as domain authority (§11.3) |
 
-UNRESOLVED_CONTRADICTIONS = 0 (18 pairs checked, all consistent).
+UNRESOLVED_CONTRADICTIONS = 0 (24 pairs checked, all consistent; no duplicate
+authority created by any ID mapping).
 Classifications: all REFINE/ADD; no SUPERSEDE needed.
 
 ## 25. Roadmap completion model (layer status, no fake percentage)
@@ -902,31 +956,35 @@ Classifications: all REFINE/ADD; no SUPERSEDE needed.
 
 Percentages, if desired, belong in non-authoritative planning analysis only.
 
-## 26. ARV2 correction checklist (V2-C1..C4 closure)
+## 26. ARV2 FINAL AUTHORITY CORRECTION checklist (V2-F1/F2 closure)
 
 | Check | Result |
 |---|---|
-| ARV2-C01 Operation Model IMPLEMENTED/CLOSED truth | PASS (§6.2) |
-| ARV2-C02 OperationPlan Transaction IMPLEMENTED/CLOSED truth | PASS (§6.2) |
-| ARV2-C03 Revision Command Model integrated | PASS (§6.2) |
-| ARV2-C04 no false post-#20 Operation-foundation future claim | PASS (§18, §19) |
-| ARV2-C05 current implementation frontier corrected | PASS (§6.3) |
-| ARV2-C06 AFFECTED_CONSTRAINTS column present | PASS (§22) |
-| ARV2-C07 TRACEABILITY_DELTA column present | PASS (§22) |
-| ARV2-C08 all traceability rows populated | PASS (§22, 25 rows) |
-| ARV2-C09 #1 through #28 each individually present | PASS (§14, 28 rows) |
-| ARV2-C10 no milestone renumbering | PASS (§14) |
-| ARV2-C11 no #29/#30 | PASS (§14) |
-| ARV2-C12 unknown milestone data explicitly UNKNOWN | PASS (§14 note) |
-| ARV2-C13 exact frozen decision IDs used | PASS (§22, §22.1) |
-| ARV2-C14 any aliases explicitly registered | PASS (§22.1, zero aliases) |
-| ARV2-C15 supersession register explicit | PASS (§23) |
-| ARV2-C16 unresolved contradictions = 0 | PASS (§24, 18 pairs) |
-| ARV2-C17 architecture status vs implementation status separated | PASS (§3, §6.2, §8) |
-| ARV2-C18 #21/#22 still NOT STARTED | PASS (§14) |
-| ARV2-C19 next epoch authorization still NO | PASS (§17, §19) |
-| ARV2-C20 docs-only diff | PASS (§15 validation) |
-| ARV2-C21 main unchanged | PASS (§15 validation) |
-| ARV2-C22 append-forward history preserved | PASS (§15 validation) |
+| FAR-01 all 25 DECISION_ID rows classified | PASS (§22.1) |
+| FAR-02 exact existing frozen IDs verified | PASS (§22.1, 18 exact) |
+| FAR-03 umbrella IDs explicitly ADD | PASS (§22, §22.1, 7 umbrellas) |
+| FAR-04 umbrella composition relations populated | PASS (§22.1 COMPOSES/GROUPS/SUMMARIZES) |
+| FAR-05 invalid/ambiguous ID count = 0 | PASS (§22.1 metrics) |
+| FAR-06 unregistered alias count = 0 | PASS (§22.1 metrics) |
+| FAR-07 near-synonym without relation = 0 | PASS (§22.1 metrics) |
+| FAR-08 capability authority mapping truthful | PASS (§22.1: CAPABILITY_AUTHORITY_MODEL_V1 umbrella → CAPABILITY_VERSION_LIFECYCLE_BOUNDED_ARCHITECTURE_CONTRACT_V1 + CapabilityRegistryPort) |
+| FAR-09 RenderPlan authority mapping truthful | PASS (§22.1: umbrella → ONE_CANONICAL_RENDERPLAN_AUTHORITY_V1 + RENDERPLAN_IS_NOT_OPERATIONPLAN_V1) |
+| FAR-10 provider authority mapping truthful | PASS (§22.1: umbrella → PROVIDER_IDENTITY_IS_EXECUTION_BINDING... + EXECUTION_RUNTIMES_INTERACT...) |
+| FAR-11 workflow authority mapping truthful | PASS (§22.1: umbrella → WORKFLOW_DEPENDS_ON_CAPABILITY_REQUIREMENTS... + WORKFLOW_RUNTIME_RESOLVES...) |
+| FAR-12 evidence-accounting authority mapping truthful | PASS (§22.1: umbrella → #20 evidence correction principle, first coined in V2) |
+| FAR-13 status axes defined independently | PASS (§3.1) |
+| FAR-14 CLOSED absent from ARCH_STATUS | PASS (§22 audit) |
+| FAR-15 CLOSED absent from IMPL_STATUS | PASS (§22 audit) |
+| FAR-16 Operation Model = FROZEN / IMPLEMENTED / CLOSED | PASS (§6.2, §22) |
+| FAR-17 OperationPlan = FROZEN / IMPLEMENTED / CLOSED | PASS (§6.2, §22) |
+| FAR-18 Revision Command = FROZEN / IMPLEMENTED / CLOSED | PASS (§6.2, §22) |
+| FAR-19 traceability MILESTONE_STATUS explicit | PASS (§22 added column) |
+| FAR-20 all traceability status rows normalized | PASS (§22) |
+| FAR-21 28 milestone rows unchanged | PASS (§14) |
+| FAR-22 #21/#22 NOT STARTED | PASS (§14) |
+| FAR-23 unresolved contradictions = 0 | PASS (§24, 18 pairs) |
+| FAR-24 docs-only diff | PASS (§28 validation) |
+| FAR-25 main unchanged | PASS (§28 validation) |
+| FAR-26 append-forward history | PASS (§28 validation) |
 
-**ARV2_CORRECTION = 22/22 PASS**
+**ARV2_FINAL_AUTHORITY_CORRECTION = 26/26 PASS**
