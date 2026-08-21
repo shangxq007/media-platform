@@ -70,6 +70,8 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
             walk.filter(Files::isRegularFile)
                     .filter(f -> f.toString().contains("/src/main/java/"))
                     .filter(f -> f.toString().endsWith(".java"))
+                    // exclude sibling worktrees — only the checked-out tree counts
+                    .filter(f -> !f.toString().contains("/.worktrees/"))
                     .forEach(out::add);
         }
         return out;
@@ -154,6 +156,7 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
             return walk.filter(Files::isRegularFile)
                     .filter(f -> f.getFileName().toString().equals(fileName))
                     .filter(f -> f.toString().contains("/src/main/java/"))
+                    .filter(f -> !f.toString().contains("/.worktrees/"))
                     .flatMap(f -> {
                         try {
                             return Files.readAllLines(f).stream();
