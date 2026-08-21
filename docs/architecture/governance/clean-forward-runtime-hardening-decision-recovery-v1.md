@@ -689,3 +689,61 @@ TimelineRevisionService deletion remains NOT an I1 postcondition
 | I1-EC-41 unresolved execution-contract blockers = 0 | PASS |
 
 **CFRH_I1_EXECUTION_CONTRACT = 41/41 PASS**
+
+---
+
+## 19. CFRH-I1 SINGLE-SOURCE-OF-TRUTH EVIDENCE CORRECTION (append-forward)
+
+Per ChatGPT review of 9c0dfa1d (I1_EXECUTION_CONTRACT_SINGLE_TRUTH = FAIL,
+SEMANTIC_WIDTH_LEDGER = FAIL, EVIDENCE_ACCOUNTING = FAIL, I2 vocab
+AMBIGUOUS). This section supersedes the disposition table in §18.3 where
+they differ. The authoritative ledgers are the TSVs; this document is a
+derived summary.
+
+### 19.1 Final I1 behavior dispositions (authoritative)
+
+| Behavior | Final disposition | Rationale |
+|---|---|---|
+| recordRevision | DELETE_OBSOLETE_PRODUCT_BEHAVIOR | editor-sync internal-1.0 path; deleted with obsolete sync authority |
+| recordAiAdoptRevision | DELETE_OBSOLETE_PRODUCT_BEHAVIOR | LOSSLESS_MIGRATION_PROOF = FAIL (AI can author transitions/automations/effect-automation via verbatim fullTimeline + unrestricted patch ops; TimelineDocument cannot carry them) |
+| restore | REPLACE_WITH_EXISTING_CANONICAL_BEHAVIOR | canonical restoreRevision (R4-D1) full invariant coverage |
+| backfillHeadFromLatestSnapshot | DELETE_OBSOLETE_PRODUCT_BEHAVIOR | caller fallthrough proven |
+
+I1_MIGRATE_COUNT = 0, I1_REPLACE_COUNT = 1, I1_DELETE_COUNT = 3,
+I1_UNKNOWN_COUNT = 0, I1_BLOCKER_COUNT = 0, behavior groups = 4.
+
+### 19.2 Semantic width (authoritative)
+
+- Actual row count = 24 (mechanically parsed; previously misreported as 22).
+- UNKNOWN count = 0.
+- transitions / timeline automation / effect automation =
+  NOT_APPLICABLE_BEHAVIOR_DELETED (both I1 write behaviors deleted).
+- renderGraph / segment policy / outputs = DERIVED_NON_AUTHORITATIVE.
+
+### 19.3 AI losslessness proof (positive value-flow, not grep)
+
+Evidence file: `.agent-tasks/CLEAN-FORWARD-RUNTIME-HARDENING-DR/
+cfrh-i1-ai-value-flow-evidence.md`. CAN_AI_PATH_AUTHOR_TRANSITIONS =
+CAN_AI_PATH_AUTHOR_TIMELINE_AUTOMATION = CAN_AI_PATH_AUTHOR_EFFECT_AUTOMATION
+= YES (fullTimeline verbatim path L82/L89, applyParsed L118-119, patch L73
+prefix-only check, validator first-class transitions/automations).
+TimelineDocument cannot represent them (TimelineDocumentCandidateMapper L48)
+→ LOSSLESS_MIGRATION_PROOF = FAIL → recordAiAdoptRevision deleted (AI edit
+preview behavior retained; only legacy write persistence deleted).
+
+### 19.4 I2 vocabulary
+
+REPLACEMENT_EXISTS_NOW = NO (not implemented yet) is distinct from
+BEHAVIOR_DISPOSITION (known). UNKNOWN reserved for genuinely unresolved
+knowledge. I2_UNKNOWN_DISPOSITION_COUNT = 0.
+
+### 19.5 Authority model
+
+EXECUTION_CONTRACT_AUTHORITY = cfrh-i1-execution-contract-matrix.tsv
+SEMANTIC_WIDTH_AUTHORITY = internal-to-canonical-semantic-width-matrix.tsv
+PUBLICATION_ROLE = derived evidence summary, not alternate authority.
+
+### 19.6 CFRH_I1_SINGLE_SOURCE_OF_TRUTH_EVIDENCE
+
+47/47 PASS (validator:
+docs/architecture/governance/automated-guards/verify-cfrh-i1-single-source-of-truth.py).
