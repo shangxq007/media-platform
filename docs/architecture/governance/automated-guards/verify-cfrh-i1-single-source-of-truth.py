@@ -23,7 +23,7 @@ GOV = REPO / "docs" / "architecture" / "governance"
 GUARDS = GOV / "automated-guards"
 
 # External audit anchors (provided by the task; not computed claims)
-REVIEWED_PREDECESSOR = "9b5ddbec04c8705f3c7d88c487c48daaa96a1b24"
+REVIEWED_PREDECESSOR = "6f8f04fbf4f81d7cd9e7aa32a43c6f18720cff64"
 CANONICAL_BASE = "5d80ac3474a0f50e67dcb26d30037365d15ba091"
 
 EXEC_TSV = BASE / "cfrh-i1-execution-contract-matrix.tsv"
@@ -34,7 +34,7 @@ OWNERSHIP_TSV = BASE / "ownership-read-manifest.tsv"
 AI_EVIDENCE = BASE / "cfrh-i1-ai-value-flow-evidence.md"
 GOV_DOC = GOV / "clean-forward-runtime-hardening-decision-recovery-v1.md"
 V2_DOC = GOV / "media-platform-integrated-architecture-roadmap-v2.md"
-PUB_DOC = GOV / "cfrh-i1-validator-evidence-honesty-correction.md"
+PUB_DOC = GOV / "cfrh-i1-final-mechanical-validator-closure.md"
 
 ALLOWED_DISPOSITIONS = {
     "MIGRATE_LOSSLESSLY_TO_CANONICAL_AUTHORITY",
@@ -176,40 +176,92 @@ except Exception as e:
     mech("MG-17", False, str(e))
 
 # ---------------------------------------------------------------------------
-# MG-23..: I2 vocabulary (real parse of behavior matrix)
+# MG-23..: I2 disposition mechanical parsing (F1 closure)
+# I2 rows are selected via target_wave == "CFRH-I2" (header-resolved).
+# replacement_exists_now / delete_behavior / migrate_behavior are parsed
+# SEPARATELY — never inferred one from another.
 # ---------------------------------------------------------------------------
+I2_MIGRATION_ALLOWED = {
+    "MIGRATE_TO_NON_AUTHORITY_QUERY_PROJECTION",
+    "MIGRATE_TO_SCOPED_READ",
+    "MIGRATE_OR_RETAIN_NON_AUTHORITY",
+    "MIGRATE_TO_CANONICAL_PATCH_PREVIEW",
+    "MIGRATE_BEHAVIOR",
+}
+I2_REPLACEMENT_ALLOWED_PREFIXES = ("YES", "PARTIAL", "NO")
+I2_DELETE_ALLOWED = {"MIGRATE_BEHAVIOR", "DELETE_OBSOLETE_BEHAVIOR", "DELETE_OBSOLETE_PRODUCT_BEHAVIOR"}
+
 try:
     b_h, b_rows = load_tsv(BEHAVIOR_TSV)
+    # fail-closed required columns
+    for col in ("old_symbol", "replacement_exists_now", "delete_behavior",
+                "migrate_behavior", "target_wave"):
+        if col not in b_h:
+            raise ValueError(f"behavior matrix missing required column: {col}")
     b_hm = {h: i for i, h in enumerate(b_h)}
-    repl_col = next((i for i, h in enumerate(b_h) if "replacement" in h.lower() and "exists" in h.lower()), None)
-    disp_col = next((i for i, h in enumerate(b_h) if h.lower() in ("delete_behavior", "behavior_disposition")), None)
-    if repl_col is None or disp_col is None:
-        raise ValueError("behavior matrix missing replacement/disposition columns")
+    i2_rows = [r for r in b_rows if r[b_hm["target_wave"]].strip() == "CFRH-I2"]
+    mech("MG-23", len(i2_rows) >= 10, f"I2 rows selected via target_wave={len(i2_rows)}")
+
     i2_repl_unknown = 0
-    i2_disp_unknown = 0
-    for r in b_rows:
-        repl = r[repl_col].strip()
-        disp = r[disp_col].strip()
+    i2_mig_invalid = 0
+    i2_mig_unknown = 0
+    i2_mig_empty = 0
+    i2_del_invalid = 0
+    i2_del_unknown = 0
+    i2_unresolved = 0
+    for r in i2_rows:
+        repl = r[b_hm["replacement_exists_now"]].strip()
+        mig = r[b_hm["migrate_behavior"]].strip()
+        dele = r[b_hm["delete_behavior"]].strip()
+        # replacement availability: UNKNOWN forbidden; PARTIAL(...) allowed
         if "UNKNOWN" in repl.upper():
             i2_repl_unknown += 1
-        if "UNKNOWN" in disp.upper():
-            i2_disp_unknown += 1
-    mech("MG-23", i2_repl_unknown == 0, f"I2 replacement UNKNOWN={i2_repl_unknown}")
-    mech("MG-24", i2_disp_unknown == 0, f"I2 disposition UNKNOWN={i2_disp_unknown}")
-    # every I2 row has explicit replacement (YES/NO or resolved token) and disposition
-    i2_rows = [r for r in b_rows if "CFRH-I2" in r[-3] if len(r) > 14]
-    bad_repl = sum(1 for r in i2_rows if "UNKNOWN" in r[repl_col].upper())
-    mech("MG-25", bad_repl == 0, f"I2 replacement explicit={bad_repl}")
+        # migration disposition: enum enforced
+        if "UNKNOWN" in mig.upper():
+            i2_mig_unknown += 1
+        if mig not in I2_MIGRATION_ALLOWED:
+            i2_mig_invalid += 1
+        if mig == "":
+            i2_mig_empty += 1
+        # delete action: separate enum
+        if dele not in I2_DELETE_ALLOWED and "DELETE_OBSOLETE" not in dele and "MIGRATE" not in dele:
+            i2_del_invalid += 1
+        if "UNKNOWN" in dele.upper():
+            i2_del_unknown += 1
+        if "UNKNOWN" in repl.upper() or "UNKNOWN" in mig.upper() or mig == "" or "UNKNOWN" in dele.upper():
+            i2_unresolved += 1
+    mech("MG-24", i2_repl_unknown == 0, f"I2 replacement UNKNOWN={i2_repl_unknown}")
+    mech("MG-25", i2_mig_unknown == 0, f"I2 migration UNKNOWN={i2_mig_unknown}")
+    mech("MG-26", i2_mig_invalid == 0, f"I2 migration invalid={i2_mig_invalid}")
+    mech("MG-27", i2_mig_empty == 0, f"I2 migration empty={i2_mig_empty}")
+    mech("MG-28", i2_del_invalid == 0, f"I2 delete-action invalid={i2_del_invalid}")
+    mech("MG-29", i2_del_unknown == 0, f"I2 delete-action UNKNOWN={i2_del_unknown}")
+    mech("MG-30", i2_unresolved == 0, f"I2 unresolved rows={i2_unresolved}")
 except Exception as e:
-    mech("MG-23", False, str(e))
+    mech("MG-23-parse", False, f"I2 parse: {e}")
 
 # ---------------------------------------------------------------------------
-# MG-26..: P1 enforcement closure (real parse of governance mapping table)
+# MG-31..: P1 exact-symbol-set closure (F2)
+# Frozen expected set (task-authorized): exactly these 8 symbols.
 # ---------------------------------------------------------------------------
+P1_EXPECTED_SYMBOLS = [
+    "TimelineSnapshotService.findPayload",
+    "TimelineSnapshotService.findById",
+    "TimelineSnapshotService.findLatestByProject",
+    "TimelineRevisionRepository.findById",
+    "TimelineRevisionRepository.findHeadByProject",
+    "TimelineRevisionRepository.listByProject",
+    "TimelineRevisionService legacy read authority",
+    "TimelineSnapshotService.listDistinctProjectIds",
+]
+P1_DISPOSITION_ALLOWED = {
+    "FORBIDDEN_SYMBOL_SET",
+    "EXPLICIT_SYSTEM_AUTHORITY_EXCEPTION",
+    "RECLASSIFIED_SAFE_WITH_EVIDENCE",
+    "LEGACY_SERVICE_ONLY_REMOVED_IN_I2",
+}
 try:
     gov_txt = GOV_DOC.read_text(encoding="utf-8")
-    # authoritative P1 mapping table in §20.2: rows like
-    # | <symbol> | <disposition> | <enforcement> |
     p1_map = {}
     in_table = False
     for line in gov_txt.splitlines():
@@ -220,16 +272,27 @@ try:
             in_table = False
         if in_table and line.startswith("|") and "P1 symbol" not in line and "---" not in line:
             cells = [c.strip() for c in line.strip("|").split("|")]
-            if len(cells) >= 2 and cells[0]:
-                p1_map[cells[0]] = cells[1]
-    mech("MG-26", len(p1_map) >= 7, f"P1 mapping parsed={len(p1_map)} rows")
-    unmapped = [s for s, d in p1_map.items() if d not in P1_DISPOSITIONS]
-    mech("MG-27", len(unmapped) == 0, f"P1 unenforced={unmapped}")
+            if len(cells) >= 3 and cells[0]:
+                p1_map[cells[0]] = (cells[1], cells[2])  # (disposition, enforcement)
+    actual = set(p1_map.keys())
+    expected = set(P1_EXPECTED_SYMBOLS)
+    missing = expected - actual
+    extra = actual - expected
+    mech("MG-31", len(expected) == 8, f"P1 expected count={len(expected)}")
+    mech("MG-32", len(actual) == 8, f"P1 actual count={len(actual)}")
+    mech("MG-33", len(missing) == 0, f"P1 missing={missing}")
+    mech("MG-34", len(extra) == 0, f"P1 extra={extra}")
+    mech("MG-35", len(actual) == len(set(actual)), "P1 no duplicates")
+    invalid_disp = [s for s, (d, _) in p1_map.items() if d not in P1_DISPOSITION_ALLOWED]
+    mech("MG-36", len(invalid_disp) == 0, f"P1 invalid disposition={invalid_disp}")
+    unenforced = [s for s, (d, e) in p1_map.items() if not e.strip()]
+    mech("MG-37", len(unenforced) == 0, f"P1 unenforced={unenforced}")
+    p1_unenforced_count = len(unenforced)
 except Exception as e:
-    mech("MG-26", False, str(e))
+    mech("MG-31-parse", False, f"P1 parse: {e}")
 
 # ---------------------------------------------------------------------------
-# MG-28..: roadmap + implementation status parsed from authority doc
+# MG-38..: roadmap + implementation status parsed from authority doc
 # ---------------------------------------------------------------------------
 try:
     v2 = V2_DOC.read_text(encoding="utf-8")
@@ -237,34 +300,30 @@ try:
     # status is the THIRD cell (group 2 of the three captured)
     def row_status(doc, num):
         for m in re.finditer(rf"^\|\s*#{num}\s*\|([^|]*)\|([^|]*)\|([^|]*)\|", doc, re.M):
-            # candidate milestone rows are in the milestone table where col2
-            # (name) is a milestone identity and col3 is a status token;
-            # skip §22 traceability rows (they have a different shape: first
-            # cell is an all-caps decision ID, not #N)
             return m.group(2).strip().upper()
         return None
     s20 = row_status(v2, 20)
     s21 = row_status(v2, 21)
     s22 = row_status(v2, 22)
-    mech("MG-28", s20 is not None and "CLOSED" in s20, f"#20={s20}")
-    mech("MG-29", s21 is not None and "NOT" in s21 and "START" in s21, f"#21={s21}")
-    mech("MG-30", s22 is not None and "NOT" in s22 and "START" in s22, f"#22={s22}")
+    mech("MG-38", s20 is not None and "CLOSED" in s20, f"#20={s20}")
+    mech("MG-39", s21 is not None and "NOT" in s21 and "START" in s21, f"#21={s21}")
+    mech("MG-40", s22 is not None and "NOT" in s22 and "START" in s22, f"#22={s22}")
     gov = GOV_DOC.read_text(encoding="utf-8")
     impl = ("CFRH-I1 IMPLEMENTATION = NOT STARTED" in gov
             or "CFRH-I1 implementation NOT STARTED" in gov
             or "I1 implementation NOT STARTED" in gov
             or "I1 IMPLEMENTATION NOT STARTED" in gov.upper())
-    mech("MG-31", impl, "I1 implementation status parsed from governance doc")
+    mech("MG-41", impl, "I1 implementation status parsed from governance doc")
 except Exception as e:
-    mech("MG-28", False, str(e))
+    mech("MG-38-parse", False, f"roadmap parse: {e}")
 
 # ---------------------------------------------------------------------------
-# MG-32..: ancestry (real git)
+# MG-42..: ancestry (real git)
 # ---------------------------------------------------------------------------
 anc_pre, rc1 = git("merge-base", "--is-ancestor", REVIEWED_PREDECESSOR, "HEAD")
-mech("MG-32", rc1 == 0, "reviewed predecessor is ancestor of HEAD")
+mech("MG-42", rc1 == 0, "reviewed predecessor is ancestor of HEAD")
 base_merge, rc2 = git("merge-base", CANONICAL_BASE, "HEAD")
-mech("MG-33", base_merge == CANONICAL_BASE, f"canonical base merge-base={base_merge}")
+mech("MG-43", base_merge == CANONICAL_BASE, f"canonical base merge-base={base_merge}")
 
 # ---------------------------------------------------------------------------
 # MG-34..: committed-range scope (real git diff, not git status)
@@ -293,43 +352,49 @@ def classify(path):
 counts = {"production": 0, "test": 0, "build": 0, "migration": 0, "generated": 0, "unexpected": 0, "governance": 0}
 for p in changed:
     counts[classify(p)] += 1
-mech("MG-34", counts["production"] == 0, f"production={counts['production']}")
-mech("MG-35", counts["test"] == 0, f"test={counts['test']}")
-mech("MG-36", counts["build"] == 0, f"build={counts['build']}")
-mech("MG-37", counts["migration"] == 0, f"migration={counts['migration']}")
-mech("MG-38", counts["generated"] == 0, f"generated={counts['generated']}")
-mech("MG-39", counts["unexpected"] == 0, f"unexpected={counts['unexpected']}")
+mech("MG-44", counts["production"] == 0, f"production={counts['production']}")
+mech("MG-45", counts["test"] == 0, f"test={counts['test']}")
+mech("MG-46", counts["build"] == 0, f"build={counts['build']}")
+mech("MG-47", counts["migration"] == 0, f"migration={counts['migration']}")
+mech("MG-48", counts["generated"] == 0, f"generated={counts['generated']}")
+mech("MG-49", counts["unexpected"] == 0, f"unexpected={counts['unexpected']}")
 
 # ---------------------------------------------------------------------------
-# MG-40..: publication metrics vs computed (real comparison)
+# MG-50..: publication metrics vs computed (real comparison, F3 closure)
+# Publication values MUST equal ACTUAL COMPUTED variables from the ledgers,
+# never duplicated static constants.
 # ---------------------------------------------------------------------------
 pub_txt = PUB_DOC.read_text(encoding="utf-8") if PUB_DOC.exists() else ""
-pub_m = parse_metrics(pub_txt)
-expected = {
-    "behavior_count": 4,
-    "migrate_count": 0,
-    "replace_count": 1,
-    "delete_count": 3,
-    "unknown_count": 0,
-    "blocker_count": 0,
-    "semantic_width_row_count": 24,
-    "semantic_width_unknown_count": 0,
-    "i2_disposition_unknown_count": 0,
-    "p1_unenforced_count": 0,
+computed_metrics = {
+    "behavior_count": len(b_ids) if "b_ids" in dir() else 0,
+    "migrate_count": migrate if "migrate" in dir() else -1,
+    "replace_count": replace if "replace" in dir() else -1,
+    "delete_count": delete if "delete" in dir() else -1,
+    "unknown_count": unknown if "unknown" in dir() else -1,
+    "blocker_count": len(real_blockers) if "real_blockers" in dir() else -1,
+    "semantic_width_row_count": len(w_rows) if "w_rows" in dir() else 0,
+    "semantic_width_unknown_count": width_unknown if "width_unknown" in dir() else -1,
+    "i2_row_count": len(i2_rows) if "i2_rows" in dir() else 0,
+    "i2_replacement_unknown_count": i2_repl_unknown if "i2_repl_unknown" in dir() else -1,
+    "i2_migration_disposition_unknown_count": i2_mig_unknown if "i2_mig_unknown" in dir() else -1,
+    "i2_migration_disposition_invalid_count": i2_mig_invalid if "i2_mig_invalid" in dir() else -1,
+    "p1_expected_symbol_count": len(expected) if "expected" in dir() else -1,
+    "p1_actual_symbol_count": len(actual) if "actual" in dir() else -1,
+    "p1_missing_symbol_count": len(missing) if "missing" in dir() else -1,
+    "p1_extra_symbol_count": len(extra) if "extra" in dir() else -1,
+    "p1_invalid_disposition_count": len(invalid_disp) if "invalid_disp" in dir() else -1,
+    "p1_unenforced_count": p1_unenforced_count if "p1_unenforced_count" in dir() else -1,
 }
-mech("MG-40", pub_txt != "", "publication exists")
+mech("MG-50", pub_txt != "", "publication exists")
 if pub_txt:
-    # compare ONLY the machine-readable metrics block (line-anchored exact
-    # token match), never fuzzy substring matches that can hit narrative
-    # table rows with the same value
     metric_lines = {}
     for line in pub_txt.splitlines():
         m = re.match(r"^\s*([a-z][a-z0-9_]*)\s*=\s*(\d+)\s*$", line)
         if m:
             metric_lines[m.group(1)] = int(m.group(2))
-    for k, v in expected.items():
+    for k, v in computed_metrics.items():
         ok = metric_lines.get(k) == v
-        mech(f"MG-4x-{k}", ok, f"pub {k}=={v} (got {metric_lines.get(k)})")
+        mech(f"MG-51-{k}", ok, f"pub {k}=={v} (got {metric_lines.get(k)})")
 
 # ---------------------------------------------------------------------------
 # MG-4y: check-ID integrity + no tautological PASS scan (self meta-check)

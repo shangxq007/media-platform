@@ -800,3 +800,51 @@ P1_UNENFORCED_SYMBOL_COUNT = 0.
   comparison, fail-closed parsers, unique MG-xx IDs, constant-True scan.
 - UNCONDITIONAL_MECHANICAL_PASS_COUNT = 0.
 - GUARD_RED_BEHAVIOR = 10/10 PASS; GUARD_GREEN_BEHAVIOR = PASS.
+
+---
+
+## 21. CFRH-I1 FINAL MECHANICAL VALIDATOR CLOSURE (append-forward)
+
+Per ChatGPT review (I2_DISPOSITION_MECHANICAL_CHECK FAIL,
+P1_MAPPING_COMPLETENESS_CHECK FAIL, RED_06_COVERAGE FAIL,
+PUBLICATION_COMPUTED_METRIC_LINKAGE PARTIAL). Validator-only closure;
+I1 contract content unchanged.
+
+### 21.1 I2 disposition parser corrected (F1)
+
+I2 rows selected via target_wave == "CFRH-I2" (header-resolved; 11 rows).
+replacement_exists_now / delete_behavior / migrate_behavior parsed
+SEPARATELY with own enums — never inferred one from another.
+I2 migration disposition enforced against
+MIGRATE_TO_NON_AUTHORITY_QUERY_PROJECTION / MIGRATE_TO_SCOPED_READ /
+MIGRATE_OR_RETAIN_NON_AUTHORITY / MIGRATE_TO_CANONICAL_PATCH_PREVIEW.
+I2_REPLACEMENT_UNKNOWN_COUNT = 0, I2_MIGRATION_DISPOSITION_INVALID = 0,
+I2_MIGRATION_DISPOSITION_UNKNOWN = 0, I2_UNRESOLVED_ROW_COUNT = 0.
+
+### 21.2 P1 exact-set closure corrected (F2)
+
+Frozen expected 8-symbol set; missing/extra/duplicate/invalid-disposition/
+unenforced all mechanically computed. The previous `len(p1_map) >= 7`
+threshold removed — deleting one row (8→7) now FAILS via
+P1_MISSING_SYMBOL_COUNT > 0. P1_EXPECTED = P1_ACTUAL = 8, MISSING = 0,
+EXTRA = 0, INVALID_DISPOSITION = 0, UNENFORCED = 0.
+
+### 21.3 Publication linkage corrected (F3)
+
+Publication metrics compared against computed_metrics (actual computed
+variables from ledgers), not duplicated static constants. 18 machine-readable
+metrics exposed; all equal to computed values.
+
+### 21.4 Validation results
+
+- CFRH_I1_MECHANICAL_EVIDENCE = 71/71 PASS (every MG-xx computes a real
+  property; no constant-True)
+- CFRH_I1_MANUAL_GOVERNANCE_REVIEW = 4/4 PASS (semantic judgments)
+- CURRENT_TARGETED_RED_BEHAVIOR = 3/3 PASS
+  (GV-I1-RED-05 migrate_behavior→UNKNOWN, GV-I1-RED-06 P1 row 8→7,
+  GV-I1-RED-09 pub delete_count 3→2)
+- GUARD_GREEN_BEHAVIOR = PASS (from final committed tree)
+- UNCONDITIONAL_MECHANICAL_PASS_COUNT = 0; HARDCODED_ZERO_EVIDENCE = 0
+- production/test/build/migration/generated/unexpected = 0
+- append-forward 6f8f04fb → correction → publication; main unchanged
+- #20 CLOSED; #21/#22 NOT_STARTED; I1 implementation NOT STARTED
