@@ -7,7 +7,7 @@
 | BASE_SHA | 5318a3fd0477a92511ebb8dd1d56eaf6caa2ee41 |
 | PREDECESSOR_SHA | a522313caf71e768c6f8e09a31d4af59f5867e8c |
 | CORRECTION_SHA | 4ab4fb5a0dff2e70c47010b9a9d34c0d5552292f |
-| PUBLICATION_SHA | (set after commit) |
+| PUBLICATION_SHA | 0da09b6d231c2bc82bff75dc0221ca852a434bc7 |
 
 ## Decisions (all UNCHANGED)
 
