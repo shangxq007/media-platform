@@ -50,12 +50,25 @@ public final class HistoricalRevisionRestoreVerifier {
         this.contentDigester = Objects.requireNonNull(contentDigester, "contentDigester");
     }
 
-    /** Verified historical semantic closure (owned + digest-agreeing). */
+    /** Verified historical semantic closure (owned + digest-agreeing).
+     *
+     * <p>FINAL (C1): carries the VERIFIED Timeline state itself — the decoded
+     * document, the exact canonical payload bytes that were verified, the
+     * schema version, the verified Timeline digest, the verified Effect
+     * reference and the verified FULL revision semantic digest. Restore MUST
+     * reissue directly from this value
+     * (RESTORE_REISSUES_EXACTLY_THE_VERIFIED_TIMELINE_PAYLOAD_V1); it must NOT
+     * reread the historical snapshot or historical context after
+     * verification (VERIFIED_RESTORE_STATE_IS_ATOMIC_AS_A_SEMANTIC_VALUE_V1).
+     */
     public record VerifiedHistoricalRevision(
+            TimelineDocument document,
+            String canonicalPayloadJson,
+            String timelineSchemaVersion,
             String timelineDigest,
-            String effectSnapshotId,
-            String effectContentDigest,
-            String fullRevisionSemanticDigest) {
+            EffectSemanticSnapshotReference effectReference,
+            String fullRevisionSemanticDigest,
+            String digestContractVersion) {
     }
 
     /**
@@ -133,15 +146,29 @@ public final class HistoricalRevisionRestoreVerifier {
                             + recomputedFull + "' != revctx.revisionSemanticDigest '"
                             + historicalContext.revisionSemanticDigest() + "'");
         }
-        if (historicalContentHash != null
-                && !recomputedFull.equals(historicalContentHash)) {
+        // FINAL (C1/§42): the persisted full commitment MUST be present — a
+        // missing content_hash is INVALID/CORRUPT, never a bypassable mode
+        // (no nullable acceptance of a missing persisted commitment).
+        Objects.requireNonNull(historicalContentHash,
+                "RESTORE FAIL CLOSED: historical timeline_revision.content_hash "
+                        + "is null — missing persisted full commitment is INVALID/CORRUPT");
+        if (!recomputedFull.equals(historicalContentHash)) {
             throw new IllegalStateException(
                     "RESTORE FAIL CLOSED (RST8): recomputed full semantic digest '"
                             + recomputedFull + "' != timeline_revision.content_hash '"
                             + historicalContentHash + "' — 3-way digest equality violated");
         }
+        // C1: the verified result carries the EXACT verified Timeline state —
+        // decoded document + canonical payload bytes + schema version + digest
+        // + Effect reference + full commitment — so restore reissues directly
+        // from this value without any post-verification reread.
         return new VerifiedHistoricalRevision(
-                actualTimelineDigest, reference.snapshotId().value(),
-                reference.contentDigest(), recomputedFull);
+                document,
+                snapshot.payloadJson(),
+                snapshot.schemaVersion(),
+                actualTimelineDigest,
+                reference,
+                recomputedFull,
+                historicalContext.digestContractVersion());
     }
 }

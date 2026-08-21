@@ -331,21 +331,29 @@ public class TimelineRevisionSaveService {
                     restoreVerifier.verify(tx.dsl(), productId, tenantId,
                             historicalSnapshotId0, contentHashFinal, historicalContext0);
 
-            String snapshotId = copyHistoricalSnapshotPayload(
-                    tx.dsl(), productId, tenantId, historicalRevisionId, revisionId);
+            // C1 (RESTORE_REISSUES_EXACTLY_THE_VERIFIED_TIMELINE_PAYLOAD_V1):
+            // the new restored snapshot is persisted DIRECTLY from the verified
+            // payload/document — one read, one verify, one reissue. There is NO
+            // post-verification reread of the historical snapshot
+            // (RESTORE_POST_VERIFICATION_HISTORICAL_REREAD_COUNT = 0).
+            String snapshotId = timelineSnapshotService.saveTx(
+                    tx.dsl(), productId, tenantId,
+                    verified.canonicalPayloadJson(),
+                    verified.timelineSchemaVersion());
 
             // R2: the restored revision reissues the VERIFIED historical
             // commitment — new revision identity, exact historical semantics
-            // (no remint, no EMPTY fallback, no Effect wire hydration).
-            com.example.platform.timeline.version.TimelineRevisionSemanticContext historicalContext =
-                    historicalContext0;
+            // (no remint, no EMPTY fallback, no Effect wire hydration). FINAL
+            // (C1/§43-44): ALL restored semantic state derives from the single
+            // verified result — verified digest, verified Effect reference,
+            // verified full commitment — never mixed with a second read.
             String revisionSemanticDigest = verified.fullRevisionSemanticDigest();
             com.example.platform.timeline.version.TimelineRevisionSemanticContext newContext =
                     new com.example.platform.timeline.version.TimelineRevisionSemanticContext(
                             verified.timelineDigest(),
-                            historicalContext.effectReference(),
+                            verified.effectReference(),
                             revisionSemanticDigest,
-                            historicalContext.digestContractVersion());
+                            verified.digestContractVersion());
 
             // Compute revision number for this product
             Integer maxRevisionNumber = tx.dsl().select(org.jooq.impl.DSL.max(TIMELINE_REVISION.REVISION_NUMBER))
@@ -416,92 +424,78 @@ public class TimelineRevisionSaveService {
     }
 
     /**
-     * Contract P + F4 (RESTORE_ONLY_ACCEPTS_COMPLETE_FINAL_CANONICAL_REVISION_V1):
-     * restore copies the historical revision's governed payload into a NEW snapshot
-     * row so the restored revision never points at a missing payload. A historical
-     * revision with a null/blank SNAPSHOT_ID or a missing payload row FAILS CLOSED —
-     * NO legacy restore payload fallback exists
-     * (RESTORE_MISSING_GOVERNED_PAYLOAD_FAILS_CLOSED_V1,
-     * NO_LEGACY_RESTORE_PAYLOAD_FALLBACK_V1).
+     * FINAL (R3, AUTHORITATIVE_REVISION_ROW_IS_READ_AS_ONE_OWNERSHIP_VALIDATED_UNIT_V1):
+     * reads the authoritative revision row as ONE ownership-validated unit.
+     *
+     * <p>One query with the tenant predicate on the whole row; ALL fields
+     * derive from the returned row. Ownership validation applies to the full
+     * row, not just projectId discovery — no field of a revision may be read
+     * from a query that ignores tenant after ownership validation
+     * (REVISION_ROW_AUTHORITATIVE_READ_IS_TENANT_SCOPED_V1).
+     *
+     * @return the owned row, or {@code null} when absent / not owned
      */
-    private String copyHistoricalSnapshotPayload(org.jooq.DSLContext tx, String projectId,
-                                                 String tenantId, String historicalRevisionId,
-                                                 String newRevisionId) {
-        String historicalSnapshotId = tx.select(TIMELINE_REVISION.SNAPSHOT_ID)
+    private OwnedRevisionRow readOwnedRevisionRow(String revisionId, String tenantId) {
+        org.jooq.Record row = dsl.select(
+                        TIMELINE_REVISION.ID,
+                        TIMELINE_REVISION.PROJECT_ID,
+                        TIMELINE_REVISION.TENANT_ID,
+                        TIMELINE_REVISION.PARENT_REVISION_ID,
+                        TIMELINE_REVISION.SCHEMA_VERSION,
+                        TIMELINE_REVISION.CONTENT_HASH,
+                        TIMELINE_REVISION.SNAPSHOT_ID,
+                        TIMELINE_REVISION.CREATED_AT,
+                        TIMELINE_REVISION.AUTHOR_USER_ID)
                 .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
-                .and(TIMELINE_REVISION.PROJECT_ID.eq(projectId))
+                .where(TIMELINE_REVISION.ID.eq(revisionId))
                 .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
-                .fetchOne(TIMELINE_REVISION.SNAPSHOT_ID);
-        if (historicalSnapshotId == null || historicalSnapshotId.isBlank()) {
-            throw new IllegalStateException(
-                    "RESTORE FAIL CLOSED (RST1): historical revision '" + historicalRevisionId
-                            + "' has no governed snapshot id — NO legacy restore fallback (F4)");
+                .fetchOne();
+        if (row == null) {
+            return null;
         }
-        String payload = timelineSnapshotService.findPayload(historicalSnapshotId).orElse(null);
-        if (payload == null) {
-            throw new IllegalStateException(
-                    "RESTORE FAIL CLOSED (RST2): historical snapshot '" + historicalSnapshotId
-                            + "' payload row is missing — NO legacy restore fallback (F4)");
-        }
-        String schemaVersion = tx.select(TIMELINE_REVISION.SCHEMA_VERSION)
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
-                .and(TIMELINE_REVISION.PROJECT_ID.eq(projectId))
-                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
-                .fetchOne(TIMELINE_REVISION.SCHEMA_VERSION);
-        if (schemaVersion == null) {
-            throw new IllegalStateException(
-                    "RESTORE FAIL CLOSED: historical revision '" + historicalRevisionId
-                            + "' has no schema version");
-        }
-        return timelineSnapshotService.saveTx(tx, projectId, null, payload, schemaVersion);
+        return new OwnedRevisionRow(
+                row.get(TIMELINE_REVISION.ID),
+                row.get(TIMELINE_REVISION.PROJECT_ID),
+                row.get(TIMELINE_REVISION.TENANT_ID),
+                row.get(TIMELINE_REVISION.PARENT_REVISION_ID),
+                row.get(TIMELINE_REVISION.SCHEMA_VERSION),
+                row.get(TIMELINE_REVISION.CONTENT_HASH),
+                row.get(TIMELINE_REVISION.SNAPSHOT_ID),
+                row.get(TIMELINE_REVISION.CREATED_AT),
+                row.get(TIMELINE_REVISION.AUTHOR_USER_ID));
+    }
+
+    /** The authoritative revision row read as ONE ownership-validated unit (R3). */
+    private record OwnedRevisionRow(
+            String id,
+            String projectId,
+            String tenantId,
+            String parentRevisionId,
+            String schemaVersion,
+            String contentHash,
+            String snapshotId,
+            LocalDateTime createdAt,
+            String authorUserId) {
     }
 
     @Transactional(readOnly = true)
     public TimelineRevision findById(String revisionId) {
         String tenantId = com.example.platform.shared.web.TenantContext.get();
-        // R3 (REVISION_ROW_AUTHORITATIVE_READ_IS_TENANT_SCOPED_V1): the
-        // initial revision row read is tenant-scoped — no authoritative
-        // existence/project leakage across tenant boundaries.
-        String projectId = dsl.select(TIMELINE_REVISION.PROJECT_ID)
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(revisionId))
-                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
-                .fetchOne(TIMELINE_REVISION.PROJECT_ID);
-
-        if (projectId == null) return null;
-
-        String parentId = dsl.select(TIMELINE_REVISION.PARENT_REVISION_ID)
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(revisionId))
-                .fetchOne(TIMELINE_REVISION.PARENT_REVISION_ID);
-
-        String schemaVersion = dsl.select(TIMELINE_REVISION.SCHEMA_VERSION)
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(revisionId))
-                .fetchOne(TIMELINE_REVISION.SCHEMA_VERSION);
-
-        String contentHash = dsl.select(TIMELINE_REVISION.CONTENT_HASH)
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(revisionId))
-                .fetchOne(TIMELINE_REVISION.CONTENT_HASH);
-
-        LocalDateTime createdAt = dsl.select(TIMELINE_REVISION.CREATED_AT)
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(revisionId))
-                .fetchOne(TIMELINE_REVISION.CREATED_AT);
-
-        String authorUserId = dsl.select(TIMELINE_REVISION.AUTHOR_USER_ID)
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(revisionId))
-                .fetchOne(TIMELINE_REVISION.AUTHOR_USER_ID);
+        // FINAL (R3): ONE ownership-scoped row read — all fields derive from
+        // the single validated row; no subsequent revisionId-only field
+        // lookups (REVISION_ROW_AUTHORITATIVE_READ_IS_TENANT_SCOPED_V1,
+        // AUTHORITATIVE_REVISION_ROW_IS_READ_AS_ONE_OWNERSHIP_VALIDATED_UNIT_V1).
+        OwnedRevisionRow row = readOwnedRevisionRow(revisionId, tenantId);
+        if (row == null) {
+            return null;
+        }
 
         // ROADMAP20 authority integration: the revision's semantic context
         // (exact Effect pin) is loaded from revision-owned persisted state —
         // reconstructs the pin WITHOUT caller input.
         com.example.platform.timeline.version.TimelineRevisionSemanticContext semanticContext =
-                revisionSemanticContextStore.findByRevisionId(dsl, projectId, tenantId, revisionId)
+                revisionSemanticContextStore.findByRevisionId(
+                        dsl, row.projectId(), tenantId, revisionId)
                         .orElse(null);
         if (semanticContext == null) {
             // CLEAN-FORWARD: a valid canonical revision ALWAYS owns its
@@ -512,10 +506,12 @@ public class TimelineRevisionSaveService {
                             + "data; FAIL CLOSED (no legacy read mode)");
         }
         return new TimelineRevision(
-                revisionId, projectId, parentId, schemaVersion,
+                revisionId, row.projectId(), row.parentRevisionId(), row.schemaVersion(),
                 null, semanticContext.revisionSemanticDigest(),
-                createdAt != null ? createdAt.atZone(java.time.ZoneId.systemDefault()).toInstant() : null,
-                authorUserId, semanticContext);
+                row.createdAt() != null
+                        ? row.createdAt().atZone(java.time.ZoneId.systemDefault()).toInstant()
+                        : null,
+                row.authorUserId(), semanticContext);
     }
 
     /**
@@ -525,6 +521,14 @@ public class TimelineRevisionSaveService {
      * codec ({@link TimelineDocumentJsonSerializer}). Read helper only — no
      * canonical mutation occurs on this path.
      *
+     * <p>FINAL (C2, CANONICAL_TIMELINE_PAYLOAD_READ_IS_PROJECT_AND_TENANT_SCOPED_V1):
+     * this is a CANONICAL read and MUST be ownership scoped end to end — the
+     * revision row is read as ONE ownership-validated unit (tenant predicate),
+     * and the snapshot is resolved ONLY within the row's (projectId, tenantId)
+     * via {@link TimelineSnapshotService#findOwnedById}. No global snapshot
+     * lookup can enter this path; a foreign snapshot resolves to empty and the
+     * caller fails closed (PAYLOAD_INVALID).
+     *
      * <p>Returns {@link Optional#empty()} when the revision has no snapshot payload
      * row or the payload is missing/malformed — the caller maps that to explicit
      * fail-closed behavior (F4: missing governed payload never produces a new valid
@@ -532,22 +536,25 @@ public class TimelineRevisionSaveService {
      */
     @Transactional(readOnly = true)
     public Optional<TimelineDocument> findPayloadDocument(String revisionId) {
-        String snapshotId = dsl.select(TIMELINE_REVISION.SNAPSHOT_ID)
-                .from(TIMELINE_REVISION)
-                .where(TIMELINE_REVISION.ID.eq(revisionId))
-                .fetchOne(TIMELINE_REVISION.SNAPSHOT_ID);
-        if (snapshotId == null || snapshotId.isBlank()) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        // C2: ONE ownership-validated revision row read (same unit as findById).
+        OwnedRevisionRow row = readOwnedRevisionRow(revisionId, tenantId);
+        if (row == null || row.snapshotId() == null || row.snapshotId().isBlank()) {
             return Optional.empty();
         }
-        Optional<String> payload = timelineSnapshotService.findPayload(snapshotId);
-        if (payload.isEmpty()) {
+        // C2: ownership-scoped snapshot hydration — (projectId, tenantId)
+        // bound; a foreign snapshot is NOT FOUND (fail closed upstream).
+        Optional<TimelineSnapshotService.SnapshotInfo> snapshot =
+                timelineSnapshotService.findOwnedById(
+                        dsl, row.projectId(), tenantId, row.snapshotId());
+        if (snapshot.isEmpty()) {
             return Optional.empty();
         }
         try {
             TimelineDocument document = TimelineDocumentJsonSerializer.mapper()
                     .readerFor(TimelineDocument.class)
                     .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                    .readValue(payload.get());
+                    .readValue(snapshot.get().payloadJson());
             return Optional.ofNullable(document);
         } catch (Exception e) {
             // Malformed governed payload: fail closed (caller returns PAYLOAD_INVALID).
