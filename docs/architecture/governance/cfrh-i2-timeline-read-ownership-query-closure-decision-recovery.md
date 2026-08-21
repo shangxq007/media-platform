@@ -111,7 +111,7 @@ already cover the points.
 
 I2-A ownership-scoped revision query foundation (query services + predicates)
 I2-B snapshot read ownership closure (findOwnedById migration, 6 callers)
-I2-C controller and render caller migration (14 sites)
+I2-C controller and render caller migration (22 invocation sites)
 I2-D compare/preview/merge read closure (merge engine L754/768/775)
 I2-E legacy TimelineRevisionService deletion (after caller closure)
 I2-F system authority exception port + structural guards

@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""CFRH-I2 final mechanical evidence closure validator.
+"""CFRH-I2 final validator exactness closure validator.
 
-Corrections implemented:
-F1 — REAL production source reconciliation: scans src/main/java for actual
-     TRQ invocation sites, builds SOURCE_INVOCATION_SITE_SET, and computes
-     exact two-way closure vs LEDGER_INVOCATION_SITE_SET (missing/extra/
-     duplicate).
-F2 — COMPUTED vs EXPECTED split: every publication metric compared against
-     computed variables derived from parsed ledgers / scanned source, never
-     against duplicated literal expectations alone.
-F3 — REAL cross-ledger closure: behavior->caller validity, caller->ownership
-     reconciliation, P1 exact expected symbol set, repository-symbol rows,
-     endpoint coherence (effective = direct OR transitive), orphan counts.
-F4 — authoritative doc single-truth checks: stale "19 caller" / "14 site" /
-     "11 query endpoints" current-state claims rejected unless marked
-     HISTORICAL/REJECTED/SUPERSEDED/PREDECESSOR_METRIC.
+F1 — FULL 4-TUPLE source<->ledger exact identity:
+     (caller_class, caller_method, source_line, callee_symbol) set equality,
+     NO 3-tuple fallback; behavior_id<->callee_symbol enforced via TRQ map.
+
+F2 — REAL cross-ledger closure:
+     repository-read-symbol-inventory (12 symbols) reconciled against
+     ownership-read-manifest + SAFE KEEP + internal TRQ-support; orphan
+     repository symbols and orphan ownership symbols computed separately
+     from p1_extra_symbol_count.
+
+F3 — authoritative-doc single truth: explicit doc set scanned for four stale
+     patterns (19-caller, 14-site, ambiguous 11-query-endpoints, unmarked
+     PRODUCTION_CALLER_COUNT=19); each claim must carry a
+     HISTORICAL/REJECTED/SUPERSEDED/PREDECESSOR marker in local context.
+
+F4 — EXACT required publication metric set (37 metrics): every required
+     metric present and equal to its computed value; no checked>=N shortcut.
 
 WHAT THE VALIDATOR CLAIMS = WHAT THE VALIDATOR ACTUALLY COMPUTES.
 """
@@ -151,23 +154,27 @@ for r in crows:
     callee = r[chm["callee_symbol"]].strip()
     ledger_sites.add((cls, sym, ln, callee))
 
-# reconcile: ledger callee -> TRQ behavior id -> method name
-ledger_methods = {m for (_, _, _, m) in ledger_sites}
-# source sites use real callee method names; ledger callee_symbol should match
-missing_ledger = set()
-extra_ledger = set()
-for s in SOURCE_SITES:
-    if s not in ledger_sites and (s[0], s[1], s[2]) not in {(c, m, l) for (c, m, l, _) in ledger_sites}:
-        missing_ledger.add(s)
-for l in ledger_sites:
-    if l not in SOURCE_SITES and (l[0], l[1], l[2]) not in {(c, m, l) for (c, m, l, _) in SOURCE_SITES}:
-        extra_ledger.add(l)
+# reconcile: EXACT 4-tuple closure — no 3-tuple fallback
+missing_ledger = SOURCE_SITES - ledger_sites
+extra_ledger = ledger_sites - SOURCE_SITES
 
 mech("F1-03", len(SOURCE_SITES) == 22, f"source invocation-site count={len(SOURCE_SITES)}")
 mech("F1-04", len(ledger_sites) == 22, f"ledger invocation-site count={len(ledger_sites)}")
 mech("F1-05", len(missing_ledger) == 0, f"missing ledger sites={sorted(missing_ledger)[:3]}")
 mech("F1-06", len(extra_ledger) == 0, f"extra ledger sites={sorted(extra_ledger)[:3]}")
 mech("F1-07", len(ledger_sites) == len(crows), "row count == ledger site count (no compression)")
+mech("F1-08", SOURCE_SITES == ledger_sites,
+     "FULL 4-TUPLE SET EQUALITY (class, method, line, callee) — no partial matching")
+
+# behavior_id <-> callee_symbol mapping through frozen TRQ map
+behavior_callee_mismatch = []
+for r in crows:
+    beh = r[chm["behavior_id"]].strip()
+    callee = r[chm["callee_symbol"]].strip()
+    if beh in TRQ_METHODS and TRQ_METHODS[beh] != callee:
+        behavior_callee_mismatch.append((r[chm["site_id"]], beh, callee))
+mech("F1-09", len(behavior_callee_mismatch) == 0,
+     f"behavior/callee mismatches={behavior_callee_mismatch}")
 
 # ---------------------------------------------------------------- F2: computed metrics
 computed = {}
@@ -314,33 +321,108 @@ manifest_symbols = {r[ohm2["symbol"]].strip() for r in orows2}
 p1_in_manifest = p1_expected.intersection(manifest_symbols)
 mech("F3-21", len(p1_in_manifest) >= 8, f"P1 symbols present in ownership manifest={len(p1_in_manifest)}")
 
-# ---------------------------------------------------------------- F4: doc single truth
-def stale_claim_count(pattern, context, label):
+# ---------------------------------------------------------------- F2: repository-symbol cross-ledger closure
+rhm, rrows = load_tsv(TASKDIR / "repository-read-symbol-inventory.tsv",
+                      ["symbol", "safe", "system_only", "legacy_only", "to_delete"])
+repo_symbols = [r[rhm["symbol"]].strip() for r in rrows]
+repo_symbol_set = set(repo_symbols)
+
+# governance classification for each repository symbol:
+#   A: present in ownership manifest with explicit disposition
+#   B: SAFE KEEP (findOwnedById — canonical safe API, §4 SAFE(KEEP) category)
+#   C: system-authority symbol (listDistinctProjectIds)
+#   D: internal supporting method governed transitively by an accepted TRQ
+#      behavior (repo.updateAnnotation -> TRQ-05; listDistinctSources/listAuthorFacets
+#      -> TRQ-06; listEditSessions -> TRQ-07)
+#   E: ORPHAN / UNGOVERNED
+SAFE_KEEP = {"TimelineSnapshotService.findOwnedById"}
+INTERNAL_SUPPORT = {
+    "TimelineRevisionRepository.updateAnnotation": "TRQ-05",
+    "TimelineRevisionRepository.listDistinctSources": "TRQ-06",
+    "TimelineRevisionRepository.listAuthorFacets": "TRQ-06",
+    "TimelineRevisionRepository.listEditSessions": "TRQ-07",
+}
+orphan_repo_symbols = []
+for sym in repo_symbols:
+    if sym in manifest_symbols:
+        continue  # A: manifest-governed
+    if sym in SAFE_KEEP:
+        continue  # B: safe keep
+    if sym in INTERNAL_SUPPORT:
+        continue  # D: internal support for accepted behavior
+    orphan_repo_symbols.append(sym)  # E: orphan
+
+computed["repository_symbol_count"] = len(repo_symbols)
+computed["governed_repository_symbol_count"] = len(repo_symbols) - len(orphan_repo_symbols)
+computed["orphan_repository_symbol_count"] = len(orphan_repo_symbols)
+mech("F2-01", len(repo_symbols) == 12, f"repository_symbol_count={len(repo_symbols)}")
+mech("F2-02", len(orphan_repo_symbols) == 0, f"orphan repository symbols={orphan_repo_symbols}")
+mech("F2-03", computed["governed_repository_symbol_count"] == 12,
+     f"governed_repository_symbol_count={computed['governed_repository_symbol_count']}")
+
+# orphan ownership-manifest symbols: no repository/source/P1/system/safe correspondence
+ORPHAN_CHECK_MANIFEST_OK = set()
+for sym in manifest_symbols:
+    if sym in repo_symbol_set or sym in SAFE_KEEP:
+        ORPHAN_CHECK_MANIFEST_OK.add(sym)
+    elif sym == "TimelineRevisionService legacy read authority":
+        ORPHAN_CHECK_MANIFEST_OK.add(sym)  # service-level aggregate (caller ledger governs)
+    elif sym == "TimelineRevisionService.updateAnnotation":
+        ORPHAN_CHECK_MANIFEST_OK.add(sym)  # TRQ-05 aggregate (repo.updateAnnotation internal)
+    elif sym == "TimelineMergeEngine.loadRevision/loadPayload":
+        ORPHAN_CHECK_MANIFEST_OK.add(sym)  # merge engine surface (I2-D scope)
+orphan_manifest_symbols = manifest_symbols - ORPHAN_CHECK_MANIFEST_OK
+computed["orphan_ownership_symbol_count"] = len(orphan_manifest_symbols)
+mech("F2-04", len(orphan_manifest_symbols) == 0, f"orphan ownership symbols={sorted(orphan_manifest_symbols)}")
+
+# ---------------------------------------------------------------- F3: authoritative doc single truth
+# finite explicit authoritative doc set (current docs, not history)
+AUTH_DOCS = [
+    TASKDIR / "cfrh-i2-execution-plan.md",
+    GOV / "cfrh-i2-timeline-read-ownership-query-closure-decision-recovery.md",
+    GOV / "cfrh-i2-inventory-ownership-execution-contract-correction.md",
+    GOV / "cfrh-i2-final-mechanical-evidence-closure.md",
+    GOV / "cfrh-i2-final-validator-exactness-closure.md",
+]
+docs_txt = "\n".join(p.read_text(encoding="utf-8", errors="replace")
+                     for p in AUTH_DOCS if p.exists())
+
+HIST_MARK = r"HISTORICAL|REJECTED|SUPERSEDED|PREDECESSOR|PREDECESSOR_METRIC"
+
+
+def stale_in_docs(pattern, label):
+    """Return list of unmarked current-state claims matching pattern."""
     hits = []
-    for m in re.finditer(pattern, context):
-        # check preceding/following context for historical markers
-        window = context[max(0, m.start()-200):m.end()+200]
-        if not re.search(r"HISTORICAL|REJECTED|SUPERSEDED|PREDECESSOR", window, re.I):
-            hits.append(m.group(0))
+    for m in re.finditer(pattern, docs_txt, re.I):
+        window = docs_txt[max(0, m.start() - 150):m.end() + 150]
+        if not re.search(HIST_MARK, window):
+            hits.append(m.group(0)[:60])
     return hits
 
-corr_pub = (GOV / "cfrh-i2-inventory-ownership-execution-contract-correction.md").read_text(encoding="utf-8")
-dr_doc = (GOV / "cfrh-i2-timeline-read-ownership-query-closure-decision-recovery.md").read_text(encoding="utf-8")
-docs_txt = corr_pub + "\n" + dr_doc
 
-# only count claims NOT adjacent to a rejection marker
-stale_19 = [h for h in stale_claim_count(r"19\s*(?:callers|production callers|caller)", docs_txt, "19") if h]
-mech("F4-01", len(stale_19) == 0, f"stale current-state '19 caller' claims={stale_19}")
-# PRODUCTION_CALLER_COUNT=19 must be adjacent to a historical marker (before or after)
-pc_19 = []
-for m in re.finditer(r"PRODUCTION_CALLER_COUNT\s*=\s*19", docs_txt):
-    window = docs_txt[max(0, m.start()-120):m.end()+120]
-    if not re.search(r"HISTORICAL|REJECTED|SUPERSEDED|PREDECESSOR", window, re.I):
-        pc_19.append(m.group(0))
-mech("F4-02", len(pc_19) == 0, f"unmarked PRODUCTION_CALLER_COUNT=19={pc_19}")
+# A. stale 19-caller / current caller count
+stale_19 = stale_in_docs(r"\b19\s*(?:callers|production callers|caller sites)", "19-caller")
+computed["stale_19_caller_claim_count"] = len(stale_19)
+mech("F3-01", len(stale_19) == 0, f"stale '19 caller' current-state claims={stale_19}")
 
-# ---------------------------------------------------------------- publication linkage
-pub = (GOV / "cfrh-i2-final-mechanical-evidence-closure.md").read_text(encoding="utf-8")
+# B. stale 14-site wording
+stale_14 = stale_in_docs(r"\b14\s*(?:sites|caller sites|invocation sites)", "14-site")
+computed["stale_14_site_claim_count"] = len(stale_14)
+mech("F3-02", len(stale_14) == 0, f"stale '14 site' current-state claims={stale_14}")
+
+# C. ambiguous naked "11 query endpoints" as current truth
+amb_11 = stale_in_docs(r"11\s*query\s*endpoints", "11-query-endpoints")
+computed["ambiguous_11_query_endpoint_claim_count"] = len(amb_11)
+mech("F3-03", len(amb_11) == 0,
+     f"ambiguous '11 query endpoints' current-state claims={amb_11}")
+
+# D. unmarked PRODUCTION_CALLER_COUNT = 19
+unmarked_19 = stale_in_docs(r"PRODUCTION_CALLER_COUNT\s*=\s*19", "unmarked-PC19")
+computed["unmarked_rejected_production_caller_metric_count"] = len(unmarked_19)
+mech("F3-04", len(unmarked_19) == 0, f"unmarked PRODUCTION_CALLER_COUNT=19={unmarked_19}")
+
+# ---------------------------------------------------------------- F4: required publication metric set
+pub = (GOV / "cfrh-i2-final-validator-exactness-closure.md").read_text(encoding="utf-8")
 metric_lines = {}
 for m in re.finditer(r"^([a-z_][a-z0-9_]*)\s*=\s*(\d+)\s*$", pub, re.M):
     metric_lines[m.group(1)] = int(m.group(2))
@@ -367,16 +449,47 @@ computed_all.update({
     "transitive_only_legacy_query_endpoint_count": computed["transitive_only_legacy_query_endpoint_count"],
     "effective_legacy_query_dependency_endpoint_count": computed["effective_legacy_query_dependency_endpoint_count"],
     "unresolved_endpoint_count": computed["unresolved_endpoint_count"],
+    "endpoint_contradiction_count": contradictions,
+    "behavior_callee_mismatch_count": len(behavior_callee_mismatch),
+    "invalid_caller_line_count": len(bad_lines),
 })
+
+REQUIRED_PUBLICATION_METRIC_SET = {
+    "caller_inventory_row_count", "source_invocation_site_count",
+    "ledger_invocation_site_count", "unique_caller_method_count",
+    "missing_ledger_site_count", "extra_ledger_site_count",
+    "duplicate_ledger_site_count", "unresolved_caller_disposition_count",
+    "behavior_callee_mismatch_count", "invalid_caller_line_count",
+    "http_endpoint_count", "direct_legacy_query_endpoint_count",
+    "transitive_only_legacy_query_endpoint_count",
+    "effective_legacy_query_dependency_endpoint_count",
+    "unresolved_endpoint_count", "endpoint_contradiction_count",
+    "ownership_surface_count",
+    "p1_symbol_count", "p1_expected_symbol_count", "p1_actual_symbol_count",
+    "p1_missing_symbol_count", "p1_extra_symbol_count",
+    "forbidden_ambient_global_count", "tenant_unverified_count",
+    "load_then_check_count", "system_authority_exception_count",
+    "already_safe_count", "safe_keep_count",
+    "repository_symbol_count", "governed_repository_symbol_count",
+    "orphan_repository_symbol_count", "orphan_ownership_symbol_count",
+    "orphan_caller_count", "unknown_caller_behavior_count",
+    "stale_19_caller_claim_count", "stale_14_site_claim_count",
+    "ambiguous_11_query_endpoint_claim_count",
+}
+
+missing_required = sorted(REQUIRED_PUBLICATION_METRIC_SET - set(metric_lines.keys()))
 pub_mismatch = []
-checked = 0
-for k, v in computed_all.items():
+checked_required = 0
+for k in sorted(REQUIRED_PUBLICATION_METRIC_SET):
     if k in metric_lines:
-        checked += 1
-        if metric_lines[k] != v:
-            pub_mismatch.append((k, metric_lines[k], v))
-mech("F5-01", len(pub_mismatch) == 0, f"publication/computed mismatches={pub_mismatch}")
-mech("F5-02", checked >= 25, f"publication metrics checked={checked}")
+        checked_required += 1
+        if metric_lines[k] != computed_all[k]:
+            pub_mismatch.append((k, metric_lines[k], computed_all[k]))
+mech("F4-01", len(missing_required) == 0,
+     f"missing required publication metrics={missing_required}")
+mech("F4-02", len(pub_mismatch) == 0, f"publication/computed mismatches={pub_mismatch}")
+mech("F4-03", checked_required == len(REQUIRED_PUBLICATION_METRIC_SET),
+     f"checked_required={checked_required} required={len(REQUIRED_PUBLICATION_METRIC_SET)}")
 
 # ---------------------------------------------------------------- report
 total = len(MECH)

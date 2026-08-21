@@ -44,9 +44,9 @@ F3 — REAL cross-ledger closure: behavior→caller validity, caller→ownership
      (effective = direct OR transitive; restore canonical/NO/YES/YES),
      orphan caller/symbol = 0.
 
-F4 — Authoritative doc single truth: stale current-state claims (19 callers,
-     14 sites, 11 query endpoints) removed or explicitly marked
-     HISTORICAL/REJECTED/SUPERSEDED/PREDECESSOR_METRIC.
+F4 — Authoritative doc single truth: stale current-state claims (SUPERSEDED:
+      19 callers, 14 sites, 11 query endpoints) removed or explicitly marked
+      HISTORICAL/REJECTED/SUPERSEDED/PREDECESSOR_METRIC.
 
 ## Machine-readable metrics (computed from ledgers/source by validator)
 

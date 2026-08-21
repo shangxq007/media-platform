@@ -36,8 +36,14 @@ Targets:
   → findOwnedById(projectId, tenantId, snapshotId) (I2-B, unresolved=0).
 
 ### CFRH-I2-C — CONTROLLER_AND_RENDER_CALLER_MIGRATION
-- TimelineRevisionController: 11 query endpoints switch to query services
-  (projectId+tenantId from TenantContext).
+- TimelineRevisionController endpoint model (explicit):
+  TOTAL HTTP ENDPOINTS = 15
+  DIRECT LEGACY-QUERY-DEPENDENT ENDPOINTS = 10
+  TRANSITIVE-ONLY LEGACY-QUERY-DEPENDENT ENDPOINTS = 1
+    (restore response dependency via toRestoreResponse)
+  EFFECTIVE LEGACY-QUERY-DEPENDENT ENDPOINTS = 11
+- Individual legacy query invocation sites (CS-01..CS-22) migrate to query
+  services (projectId+tenantId from TenantContext).
 - TimelineWorkbenchController: facets/compare callers migrated.
 - TimelineRevisionRenderService:113 + PlanBasedTimelineRevisionRenderService:174
   findById → ownership-scoped query.
