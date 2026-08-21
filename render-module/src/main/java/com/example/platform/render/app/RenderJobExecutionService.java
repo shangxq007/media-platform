@@ -198,7 +198,7 @@ public class RenderJobExecutionService {
 
         String aiScript;
         try {
-            aiScript = resolveRenderScript(jobId, snapshotId, null, projectId);
+            aiScript = resolveRenderScript(jobId, snapshotId, null, projectId, tenantId);
         } catch (Exception e) {
             failureService.recordDurableFailure(jobId, "Script resolution failed: " + e.getMessage());
             throw e;
@@ -272,7 +272,7 @@ public class RenderJobExecutionService {
 
         String aiScript;
         try {
-            aiScript = resolveRenderScript(jobId, snapshotId, null, projectId);
+            aiScript = resolveRenderScript(jobId, snapshotId, null, projectId, tenantId);
         } catch (Exception e) {
             failureService.recordDurableFailure(jobId, "Script resolution failed: " + e.getMessage());
             throw e;
@@ -335,7 +335,7 @@ public class RenderJobExecutionService {
         String aiScript = job.get("ai_script", String.class);
         if (aiScript == null || aiScript.isBlank()) {
             String snapshotId = job.get("timeline_snapshot_id", String.class);
-            aiScript = resolveRenderScript(jobId, snapshotId, null, projectId);
+            aiScript = resolveRenderScript(jobId, snapshotId, null, projectId, tenantId);
             renderJobRepository.updateAiScript(jobId, aiScript);
         }
 
@@ -578,7 +578,7 @@ public class RenderJobExecutionService {
                 && renderWorkerQueueProperties.isConsumeEnabled();
     }
 
-    private String resolveRenderScript(String jobId, String snapshotId, String prompt, String projectId) {
+    private String resolveRenderScript(String jobId, String snapshotId, String prompt, String projectId, String tenantId) {
         if (jobId != null) {
             Optional<String> existing = renderJobRepository.findAiScriptById(jobId);
             if (existing.isPresent() && !existing.get().isBlank()
@@ -587,7 +587,9 @@ public class RenderJobExecutionService {
                 return existing.get().trim();
             }
         }
-        Optional<String> snapshotPayload = timelineSnapshotService.findPayload(snapshotId);
+        Optional<String> snapshotPayload = timelineSnapshotService
+                .findOwnedById(projectId, tenantId, snapshotId)
+                .map(TimelineSnapshotService.SnapshotInfo::payloadJson);
         if (snapshotPayload.isPresent()) {
             String payload = snapshotPayload.get().trim();
             if (timelineScriptParser.isTimelineJson(payload)) {

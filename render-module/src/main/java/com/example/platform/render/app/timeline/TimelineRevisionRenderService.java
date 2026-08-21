@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
@@ -15,6 +15,7 @@ import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.app.timeline.InternalTimelineAdapter;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import java.util.Map;
+import com.example.platform.shared.web.TenantContext;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,7 @@ public class TimelineRevisionRenderService {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineRevisionRenderService.class);
 
-    private final TimelineRevisionService revisionService;
+    private final com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService;
     private final TimelineSnapshotService snapshotService;
     private final TimelineRenderJobMapper mapper;
     private final TimelineScriptParser parser;
@@ -69,7 +70,7 @@ public class TimelineRevisionRenderService {
     private final Path storageRoot;
 
     public TimelineRevisionRenderService(
-            TimelineRevisionService revisionService,
+            com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
             TimelineSnapshotService snapshotService,
             TimelineRenderJobMapper mapper,
             TimelineScriptParser parser,
@@ -81,7 +82,7 @@ public class TimelineRevisionRenderService {
             TimelineInputProductResolver inputProductResolver,
             ProcessToolRunner processToolRunner,
             Path storageRoot) {
-        this.revisionService = revisionService;
+        this.revisionQueryService = revisionQueryService;
         this.snapshotService = snapshotService;
         this.mapper = mapper;
         this.parser = parser;
@@ -109,24 +110,19 @@ public class TimelineRevisionRenderService {
         log.info("Timeline revision render requested: project={} revision={} profile={}",
                 projectId, revisionId, outputProfile);
 
-        // 1. Load TimelineRevision
-        var revisionOpt = revisionService.findById(revisionId);
+        // 1. Load TimelineRevision (ownership-scoped: project + tenant participate in query)
+        var revisionOpt = revisionQueryService.findById(projectId, TenantContext.get(), revisionId);
         if (revisionOpt.isEmpty()) {
             throw new IllegalArgumentException("Timeline revision not found: " + revisionId);
         }
         var revision = revisionOpt.get();
 
-        // 2. Verify project ownership
-        if (!projectId.equals(revision.projectId())) {
-            throw new IllegalArgumentException(
-                    "Revision does not belong to project: " + revisionId + " expected=" + projectId + " actual=" + revision.projectId());
-        }
-
         String tenantId = revision.tenantId();
         String snapshotId = revision.snapshotId();
 
-        // 3. Load snapshot payload
-        var payloadOpt = snapshotService.findPayload(snapshotId);
+        // 3. Load snapshot payload (ownership-scoped)
+        var payloadOpt = snapshotService.findOwnedById(projectId, tenantId, snapshotId)
+                .map(TimelineSnapshotService.SnapshotInfo::payloadJson);
         if (payloadOpt.isEmpty()) {
             throw new IllegalStateException("Snapshot not found for revision: " + revisionId + " snapshot=" + snapshotId);
         }

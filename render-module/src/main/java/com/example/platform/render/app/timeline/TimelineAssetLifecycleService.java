@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.shared.asset.StorageUriReferenceContributor;
 import com.example.platform.shared.asset.StorageUriReferenceHit;
@@ -68,7 +69,7 @@ public class TimelineAssetLifecycleService {
                 log.debug("Skip snapshot {} during delete-check: {}", row.id(), e.getMessage());
             }
         }
-        String storageUri = resolveStorageUri(projectId, assetId);
+        String storageUri = resolveStorageUri(projectId, TenantContext.get(), assetId);
         if (storageUri != null) {
             references.addAll(findContributorReferences(storageUri, projectId));
         }
@@ -76,8 +77,8 @@ public class TimelineAssetLifecycleService {
         return new DeleteCheckResult(assetId, projectId, deletable, references);
     }
 
-    private String resolveStorageUri(String projectId, String assetId) {
-        return timelineSnapshotService.findLatestByProject(projectId).flatMap(snapshot -> {
+    private String resolveStorageUri(String projectId, String tenantId, String assetId) {
+        return timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId).flatMap(snapshot -> {
             try {
                 JsonNode root = InternalTimelineJson.parse(snapshot.payloadJson());
                 JsonNode entry = root.path("assetRegistry").path("assets").path(assetId);
@@ -112,8 +113,9 @@ public class TimelineAssetLifecycleService {
 
     @Transactional
     public TombstoneResult tombstone(String projectId, String snapshotId, String assetId, String tenantId) {
-        Optional<TimelineSnapshotService.SnapshotInfo> info = timelineSnapshotService.findById(snapshotId);
-        if (info.isEmpty() || !projectId.equals(info.get().projectId())) {
+        Optional<TimelineSnapshotService.SnapshotInfo> info =
+                timelineSnapshotService.findOwnedById(projectId, tenantId, snapshotId);
+        if (info.isEmpty()) {
             throw MediaAssetErrors.assetNotFound(errorCodeRegistry, assetId);
         }
         try {

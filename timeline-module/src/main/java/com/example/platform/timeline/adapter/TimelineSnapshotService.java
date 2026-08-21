@@ -118,6 +118,29 @@ public class TimelineSnapshotService {
         return Optional.of(mapSnapshotInfo(record));
     }
 
+    /** CFRH-I2: tenant-aware latest-snapshot read — ownership participates in the query. */
+    public Optional<SnapshotInfo> findLatestOwnedByProject(String projectId, String tenantId) {
+        if (projectId == null || projectId.isBlank()) {
+            return Optional.empty();
+        }
+        Record record = dsl.select(
+                        TIMELINE_SNAPSHOT.ID,
+                        TIMELINE_SNAPSHOT.PROJECT_ID,
+                        TIMELINE_SNAPSHOT.TENANT_ID,
+                        TIMELINE_SNAPSHOT.PAYLOAD_JSON,
+                        TIMELINE_SNAPSHOT.SCHEMA_VERSION)
+                .from(TIMELINE_SNAPSHOT)
+                .where(TIMELINE_SNAPSHOT.PROJECT_ID.eq(projectId))
+                .and(TIMELINE_SNAPSHOT.TENANT_ID.eq(tenantId))
+                .orderBy(TIMELINE_SNAPSHOT.CREATED_AT.desc())
+                .limit(1)
+                .fetchOne();
+        if (record == null) {
+            return Optional.empty();
+        }
+        return Optional.of(mapSnapshotInfo(record));
+    }
+
     public List<String> listDistinctProjectIds() {
         return dsl.selectDistinct(TIMELINE_SNAPSHOT.PROJECT_ID)
                 .from(TIMELINE_SNAPSHOT)

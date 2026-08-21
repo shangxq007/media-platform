@@ -39,15 +39,16 @@ public class TimelineEditorSyncController {
     public ResponseEntity<PullResponse> pull(@Valid @RequestBody(required = false) PullRequest request,
                                              @RequestParam(required = false) String projectId,
                                              @RequestParam(required = false) String snapshotId) {
+        String tenantId = TenantContext.get();
         TimelineEditorSyncService.PullResult result;
         if (request != null && request.snapshotId() != null && !request.snapshotId().isBlank()) {
-            result = timelineEditorSyncService.pullBySnapshotId(request.snapshotId());
+            result = timelineEditorSyncService.pullBySnapshotId(request.projectId(), tenantId, request.snapshotId());
         } else if (request != null && request.projectId() != null && !request.projectId().isBlank()) {
-            result = timelineEditorSyncService.pullByProject(request.projectId());
+            result = timelineEditorSyncService.pullByProject(request.projectId(), tenantId);
         } else if (snapshotId != null && !snapshotId.isBlank()) {
-            result = timelineEditorSyncService.pullBySnapshotId(snapshotId);
+            result = timelineEditorSyncService.pullBySnapshotId(projectId, tenantId, snapshotId);
         } else if (projectId != null && !projectId.isBlank()) {
-            result = timelineEditorSyncService.pullByProject(projectId);
+            result = timelineEditorSyncService.pullByProject(projectId, tenantId);
         } else {
             throw new IllegalArgumentException("projectId or snapshotId is required");
         }
@@ -57,7 +58,7 @@ public class TimelineEditorSyncController {
     @GetMapping("/latest")
     @Operation(summary = "拉取项目最新快照（编辑器 + Internal）")
     public ResponseEntity<PullResponse> pullLatest(@RequestParam @NotBlank String projectId) {
-        var result = timelineEditorSyncService.pullByProject(projectId);
+        var result = timelineEditorSyncService.pullByProject(projectId, TenantContext.get());
         return ResponseEntity.ok(toPullResponse(result));
     }
 

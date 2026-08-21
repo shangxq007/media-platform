@@ -53,7 +53,15 @@ public class BaseJobTimelineLoader {
             return Optional.of(aiScript.trim());
         }
         String snapshotId = job.timelineSnapshotId();
-        return timelineSnapshotService.findPayload(snapshotId)
+        if (snapshotId == null || snapshotId.isBlank()) {
+            return Optional.empty();
+        }
+        // CFRH-I2: ownership-scoped snapshot read — render_job.PROJECT_ID (authoritative)
+        // threaded to findOwnedById(projectId, tenantId, snapshotId). No ambient-global
+        // findPayload. Tenant source: TimelineData.tenantId (render_job.TENANT_ID).
+        return timelineSnapshotService
+                .findOwnedById(job.projectId(), job.tenantId(), snapshotId)
+                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
                 .filter(payload -> !payload.isBlank())
                 .filter(timelineSpecResolver::isInternalTimelineJson)
                 .map(String::trim);

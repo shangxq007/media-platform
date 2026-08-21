@@ -331,10 +331,11 @@ public class RenderJobRepository {
      * Timeline data for a render job (tenant_id, ai_script, timeline_snapshot_id).
      * Used by BaseJobTimelineLoader to avoid inline jOOQ.
      */
-    public record TimelineData(String tenantId, String aiScript, String timelineSnapshotId) {}
+    public record TimelineData(String projectId, String tenantId, String aiScript, String timelineSnapshotId) {}
 
     public Optional<TimelineData> findTimelineDataById(String jobId) {
         Record record = dsl.select(
+                        RENDER_JOB.PROJECT_ID,
                         RENDER_JOB.TENANT_ID,
                         RENDER_JOB.AI_SCRIPT,
                         RENDER_JOB.TIMELINE_SNAPSHOT_ID)
@@ -343,6 +344,7 @@ public class RenderJobRepository {
                 .fetchOne();
         if (record == null) return Optional.empty();
         return Optional.of(new TimelineData(
+                record.get(RENDER_JOB.PROJECT_ID),
                 record.get(RENDER_JOB.TENANT_ID),
                 record.get(RENDER_JOB.AI_SCRIPT),
                 record.get(RENDER_JOB.TIMELINE_SNAPSHOT_ID)));

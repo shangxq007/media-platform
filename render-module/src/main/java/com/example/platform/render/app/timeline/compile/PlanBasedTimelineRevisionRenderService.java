@@ -10,7 +10,7 @@ import com.example.platform.render.app.timeline.TimelineInputProductResolver;
 import com.example.platform.render.app.timeline.TimelineRenderJobMapper;
 import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
@@ -23,6 +23,7 @@ import com.example.platform.render.domain.compile.executionplan.ExecutionEnviron
 import com.example.platform.render.domain.compile.executionplan.ExecutionPolicy;
 import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
+import com.example.platform.shared.web.TenantContext;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,7 @@ public class PlanBasedTimelineRevisionRenderService {
 
     private static final Logger log = LoggerFactory.getLogger(PlanBasedTimelineRevisionRenderService.class);
 
-    private final TimelineRevisionService revisionService;
+    private final com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService;
     private final TimelineSnapshotService snapshotService;
     private final TimelineRenderJobMapper mapper;
     private final TimelineScriptParser parser;
@@ -71,7 +72,7 @@ public class PlanBasedTimelineRevisionRenderService {
 
     @Autowired
     public PlanBasedTimelineRevisionRenderService(
-            TimelineRevisionService revisionService,
+            com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
             TimelineSnapshotService snapshotService,
             TimelineRenderJobMapper mapper,
             TimelineScriptParser parser,
@@ -90,7 +91,7 @@ public class PlanBasedTimelineRevisionRenderService {
             StorageRuntimeService storageRuntime,
             RenderToolCapabilityInventory toolInventory,
             Path storageRoot) {
-        this(revisionService, snapshotService, mapper, parser, inputProductResolver,
+        this(revisionQueryService, snapshotService, mapper, parser, inputProductResolver,
                 normalizer, artifactCompiler, capabilityCompiler, bindingCompiler,
                 draftCompiler, planCompiler, policyGuard, planRunner,
                 materializationService, registrationService, productRuntime,
@@ -98,7 +99,7 @@ public class PlanBasedTimelineRevisionRenderService {
     }
 
     public PlanBasedTimelineRevisionRenderService(
-            TimelineRevisionService revisionService,
+            com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
             TimelineSnapshotService snapshotService,
             TimelineRenderJobMapper mapper,
             TimelineScriptParser parser,
@@ -118,7 +119,7 @@ public class PlanBasedTimelineRevisionRenderService {
             RenderToolCapabilityInventory toolInventory,
             Path storageRoot,
             RenderAuditRecorder auditRecorder) {
-        this.revisionService = revisionService;
+        this.revisionQueryService = revisionQueryService;
         this.snapshotService = snapshotService;
         this.mapper = mapper;
         this.parser = parser;
@@ -170,21 +171,19 @@ public class PlanBasedTimelineRevisionRenderService {
         RenderCorrelationContext corr = correlation != null ? correlation
                 : RenderCorrelationContext.create(projectId, revisionId, "PLAN_BASED");
 
-        // 1. Load TimelineRevision and verify ownership
-        var revisionOpt = revisionService.findById(revisionId);
+        // 1. Load TimelineRevision (ownership-scoped: project + tenant participate in query)
+        var revisionOpt = revisionQueryService.findById(projectId, TenantContext.get(), revisionId);
         if (revisionOpt.isEmpty()) {
             throw new IllegalArgumentException("Timeline revision not found: " + revisionId);
         }
         var revision = revisionOpt.get();
-        if (!projectId.equals(revision.projectId())) {
-            throw new IllegalArgumentException("Revision does not belong to project: " + revisionId);
-        }
 
         String tenantId = revision.tenantId();
         String snapshotId = revision.snapshotId();
 
-        // 2. Load snapshot and parse to TimelineSpec
-        var payloadOpt = snapshotService.findPayload(snapshotId);
+        // 2. Load snapshot and parse to TimelineSpec (ownership-scoped)
+        var payloadOpt = snapshotService.findOwnedById(projectId, tenantId, snapshotId)
+                .map(TimelineSnapshotService.SnapshotInfo::payloadJson);
         if (payloadOpt.isEmpty()) {
             throw new IllegalStateException("Snapshot not found: " + snapshotId);
         }

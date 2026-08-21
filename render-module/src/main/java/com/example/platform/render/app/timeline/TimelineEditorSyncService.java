@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService.SnapshotInfo;
@@ -19,19 +20,19 @@ public class TimelineEditorSyncService {
     private final InternalTimelineToEditorConverter internalToEditorConverter;
     private final TimelineSnapshotService timelineSnapshotService;
     private final TimelineSpecResolver timelineSpecResolver;
-    private final TimelineRevisionService timelineRevisionService;
+    private final TimelineRevisionQueryService timelineRevisionQueryService;
 
     public TimelineEditorSyncService(
             TimelineConversionService conversionService,
             InternalTimelineToEditorConverter internalToEditorConverter,
             TimelineSnapshotService timelineSnapshotService,
             TimelineSpecResolver timelineSpecResolver,
-            TimelineRevisionService timelineRevisionService) {
+            TimelineRevisionQueryService timelineRevisionQueryService) {
         this.conversionService = conversionService;
         this.internalToEditorConverter = internalToEditorConverter;
         this.timelineSnapshotService = timelineSnapshotService;
         this.timelineSpecResolver = timelineSpecResolver;
-        this.timelineRevisionService = timelineRevisionService;
+        this.timelineRevisionQueryService = timelineRevisionQueryService;
     }
 
     /**
@@ -52,29 +53,31 @@ public class TimelineEditorSyncService {
                 preview.summary());
     }
 
-    public PullResult pullByProject(String projectId) {
+    public PullResult pullByProject(String projectId, String tenantId) {
         // CFRH-I1: legacy backfill write authority removed (DELETE_OBSOLETE_PRODUCT_BEHAVIOR);
         // no revision is created merely because HEAD is absent.
-        Optional<TimelineRevisionService.RevisionInfo> head = timelineRevisionService.findHead(projectId);
+        Optional<TimelineRevisionQueryService.RevisionInfo> head =
+                timelineRevisionQueryService.findHead(projectId, tenantId);
         if (head.isPresent()) {
-            return pullBySnapshotId(head.get().snapshotId());
+            return pullBySnapshotId(projectId, tenantId, head.get().snapshotId());
         }
-        Optional<SnapshotInfo> latest = timelineSnapshotService.findLatestByProject(projectId);
+        Optional<SnapshotInfo> latest =
+                timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId);
         if (latest.isEmpty()) {
             throw new IllegalArgumentException("No timeline snapshot for project: " + projectId);
         }
         return pullSnapshot(latest.get(), null);
     }
 
-    public PullResult pullBySnapshotId(String snapshotId) {
-        Optional<SnapshotInfo> info = timelineSnapshotService.findById(snapshotId);
+    public PullResult pullBySnapshotId(String projectId, String tenantId, String snapshotId) {
+        Optional<SnapshotInfo> info = timelineSnapshotService.findOwnedById(projectId, tenantId, snapshotId);
         if (info.isEmpty()) {
             throw new IllegalArgumentException("Timeline snapshot not found: " + snapshotId);
         }
         return pullSnapshot(info.get(), null);
     }
 
-    private PullResult pullSnapshot(SnapshotInfo info, TimelineRevisionService.RevisionInfo headRevision) {
+    private PullResult pullSnapshot(SnapshotInfo info, TimelineRevisionQueryService.RevisionInfo headRevision) {
         String payload = info.payloadJson();
         TimelineConversionService.PreviewResult preview = conversionService.preview(payload);
         String internal = preview.internalTimelineJson();
@@ -94,9 +97,11 @@ public class TimelineEditorSyncService {
             editorJson = internalToEditorConverter.toEditorJson(internal);
             editorSchema = "editor-2.0.0";
         }
-        TimelineRevisionService.RevisionInfo revisionMeta = headRevision;
+        TimelineRevisionQueryService.RevisionInfo revisionMeta = headRevision;
         if (revisionMeta == null) {
-            revisionMeta = timelineRevisionService.findHead(info.projectId()).orElse(null);
+            revisionMeta = timelineRevisionQueryService
+                    .findHead(info.projectId(), info.tenantId())
+                    .orElse(null);
         }
         return new PullResult(
                 editorJson,
@@ -115,7 +120,7 @@ public class TimelineEditorSyncService {
             String sourceSchema,
             boolean alreadyInternal,
             String snapshotId,
-            TimelineRevisionService.RevisionInfo revision,
+            TimelineRevisionQueryService.RevisionInfo revision,
             TimelineConversionService.PreviewSummary summary) {}
 
     public record PullResult(
@@ -126,7 +131,7 @@ public class TimelineEditorSyncService {
             String storedSchemaVersion,
             String editorSchema,
             String resolvedSourceSchema,
-            TimelineRevisionService.RevisionInfo headRevision,
+            TimelineRevisionQueryService.RevisionInfo headRevision,
             TimelineConversionService.PreviewSummary summary) {}
 
 }

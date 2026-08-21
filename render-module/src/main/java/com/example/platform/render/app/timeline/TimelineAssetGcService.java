@@ -72,7 +72,7 @@ public class TimelineAssetGcService {
 
     @Transactional
     public GcProjectResult runProjectGc(String projectId, String tenantId) {
-        Optional<TimelineSnapshotService.SnapshotInfo> latest = timelineSnapshotService.findLatestByProject(projectId);
+        Optional<TimelineSnapshotService.SnapshotInfo> latest = timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId);
         if (latest.isEmpty()) {
             return new GcProjectResult(projectId, 0, 0, 0, List.of());
         }
@@ -145,7 +145,7 @@ public class TimelineAssetGcService {
             return 0;
         }
         Optional<TimelineSnapshotService.SnapshotInfo> latest =
-                timelineSnapshotService.findLatestByProject(projectId);
+                timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId);
         if (latest.isEmpty()) {
             return 0;
         }

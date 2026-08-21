@@ -175,9 +175,9 @@ public class TimelineMergeEngine {
             requireNotBlank(request.baseRevisionId(), "baseRevisionId");
             requireNotBlank(request.sourceRevisionId(), "sourceRevisionId");
 
-            var baseRevision = loadRevision(request.baseRevisionId());
-            var sourceRevision = loadRevision(request.sourceRevisionId());
-            var targetRevision = loadRevision(request.targetRevisionId());
+            var baseRevision = loadRevision(request.baseRevisionId(), request.projectId(), contextTenant);
+            var sourceRevision = loadRevision(request.sourceRevisionId(), request.projectId(), contextTenant);
+            var targetRevision = loadRevision(request.targetRevisionId(), request.projectId(), contextTenant);
 
             assertProjectAndTenant(request.projectId(), contextTenant, baseRevision);
             assertProjectAndTenant(request.projectId(), contextTenant, sourceRevision);
@@ -278,9 +278,9 @@ public class TimelineMergeEngine {
             requireNotBlank(request.sourceRevisionId(), "sourceRevisionId");
             requireNotBlank(request.targetRevisionId(), "targetRevisionId");
 
-            var baseRevision = loadRevision(request.baseRevisionId());
-            var sourceRevision = loadRevision(request.sourceRevisionId());
-            var targetRevision = loadRevision(request.targetRevisionId());
+            var baseRevision = loadRevision(request.baseRevisionId(), request.projectId(), contextTenant);
+            var sourceRevision = loadRevision(request.sourceRevisionId(), request.projectId(), contextTenant);
+            var targetRevision = loadRevision(request.targetRevisionId(), request.projectId(), contextTenant);
 
             assertProjectAndTenant(request.projectId(), contextTenant, baseRevision);
             assertProjectAndTenant(request.projectId(), contextTenant, sourceRevision);
@@ -750,34 +750,35 @@ public class TimelineMergeEngine {
         return candidate;
     }
 
-    private TimelineRevisionRepository.RevisionRow loadRevision(String revisionId) {
-        return revisionRepository.findById(revisionId)
+    private TimelineRevisionRepository.RevisionRow loadRevision(
+            String revisionId, String projectId, String tenantId) {
+        return revisionRepository.findOwnedById(revisionId, projectId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Revision not found: " + revisionId));
     }
 
     private String loadPayload(TimelineRevisionRepository.RevisionRow revision, String contextTenant) {
-        if (contextTenant != null) {
-            // R1: ownership-scoped authoritative snapshot read (no
-            // load-then-check; identity uniqueness is not ownership authority).
-            return snapshotService.findOwnedById(revision.projectId(), contextTenant,
-                            revision.snapshotId())
-                    .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "Snapshot not found/owned: " + revision.snapshotId()));
+        // CFRH-I2: ownership-scoped authoritative snapshot read only — no
+        // ambient-global findPayload fallback. contextTenant is never null here
+        // (TenantGuard.requireTenantId throws when absent); fail closed if it is.
+        if (contextTenant == null) {
+            throw new IllegalStateException("Ownership context missing for snapshot read: " + revision.snapshotId());
         }
-        return snapshotService.findPayload(revision.snapshotId())
-                .orElseThrow(() -> new IllegalStateException("Snapshot not found: " + revision.snapshotId()));
+        return snapshotService.findOwnedById(revision.projectId(), contextTenant,
+                        revision.snapshotId())
+                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Snapshot not found/owned: " + revision.snapshotId()));
     }
 
     private Optional<TimelineRevisionRepository.RevisionRow> findAcceptedDuplicate(
             TimelineMergeRequest request, String mergedPayloadHash, String contextTenant) {
         String expectedParents = request.sourceRevisionId() + "," + request.targetRevisionId();
-        return revisionRepository.listByProject(request.projectId(), DEDUP_SCAN_LIMIT).stream()
+        return revisionRepository.listOwnedByProject(
+                        request.projectId(), contextTenant, null, null, null, DEDUP_SCAN_LIMIT).stream()
                 .filter(TimelineRevisionRepository.RevisionRow::isMerge)
                 .filter(row -> expectedParents.equals(row.mergeParentRevisionIds()))
                 .filter(row -> request.baseRevisionId().equals(row.mergeBaseRevisionId()))
                 .filter(row -> mergedPayloadHash.equals(row.contentHash()))
-                .filter(row -> contextTenant == null || contextTenant.equals(row.tenantId()))
                 .filter(row -> snapshotService.findOwnedById(
                         row.projectId(), contextTenant, row.snapshotId()).isPresent())
                 .findFirst();
