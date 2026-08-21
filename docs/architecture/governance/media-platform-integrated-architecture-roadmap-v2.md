@@ -1,6 +1,7 @@
 # MEDIA_PLATFORM_INTEGRATED_ARCHITECTURE_ROADMAP_V2
 
-**STATUS = ADOPTED (baseline consolidation, pending independent review)**
+**STATUS = ADOPTED (baseline consolidation, FINAL BASELINE CORRECTION applied,
+pending independent review)**
 
 | Field | Value |
 |---|---|
@@ -12,6 +13,9 @@
 | SUPERSEDES | none (cumulative baseline; older decisions remain authoritative unless explicitly superseded) |
 | AUTHORITY | ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1 |
 | ROADMAP_20 | CLOSED / INTEGRATED at main 19db3aea |
+| REVIEWED_PREDECESSOR | 1749b005dfd45fe54b25e4b7a8166361e4045f66 |
+| CORRECTION_TYPE | GOVERNANCE_BASELINE_CORRECTION (C1-C4) |
+| ARV2_CORRECTION | 22/22 PASS |
 
 This document is the current top-level architecture roadmap authority. It
 consolidates repository-adopted architecture decisions up through Roadmap #20
@@ -73,29 +77,55 @@ Physical Planning
 Execution
 ```
 
-Current implementation frontier after Roadmap #20:
+Current implementation frontier after Roadmap #20 (C1 corrected — both
+authoring/command and render/planning sides shown):
 
 ```
-Canonical Semantics
-        ↓
-Verified Semantic State
-        ↓
-Logical RenderPlan
-        ↓
-RenderGraph
-        ↓
-[FUTURE LAYERS BEGIN — not implemented by #20]
+AUTHORED / COMMAND SIDE:
+Canonical Semantics (IMPLEMENTED)
+→ Operation Model V1 (IMPLEMENTED / CLOSED)
+→ OperationPlan Transaction V1 (IMPLEMENTED / CLOSED)
+→ Revision Command Model V1 (IMPLEMENTED / CLOSED)
+→ canonical revision state
+
+RENDER / PLANNING SIDE:
+Verified Canonical Revision State
+→ Logical RenderPlan (IMPLEMENTED, #20)
+→ RenderGraph (IMPLEMENTED, #20)
+→ [FUTURE LAYERS BEGIN — not implemented by #20]
 ```
 
 Roadmap #20 does NOT implement the lower future layers (Physical Planner,
-Cost Optimizer, Semantic Rewrite, Formal Kernel, Constraint Kernel, Operation
-Model runtime, GraphQL, Canvas, Workflow runtime, provider/device scheduler).
-Those are future/cross-cutting layers explicitly NOT owned by #20 (§54).
+Cost Optimizer, Semantic Rewrite, Formal Kernel, Constraint Kernel runtime,
+GraphQL, Canvas, Workflow runtime, provider/device scheduler). Those are
+future/cross-cutting layers explicitly NOT owned by #20 (§54).
 
 ## 3. Architecture status vs implementation status
 
 For every foundation below, ARCHITECTURE_STATUS and IMPLEMENTATION_STATUS are
 reported separately. "Frozen/adopted" never implies "implemented".
+
+### 3.1 Normalized status vocabulary (C1 correction)
+
+ARCHITECTURE_STATUS (design authority):
+- PROPOSED / ADOPTED / FROZEN / SUPERSEDED / DEFERRED
+
+IMPLEMENTATION_STATUS (runtime reality):
+- NOT_STARTED / FOUNDATION_ONLY / PARTIALLY_IMPLEMENTED / IMPLEMENTED / CLOSED
+  (CLOSED is a governance/milestone finalization qualifier, not merely
+  "architecture adopted")
+
+MILESTONE_STATUS (governance finalization):
+- CLOSED / NOT_STARTED / FUTURE
+
+Conventions:
+- CLOSED != merely "architecture adopted"
+- FOUNDATION_ONLY != "implemented bounded foundation" (they are distinct;
+  where a bounded V1 foundation IS implemented, the document says
+  IMPLEMENTED_BOUNDED_V1 or IMPLEMENTED / CLOSED explicitly)
+- Recommended model for Operation Model / OperationPlan Transaction /
+  Revision Command: ARCH_STATUS = FROZEN, IMPL_STATUS = IMPLEMENTED,
+  MILESTONE_STATUS = CLOSED (see §6.2)
 
 ---
 
@@ -206,36 +236,100 @@ directly.
 
 ### 6.1 Operation model (REFINE)
 
-- ONE_SEMANTIC_OPERATION_MODEL_MANY_FRONTENDS_V1
-- DSL_IS_A_TYPED_COMPOSITION_LANGUAGE_NOT_A_DOMAIN_AUTHORITY_V1
-- IR_BEFORE_SYNTAX_V1
+- ONE_SEMANTIC_OPERATION_MODEL_MANY_FRONTENDS_V1 — FROZEN / IMPLEMENTED (V1)
+- DSL_IS_A_TYPED_COMPOSITION_LANGUAGE_NOT_A_DOMAIN_AUTHORITY_V1 — FROZEN
+- IR_BEFORE_SYNTAX_V1 — FROZEN / IMPLEMENTED (V1 IR)
 
 UI, Java/API, GraphQL, MCP, Agents, Skills, Recipes, DSL, Canvas all lower to
 one canonical Operation semantic model.
 
-### 6.2 Operation foundation
+### 6.2 Implemented Operation foundations (C1 correction — repository truth)
 
-- OPERATION_MODEL_FOUNDATION_V1 — ADOPTED / CLOSED (foundation; runtime NOT
-  built out to full mutation boundary)
-- OPERATION_PLAN_TRANSACTION_MODEL_V1 — ADOPTED / CLOSED (transaction model
-  foundation)
+The following Operation-layer foundations are CLOSED / IMPLEMENTED in
+repository governance, NOT future work. Correct status model:
 
-Canonical transaction model (future common mutation boundary):
+**OPERATION_MODEL_FOUNDATION_V1**
+- ARCHITECTURE_STATUS = FROZEN / CLOSED
+- IMPLEMENTATION_STATUS = IMPLEMENTED / CLOSED
+- Source: `docs/architecture/governance/operation-model-foundation-v1.md` (CLOSED)
+- Repository truth: typed OperationDefinition; typed OperationRequest;
+  OperationRequestResolver; OperationInstance; typed OperationParameters;
+  deterministic parameter digest; OperationBatch; typed target contracts;
+  15 frozen V1 operation definitions; OperationErrorCode typed vocabulary.
+
+**OPERATION_PLAN_TRANSACTION_MODEL_V1**
+- ARCHITECTURE_STATUS = FROZEN / CLOSED
+- IMPLEMENTATION_STATUS = IMPLEMENTED / CLOSED
+- Source: `docs/architecture/governance/operation-plan-transaction-model-v1.md`
+  + `operation-plan-final-evidence-verification-v1.md` (both CLOSED)
+- Repository truth: OperationPlanner implemented (15 frozen ops incl. delete
+  sync/group consequences); immutable OperationPlan; OperationPlanDigest;
+  OperationPlanPreview; AuthorizationDecision; ApplyContext;
+  TargetRevisionRef; typed PlannedChange; PostgreSQL-enforced CAS
+  (conditional UPDATE on timeline_revision_ref); durable idempotency;
+  semantic NO_OP; atomic application transaction (jOOQ: CAS + revision
+  insert + durable result); real PostgreSQL concurrency/integrity evidence.
+
+**REVISION_COMMAND_MODEL_V1**
+- ARCHITECTURE_STATUS = FROZEN / CLOSED
+- IMPLEMENTATION_STATUS = IMPLEMENTED / CLOSED
+- Source: `docs/architecture/governance/revision-command-model-v1.md` (CLOSED)
+- Repository truth: CREATE_REF, DELETE_REF, RESTORE, MERGE; RevisionCommandPlan;
+  RevisionCommandPlanDigest; RevisionGraphService (merge-base: unique /
+  AMBIGUOUS_MERGE_BASE / NO_COMMON_ANCESTOR); RevisionCommandApplyService;
+  ordered parent edges; project-safe revision-number allocation (counter);
+  command-domain separation (apply_command.command_domain);
+  RevisionCommandConcurrencyIT 12 PASS (real PostgreSQL 16).
+
+The canonical transaction model:
 
 ```
-request → resolve → plan → validate → preview → authorize → atomic apply → new revision
+request → resolve → plan → validate → preview → authorize → atomic apply → new revision / NO_OP
 ```
 
-Not implemented during consolidation.
+is already MATERIALLY IMPLEMENTED for the bounded V1 OperationPlan model
+(IMPLEMENTED_BOUNDED_V1). Distinguish:
 
-### 6.3 Operation IR (REFINE — future)
+- IMPLEMENTED_BOUNDED_V1 = the Operation Model / OperationPlan Transaction /
+  Revision Command foundations above (closed, real PG evidence)
+- FUTURE_GENERALIZATION / FUTURE_SURFACE_COVERAGE = widening the same boundary
+  to every frontend (GraphQL/Canvas/Agents/DSL), full constraint-kernel
+  integration, and unified cross-layer mutation — NOT "runtime from zero"
+
+### 6.3 Current implementation frontier (C1 correction)
+
+The frontier no longer jumps from Canonical Semantics directly to RenderPlan.
+Both truths are represented:
+
+AUTHORED / COMMAND SIDE:
+```
+Canonical Semantics
+→ Operation Model V1 (IMPLEMENTED)
+→ OperationPlan Transaction V1 (IMPLEMENTED)
+→ Revision Command Model V1 (IMPLEMENTED)
+→ canonical revision state
+```
+
+RENDER / PLANNING SIDE:
+```
+Verified Canonical Revision State
+→ Logical RenderPlan (IMPLEMENTED, #20)
+→ RenderGraph (IMPLEMENTED, #20)
+→ [future physical / optimization layers — NOT STARTED]
+```
+
+RenderPlan is not assumed to be downstream of every Operation request in all
+cases; the authored/command side and the render/planning side are separate but
+connected paths.
+
+### 6.4 Operation IR (REFINE — future)
 
 Typed Operation IR / OperationPlan must be frozen BEFORE human DSL syntax
 becomes authoritative. Operation IR must be: language-neutral at the contract
 level, typed, deterministic where required, capability-aware, scope-aware,
 compatible with preview/authorization, independent from persistence,
 independent from FFmpeg/provider command syntax. DSL does not own domain
-semantics.
+semantics. (V1 IR exists; full DSL-surface coverage is future.)
 
 ---
 
@@ -541,21 +635,52 @@ require one encoding to serve both concerns.
 
 ## 14. Current milestone state
 
-| Milestone | Name | Status |
-|---|---|---|
-| #1-#12 | pre-#13 foundation (JGit timeline mechanics, media/artifact/audio/timeline domain foundations, FFmpeg execution adapter, workflow/capability early forms) | CLOSED / HISTORICAL (repository evidence: foundation-era commits; no per-milestone governance record files remain, treated as historical baseline) |
-| #13 | MEDIA_CANONICAL_MODEL_V2 | CLOSED |
-| #14 | TIMELINE_V2 | CLOSED |
-| #15 | AUDIO_V2 | CLOSED |
-| #16 | CAPABILITY_VERSION_LIFECYCLE | CLOSED |
-| #17 | OTIO_V2_ASSET_SOURCE_BOUNDARY | CLOSED |
-| #18 | COLOR_IMAGE_FOUNDATION (+ CIP2 durable persistence chain) | CLOSED |
-| #19 | FONT_TEXT_FOUNDATION (+ completion: operations/diff-merge; timedtext presentation foundation) | CLOSED (font-text foundation + completion publications CLOSED, blockers 0; timedtext presentation record CLOSED_PENDING_CHATGPT_FINAL_REVIEW folded into the later completion chain — treated as CLOSED) |
-| Checkpoint A | combined media semantic closure + revision write-surface + pin atomicity | CLOSED (CHECKPOINT_A_INDEPENDENT_FINAL_REVIEW = PASS, material blockers 0) |
-| #20 | RENDERPLAN_RENDERGRAPH_V1 (+ Option B Effect authority) | CLOSED / INTEGRATED at main 19db3aea |
-| #21 | (not started) | NOT STARTED |
-| #22 | (not started) | NOT STARTED |
-| #23-#28 | (future) | FUTURE / NOT STARTED |
+ROADMAP_MILESTONE_IDENTITY_IS_INDIVIDUALLY_PRESERVED_V1 — ADOPTED. Every
+milestone #1-#28 has its own row. No renumbering; no #29/#30. Unknown
+historical identities are recorded as UNKNOWN (UNKNOWN_IS_FIRST_CLASS_NOT_
+IMPLICIT_PASS_V1), never guessed.
+
+| MILESTONE | CANONICAL_NAME | STATUS | ARCH_LAYER_OR_ERA | IMPLEMENTATION_TRUTH | SOURCE / EVIDENCE |
+|---|---|---|---|---|---|
+| #1 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era (pre-2026-05 baseline) | UNKNOWN (pre-governance-record) | foundation-era commits (2b868fe0...) |
+| #2 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #3 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #4 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #5 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #6 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #7 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #8 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #9 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #10 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #11 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #12 | HISTORICAL_NAME_NOT_RECOVERED | CLOSED / HISTORICAL | foundation era | UNKNOWN (pre-governance-record) | foundation-era commits |
+| #13 | MEDIA_CANONICAL_MODEL_V2 | CLOSED | Canonical Semantics | IMPLEMENTED | roadmap-13-media-canonical-model-v2.md (CLOSED) |
+| #14 | TIMELINE_V2 | CLOSED | Canonical Semantics | IMPLEMENTED | roadmap-14-timeline-v2.md (CLOSED) |
+| #15 | AUDIO_V2 | CLOSED | Canonical Semantics | IMPLEMENTED | roadmap-15-audio-v2.md (CLOSED) |
+| #16 | CAPABILITY_VERSION_LIFECYCLE | CLOSED | Capability | IMPLEMENTED | roadmap-16-capability-version-lifecycle.md (CLOSED) |
+| #17 | OTIO_V2_ASSET_SOURCE_BOUNDARY | CLOSED | Canonical Semantics | IMPLEMENTED | roadmap-17-otio-v2-asset-source-boundary.md (CLOSED) |
+| #18 | COLOR_IMAGE_FOUNDATION (+ CIP2 durable persistence chain) | CLOSED | Canonical Semantics / Persistence | IMPLEMENTED | roadmap-18-color-image-foundation.md + CIP2 chain (CLOSED) |
+| #19 | FONT_TEXT_FOUNDATION (+ completion: operations/diff-merge; timedtext presentation foundation) | CLOSED | Canonical Semantics / Operation | IMPLEMENTED | roadmap-19 font-text + completion publications (CLOSED, blockers 0) |
+| #20 | RENDERPLAN_RENDERGRAPH_V1 (+ Option B Effect authority) | CLOSED / INTEGRATED at main 19db3aea | Planning / Canonical Semantics | IMPLEMENTED | roadmap-20 publications + final evidence correction (CLOSED) |
+| #21 | UNKNOWN (no repository name evidence; referenced only as NOT STARTED) | NOT STARTED | future epoch | NOT STARTED | roadmap-20 records (#21/#22 started: NO) |
+| #22 | WORKER_FABRIC / PHYSICAL_PLANNING (repository evidence: "Worker Fabric", "Physical planning: CapabilityImplementation profiles, candidate enumeration, ExecutionIsland, provider/worker/device locality, physical binding, cost/latency inputs") | NOT STARTED | Execution / Physical Planning | NOT STARTED | roadmap-20-post-decision-recovery-mandatory-refinement.md §12; roadmap-13/14/15 delta lists |
+| #23 | DISTRIBUTED_SCHEDULING (repository evidence: "Distributed scheduling: queue pressure, worker utilization, cross-worker placement, deadline/resource scheduling") | NOT STARTED | Execution | NOT STARTED | roadmap-20-post-decision-recovery-mandatory-refinement.md §12 |
+| #24 | UNKNOWN (referenced as #24 in delta lists; name not recovered) | NOT STARTED | future epoch | NOT STARTED | roadmap-15/16 delta lists |
+| #25 | HISTORICAL_NAME_NOT_RECOVERED | NOT STARTED | future epoch | NOT STARTED | no repository record found |
+| #26 | HISTORICAL_NAME_NOT_RECOVERED | NOT STARTED | future epoch | NOT STARTED | no repository record found |
+| #27 | HISTORICAL_NAME_NOT_RECOVERED | NOT STARTED | future epoch | NOT STARTED | no repository record found |
+| #28 | HISTORICAL_NAME_NOT_RECOVERED | NOT STARTED | future epoch | NOT STARTED | no repository record found |
+
+Checkpoint A (inter-milestone governance epoch): combined media semantic
+closure + revision write-surface + pin atomicity — CLOSED
+(CHECKPOINT_A_INDEPENDENT_FINAL_REVIEW = PASS, material blockers 0;
+checkpoint-a-independent-final-pass.md).
+
+Note: #1-#12 are the pre-governance-record foundation era. Their exact
+per-number canonical names are not recoverable from repository governance
+records; the names are therefore recorded as HISTORICAL_NAME_NOT_RECOVERED
+rather than guessed. #21, #24-#28 similarly have no recovered individual
+names; #22 and #23 have explicit repository evidence quoted above.
 
 ## 15. Roadmap #20 closure record
 
@@ -607,20 +732,46 @@ Do NOT pre-authorize #21/#22 in this consolidation.
 
 ## 18. Deferred foundations
 
-Operation Model runtime (full mutation boundary), OperationPlan runtime,
 Constraint Kernel runtime, Evidence runtime, Formal Methods F1-F4, Semantic
 Analysis, Semantic Rewrite, Cost Optimizer, Physical Planner, GraphQL, Canvas
 runtime, Workflow surface evolution, polyglot runtime, user-contributed
 compute, provider/device scheduler, marketplaces.
 
-## 19. Operation / formal foundation timing (planned, NOT new milestones)
+Note (C1 correction): Operation Model V1, OperationPlan Transaction V1 and
+Revision Command Model V1 are IMPLEMENTED / CLOSED (see §6.2) and are NOT
+deferred. What remains future in the Operation layer is only
+FUTURE_GENERALIZATION / FUTURE_SURFACE_COVERAGE (widening the implemented
+bounded V1 boundary to every frontend and integrating the constraint/evidence
+kernel) — not "runtime from zero".
 
-After #20 close: F0 language-neutral semantic law/evidence hooks, Operation
-Model Foundation, OperationPlan transaction boundary, Constraint/Evidence
-foundations → initial stable Operation Model → Lean Semantic Kernel POC →
-Semantic Analysis + executable formal oracle / differential CI → Law Registry
-/ formal evidence gate (before automatic rewrite) → LegalPlanSpace boundary
-(before Cost Optimizer).
+## 19. Post-#20 architecture sequencing (planned, NOT milestone authorization)
+
+Corrected frontier begins ABOVE the implemented Operation / OperationPlan /
+Revision Command foundation. This is architecture sequencing for the next
+epoch — it is NOT milestone authorization and does NOT pre-authorize #21/#22.
+
+```
+implemented canonical semantics
+→ implemented Operation Model V1
+→ implemented OperationPlan Transaction V1
+→ implemented Revision Command Model V1
+→ implemented Logical RenderPlan / RenderGraph V1
+→ F0 language-neutral semantic law / evidence / equivalence hooks
+→ Constraint / Evidence foundation realization
+→ Semantic Analysis
+→ Formal Semantic Kernel POC
+→ executable formal oracle / differential CI
+→ Law Registry / formal evidence gate
+→ LegalPlanSpace
+→ Semantic Rewrite
+→ Cost Optimizer
+→ Physical Planning
+→ Execution intelligence
+```
+
+The platform does NOT need to "create from zero" the Operation Model
+Foundation, the OperationPlan transaction boundary, or an OperationPlan
+runtime — those exist (bounded V1). The next work starts ABOVE them.
 
 ## 20. Constraint Kernel migration strategy
 
@@ -641,33 +792,66 @@ canonical media semantics.
 
 ## 22. Decision traceability table (architecture-level)
 
-| DECISION_ID | UPDATE_TYPE | ARCH_LAYER | ARCH_STATUS | IMPL_STATUS | AFFECTED_EXISTING | AFFECTED_MILESTONES | REQUIRED_EVIDENCE_DELTA | SOURCE_DOCUMENTS |
-|---|---|---|---|---|---|---|---|---|
-| ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1 | ADD | Platform model | ADOPTED | FOUNDATION_ONLY | — | all | none (governance) | this document §1 |
-| EXTERNAL_REVISION_BACKEND_FIRST_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | JGit mechanics | #13 | none | roadmap-13; core-rebalancing §1 |
-| TIMELINE_IS_COMPOSITION_REVISION_AND_MERGE_AUTHORITY_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | Timeline Git | #14 | none | roadmap-14; core-rebalancing §1 |
-| EFFECT_SEMANTIC_SNAPSHOT_PINNED_BY_TIMELINE_REVISION_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | Effect authority | #20 | FCV (done) | roadmap-20 Option B chain |
-| NO_LEGACY_EFFECT_AUTHORITY_AFTER_ROADMAP20_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | legacy Effect | #20 | FCV (done) | roadmap-20 clean-forward |
-| CAPABILITY_AUTHORITY_MODEL_V1 | REFINE | Capability | FROZEN | IMPLEMENTED | CapabilityRegistry/PluginRegistry | #16 | none | roadmap-16 |
-| EFFECTIVE_CAPABILITY_MODEL_V1 | ADD | Capability | ADOPTED | FOUNDATION_ONLY | workflow capability | #16 | future | this document §5.3 |
-| ONE_SEMANTIC_OPERATION_MODEL_MANY_FRONTENDS_V1 | REFINE | Operation | FROZEN | FOUNDATION_ONLY | operation model | #19/OPM | future | operation-model-foundation-v1 |
-| OPERATION_PLAN_TRANSACTION_MODEL_V1 | REFINE | Operation | FROZEN | FOUNDATION_ONLY | plan/apply boundary | OPTM | future | operation-plan-transaction-model-v1 |
-| UNIFIED_CONSTRAINT_AND_EVALUATION_ARCHITECTURE_V1 | ADD | Constraint/Evidence | ADOPTED | FOUNDATION_ONLY | — | future | future | this document §7.1 |
-| CANONICAL_CONSTRAINT_KERNEL_V1 | ADD | Constraint/Evidence | ADOPTED | NOT_STARTED | — | future | future | this document §7.2 |
-| EVIDENCE_MODEL_FOUNDATION_V1 | ADD | Constraint/Evidence | ADOPTED | FOUNDATION_ONLY | FCV/gates as projections | future | future | this document §7.3 |
-| FORMAL_METHODS_PROGRESSIVE_ADOPTION_ROADMAP_V1 | ADD | Formal Methods | ADOPTED | NOT_STARTED | — | future | future | this document §7.5 |
-| LEAN_FIRST_FORMAL_SEMANTIC_KERNEL_V1 | ADD | Formal Methods | ADOPTED | NOT_STARTED | — | future | future | this document §7.5 |
-| RENDERPLAN_LOGICAL_PLANNING_AUTHORITY_V1 | REFINE | Planning | FROZEN | IMPLEMENTED | RenderPlan/RenderGraph | #20 | FCV (done) | roadmap-20 contract |
-| ALGEBRAIC_SEMANTIC_OPTIMIZATION_AMENDMENT_V1 | ADD | Planning | ADOPTED | FOUNDATION_ONLY | — | future | future | this document §8.2 |
-| COST_OPTIMIZATION_ONLY_OVER_PROVEN_LEGAL_PLAN_SPACE_V1 | ADD | Planning | ADOPTED | NOT_STARTED | — | future | future | this document §8.2 |
-| PROVIDER_EXECUTES_NOT_DEFINES_SEMANTICS_V1 | REFINE | Execution | FROZEN | IMPLEMENTED | FFmpeg adapter | #13 | none | core-rebalancing §1 |
-| INFINITE_CANVAS_AND_VISUAL_WORKFLOW_AS_PRODUCT_SURFACES_V1 | ADD | Product Surfaces | ADOPTED | NOT_STARTED | — | future | future | this document §10.1 |
-| WORKFLOW_OWNS_PROCESS_TIMELINE_OWNS_COMPOSITION_V1 | REFINE | Product Surfaces | FROZEN | PARTIALLY_IMPLEMENTED | workflow/timeline | #19 | none | core-rebalancing §8 |
-| GRAPHQL_IS_PROJECTION_AND_COMMAND_TRANSPORT_V1 | ADD | Product Surfaces | ADOPTED | DEFERRED | — | future | future | this document §10.4 |
-| POSTGRES_EXTENSION_IS_INFRASTRUCTURE_NOT_DOMAIN_AUTHORITY_V1 | REFINE | Persistence | FROZEN | IMPLEMENTED | PG extensions | GCR-5/6 | none | gcr-5-gcr-6 |
-| PROVENANCE_LINEAGE_V1 | ADD | Persistence | ADOPTED | FOUNDATION_ONLY | — | future | future | this document §11.3 |
-| LANGUAGE_NEUTRAL_CONTRACT_POLYGLOT_IMPLEMENTATION_SINGLE_SEMANTIC_AUTHORITY_V1 | ADD | Polyglot | ADOPTED | FOUNDATION_ONLY | — | future | future | this document §13.1 |
-| EVIDENCE_ACCOUNTING_MUST_MATCH_ACTUAL_TEST_TARGET_AND_EXECUTION_SCOPE_V1 | REFINE | Governance | ADOPTED | IMPLEMENTED (governance) | #20 evidence correction | #20 | governance (done) | roadmap-20-final-independent-acceptance-evidence-correction |
+ARCHITECTURE_CHANGE_TRACEABILITY_FIELDS_V1 — ADOPTED. Required fields:
+DECISION_ID, UPDATE_TYPE, ARCH_LAYER, ARCH_STATUS, IMPL_STATUS,
+AFFECTED_EXISTING, AFFECTED_MILESTONES, AFFECTED_CONSTRAINTS,
+REQUIRED_EVIDENCE_DELTA, TRACEABILITY_DELTA, SOURCE_DOCUMENTS.
+
+AFFECTED_CONSTRAINTS values: explicit existing Constraint IDs where they
+already exist; otherwise GOVERNANCE_ONLY / FUTURE_CONSTRAINT_PROJECTION_REQUIRED
+/ NONE / NOT_YET_ASSIGNED. No stable ConstraintIds are invented (the
+Constraint Kernel has not assigned them); NOT_YET_ASSIGNED is preferred to
+fabricated precision.
+
+TRACEABILITY_DELTA values: NONE / SOURCE_LINK_ADDED / STATUS_CORRECTED /
+AUTHORITY_RELATION_REFINED / FUTURE_CONSTRAINT_TRACE_REQUIRED /
+EXISTING_DECISION_INTEGRATED / IMPLEMENTATION_STATUS_CORRECTED.
+
+EXACT_FROZEN_DECISION_ID_OR_EXPLICIT_ALIAS_V1 — ADOPTED. Frozen decision IDs
+are used verbatim; no silent shortening. Where the V2 document needed an
+umbrella decision ID, it is explicitly marked ADD with its composition
+relation (see §22.1 alias register; zero unregistered near-synonyms).
+
+| DECISION_ID | UPDATE_TYPE | ARCH_LAYER | ARCH_STATUS | IMPL_STATUS | AFFECTED_EXISTING | AFFECTED_MILESTONES | AFFECTED_CONSTRAINTS | REQUIRED_EVIDENCE_DELTA | TRACEABILITY_DELTA | SOURCE_DOCUMENTS |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1 | ADD | Platform model | ADOPTED | FOUNDATION_ONLY | — | all | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | none (governance) | EXISTING_DECISION_INTEGRATED | this document §1 |
+| EXTERNAL_REVISION_BACKEND_FIRST_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | JGit mechanics | #13 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | roadmap-13; core-rebalancing §1 |
+| TIMELINE_IS_COMPOSITION_REVISION_AND_MERGE_AUTHORITY_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | Timeline Git | #14 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | roadmap-14; core-rebalancing §1 |
+| EFFECT_SEMANTIC_SNAPSHOT_PINNED_BY_TIMELINE_REVISION_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | Effect authority | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | roadmap-20 Option B chain |
+| NO_LEGACY_EFFECT_AUTHORITY_AFTER_ROADMAP20_V1 | REFINE | Canonical Semantics | FROZEN | IMPLEMENTED | legacy Effect | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | roadmap-20 clean-forward |
+| CAPABILITY_AUTHORITY_MODEL_V1 | REFINE | Capability | FROZEN | IMPLEMENTED | CapabilityRegistry/PluginRegistry | #16 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | roadmap-16 |
+| EFFECTIVE_CAPABILITY_MODEL_V1 | ADD | Capability | ADOPTED | FOUNDATION_ONLY | workflow capability | #16 | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | AUTHORITY_RELATION_REFINED | this document §5.3 |
+| OPERATION_MODEL_FOUNDATION_V1 | REFINE | Operation | FROZEN | IMPLEMENTED / CLOSED | operation model | #19/OPM | NOT_YET_ASSIGNED | real-PG evidence (done) | IMPLEMENTATION_STATUS_CORRECTED | operation-model-foundation-v1.md |
+| OPERATION_PLAN_TRANSACTION_MODEL_V1 | REFINE | Operation | FROZEN | IMPLEMENTED / CLOSED | plan/apply boundary | OPTM | NOT_YET_ASSIGNED | real-PG evidence (done) | IMPLEMENTATION_STATUS_CORRECTED | operation-plan-transaction-model-v1.md |
+| REVISION_COMMAND_MODEL_V1 | ADD | Operation | FROZEN | IMPLEMENTED / CLOSED | revision command boundary | RCM | NOT_YET_ASSIGNED | real-PG evidence (done) | EXISTING_DECISION_INTEGRATED | revision-command-model-v1.md |
+| UNIFIED_CONSTRAINT_AND_EVALUATION_ARCHITECTURE_V1 | ADD | Constraint/Evidence | ADOPTED | FOUNDATION_ONLY | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.1 |
+| CANONICAL_CONSTRAINT_KERNEL_V1 | ADD | Constraint/Evidence | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | FUTURE_CONSTRAINT_TRACE_REQUIRED | this document §7.2 |
+| EVIDENCE_MODEL_FOUNDATION_V1 | ADD | Constraint/Evidence | ADOPTED | FOUNDATION_ONLY | FCV/gates as projections | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | FUTURE_CONSTRAINT_TRACE_REQUIRED | this document §7.3 |
+| FORMAL_METHODS_PROGRESSIVE_ADOPTION_ROADMAP_V1 | ADD | Formal Methods | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.5 |
+| LEAN_FIRST_FORMAL_SEMANTIC_KERNEL_V1 | ADD | Formal Methods | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §7.5 |
+| RENDERPLAN_LOGICAL_PLANNING_AUTHORITY_V1 | REFINE | Planning | FROZEN | IMPLEMENTED | RenderPlan/RenderGraph | #20 | NOT_YET_ASSIGNED | FCV (done) | EXISTING_DECISION_INTEGRATED | roadmap-20 contract |
+| ROADMAP_ALGEBRAIC_SEMANTIC_OPTIMIZATION_AMENDMENT_V1 | ADD | Planning | ADOPTED | FOUNDATION_ONLY | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §8.2 |
+| COST_OPTIMIZATION_ONLY_OVER_PROVEN_LEGAL_PLAN_SPACE_V1 | ADD | Planning | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §8.2 |
+| PROVIDER_EXECUTES_NOT_DEFINES_SEMANTICS_V1 | REFINE | Execution | FROZEN | IMPLEMENTED | FFmpeg adapter | #13 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | core-rebalancing §1 |
+| INFINITE_CANVAS_AND_VISUAL_WORKFLOW_AS_PRODUCT_SURFACES_V1 | ADD | Product Surfaces | ADOPTED | NOT_STARTED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §10.1 |
+| WORKFLOW_OWNS_PROCESS_TIMELINE_OWNS_COMPOSITION_V1 | REFINE | Product Surfaces | FROZEN | PARTIALLY_IMPLEMENTED | workflow/timeline | #19 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | core-rebalancing §8 |
+| GRAPHQL_IS_APPLICATION_QUERY_PROJECTION_AND_COMMAND_TRANSPORT_NOT_DOMAIN_AUTHORITY_V1 | ADD | Product Surfaces | ADOPTED | DEFERRED | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §10.4 |
+| POSTGRES_EXTENSION_IS_INFRASTRUCTURE_CAPABILITY_NOT_DOMAIN_AUTHORITY_V1 | REFINE | Persistence | FROZEN | IMPLEMENTED | PG extensions | GCR-5/6 | NOT_YET_ASSIGNED | none | SOURCE_LINK_ADDED | gcr-5-gcr-6 |
+| PROVENANCE_LINEAGE_V1 | ADD | Persistence | ADOPTED | FOUNDATION_ONLY | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §11.3 |
+| LANGUAGE_NEUTRAL_CONTRACT_POLYGLOT_IMPLEMENTATION_SINGLE_SEMANTIC_AUTHORITY_V1 | ADD | Polyglot | ADOPTED | FOUNDATION_ONLY | — | future | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | future | EXISTING_DECISION_INTEGRATED | this document §13.1 |
+| EVIDENCE_ACCOUNTING_MUST_MATCH_ACTUAL_TEST_TARGET_AND_EXECUTION_SCOPE_V1 | REFINE | Governance | ADOPTED | IMPLEMENTED (governance) | #20 evidence correction | #20 | FUTURE_CONSTRAINT_PROJECTION_REQUIRED | governance (done) | IMPLEMENTATION_STATUS_CORRECTED | roadmap-20-final-independent-acceptance-evidence-correction |
+
+### 22.1 Decision ID alias / composition register
+
+| V2_ID | RELATION | CANONICAL_SOURCE_DECISION_IDS | STATUS |
+|---|---|---|---|
+| (none) | — | — | zero aliases required |
+
+The traceability table above uses exact frozen decision IDs verbatim. No
+shorthand aliases are introduced. (Previous V2 draft shorthands
+`GRAPHQL_IS_PROJECTION_AND_COMMAND_TRANSPORT_V1` and
+`POSTGRES_EXTENSION_IS_INFRASTRUCTURE_NOT_DOMAIN_AUTHORITY_V1` were corrected
+to the exact frozen IDs; no ambiguous near-synonyms remain.)
 
 ## 23. Supersession register
 
@@ -682,18 +866,25 @@ remain authoritative.)
 |---|---|---|
 | Timeline vs Effect authority | consistent | Effect pinned BY Timeline revision; distinct identities |
 | CapabilityRegistry vs PluginRegistry | consistent | separate authority axes (§5.2) |
+| Operation vs Revision Command | consistent | Revision Command is a bounded command surface over the Operation/plan boundary (§6.2) |
+| OperationPlan vs canonical revision authority | consistent | OperationPlan produces new revisions through the canonical writer; plan is not revision authority |
 | Workflow vs Timeline | consistent | process vs composition (§10.2) |
+| Recipe vs Workflow | consistent | recipe lowers toward OperationPlan; workflow is long-lived orchestration (§10.2) |
 | DSL vs domain authority | consistent | DSL never domain authority (§6.3, §10.5) |
 | GraphQL vs canonical schema | consistent | projection only (§10.4) |
-| Constraint vs rule engine | consistent | kernel is NOT a rule engine (§7.2) |
-| Formal tools vs runtime authority | consistent | evidence only, not runtime domain authority (§7.5) |
-| RenderPlan vs canonical state | consistent | derived logical planning state (§8.1) |
+| Constraint Kernel vs generic rule engine | consistent | kernel is NOT a rule engine (§7.2) |
+| Formal tools vs runtime semantic authority | consistent | evidence only, not runtime domain authority (§7.5) |
+| RenderPlan vs canonical authored state | consistent | derived logical planning state (§8.1) |
+| Logical vs Physical planning | consistent | separated layers; physical below logical (§8, §9) |
 | Provider vs semantic authority | consistent | providers execute, do not define (§9.2) |
-| PostgreSQL extensions vs domain | consistent | infrastructure capability only (§11.1) |
-| Revision backend vs semantics | consistent | JGit mechanics only (§4.2) |
+| PostgreSQL / extension vs domain authority | consistent | infrastructure capability only (§11.1) |
+| Revision backend vs semantic authority | consistent | JGit mechanics only (§4.2) |
+| Canvas presentation edges vs semantic relationships | consistent | layout edges never domain relationships (§10.1) |
+| Provenance vs canonical authority | consistent | explanatory/lineage only, not canonical authority (§11.3) |
+| Events vs event-sourcing authority | consistent | typed projection, not event sourcing as domain authority (§11.3) |
 
-No unresolvable contradictions found. Classifications: all REFINE/ADD; no
-SUPERSEDE needed.
+UNRESOLVED_CONTRADICTIONS = 0 (18 pairs checked, all consistent).
+Classifications: all REFINE/ADD; no SUPERSEDE needed.
 
 ## 25. Roadmap completion model (layer status, no fake percentage)
 
@@ -701,7 +892,7 @@ SUPERSEDE needed.
 |---|---|
 | Canonical Semantics | MATURE / MOSTLY IMPLEMENTED |
 | Capability | FOUNDATION IMPLEMENTED |
-| Operation | FOUNDATION / NEXT |
+| Operation | V1 IMPLEMENTED (Operation Model + OperationPlan Transaction + Revision Command, CLOSED) |
 | Constraint/Evidence | ARCHITECTURE ADOPTED |
 | Logical Planning | V1 IMPLEMENTED (#20) |
 | Physical Planning | NOT STARTED |
@@ -711,27 +902,31 @@ SUPERSEDE needed.
 
 Percentages, if desired, belong in non-authoritative planning analysis only.
 
-## 26. ARV2 consolidation checklist
+## 26. ARV2 correction checklist (V2-C1..C4 closure)
 
 | Check | Result |
 |---|---|
-| ARV2-01 one canonical core | PASS (§1) |
-| ARV2-02 Timeline authority explicit | PASS (§4.1) |
-| ARV2-03 Effect Option B integrated | PASS (§4.3) |
-| ARV2-04 Capability authority explicit | PASS (§5) |
-| ARV2-05 Operation boundary explicit | PASS (§6) |
-| ARV2-06 Constraint/Evidence model explicit | PASS (§7.1-7.4) |
-| ARV2-07 Formal Methods staged | PASS (§7.5-7.6) |
-| ARV2-08 Logical vs Physical planning separated | PASS (§8) |
-| ARV2-09 Execution/provider authority separated | PASS (§9) |
-| ARV2-10 Product surfaces non-authoritative | PASS (§10) |
-| ARV2-11 persistence stores non-domain-authoritative | PASS (§11) |
-| ARV2-12 governance/evidence identity explicit | PASS (§12.3) |
-| ARV2-13 polyglot authority rule explicit | PASS (§13.1) |
-| ARV2-14 28 milestone numbers preserved | PASS (§14) |
-| ARV2-15 #21/#22 remain NOT STARTED | PASS (§14, §17) |
-| ARV2-16 implementation status truthful | PASS (all sections) |
-| ARV2-17 supersessions explicit | PASS (§23) |
-| ARV2-18 deferred items explicit | PASS (§18) |
+| ARV2-C01 Operation Model IMPLEMENTED/CLOSED truth | PASS (§6.2) |
+| ARV2-C02 OperationPlan Transaction IMPLEMENTED/CLOSED truth | PASS (§6.2) |
+| ARV2-C03 Revision Command Model integrated | PASS (§6.2) |
+| ARV2-C04 no false post-#20 Operation-foundation future claim | PASS (§18, §19) |
+| ARV2-C05 current implementation frontier corrected | PASS (§6.3) |
+| ARV2-C06 AFFECTED_CONSTRAINTS column present | PASS (§22) |
+| ARV2-C07 TRACEABILITY_DELTA column present | PASS (§22) |
+| ARV2-C08 all traceability rows populated | PASS (§22, 25 rows) |
+| ARV2-C09 #1 through #28 each individually present | PASS (§14, 28 rows) |
+| ARV2-C10 no milestone renumbering | PASS (§14) |
+| ARV2-C11 no #29/#30 | PASS (§14) |
+| ARV2-C12 unknown milestone data explicitly UNKNOWN | PASS (§14 note) |
+| ARV2-C13 exact frozen decision IDs used | PASS (§22, §22.1) |
+| ARV2-C14 any aliases explicitly registered | PASS (§22.1, zero aliases) |
+| ARV2-C15 supersession register explicit | PASS (§23) |
+| ARV2-C16 unresolved contradictions = 0 | PASS (§24, 18 pairs) |
+| ARV2-C17 architecture status vs implementation status separated | PASS (§3, §6.2, §8) |
+| ARV2-C18 #21/#22 still NOT STARTED | PASS (§14) |
+| ARV2-C19 next epoch authorization still NO | PASS (§17, §19) |
+| ARV2-C20 docs-only diff | PASS (§15 validation) |
+| ARV2-C21 main unchanged | PASS (§15 validation) |
+| ARV2-C22 append-forward history preserved | PASS (§15 validation) |
 
-**ARV2 = 18/18 PASS**
+**ARV2_CORRECTION = 22/22 PASS**
