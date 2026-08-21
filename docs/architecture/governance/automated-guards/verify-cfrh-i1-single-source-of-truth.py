@@ -263,6 +263,7 @@ P1_DISPOSITION_ALLOWED = {
 try:
     gov_txt = GOV_DOC.read_text(encoding="utf-8")
     p1_map = {}
+    raw_p1_symbols = []
     in_table = False
     for line in gov_txt.splitlines():
         if "P1 enforcement mapping (authoritative" in line:
@@ -273,7 +274,11 @@ try:
         if in_table and line.startswith("|") and "P1 symbol" not in line and "---" not in line:
             cells = [c.strip() for c in line.strip("|").split("|")]
             if len(cells) >= 3 and cells[0]:
+                # retain raw symbol list BEFORE dict collapse (duplicate detection)
+                raw_p1_symbols.append(cells[0])
                 p1_map[cells[0]] = (cells[1], cells[2])  # (disposition, enforcement)
+    p1_duplicate_count = len(raw_p1_symbols) - len(set(raw_p1_symbols))
+    mech("MG-35b", p1_duplicate_count == 0, f"P1 duplicate table rows={p1_duplicate_count}")
     actual = set(p1_map.keys())
     expected = set(P1_EXPECTED_SYMBOLS)
     missing = expected - actual

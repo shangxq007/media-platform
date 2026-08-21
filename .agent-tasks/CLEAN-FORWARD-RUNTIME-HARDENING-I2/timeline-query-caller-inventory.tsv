@@ -1,0 +1,20 @@
+behavior_id	caller_type	caller_file	caller_symbol	caller_line	ownership_context_at_caller
+TRQ-01	controller	TimelineRevisionController	list	145	projectId (path var); tenantId (TenantContext)
+TRQ-01	application	TimelineEditorSyncService	pullByProject	58	projectId
+TRQ-01	application	TimelineEditorSyncService	pullSnapshot	99	projectId (from snapshot)
+TRQ-02	render	TimelineRevisionRenderService	render	113	revisionId only (no project/tenant)
+TRQ-02	render	PlanBasedTimelineRevisionRenderService	render	174	revisionId only (no project/tenant)
+TRQ-03	controller	TimelineRevisionController	getSnapshot	177	projectId + revisionId
+TRQ-03	controller	TimelineRevisionController	toRestoreResponse	423	projectId + newRevisionId
+TRQ-04	controller	TimelineRevisionController	list	89	projectId
+TRQ-05	controller	TimelineRevisionController	updateAnnotation	113	projectId + revisionId
+TRQ-06	controller	TimelineRevisionController	facets	98	projectId
+TRQ-06	controller	TimelineWorkbenchController	facets	40	projectId
+TRQ-07	controller	TimelineRevisionController	editSessions	126	projectId
+TRQ-08	controller	TimelineRevisionController	compare	137	projectId + from + to
+TRQ-08	controller	TimelineWorkbenchController	compare	91	projectId + from + to
+TRQ-08	controller	TimelineWorkbenchController	mergeDiff	101,102	projectId + base + source + target
+TRQ-09	controller	TimelineRevisionController	patchPreview	157	revisionId only
+TRQ-10	controller	TimelineRevisionController	patchSteps	168	revisionId only
+TRQ-11	controller	TimelineRevisionController	get	188	revisionId only (projectId in path but not passed)
+TRQ-11	controller	TimelineRevisionController	toRestoreResponse	421	projectId + newRevisionId

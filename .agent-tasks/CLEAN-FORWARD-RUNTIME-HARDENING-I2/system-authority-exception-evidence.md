@@ -1,0 +1,31 @@
+# CFRH-I2 — System Authority Exception Evidence
+
+## TimelineSnapshotService.listDistinctProjectIds
+
+### Callers (production, 3 sites)
+| Caller | Line | Purpose | Privilege context |
+|---|---|---|---|
+| GlobalAssetIntegrityService | 50 | global asset integrity scan | system maintenance |
+| GlobalAssetIntegrityService | 102 | global integrity sweep | system maintenance |
+| KnownStorageUriIndexService | 104 | storage-URI index rebuild | system maintenance |
+
+### Analysis
+- All three callers perform system-level maintenance sweeps across ALL projects.
+- None carries a per-project or per-tenant user context (system enumeration by design).
+- The reads are legitimate system maintenance, NOT ambient tenant/user authority leakage.
+
+### Verdict
+- Classification: EXPLICIT_SYSTEM_AUTHORITY_EXCEPTION (category D).
+- MUST NOT remain ambient global authority reachable from the generic
+  TimelineSnapshotService public surface.
+- Required representation: an explicit privileged system port, e.g.
+  SystemMaintenanceReader, with the global enumeration method moved behind it.
+- Mechanically auditable: SYSTEM_CANONICAL_READ_REQUIRES_EXPLICIT_PRIVILEGED_PORT_V1.
+
+### Current state
+- No explicit SystemMaintenanceReader port exists yet (repository reality 5318a3fd).
+- I2 implementation wave CFRH-I2-F introduces it and rewires the 3 callers.
+
+## Conclusion
+I2-C4 + SYSTEM_CANONICAL_READ_REQUIRES_EXPLICIT_PRIVILEGED_PORT_V1 adopted.
+Explicit port creation is an I2 implementation task (docs/evidence only here).

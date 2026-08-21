@@ -1,0 +1,16 @@
+#num	method	http_method	path	service_method	behavior_id	calls_legacy_query
+1	list	GET	/{projectId}/timeline/revisions (root)	revisionService.listHistory	TRQ-04	YES
+2	facets	GET	/{projectId}/timeline/revisions/facets	revisionService.listFacets	TRQ-06	YES
+3	updateAnnotation	PATCH	/{projectId}/timeline/revisions/{revisionId}/annotation	revisionService.updateAnnotation	TRQ-05	YES (metadata)
+4	editSessions	GET	/{projectId}/timeline/revisions/edit-sessions	revisionService.listEditSessions	TRQ-07	YES
+5	compare	GET	/{projectId}/timeline/revisions/compare	revisionService.compareRevisions	TRQ-08	YES
+6	head	GET	/{projectId}/timeline/revisions/head	revisionService.findHead	TRQ-01	YES
+7	patchPreview	GET	/{projectId}/timeline/revisions/{revisionId}/patch-preview	revisionService.previewPatchReplay	TRQ-09	YES
+8	patchSteps	GET	/{projectId}/timeline/revisions/{revisionId}/patch-steps	revisionService.previewPatchSteps	TRQ-10	YES
+9	snapshot	GET	/{projectId}/timeline/revisions/{revisionId}/snapshot	revisionService.getRevisionSnapshotPayload	TRQ-03	YES
+10	get	GET	/{projectId}/timeline/revisions/{revisionId}	revisionService.getDetail	TRQ-11	YES
+11	restore	POST	/{projectId}/timeline/revisions/{revisionId}/restore	revisionSaveService.restoreRevision (canonical)	n/a	NO (canonical)
+12	merge	POST	/{projectId}/timeline/revisions/merge	mergeEngine.merge	n/a	NO (canonical merge)
+13	render	POST	/{projectId}/timeline/revisions/{revisionId}/render	renderService.render	n/a	NO
+14	renderJobStatus	GET	/{projectId}/timeline/revisions/{revisionId}/render-jobs/{renderJobId}	renderJobStatusService	n/a	NO
+15	renderJobResult	GET	/{projectId}/timeline/revisions/{revisionId}/render-jobs/{renderJobId}/result	renderJobStatusService	n/a	NO
