@@ -507,3 +507,185 @@ System/admin ports are explicit exceptions, not hidden allowlists.
 | CFRH-BC-29 unresolved repository-reality blockers = 0 | PASS |
 
 **CFRH_DR_BOUNDARY_CORRECTION = 29/29 PASS**
+
+---
+
+## 18. CFRH-I1 EXECUTION CONTRACT CORRECTION (append-forward)
+
+Per ChatGPT review (CHATGPT_CLEAN_FORWARD_RUNTIME_HARDENING_BOUNDARY_
+CORRECTION_REVIEW = CORRECTION_REQUIRED; direction PASS; caller inventory
+FAIL; endpoint inventory FAIL; I1 semantic migration contract FAIL; guard
+symbol closure PARTIAL). This section freezes the exact executable contract
+for CFRH-I1. Implementation remains FORBIDDEN.
+
+### 18.1 Caller inventory correction (E1)
+
+Rebuilt from source (constructor injection + field types + direct invocation,
+independent of prior manifests):
+
+- **TimelineRevisionService actual production caller files: 6**
+  (TimelineRevisionController, TimelineWorkbenchController, RenderController,
+  TimelineEditorSyncService, TimelineRevisionRenderService,
+  PlanBasedTimelineRevisionRenderService) + service-internal self-calls.
+- **findById caller correction**: TimelineMergeEngine:754 uses
+  TimelineRevisionRepository.findById (REPOSITORY, not service) — REMOVED
+  from service caller accounting. Real service findById callers:
+  TimelineRevisionRenderService:113, PlanBasedTimelineRevisionRenderService:174
+  (+ service internal 195/202/449).
+- Behavior matrix updated; caller inventory invariant
+  ACTUAL_CALLER_SET == MATRIX_CALLER_SET now holds per method.
+
+### 18.2 Controller endpoint matrix correction (E2)
+
+Mechanically counted from TimelineRevisionController source: **15 endpoints**
+(14 method-level @*Mapping + 1 root @GetMapping for history listing).
+
+Previously omitted: **root GET /api/render/projects/{projectId}/timeline/
+revisions → listHistory** (L72-84). Endpoint matrix created:
+`timeline-revision-controller-endpoint-matrix.tsv` (15 rows).
+Invariant DECLARED_REQUEST_MAPPING_ENDPOINT_COUNT == ENDPOINT_MATRIX_ROW_COUNT
+= 15 holds.
+
+### 18.3 I1 semantic migration contract (E3)
+
+Evidence: legacy recordRevision persists the ORIGINAL internal-1.0 JSON
+snapshot (schema="internal-1.0", L147) with NO revision semantic context and
+NO Effect semantic snapshot (L167-170 null fields), NO CAS (appends to head
+after contentHash dedup). Canonical saveRevisionWithEffects requires
+TimelineDocument + EffectInstance list and creates semantic context
+(storeTx L250) + Effect snapshot + CAS (expectedCurrentRevisionId) + pins in
+one jOOQ transaction.
+
+**Semantic width findings** (internal-to-canonical-semantic-width-matrix.tsv,
+22 features):
+
+- TimelineDocument carries: tracks, clips, source bindings, artifact pins,
+  content digest, exact source range, timeline placement, temporal mapping,
+  audioMix, textElements, font semantics, effects (via EffectInstance params),
+  effect order, semantic relationships, metadata — roundtrip preserved.
+- **TimelineDocument does NOT carry transitions or automations**
+  (TimelineDocumentCandidateMapper L48 explicitly: "carries no transitions/
+  automations fields; those live in internal"). CanonicalTransition and
+  CanonicalAutomationCurve exist only in the canonicalmodel layer
+  (adapter validation path), never persisted via document save.
+- renderGraph/provider hints and segment policy = DERIVED_EXECUTION_STATE
+  (not authored canonical semantics; not preserved by I1).
+
+**Transitions/automations resolution (mandatory per review):**
+
+- **recordAiAdoptRevision (AI path): OPTION 1 PROVEN.** AiTimelineEditService
+  and AiTimelineEditResponse contain ZERO transition/automation references —
+  the AI output model cannot author transitions/automations, so a
+  lossless-to-canonical migration of AI-adopt inputs loses nothing.
+- **recordRevision (editor-sync path): OPTION 3 (delete obsolete product
+  behavior).** Sole caller TimelineEditorSyncService is itself the I3 legacy
+  internal-1.0 surface (storedSchema = "internal-1.0"); push/sync is an
+  unshipped editor compatibility path. Deleting the product behavior (with
+  its I1 write authority) is cleaner than a lossy migration.
+- No I1 path silently drops transitions/automations: the migrating path (AI)
+  cannot author them; the deleting path (editor sync) removes them with the
+  obsolete product behavior.
+
+**I1 execution decisions (frozen):**
+
+| Behavior | Decision | Canonical target / delete | Key contract |
+|---|---|---|---|
+| recordRevision ×2 | DELETE_OBSOLETE_PRODUCT_BEHAVIOR (editor-sync internal-1.0 path; I3 removal) | delete with TimelineEditorSyncService; no canonical migration | no external obligation; no lossy conversion |
+| recordAiAdoptRevision | MIGRATE_LOSSLESSLY_TO_CANONICAL_AUTHORITY | TimelineRevisionSaveService.saveRevisionWithEffects (AI timelineJson → TimelineDocument + effects) | AI model proven not to author transitions/automations; canonical CAS + context + Effect snapshot + pins apply |
+| restore | REPLACE_WITH_EXISTING_CANONICAL_BEHAVIOR | TimelineRevisionSaveService.restoreRevision (R4-D1 verified-payload reissue) | ownership-scoped (projectId+tenantId), CAS, single tx, pin copy, context copy — full invariant coverage proven |
+| backfillHeadFromLatestSnapshot | DELETE_OBSOLETE_PRODUCT_BEHAVIOR | delete; pullByProject falls through to findHead/findLatestByProject (L61-69) | caller fallthrough proven; no production requirement uses backfill result |
+
+I1_MIGRATE_COUNT = 1 (recordAiAdoptRevision), I1_REPLACE_COUNT = 1 (restore),
+I1_DELETE_COUNT = 2 (recordRevision ×2, backfill), I1_UNKNOWN_COUNT = 0.
+
+LOSSY_CONVERSION_ALLOWED = NO for all migration-classified behaviors.
+LEGACY_WRITE_MIGRATION_MUST_TERMINATE_IN_EXISTING_CANONICAL_TRANSACTION_
+BOUNDARY_V1 satisfied (saveRevisionWithEffects/restoreRevision own the full
+transaction).
+
+### 18.4 P1 enforcement symbol closure (E4)
+
+- **listByProject contradiction resolved**: reclassified. It is a
+  project-scoped query whose ONLY caller is the legacy service itself
+  (TimelineRevisionService.listHistory); no production caller reaches it
+  directly. After I2 legacy-service deletion the symbol vanishes. Final
+  disposition: FORBIDDEN_SYMBOL_SET (post-I2, vacuously) — not an
+  independent P1 production risk. Manifest and guard design now agree.
+- P1 unsafe symbols (final): findPayload, snapshot-findById,
+  findLatestByProject, repo-findById, legacy read authority — ALL map to
+  FORBIDDEN_SYMBOL_SET (bounded mechanical guard) with explicit system
+  exception only for listDistinctProjectIds.
+- P1_UNENFORCED_SYMBOL_COUNT = 0.
+
+### 18.5 New bounded contracts (frozen)
+
+| Contract | Decision | Evidence |
+|---|---|---|
+| LEGACY_WRITE_MIGRATION_MUST_BE_SEMANTICALLY_NON_NARROWING_V1 | ADOPT | LOSSY_CONVERSION_ALLOWED = NO; AI path proven non-narrowing; editor-sync path deleted rather than narrowed |
+| LEGACY_WRITE_MIGRATION_MUST_TERMINATE_IN_EXISTING_CANONICAL_TRANSACTION_BOUNDARY_V1 | ADOPT | saveRevisionWithEffects/restoreRevision own full tx (validation, snapshot, revision, pins, context, CAS, head) |
+| LEGACY_NON_CANONICAL_FIELDS_ARE_NOT_PRESERVED_BY_DEFAULT_V1 | ADOPT | renderGraph/segment-policy = derived execution state; not preserved |
+| BEHAVIOR_DISPOSITION_MUST_BE_RESOLVED_BEFORE_LEGACY_AUTHORITY_REMOVAL_V1 | ADOPT | I1 disposes all 4 write behaviors before any removal; I2 disposes query behaviors before service deletion |
+
+### 18.6 I1 bounded implementation shape (future, NOT started)
+
+I1-A canonical restore rewiring (TimelineRevisionController:193 →
+restoreRevision) — lowest risk.
+I1-B backfill deletion (TimelineEditorSyncService:60 removed).
+I1-C recordRevision/editor-sync write removal (with I3 sync surface).
+I1-D recordAiAdoptRevision migration (AI → saveRevisionWithEffects).
+I1-E obsolete legacy write method removal.
+I1-F structural write-authority guard
+(LEGACY_TIMELINE_REVISION_SEMANTIC_WRITE_AUTHORITY_COUNT = 0).
+
+Sequence follows semantic risk: I1-A, I1-B, I1-D, I1-C, I1-E, I1-F.
+
+TimelineRevisionService deletion remains NOT an I1 postcondition
+(queries/projections close in I2).
+
+### 18.7 CFRH_I1_EXECUTION_CONTRACT gates
+
+| Gate | Result |
+|---|---|
+| I1-EC-01 parent exact f86f5622 | PASS |
+| I1-EC-02 production/test/build/migration/generated = 0 | PASS |
+| I1-EC-03 call graph re-audited | PASS (6 caller files) |
+| I1-EC-04 findById caller set corrected | PASS |
+| I1-EC-05 repository findById not misattributed | PASS (merge engine = repository) |
+| I1-EC-06 matrix physical row count reported | PASS (16 data rows / 15 behavior groups) |
+| I1-EC-07 behavior group count reported | PASS (15 groups) |
+| I1-EC-08 endpoint set mechanically complete | PASS (15) |
+| I1-EC-09 root GET history endpoint present | PASS (L72-84 listHistory) |
+| I1-EC-10 execution matrix covers all 4 write classes | PASS |
+| I1-EC-11 recordRevision disposition resolved | PASS (DELETE_OBSOLETE_PRODUCT_BEHAVIOR) |
+| I1-EC-12 recordAiAdoptRevision disposition resolved | PASS (MIGRATE_LOSSLESSLY) |
+| I1-EC-13 restore disposition resolved | PASS (REPLACE_WITH_CANONICAL) |
+| I1-EC-14 backfill disposition resolved | PASS (DELETE_OBSOLETE_PRODUCT_BEHAVIOR) |
+| I1-EC-15 I1_UNKNOWN_COUNT = 0 | PASS |
+| I1-EC-16 semantic-width matrix complete | PASS (22 features) |
+| I1-EC-17 transitions disposition resolved | PASS (OPTION 1 AI / OPTION 3 editor-sync) |
+| I1-EC-18 automations disposition resolved | PASS (same) |
+| I1-EC-19 Effect semantics disposition resolved | PASS (EffectInstance extraction → canonical snapshot) |
+| I1-EC-20 source binding/artifact pin disposition resolved | PASS (pins preserved both paths) |
+| I1-EC-21 text/audio/relationship semantics resolved | PASS (all in TimelineDocument) |
+| I1-EC-22 renderGraph/provider fields classified | PASS (DERIVED_EXECUTION_STATE) |
+| I1-EC-23 no migration permits semantic narrowing | PASS (AI proven non-narrowing; sync deleted) |
+| I1-EC-24 CAS semantics frozen | PASS (ADOPT_CANONICAL_CAS) |
+| I1-EC-25 Effect snapshot semantics frozen | PASS (canonical minting) |
+| I1-EC-26 artifact pin semantics frozen | PASS (register same tx) |
+| I1-EC-27 revision semantic context frozen | PASS (storeTx) |
+| I1-EC-28 transaction boundary frozen | PASS (canonical full tx) |
+| I1-EC-29 ownership context frozen | PASS (projectId+tenantId) |
+| I1-EC-30 provenance/fail-closed frozen | PASS |
+| I1-EC-31 listByProject contradiction resolved | PASS (reclassified) |
+| I1-EC-32 all P1 symbols map to enforcement/exception | PASS |
+| I1-EC-33 P1_UNENFORCED_SYMBOL_COUNT = 0 | PASS |
+| I1-EC-34 I2 unknown availability separated from disposition | PASS (NO_EXISTING_REPLACEMENT_BUT_I2_NEW_PROJECTION_AUTHORIZED) |
+| I1-EC-35 four new bounded contracts resolved | PASS (4/4 ADOPT) |
+| I1-EC-36 original 9 contracts coherent | PASS |
+| I1-EC-37 I1/I2/I3 boundaries unchanged | PASS |
+| I1-EC-38 #20 CLOSED | PASS |
+| I1-EC-39 #21/#22 NOT_STARTED | PASS |
+| I1-EC-40 architecture escalation evaluated | PASS (NONE — no frozen canonical type change required; deletion preferred over lossy mapping) |
+| I1-EC-41 unresolved execution-contract blockers = 0 | PASS |
+
+**CFRH_I1_EXECUTION_CONTRACT = 41/41 PASS**
