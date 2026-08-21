@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
  *
  * <p>C1-CRR1: fixtures are the canonical PERSISTED revision payload format
  * (internal-1.0: schemaVersion "1.0", composition block) — the exact format
- * produced by {@code TimelineRevisionService.recordRevision} (production save
+ * produced by the canonical save path (TimelineRevisionSaveService);
  * path). Canonical gates are always enabled (no bypass flag). The engine's
  * input conversion consumes internal-1.0 via the E1b gate adapter and its
  * output is rebuilt as internal-1.0, so every test exercises the corrected

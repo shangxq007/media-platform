@@ -19,7 +19,6 @@ import com.example.platform.render.app.timeline.AiTimelineEditContext;
 import com.example.platform.render.app.timeline.AiTimelineEditService;
 import com.example.platform.render.app.timeline.AiTimelineProposalService;
 import com.example.platform.render.app.timeline.TimelineConversionService;
-import com.example.platform.timeline.app.TimelineRevisionService;
 import com.example.platform.render.app.cache.RenderCacheCleanupService;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.render.app.RenderJobService;
@@ -54,7 +53,6 @@ public class RenderController {
     private final AiTimelineEditService aiTimelineEditService;
     private final TimelineConversionService timelineConversionService;
     private final AiTimelineProposalService aiTimelineProposalService;
-    private final TimelineRevisionService timelineRevisionService;
     private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
     private final com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository;
     private final com.example.platform.render.app.access.ArtifactAccessService artifactAccessService;
@@ -69,7 +67,6 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineEditService aiTimelineEditService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineConversionService timelineConversionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionService timelineRevisionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.access.ArtifactAccessService artifactAccessService) {
@@ -82,7 +79,6 @@ public class RenderController {
         this.aiTimelineEditService = aiTimelineEditService;
         this.timelineConversionService = timelineConversionService;
         this.aiTimelineProposalService = aiTimelineProposalService;
-        this.timelineRevisionService = timelineRevisionService;
         this.productRuntimeService = productRuntimeService;
         this.storageReferenceRepository = storageReferenceRepository;
         this.artifactAccessService = artifactAccessService;
@@ -300,19 +296,9 @@ public class RenderController {
             throw new IllegalStateException("AI proposal service is not available");
         }
         var resolved = aiTimelineProposalService.adopt(request.timelineJson(), proposalId);
-        if (resolved.applied()
-                && timelineRevisionService != null
-                && timelineConversionService != null
-                && shouldPersistAiRevision(request)) {
-            String internal = timelineConversionService.ensureInternalTimelineJson(resolved.timelineJson());
-            timelineRevisionService.recordAiAdoptRevision(
-                    projectId,
-                    tenantId,
-                    internal,
-                    request.editSessionId(),
-                    proposalId,
-                    resolved.patchOperations());
-        }
+        // CFRH-I1: legacy AI-adopt revision persistence (recordAiAdoptRevision) removed
+        // (DELETE_OBSOLETE_PRODUCT_BEHAVIOR — LOSSLESS_MIGRATION_PROOF = FAIL). The adopt
+        // operation retains its separable proposal-resolve semantics; no revision is created.
         return new AiTimelineEditResponse(
                 resolved.timelineJson(),
                 "platform",
@@ -320,10 +306,6 @@ public class RenderController {
                 resolved.applied(),
                 toProposalDtos(aiTimelineProposalService.listProposals(resolved.timelineJson())),
                 null);
-    }
-
-    private static boolean shouldPersistAiRevision(AiProposalResolveRequest request) {
-        return request.persistRevision() == null || Boolean.TRUE.equals(request.persistRevision());
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/timeline/ai-proposals/{proposalId}/reject")

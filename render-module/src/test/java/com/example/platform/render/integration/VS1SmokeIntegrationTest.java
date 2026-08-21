@@ -86,7 +86,7 @@ class VS1SmokeIntegrationTest {
 
         fakeOrchestrator = new FakeRenderOrchestratorPort();
         controller = new RenderController(fakeJobService, fakeOrchestrator, java.util.List.<com.example.platform.storage.domain.BlobStorage>of(),
-                null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
         stateMachine = new RenderJobStateMachine();
     }
 
@@ -314,7 +314,7 @@ class VS1SmokeIntegrationTest {
         @DisplayName("Missing orchestrator on submit throws IllegalStateException")
         void missingOrchestratorFallback() {
             RenderController controllerNoOrch = new RenderController(fakeJobService, null, java.util.List.of(),
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
             SubmitRenderJobRequest req = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "test", "default_1080p", "snap-1");
 

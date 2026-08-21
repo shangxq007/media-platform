@@ -1,7 +1,6 @@
 package com.example.platform.web.render;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.render.app.timeline.TimelineEditorSyncService;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,13 +23,9 @@ public class TimelineSnapshotController {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final TimelineSnapshotService timelineSnapshotService;
-    private final TimelineEditorSyncService timelineEditorSyncService;
 
-    public TimelineSnapshotController(
-            TimelineSnapshotService timelineSnapshotService,
-            TimelineEditorSyncService timelineEditorSyncService) {
+    public TimelineSnapshotController(TimelineSnapshotService timelineSnapshotService) {
         this.timelineSnapshotService = timelineSnapshotService;
-        this.timelineEditorSyncService = timelineEditorSyncService;
     }
 
     @PostMapping
@@ -39,10 +34,9 @@ public class TimelineSnapshotController {
         String tenantId = TenantContext.get();
         String payload = serializePayload(request);
         String schemaVersion = request.schemaVersion() != null ? request.schemaVersion() : "2.0.0";
-        String snapshotId = Boolean.TRUE.equals(request.ensureInternal())
-                ? timelineEditorSyncService.saveSnapshotEnsuringInternal(
-                        request.projectId(), tenantId, payload, schemaVersion)
-                : timelineSnapshotService.save(request.projectId(), tenantId, payload, schemaVersion);
+        // CFRH-I1: legacy saveSnapshotEnsuringInternal (recordRevision write path) removed;
+        // snapshots persist directly through the canonical TimelineSnapshotService.
+        String snapshotId = timelineSnapshotService.save(request.projectId(), tenantId, payload, schemaVersion);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new SnapshotResponse(snapshotId, request.projectId()));
     }
@@ -67,8 +61,7 @@ public class TimelineSnapshotController {
             @NotBlank String projectId,
             JsonNode editorTimeline,
             String payloadJson,
-            String schemaVersion,
-            Boolean ensureInternal) {}
+            String schemaVersion) {}
 
     public record SnapshotResponse(String snapshotId, String projectId) {}
 }

@@ -11,7 +11,6 @@ import com.example.platform.timeline.canonicalmodel.TimelineModelPath;
 import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -36,8 +35,6 @@ public class TimelineRevisionService {
     private final TimelinePayloadCodec payloadCodec;
     private final TimelinePatchService timelinePatchService;
     private final TimelineSemanticDiffService semanticDiffService;
-    private final TimelineArtifactPinValidator artifactPinValidator;
-    private final com.example.platform.artifact.app.ArtifactPinService artifactPinService;
 
     public TimelineRevisionService(
             TimelineRevisionRepository revisionRepository,
@@ -46,9 +43,7 @@ public class TimelineRevisionService {
             TimelineRevisionDiffService diffService,
             TimelinePayloadCodec payloadCodec,
             TimelinePatchService timelinePatchService,
-            TimelineSemanticDiffService semanticDiffService,
-            TimelineArtifactPinValidator artifactPinValidator,
-            com.example.platform.artifact.app.ArtifactPinService artifactPinService) {
+            TimelineSemanticDiffService semanticDiffService) {
         this.revisionRepository = revisionRepository;
         this.snapshotService = snapshotService;
         this.contentHasher = contentHasher;
@@ -56,135 +51,6 @@ public class TimelineRevisionService {
         this.payloadCodec = payloadCodec;
         this.timelinePatchService = timelinePatchService;
         this.semanticDiffService = semanticDiffService;
-        this.artifactPinValidator = artifactPinValidator;
-        this.artifactPinService = artifactPinService;
-    }
-
-    @Transactional
-    public RevisionInfo recordRevision(
-            String projectId,
-            String tenantId,
-            String internalTimelineJson,
-            String source,
-            String authorUserId,
-            String editSessionId,
-            String message) {
-        return recordRevision(
-                projectId,
-                tenantId,
-                internalTimelineJson,
-                source,
-                authorUserId,
-                editSessionId,
-                message,
-                null);
-    }
-
-    /**
-     * Contract G (PTCSG_RECORD_REVISION_CANONICAL_GATE_E1B_V1): the internal-1.0 write
-     * boundary with the E1b canonical gate as its FIRST semantic operation, before any
-     * dedup decision, allocation, snapshot write, or revision write. The governed snapshot
-     * payload is persisted inside this gated transaction AFTER canonical acceptance; the
-     * snapshot identifier is allocated after acceptance, so a rejection writes zero
-     * snapshot rows, zero revision rows, and leaves no revision gap.
-     */
-    @Transactional
-    public RevisionInfo recordRevision(
-            String projectId,
-            String tenantId,
-            String internalTimelineJson,
-            String source,
-            String authorUserId,
-            String editSessionId,
-            String message,
-            List<TimelinePatchService.PatchOperation> patchOperations) {
-        String effectiveTenant = tenantId != null ? tenantId : TenantContext.get();
-
-        // E1b canonical gate - first semantic operation (before dedup, before any write).
-        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map(projectId, internalTimelineJson);
-        TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
-        if (validation.hasFatalErrors()) {
-            throw new TimelineCanonicalRejectionException(validation.diagnostics());
-        }
-        TimelineCanonicalNormalizer.normalize(candidate)
-                .orElseThrow(() -> new TimelineCanonicalRejectionException(validation.diagnostics()));
-
-        // GCR-2 (C11/C12, Roadmap #14 closure): exact Artifact pin reference-integrity
-        // validation — existence + tenant + digest, FAIL CLOSED before any write.
-        List<TimelineArtifactPinExtractor.ArtifactPin> pins =
-                TimelineArtifactPinExtractor.extract(internalTimelineJson);
-        if (!pins.isEmpty()) {
-            TimelineArtifactPinValidator.ValidationResult pinValidation =
-                    artifactPinValidator.validate(effectiveTenant, pins);
-            if (!pinValidation.valid()) {
-                throw new TimelineCanonicalRejectionException(
-                        new TimelineCanonicalRejectionException.AdapterDiagnostic(
-                                TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
-                                TimelineModelPath.root().field("sourceBinding"),
-                                "Artifact pin reference-integrity: " + String.join("; ", pinValidation.violations())));
-            }
-        }
-
-        String contentHash = contentHasher.hashInternalTimeline(internalTimelineJson);
-        int internalRevision = parseInternalRevision(internalTimelineJson);
-
-        Optional<TimelineRevisionRepository.RevisionRow> head =
-                revisionRepository.findHeadByProject(projectId);
-        if (head.isPresent() && contentHash.equals(head.get().contentHash())) {
-            log.debug("Skipping duplicate timeline revision for project={}", projectId);
-            return toInfo(head.get());
-        }
-
-        String parentPayload = head.flatMap(h -> snapshotService.findOwnedById(
-                        projectId, effectiveTenant, h.snapshotId()))
-                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
-                .orElse(null);
-        String changeSummaryJson = diffService.summarizeJson(parentPayload, internalTimelineJson);
-        String patchOpsJson = TimelinePatchOpsJson.toJson(patchOperations);
-
-        // Snapshot payload persistence INSIDE the gated transaction, after canonical
-        // acceptance (rejection never writes a snapshot row).
-        String snapshotId = snapshotService.save(projectId, effectiveTenant, internalTimelineJson, "internal-1.0");
-
-        int revisionNumber = revisionRepository.nextRevisionNumber(projectId);
-        String revisionId = Ids.newId("trev");
-        TimelineRevisionRepository.RevisionRow row = new TimelineRevisionRepository.RevisionRow(
-                revisionId,
-                projectId,
-                effectiveTenant,
-                head.map(TimelineRevisionRepository.RevisionRow::id).orElse(null),
-                revisionNumber,
-                snapshotId,
-                internalRevision,
-                contentHash,
-                "internal-1.0",
-                source != null ? source : "sync",
-                authorUserId,
-                editSessionId,
-                message,
-                changeSummaryJson,
-                patchOpsJson,
-                null,
-                false,
-                null,
-                null,
-                OffsetDateTime.now());
-        revisionRepository.insert(row);
-
-        // GCR-2 (C10, TIMELINE_REVISION_AND_REQUIRED_ARTIFACT_PROTECTION_ARE_ATOMIC_V1):
-        // register artifact_pin protection rows in the SAME transaction as the revision.
-        // A successful revision commit cannot exist without all required protection
-        // records (PIN_REGISTRATION_FAILURE => REVISION_NOT_COMMITTED via rollback).
-        if (!pins.isEmpty()) {
-            artifactPinService.registerRevisionPins(projectId, revisionId, effectiveTenant,
-                    pins.stream()
-                            .map(p -> new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
-                                    p.artifactId(), p.contentDigest()))
-                            .toList());
-        }
-
-        log.info("Recorded timeline revision id={} project={} rev={}", revisionId, projectId, revisionNumber);
-        return toInfo(row);
     }
 
     public Optional<RevisionInfo> findHead(String projectId) {
@@ -269,37 +135,6 @@ public class TimelineRevisionService {
                         r.lastAt() != null ? r.lastAt().toString() : null,
                         r.revisionCount()))
                 .toList();
-    }
-
-    @Transactional
-    public Optional<RevisionInfo> backfillHeadFromLatestSnapshot(String projectId, String tenantId) {
-        if (revisionRepository.findHeadByProject(projectId).isPresent()) {
-            return Optional.empty();
-        }
-        Optional<SnapshotInfo> latest = snapshotService.findLatestByProject(projectId);
-        if (latest.isEmpty()) {
-            return Optional.empty();
-        }
-        String payload = latest.get().payloadJson();
-        String internal = payload;
-        try {
-            if (!InternalTimelineJson.isInternalTimeline(InternalTimelineJson.parse(payload))) {
-                internal = payloadCodec.ensureInternalTimelineJson(payload);
-            }
-        } catch (Exception e) {
-            log.warn("Backfill skipped: cannot parse snapshot for project={}", projectId);
-            return Optional.empty();
-        }
-        RevisionInfo info = recordRevision(
-                projectId,
-                tenantId,
-                internal,
-                "backfill",
-                null,
-                null,
-                "Auto backfill from latest snapshot");
-        log.info("Backfilled timeline revision head for project={} rev={}", projectId, info.revisionNumber());
-        return Optional.of(info);
     }
 
     public CompareResult compareRevisions(String projectId, String fromRevisionId, String toRevisionId) {
@@ -423,28 +258,6 @@ public class TimelineRevisionService {
         return ops.stream().map(o -> new PatchPathItem(o.op(), o.path())).toList();
     }
 
-    @Transactional
-    public RevisionInfo recordAiAdoptRevision(
-            String projectId,
-            String tenantId,
-            String internalTimelineJson,
-            String editSessionId,
-            String proposalId,
-            List<TimelinePatchService.PatchOperation> patchOperations) {
-        // Contract G: no pre-save; the gated recordRevision persists the governed snapshot
-        // payload inside its transaction AFTER canonical acceptance.
-        String message = proposalId != null ? "AI proposal adopted: " + proposalId : "AI edit applied";
-        return recordRevision(
-                projectId,
-                tenantId,
-                internalTimelineJson,
-                "ai-adopt",
-                null,
-                editSessionId,
-                message,
-                patchOperations);
-    }
-
     public Optional<RevisionDetail> getDetail(String revisionId) {
         return revisionRepository.findById(revisionId).map(row -> {
             RevisionInfo info = toInfo(row);
@@ -460,42 +273,6 @@ public class TimelineRevisionService {
         });
     }
 
-    @Transactional
-    public RestoreResult restore(String projectId, String tenantId, String revisionId, String authorUserId) {
-        TimelineRevisionRepository.RevisionRow target = revisionRepository
-                .findById(revisionId)
-                .orElseThrow(() -> new IllegalArgumentException("Revision not found: " + revisionId));
-        if (!projectId.equals(target.projectId())) {
-            throw new IllegalArgumentException("Revision does not belong to project: " + projectId);
-        }
-        String payload = snapshotService
-                .findPayload(target.snapshotId())
-                .orElseThrow(() -> new IllegalArgumentException("Snapshot missing for revision: " + revisionId));
-
-        // Contract G: no pre-save; the gated recordRevision persists the restored payload's
-        // governed snapshot row inside its transaction AFTER canonical acceptance.
-        String message = "Restored from revision #" + target.revisionNumber();
-        RevisionInfo newHead = recordRevision(
-                projectId,
-                tenantId,
-                payload,
-                "rollback",
-                authorUserId,
-                null,
-                message);
-
-        String editorJson = payloadCodec.toEditorJson(payload);
-        return new RestoreResult(newHead, editorJson, payload);
-    }
-
-    private static int parseInternalRevision(String internalTimelineJson) {
-        try {
-            return InternalTimelineJson.revision(InternalTimelineJson.parse(internalTimelineJson));
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-
     private static TimelineRevisionDiffService.ChangeSummary parseSummary(String json) {
         if (json == null || json.isBlank()) {
             return TimelineRevisionDiffService.ChangeSummary.unsupported();
@@ -507,7 +284,6 @@ public class TimelineRevisionService {
             return TimelineRevisionDiffService.ChangeSummary.unsupported();
         }
     }
-
     private static RevisionInfo toInfo(TimelineRevisionRepository.RevisionRow row) {
         return new RevisionInfo(
                 row.id(),
@@ -610,5 +386,4 @@ public class TimelineRevisionService {
 
     public record RevisionSnapshotPayload(String snapshotId, String internalTimelineJson, String schemaVersion) {}
 
-    public record RestoreResult(RevisionInfo newRevision, String editorTimelineJson, String internalTimelineJson) {}
 }

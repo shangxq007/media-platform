@@ -50,7 +50,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
         renderService = mock(TimelineRevisionRenderService.class);
         renderJobStatusService = mock(RenderJobStatusService.class);
         controller = new TimelineRevisionController(
-                revisionService, mergeEngine, eventPublisher, renderService, renderJobStatusService);
+                revisionService, mergeEngine, eventPublisher, renderService, renderJobStatusService, null, null);
     }
 
     // ─── Status endpoint tests ───
@@ -177,7 +177,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
     void statusEndpointServiceUnavailable() {
         // Arrange — controller with null renderJobStatusService
         TimelineRevisionController controllerNoService = new TimelineRevisionController(
-                revisionService, mergeEngine, eventPublisher, renderService, null);
+                revisionService, mergeEngine, eventPublisher, renderService, null, null, null);
 
         // Act
         ResponseEntity<RenderJobStatusResponse> response =
@@ -316,7 +316,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
     void resultEndpointServiceUnavailable() {
         // Arrange — controller with null renderJobStatusService
         TimelineRevisionController controllerNoService = new TimelineRevisionController(
-                revisionService, mergeEngine, eventPublisher, renderService, null);
+                revisionService, mergeEngine, eventPublisher, renderService, null, null, null);
 
         // Act
         ResponseEntity<RenderJobResultResponse> response =

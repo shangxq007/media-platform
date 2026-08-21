@@ -1047,6 +1047,13 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         }
 
         // ── 6. Timeline pin existence + digest + tenant validation ──
+        // CFRH-I1 (LEGACY_WRITE_AUTHORITY_CLOSURE): the artifact-pin invariant
+        // boundary (extract → validate → register, same transaction) lives on the
+        // CANONICAL revision write path (TimelineRevisionSaveService). The legacy
+        // TimelineRevisionService lost all semantic write authority — it must NOT
+        // regain artifact-pin write responsibility. Historical restore reissues the
+        // already-verified historical pins (copyRevisionPinsTx) inside the canonical
+        // restore transaction; it does NOT re-run an unrelated mutable pin lookup.
         require(file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinValidator.java").exists()) {
             "FAIL: TimelineArtifactPinValidator missing (TIMELINE_ARTIFACT_PIN_EXISTENCE_VALIDATION_COUNT != 1)"
         }
@@ -1054,12 +1061,57 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         require(validatorSrc.contains("getArtifact") && validatorSrc.contains("contentDigest")) {
             "FAIL: TimelineArtifactPinValidator lacks existence+digest checks"
         }
-        val revisionSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionService.java").readText()
-        require(revisionSrc.contains("artifactPinValidator.validate")) {
-            "FAIL: TimelineRevisionService does not validate artifact pins (existence/tenant/digest fail-closed)"
+        // A. canonical new-revision save path performs extract/validate/register
+        val saveSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java").readText()
+        // line-level, comment-aware symbol checks (javadoc/`//` comments that merely
+        // NAME the symbols must not satisfy the authority requirement)
+        fun codeLineHas(line: String, pattern: Regex): Boolean {
+            val t = line.trim()
+            return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*")
+                    && pattern.containsMatchIn(t)
         }
-        require(revisionSrc.contains("registerRevisionPins")) {
-            "FAIL: TimelineRevisionService does not register artifact pin protection (REVISION_PIN_ATOMICITY missing)"
+        require(saveSrc.lines().any { codeLineHas(it, Regex("\\bextractPinsFromDocument\\b")) }) {
+            "FAIL: canonical save path missing artifact-pin extraction (CANONICAL_PIN_EXTRACT_COUNT != 1)"
+        }
+        require(saveSrc.lines().any { codeLineHas(it, Regex("\\bartifactPinValidator\\s*\\.\\s*validate\\b")) }) {
+            "FAIL: canonical save path does not validate artifact pins (existence/tenant/digest fail-closed)"
+        }
+        require(saveSrc.lines().any { codeLineHas(it, Regex("\\bregisterRevisionPinsTx\\b")) }) {
+            "FAIL: canonical save path does not register artifact pin protection in the same transaction (REVISION_PIN_ATOMICITY missing)"
+        }
+        // B. canonical restore reissues historically verified pins (not a mutable lookup)
+        require(saveSrc.lines().any { codeLineHas(it, Regex("\\bcopyRevisionPinsTx\\b")) }) {
+            "FAIL: canonical restore path missing historical pin copy/reissue (CANONICAL_RESTORE_PIN_COPY_COUNT != 1)"
+        }
+        // C. legacy TimelineRevisionService has NO artifact-pin write responsibility
+        val revisionSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionService.java").readText()
+        require(!revisionSrc.contains("artifactPinValidator")) {
+            "FAIL: TimelineRevisionService regained artifact-pin write responsibility (LEGACY_PIN_WRITE_AUTHORITY_COUNT != 0)"
+        }
+        require(!revisionSrc.contains("registerRevisionPins")) {
+            "FAIL: TimelineRevisionService regained pin registration (LEGACY_PIN_REGISTRATION_COUNT != 0)"
+        }
+        // D. no legacy recordRevision fallback exists
+        require(!revisionSrc.contains("recordRevision") && !revisionSrc.contains("recordAiAdoptRevision")
+                && !revisionSrc.contains("backfillHeadFromLatestSnapshot")) {
+            "FAIL: legacy semantic write symbols present in TimelineRevisionService (LEGACY_SEMANTIC_WRITE_COUNT != 0)"
+        }
+        // E. forbidden legacy write symbols remain zero across production
+        // (definitions AND references; comment lines excluded — CFRH-I1 explanatory
+        // comments legitimately name the removed symbols)
+        val forbiddenLegacyWriteRefs = fileTree(".").matching {
+            include("*/src/main/**/*.java", "platform-app/src/main/**/*.java")
+            exclude("**/build/**", "**/.gradle/**", "**/.worktrees/**")
+        }.filter { f ->
+            f.readLines().any { line ->
+                val t = line.trim()
+                !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*") && (
+                    t.matches(Regex(".*\\b(recordRevision|recordAiAdoptRevision|backfillHeadFromLatestSnapshot)\\b.*"))
+                    || t.contains("revisionService.restore("))
+            }
+        }
+        require(forbiddenLegacyWriteRefs.files.isEmpty()) {
+            "FAIL: forbidden legacy write symbols referenced in production: ${forbiddenLegacyWriteRefs.files.map { it.name }}"
         }
 
         // ── 7. Historical pin GC protection ──

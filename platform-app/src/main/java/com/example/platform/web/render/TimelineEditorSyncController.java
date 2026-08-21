@@ -4,10 +4,8 @@ import com.example.platform.render.app.timeline.TimelineEditorSyncService;
 import com.example.platform.shared.web.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,11 +26,11 @@ public class TimelineEditorSyncController {
     }
 
     @PostMapping("/push")
-    @Operation(summary = "推送：编辑器/遗留 JSON → Internal 1.0", description = "可选持久化为 internal-1.0 快照")
+    @Operation(summary = "推送：编辑器/遗留 JSON → Internal 1.0（转换预览，不创建修订）")
     public ResponseEntity<PushResponse> push(@Valid @RequestBody PushRequest request) {
         String tenantId = TenantContext.get();
         var result = timelineEditorSyncService.push(
-                request.projectId(), tenantId, request.timelineJson(), request.persistSnapshot());
+                request.projectId(), tenantId, request.timelineJson());
         return ResponseEntity.ok(toPushResponse(result));
     }
 
@@ -61,37 +59,6 @@ public class TimelineEditorSyncController {
     public ResponseEntity<PullResponse> pullLatest(@RequestParam @NotBlank String projectId) {
         var result = timelineEditorSyncService.pullByProject(projectId);
         return ResponseEntity.ok(toPullResponse(result));
-    }
-
-    @PostMapping("/sync")
-    @Operation(summary = "同步：推送编辑器并返回规范化后的双向视图")
-    public ResponseEntity<SyncResponse> sync(
-            @Valid @RequestBody SyncRequest request, HttpServletRequest httpRequest) {
-        String tenantId = TenantContext.get();
-        var result = timelineEditorSyncService.sync(
-                request.projectId(),
-                tenantId,
-                request.timelineJson(),
-                resolveAuthorUserId(request.authorUserId(), httpRequest),
-                request.editSessionId(),
-                request.message(),
-                request.source(),
-                null);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toSyncResponse(result));
-    }
-
-    private static String resolveAuthorUserId(String requested, HttpServletRequest httpRequest) {
-        if (requested != null && !requested.isBlank()) {
-            return requested.trim();
-        }
-        if (httpRequest == null) {
-            return null;
-        }
-        Object subject = httpRequest.getAttribute("jwt.subject");
-        if (subject instanceof String s && !s.isBlank()) {
-            return s.trim();
-        }
-        return null;
     }
 
     private static PushResponse toPushResponse(TimelineEditorSyncService.PushResult result) {
@@ -130,40 +97,11 @@ public class TimelineEditorSyncController {
                 head != null ? head.parentRevisionId() : null);
     }
 
-    private static SyncResponse toSyncResponse(TimelineEditorSyncService.SyncResult result) {
-        var s = result.summary();
-        var rev = result.revision();
-        return new SyncResponse(
-                result.editorTimelineJson(),
-                result.internalTimelineJson(),
-                result.snapshotId(),
-                result.sourceSchema(),
-                s.internalClipCount(),
-                s.targetRevision(),
-                rev != null ? rev.id() : null,
-                rev != null ? rev.revisionNumber() : 0,
-                rev != null ? rev.parentRevisionId() : null);
-    }
-
     public record PushRequest(
             @NotBlank String projectId,
-            @NotBlank String timelineJson,
-            boolean persistSnapshot) {
-
-        public PushRequest(String projectId, String timelineJson) {
-            this(projectId, timelineJson, false);
-        }
-    }
+            @NotBlank String timelineJson) {}
 
     public record PullRequest(String projectId, String snapshotId) {}
-
-    public record SyncRequest(
-            @NotBlank String projectId,
-            @NotBlank String timelineJson,
-            String authorUserId,
-            String editSessionId,
-            String message,
-            String source) {}
 
     public record PushResponse(
             String internalTimelineJson,
@@ -194,14 +132,4 @@ public class TimelineEditorSyncController {
             int headRevisionNumber,
             String headParentRevisionId) {}
 
-    public record SyncResponse(
-            String editorTimelineJson,
-            String internalTimelineJson,
-            String snapshotId,
-            String sourceSchema,
-            int internalClipCount,
-            int targetRevision,
-            String revisionId,
-            int revisionNumber,
-            String parentRevisionId) {}
 }

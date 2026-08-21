@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Replaces the blocked R1 diagnostic probe with PASSING assertions proving
  * the contradiction is resolved for the canonical PERSISTED payload shape
- * (internal-1.0, exactly as {@code TimelineRevisionService.recordRevision}
+ * (internal-1.0, as previously authored by the legacy recordRevision path);
  * persists it):</p>
  *
  * <pre>

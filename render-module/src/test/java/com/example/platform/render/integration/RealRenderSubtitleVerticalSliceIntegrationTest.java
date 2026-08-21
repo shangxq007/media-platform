@@ -335,10 +335,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 new TimelineRevisionDiffService(),
                 new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter()),
                 patchService,
-                new TimelineSemanticDiffService(canonicalizer),
-                new TimelineArtifactPinValidator(new com.example.platform.render.testutil.NoopArtifactQueryService()),
-                new com.example.platform.artifact.app.ArtifactPinService(
-                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)));
+                new TimelineSemanticDiffService(canonicalizer));
     }
 
     private PlanBasedTimelineRevisionRenderService buildPlanBasedRenderService() {

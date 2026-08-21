@@ -48,7 +48,7 @@ class RenderControllerContractTest {
         fakeOrchestrator = new FakeOrchestratorPort();
         fakeArtifactAccess = new FakeArtifactAccessService();
         controller = new RenderController(fakeService, fakeOrchestrator,
-                null, null, null, null, null, null, null, null, null, null, fakeArtifactAccess);
+                null, null, null, null, null, null, null, null, null,fakeArtifactAccess);
     }
 
     @AfterEach
@@ -134,7 +134,7 @@ class RenderControllerContractTest {
         @DisplayName("Start throws IllegalStateException when orchestrator null")
         void startThrowsWhenNoOrchestrator() {
             RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
 
             assertThrows(IllegalStateException.class,
                     () -> controllerNoOrch.startRenderJob("t-1", "proj-1", "rj-1"));
@@ -192,7 +192,7 @@ class RenderControllerContractTest {
         @DisplayName("Artifacts return empty when orchestrator null")
         void artifactsReturnEmptyWhenNoOrchestrator() {
             RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
 
             List<ArtifactInfoResponse> result = controllerNoOrch.getArtifacts("rj-1");
 

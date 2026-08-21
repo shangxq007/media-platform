@@ -13,7 +13,6 @@ import com.example.platform.timeline.app.TimelineRevisionService.RevisionDetail;
 import com.example.platform.timeline.app.TimelineRevisionService.RevisionInfo;
 import com.example.platform.timeline.app.TimelineRevisionService.PatchPreviewResult;
 import com.example.platform.timeline.app.TimelineRevisionService.PatchStepsResult;
-import com.example.platform.timeline.app.TimelineRevisionService.RestoreResult;
 import com.example.platform.timeline.app.TimelineRevisionService.RevisionSnapshotPayload;
 import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
@@ -56,17 +55,23 @@ public class TimelineRevisionController {
     private final TimelineReviewEventPublisher eventPublisher;
     private final TimelineRevisionRenderService renderService;
     private final RenderJobStatusService renderJobStatusService;
+    private final com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService;
+    private final com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService;
 
     public TimelineRevisionController(TimelineRevisionService revisionService,
                                        TimelineMergeEngine mergeEngine,
                                        TimelineReviewEventPublisher eventPublisher,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
-                                       @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService) {
+                                       @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService,
+                                       com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService,
+                                       com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService) {
         this.revisionService = revisionService;
         this.mergeEngine = mergeEngine;
         this.eventPublisher = eventPublisher;
         this.renderService = renderService;
         this.renderJobStatusService = renderJobStatusService;
+        this.revisionSaveService = revisionSaveService;
+        this.currentRevisionService = currentRevisionService;
     }
 
     @GetMapping
@@ -190,9 +195,14 @@ public class TimelineRevisionController {
             @PathVariable String revisionId,
             @RequestParam(required = false) String authorUserId) {
         String tenantId = TenantContext.get();
-        RestoreResult result = revisionService.restore(projectId, tenantId, revisionId, authorUserId);
-        eventPublisher.publish(new TimelineRestoredEvent(projectId, revisionId, result.newRevision().id()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(toRestoreResponse(result));
+        // CFRH-I1: legacy restore authority (TimelineRevisionService.restore) replaced by the
+        // canonical restore transaction boundary (TimelineRevisionSaveService.restoreRevision).
+        // expected-current CAS comes from the canonical current-revision authority.
+        String expectedCurrent = currentRevisionService.getCurrentRevisionId(projectId);
+        var restored = revisionSaveService.restoreRevision(
+                projectId, revisionId, expectedCurrent, authorUserId);
+        eventPublisher.publish(new TimelineRestoredEvent(projectId, revisionId, restored.revisionId()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toRestoreResponse(projectId, restored.revisionId()));
     }
 
     @PostMapping("/merge")
@@ -402,11 +412,18 @@ public class TimelineRevisionController {
                         .toList());
     }
 
-    private static RestoreResponse toRestoreResponse(RestoreResult result) {
+    private RestoreResponse toRestoreResponse(String projectId, String newRevisionId) {
+        // Read the newly restored revision through the retained query projection
+        // (legacy read authority remains for CFRH-I2; this is not a write path).
+        var detail = revisionService.getDetail(newRevisionId);
+        var info = detail.map(RevisionDetail::revision).orElse(null);
+        var payload = revisionService.getRevisionSnapshotPayload(projectId, newRevisionId)
+                .map(RevisionSnapshotPayload::internalTimelineJson)
+                .orElse(null);
         return new RestoreResponse(
-                toListItem(result.newRevision()),
-                result.editorTimelineJson(),
-                result.internalTimelineJson());
+                info != null ? toListItem(info) : null,
+                payload,
+                payload);
     }
 
     private static ChangeSummaryDto parseChangeSummary(String json) {

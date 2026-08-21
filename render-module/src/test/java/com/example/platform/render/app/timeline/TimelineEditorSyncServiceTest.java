@@ -49,48 +49,24 @@ class TimelineEditorSyncServiceTest {
     }
 
     @Test
-    void pushPersistsInternalSnapshotWhenRequested() {
+    void pushIsNonAuthoringConversionPreview() {
         TimelineSpec spec = TimelineSpec.create("tl-push", "Push", TimelineOutputSpec.mp4_1080p30());
         String internal = importService.importTimeline(importAdapter.toRequest(spec));
-        when(revisionService.recordRevision(
-                        eq("prj_1"), eq("ten_1"), anyString(), eq("push"), isNull(), isNull(), isNull()))
-                .thenReturn(new TimelineRevisionService.RevisionInfo(
-                        "trev_1",
-                        "prj_1",
-                        "ten_1",
-                        null,
-                        1,
-                        "snap_1",
-                        1,
-                        "hash",
-                        "internal-1.0",
-                        "push",
-                        null,
-                        null,
-                        null,
-                        List.of(),
-                        "{}",
-                        null,
-                        false,
-                        null,
-                        null,
-                        null));
 
-        var result = syncService.push("prj_1", "ten_1", internal, true);
+        // CFRH-I1: push no longer persists a legacy revision; it is a pure
+        // conversion preview. No snapshot is written, no revision is created.
+        var result = syncService.push("prj_1", "ten_1", internal);
 
-        assertEquals("snap_1", result.snapshotId());
         assertTrue(result.alreadyInternal());
-        // Contract G: no caller-side pre-save; the gated recordRevision persists the snapshot.
-        verify(revisionService).recordRevision(
-                eq("prj_1"), eq("ten_1"), anyString(), eq("push"), isNull(), isNull(), isNull());
-        verify(snapshotService, org.mockito.Mockito.never()).save(any(), any(), any(), any());
+        assertNull(result.snapshotId(), "push must not create a snapshot");
+        assertNull(result.revision(), "push must not create a revision");
+        verify(snapshotService, never()).save(any(), any(), any(), any());
     }
 
     @Test
     void pullLatestUsesRevisionHeadWhenPresent() {
         TimelineSpec spec = TimelineSpec.create("tl-pull", "Pull", TimelineOutputSpec.mp4_1080p30());
         String internal = importService.importTimeline(importAdapter.toRequest(spec));
-        when(revisionService.backfillHeadFromLatestSnapshot("prj_2", null)).thenReturn(Optional.empty());
         when(revisionService.findHead("prj_2"))
                 .thenReturn(Optional.of(new TimelineRevisionService.RevisionInfo(
                         "trev_2",
@@ -121,5 +97,23 @@ class TimelineEditorSyncServiceTest {
         assertEquals("snap_2", result.snapshotId());
         assertNotNull(result.headRevision());
         assertEquals(2, result.headRevision().revisionNumber());
+        // CFRH-I1: legacy backfill write authority removed — pullByProject never
+        // attempts revision-creation backfill (TimelineRevisionService no longer
+        // exposes backfillHeadFromLatestSnapshot).
+    }
+
+    @Test
+    void pullByProjectFallsThroughToLatestSnapshotWhenNoHead() {
+        TimelineSpec spec = TimelineSpec.create("tl-pull2", "Pull2", TimelineOutputSpec.mp4_1080p30());
+        String internal = importService.importTimeline(importAdapter.toRequest(spec));
+        when(revisionService.findHead("prj_3")).thenReturn(Optional.empty());
+        when(snapshotService.findLatestByProject("prj_3"))
+                .thenReturn(Optional.of(new SnapshotInfo("snap_3", "prj_3", "ten_3", internal, "internal-1.0")));
+
+        var result = syncService.pullByProject("prj_3");
+
+        assertEquals("snap_3", result.snapshotId());
+        assertNull(result.headRevision());
+        // backfill write authority absent by construction (CFRH-I1).
     }
 }

@@ -34,30 +34,27 @@ public class TimelineEditorSyncService {
         this.timelineRevisionService = timelineRevisionService;
     }
 
-    public PushResult push(String projectId, String tenantId, String timelineJson, boolean persistSnapshot) {
+    /**
+     * Editor/legacy JSON -> Internal Timeline 1.0 conversion preview (non-authoring).
+     * Legacy revision persistence via TimelineRevisionService was removed in CFRH-I1
+     * (DELETE_OBSOLETE_PRODUCT_BEHAVIOR); no revision is created by this path.
+     */
+    public PushResult push(String projectId, String tenantId, String timelineJson) {
         TimelineConversionService.PreviewResult preview = conversionService.preview(timelineJson);
         String internal = preview.internalTimelineJson();
-        String snapshotId = null;
         String storedSchema = "internal-1.0";
-        TimelineRevisionService.RevisionInfo revisionInfo = null;
-        if (persistSnapshot) {
-            // Contract G: no pre-save; the gated recordRevision persists the governed
-            // snapshot payload inside its transaction after canonical acceptance.
-            revisionInfo = timelineRevisionService.recordRevision(
-                    projectId, tenantId, internal, "push", null, null, null);
-            snapshotId = revisionInfo.snapshotId();
-        }
         return new PushResult(
                 internal,
                 preview.sourceSchema(),
                 preview.alreadyInternal(),
-                snapshotId,
-                revisionInfo,
+                null,
+                null,
                 preview.summary());
     }
 
     public PullResult pullByProject(String projectId) {
-        timelineRevisionService.backfillHeadFromLatestSnapshot(projectId, null);
+        // CFRH-I1: legacy backfill write authority removed (DELETE_OBSOLETE_PRODUCT_BEHAVIOR);
+        // no revision is created merely because HEAD is absent.
         Optional<TimelineRevisionService.RevisionInfo> head = timelineRevisionService.findHead(projectId);
         if (head.isPresent()) {
             return pullBySnapshotId(head.get().snapshotId());
@@ -75,74 +72,6 @@ public class TimelineEditorSyncService {
             throw new IllegalArgumentException("Timeline snapshot not found: " + snapshotId);
         }
         return pullSnapshot(info.get(), null);
-    }
-
-    public SyncResult sync(String projectId, String tenantId, String editorTimelineJson) {
-        return sync(projectId, tenantId, editorTimelineJson, null, null, null);
-    }
-
-    public SyncResult sync(
-            String projectId,
-            String tenantId,
-            String editorTimelineJson,
-            String authorUserId,
-            String editSessionId,
-            String message) {
-        return sync(projectId, tenantId, editorTimelineJson, authorUserId, editSessionId, message, null, null);
-    }
-
-    public SyncResult sync(
-            String projectId,
-            String tenantId,
-            String editorTimelineJson,
-            String authorUserId,
-            String editSessionId,
-            String message,
-            String source,
-            List<TimelinePatchService.PatchOperation> patchOperations) {
-        TimelineConversionService.PreviewResult preview = conversionService.preview(editorTimelineJson);
-        String internal = preview.internalTimelineJson();
-        String effectiveSource = resolveSyncSource(source, editSessionId);
-        // Contract G: no pre-save; the gated recordRevision persists the governed snapshot
-        // payload inside its transaction after canonical acceptance.
-        TimelineRevisionService.RevisionInfo revision = timelineRevisionService.recordRevision(
-                projectId,
-                tenantId,
-                internal,
-                effectiveSource,
-                authorUserId,
-                editSessionId,
-                message,
-                patchOperations);
-        String snapshotId = revision.snapshotId();
-        String editorJson = internalToEditorConverter.toEditorJson(internal);
-        return new SyncResult(
-                editorJson,
-                internal,
-                snapshotId,
-                revision,
-                preview.sourceSchema(),
-                preview.summary());
-    }
-
-    private static String resolveSyncSource(String source, String editSessionId) {
-        if (source != null && !source.isBlank()) {
-            return source;
-        }
-        if (editSessionId != null && !editSessionId.isBlank()) {
-            return "ai-sync";
-        }
-        return "sync";
-    }
-
-    public String saveSnapshotEnsuringInternal(
-            String projectId, String tenantId, String timelineJson, String requestedSchemaVersion) {
-        String internal = conversionService.ensureInternalTimelineJson(timelineJson);
-        // Contract G: no pre-save; the gated recordRevision persists the governed snapshot
-        // payload inside its transaction after canonical acceptance.
-        TimelineRevisionService.RevisionInfo revisionInfo = timelineRevisionService.recordRevision(
-                projectId, tenantId, internal, "snapshot", null, null, null);
-        return revisionInfo.snapshotId();
     }
 
     private PullResult pullSnapshot(SnapshotInfo info, TimelineRevisionService.RevisionInfo headRevision) {
@@ -200,11 +129,4 @@ public class TimelineEditorSyncService {
             TimelineRevisionService.RevisionInfo headRevision,
             TimelineConversionService.PreviewSummary summary) {}
 
-    public record SyncResult(
-            String editorTimelineJson,
-            String internalTimelineJson,
-            String snapshotId,
-            TimelineRevisionService.RevisionInfo revision,
-            String sourceSchema,
-            TimelineConversionService.PreviewSummary summary) {}
 }
