@@ -37,7 +37,7 @@ public class TimelineEditorSyncService {
 
     /**
      * Editor/legacy JSON -> Internal Timeline 1.0 conversion preview (non-authoring).
-     * Legacy revision persistence via TimelineRevisionService was removed in CFRH-I1
+     * Legacy revision persistence via the legacy timeline revision service was removed in CFRH-I1
      * (DELETE_OBSOLETE_PRODUCT_BEHAVIOR); no revision is created by this path.
      */
     public PushResult push(String projectId, String tenantId, String timelineJson) {

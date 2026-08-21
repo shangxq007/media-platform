@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * CFRH-I2 ownership-scoped timeline revision query authority.
  *
- * <p>Replaces the query behaviors of {@code TimelineRevisionService} (retired).
+ * <p>Replaces the query behaviors of the retired legacy timeline revision service.
  * Every production read carries explicit projectId + tenantId and ownership
  * participates in the persistence query — no ambient-global lookup, no
  * load-then-check ownership. This service is a non-authoritative projection /
