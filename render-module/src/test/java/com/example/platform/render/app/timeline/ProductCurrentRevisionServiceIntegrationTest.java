@@ -12,6 +12,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
+import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
 
 import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,7 +44,7 @@ class ProductCurrentRevisionServiceIntegrationTest extends PostgresTestContainer
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new com.example.platform.timeline.canonical.TimelineContentDigester(),
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
     }
 
     @Test

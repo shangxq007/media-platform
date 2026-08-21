@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
+import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
 
 import com.example.platform.artifact.app.ArtifactPinService;
 import com.example.platform.artifact.domain.Artifact;
@@ -127,7 +129,7 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore());
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
 
         assertThrows(IllegalStateException.class,
                 () -> saveService.saveRevision(productId, null, pinnedDoc(), "user-1"),
@@ -167,7 +169,7 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore());
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
 
         var revision = saveService.saveRevision(productId, null, pinnedDoc(), "user-1");
         assertEquals(1, dsl.fetchCount(DSL.selectFrom(TIMELINE_REVISION)

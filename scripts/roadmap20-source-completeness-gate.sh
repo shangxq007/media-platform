@@ -28,6 +28,7 @@ CRITICAL_FILES=(
   timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionPersistencePort.java
   timeline-module/src/main/java/com/example/platform/timeline/app/DefaultTimelineRevisionPersistence.java
   timeline-module/src/main/java/com/example/platform/timeline/app/HeadUpdatePort.java
+  timeline-module/src/main/java/com/example/platform/timeline/app/ProductCurrentRevisionHeadUpdateAdapter.java
   # render verification
   render-module/src/main/java/com/example/platform/render/domain/renderplan/VerifiedEffectSemanticSnapshotFactory.java
   render-module/src/main/java/com/example/platform/render/domain/renderplan/VerifiedRenderSemanticSnapshotFactory.java
@@ -38,6 +39,7 @@ CRITICAL_FILES=(
   render-module/src/test/java/com/example/platform/render/app/timeline/Roadmap20TransactionAtomicityTest.java
   render-module/src/test/java/com/example/platform/render/app/timeline/Roadmap20SnapshotOwnershipAndCorruptionTest.java
   render-module/src/test/java/com/example/platform/render/app/timeline/Roadmap20DefinitionConcurrencyAndCorruptionTest.java
+  render-module/src/test/java/com/example/platform/render/app/timeline/Roadmap20RevisionContextOwnershipAndRestoreTest.java
   render-module/src/test/java/com/example/platform/render/domain/renderplan/Roadmap20AIIntegrationAcceptanceTest.java
   render-module/src/test/java/com/example/platform/render/domain/renderplan/Roadmap20CleanForwardGuardTest.java
   render-module/src/test/java/com/example/platform/render/domain/renderplan/Roadmap20MediaTypeAndParameterValidationTest.java

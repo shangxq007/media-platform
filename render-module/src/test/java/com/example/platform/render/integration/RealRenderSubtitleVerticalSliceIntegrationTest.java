@@ -2,6 +2,8 @@ package com.example.platform.render.integration;
 
 import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineContentHasher;import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
+import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
 
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.app.ToolRegistry;
@@ -168,7 +170,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 new com.example.platform.timeline.canonical.TimelineContentDigester(), snapshotService,
                 new TimelineArtifactPinValidator(new com.example.platform.render.testutil.NoopArtifactQueryService()),
                 new com.example.platform.artifact.app.ArtifactPinService(
-                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)), effectAuthority(), revisionSemanticContextStore());
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
         revisionService = buildTimelineRevisionService(dsl, snapshotService);
         ProductRepository productRepo = new ProductRepository(dsl);
         ProductDependencyRepository depRepo = new ProductDependencyRepository(dsl);

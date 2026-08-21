@@ -17,6 +17,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
+import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
 
 import javax.sql.DataSource;
 import java.util.List;
@@ -68,7 +70,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                authority, new JdbcTimelineRevisionSemanticContextStore(dsl));
+                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
     }
 
     private void insertFixtures(String productId) {
@@ -116,6 +118,78 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                         "radiusPixels", "string", null, null, radius, List.of())),
                 EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION,
                 List.of("radiusPixels"), List.of("video.effect.gaussian-blur"), List.of());
+    }
+
+    @Test
+    void headOrder_revctxAndPinsPrecedeHeadCas() {
+        // F3/§42: bounded spy port proves the canonical mutation order —
+        // snapshot -> effect snapshot -> revision -> revctx -> pins -> HEAD CAS.
+        String productId = "prod-order-" + UUID.randomUUID();
+        insertFixtures(productId);
+        java.util.List<String> order = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+        TimelineRevisionSaveService spySave = new TimelineRevisionSaveService(
+                dsl, currentRevisionService, new TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                new com.example.platform.timeline.app.TimelineArtifactPinValidator(
+                        new com.example.platform.artifact.infrastructure.JooqArtifactQueryService(
+                                new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl),
+                                new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
+                new com.example.platform.artifact.app.ArtifactPinService(
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
+                new EffectSemanticSnapshotAuthority(
+                        new JdbcEffectDefinitionVersionRegistry(dsl),
+                        new JdbcEffectSemanticSnapshotStore(dsl)),
+                new com.example.platform.timeline.version.TimelineRevisionSemanticContextStore() {
+                    private final com.example.platform.timeline.version.TimelineRevisionSemanticContextStore delegate =
+                            new JdbcTimelineRevisionSemanticContextStore(dsl);
+
+                    @Override
+                    public void storeTx(org.jooq.DSLContext tx, String projectId, String tenantId,
+                                        String revisionId,
+                                        com.example.platform.timeline.version.TimelineRevisionSemanticContext semanticContext) {
+                        order.add("revctx");
+                        delegate.storeTx(tx, projectId, tenantId, revisionId, semanticContext);
+                    }
+
+                    @Override
+                    public java.util.Optional<com.example.platform.timeline.version.TimelineRevisionSemanticContext>
+                    findByRevisionId(org.jooq.DSLContext readDsl, String projectId, String tenantId,
+                                     String revisionId) {
+                        return delegate.findByRevisionId(readDsl, projectId, tenantId, revisionId);
+                    }
+                },
+                new com.example.platform.timeline.app.TimelineRevisionPersistencePort() {
+                    private final com.example.platform.timeline.app.TimelineRevisionPersistencePort delegate =
+                            new com.example.platform.timeline.app.DefaultTimelineRevisionPersistence();
+
+                    @Override
+                    public void insertRevisionTx(org.jooq.DSLContext tx,
+                                                 com.example.platform.timeline.version.TimelineRevision revision,
+                                                 String productId, String snapshotId, String schemaVersion,
+                                                 int revisionNumber, String tenantId, String source) {
+                        order.add("revision");
+                        delegate.insertRevisionTx(tx, revision, productId, snapshotId, schemaVersion,
+                                revisionNumber, tenantId, source);
+                    }
+                },
+                new com.example.platform.timeline.app.HeadUpdatePort() {
+                    @Override
+                    public void updateHeadTx(org.jooq.DSLContext tx, String productId,
+                                             String expectedCurrentRevisionId, String newRevisionId) {
+                        order.add("head");
+                        currentRevisionService.updateCurrentRevisionTx(
+                                tx, productId, expectedCurrentRevisionId, newRevisionId);
+                    }
+                });
+        spySave.saveRevisionWithEffects(
+                productId, null, sampleDocument(), List.of(), List.of(), "u");
+        assertTrue(order.contains("revision"), "order: revision recorded");
+        assertTrue(order.contains("revctx"), "order: revctx recorded");
+        assertTrue(order.contains("head"), "order: head recorded");
+        assertEquals("head", order.get(order.size() - 1),
+                "F3: HEAD CAS is the FINAL canonical mutation (HEAD_LAST)");
+        assertTrue(order.indexOf("revctx") < order.indexOf("head"),
+                "F3: revctx persists BEFORE head CAS");
     }
 
     private long countRevisions(String productId) {
@@ -184,7 +258,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                failingAuthority, new JdbcTimelineRevisionSemanticContextStore(dsl));
+                failingAuthority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
         assertThrows(IllegalStateException.class, () ->
                 failingSave.saveRevisionWithEffects(
                         productId, null, sampleDocument(),
@@ -213,11 +287,12 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                 new EffectSemanticSnapshotAuthority(
                         new JdbcEffectDefinitionVersionRegistry(dsl),
                         new JdbcEffectSemanticSnapshotStore(dsl)),
-                new JdbcTimelineRevisionSemanticContextStore(dsl));
-        failingSave.setRevisionPersistencePort((tx, revision, project, snapshotId, schemaVersion,
-                                                 revisionNumber, tenantId, source) -> {
-            throw new IllegalStateException("TX3 injected revision insert failure");
-        });
+                new JdbcTimelineRevisionSemanticContextStore(dsl),
+                (tx, revision, project, snapshotId, schemaVersion, revisionNumber, tenantId, source) -> {
+                    throw new IllegalStateException("TX3 injected revision insert failure");
+                },
+                new com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+        // TX3: failing revision-insert port was passed AT CONSTRUCTION.
         assertThrows(IllegalStateException.class, () ->
                 failingSave.saveRevisionWithEffects(
                         productId, null, sampleDocument(),
@@ -239,14 +314,16 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
         com.example.platform.timeline.version.TimelineRevisionSemanticContextStore failingCtxStore =
                 new com.example.platform.timeline.version.TimelineRevisionSemanticContextStore() {
                     @Override
-                    public void storeTx(org.jooq.DSLContext tx, String projectId, String revisionId,
+                    public void storeTx(org.jooq.DSLContext tx, String projectId, String tenantId,
+                                        String revisionId,
                                         com.example.platform.timeline.version.TimelineRevisionSemanticContext semanticContext) {
                         throw new IllegalStateException("TX4 injected context store failure");
                     }
 
                     @Override
                     public java.util.Optional<com.example.platform.timeline.version.TimelineRevisionSemanticContext>
-                    findByRevisionId(String revisionId) {
+                    findByRevisionId(org.jooq.DSLContext readDsl, String projectId, String tenantId,
+                                     String revisionId) {
                         return java.util.Optional.empty();
                     }
                 };
@@ -262,7 +339,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                 new EffectSemanticSnapshotAuthority(
                         new JdbcEffectDefinitionVersionRegistry(dsl),
                         new JdbcEffectSemanticSnapshotStore(dsl)),
-                failingCtxStore);
+                failingCtxStore, new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
         assertThrows(IllegalStateException.class, () ->
                 failingSave.saveRevisionWithEffects(
                         productId, null, sampleDocument(),
@@ -291,10 +368,11 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                 new EffectSemanticSnapshotAuthority(
                         new JdbcEffectDefinitionVersionRegistry(dsl),
                         new JdbcEffectSemanticSnapshotStore(dsl)),
-                new JdbcTimelineRevisionSemanticContextStore(dsl));
-        failingSave.setHeadUpdatePort((tx, project, expected, newRevisionId) -> {
-            throw new IllegalStateException("TX5 injected head update failure");
-        });
+                new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(),
+                (tx, project, expected, newRevisionId) -> {
+                    throw new IllegalStateException("TX5 injected head update failure");
+                });
+        // TX5: failing head-update port passed AT CONSTRUCTION.
         assertThrows(IllegalStateException.class, () ->
                 failingSave.saveRevisionWithEffects(
                         productId, null, sampleDocument(),

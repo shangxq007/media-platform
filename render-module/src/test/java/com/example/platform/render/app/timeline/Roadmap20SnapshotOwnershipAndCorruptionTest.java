@@ -229,6 +229,28 @@ class Roadmap20SnapshotOwnershipAndCorruptionTest extends PostgresTestContainerS
     }
 
     @Test
+    void sc8_sameIdWrongProjectStoreFailsClosed() {
+        // §34: same id + different project -> FAIL CLOSED (no global id reuse)
+        JdbcEffectSemanticSnapshotStore store = new JdbcEffectSemanticSnapshotStore(dsl);
+        EffectSemanticSnapshot snap = mint();
+        store.storeTx(dsl, "proj-a", "tenant-a", snap);
+        assertThrows(Exception.class,
+                () -> store.storeTx(dsl, "proj-b", "tenant-a", snap),
+                "SC8: same id different project FAILS CLOSED");
+    }
+
+    @Test
+    void sc9_sameIdWrongTenantStoreFailsClosed() {
+        // §34: same id + different tenant -> FAIL CLOSED
+        JdbcEffectSemanticSnapshotStore store = new JdbcEffectSemanticSnapshotStore(dsl);
+        EffectSemanticSnapshot snap = mint();
+        store.storeTx(dsl, "proj-a", "tenant-a", snap);
+        assertThrows(Exception.class,
+                () -> store.storeTx(dsl, "proj-a", "tenant-b", snap),
+                "SC9: same id different tenant FAILS CLOSED");
+    }
+
+    @Test
     void sc7_sameIdDifferentContentFailsClosed() {
         JdbcEffectSemanticSnapshotStore store = new JdbcEffectSemanticSnapshotStore(dsl);
         EffectSemanticSnapshot snap = mint();

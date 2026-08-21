@@ -2,6 +2,8 @@ package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.app.PatchApplyResult;import com.example.platform.timeline.app.PatchPreviewResult;import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;import com.example.platform.timeline.app.TimelinePatchApplicationService;import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
+import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.canonical.TimelineClip;
@@ -84,7 +86,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         // PRODUCTION wiring: 4-arg constructor enables the Contract P snapshot payload write.
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
     }
 
     // =====================================================================
@@ -207,7 +209,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         var legacySave = new TimelineRevisionSaveService(dsl, currentRevisionService, digester,
                 legacySnapshot,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
         String productId = "prod-nopay-" + UUID.randomUUID();
         insertProduct(productId);
         TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");

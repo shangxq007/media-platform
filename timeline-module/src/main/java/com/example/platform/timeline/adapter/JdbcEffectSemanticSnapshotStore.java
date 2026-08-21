@@ -64,14 +64,23 @@ public final class JdbcEffectSemanticSnapshotStore implements EffectSemanticSnap
         Objects.requireNonNull(snapshot, "snapshot");
         String payload = EffectSemanticSnapshotJsonCodec.serialize(snapshot);
         String id = snapshot.id().value();
-        // B4/SC1-SC5: existing row is validated by FULL deserialization — never
-        // partial field extraction, never null-digest idempotent success.
-        String existingPayload = tx
-                .fetch("select payload_json from timeline_snapshot where id = ?", id)
-                .getValues(0, String.class)
-                .stream().findFirst().orElse(null);
-        if (existingPayload != null) {
-            validateExistingRow(id, snapshot, existingPayload);
+        // B4/SC1-SC5 + §34: existing row is validated by FULL deserialization
+        // AND ownership — never partial field extraction, never null-digest
+        // idempotent success, never cross-project/tenant id reuse.
+        org.jooq.Record existingRec = tx.fetchOne(
+                "select project_id, tenant_id, payload_json from timeline_snapshot where id = ?", id);
+        if (existingRec != null) {
+            String storedProject = existingRec.get(0, String.class);
+            String storedTenant = existingRec.get(1, String.class);
+            if (!Objects.equals(storedProject, projectId)
+                    || !Objects.equals(storedTenant, tenantId)) {
+                throw new IllegalStateException(
+                        "CROSS_OWNERSHIP_EFFECT_SNAPSHOT_ATTACHMENT_FORBIDDEN_V1 (SC8/SC9): esnap_ '"
+                                + id + "' already bound to (" + storedProject + ", " + storedTenant
+                                + ") — requested (" + projectId + ", " + tenantId
+                                + ") FAILS CLOSED");
+            }
+            validateExistingRow(id, snapshot, existingRec.get(2, String.class));
             return; // idempotent for EXACT identical content (SC6)
         }
         tx.execute(

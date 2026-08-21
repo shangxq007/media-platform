@@ -38,7 +38,19 @@ public class Roadmap20EffectAuthorityConfiguration {
     }
 
     @Bean
-    public JdbcTimelineRevisionSemanticContextStore timelineRevisionSemanticContextStore(DSLContext dsl) {
+    public com.example.platform.timeline.version.TimelineRevisionSemanticContextStore timelineRevisionSemanticContextStore(DSLContext dsl) {
         return new JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+    /** F2: production revision-row persistence port (single jOOQ writer). */
+    @Bean
+    public TimelineRevisionPersistencePort timelineRevisionPersistencePort() {
+        return new DefaultTimelineRevisionPersistence();
+    }
+
+    /** F2/F3: production HEAD CAS adapter (real CAS predicate, head is the final mutation). */
+    @Bean
+    public HeadUpdatePort headUpdatePort(ProductCurrentRevisionService currentRevisionService) {
+        return new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService);
     }
 }

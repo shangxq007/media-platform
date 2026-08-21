@@ -48,7 +48,7 @@ public record EffectInstance(
      *
      * <p>R6-A: {@code EffectTarget} is the authoritative WHERE of an authored
      * effect; a target-less instance carries NO membership and is rejected by
-     * {@link AuthoredEffectSemanticAuthority} (fail closed). This constructor
+     * the effect authority (fail closed). This constructor
      * exists only for construction compatibility; every authoritative path
      * must use the 10-arg form with an explicit target.
      *

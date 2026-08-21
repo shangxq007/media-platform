@@ -22,18 +22,18 @@ import java.util.Objects;
  *   <li>{@link #mintEmpty()} — authoritative EMPTY semantics for new
  *       no-effect canonical revisions (KNOWN EMPTY, never MISSING);</li>
  *   <li>{@link #mintFromAuthoredState(List, List, TimelineDocument)} — typed
- *       legacy wire hydration bound to the canonical document (target context
+ *       typed authored-state minting bound to the canonical document (target context
  *       derived from canonical TimelineTrack.type — blocker 5).</li>
  * </ul>
  *
  * <p>Caller cannot choose: snapshotId (generated internally), registry
  * implementation, arbitrary clip-context function. Definitions are supplied by
- * an authoritative domain source (built-in/legacy hydration source; a future
+ * an authoritative domain source (typed authoring input; a future
  * catalog authority replaces this — never a Render caller list).
  */
 public final class EffectSemanticSnapshotAuthority {
 
-    /** A deterministic legacy wire effect member (editor/OTIO shape: id, effectKey, parameters). */
+
     /** Typed target context derived from the canonical document (not trackId strings). */
     public record EffectTargetContext(
             String trackId, String clipId, TrackType trackType, MediaClip.TimeRange clipExtent) {

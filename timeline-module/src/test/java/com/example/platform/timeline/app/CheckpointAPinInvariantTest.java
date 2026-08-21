@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
+import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
 
 import com.example.platform.artifact.app.ArtifactPinService;
 import com.example.platform.artifact.domain.Artifact;
@@ -73,7 +75,10 @@ class CheckpointAPinInvariantTest {
                 new TimelineContentDigester(),
                 org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                 validator, pinService,
-                effectAuthority(), revisionSemanticContextStore());
+                effectAuthority(), revisionSemanticContextStore(),
+                new DefaultTimelineRevisionPersistence(),
+                new ProductCurrentRevisionHeadUpdateAdapter(
+                        org.mockito.Mockito.mock(ProductCurrentRevisionService.class)));
     }
 
     private static com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
@@ -198,7 +203,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         null,
                         org.mockito.Mockito.mock(ArtifactPinService.class),
-                        effectAuthority(), revisionSemanticContextStore()),
+                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(org.mockito.Mockito.mock(ProductCurrentRevisionService.class))),
                 "null artifactPinValidator must be rejected by construction");
         assertThrows(NullPointerException.class,
                 () -> new TimelineRevisionSaveService(
@@ -208,7 +213,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                         null,
-                        effectAuthority(), revisionSemanticContextStore()),
+                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(org.mockito.Mockito.mock(ProductCurrentRevisionService.class))),
                         "null artifactPinService must be rejected by construction");
                         assertThrows(NullPointerException.class,
                         () -> new TimelineRevisionSaveService(
@@ -218,7 +223,7 @@ class CheckpointAPinInvariantTest {
                                 org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                                 new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                                 org.mockito.Mockito.mock(ArtifactPinService.class),
-                                effectAuthority(), revisionSemanticContextStore()),
+                                effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(org.mockito.Mockito.mock(ProductCurrentRevisionService.class))),
                         "null dsl must be rejected by construction");
         // ROADMAP20 authority integration: Effect authority + context store are
         // REQUIRED BY CONSTRUCTION — a save surface without them cannot exist.
@@ -230,7 +235,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                         org.mockito.Mockito.mock(ArtifactPinService.class),
-                        null, revisionSemanticContextStore()),
+                        null, revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(org.mockito.Mockito.mock(ProductCurrentRevisionService.class))),
                 "null Effect snapshot authority must be rejected by construction");
     }
 }

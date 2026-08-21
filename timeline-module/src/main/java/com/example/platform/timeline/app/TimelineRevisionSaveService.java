@@ -48,22 +48,11 @@ public class TimelineRevisionSaveService {
     private final com.example.platform.artifact.app.ArtifactPinService artifactPinService;
     private final com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectSnapshotAuthority;
     private final com.example.platform.timeline.version.TimelineRevisionSemanticContextStore revisionSemanticContextStore;
-    // B2: narrow persistence ports for bounded failure injection (production
-    // defaults are the single jOOQ writer / CAS head update; tests may
-    // substitute failing implementations — no testMode booleans in logic).
-    private TimelineRevisionPersistencePort revisionPersistence =
-            new DefaultTimelineRevisionPersistence();
-    private HeadUpdatePort headUpdatePort;
-
-    /** B2 test-injection point (default = production jOOQ writer). */
-    public void setRevisionPersistencePort(TimelineRevisionPersistencePort port) {
-        this.revisionPersistence = Objects.requireNonNull(port, "port");
-    }
-
-    /** B2 test-injection point (default = production CAS head update). */
-    public void setHeadUpdatePort(HeadUpdatePort port) {
-        this.headUpdatePort = Objects.requireNonNull(port, "port");
-    }
+    // F2: canonical write authorities are required BY CONSTRUCTION and
+    // immutable after construction — final ports, constructor injection only,
+    // no public runtime authority mutation surface.
+    private final TimelineRevisionPersistencePort revisionPersistence;
+    private final HeadUpdatePort headUpdatePort;
 
     /**
      * SINGLE production constructor: snapshot payload + CHECKPOINT_A artifact-pin
@@ -88,7 +77,9 @@ public class TimelineRevisionSaveService {
                                        TimelineArtifactPinValidator artifactPinValidator,
                                        com.example.platform.artifact.app.ArtifactPinService artifactPinService,
                                        com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectSnapshotAuthority,
-                                       com.example.platform.timeline.version.TimelineRevisionSemanticContextStore revisionSemanticContextStore) {
+                                       com.example.platform.timeline.version.TimelineRevisionSemanticContextStore revisionSemanticContextStore,
+                                       TimelineRevisionPersistencePort revisionPersistence,
+                                       HeadUpdatePort headUpdatePort) {
         // R5-C (CHECKPOINT_A Round 5): ALL production invariants are REQUIRED
         // BY CONSTRUCTION — no constructor permits a save/restore surface with
         // a missing artifact-pin dependency. A pinned revision can never be
@@ -101,9 +92,8 @@ public class TimelineRevisionSaveService {
         this.artifactPinService = Objects.requireNonNull(artifactPinService, "artifactPinService");
         this.effectSnapshotAuthority = Objects.requireNonNull(effectSnapshotAuthority, "effectSnapshotAuthority");
         this.revisionSemanticContextStore = Objects.requireNonNull(revisionSemanticContextStore, "revisionSemanticContextStore");
-        this.headUpdatePort =
-                (tx, productId, expected, newRevisionId) ->
-                        currentRevisionService.updateCurrentRevisionTx(tx, productId, expected, newRevisionId);
+        this.revisionPersistence = Objects.requireNonNull(revisionPersistence, "revisionPersistence");
+        this.headUpdatePort = Objects.requireNonNull(headUpdatePort, "headUpdatePort");
     }
 
     /**
@@ -207,7 +197,7 @@ public class TimelineRevisionSaveService {
         String revisionId = UUID.randomUUID().toString();
         final java.util.List<TimelineArtifactPinExtractor.ArtifactPin> pinsToRegister = pins;
         return dsl.transactionResult(tx -> {
-            String snapshotId = persistSnapshotPayload(tx.dsl(), productId, document, revisionId);
+            String snapshotId = persistSnapshotPayload(tx.dsl(), productId, document);
 
             // ROADMAP20 authority integration (blockers 1/4): every NEW canonical
             // revision mints authoritative Effect semantics (EMPTY for the
@@ -244,17 +234,15 @@ public class TimelineRevisionSaveService {
                     .fetchOneInto(Integer.class);
             int nextRevisionNumber = (maxRevisionNumber != null ? maxRevisionNumber : 0) + 1;
 
+            String tenantId = com.example.platform.shared.web.TenantContext.get();
             revisionPersistence.insertRevisionTx(
                     tx.dsl(), revision, productId, snapshotId, revision.timelineSchemaVersion(),
-                    nextRevisionNumber, com.example.platform.shared.web.TenantContext.get(), "api");
+                    nextRevisionNumber, tenantId, "api");
 
-            headUpdatePort.updateHeadTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
-
-            // ROADMAP20 authority integration: the revision-owned semantic
-            // context (exact Effect pin + digests) is persisted in the SAME
-            // physical transaction — reload reconstructs the pin without caller
-            // input; write failure rolls back the whole revision.
-            revisionSemanticContextStore.storeTx(tx.dsl(), productId, revisionId, semanticContext);
+            // F3: canonical state order — revision row, then semantic context,
+            // then artifact pins; the HEAD CAS is the FINAL transactional
+            // mutation (HEAD_ADVANCE_PUBLISHES_ONLY_FULLY_PERSISTED_REVISION_STATE_V1).
+            revisionSemanticContextStore.storeTx(tx.dsl(), productId, tenantId, revisionId, semanticContext);
 
             // CHECKPOINT_A (Blocker C): register artifact_pin protection rows in
             // the SAME transaction as the revision (PIN_REGISTRATION_FAILURE
@@ -267,12 +255,15 @@ public class TimelineRevisionSaveService {
             // by construction; zero pins is a normal no-op.
             if (!pinsToRegister.isEmpty()) {
                 artifactPinService.registerRevisionPinsTx(tx.dsl(), productId, revisionId,
-                        com.example.platform.shared.web.TenantContext.get(),
+                        tenantId,
                         pinsToRegister.stream()
                                 .map(p -> new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
                                         p.artifactId(), p.contentDigest()))
                                 .toList());
             }
+
+            // HEAD CAS LAST (F3): publishes only a fully persisted revision state.
+            headUpdatePort.updateHeadTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
 
             log.info("Saved timeline revision {} for product {}", revisionId, productId);
             return revision;
@@ -282,10 +273,12 @@ public class TimelineRevisionSaveService {
     @Transactional
     public TimelineRevision restoreRevision(String productId, String historicalRevisionId,
                                            String expectedCurrentRevisionId, String createdBy) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
         String contentHash = dsl.select(TIMELINE_REVISION.CONTENT_HASH)
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
                 .and(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
                 .fetchOne(TIMELINE_REVISION.CONTENT_HASH);
 
         if (contentHash == null) {
@@ -296,6 +289,7 @@ public class TimelineRevisionSaveService {
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
                 .and(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
                 .fetchOne(TIMELINE_REVISION.SCHEMA_VERSION);
 
         String revisionId = UUID.randomUUID().toString();
@@ -310,11 +304,10 @@ public class TimelineRevisionSaveService {
         // from the historical revision's immutable pin contract inside the same
         // transaction. Failure anywhere rolls back the entire restore.
         return dsl.transactionResult(tx -> {
-            // Contract P: restore writes a new snapshot row carrying the source revision's
-            // governed payload (copy of the historical payload) when one exists, so the restored
-            // revision never points at a missing payload. Legacy rows without a payload keep the
-            // historical behavior (documented limitation; no backfill, no migration).
-            String snapshotId = copyHistoricalSnapshotPayload(tx.dsl(), productId, historicalRevisionId, revisionId);
+            // Contract P + F4: restore copies the historical governed payload into a new
+            // snapshot row; a missing/null payload FAILS CLOSED — no legacy fallback.
+            String snapshotId = copyHistoricalSnapshotPayload(
+                    tx.dsl(), productId, tenantId, historicalRevisionId, revisionId);
 
             // ROADMAP20 authority integration (§10/§35): the restored NEW
             // revision must own exact Effect semantics — load the historical
@@ -322,7 +315,8 @@ public class TimelineRevisionSaveService {
             // propagated into a new canonical revision: FAIL CLOSED (no
             // deterministic legacy hydration source exists today).
             com.example.platform.timeline.version.TimelineRevisionSemanticContext historicalContext =
-                    revisionSemanticContextStore.findByRevisionId(tx.dsl(), historicalRevisionId).orElse(null);
+                    revisionSemanticContextStore.findByRevisionId(
+                            tx.dsl(), productId, tenantId, historicalRevisionId).orElse(null);
             if (historicalContext == null) {
                 throw new IllegalArgumentException(
                         "RESTORE FAIL CLOSED (§10/§35/CLEAN-FORWARD): historical revision '"
@@ -351,33 +345,25 @@ public class TimelineRevisionSaveService {
                     .fetchOneInto(Integer.class);
             int nextRevisionNumber = (maxRevisionNumber != null ? maxRevisionNumber : 0) + 1;
 
-            tx.dsl().insertInto(TIMELINE_REVISION)
-                    .set(TIMELINE_REVISION.ID, revisionId)
-                    .set(TIMELINE_REVISION.PROJECT_ID, productId)
-                    .set(TIMELINE_REVISION.PARENT_REVISION_ID, expectedCurrentRevisionId)
-                    // Contract P: record the governing tenant (tenant-guarded lookup parity).
-                    .set(TIMELINE_REVISION.TENANT_ID, com.example.platform.shared.web.TenantContext.get())
-                    .set(TIMELINE_REVISION.REVISION_NUMBER, nextRevisionNumber)
-                    .set(TIMELINE_REVISION.SNAPSHOT_ID, snapshotId)
-                    .set(TIMELINE_REVISION.INTERNAL_REVISION, nextRevisionNumber)
-                    .set(TIMELINE_REVISION.CONTENT_HASH, revisionSemanticDigest)
-                    .set(TIMELINE_REVISION.SCHEMA_VERSION, schemaVersionFinal)
-                    .set(TIMELINE_REVISION.CREATED_AT, LocalDateTime.now())
-                    .set(TIMELINE_REVISION.SOURCE, "restore")
-                    .execute();
+            revisionPersistence.insertRevisionTx(
+                    tx.dsl(), new TimelineRevision(revisionId, productId, expectedCurrentRevisionId,
+                            schemaVersionFinal, null, revisionSemanticDigest, java.time.Instant.now(),
+                            createdBy, newContext),
+                    productId, snapshotId, schemaVersionFinal, nextRevisionNumber, tenantId, "restore");
 
-            currentRevisionService.updateCurrentRevisionTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
-
-            // ROADMAP20 authority integration: persist the restored revision's
-            // own semantic context (same physical transaction).
-            revisionSemanticContextStore.storeTx(tx.dsl(), productId, revisionId, newContext);
+            // F3: revctx + pins BEFORE the head CAS (final mutation).
+            revisionSemanticContextStore.storeTx(tx.dsl(), productId, tenantId, revisionId, newContext);
 
             // R4-D1: the restored revision is a DISTINCT revision id — it must
             // carry its own artifact-pin protection rows, copied from the
             // historical revision's immutable pins in the SAME transaction.
             // R5-C: no nullable skip — pin persistence authority is required
             // by construction.
+            // F3: the HEAD CAS is the FINAL mutation (after pins).
             artifactPinService.copyRevisionPinsTx(tx.dsl(), productId, historicalRevisionId, revisionId);
+
+            // F3: HEAD CAS LAST — publishes only fully persisted restored state.
+            headUpdatePort.updateHeadTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
 
             log.info("Restored revision {} as new revision {} for product {}", historicalRevisionId, revisionId, productId);
             return new TimelineRevision(revisionId, productId, expectedCurrentRevisionId,
@@ -387,10 +373,8 @@ public class TimelineRevisionSaveService {
     }
 
     /**
-     * Contract P: persist the governed snapshot payload through the sole existing authority
-     * ({@link TimelineSnapshotService}) inside the current transaction. Falls back to the
-     * legacy SNAPSHOT_ID = revision id behavior only for the backward-compatible 3-arg
-     * constructor wiring (no snapshot service available).
+     * Contract P: persist the governed snapshot payload through the sole existing
+     * authority ({@link TimelineSnapshotService}) inside the current transaction.
      */
     /** CHECKPOINT_A: typed pin extraction straight from the canonical document
      *  (no JSON-format coupling; document carries artifactId/contentDigest per clip). */
@@ -414,10 +398,7 @@ public class TimelineRevisionSaveService {
     }
 
     private String persistSnapshotPayload(org.jooq.DSLContext tx, String productId,
-                                          TimelineDocument document, String fallbackRevisionId) {
-        if (timelineSnapshotService == null) {
-            return fallbackRevisionId;
-        }
+                                          TimelineDocument document) {
         return timelineSnapshotService.saveTx(
                 tx, productId,
                 null,
@@ -426,33 +407,46 @@ public class TimelineRevisionSaveService {
     }
 
     /**
-     * Contract P: restore copies the historical revision's governed payload into a new
-     * snapshot row so the restored revision never points at a missing payload. When the
-     * historical revision has no payload row (legacy data), the legacy behavior is preserved.
-     * R4-D1: runs on the transaction DSL so the snapshot copy joins the restore transaction.
+     * Contract P + F4 (RESTORE_ONLY_ACCEPTS_COMPLETE_FINAL_CANONICAL_REVISION_V1):
+     * restore copies the historical revision's governed payload into a NEW snapshot
+     * row so the restored revision never points at a missing payload. A historical
+     * revision with a null/blank SNAPSHOT_ID or a missing payload row FAILS CLOSED —
+     * NO legacy restore payload fallback exists
+     * (RESTORE_MISSING_GOVERNED_PAYLOAD_FAILS_CLOSED_V1,
+     * NO_LEGACY_RESTORE_PAYLOAD_FALLBACK_V1).
      */
-    private String copyHistoricalSnapshotPayload(org.jooq.DSLContext tx, String productId, String historicalRevisionId, String fallbackRevisionId) {
-        if (timelineSnapshotService == null) {
-            return fallbackRevisionId;
-        }
+    private String copyHistoricalSnapshotPayload(org.jooq.DSLContext tx, String projectId,
+                                                 String tenantId, String historicalRevisionId,
+                                                 String newRevisionId) {
         String historicalSnapshotId = tx.select(TIMELINE_REVISION.SNAPSHOT_ID)
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
-                .and(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                .and(TIMELINE_REVISION.PROJECT_ID.eq(projectId))
+                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
                 .fetchOne(TIMELINE_REVISION.SNAPSHOT_ID);
-        if (historicalSnapshotId == null) {
-            return fallbackRevisionId;
+        if (historicalSnapshotId == null || historicalSnapshotId.isBlank()) {
+            throw new IllegalStateException(
+                    "RESTORE FAIL CLOSED (RST1): historical revision '" + historicalRevisionId
+                            + "' has no governed snapshot id — NO legacy restore fallback (F4)");
         }
         String payload = timelineSnapshotService.findPayload(historicalSnapshotId).orElse(null);
         if (payload == null) {
-            return fallbackRevisionId;
+            throw new IllegalStateException(
+                    "RESTORE FAIL CLOSED (RST2): historical snapshot '" + historicalSnapshotId
+                            + "' payload row is missing — NO legacy restore fallback (F4)");
         }
         String schemaVersion = tx.select(TIMELINE_REVISION.SCHEMA_VERSION)
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
-                .and(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                .and(TIMELINE_REVISION.PROJECT_ID.eq(projectId))
+                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
                 .fetchOne(TIMELINE_REVISION.SCHEMA_VERSION);
-        return timelineSnapshotService.saveTx(tx, productId, null, payload, schemaVersion);
+        if (schemaVersion == null) {
+            throw new IllegalStateException(
+                    "RESTORE FAIL CLOSED: historical revision '" + historicalRevisionId
+                            + "' has no schema version");
+        }
+        return timelineSnapshotService.saveTx(tx, projectId, null, payload, schemaVersion);
     }
 
     @Transactional(readOnly = true)
@@ -493,7 +487,9 @@ public class TimelineRevisionSaveService {
         // (exact Effect pin) is loaded from revision-owned persisted state —
         // reconstructs the pin WITHOUT caller input.
         com.example.platform.timeline.version.TimelineRevisionSemanticContext semanticContext =
-                revisionSemanticContextStore.findByRevisionId(revisionId).orElse(null);
+                revisionSemanticContextStore.findByRevisionId(
+                        dsl, projectId, com.example.platform.shared.web.TenantContext.get(), revisionId)
+                        .orElse(null);
         if (semanticContext == null) {
             // CLEAN-FORWARD: a valid canonical revision ALWAYS owns its
             // semantic context — absence is INVALID/CORRUPT and FAILS CLOSED.
@@ -513,25 +509,16 @@ public class TimelineRevisionSaveService {
      * PPHR-BIC (PATCH_APPLICATION_PAYLOAD_HYDRATION_DEFECT): resolve the governed
      * snapshot payload for a revision through the existing sole snapshot authority
      * ({@link TimelineSnapshotService}) and deserialize it with the governed payload
-     * codec ({@link TimelineDocumentJsonSerializer}).
+     * codec ({@link TimelineDocumentJsonSerializer}). Read helper only — no
+     * canonical mutation occurs on this path.
      *
-     * <p>The Patch application service consumes the original governed
-     * {@link TimelineDocument} through this helper BEFORE invoking the Patch engine.
-     * {@code findById} keeps its documented reconstruction contract (canonicalTimeline
-     * may be null when loading without the full document); the hydration is explicit
-     * and local to the Patch flow.</p>
-     *
-     * <p>Returns {@link Optional#empty()} when the revision has no snapshot payload row
-     * (legacy/GitV1 rows), the payload is missing, or the payload is malformed — the
-     * caller keeps the fail-closed TIMELINE_PATCH_PAYLOAD_INVALID classification. No
-     * snapshot, revision, or current-revision write ever occurs on this path.</p>
+     * <p>Returns {@link Optional#empty()} when the revision has no snapshot payload
+     * row or the payload is missing/malformed — the caller maps that to explicit
+     * fail-closed behavior (F4: missing governed payload never produces a new valid
+     * canonical revision).</p>
      */
     @Transactional(readOnly = true)
     public Optional<TimelineDocument> findPayloadDocument(String revisionId) {
-        if (timelineSnapshotService == null) {
-            // Legacy 3-arg wiring (no snapshot authority): no governed payload exists.
-            return Optional.empty();
-        }
         String snapshotId = dsl.select(TIMELINE_REVISION.SNAPSHOT_ID)
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(revisionId))
