@@ -136,6 +136,111 @@ public class TimelineRevisionRepository {
         return TIMELINE_REVISION.PROJECT_ID.eq(projectId).and(tenantCondition());
     }
 
+    // ---- CFRH-I2: explicit ownership-scoped read predicates (no ambient TenantGuard) ----
+
+    private static Condition ownedScope(String projectId, String tenantId) {
+        return TIMELINE_REVISION.PROJECT_ID.eq(projectId)
+                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId));
+    }
+
+    public Optional<RevisionRow> findOwnedById(String revisionId, String projectId, String tenantId) {
+        Record row = dsl.select()
+                .from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.ID.eq(revisionId))
+                .and(ownedScope(projectId, tenantId))
+                .fetchOne();
+        return row == null ? Optional.empty() : Optional.of(map(row));
+    }
+
+    public Optional<RevisionRow> findOwnedHead(String projectId, String tenantId) {
+        Record row = dsl.select()
+                .from(TIMELINE_REVISION)
+                .where(ownedScope(projectId, tenantId))
+                .orderBy(TIMELINE_REVISION.REVISION_NUMBER.desc())
+                .limit(1)
+                .fetchOne();
+        return row == null ? Optional.empty() : Optional.of(map(row));
+    }
+
+    public List<RevisionRow> listOwnedByProject(
+            String projectId, String tenantId, String editSessionId, String authorUserId, String source, int limit) {
+        var query = dsl.select()
+                .from(TIMELINE_REVISION)
+                .where(ownedScope(projectId, tenantId));
+        if (editSessionId != null && !editSessionId.isBlank()) {
+            query = query.and(TIMELINE_REVISION.EDIT_SESSION_ID.eq(editSessionId));
+        }
+        if (authorUserId != null && !authorUserId.isBlank()) {
+            query = query.and(TIMELINE_REVISION.AUTHOR_USER_ID.eq(authorUserId));
+        }
+        if (source != null && !source.isBlank()) {
+            query = query.and(TIMELINE_REVISION.SOURCE.eq(source));
+        }
+        return query
+                .orderBy(TIMELINE_REVISION.REVISION_NUMBER.desc())
+                .limit(Math.max(1, Math.min(limit, 200)))
+                .fetch()
+                .map(TimelineRevisionRepository::map);
+    }
+
+    public boolean updateOwnedAnnotation(
+            String revisionId, String projectId, String tenantId, String message, String labelsJson) {
+        int updated = dsl.update(TIMELINE_REVISION)
+                .set(TIMELINE_REVISION.MESSAGE, message)
+                .set(TIMELINE_REVISION.LABELS_JSON, labelsJson)
+                .where(TIMELINE_REVISION.ID.eq(revisionId))
+                .and(ownedScope(projectId, tenantId))
+                .execute();
+        return updated > 0;
+    }
+
+    public List<String> listOwnedDistinctSources(String projectId, String tenantId) {
+        return dsl.selectDistinct(TIMELINE_REVISION.SOURCE)
+                .from(TIMELINE_REVISION)
+                .where(ownedScope(projectId, tenantId))
+                .orderBy(TIMELINE_REVISION.SOURCE.asc())
+                .fetch(TIMELINE_REVISION.SOURCE);
+    }
+
+    public List<AuthorFacetRow> listOwnedAuthorFacets(String projectId, String tenantId, int limit) {
+        int cap = Math.max(1, Math.min(limit, 50));
+        var revisionCountField = DSL.count().as("revision_count");
+        return dsl.select(
+                        TIMELINE_REVISION.AUTHOR_USER_ID,
+                        revisionCountField)
+                .from(TIMELINE_REVISION)
+                .where(ownedScope(projectId, tenantId))
+                .and(TIMELINE_REVISION.AUTHOR_USER_ID.isNotNull())
+                .groupBy(TIMELINE_REVISION.AUTHOR_USER_ID)
+                .orderBy(revisionCountField.desc())
+                .limit(cap)
+                .fetch()
+                .map(r -> new AuthorFacetRow(
+                        r.get(TIMELINE_REVISION.AUTHOR_USER_ID),
+                        r.get(revisionCountField, Integer.class)));
+    }
+
+    public List<EditSessionRow> listOwnedEditSessions(String projectId, String tenantId, int limit) {
+        int cap = Math.max(1, Math.min(limit, 100));
+        var revisionCountField = DSL.count().as("revision_count");
+        var maxCreatedAtField = DSL.max(TIMELINE_REVISION.CREATED_AT).as("last_at");
+        return dsl.select(
+                        TIMELINE_REVISION.EDIT_SESSION_ID,
+                        maxCreatedAtField,
+                        revisionCountField)
+                .from(TIMELINE_REVISION)
+                .where(ownedScope(projectId, tenantId))
+                .and(TIMELINE_REVISION.EDIT_SESSION_ID.isNotNull())
+                .groupBy(TIMELINE_REVISION.EDIT_SESSION_ID)
+                .orderBy(maxCreatedAtField.desc())
+                .limit(cap)
+                .fetch()
+                .map(r -> new EditSessionRow(
+                        r.get(TIMELINE_REVISION.EDIT_SESSION_ID),
+                        toOffsetDateTime(r.get(maxCreatedAtField)),
+                        r.get(revisionCountField, Integer.class)));
+    }
+
     public int nextRevisionNumber(String projectId) {
         return nextRevisionNumberTx(dsl, projectId);
     }
