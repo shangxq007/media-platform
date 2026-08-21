@@ -3,17 +3,18 @@ package com.example.platform.web.render;
 import com.example.platform.timeline.app.TimelinePatchOpsJson;
 import com.example.platform.timeline.app.TimelineRevisionDiffService;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.render.app.timeline.RenderJobStatusService;
 import com.example.platform.render.api.dto.RenderJobResultResponse;
 import com.example.platform.render.api.dto.RenderJobStatusResponse;
-import com.example.platform.timeline.app.TimelineRevisionService.CompareResult;
-import com.example.platform.timeline.app.TimelineRevisionService.EditSessionInfo;
-import com.example.platform.timeline.app.TimelineRevisionService.RevisionDetail;
-import com.example.platform.timeline.app.TimelineRevisionService.RevisionInfo;
-import com.example.platform.timeline.app.TimelineRevisionService.PatchPreviewResult;
-import com.example.platform.timeline.app.TimelineRevisionService.PatchStepsResult;
-import com.example.platform.timeline.app.TimelineRevisionService.RevisionSnapshotPayload;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery.CompareResult;
+import com.example.platform.timeline.app.TimelineRevisionQueryService.EditSessionInfo;
+import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionDetail;
+import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionInfo;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery.PatchPreviewResult;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery.PatchStepsResult;
+import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionSnapshotPayload;
 import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
 import com.example.platform.render.api.dto.TimelineRevisionRenderResponse;
@@ -50,7 +51,8 @@ public class TimelineRevisionController {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final TimelineRevisionService revisionService;
+    private final com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService;
+    private final com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery;
     private final TimelineMergeEngine mergeEngine;
     private final TimelineReviewEventPublisher eventPublisher;
     private final TimelineRevisionRenderService renderService;
@@ -59,7 +61,9 @@ public class TimelineRevisionController {
     private final com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService;
     private final com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec;
 
-    public TimelineRevisionController(TimelineRevisionService revisionService,
+    public TimelineRevisionController(
+            com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
+            com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery,
                                        TimelineMergeEngine mergeEngine,
                                        TimelineReviewEventPublisher eventPublisher,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
@@ -67,7 +71,8 @@ public class TimelineRevisionController {
                                        com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService,
                                        com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService,
                                        com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec) {
-        this.revisionService = revisionService;
+        this.revisionQueryService = revisionQueryService;
+        this.revisionDiffQuery = revisionDiffQuery;
         this.mergeEngine = mergeEngine;
         this.eventPublisher = eventPublisher;
         this.renderService = renderService;
@@ -85,8 +90,9 @@ public class TimelineRevisionController {
             @RequestParam(required = false) String editSessionId,
             @RequestParam(required = false) String authorUserId,
             @RequestParam(required = false) String source) {
-        return revisionService
-                .listHistory(projectId, editSessionId, authorUserId, source, limit)
+        String tenantId = TenantContext.get();
+        return revisionQueryService
+                .listHistory(projectId, tenantId, editSessionId, authorUserId, source, limit)
                 .stream()
                 .map(TimelineRevisionController::toListItem)
                 .toList();
@@ -95,7 +101,7 @@ public class TimelineRevisionController {
     @GetMapping("/facets")
     @Operation(summary = "项目修订筛选项（来源、作者）")
     public RevisionFacetsResponse facets(@PathVariable String projectId) {
-        TimelineRevisionService.RevisionFacets facets = revisionService.listFacets(projectId);
+        TimelineRevisionQueryService.RevisionFacets facets = revisionQueryService.listFacets(projectId, TenantContext.get());
         return new RevisionFacetsResponse(
                 facets.sources(),
                 facets.authors().stream()
@@ -109,9 +115,10 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @PathVariable String revisionId,
             @RequestBody AnnotationRequest body) {
-        return revisionService
+        String tenantId = TenantContext.get();
+        return revisionQueryService
                 .updateAnnotation(
-                        projectId,
+                        projectId, tenantId,
                         revisionId,
                         body != null ? body.message() : null,
                         body != null ? body.labels() : null)
@@ -123,7 +130,7 @@ public class TimelineRevisionController {
     @Operation(summary = "列出项目的 AI 改稿会话分支")
     public List<EditSessionItem> editSessions(
             @PathVariable String projectId, @RequestParam(defaultValue = "20") int limit) {
-        return revisionService.listEditSessions(projectId, limit).stream()
+        return revisionQueryService.listEditSessions(projectId, TenantContext.get(), limit).stream()
                 .map(s -> new EditSessionItem(s.editSessionId(), s.lastAt(), s.revisionCount()))
                 .toList();
     }
@@ -134,15 +141,15 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @RequestParam String from,
             @RequestParam String to) {
-        CompareResult result = revisionService.compareRevisions(projectId, from, to);
+        CompareResult result = revisionDiffQuery.compareRevisions(projectId, TenantContext.get(), from, to);
         return toCompareResponse(result);
     }
 
     @GetMapping("/head")
     @Operation(summary = "当前 HEAD 修订")
     public ResponseEntity<RevisionListItem> head(@PathVariable String projectId) {
-        return revisionService
-                .findHead(projectId)
+        return revisionQueryService
+                .findHead(projectId, TenantContext.get())
                 .map(r -> ResponseEntity.ok(toListItem(r)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -151,10 +158,10 @@ public class TimelineRevisionController {
     @Operation(summary = "预览修订中存储的 RFC6902 patch（对父快照 dry-run）")
     public ResponseEntity<PatchPreviewResponse> patchPreview(
             @PathVariable String projectId, @PathVariable String revisionId) {
-        return revisionService
-                .findById(revisionId)
-                .filter(r -> projectId.equals(r.projectId()))
-                .map(r -> ResponseEntity.ok(toPatchPreview(revisionService.previewPatchReplay(revisionId))))
+        String tenantId = TenantContext.get();
+        return revisionQueryService
+                .findById(projectId, tenantId, revisionId)
+                .map(r -> ResponseEntity.ok(toPatchPreview(revisionDiffQuery.previewPatchReplay(projectId, tenantId, revisionId))))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -162,10 +169,10 @@ public class TimelineRevisionController {
     @Operation(summary = "分步预览 patch（每步单独 apply，累积 dry-run）")
     public ResponseEntity<PatchStepsResponse> patchSteps(
             @PathVariable String projectId, @PathVariable String revisionId) {
-        return revisionService
-                .findById(revisionId)
-                .filter(r -> projectId.equals(r.projectId()))
-                .map(r -> ResponseEntity.ok(toPatchSteps(revisionService.previewPatchSteps(revisionId))))
+        String tenantId = TenantContext.get();
+        return revisionQueryService
+                .findById(projectId, tenantId, revisionId)
+                .map(r -> ResponseEntity.ok(toPatchSteps(revisionDiffQuery.previewPatchSteps(projectId, tenantId, revisionId))))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -173,8 +180,8 @@ public class TimelineRevisionController {
     @Operation(summary = "修订关联快照的 Internal Timeline JSON（供 patch 路径索引解析）")
     public ResponseEntity<RevisionSnapshotResponse> revisionSnapshot(
             @PathVariable String projectId, @PathVariable String revisionId) {
-        return revisionService
-                .getRevisionSnapshotPayload(projectId, revisionId)
+        return revisionQueryService
+                .getRevisionSnapshotPayload(projectId, TenantContext.get(), revisionId)
                 .map(p -> ResponseEntity.ok(new RevisionSnapshotResponse(
                         revisionId, p.snapshotId(), p.internalTimelineJson(), p.schemaVersion())))
                 .orElse(ResponseEntity.notFound().build());
@@ -184,9 +191,8 @@ public class TimelineRevisionController {
     @Operation(summary = "修订详情（含变更摘要）")
     public ResponseEntity<RevisionDetailResponse> get(
             @PathVariable String projectId, @PathVariable String revisionId) {
-        return revisionService
-                .getDetail(revisionId)
-                .filter(d -> projectId.equals(d.revision().projectId()))
+        return revisionQueryService
+                .getDetail(projectId, TenantContext.get(), revisionId)
                 .map(d -> ResponseEntity.ok(toDetailResponse(d)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -198,7 +204,7 @@ public class TimelineRevisionController {
             @PathVariable String revisionId,
             @RequestParam(required = false) String authorUserId) {
         String tenantId = TenantContext.get();
-        // CFRH-I1: legacy restore authority (TimelineRevisionService.restore) replaced by the
+        // CFRH-I1: legacy restore authority (TimelineRevisionDiffQuery.restore) replaced by the
         // canonical restore transaction boundary (TimelineRevisionSaveService.restoreRevision).
         // expected-current CAS comes from the canonical current-revision authority.
         String expectedCurrent = currentRevisionService.getCurrentRevisionId(projectId);
@@ -416,11 +422,12 @@ public class TimelineRevisionController {
     }
 
     private RestoreResponse toRestoreResponse(String projectId, String newRevisionId) {
-        // Read the newly restored revision through the retained query projection
-        // (legacy read authority remains for CFRH-I2; this is not a write path).
-        var detail = revisionService.getDetail(newRevisionId);
+        // CFRH-I2: read the newly restored revision through the ownership-scoped
+        // query authority (projectId + tenantId participate in the persistence read).
+        String tenantId = TenantContext.get();
+        var detail = revisionQueryService.getDetail(projectId, tenantId, newRevisionId);
         var info = detail.map(RevisionDetail::revision).orElse(null);
-        var internalPayload = revisionService.getRevisionSnapshotPayload(projectId, newRevisionId)
+        var internalPayload = revisionQueryService.getRevisionSnapshotPayload(projectId, tenantId, newRevisionId)
                 .map(RevisionSnapshotPayload::internalTimelineJson)
                 .orElse(null);
         if (info == null || internalPayload == null) {

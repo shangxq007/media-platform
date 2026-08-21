@@ -1,8 +1,9 @@
 package com.example.platform.web.render;
 
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
+import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.app.timeline.*;
-import com.example.platform.timeline.app.TimelineRevisionService.RevisionFacets;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
@@ -17,16 +18,20 @@ import org.springframework.web.bind.annotation.*;
 public class TimelineWorkbenchController {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineWorkbenchController.class);
-    private final TimelineRevisionService revisionService;
+    private final com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService;
+    private final com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery;
     private final TimelineReviewService reviewService;
     private final TimelineReviewRepository reviewRepo;
     private final TimelineCommentService commentService;
 
-    public TimelineWorkbenchController(TimelineRevisionService revisionService,
+    public TimelineWorkbenchController(
+            com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
+            com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery,
                                         TimelineReviewService reviewService,
                                         TimelineReviewRepository reviewRepo,
                                         TimelineCommentService commentService) {
-        this.revisionService = revisionService;
+        this.revisionQueryService = revisionQueryService;
+        this.revisionDiffQuery = revisionDiffQuery;
         this.reviewService = reviewService;
         this.reviewRepo = reviewRepo;
         this.commentService = commentService;
@@ -37,7 +42,7 @@ public class TimelineWorkbenchController {
     public ResponseEntity<WorkbenchDto> workbench(
             @PathVariable String projectId, @PathVariable String timelineId) {
         long start = System.currentTimeMillis();
-        RevisionFacets facets = revisionService.listFacets(projectId);
+        TimelineRevisionQueryService.RevisionFacets facets = revisionQueryService.listFacets(projectId, TenantContext.get());
         var reviews = reviewRepo.listByProject(projectId, 20);
         int openComments = reviews.stream()
                 .mapToInt(r -> commentService.listComments(r.id()).size()).sum();
@@ -88,7 +93,7 @@ public class TimelineWorkbenchController {
     public DiffPreviewDto diffPreview(
             @PathVariable String projectId, @PathVariable String timelineId,
             @RequestParam String from, @RequestParam String to) {
-        var diff = revisionService.compareRevisions(projectId, from, to);
+        var diff = revisionDiffQuery.compareRevisions(projectId, TenantContext.get(), from, to);
         int changes = diff.entityChanges() != null ? diff.entityChanges().size() : 0;
         return new DiffPreviewDto(from, to, diff.summary() != null, changes);
     }
@@ -98,8 +103,8 @@ public class TimelineWorkbenchController {
     public ConflictDto conflicts(
             @PathVariable String projectId, @PathVariable String timelineId,
             @RequestParam String base, @RequestParam String source, @RequestParam String target) {
-        var sDiff = revisionService.compareRevisions(projectId, base, source);
-        var tDiff = revisionService.compareRevisions(projectId, base, target);
+        var sDiff = revisionDiffQuery.compareRevisions(projectId, TenantContext.get(), base, source);
+        var tDiff = revisionDiffQuery.compareRevisions(projectId, TenantContext.get(), base, target);
         int sc = sDiff.entityChanges() != null ? sDiff.entityChanges().size() : 0;
         int tc = tDiff.entityChanges() != null ? tDiff.entityChanges().size() : 0;
         return new ConflictDto(sc, tc, "Conflicts determined at merge time");
