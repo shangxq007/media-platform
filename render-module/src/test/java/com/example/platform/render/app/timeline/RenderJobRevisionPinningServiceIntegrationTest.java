@@ -48,6 +48,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
     @BeforeEach
     void setUp() {
+        com.example.platform.shared.web.TenantContext.set("tenant-1");
         RenderTestSchemaFixture.truncate(dsl);
         currentRevisionService = new ProductCurrentRevisionService(dsl);
         revisionSaveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),

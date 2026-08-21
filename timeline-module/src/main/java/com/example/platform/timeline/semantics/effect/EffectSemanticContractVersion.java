@@ -32,6 +32,11 @@ public final class EffectSemanticContractVersion {
         return V1;
     }
 
+    /** B4/SC5: the single supported semantic contract (clean-forward V1-only). */
+    public static boolean isSupported(String value) {
+        return V1.value().equals(value);
+    }
+
     public String value() {
         return value;
     }

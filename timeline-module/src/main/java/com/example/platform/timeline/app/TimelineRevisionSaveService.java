@@ -47,7 +47,23 @@ public class TimelineRevisionSaveService {
     private final TimelineArtifactPinValidator artifactPinValidator;
     private final com.example.platform.artifact.app.ArtifactPinService artifactPinService;
     private final com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectSnapshotAuthority;
-    private final com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore;
+    private final com.example.platform.timeline.version.TimelineRevisionSemanticContextStore revisionSemanticContextStore;
+    // B2: narrow persistence ports for bounded failure injection (production
+    // defaults are the single jOOQ writer / CAS head update; tests may
+    // substitute failing implementations — no testMode booleans in logic).
+    private TimelineRevisionPersistencePort revisionPersistence =
+            new DefaultTimelineRevisionPersistence();
+    private HeadUpdatePort headUpdatePort;
+
+    /** B2 test-injection point (default = production jOOQ writer). */
+    public void setRevisionPersistencePort(TimelineRevisionPersistencePort port) {
+        this.revisionPersistence = Objects.requireNonNull(port, "port");
+    }
+
+    /** B2 test-injection point (default = production CAS head update). */
+    public void setHeadUpdatePort(HeadUpdatePort port) {
+        this.headUpdatePort = Objects.requireNonNull(port, "port");
+    }
 
     /**
      * SINGLE production constructor: snapshot payload + CHECKPOINT_A artifact-pin
@@ -72,7 +88,7 @@ public class TimelineRevisionSaveService {
                                        TimelineArtifactPinValidator artifactPinValidator,
                                        com.example.platform.artifact.app.ArtifactPinService artifactPinService,
                                        com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectSnapshotAuthority,
-                                       com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore) {
+                                       com.example.platform.timeline.version.TimelineRevisionSemanticContextStore revisionSemanticContextStore) {
         // R5-C (CHECKPOINT_A Round 5): ALL production invariants are REQUIRED
         // BY CONSTRUCTION — no constructor permits a save/restore surface with
         // a missing artifact-pin dependency. A pinned revision can never be
@@ -85,6 +101,9 @@ public class TimelineRevisionSaveService {
         this.artifactPinService = Objects.requireNonNull(artifactPinService, "artifactPinService");
         this.effectSnapshotAuthority = Objects.requireNonNull(effectSnapshotAuthority, "effectSnapshotAuthority");
         this.revisionSemanticContextStore = Objects.requireNonNull(revisionSemanticContextStore, "revisionSemanticContextStore");
+        this.headUpdatePort =
+                (tx, productId, expected, newRevisionId) ->
+                        currentRevisionService.updateCurrentRevisionTx(tx, productId, expected, newRevisionId);
     }
 
     /**
@@ -198,7 +217,9 @@ public class TimelineRevisionSaveService {
             // H(timelineDigest, contractVersion, effectContentDigest).
             com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot effectSnapshot =
                     effectSnapshotAuthority.mintAndPersistTx(
-                            tx.dsl(), productId, effects, definitions, document);
+                            tx.dsl(), productId,
+                            com.example.platform.shared.web.TenantContext.get(),
+                            effects, definitions, document);
             com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference effectRef =
                     effectSnapshot.reference();
             String revisionSemanticDigest =
@@ -223,21 +244,11 @@ public class TimelineRevisionSaveService {
                     .fetchOneInto(Integer.class);
             int nextRevisionNumber = (maxRevisionNumber != null ? maxRevisionNumber : 0) + 1;
 
-            tx.dsl().insertInto(TIMELINE_REVISION)
-                    .set(TIMELINE_REVISION.ID, revision.revisionId())
-                    .set(TIMELINE_REVISION.PROJECT_ID, productId)
-                    .set(TIMELINE_REVISION.PARENT_REVISION_ID, revision.parentRevisionId())
-                    .set(TIMELINE_REVISION.REVISION_NUMBER, nextRevisionNumber)
-                    .set(TIMELINE_REVISION.TENANT_ID, com.example.platform.shared.web.TenantContext.get())
-                    .set(TIMELINE_REVISION.SNAPSHOT_ID, snapshotId)
-                    .set(TIMELINE_REVISION.INTERNAL_REVISION, nextRevisionNumber)
-                    .set(TIMELINE_REVISION.CONTENT_HASH, revision.contentDigest())
-                    .set(TIMELINE_REVISION.SCHEMA_VERSION, revision.timelineSchemaVersion())
-                    .set(TIMELINE_REVISION.CREATED_AT, LocalDateTime.now())
-                    .set(TIMELINE_REVISION.SOURCE, "api")
-                    .execute();
+            revisionPersistence.insertRevisionTx(
+                    tx.dsl(), revision, productId, snapshotId, revision.timelineSchemaVersion(),
+                    nextRevisionNumber, com.example.platform.shared.web.TenantContext.get(), "api");
 
-            currentRevisionService.updateCurrentRevisionTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
+            headUpdatePort.updateHeadTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
 
             // ROADMAP20 authority integration: the revision-owned semantic
             // context (exact Effect pin + digests) is persisted in the SAME

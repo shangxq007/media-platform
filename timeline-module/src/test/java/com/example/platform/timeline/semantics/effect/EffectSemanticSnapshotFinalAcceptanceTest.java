@@ -58,7 +58,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
             List<EffectInstance.EffectDefinition> defs, EffectDefinitionVersionRegistry registry) {
         // fixture-only typed authored-state minting through the domain-internal
         // authority rules (NOT a public issuance surface — the production
-        // authority accepts only mintEmpty/mintFromDocument).
+        // authority exposes only mintEmpty/mintFromAuthoredState/mintAndPersistTx).
         List<EffectSemanticEntry> entries = new java.util.ArrayList<>();
         for (EffectInstance e : effects) {
             EffectDefinitionSnapshot ds = null;
@@ -194,7 +194,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
         // Legacy wire effect has no enabled field -> TRUE is authoritative
         // (LEGACY_EFFECT_ENABLED_DEFAULT_V1); a caller-supplied enabled=false
         // cannot become authority.
-        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.legacyEntry(
+        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.buildEntry(
                 "eff-1", "def-blur", Map.of("radiusPixels", "4"),
                 TRACK_ID, CLIP_ID, TrackType.VIDEO,
                 new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -274,7 +274,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
     void l2_legacyApplicationRangeDerivesFromClipExtent() {
         // L2/SA3: legacy applicationRange absent -> target clip extent
         // (authority derives; there is no caller-supplied range).
-        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.legacyEntry(
+        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.buildEntry(
                 "eff-1", "def-blur", Map.of(),
                 TRACK_ID, CLIP_ID, TrackType.VIDEO,
                 new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -287,7 +287,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
     void l3_legacyMediaTypeDerived() {
         // L3/SA4: legacy mediaType absent -> derived (track kind VIDEO ∩
         // supportedMediaTypes [VIDEO] -> compatible; AUDIO track -> FAIL CLOSED).
-        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.legacyEntry(
+        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.buildEntry(
                 "eff-1", "def-blur", Map.of(),
                 TRACK_ID, CLIP_ID, TrackType.VIDEO,
                 new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -296,7 +296,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
         assertTrue(entry.definitionSnapshot().supportedMediaTypes().contains("VIDEO"),
                 "L3: derived mediaType compatible with definition");
         assertThrows(IllegalArgumentException.class,
-                () -> EffectSemanticSnapshotAuthorityInternal.legacyEntry(
+                () -> EffectSemanticSnapshotAuthorityInternal.buildEntry(
                         "eff-1", "def-blur", Map.of(),
                         "audio", "ac1", TrackType.AUDIO,
                         new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -310,7 +310,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
         // L5/D6: legacy wire references a definition/version that cannot be
         // resolved exactly -> FAIL CLOSED.
         assertThrows(IllegalArgumentException.class,
-                () -> EffectSemanticSnapshotAuthorityInternal.legacyEntry(
+                () -> EffectSemanticSnapshotAuthorityInternal.buildEntry(
                         "eff-1", "def-missing", Map.of(),
                         TRACK_ID, CLIP_ID, TrackType.VIDEO,
                         new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -354,7 +354,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
         // Legacy MISSING must route through legacy behavior — verified factory
         // requires the EXACT pinned snapshot (no latest lookup, no synthesis).
         assertThrows(IllegalArgumentException.class,
-                () -> EffectSemanticSnapshotAuthorityInternal.legacyEntry(
+                () -> EffectSemanticSnapshotAuthorityInternal.buildEntry(
                         "eff-1", "def-blur", Map.of(),
                         TRACK_ID, CLIP_ID, TrackType.VIDEO,
                         new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),

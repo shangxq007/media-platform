@@ -156,24 +156,45 @@ class Roadmap20CleanForwardGuardTest {
     }
 
     @Test
-    void cf9_noLegacyHydrationProductionPath() {
-        // CF9: no legacy hydration path — hydrate() accepts ONLY the
-        // revision's own persisted document (digest must match the context's
-        // committed Timeline digest)
+    void cf9_noLegacyEffectHydrationProductionPath() {
+        // CF9 (final meaning, §16/§37): NO LEGACY EFFECT HYDRATION PRODUCTION
+        // PATH — LegacyWireEffect and mintFromDocument are physically absent.
+        assertThrows(ClassNotFoundException.class, () -> Class.forName(
+                        "com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority$LegacyWireEffect"),
+                "CF9: LegacyWireEffect must be physically absent");
+        // the authority public surface is exactly mintEmpty / mintFromAuthoredState /
+        // mintAndPersistTx — no legacy wire hydration mint overload
+        for (String method : new String[]{"mintEmpty", "mintFromAuthoredState", "mintAndPersistTx"}) {
+            boolean present = java.util.Arrays.stream(
+                            com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority.class
+                                    .getDeclaredMethods())
+                    .anyMatch(m -> m.getName().equals(method));
+            assertTrue(present, "CF9: authority exposes " + method);
+        }
+        boolean legacyMint = java.util.Arrays.stream(
+                        com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority.class
+                                .getDeclaredMethods())
+                .anyMatch(m -> m.getName().equals("mintFromDocument"));
+        assertFalse(legacyMint, "CF9: mintFromDocument legacy hydration must be ABSENT");
+    }
+
+    @Test
+    void hydrate_isContentVerifiedNotMutation() {
+        // §38: TimelineRevision.hydrate is a SEPARATE invariant from CF9 —
+        // TIMELINE_REVISION_HYDRATION_IS_CONTENT_VERIFIED_NOT_MUTATION_V1:
+        // matching timelineContentDigest -> PASS; foreign digest -> FAIL CLOSED.
         TimelineRevision revision = validRevision();
-        assertNotNull(revision.canonicalTimeline(), "CF9: valid revision carries its document");
         TimelineRevision hydrated = revision.hydrate(revision.canonicalTimeline());
         assertEquals(revision.contentDigest(), hydrated.contentDigest());
         assertEquals(revision.effectSemanticSnapshotReference(),
                 hydrated.effectSemanticSnapshotReference());
-        // foreign document FAILS CLOSED
         TimelineDocument foreign = new TimelineDocument(
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack("t-x", "v-x", TrackType.VIDEO, List.of())),
                 TimelineMetadata.empty(), com.example.platform.audio.domain.mix.AudioMix.EMPTY,
                 List.of(), List.of());
         assertThrows(IllegalArgumentException.class, () -> revision.hydrate(foreign),
-                "CF9: hydration cannot mutate canonical content (digest fail-closed)");
+                "hydrate cannot mutate revision semantics (digest fail-closed)");
     }
 
     @Test

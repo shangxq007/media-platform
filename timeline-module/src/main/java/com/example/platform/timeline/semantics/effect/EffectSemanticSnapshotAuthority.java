@@ -21,7 +21,7 @@ import java.util.Objects;
  * <ul>
  *   <li>{@link #mintEmpty()} — authoritative EMPTY semantics for new
  *       no-effect canonical revisions (KNOWN EMPTY, never MISSING);</li>
- *   <li>{@link #mintFromDocument(TimelineDocument, List, List)} — deterministic
+ *   <li>{@link #mintFromAuthoredState(List, List, TimelineDocument)} — typed
  *       legacy wire hydration bound to the canonical document (target context
  *       derived from canonical TimelineTrack.type — blocker 5).</li>
  * </ul>
@@ -34,14 +34,6 @@ import java.util.Objects;
 public final class EffectSemanticSnapshotAuthority {
 
     /** A deterministic legacy wire effect member (editor/OTIO shape: id, effectKey, parameters). */
-    public record LegacyWireEffect(String id, String effectKey, Map<String, Object> parameters) {
-        public LegacyWireEffect {
-            Objects.requireNonNull(id, "id");
-            Objects.requireNonNull(effectKey, "effectKey");
-            parameters = parameters == null ? Map.of() : Map.copyOf(parameters);
-        }
-    }
-
     /** Typed target context derived from the canonical document (not trackId strings). */
     public record EffectTargetContext(
             String trackId, String clipId, TrackType trackType, MediaClip.TimeRange clipExtent) {
@@ -78,43 +70,6 @@ public final class EffectSemanticSnapshotAuthority {
      */
     public EffectSemanticSnapshot mintEmpty() {
         return EffectSemanticSnapshotAuthorityInternal.mintEmpty(registry);
-    }
-
-    /**
-     * Mint the authoritative snapshot for a revision whose Effect state is the
-     * deterministic legacy wire hydration of {@code wireEffects}, bound to the
-     * CANONICAL document (target context derived from actual TimelineTrack.type
-     * and clip extent — no trackId-string heuristics, blocker 5).
-     *
-     * <p>Legacy hydration is deterministic-or-fail-closed: unresolvable
-     * definitions FAIL CLOSED; mediaType mismatch FAILS CLOSED; non-empty
-     * unverified automation FAILS CLOSED; unknown parameters FAIL CLOSED
-     * against the pinned definition parameter schema.
-     *
-     * @param authoritativeDefinitions domain-source definitions (built-in /
-     *        legacy hydration source); the future catalog authority replaces
-     *        this parameter.
-     */
-    public EffectSemanticSnapshot mintFromDocument(
-            TimelineDocument document, List<LegacyWireEffect> wireEffects,
-            List<EffectInstance.EffectDefinition> authoritativeDefinitions) {
-        Objects.requireNonNull(document, "document");
-        List<LegacyWireEffect> effects = wireEffects == null ? List.of() : wireEffects;
-        if (effects.isEmpty()) {
-            return mintEmpty();
-        }
-        List<EffectInstance.EffectDefinition> defs =
-                authoritativeDefinitions == null ? List.of() : List.copyOf(authoritativeDefinitions);
-        List<EffectSemanticEntry> entries = new ArrayList<>();
-        for (LegacyWireEffect wire : effects) {
-            EffectTargetContext target = resolveTargetContext(document, wire);
-            entries.add(EffectSemanticSnapshotAuthorityInternal.legacyEntry(
-                    wire.id(), wire.effectKey(), wire.parameters(),
-                    target.trackId(), target.clipId(), target.trackType(),
-                    target.clipExtent(), defs));
-        }
-        return EffectSemanticSnapshotAuthorityInternal.mintFromEntries(
-                entries, registry, EffectSemanticSnapshotId.generate());
     }
 
     /**
@@ -163,10 +118,9 @@ public final class EffectSemanticSnapshotAuthority {
                         "Effect " + effect.effectInstanceId() + " must carry a ClipEffectTarget");
             }
             // target context from the CANONICAL document (TrackType + clip extent)
-            EffectTargetContext target = resolveTargetContext(document,
-                    new LegacyWireEffect(clipTarget.trackId() + "|" + clipTarget.clipId() + "|"
-                            + effect.effectInstanceId(), effect.effectDefinitionId(),
-                            new java.util.LinkedHashMap<String, Object>(effect.parameters())));
+            EffectTargetContext target = resolveTargetContext(
+                    document, clipTarget.trackId(), clipTarget.clipId(),
+                    effect.effectInstanceId(), effect.effectDefinitionId());
             EffectInstance.EffectDefinition definition = null;
             for (EffectInstance.EffectDefinition d : defs) {
                 if (d.definitionId().equals(effect.effectDefinitionId())
@@ -198,16 +152,17 @@ public final class EffectSemanticSnapshotAuthority {
      * No-Effect state mints authoritative EMPTY.
      */
     public EffectSemanticSnapshot mintAndPersistTx(
-            org.jooq.DSLContext tx, String projectId,
+            org.jooq.DSLContext tx, String projectId, String tenantId,
             java.util.List<EffectInstance> effects,
             java.util.List<EffectInstance.EffectDefinition> authoritativeDefinitions,
             TimelineDocument document) {
         Objects.requireNonNull(tx, "tx");
         Objects.requireNonNull(projectId, "projectId");
+        Objects.requireNonNull(tenantId, "tenantId");
         List<EffectInstance> instances = effects == null ? List.of() : effects;
         if (instances.isEmpty()) {
             EffectSemanticSnapshot empty = mintEmpty();
-            store().storeTx(tx, projectId, empty);
+            store().storeTx(tx, projectId, tenantId, empty);
             return empty;
         }
         // mint (definition-version integrity joins THIS transaction via
@@ -216,7 +171,7 @@ public final class EffectSemanticSnapshotAuthority {
         // constructed WITHOUT the non-transactional register path)
         EffectSemanticSnapshot snapshot = mintFromAuthoredStateTx(
                 instances, authoritativeDefinitions, document, tx);
-        store().storeTx(tx, projectId, snapshot);
+        store().storeTx(tx, projectId, tenantId, snapshot);
         return snapshot;
     }
 
@@ -255,10 +210,9 @@ public final class EffectSemanticSnapshotAuthority {
                 throw new IllegalArgumentException(
                         "Effect " + effect.effectInstanceId() + " must carry a ClipEffectTarget");
             }
-            EffectTargetContext target = resolveTargetContext(document,
-                    new LegacyWireEffect(clipTarget.trackId() + "|" + clipTarget.clipId() + "|"
-                            + effect.effectInstanceId(), effect.effectDefinitionId(),
-                            new java.util.LinkedHashMap<String, Object>(effect.parameters())));
+            EffectTargetContext target = resolveTargetContext(
+                    document, clipTarget.trackId(), clipTarget.clipId(),
+                    effect.effectInstanceId(), effect.effectDefinitionId());
             EffectInstance.EffectDefinition definition = null;
             for (EffectInstance.EffectDefinition d : defs) {
                 if (d.definitionId().equals(effect.effectDefinitionId())
@@ -289,15 +243,14 @@ public final class EffectSemanticSnapshotAuthority {
     }
 
     /** Resolves the typed target context from the canonical document (track type from TrackType). */
-    private static EffectTargetContext resolveTargetContext(TimelineDocument document, LegacyWireEffect wire) {
-        // The wire effect's target is derived from the containing clip — the
-        // wire member id encodes 'trackId|clipId|effectId'.
-        String[] parts = wire.id().split("\\|");
-        String trackId = parts.length > 2 ? parts[0] : null;
-        String clipId = parts.length > 2 ? parts[1] : null;
+    private static EffectTargetContext resolveTargetContext(
+            TimelineDocument document, String trackId, String clipId,
+            String effectId, String effectKey) {
+        // typed target from the canonical document — no wire encoding, no
+        // trackId string heuristics
         if (trackId == null || clipId == null) {
             throw new IllegalArgumentException(
-                    "Legacy wire effect '" + wire.id() + "' must encode 'trackId|clipId|effectId' "
+                    "Effect '" + effectId + "' must carry a typed ClipEffectTarget "
                             + "to bind target context canonically");
         }
         for (TimelineTrack track : document.getTracks()) {
@@ -314,7 +267,7 @@ public final class EffectSemanticSnapshotAuthority {
             }
         }
         throw new IllegalArgumentException(
-                "Legacy wire effect '" + wire.id() + "' targets clip " + trackId + "/" + clipId
+                "Effect '" + effectId + "' targets clip " + trackId + "/" + clipId
                         + " which does not exist in the canonical document — FAIL CLOSED (T2/T5)");
     }
 }

@@ -163,7 +163,7 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
         // 5. exact pin comes FROM the revision
         var pin = hydrated.effectSemanticSnapshotReference();
         // 6. load exact snapshot from durable store
-        EffectSemanticSnapshot snapshot = freshStore.findById(pin.snapshotId()).orElseThrow();
+        EffectSemanticSnapshot snapshot = freshStore.findById(productId, "tenant-1", pin.snapshotId()).orElseThrow();
         // 7. verify id/digest/version/recomputed digest
         assertEquals(pin.snapshotId(), snapshot.id());
         assertEquals(pin.contentDigest(), snapshot.contentDigest());
@@ -212,7 +212,7 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
         // 5. pin FROM revision-owned persisted state
         var pin = hydrated.effectSemanticSnapshotReference();
         // 6. load exact snapshot by pin
-        EffectSemanticSnapshot snapshot = freshStore.findById(pin.snapshotId()).orElseThrow();
+        EffectSemanticSnapshot snapshot = freshStore.findById(productId, "tenant-1", pin.snapshotId()).orElseThrow();
         // 7. verify id/digest/version
         assertEquals(pin.snapshotId(), snapshot.id());
         assertEquals(pin.contentDigest(), snapshot.contentDigest());

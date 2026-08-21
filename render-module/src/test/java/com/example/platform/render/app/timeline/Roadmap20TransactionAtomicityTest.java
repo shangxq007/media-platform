@@ -162,12 +162,14 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
             }
 
             @Override
-            public void storeTx(org.jooq.DSLContext tx, String projectId, EffectSemanticSnapshot snapshot) {
+            public void storeTx(org.jooq.DSLContext tx, String projectId, String tenantId,
+                                EffectSemanticSnapshot snapshot) {
                 throw new IllegalStateException("TX2 injected snapshot store failure");
             }
 
             @Override
-            public Optional<EffectSemanticSnapshot> findById(com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotId id) {
+            public Optional<EffectSemanticSnapshot> findById(String projectId, String tenantId,
+                                                             com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotId id) {
                 return Optional.empty();
             }
         };
@@ -196,43 +198,77 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
     void tx3_revisionInsertFailureLeavesNoSnapshotOrHead() {
         String productId = "prod-tx3-" + UUID.randomUUID();
         insertFixtures(productId);
-        // force the revision insert to fail: SNAPSHOT_ID column overflow is
-        // avoided — instead drop the timeline_revision table constraint via a
-        // failing snapshot id length is not expressible; use a revision id
-        // exceeding the column width
-        String hugeRevisionId = "r".repeat(300);
-        // not injectable through the service (UUID-generated) — prove the
-        // rollback semantics through the equivalent boundary: a save whose
-        // revision persistence fails leaves the pre-inserted esnap row rolled
-        // back. We emulate by asserting TX2's snapshot-store failure already
-        // rolls back; here we additionally prove a successful save leaves
-        // EXACTLY the governed rows (no partial state).
-        saveService.saveRevisionWithEffects(
-                productId, null, sampleDocument(), List.of(effect("eff-1", "4")), List.of(def("4")), "u");
-        assertEquals(1L, countRevisions(productId), "TX3: one committed revision");
-        assertEquals(3L, countSnapshots(productId), "TX3: governed rows (snap + esnap + revctx)");
-        assertNotNull(currentRevision(productId), "TX3: head moved exactly once");
-        assertFalse(hugeRevisionId.isEmpty());
+        // REAL failure injection: the revision ROW insert (canonical
+        // persistence boundary) throws AFTER the governed Timeline snapshot
+        // and Effect snapshot have been written inside the same transaction.
+        TimelineRevisionSaveService failingSave = new TimelineRevisionSaveService(
+                dsl, currentRevisionService, new TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                new com.example.platform.timeline.app.TimelineArtifactPinValidator(
+                        new com.example.platform.artifact.infrastructure.JooqArtifactQueryService(
+                                new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl),
+                                new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
+                new com.example.platform.artifact.app.ArtifactPinService(
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
+                new EffectSemanticSnapshotAuthority(
+                        new JdbcEffectDefinitionVersionRegistry(dsl),
+                        new JdbcEffectSemanticSnapshotStore(dsl)),
+                new JdbcTimelineRevisionSemanticContextStore(dsl));
+        failingSave.setRevisionPersistencePort((tx, revision, project, snapshotId, schemaVersion,
+                                                 revisionNumber, tenantId, source) -> {
+            throw new IllegalStateException("TX3 injected revision insert failure");
+        });
+        assertThrows(IllegalStateException.class, () ->
+                failingSave.saveRevisionWithEffects(
+                        productId, null, sampleDocument(),
+                        List.of(effect("eff-1", "4")), List.of(def("4")), "u"));
+        // after rollback: no revision row, no revctx row, no transition
+        // snapshot rows, head unchanged
+        assertEquals(0L, countRevisions(productId), "TX3: no accepted revision");
+        assertEquals(0L, countSnapshots(productId), "TX3: no snapshot rows (snap/esnap/revctx all rolled back)");
+        assertNull(currentRevision(productId), "TX3: head unchanged");
     }
 
     @Test
     void tx4_contextStoreFailureLeavesNoRevisionOrHead() {
         String productId = "prod-tx4-" + UUID.randomUUID();
         insertFixtures(productId);
-        // a revision id that overflows the revctx_ row id column is not
-        // injectable; instead drop the context store's backing insert by
-        // making the context row conflict: pre-insert a row that makes the
-        // UNIQUE (project, revision) fail via a conflicting snapshot id is not
-        // expressible — prove the semantic: a save whose context write fails
-        // rolls back everything. We force this via a failing context store
-        // subclass is impossible (final) — instead assert that a SUCCESSFUL
-        // save's context row exists (write path proven) and that the restore
-        // path (which also writes revctx_) is atomic:
-        // restore from a missing revision must leave no partial state.
-        assertThrows(Exception.class, () -> saveService.restoreRevision(
-                        productId, "missing-rev-" + UUID.randomUUID(), null, "u"),
-                "TX4: restore of a missing historical revision fails closed");
-        assertEquals(0L, countRevisions(productId), "TX4: no partial revision rows");
+        // REAL failure injection: the revision semantic context storeTx fails
+        // (after the revision row insert has been attempted in the same
+        // transaction) -> whole canonical transition rolls back.
+        com.example.platform.timeline.version.TimelineRevisionSemanticContextStore failingCtxStore =
+                new com.example.platform.timeline.version.TimelineRevisionSemanticContextStore() {
+                    @Override
+                    public void storeTx(org.jooq.DSLContext tx, String projectId, String revisionId,
+                                        com.example.platform.timeline.version.TimelineRevisionSemanticContext semanticContext) {
+                        throw new IllegalStateException("TX4 injected context store failure");
+                    }
+
+                    @Override
+                    public java.util.Optional<com.example.platform.timeline.version.TimelineRevisionSemanticContext>
+                    findByRevisionId(String revisionId) {
+                        return java.util.Optional.empty();
+                    }
+                };
+        TimelineRevisionSaveService failingSave = new TimelineRevisionSaveService(
+                dsl, currentRevisionService, new TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                new com.example.platform.timeline.app.TimelineArtifactPinValidator(
+                        new com.example.platform.artifact.infrastructure.JooqArtifactQueryService(
+                                new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl),
+                                new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
+                new com.example.platform.artifact.app.ArtifactPinService(
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
+                new EffectSemanticSnapshotAuthority(
+                        new JdbcEffectDefinitionVersionRegistry(dsl),
+                        new JdbcEffectSemanticSnapshotStore(dsl)),
+                failingCtxStore);
+        assertThrows(IllegalStateException.class, () ->
+                failingSave.saveRevisionWithEffects(
+                        productId, null, sampleDocument(),
+                        List.of(effect("eff-1", "4")), List.of(def("4")), "u"));
+        assertEquals(0L, countRevisions(productId), "TX4: no accepted revision");
+        assertEquals(0L, countSnapshots(productId), "TX4: no snapshot rows (snap/esnap/revctx rolled back)");
         assertNull(currentRevision(productId), "TX4: no head move");
     }
 
@@ -240,18 +276,31 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
     void tx5_headUpdateFailureRollsBackWholeTransition() {
         String productId = "prod-tx5-" + UUID.randomUUID();
         insertFixtures(productId);
-        // A product whose current-revision row cannot be updated (constraint
-        // violation on a pre-existing conflicting row) makes the head update
-        // fail; the whole canonical transition must roll back.
-        dsl.execute("update product set current_revision_id = 'rev-fixed' where product_id = ?", productId);
-        // the update in saveRevision targets product_id = ? with the new
-        // revision — no conflict; instead force failure by dropping the
-        // snapshot row visibility: not expressible. Prove the equivalent:
-        // after a successful save the head row is exactly the new revision.
-        saveService.saveRevisionWithEffects(
-                productId, "rev-fixed", sampleDocument(), List.of(effect("eff-1", "4")), List.of(def("4")), "u");
-        String head = currentRevision(productId);
-        assertNotNull(head, "TX5: head updated");
-        assertNotEquals("rev-fixed", head, "TX5: head moved to the new revision");
+        // REAL failure injection: the head update boundary fails AFTER
+        // snapshot + Effect snapshot + revision + revctx have been written in
+        // the same transaction -> whole canonical transition rolls back.
+        TimelineRevisionSaveService failingSave = new TimelineRevisionSaveService(
+                dsl, currentRevisionService, new TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                new com.example.platform.timeline.app.TimelineArtifactPinValidator(
+                        new com.example.platform.artifact.infrastructure.JooqArtifactQueryService(
+                                new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl),
+                                new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
+                new com.example.platform.artifact.app.ArtifactPinService(
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
+                new EffectSemanticSnapshotAuthority(
+                        new JdbcEffectDefinitionVersionRegistry(dsl),
+                        new JdbcEffectSemanticSnapshotStore(dsl)),
+                new JdbcTimelineRevisionSemanticContextStore(dsl));
+        failingSave.setHeadUpdatePort((tx, project, expected, newRevisionId) -> {
+            throw new IllegalStateException("TX5 injected head update failure");
+        });
+        assertThrows(IllegalStateException.class, () ->
+                failingSave.saveRevisionWithEffects(
+                        productId, null, sampleDocument(),
+                        List.of(effect("eff-1", "4")), List.of(def("4")), "u"));
+        assertEquals(0L, countRevisions(productId), "TX5: no revision committed");
+        assertEquals(0L, countSnapshots(productId), "TX5: no snapshot rows committed");
+        assertNull(currentRevision(productId), "TX5: head unchanged");
     }
 }
