@@ -1,0 +1,15 @@
+path	symbol	replacement	production_caller_count	test_caller_count	external_obligation	can_delete_now	migration_scope	evidence	priority
+timeline-module/src/main/java/com/example/platform/timeline/semantics/effect/EffectInstance.java	@Deprecated constructor(s)	EffectSemanticSnapshot / canonical Effect reference	17 files reference EffectInstance (mostly render-side types)	UNKNOWN	NO	NO (wide reference surface)	verify render-side references; replace with canonical Effect semantic snapshot types	P3
+render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java	requeueExecutingJob (deprecated)	no production callers	0	UNKNOWN	NO	YES	dead method candidate	P3
+render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java	requeueFailedJob (deprecated)	no production callers	0	UNKNOWN	NO	YES	dead method candidate	P3
+identity-access-module/src/main/java/com/example/platform/identity/infrastructure/RoleRepository.java	deleteUserRoleAssignment (deprecated)	DevWorkspaceBootstrapService:1 production caller	1	UNKNOWN	NO	PARTIAL	migrate DevWorkspaceBootstrapService then delete	P3
+ai-module/src/main/java/com/example/platform/ai/app/AiGatewayService.java	@Deprecated (class or members)	AiController:1 production caller	1	UNKNOWN	NO	PARTIAL	audit deprecation scope; migrate controller if class-level	P3
+quota-billing-module/.../QuotaBucket.java	@Deprecated members	canonical quota types	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit quota deprecation scope	P3
+quota-billing-module/.../QuotaPolicy.java	@Deprecated members	canonical quota types	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit	P3
+quota-billing-module/.../ThresholdEvent.java	@Deprecated members	canonical quota types	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit	P3
+quota-billing-module/.../UsageRecord.java	@Deprecated members	canonical quota types	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit	P3
+platform-app/.../storage/delivery/contract/StorageDeliveryProfileStatus.java	@Deprecated members	canonical status enum	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit	P3
+prompt-module/.../PromptTemplateStatus.java	@Deprecated members	canonical prompt types	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit	P3
+prompt-module/.../PromptTemplateVersion.java	@Deprecated members	canonical prompt types	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit	P3
+prompt-module/.../PromptTemplateService.java	@Deprecated members	canonical prompt types	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit	P3
+prompt-module/.../PromptJdbcRepository.java	@Deprecated members	canonical prompt types	UNKNOWN	UNKNOWN	NO	UNKNOWN	audit	P3

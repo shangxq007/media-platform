@@ -1,0 +1,13 @@
+path	classification	evidence	module	priority
+timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java	findPayload(String) GLOBAL unscoped	global-ID-only canonical snapshot payload read; production callers: RenderJobExecutionService:590, BaseJobTimelineLoader:56, TimelineRevisionRenderService:129, PlanBasedTimelineRevisionRenderService:187	timeline-module	P1
+timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java	findById(String) GLOBAL unscoped	global-ID-only snapshot read; production callers: TimelineEditorSyncService:73, TimelineAssetLifecycleService:115	timeline-module	P1
+timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java	listDistinctProjectIds() system-level	introspection surface; system-scoped by design	timeline-module	SAFE
+timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java	findById(revisionId) tenant-scoped CORRECT	R3-fixed single ownership-validated read; NOT a risk	timeline-module	SAFE
+render-module/src/main/java/com/example/platform/render/app/RenderJobExecutionService.java	findPayload call :590	caller has job/project context; read itself unscoped	render-module	P1
+render-module/src/main/java/com/example/platform/render/app/timeline/BaseJobTimelineLoader.java	findPayload call :56	caller has job/project context; read itself unscoped	render-module	P1
+render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRevisionRenderService.java	findPayload :129 + findById(revisionId) :113	revision render; revision read scoped, payload read unscoped	render-module	P1
+render-module/src/main/java/com/example/platform/render/app/timeline/compile/PlanBasedTimelineRevisionRenderService.java	findPayload :187 + findById(revisionId) :174	plan-compile; same pattern	render-module	P1
+render-module/src/main/java/com/example/platform/render/app/timeline/TimelineEditorSyncService.java	findById(snapshotId) :73	legacy sync path	render-module	P1
+render-module/src/main/java/com/example/platform/render/app/timeline/TimelineAssetLifecycleService.java	findById(snapshotId) :115	asset lifecycle load-then-check	render-module	P1
+timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java	findById(revisionId) :754 internal	merge engine internal row read then owned snapshot read	merge-engine	P1
+timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionService.java	legacy findById/findPayload	legacy internal-1.0 service read authority	legacy-internal-timeline	P0
