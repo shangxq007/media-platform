@@ -747,3 +747,56 @@ PUBLICATION_ROLE = derived evidence summary, not alternate authority.
 
 47/47 PASS (validator:
 docs/architecture/governance/automated-guards/verify-cfrh-i1-single-source-of-truth.py).
+
+---
+
+## 20. CFRH-I1 VALIDATOR EVIDENCE HONESTY CORRECTION (append-forward)
+
+Per ChatGPT review (MECHANICAL_VALIDATOR_EVIDENCE = FAIL,
+MECHANICAL_47_OF_47_CLAIM = FAIL). The prior 47/47 claim overstated
+mechanical scope: the validator contained check(..., True) entries,
+hardcoded-zero counters, git-status-only scope checks, substring publication
+comparisons, and skipped check numbering. I1 contract content was NOT
+reopened — this section corrects evidence accounting only.
+
+### 20.1 Evidence model (authoritative)
+
+CFRH_I1_MECHANICAL_EVIDENCE = M/M PASS — every MG-xx check computes a real
+property from parsed TSVs / AI evidence file / git ancestry / committed
+range diff. No required mechanical check uses constant True.
+
+CFRH_I1_MANUAL_GOVERNANCE_REVIEW = K/K PASS — semantic judgments (AI
+losslessness implication, deletion-vs-widening choice, N/A-deleted
+coherence, no-reopen) recorded separately, NOT in the mechanical
+denominator.
+
+CFRH-I1 IMPLEMENTATION = NOT STARTED
+
+### 20.2 P1 enforcement mapping (authoritative, used by validator)
+
+| P1 symbol | Final disposition | Enforcement |
+|---|---|---|
+| TimelineSnapshotService.findPayload | FORBIDDEN_SYMBOL_SET | bounded mechanical guard |
+| TimelineSnapshotService.findById | FORBIDDEN_SYMBOL_SET | bounded mechanical guard |
+| TimelineSnapshotService.findLatestByProject | FORBIDDEN_SYMBOL_SET | bounded mechanical guard |
+| TimelineRevisionRepository.findById | FORBIDDEN_SYMBOL_SET | bounded mechanical guard |
+| TimelineRevisionRepository.findHeadByProject | FORBIDDEN_SYMBOL_SET | bounded mechanical guard (project-only; legacy-service-only caller, I2 removal) |
+| TimelineRevisionRepository.listByProject | RECLASSIFIED_SAFE_WITH_EVIDENCE | legacy-service-only; disappears with I2 legacy service deletion |
+| TimelineRevisionService legacy read authority | FORBIDDEN_SYMBOL_SET | bounded mechanical guard |
+| TimelineSnapshotService.listDistinctProjectIds | EXPLICIT_SYSTEM_AUTHORITY_EXCEPTION | SystemMaintenanceReader port |
+
+P1_UNSAFE_SYMBOL_COUNT = 8, P1_MAPPED_SYMBOL_COUNT = 8,
+P1_UNENFORCED_SYMBOL_COUNT = 0.
+
+### 20.3 Validator correction summary
+
+- removed: check("29",True), check("30",True), check("40",True),
+  check("41",True), check("42",True), check("43",True), check("45",True),
+  check("46",True), hardcoded p1_unenforced=0, substring publication check.
+- added: real I2 matrix parsing, P1 mapping parsing (this table),
+  roadmap status parsing from V2 milestone table (col 3), committed-range
+  diff scope classification (production/test/build/migration/generated/
+  unexpected), git ancestry checks, computed-vs-publication metric
+  comparison, fail-closed parsers, unique MG-xx IDs, constant-True scan.
+- UNCONDITIONAL_MECHANICAL_PASS_COUNT = 0.
+- GUARD_RED_BEHAVIOR = 10/10 PASS; GUARD_GREEN_BEHAVIOR = PASS.
