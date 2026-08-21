@@ -57,6 +57,7 @@ public class TimelineRevisionController {
     private final RenderJobStatusService renderJobStatusService;
     private final com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService;
     private final com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService;
+    private final com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec;
 
     public TimelineRevisionController(TimelineRevisionService revisionService,
                                        TimelineMergeEngine mergeEngine,
@@ -64,7 +65,8 @@ public class TimelineRevisionController {
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService,
                                        com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService,
-                                       com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService) {
+                                       com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService,
+                                       com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec) {
         this.revisionService = revisionService;
         this.mergeEngine = mergeEngine;
         this.eventPublisher = eventPublisher;
@@ -72,6 +74,7 @@ public class TimelineRevisionController {
         this.renderJobStatusService = renderJobStatusService;
         this.revisionSaveService = revisionSaveService;
         this.currentRevisionService = currentRevisionService;
+        this.timelinePayloadCodec = timelinePayloadCodec;
     }
 
     @GetMapping
@@ -417,13 +420,21 @@ public class TimelineRevisionController {
         // (legacy read authority remains for CFRH-I2; this is not a write path).
         var detail = revisionService.getDetail(newRevisionId);
         var info = detail.map(RevisionDetail::revision).orElse(null);
-        var payload = revisionService.getRevisionSnapshotPayload(projectId, newRevisionId)
+        var internalPayload = revisionService.getRevisionSnapshotPayload(projectId, newRevisionId)
                 .map(RevisionSnapshotPayload::internalTimelineJson)
                 .orElse(null);
+        if (info == null || internalPayload == null) {
+            // Canonical restore success guarantees the new revision + governed
+            // payload exist; a missing read is an impossible post-restore state.
+            throw new IllegalStateException(
+                    "RESTORE_RESPONSE_INCOMPLETE: restored revision " + newRevisionId
+                            + " missing detail or internal payload");
+        }
+        String editorPayload = timelinePayloadCodec.toEditorJson(internalPayload);
         return new RestoreResponse(
-                info != null ? toListItem(info) : null,
-                payload,
-                payload);
+                toListItem(info),
+                editorPayload,
+                internalPayload);
     }
 
     private static ChangeSummaryDto parseChangeSummary(String json) {
