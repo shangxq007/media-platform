@@ -757,10 +757,13 @@ public class TimelineMergeEngine {
 
     private String loadPayload(TimelineRevisionRepository.RevisionRow revision, String contextTenant) {
         if (contextTenant != null) {
-            TimelineSnapshotService.SnapshotInfo info = snapshotService.findById(revision.snapshotId())
-                    .orElseThrow(() -> new IllegalStateException("Snapshot not found: " + revision.snapshotId()));
-            TenantGuard.assertSameTenant(info.tenantId());
-            return info.payloadJson();
+            // R1: ownership-scoped authoritative snapshot read (no
+            // load-then-check; identity uniqueness is not ownership authority).
+            return snapshotService.findOwnedById(revision.projectId(), contextTenant,
+                            revision.snapshotId())
+                    .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Snapshot not found/owned: " + revision.snapshotId()));
         }
         return snapshotService.findPayload(revision.snapshotId())
                 .orElseThrow(() -> new IllegalStateException("Snapshot not found: " + revision.snapshotId()));
@@ -775,7 +778,8 @@ public class TimelineMergeEngine {
                 .filter(row -> request.baseRevisionId().equals(row.mergeBaseRevisionId()))
                 .filter(row -> mergedPayloadHash.equals(row.contentHash()))
                 .filter(row -> contextTenant == null || contextTenant.equals(row.tenantId()))
-                .filter(row -> snapshotService.findById(row.snapshotId()).isPresent())
+                .filter(row -> snapshotService.findOwnedById(
+                        row.projectId(), contextTenant, row.snapshotId()).isPresent())
                 .findFirst();
     }
 

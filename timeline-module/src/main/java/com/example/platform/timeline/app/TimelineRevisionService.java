@@ -135,7 +135,10 @@ public class TimelineRevisionService {
             return toInfo(head.get());
         }
 
-        String parentPayload = head.flatMap(h -> snapshotService.findPayload(h.snapshotId())).orElse(null);
+        String parentPayload = head.flatMap(h -> snapshotService.findOwnedById(
+                        projectId, effectiveTenant, h.snapshotId()))
+                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
+                .orElse(null);
         String changeSummaryJson = diffService.summarizeJson(parentPayload, internalTimelineJson);
         String patchOpsJson = TimelinePatchOpsJson.toJson(patchOperations);
 
@@ -201,7 +204,9 @@ public class TimelineRevisionService {
                 return Optional.empty();
             }
             return snapshotService
-                    .findPayload(row.snapshotId())
+                    .findOwnedById(row.projectId(),
+                            com.example.platform.shared.web.TenantContext.get(), row.snapshotId())
+                    .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
                     .map(payload -> {
                         String internal = payload;
                         try {

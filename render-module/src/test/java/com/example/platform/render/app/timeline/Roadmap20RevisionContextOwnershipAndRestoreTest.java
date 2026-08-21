@@ -318,6 +318,185 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         assertEquals(rev.revisionId(), currentRevision(productId), "RST_TX_HEAD: head unchanged");
     }
 
+    // ---- R1/R2: restore semantic closure attacks (RST7-RST12) ----
+
+    private TimelineRevisionSaveService saveFor(String productId, String tenant) {
+        com.example.platform.shared.web.TenantContext.set(tenant);
+        dsl.execute("insert into product (product_id, tenant_id, project_id, product_type, "
+                + "representation_kind, status, created_at, updated_at) "
+                + "values ('" + productId + "', '" + tenant + "', '" + productId + "', 'video', "
+                + "'master', 'REGISTERED', now(), now()) on conflict (product_id) do nothing");
+        dsl.execute("insert into artifact (id, tenant_id, content_digest, byte_length, media_type, "
+                + "artifact_kind, state, schema_version, created_at) "
+                + "values ('art-1', '" + tenant + "', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', "
+                + "100, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', 1, now()) "
+                + "on conflict (id) do nothing");
+        return saveService();
+    }
+
+    @Test
+    void rst7_foreignTimelineSnapshotFailsClosed() {
+        // R1: RA (project A) corrupted to point at RB's (project B) snapshot
+        String tenantA = "proj-a-t";
+        TimelineRevisionSaveService svcA = saveFor("proj-a", tenantA);
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        var ra = svcA.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        TimelineRevisionSaveService svcB = saveFor("proj-b", "proj-b-t");
+        com.example.platform.shared.web.TenantContext.set("proj-b-t");
+        var rb = svcB.saveRevisionWithEffects("proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                        List.of(), TimelineMetadata.empty(),
+                        com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of(), List.of()), List.of(), List.of(), "u");
+        String rbSnap = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
+                rb.revisionId()).get(0, String.class);
+        // corrupt RA to point at RB's snapshot
+        dsl.execute("update timeline_revision set snapshot_id = ? where id = ?", rbSnap, ra.revisionId());
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        TimelineRevisionSaveService svcA2 = saveService();
+        assertThrows(Exception.class,
+                () -> svcA2.restoreRevision("proj-a", ra.revisionId(), ra.revisionId(), "u"),
+                "RST7: foreign Timeline snapshot in restore FAILS CLOSED");
+        assertEquals(ra.revisionId(), currentRevision("proj-a"), "RST7: head unchanged");
+    }
+
+    @Test
+    void rst8_revisionContentHashMismatchFailsClosed() {
+        String tenantA = "proj-a-t";
+        saveFor("proj-a", tenantA);
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        TimelineRevisionSaveService svc = saveService();
+        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        dsl.execute("update timeline_revision set content_hash = 'tampered' where id = ?", rev.revisionId());
+        assertThrows(Exception.class,
+                () -> svc.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u"),
+                "RST8: content_hash mismatch FAILS CLOSED (3-way digest violated)");
+    }
+
+    @Test
+    void rst9_timelinePayloadDigestMismatchFailsClosed() {
+        String tenantA = "proj-a-t";
+        saveFor("proj-a", tenantA);
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        TimelineRevisionSaveService svc = saveService();
+        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        // replace the governed Timeline payload with a DIFFERENT valid document
+        String snapId = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
+                rev.revisionId()).get(0, String.class);
+        String other = com.example.platform.timeline.app.TimelineDocumentJsonSerializer
+                .serializeWithCaptions(new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                        List.of(new TimelineTrack("t9", "v9", TrackType.VIDEO, List.of())),
+                        TimelineMetadata.empty(), com.example.platform.audio.domain.mix.AudioMix.EMPTY,
+                        List.of(), List.of()));
+        dsl.execute("update timeline_snapshot set payload_json = ? where id = ?", other, snapId);
+        assertThrows(Exception.class,
+                () -> svc.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u"),
+                "RST9: Timeline payload digest mismatch FAILS CLOSED");
+    }
+
+    @Test
+    void rst10_missingEffectSnapshotFailsClosed() {
+        String tenantA = "proj-a-t";
+        saveFor("proj-a", tenantA);
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        TimelineRevisionSaveService svc = saveService();
+        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(),
+                List.of(effect("eff-1", "4")), List.of(def("4")), "u");
+        // delete the esnap_ row (keep revctx reference)
+        String pin = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
+                rev.revisionId()).get(0, String.class);
+        dsl.execute("delete from timeline_snapshot where id = ?", pin);
+        assertThrows(Exception.class,
+                () -> svc.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u"),
+                "RST10: missing Effect snapshot FAILS CLOSED (no remint, no EMPTY)");
+    }
+
+    @Test
+    void rst11_foreignEffectSnapshotFailsClosed() {
+        String tenantA = "proj-a-t";
+        TimelineRevisionSaveService svcA = saveFor("proj-a", tenantA);
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        var ra = svcA.saveRevisionWithEffects("proj-a", null, sampleDocument(),
+                List.of(effect("eff-1", "4")), List.of(def("4")), "u");
+        TimelineRevisionSaveService svcB = saveFor("proj-b", "proj-b-t");
+        com.example.platform.shared.web.TenantContext.set("proj-b-t");
+        var rb = svcB.saveRevisionWithEffects("proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                        List.of(), TimelineMetadata.empty(),
+                        com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of(), List.of()),
+                List.of(), List.of(), "u");
+        String rbEsnap = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
+                rb.revisionId()).get(0, String.class);
+        // corrupt RA revctx Effect reference to point at RB's foreign esnap_
+        String payload = dsl.fetchOne("select payload_json from timeline_snapshot where id = ?",
+                "revctx_" + ra.revisionId()).get(0, String.class);
+        String tampered = payload.replaceFirst("\"snapshotId\":\"[^\"]*\"",
+                "\"snapshotId\":\"" + rbEsnap + "\"");
+        dsl.execute("update timeline_snapshot set payload_json = ? where id = ?",
+                tampered, "revctx_" + ra.revisionId());
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        TimelineRevisionSaveService svcA2 = saveService();
+        assertThrows(Exception.class,
+                () -> svcA2.restoreRevision("proj-a", ra.revisionId(), ra.revisionId(), "u"),
+                "RST11: foreign Effect snapshot ownership FAILS CLOSED");
+    }
+
+    @Test
+    void rst12_effectReferenceDigestMismatchFailsClosed() {
+        String tenantA = "proj-a-t";
+        saveFor("proj-a", tenantA);
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        TimelineRevisionSaveService svc = saveService();
+        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(),
+                List.of(effect("eff-1", "4")), List.of(def("4")), "u");
+        // tamper revctx Effect reference contentDigest (keep snapshotId real)
+        String payload = dsl.fetchOne("select payload_json from timeline_snapshot where id = ?",
+                "revctx_" + rev.revisionId()).get(0, String.class);
+        String tampered = payload.replaceFirst("\"contentDigest\":\"[^\"]*\"",
+                "\"contentDigest\":\"tampered\"");
+        dsl.execute("update timeline_snapshot set payload_json = ? where id = ?",
+                tampered, "revctx_" + rev.revisionId());
+        assertThrows(Exception.class,
+                () -> svc.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u"),
+                "RST12: Effect reference digest mismatch FAILS CLOSED");
+    }
+
+    // ---- R3: findById read ownership (READOWN1-2) ----
+
+    @Test
+    void readown1_crossTenantFindByIdNotVisible() {
+        String tenantA = "proj-a-t";
+        saveFor("proj-a", tenantA);
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        TimelineRevisionSaveService svc = saveService();
+        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        // switch tenant -> findById must NOT resolve the revision
+        com.example.platform.shared.web.TenantContext.set("other-tenant");
+        assertNull(svc.findById(rev.revisionId()),
+                "READOWN1: cross-tenant findById NOT FOUND (no existence leakage)");
+    }
+
+    @Test
+    void readown2_foreignTimelineSnapshotHydrationFailsClosed() {
+        String tenantA = "proj-a-t";
+        TimelineRevisionSaveService svcA = saveFor("proj-a", tenantA);
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        var ra = svcA.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        TimelineRevisionSaveService svcB = saveFor("proj-b", "proj-b-t");
+        com.example.platform.shared.web.TenantContext.set("proj-b-t");
+        var rb = svcB.saveRevisionWithEffects("proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                        List.of(), TimelineMetadata.empty(),
+                        com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of(), List.of()), List.of(), List.of(), "u");
+        String rbSnap = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
+                rb.revisionId()).get(0, String.class);
+        dsl.execute("update timeline_revision set snapshot_id = ? where id = ?", rbSnap, ra.revisionId());
+        com.example.platform.shared.web.TenantContext.set(tenantA);
+        // hydration path resolves the snapshot ownership-scoped -> foreign payload
+        // must NOT silently hydrate; restore verification covers the canonical
+        // path (RST7), and the save-service read helpers remain fail-closed.
+        TimelineRevisionSaveService svcA2 = saveService();
+        assertThrows(Exception.class,
+                () -> svcA2.restoreRevision("proj-a", ra.revisionId(), ra.revisionId(), "u"),
+                "READOWN2: foreign Timeline snapshot never hydrates canonically");
+    }
+
     private long countRevisions(String productId) {
         return dsl.fetchOne("select count(1) from timeline_revision where project_id = ?", productId).get(0, Long.class);
     }

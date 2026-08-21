@@ -53,6 +53,8 @@ public class TimelineRevisionSaveService {
     // no public runtime authority mutation surface.
     private final TimelineRevisionPersistencePort revisionPersistence;
     private final HeadUpdatePort headUpdatePort;
+    // R2: bounded restore verification boundary (fail-closed; no new authority).
+    private final HistoricalRevisionRestoreVerifier restoreVerifier;
 
     /**
      * SINGLE production constructor: snapshot payload + CHECKPOINT_A artifact-pin
@@ -94,6 +96,9 @@ public class TimelineRevisionSaveService {
         this.revisionSemanticContextStore = Objects.requireNonNull(revisionSemanticContextStore, "revisionSemanticContextStore");
         this.revisionPersistence = Objects.requireNonNull(revisionPersistence, "revisionPersistence");
         this.headUpdatePort = Objects.requireNonNull(headUpdatePort, "headUpdatePort");
+        this.restoreVerifier = new HistoricalRevisionRestoreVerifier(
+                timelineSnapshotService, effectSnapshotAuthority.store(),
+                contentDigester);
     }
 
     /**
@@ -306,34 +311,38 @@ public class TimelineRevisionSaveService {
         return dsl.transactionResult(tx -> {
             // Contract P + F4: restore copies the historical governed payload into a new
             // snapshot row; a missing/null payload FAILS CLOSED — no legacy fallback.
+            // R2 (RESTORE_VERIFIES_BEFORE_REISSUING_CANONICAL_AUTHORITY_V1):
+            // complete historical semantic closure verified BEFORE any new
+            // persisted transition state — no temporary rows are created
+            // before historical corruption is discovered.
+            com.example.platform.timeline.version.TimelineRevisionSemanticContext historicalContext0 =
+                    revisionSemanticContextStore.findByRevisionId(
+                            tx.dsl(), productId, tenantId, historicalRevisionId).orElseThrow(
+                            () -> new IllegalStateException(
+                                    "RESTORE FAIL CLOSED (RST3): historical revision '"
+                                            + historicalRevisionId + "' has no revision semantic context"));
+            String historicalSnapshotId0 = tx.dsl().select(TIMELINE_REVISION.SNAPSHOT_ID)
+                    .from(TIMELINE_REVISION)
+                    .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
+                    .and(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                    .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
+                    .fetchOne(TIMELINE_REVISION.SNAPSHOT_ID);
+            HistoricalRevisionRestoreVerifier.VerifiedHistoricalRevision verified =
+                    restoreVerifier.verify(tx.dsl(), productId, tenantId,
+                            historicalSnapshotId0, contentHashFinal, historicalContext0);
+
             String snapshotId = copyHistoricalSnapshotPayload(
                     tx.dsl(), productId, tenantId, historicalRevisionId, revisionId);
 
-            // ROADMAP20 authority integration (§10/§35): the restored NEW
-            // revision must own exact Effect semantics — load the historical
-            // revision's semantic context. Legacy MISSING cannot be silently
-            // propagated into a new canonical revision: FAIL CLOSED (no
-            // deterministic legacy hydration source exists today).
+            // R2: the restored revision reissues the VERIFIED historical
+            // commitment — new revision identity, exact historical semantics
+            // (no remint, no EMPTY fallback, no Effect wire hydration).
             com.example.platform.timeline.version.TimelineRevisionSemanticContext historicalContext =
-                    revisionSemanticContextStore.findByRevisionId(
-                            tx.dsl(), productId, tenantId, historicalRevisionId).orElse(null);
-            if (historicalContext == null) {
-                throw new IllegalArgumentException(
-                        "RESTORE FAIL CLOSED (§10/§35/CLEAN-FORWARD): historical revision '"
-                                + historicalRevisionId + "' has no revision semantic context — a new "
-                                + "canonical revision must never be created without authoritative "
-                                + "Effect semantics");
-            }
-            // The restored revision pins the SAME immutable Effect snapshot
-            // (historical binding untouched; semantic equivalence exact).
-            String revisionSemanticDigest =
-                    com.example.platform.timeline.semantics.effect.TimelineRevisionEffectSemanticCommitment
-                            .revisionEffectSemanticDigest(
-                                    historicalContext.timelineContentDigest(),
-                                    historicalContext.effectReference());
+                    historicalContext0;
+            String revisionSemanticDigest = verified.fullRevisionSemanticDigest();
             com.example.platform.timeline.version.TimelineRevisionSemanticContext newContext =
                     new com.example.platform.timeline.version.TimelineRevisionSemanticContext(
-                            historicalContext.timelineContentDigest(),
+                            verified.timelineDigest(),
                             historicalContext.effectReference(),
                             revisionSemanticDigest,
                             historicalContext.digestContractVersion());
@@ -451,9 +460,14 @@ public class TimelineRevisionSaveService {
 
     @Transactional(readOnly = true)
     public TimelineRevision findById(String revisionId) {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        // R3 (REVISION_ROW_AUTHORITATIVE_READ_IS_TENANT_SCOPED_V1): the
+        // initial revision row read is tenant-scoped — no authoritative
+        // existence/project leakage across tenant boundaries.
         String projectId = dsl.select(TIMELINE_REVISION.PROJECT_ID)
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(revisionId))
+                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
                 .fetchOne(TIMELINE_REVISION.PROJECT_ID);
 
         if (projectId == null) return null;
@@ -487,8 +501,7 @@ public class TimelineRevisionSaveService {
         // (exact Effect pin) is loaded from revision-owned persisted state —
         // reconstructs the pin WITHOUT caller input.
         com.example.platform.timeline.version.TimelineRevisionSemanticContext semanticContext =
-                revisionSemanticContextStore.findByRevisionId(
-                        dsl, projectId, com.example.platform.shared.web.TenantContext.get(), revisionId)
+                revisionSemanticContextStore.findByRevisionId(dsl, projectId, tenantId, revisionId)
                         .orElse(null);
         if (semanticContext == null) {
             // CLEAN-FORWARD: a valid canonical revision ALWAYS owns its

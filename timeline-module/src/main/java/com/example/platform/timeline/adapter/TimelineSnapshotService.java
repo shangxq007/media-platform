@@ -61,6 +61,42 @@ public class TimelineSnapshotService {
         return Optional.ofNullable(record.get(TIMELINE_SNAPSHOT.PAYLOAD_JSON));
     }
 
+    /**
+     * ROADMAP20 FINAL (R1): ownership-scoped authoritative Timeline snapshot
+     * read (TIMELINE_SNAPSHOT_LOOKUP_IS_PROJECT_AND_TENANT_SCOPED_V1) —
+     * resolves ONLY a snapshot bound to (projectId, tenantId). Identity
+     * uniqueness != ownership authority. Canonical restore / verification /
+     * hydration MUST use this path; never unscoped {@link #findPayload}.
+     */
+    /** Convenience overload using this service's DSL (non-transactional reads). */
+    public Optional<SnapshotInfo> findOwnedById(String projectId, String tenantId,
+                                                String snapshotId) {
+        return findOwnedById(dsl, projectId, tenantId, snapshotId);
+    }
+
+    public Optional<SnapshotInfo> findOwnedById(org.jooq.DSLContext readDsl,
+                                                String projectId, String tenantId,
+                                                String snapshotId) {
+        if (snapshotId == null || snapshotId.isBlank()) {
+            return Optional.empty();
+        }
+        Record record = readDsl.select(
+                        TIMELINE_SNAPSHOT.ID,
+                        TIMELINE_SNAPSHOT.PROJECT_ID,
+                        TIMELINE_SNAPSHOT.TENANT_ID,
+                        TIMELINE_SNAPSHOT.PAYLOAD_JSON,
+                        TIMELINE_SNAPSHOT.SCHEMA_VERSION)
+                .from(TIMELINE_SNAPSHOT)
+                .where(TIMELINE_SNAPSHOT.ID.eq(snapshotId))
+                .and(TIMELINE_SNAPSHOT.PROJECT_ID.eq(projectId))
+                .and(TIMELINE_SNAPSHOT.TENANT_ID.eq(tenantId))
+                .fetchOne();
+        if (record == null) {
+            return Optional.empty();
+        }
+        return Optional.of(mapSnapshotInfo(record));
+    }
+
     public Optional<SnapshotInfo> findLatestByProject(String projectId) {
         if (projectId == null || projectId.isBlank()) {
             return Optional.empty();

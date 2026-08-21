@@ -163,9 +163,15 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
         when(revisionRepository.findById("rev-target")).thenReturn(Optional.of(row("rev-target", "snap-target")));
         when(snapshotService.findById("snap-base"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", PROJECT, TENANT, base, "internal-1.0")));
+        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-base"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", PROJECT, TENANT, base, "internal-1.0")));
         when(snapshotService.findById("snap-source"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-source", PROJECT, TENANT, source, "internal-1.0")));
+        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-source"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-source", PROJECT, TENANT, source, "internal-1.0")));
         when(snapshotService.findById("snap-target"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-target", PROJECT, TENANT, target, "internal-1.0")));
+        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-target"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-target", PROJECT, TENANT, target, "internal-1.0")));
         when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
                 .thenAnswer(inv -> "snap-merged-" + inv.getArgument(2).hashCode());

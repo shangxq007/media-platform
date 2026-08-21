@@ -158,9 +158,15 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
         // Canonical gates always on: loadPayload resolves snapshots via findById (tenant-aware).
         when(snapshotService.findById("snap-base"))
                 .thenReturn(Optional.of(info("snap-base", baseJson)));
+        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-base"))
+                .thenReturn(Optional.of(info("snap-base", baseJson)));
         when(snapshotService.findById("snap-source"))
                 .thenReturn(Optional.of(info("snap-source", sourceJson)));
+        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-source"))
+                .thenReturn(Optional.of(info("snap-source", sourceJson)));
         when(snapshotService.findById("snap-target"))
+                .thenReturn(Optional.of(info("snap-target", targetJson)));
+        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-target"))
                 .thenReturn(Optional.of(info("snap-target", targetJson)));
         when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
                 .thenAnswer(inv -> "snap-merged-" + inv.getArgument(2).hashCode());
@@ -332,6 +338,8 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
                 true, SOURCE_REV + "," + TARGET_REV, BASE_REV, OffsetDateTime.now());
         when(revisionRepository.listByProject(PROJECT, 500)).thenReturn(List.of(existing));
         when(snapshotService.findById("snap-dup")).thenReturn(Optional.of(
+                new TimelineSnapshotService.SnapshotInfo("snap-dup", PROJECT, TENANT, payload, "internal-1.0")));
+        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-dup")).thenReturn(Optional.of(
                 new TimelineSnapshotService.SnapshotInfo("snap-dup", PROJECT, TENANT, payload, "internal-1.0")));
 
         TimelineMergeResult result = engine.merge(request("retry"));

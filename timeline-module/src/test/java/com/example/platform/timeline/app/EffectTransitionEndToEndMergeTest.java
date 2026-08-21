@@ -210,9 +210,15 @@ class EffectTransitionEndToEndMergeTest {
         when(revisionRepo.findById("tgt-rev")).thenReturn(Optional.of(tgtRow));
         when(snapshotService.findById("snap-base"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", base, "internal-1.0")));
+        when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-base"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", base, "internal-1.0")));
         when(snapshotService.findById("snap-src"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", source, "internal-1.0")));
+        when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-src"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", source, "internal-1.0")));
         when(snapshotService.findById("snap-tgt"))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", target, "internal-1.0")));
+        when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-tgt"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", target, "internal-1.0")));
         when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
                 .thenReturn("snap-merged");
