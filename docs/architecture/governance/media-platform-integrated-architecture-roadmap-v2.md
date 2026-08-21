@@ -13,9 +13,10 @@ CANONICALIZATION applied, pending independent final ledger review)**
 | SUPERSEDES | none (cumulative baseline; older decisions remain authoritative unless explicitly superseded) |
 | AUTHORITY | ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1 |
 | ROADMAP_20 | CLOSED / INTEGRATED at main 19db3aea |
-| REVIEWED_PREDECESSOR | 102e5298ec2e5510a666579847099dd9260ea03b |
-| CORRECTION_TYPE | FINAL MECHANICAL LEDGER CANONICALIZATION (F1-F4) |
-| ARV2_FINAL_MECHANICAL_LEDGER_CANONICALIZATION | 32/32 PASS |
+| REVIEWED_PREDECESSOR | b53f6d1d6ffbb4bc18d8e6ae6a88814c7be3aca6 |
+| CORRECTION_TYPE | FINAL MECHANICAL GUARD EVIDENCE CORRECTION (G1-G4) |
+| ARV2_FINAL_MECHANICAL_GUARD | 38/38 PASS |
+| ARV2_FINAL_MANUAL_GOVERNANCE_REVIEW | 4/4 PASS |
 
 This document is the current top-level architecture roadmap authority. It
 consolidates repository-adopted architecture decisions up through Roadmap #20
@@ -989,41 +990,86 @@ Classifications: all REFINE/ADD; no SUPERSEDE needed.
 
 Percentages, if desired, belong in non-authoritative planning analysis only.
 
-## 26. ARV2 FINAL MECHANICAL LEDGER CANONICALIZATION checklist (F1-F4 closure)
+## 26. ARV2 FINAL MECHANICAL GUARD + MANUAL GOVERNANCE REVIEW
+
+Evidence model: MECHANICAL_GUARD (facts the guard recomputes from the
+document + git) is reported separately from MANUAL_GOVERNANCE_REVIEW
+(semantic judgments not reliably machine-decidable). They are never combined
+into one denominator. A governance guard may claim PASS only for a property
+it actually evaluates.
+
+### 26.1 MECHANICAL_GUARD (MG-01..MG-38)
+
+Executable: `docs/architecture/governance/automated-guards/
+verify-ar-v2-mechanical-ledger.py` (exit 0 = PASS; fail-closed on missing
+sections / zero rows / parse failure; no unconditional `check(..., True)`
+acceptance).
 
 | Check | Result |
 |---|---|
-| ML-01 parse §22 traceability, count actual rows | PASS (26) |
-| ML-02 parse §22.1 register | PASS (26) |
-| ML-03 §22 ID set == §22.1 ID set | PASS |
-| ML-04 no duplicate IDs in §22 | PASS |
-| ML-05 no duplicate IDs in §22.1 | PASS |
-| ML-06 every §22 ID has exactly one classification | PASS |
-| ML-07 classification ∈ {EXACT_EXISTING_FROZEN_ID, NEW_V2_UMBRELLA_ID, NEW_V2_ADOPTED_DECISION_ID} | PASS |
-| ML-08 classification counts sum to actual rows | PASS (6+7+13=26) |
-| ML-09 no hardcoded 25/18/7 assertion remains | PASS (metrics recomputed to 26/6/7/13) |
-| ML-10 every ARCH_STATUS ∈ architecture enum | PASS |
-| ML-11 every IMPL_STATUS ∈ implementation enum | PASS |
-| ML-12 every MILESTONE_STATUS ∈ milestone enum | PASS |
-| ML-13 CLOSED in normalized ledger only in MILESTONE_STATUS | PASS |
-| ML-14 `IMPLEMENTED (governance)` count in IMPL_STATUS = 0 | PASS |
-| ML-15 every NEW_V2_UMBRELLA_ID has explicit COMPOSES/GROUPS/SUMMARIZES | PASS (7/7) |
-| ML-16 every NEW_V2_UMBRELLA_ID has explicit source authorities | PASS (7/7) |
-| ML-17 every NEW_V2_UMBRELLA_ID MILESTONE_STATUS = NOT_APPLICABLE | PASS (7/7) |
-| ML-18 every EXACT_EXISTING_FROZEN_ID PRE_V2_PROOF = VERIFIED | PASS (6/6) |
-| ML-19 every EXACT_EXISTING_FROZEN_ID SOURCE_COMMIT_SHA ancestor of 19db3aea | PASS (6/6) |
-| ML-20 exact ID present in SOURCE_PATH at SOURCE_COMMIT_SHA | PASS (6/6) |
-| ML-21 no EXACT uses V2-created source as proof | PASS |
-| ML-22 INVALID_OR_AMBIGUOUS count = 0 | PASS |
-| ML-23 UNREGISTERED_ALIAS count = 0 | PASS |
-| ML-24 NEAR_SYNONYM_WITHOUT_RELATION count = 0 | PASS |
-| ML-25 Roadmap row count = 28 | PASS |
-| ML-26 Roadmap #20 = CLOSED | PASS |
-| ML-27 Roadmap #21 = NOT_STARTED | PASS |
-| ML-28 Roadmap #22 = NOT_STARTED | PASS |
-| ML-29 Operation Model: FROZEN / IMPLEMENTED / CLOSED | PASS |
-| ML-30 OperationPlan: FROZEN / IMPLEMENTED / CLOSED | PASS |
-| ML-31 Revision Command: FROZEN / IMPLEMENTED / CLOSED | PASS |
-| ML-32 unresolved contradiction count = 0 | PASS (24 pairs) |
+| MG-01 §22 actual row count parses | PASS (26) |
+| MG-02 §22.1 actual row count parses | PASS (26) |
+| MG-03 §22 and §22.1 ID sets equal | PASS |
+| MG-04 no duplicate ID in §22 | PASS |
+| MG-05 no duplicate ID in §22.1 | PASS |
+| MG-06 each ID has exactly one classification | PASS |
+| MG-07 every classification ∈ allowed enum | PASS |
+| MG-08 classification counts sum to row count | PASS (6+7+13=26) |
+| MG-09 computed counts match ledger metrics | PASS |
+| MG-10 no stale 25/18/7 metrics remain | PASS |
+| MG-11 every ARCH_STATUS ∈ architecture enum | PASS |
+| MG-12 every IMPL_STATUS ∈ implementation enum | PASS |
+| MG-13 every MILESTONE_STATUS ∈ milestone enum | PASS |
+| MG-14 CLOSED absent from ARCH_STATUS | PASS |
+| MG-15 CLOSED absent from IMPL_STATUS | PASS |
+| MG-16 `IMPLEMENTED (governance)` absent from IMPL_STATUS | PASS |
+| MG-17 every umbrella has recognized relation type (COMPOSES/GROUPS/SUMMARIZES) | PASS (7/7) |
+| MG-18 every umbrella relation has non-empty source-authority payload | PASS (7/7) |
+| MG-19 every umbrella MILESTONE_STATUS = NOT_APPLICABLE | PASS (7/7) |
+| MG-20 every EXACT PRE_V2_PROOF = VERIFIED | PASS (6/6) |
+| MG-21 every EXACT SOURCE_COMMIT_SHA ancestor of base main | PASS (6/6) |
+| MG-22 every EXACT ID exact-string in SOURCE_PATH@SOURCE_COMMIT_SHA | PASS (6/6) |
+| MG-23 no EXACT uses V2-created evidence as pre-V2 proof | PASS |
+| MG-24 every NEW_V2_ADOPTED PRE_V2_PROOF = NO_PRE_V2_EVIDENCE | PASS (13/13) |
+| MG-25 every NEW_V2_ADOPTED ID absent from BASE_MAIN history (`git log BASE_MAIN -S <id>` empty) | PASS (13/13) |
+| MG-26 mechanically-derived invalid/unclassified/ambiguous count = 0 | PASS |
+| MG-27 roadmap table = exact set {1..28}, no dup/missing | PASS |
+| MG-28 #20 status contains CLOSED | PASS |
+| MG-29 #21 status = NOT STARTED | PASS |
+| MG-30 #22 status = NOT STARTED | PASS |
+| MG-31 Operation Model triple FROZEN/IMPLEMENTED/CLOSED | PASS |
+| MG-32 OperationPlan triple FROZEN/IMPLEMENTED/CLOSED | PASS |
+| MG-33 Revision Command triple FROZEN/IMPLEMENTED/CLOSED | PASS |
+| MG-34 §24 contradiction table parses | PASS (24 rows) |
+| MG-35 every parsed contradiction row is consistent | PASS (24/24) |
+| MG-36 computed unresolved contradiction count = 0 | PASS |
+| MG-37 document summary matches computed unresolved count | PASS |
+| MG-38 guard itself contains no unconditional required-evidence acceptance | PASS |
 
-**ARV2_FINAL_MECHANICAL_LEDGER_CANONICALIZATION = 32/32 PASS**
+**ARV2_FINAL_MECHANICAL_GUARD = 38/38 PASS**
+
+Guard behavioral proof (mutation/adversarial validation, temporary copies
+only, never committed):
+- GUARD_RED_BEHAVIOR = 7/7 PASS (GV-RED-01 classification-row removal,
+  GV-RED-02 IMPLEMENTED (governance), GV-RED-03 empty umbrella source,
+  GV-RED-04 EXACT source SHA = V2 commit, GV-RED-05 NEW_ADOPTED proof
+  flip, GV-RED-06 contradiction → unresolved, GV-RED-07 roadmap #22
+  duplication — each makes the guard exit non-zero)
+- GUARD_GREEN_BEHAVIOR = PASS (exact candidate tree restored, exit 0)
+
+### 26.2 MANUAL_GOVERNANCE_REVIEW (MR-01..MR-04)
+
+Semantic judgments reviewed manually by Hermes bounded governance review
+(evidence: §22.1 register + §24 authority-pair inspection). These are NOT
+mechanical proofs and are excluded from the mechanical denominator.
+
+| Check | Result |
+|---|---|
+| MR-01 no undeclared semantic near-synonym creates competing authority | PASS |
+| MR-02 no umbrella composition creates a second canonical authority | PASS |
+| MR-03 no newly-adopted V2 ID silently supersedes a prior frozen authority | PASS |
+| MR-04 contradiction relationships remain semantically resolved | PASS |
+
+**ARV2_FINAL_MANUAL_GOVERNANCE_REVIEW = 4/4 PASS**
+
+TOTAL_ACCEPTANCE: MECHANICAL = PASS; MANUAL = PASS.
