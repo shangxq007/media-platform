@@ -134,9 +134,8 @@ class LogicalWhatClosureAcceptanceTest {
                 List.of(),
                 List.of(TestPlans.textElementWithContent("rev-2-content")));
         TimelineContentDigester digester = new TimelineContentDigester();
-        TimelineRevision other = new TimelineRevision(
-                "rev-2", "product-1", null, TimelineDocument.CURRENT_SCHEMA_VERSION,
-                rev2Doc, digester.digest(rev2Doc), java.time.Instant.EPOCH, "test");
+        TimelineRevision other = TestPlans.revisionWithContext(
+                rev2Doc, digester.digest(rev2Doc), TestPlans.effectSnapshot(List.of(), List.of()));
         VerifiedTimelineRevision otherVerified = VerifiedTimelineRevisionFactory.verified(
                 other, digester);
         RenderPlanningInput changed = new RenderPlanningInput(
@@ -377,7 +376,7 @@ class LogicalWhatClosureAcceptanceTest {
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         RenderPlanningInput changed = TestPlans.inputWithEffectStateAndProjection(
-                List.of(fadeEffect), List.of(fadeDef), TestPlans.projectionWithFade());
+                List.of(fadeEffect), List.of(fadeDef));
         assertNotEquals(baseFp, planner.plan(changed).plan().fingerprint().sha256Hex(),
                 "effect category change -> fingerprint changes");
     }

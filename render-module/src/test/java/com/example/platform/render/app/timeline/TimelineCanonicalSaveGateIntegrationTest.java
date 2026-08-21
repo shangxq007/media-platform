@@ -61,7 +61,7 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester,
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
     }
 
     @Test
@@ -81,8 +81,9 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         String persistedProject = dsl.select(TIMELINE_REVISION.PROJECT_ID).from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(revision.revisionId())).fetchOne(TIMELINE_REVISION.PROJECT_ID);
         assertEquals(productId, persistedProject);
-        // P1: original document digest persisted unchanged
-        assertEquals(digester.digest(doc), revision.contentDigest());
+        // P1: original document digest persisted in the revision semantic
+        // context (contentDigest is the full revision semantic digest)
+        assertEquals(digester.digest(doc), revision.semanticContext().timelineContentDigest());
         // current-revision updated after acceptance
         assertEquals(revision.revisionId(), currentRevisionService.getCurrentRevisionId(productId));
     }
@@ -171,4 +172,16 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

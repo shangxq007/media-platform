@@ -56,8 +56,48 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
 
     private static EffectSemanticSnapshot mint(List<EffectInstance> effects,
             List<EffectInstance.EffectDefinition> defs, EffectDefinitionVersionRegistry registry) {
-        return EffectSemanticSnapshotAuthority.mint(
-                effects, defs, key -> clip(), registry, EffectSemanticSnapshotId.generate());
+        // fixture-only typed authored-state minting through the domain-internal
+        // authority rules (NOT a public issuance surface — the production
+        // authority accepts only mintEmpty/mintFromDocument).
+        List<EffectSemanticEntry> entries = new java.util.ArrayList<>();
+        for (EffectInstance e : effects) {
+            EffectDefinitionSnapshot ds = null;
+            for (EffectInstance.EffectDefinition d : defs) {
+                if (d.definitionId().equals(e.effectDefinitionId()) && d.version().equals(e.effectDefinitionVersion())) {
+                    ds = fixtureDefinitionSnapshot(d);
+                    break;
+                }
+            }
+            if (ds == null) {
+                throw new IllegalArgumentException("fixture definition not found for " + e.effectDefinitionId());
+            }
+            List<EffectSemanticEntry.EffectParameter> params = new java.util.ArrayList<>();
+            for (Map.Entry<String, String> p : new java.util.TreeMap<>(e.parameters()).entrySet()) {
+                params.add(new EffectSemanticEntry.EffectParameter(p.getKey(), p.getValue()));
+            }
+            entries.add(new EffectSemanticEntry(
+                    e.effectInstanceId(), e.target(), ds, e.enabled(), params, List.of()));
+        }
+        return EffectSemanticSnapshotAuthorityInternal.mintFromEntries(
+                entries, registry, EffectSemanticSnapshotId.generate());
+    }
+
+    private static EffectDefinitionSnapshot fixtureDefinitionSnapshot(EffectInstance.EffectDefinition d) {
+        EffectDefinitionSnapshot provisional = new EffectDefinitionSnapshot(
+                d.definitionId(), d.version(), d.category().name(),
+                d.supportedMediaTypes().stream().map(Enum::name).toList(),
+                List.of(),
+                d.temporalBehavior() == null ? null : d.temporalBehavior().name(),
+                new java.util.ArrayList<>(d.deterministicProperties()),
+                new java.util.ArrayList<>(d.requiredCapabilities()), "");
+        String digest = EffectDefinitionCanonicalSemantics.definitionContentDigest(provisional);
+        return new EffectDefinitionSnapshot(
+                d.definitionId(), d.version(), d.category().name(),
+                d.supportedMediaTypes().stream().map(Enum::name).toList(),
+                List.of(),
+                d.temporalBehavior() == null ? null : d.temporalBehavior().name(),
+                new java.util.ArrayList<>(d.deterministicProperties()),
+                new java.util.ArrayList<>(d.requiredCapabilities()), digest);
     }
 
     // ── RP3-A / RP3-B / SO2: Timeline revision semantic digest ─────────────
@@ -154,7 +194,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
         // Legacy wire effect has no enabled field -> TRUE is authoritative
         // (LEGACY_EFFECT_ENABLED_DEFAULT_V1); a caller-supplied enabled=false
         // cannot become authority.
-        EffectSemanticEntry entry = EffectSemanticSnapshotAuthority.legacyEntry(
+        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.legacyEntry(
                 "eff-1", "def-blur", Map.of("radiusPixels", "4"),
                 TRACK_ID, CLIP_ID, TrackType.VIDEO,
                 new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -234,7 +274,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
     void l2_legacyApplicationRangeDerivesFromClipExtent() {
         // L2/SA3: legacy applicationRange absent -> target clip extent
         // (authority derives; there is no caller-supplied range).
-        EffectSemanticEntry entry = EffectSemanticSnapshotAuthority.legacyEntry(
+        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.legacyEntry(
                 "eff-1", "def-blur", Map.of(),
                 TRACK_ID, CLIP_ID, TrackType.VIDEO,
                 new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -247,7 +287,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
     void l3_legacyMediaTypeDerived() {
         // L3/SA4: legacy mediaType absent -> derived (track kind VIDEO ∩
         // supportedMediaTypes [VIDEO] -> compatible; AUDIO track -> FAIL CLOSED).
-        EffectSemanticEntry entry = EffectSemanticSnapshotAuthority.legacyEntry(
+        EffectSemanticEntry entry = EffectSemanticSnapshotAuthorityInternal.legacyEntry(
                 "eff-1", "def-blur", Map.of(),
                 TRACK_ID, CLIP_ID, TrackType.VIDEO,
                 new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -256,7 +296,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
         assertTrue(entry.definitionSnapshot().supportedMediaTypes().contains("VIDEO"),
                 "L3: derived mediaType compatible with definition");
         assertThrows(IllegalArgumentException.class,
-                () -> EffectSemanticSnapshotAuthority.legacyEntry(
+                () -> EffectSemanticSnapshotAuthorityInternal.legacyEntry(
                         "eff-1", "def-blur", Map.of(),
                         "audio", "ac1", TrackType.AUDIO,
                         new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -270,7 +310,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
         // L5/D6: legacy wire references a definition/version that cannot be
         // resolved exactly -> FAIL CLOSED.
         assertThrows(IllegalArgumentException.class,
-                () -> EffectSemanticSnapshotAuthority.legacyEntry(
+                () -> EffectSemanticSnapshotAuthorityInternal.legacyEntry(
                         "eff-1", "def-missing", Map.of(),
                         TRACK_ID, CLIP_ID, TrackType.VIDEO,
                         new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -314,7 +354,7 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
         // Legacy MISSING must route through legacy behavior — verified factory
         // requires the EXACT pinned snapshot (no latest lookup, no synthesis).
         assertThrows(IllegalArgumentException.class,
-                () -> EffectSemanticSnapshotAuthority.legacyEntry(
+                () -> EffectSemanticSnapshotAuthorityInternal.legacyEntry(
                         "eff-1", "def-blur", Map.of(),
                         TRACK_ID, CLIP_ID, TrackType.VIDEO,
                         new MediaClip.TimeRange(com.example.platform.shared.time.MediaTime.ofRational(0, 1),
@@ -337,8 +377,12 @@ class EffectSemanticSnapshotFinalAcceptanceTest {
                         com.example.platform.shared.time.MediaTime.ofRational(2, 1)),
                 Map.of("radiusPixels", "66"), Map.of(),
                 new ClipEffectTarget(TRACK_ID, CLIP_ID), EffectInstance.EffectProvenance.untracked());
-        EffectSemanticSnapshot different = EffectSemanticSnapshotAuthority.mint(
-                List.of(tampered), List.of(blurDef()), key -> clip(),
+        EffectSemanticSnapshot different = EffectSemanticSnapshotAuthorityInternal.mintFromEntries(
+                List.of(new EffectSemanticEntry(
+                        "eff-1", new ClipEffectTarget(TRACK_ID, CLIP_ID),
+                        fixtureDefinitionSnapshot(blurDef()), true,
+                        java.util.List.of(new EffectSemanticEntry.EffectParameter("radiusPixels", "66")),
+                        List.of())),
                 new EffectDefinitionVersionRegistry.InMemory(), s1.id()); // SAME id, different content
         assertThrows(IllegalArgumentException.class,
                 () -> store.store(different),

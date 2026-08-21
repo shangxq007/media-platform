@@ -44,7 +44,7 @@ public record EffectDefinitionSnapshot(
      * Typed parameter schema entry: parameter name + declared type marker
      * (bounded V1 schema vocabulary — no generic schema language).
      */
-    public record EffectParameterSchemaEntry(String name, String type) {
+    public record EffectParameterSchemaEntry(String name, String type, String defaultValue) {
         public EffectParameterSchemaEntry {
             Objects.requireNonNull(name, "name");
             Objects.requireNonNull(type, "type");

@@ -50,6 +50,9 @@ public final class EffectSemanticSnapshotJsonCodec {
                 ObjectNode se = schema.addObject();
                 se.put("name", e.name());
                 se.put("type", e.type());
+                if (e.defaultValue() != null) {
+                    se.put("defaultValue", e.defaultValue());
+                }
             }
             ArrayNode det = def.putArray("deterministicProperties");
             d.deterministicProperties().forEach(det::add);
@@ -93,7 +96,8 @@ public final class EffectSemanticSnapshotJsonCodec {
                 List<EffectDefinitionSnapshot.EffectParameterSchemaEntry> schema = new ArrayList<>();
                 d.get("parameterSchema").forEach(n -> schema.add(
                         new EffectDefinitionSnapshot.EffectParameterSchemaEntry(
-                                n.get("name").asText(), n.get("type").asText())));
+                                n.get("name").asText(), n.get("type").asText(),
+                                n.has("defaultValue") ? n.get("defaultValue").asText() : null)));
                 List<String> det = new ArrayList<>();
                 d.get("deterministicProperties").forEach(n -> det.add(n.asText()));
                 List<String> caps = new ArrayList<>();

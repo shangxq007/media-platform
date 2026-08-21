@@ -136,7 +136,7 @@ class CheckpointARound4RestorePinCopyIT extends PostgresTestContainerSupport {
     private void buildSaveService(ArtifactQueryService query, ArtifactPinService pinSvc) {
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinSvc);
+                new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore());
     }
 
     private long countPinsFor(String projectId, String revisionId) {
@@ -223,4 +223,16 @@ class CheckpointARound4RestorePinCopyIT extends PostgresTestContainerSupport {
                 .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
                 "only the historical pin row may remain (no partial new pins)");
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

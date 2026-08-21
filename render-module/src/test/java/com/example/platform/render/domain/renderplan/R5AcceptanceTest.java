@@ -4,10 +4,8 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.semantics.clip.MediaClip;
-import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
-import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
@@ -32,65 +30,21 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class R5AcceptanceTest {
 
-    // ── R5-A: authority-issued binding / relabel attack ─────────────────────
+    // ── R5-A / CLEAN-FORWARD: old authority retirement ─────────────────────
 
     @Test
-    void attackerCannotMintBindingThroughPublicApi() {
-        // The public issuance path takes a TimelineRevision OBJECT (identity
-        // extracted by the authority), never a caller-supplied revision label.
-        // The binding constructor is private; there is no
-        // EffectSemanticBinding.of(revisionId, effects, defs) anywhere.
-        // Structural proof: no public "of" factory exists; constructor is
-        // private (reflection accessibility check).
-        assertEquals(0, java.util.Arrays.stream(EffectSemanticBinding.class.getDeclaredMethods())
-                        .filter(m -> m.getName().equals("of")).count(),
-                "no public of(...) factory on EffectSemanticBinding (R5-A)");
-        assertEquals(0, java.util.Arrays.stream(EffectSemanticBinding.class.getConstructors()).count(),
-                "no public constructor on EffectSemanticBinding (R5-A)");
-        // the only public factory is the authority
-        assertTrue(java.util.Arrays.stream(AuthoredEffectSemanticAuthority.class.getDeclaredMethods())
-                        .anyMatch(m -> m.getName().equals("issue") && m.getParameterCount() == 4),
-                "single public issuance path: AuthoredEffectSemanticAuthority.issue (R5-A)");
-    }
-
-    @Test
-    void relabelAttackFailsClosedOwnershipCheck() {
-        // Attacker has timeline revision R1 (clip c1 [0,2]) and an INDEPENDENT
-        // effect state R2 that is NOT a revision-owned member of c1 (no wire
-        // membership entry in the projection). Relabeling R2 as R1/c1 must
-        // FAIL CLOSED at the authority issuance boundary (membership check
-        // against the revision-owned projection).
-        TimelineRevision r1 = TestPlans.timelineRevision();
-        EffectInstance foreign = new EffectInstance(
-                "eff-foreign", "def-blur", "1",
-                EffectInstance.EffectMediaType.VIDEO, true,
-                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(1, 1)),
-                Map.of("radiusPixels", "4"), Map.of(),
-                new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
-                TestPlans.gaussianBlurEffect().provenance());
-        assertThrows(IllegalArgumentException.class,
-                () -> AuthoredEffectSemanticAuthority.issue(
-                        r1, TestPlans.revisionOwnedProjection(),
-                        List.of(foreign), List.of(TestPlans.effectDefinition())),
-                "foreign effect R2 is not a revision-owned member of R1/c1 -> membership FAIL CLOSED (R6-A)");
-    }
-
-    @Test
-    void relabelAttackWithOverlappingRangeStillBoundToRevisionObject() {
-        // Even with an overlapping range, the issued binding's revision identity
-        // comes FROM the TimelineRevision object — the caller cannot label the
-        // binding with an arbitrary revision id (no string parameter exists).
-        // Combine revision R1 identity with an effect whose range overlaps R1's
-        // clip: binding revisionId MUST equal r1.revisionId() (authority
-        // extracted), and the caller cannot choose "other-rev".
-        TimelineRevision r1 = TestPlans.timelineRevision();
-        EffectSemanticBinding binding = AuthoredEffectSemanticAuthority.issue(
-                r1, TestPlans.revisionOwnedProjection(),
-                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
-        assertEquals(r1.revisionId(), binding.revisionId(),
-                "binding revision identity comes from the authoritative object (R5-A)");
-        assertEquals(EffectSemanticBinding.CONTRACT_VERSION, binding.semanticContractVersion());
-        assertNotNull(binding.effectStateDigest());
+    void oldAuthoritiesDoNotExistCleanForward() {
+        // CLEAN-FORWARD (CF6/CF7): old canonical issuance authorities were
+        // DELETED, not deprecated — no compatibility surface remains.
+        assertThrows(ClassNotFoundException.class,
+                () -> Class.forName("com.example.platform.timeline.semantics.effect.EffectSemanticBinding"),
+                "CF7: EffectSemanticBinding deleted");
+        assertThrows(ClassNotFoundException.class,
+                () -> Class.forName("com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority"),
+                "CF6: AuthoredEffectSemanticAuthority deleted");
+        assertThrows(ClassNotFoundException.class,
+                () -> Class.forName("com.example.platform.timeline.semantics.effect.RevisionOwnedEffectProjection"),
+                "CF8: RevisionOwnedEffectProjection deleted");
     }
 
     @Test
@@ -104,8 +58,7 @@ class R5AcceptanceTest {
         TimelineRevision r2 = TestPlans.timelineRevisionWithId("rev-2");
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedRenderSemanticSnapshotFactory.verified(
-                        r2, TestPlans.timelineDigester(),
-                        r1Snapshot, r2Snapshot.reference()),
+                        r2, TestPlans.timelineDigester(), r1Snapshot),
                 "R1 snapshot + R2 pin -> fail closed (R5-A cross-revision)");
     }
 
@@ -126,21 +79,22 @@ class R5AcceptanceTest {
                 List.of(tampered), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        tamperedSnapshot, canonicalPin, TestPlans.REVISION_ID),
+                        tamperedSnapshot,
+                        new com.example.platform.timeline.version.TimelineRevisionSemanticContext(
+                                "tl-digest-fixture", canonicalPin, "ctx-digest-fixture", com.example.platform.timeline.version.TimelineRevisionSemanticContext.REVISION_SEMANTICS_V1),
+                        TestPlans.REVISION_ID),
                 "state tamper -> digest mismatch fail closed (R5-A/RP2)");
     }
 
     @Test
     void semanticEqualReconstructionDeterministic() {
-        // Same authoritative semantic value freshly reconstructed -> same digest.
-        TimelineRevision r1 = TestPlans.timelineRevision();
-        EffectSemanticBinding a = AuthoredEffectSemanticAuthority.issue(
-                r1, TestPlans.revisionOwnedProjection(),
+        // Same authoritative semantic value freshly reconstructed -> same digest
+        // (CLEAN-FORWARD: through the new instance authority path).
+        EffectSemanticSnapshot a = TestPlans.effectSnapshot(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
-        EffectSemanticBinding b = AuthoredEffectSemanticAuthority.issue(
-                TestPlans.timelineRevision(), TestPlans.revisionOwnedProjection(), List.of(TestPlans.gaussianBlurEffect()),
-                List.of(TestPlans.effectDefinition()));
-        assertEquals(a.effectStateDigest(), b.effectStateDigest(),
+        EffectSemanticSnapshot b = TestPlans.effectSnapshot(
+                List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
+        assertEquals(a.contentDigest(), b.contentDigest(),
                 "semantic-equal reconstruction -> same authoritative digest (R5-A)");
     }
 

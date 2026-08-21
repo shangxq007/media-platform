@@ -152,7 +152,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
 
     private void buildServices(ArtifactQueryService query, ArtifactPinService pinSvc) {
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
-                digester, snapshotService, new TimelineArtifactPinValidator(query), pinSvc);
+                digester, snapshotService, new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore());
     }
 
     private TimelinePatch patchMove(String productId, TimelineRevision base,
@@ -254,4 +254,16 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         assertEquals(1, countPinsFor(productId, base.revisionId()),
                 "no partial new pins (only base pin remains)");
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

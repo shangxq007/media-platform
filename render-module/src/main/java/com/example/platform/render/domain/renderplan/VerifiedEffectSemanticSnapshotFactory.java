@@ -36,22 +36,32 @@ public final class VerifiedEffectSemanticSnapshotFactory {
     }
 
     /**
-     * Verifies the supplied snapshot against the revision's exact pin.
+     * Verifies the supplied snapshot against the revision-owned exact pin.
      *
-     * @param snapshot          the immutable Effect semantic snapshot to verify
-     * @param expectedReference the EXACT reference pinned by the Timeline
-     *                          revision (from the revision's semantic context)
-     * @param revisionId        the owning Timeline revision id
+     * <p>ROADMAP20 authority-integration correction: the expected reference is
+     * NOT an independent caller parameter — it is derived from the
+     * revision-owned {@link TimelineRevisionSemanticContext} (blocker 2).
+     *
+     * @param snapshot      the immutable Effect semantic snapshot to verify
+     * @param revisionContext the revision-owned semantic context (carries the
+     *                       exact Effect pin)
+     * @param revisionId    the owning Timeline revision id
      * @return verified effect semantic snapshot
      * @throws IllegalArgumentException on any verification failure (fail closed)
      */
     public static VerifiedEffectSemanticSnapshot verified(
             EffectSemanticSnapshot snapshot,
-            EffectSemanticSnapshotReference expectedReference,
+            com.example.platform.timeline.version.TimelineRevisionSemanticContext revisionContext,
             String revisionId) {
         Objects.requireNonNull(snapshot, "snapshot");
-        Objects.requireNonNull(expectedReference, "expectedReference");
+        Objects.requireNonNull(revisionContext, "revisionContext");
         Objects.requireNonNull(revisionId, "revisionId");
+        EffectSemanticSnapshotReference expectedReference = revisionContext.effectReference();
+        if (expectedReference == null) {
+            throw new IllegalArgumentException(
+                    "RP5: revision '" + revisionId + "' has MISSING Effect authority (legacy) — "
+                            + "no exact pin exists; verification of caller-supplied Effect state FAILS CLOSED");
+        }
 
         // 1. binding integrity: exact snapshot id (RP1, BI2, RP3-C).
         if (!snapshot.id().equals(expectedReference.snapshotId())) {

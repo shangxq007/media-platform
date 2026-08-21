@@ -26,6 +26,16 @@ public interface EffectSemanticSnapshotStore {
     /** Persists an immutable snapshot. Re-store with different content fails closed. */
     void store(EffectSemanticSnapshot snapshot);
 
+    /**
+     * Transaction-aware persist (ROADMAP20 authority integration): joins the
+     * SAME physical transaction as the canonical revision write. Default
+     * implementation delegates to {@link #store} for non-transactional stores
+     * (InMemory domain tests); durable stores override with a tx-scoped write.
+     */
+    default void storeTx(org.jooq.DSLContext tx, String projectId, EffectSemanticSnapshot snapshot) {
+        store(snapshot);
+    }
+
     /** Exact historical lookup by snapshot id. */
     Optional<EffectSemanticSnapshot> findById(EffectSemanticSnapshotId id);
 

@@ -168,7 +168,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 new com.example.platform.timeline.canonical.TimelineContentDigester(), snapshotService,
                 new TimelineArtifactPinValidator(new com.example.platform.render.testutil.NoopArtifactQueryService()),
                 new com.example.platform.artifact.app.ArtifactPinService(
-                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)));
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)), effectAuthority(), revisionSemanticContextStore());
         revisionService = buildTimelineRevisionService(dsl, snapshotService);
         ProductRepository productRepo = new ProductRepository(dsl);
         ProductDependencyRepository depRepo = new ProductDependencyRepository(dsl);
@@ -572,4 +572,15 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         int height = 0;
         double durationSeconds = 0;
     }
+    private static com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.semantics.effect.EffectDefinitionVersionRegistry.InMemory(),
+                new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotStore.InMemory());
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

@@ -127,7 +127,7 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService);
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore());
 
         assertThrows(IllegalStateException.class,
                 () -> saveService.saveRevision(productId, null, pinnedDoc(), "user-1"),
@@ -167,7 +167,7 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService);
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore());
 
         var revision = saveService.saveRevision(productId, null, pinnedDoc(), "user-1");
         assertEquals(1, dsl.fetchCount(DSL.selectFrom(TIMELINE_REVISION)
@@ -181,4 +181,16 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
                 org.mockito.ArgumentMatchers.eq(TENANT),
                 org.mockito.ArgumentMatchers.anyList());
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

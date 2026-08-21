@@ -4,15 +4,18 @@ import com.example.platform.extension.domain.CapabilityId;
 import com.example.platform.extension.domain.CapabilityRequirement;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile;
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.timeline.canonicalmodel.TimelineSourceRef;
 import com.example.platform.timeline.semantics.clip.MediaClip;
-import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
-import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotId;
@@ -20,7 +23,6 @@ import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotRefe
 import com.example.platform.timeline.semantics.effect.EffectDefinitionVersionRegistry;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
 import com.example.platform.timeline.semantics.effect.EffectTarget;
-import com.example.platform.timeline.semantics.effect.RevisionOwnedEffectProjection;
 import com.example.platform.timeline.version.TimelineRevision;
 import com.example.platform.shared.time.FrameRate;
 import org.junit.jupiter.api.Test;
@@ -73,7 +75,11 @@ class R6AcceptanceTest {
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        foreignSnapshot, canonicalPin, TestPlans.REVISION_ID),
+                        foreignSnapshot,
+                        new com.example.platform.timeline.version.TimelineRevisionSemanticContext(
+                                "tl-digest-fixture", canonicalPin, "ctx-digest-fixture",
+                                com.example.platform.timeline.version.TimelineRevisionSemanticContext.REVISION_SEMANTICS_V1),
+                        TestPlans.REVISION_ID),
                 "T1: same-time foreign effect cannot satisfy the revision pin -> FAIL CLOSED");
     }
 
@@ -115,7 +121,11 @@ class R6AcceptanceTest {
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        c2Snapshot, c1Pin, TestPlans.REVISION_ID),
+                        c2Snapshot,
+                        new com.example.platform.timeline.version.TimelineRevisionSemanticContext(
+                                "tl-digest-fixture", c1Pin, "ctx-digest-fixture",
+                                com.example.platform.timeline.version.TimelineRevisionSemanticContext.REVISION_SEMANTICS_V1),
+                        TestPlans.REVISION_ID),
                 "T3: wrong clip (same range) cannot satisfy the c1 pin -> FAIL CLOSED");
     }
 
@@ -163,7 +173,10 @@ class R6AcceptanceTest {
         EffectSemanticSnapshotReference r2Pin = r2Snapshot.reference();
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        r1Snapshot, r2Pin, "rev-2"),
+                r1Snapshot,
+                new com.example.platform.timeline.version.TimelineRevisionSemanticContext(
+                        "tl-digest-fixture", r2Pin, "ctx-digest-fixture", com.example.platform.timeline.version.TimelineRevisionSemanticContext.REVISION_SEMANTICS_V1),
+                "rev-2"),
                 "T6: R1 snapshot cannot satisfy R2 pin -> FAIL CLOSED");
     }
 
@@ -179,28 +192,27 @@ class R6AcceptanceTest {
         // DB row now points at the OTHER snapshot's reference (S1 -> S2).
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        snapshot, other.reference(), TestPlans.REVISION_ID),
+                        snapshot,
+                        new com.example.platform.timeline.version.TimelineRevisionSemanticContext(
+                                "tl-digest-fixture", other.reference(), "ctx-digest-fixture",
+                                com.example.platform.timeline.version.TimelineRevisionSemanticContext.REVISION_SEMANTICS_V1),
+                        TestPlans.REVISION_ID),
                 "RP4: DB-only binding tamper -> FAIL CLOSED (no new revision commitment)");
     }
 
     @Test
-    void rp5_legacyNoPinNeverLoadsLatest() {
-        // RP5: a legacy revision without an Effect snapshot pin must NOT
-        // silently load latest Effect state and MUST NOT accept caller
-        // completion. Legacy policy: no authoritative typed Effect semantics
-        // under the pin contract (distinct from canonical EMPTY semantics).
-        TimelineRevision legacy = TestPlans.timelineRevision(); // no pin field
-        // The render boundary has NO path that synthesizes an Effect snapshot
-        // from "latest" — verification always requires the EXACT pinned
-        // snapshot; caller-completion APIs were retired.
+    void rp5_missingSemanticContextIsInvalidCorrupt() {
+        // CLEAN-FORWARD (CF5): a revision without an Effect semantic pin /
+        // semantic context is INVALID/CORRUPT, not a supported legacy mode.
+        // Construction with null semanticContext FAILS CLOSED (CF1).
         assertThrows(IllegalArgumentException.class,
-                () -> VerifiedRenderSemanticSnapshotFactory.verified(
-                        legacy, TestPlans.timelineDigester(),
-                        TestPlans.effectSnapshot(List.of(TestPlans.gaussianBlurEffect()),
-                                List.of(TestPlans.effectDefinition())),
-                        TestPlans.effectSnapshotReference(List.of(TestPlans.gaussianBlurEffect()),
-                                List.of(TestPlans.effectDefinition()))),
-                "RP5: legacy revision cannot be combined with caller-supplied Effect state (no latest lookup)");
+                () -> new TimelineRevision(
+                        "rev-corrupt", "product-1", null,
+                        com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION,
+                        TestPlans.canonicalDocument(),
+                        "legacy-digest-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        java.time.Instant.EPOCH, "test", null),
+                "CF1/CF5: missing semantic context rejected at construction (corrupt, not legacy)");
     }
 
     @Test
@@ -216,10 +228,9 @@ class R6AcceptanceTest {
                 Map.of("radiusPixels", "2"), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, "c2"),
                 TestPlans.gaussianBlurEffect().provenance());
-        RenderPlan p1 = TestPlans.planForEffects(
+        RenderPlan p1 = TestPlans.planForEffectsOn(
                 List.of(e1, e2), List.of(TestPlans.effectDefinition()),
-                TestPlans.timelineRevisionWithTwoClips("c2"),
-                TestPlans.projectionWithClips("c2"));
+                TestPlans.timelineDocumentWithClips(List.of(TestPlans.secondClip())));
         String c1NodeIdP1 = effectNodeIdOf(p1, "eff-1");
         // C2 stack changes: [e2] -> [e2, e3]
         EffectInstance e3 = new EffectInstance(
@@ -229,10 +240,9 @@ class R6AcceptanceTest {
                 Map.of("radiusPixels", "3"), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, "c2"),
                 TestPlans.gaussianBlurEffect().provenance());
-        RenderPlan p2 = TestPlans.planForEffects(
+        RenderPlan p2 = TestPlans.planForEffectsOn(
                 List.of(e1, e2, e3), List.of(TestPlans.effectDefinition()),
-                TestPlans.timelineRevisionWithTwoClips("c2"),
-                TestPlans.projectionWithClips("c2"));
+                TestPlans.timelineDocumentWithClips(List.of(TestPlans.secondClip())));
         assertEquals(c1NodeIdP1, effectNodeIdOf(p2, "eff-1"),
                 "SO4: C1 local Effect node semantic id UNCHANGED when only C2 changes");
         assertNotEquals(p1.fingerprint(), p2.fingerprint(),
@@ -243,12 +253,8 @@ class R6AcceptanceTest {
     void empty1_emptySnapshotDigestDeterministicAcrossIds() {
         // EMPTY1: mint empty Effect semantics twice with different ids ->
         // same version, same canonical empty content -> SAME semantic digest.
-        EffectSemanticSnapshot a = EffectSemanticSnapshotAuthority.mint(
-                List.of(), List.of(), TestPlans::clipFor,
-                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
-        EffectSemanticSnapshot b = EffectSemanticSnapshotAuthority.mint(
-                List.of(), List.of(), TestPlans::clipFor,
-                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
+        EffectSemanticSnapshot a = TestPlans.effectSnapshot(List.of(), List.of());
+        EffectSemanticSnapshot b = TestPlans.effectSnapshot(List.of(), List.of());
         assertNotEquals(a.id(), b.id(), "distinct authority handles");
         assertEquals(a.contentDigest(), b.contentDigest(),
                 "EMPTY1: deterministic empty semantic digest across ids (BI1)");
@@ -258,12 +264,15 @@ class R6AcceptanceTest {
     @Test
     void empty5_emptySnapshotPlansWithNoEffectNodes() {
         // EMPTY5: render planning for a NEW authoritative EMPTY snapshot
-        // succeeds with zero Effect nodes (no mutable/latest lookup).
-        EffectSemanticSnapshot empty = EffectSemanticSnapshotAuthority.mint(
-                List.of(), List.of(), TestPlans::clipFor,
-                new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate());
+        // succeeds with zero Effect nodes (no mutable/latest lookup). The
+        // revision owns EXACTLY this empty snapshot's pin (consistent pair).
+        EffectSemanticSnapshot empty = TestPlans.effectSnapshot(List.of(), List.of());
+        TimelineRevision revision = TestPlans.revisionWithContext(
+                TestPlans.canonicalDocument(),
+                new TimelineContentDigester().digest(TestPlans.canonicalDocument()),
+                empty);
         VerifiedRenderSemanticSnapshot verified = VerifiedRenderSemanticSnapshotFactory.verified(
-                TestPlans.timelineRevision(), TestPlans.timelineDigester(), empty, empty.reference());
+                revision, TestPlans.timelineDigester(), empty);
         RenderPlanningInput input = new RenderPlanningInput(
                 verified, TestPlans.renderRequest(),
                 new SourceResolutionInput(
@@ -426,8 +435,7 @@ class R6AcceptanceTest {
         assertEquals(new MediaClip.TimeRange(
                         MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
                 snap.entries().get(0).target() instanceof ClipEffectTarget
-                        ? TestPlans.clipFor(new EffectSemanticSnapshotAuthority.ClipTargetKey(
-                                TestPlans.TRACK_ID, TestPlans.CLIP_ID)).timelineRange()
+                        ? TestPlans.canonicalClipRange()
                         : null,
                 "N3: caller applicationRange is NOT authority — range derives from clip extent");
         // derived range equals canonical -> same materialized node id
@@ -480,10 +488,9 @@ class R6AcceptanceTest {
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, "c2"),
                 TestPlans.gaussianBlurEffect().provenance());
-        RenderPlan plan = TestPlans.planForEffects(
+        RenderPlan plan = TestPlans.planForEffectsOn(
                 List.of(e1, e2), List.of(TestPlans.effectDefinition()),
-                TestPlans.timelineRevisionWithTwoClips("c2"),
-                TestPlans.projectionWithClips("c2"));
+                TestPlans.timelineDocumentWithClips(List.of(TestPlans.secondClip())));
         List<String> effectIds = plan.nodes().stream()
                 .filter(n -> n.kind() instanceof RenderNodeKind.Effect)
                 .map(n -> n.id().value())
@@ -521,7 +528,7 @@ class R6AcceptanceTest {
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
         String changedId = effectNodeId(TestPlans.planForEffects(
-                List.of(fadeEffect), List.of(fadeDef), TestPlans.projectionWithFade()));
+                List.of(fadeEffect), List.of(fadeDef)));
         assertNotEquals(baseId, changedId, "N8: category change -> node id changes");
     }
 
@@ -546,9 +553,9 @@ class R6AcceptanceTest {
                 TestPlans.gaussianBlurEffect().provenance());
         List<EffectInstance.EffectDefinition> defs = List.of(TestPlans.effectDefinition());
         String plan1FirstId = effectNodeId(TestPlans.planForEffects(
-                List.of(e1, e2), defs, TestPlans.projectionWithSecondEffect()));
+                List.of(e1, e2), defs));
         String plan2FirstId = effectNodeId(TestPlans.planForEffects(
-                List.of(e1, e2Changed), defs, TestPlans.projectionWithSecondEffect()));
+                List.of(e1, e2Changed), defs));
         assertEquals(plan1FirstId, plan2FirstId,
                 "N9: unrelated effect change -> first effect node id STABLE (locality)");
     }
@@ -599,9 +606,9 @@ class R6AcceptanceTest {
         assertNotEquals(forward, reversed,
                 "H1: reversed authored effect stack -> different semantic digest (ORDERED)");
         RenderPlan planForward = TestPlans.planForEffects(
-                List.of(e1, e2), defs, TestPlans.projectionWithSecondEffect());
+                List.of(e1, e2), defs);
         RenderPlan planReversed = TestPlans.planForEffects(
-                List.of(e2, e1), defs, TestPlans.projectionWithSecondEffect());
+                List.of(e2, e1), defs);
         assertNotEquals(planForward.fingerprint(), planReversed.fingerprint(),
                 "H1: reversed stack -> different plan fingerprint (ORDERED)");
         // topology reflects authored order: first effect consumes decode,
@@ -645,10 +652,9 @@ class R6AcceptanceTest {
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, "c2"),
                 TestPlans.gaussianBlurEffect().provenance());
-        RenderPlan changed = TestPlans.planForEffects(
+        RenderPlan changed = TestPlans.planForEffectsOn(
                 List.of(otherClipEffect), List.of(TestPlans.effectDefinition()),
-                TestPlans.timelineRevisionWithClipId("c2"),
-                TestPlans.revisionOwnedProjectionWithClipId("c2"));
+                TestPlans.timelineDocumentWithClips(List.of(TestPlans.secondClip())));
         assertNotEquals(base.fingerprint(), changed.fingerprint(),
                 "K2: target change -> plan fingerprint changes");
     }
@@ -718,8 +724,11 @@ class R6AcceptanceTest {
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
-        // I3: mediaType is DERIVED from track kind ∩ definition supportedMediaTypes.
-        // An AUDIO-track effect with a VIDEO-only definition fails closed.
+        // I3/MT3: mediaType is DERIVED from canonical TrackType ∩ definition
+        // supportedMediaTypes. An AUDIO-track effect with a VIDEO-only
+        // definition FAILS CLOSED (track type from TimelineTrack.type(), not
+        // trackId string — the trackId "audio" here is irrelevant; the track
+        // TYPE is AUDIO).
         EffectInstance audioTrackInstance = new EffectInstance(
                 "eff-audio", "def-blur", "1",
                 EffectInstance.EffectMediaType.AUDIO, true,
@@ -727,24 +736,23 @@ class R6AcceptanceTest {
                 TestPlans.gaussianBlurEffect().parameters(), Map.of(),
                 new ClipEffectTarget("audio", "ac1"),
                 TestPlans.gaussianBlurEffect().provenance());
-        EffectSemanticSnapshotAuthority.ClipTargetKey audioKey =
-                new EffectSemanticSnapshotAuthority.ClipTargetKey("audio", "ac1");
-        assertThrows(IllegalArgumentException.class,
-                () -> EffectSemanticSnapshotAuthority.mint(
-                        List.of(audioTrackInstance), List.of(TestPlans.effectDefinition()),
-                        key -> new MediaClip(
-                                "ac1", "audio",
-                                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
-                                new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)),
+        TimelineDocument audioDoc = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("audio", "audio-track",
+                        TrackType.AUDIO,
+                        List.of(new com.example.platform.timeline.canonical.TimelineClip(
+                                "ac1", "asset-audio", "stream-audio",
+                                TestPlans.artifactId().value(), TestPlans.artifactDigest().value(),
+                                MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                                MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1),
+                                "MEDIA_STREAM",
                                 com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping.of(
-                                        1, 1, com.example.platform.timeline.semantics.temporal.PlaybackDirection.FORWARD),
-                                new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
-                                        com.example.platform.media.domain.identity.MediaAssetId.of("asset-audio"),
-                                        com.example.platform.media.domain.stream.MediaStreamId.of("stream-audio"),
-                                        TestPlans.artifactId(), TestPlans.artifactDigest(),
-                                        new MediaClip.TimeRange(MediaTime.ofRational(0, 1), MediaTime.ofRational(2, 1)))),
-                        new EffectDefinitionVersionRegistry.InMemory(), EffectSemanticSnapshotId.generate()),
-                "I3: track kind incompatible with definition supportedMediaTypes -> FAIL CLOSED");
+                                        1, 1, com.example.platform.timeline.semantics.temporal.PlaybackDirection.FORWARD))))),
+                TimelineMetadata.empty(), TestPlans.audioMix(), List.of(), List.of());
+        assertThrows(IllegalArgumentException.class,
+                () -> TestPlans.authority().mintFromAuthoredState(
+                        List.of(audioTrackInstance), List.of(TestPlans.effectDefinition()), audioDoc),
+                "I3/MT3: AUDIO track type incompatible with VIDEO-only definition -> FAIL CLOSED");
     }
 
     @Test

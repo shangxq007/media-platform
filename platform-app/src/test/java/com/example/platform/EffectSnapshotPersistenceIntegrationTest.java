@@ -13,6 +13,7 @@ import com.example.platform.timeline.semantics.effect.EffectInstance;
 import com.example.platform.timeline.semantics.effect.EffectSemanticContractVersion;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotStore;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotId;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotJsonCodec;
 import java.util.List;
@@ -78,6 +79,26 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
                         range));
     }
 
+    private static com.example.platform.timeline.canonical.TimelineDocument sampleDocument() {
+        com.example.platform.timeline.canonical.TimelineClip tc = new com.example.platform.timeline.canonical.TimelineClip(
+                "c1", "asset-1", "stream-1",
+                new com.example.platform.shared.identity.ArtifactId("art-1").value(),
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                com.example.platform.shared.time.MediaTime.ofRational(0, 1),
+                com.example.platform.shared.time.MediaTime.ofRational(2, 1),
+                com.example.platform.shared.time.MediaTime.ofRational(0, 1),
+                com.example.platform.shared.time.MediaTime.ofRational(2, 1),
+                "MEDIA_STREAM",
+                com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping.of(
+                        1, 1, com.example.platform.timeline.semantics.temporal.PlaybackDirection.FORWARD));
+        return new com.example.platform.timeline.canonical.TimelineDocument(
+                com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new com.example.platform.timeline.canonical.TimelineTrack(
+                        "t1", "v1", com.example.platform.timeline.canonical.TrackType.VIDEO, List.of(tc))),
+                com.example.platform.timeline.canonical.TimelineMetadata.empty(),
+                com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of(), List.of());
+    }
+
     private static EffectInstance blurEffect() {
         return new EffectInstance(
                 "eff-1", "def-blur", "1", EffectInstance.EffectMediaType.VIDEO, true,
@@ -97,9 +118,13 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
     }
 
     private static EffectSemanticSnapshot mint(EffectDefinitionVersionRegistry registry, EffectSemanticSnapshotId id) {
-        return EffectSemanticSnapshotAuthority.mint(
-                List.of(blurEffect()), List.of(blurDef()),
-                key -> clip(key.clipId()), registry, id);
+        // ROADMAP20 authority-integration: mint through the INSTANCE authority
+        // (snapshotId generated internally — the supplied id is NOT accepted
+        // by the authority; this helper only keeps call sites explicit).
+        EffectSemanticSnapshotAuthority authority =
+                new EffectSemanticSnapshotAuthority(registry, new EffectSemanticSnapshotStore.InMemory());
+        return authority.mintFromAuthoredState(
+                List.of(blurEffect()), List.of(blurDef()), sampleDocument());
     }
 
     @Test
@@ -110,11 +135,12 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         new JdbcEffectSemanticSnapshotStore(dsl, "proj-1").store(s1);
         // 2. "restart": NEW store instance (no in-memory state)
         JdbcEffectSemanticSnapshotStore fresh = new JdbcEffectSemanticSnapshotStore(dsl, "proj-1");
-        // 3. reload exact S1
-        EffectSemanticSnapshot reloaded = fresh.findById(id).orElseThrow();
+        // 3. reload exact S1 (by the AUTHORITY-generated id — B3: the caller
+        // cannot choose the snapshot id)
+        EffectSemanticSnapshot reloaded = fresh.findById(s1.id()).orElseThrow();
         assertEquals(s1.contentDigest(), reloaded.contentDigest(), "exact digest after restart");
         assertEquals(s1.semanticContractVersion(), reloaded.semanticContractVersion(), "exact version");
-        assertEquals(id, reloaded.id(), "exact snapshot id");
+        assertEquals(s1.id(), reloaded.id(), "exact snapshot id");
         assertEquals("def-blur", reloaded.entries().get(0).definitionSnapshot().definitionId(),
                 "exact definition semantics after restart");
         assertEquals("4", reloaded.entries().get(0).parameters().get(0).value(),
@@ -133,13 +159,18 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
                         com.example.platform.shared.time.MediaTime.ofRational(2, 1)),
                 Map.of("radiusPixels", "66"), Map.of(),
                 new ClipEffectTarget("t1", "c1"), EffectInstance.EffectProvenance.untracked());
-        EffectSemanticSnapshot different = EffectSemanticSnapshotAuthority.mint(
-                List.of(tampered), List.of(blurDef()), key -> clip(key.clipId()),
-                new EffectDefinitionVersionRegistry.InMemory(), id);
+        EffectSemanticSnapshot different = new EffectSemanticSnapshotAuthority(new EffectDefinitionVersionRegistry.InMemory(), new EffectSemanticSnapshotStore.InMemory()).mintFromAuthoredState(List.of(tampered), List.of(blurDef()), sampleDocument());
         JdbcEffectSemanticSnapshotStore fresh = new JdbcEffectSemanticSnapshotStore(dsl, "proj-1");
-        assertThrows(IllegalArgumentException.class,
-                () -> fresh.store(different),
-                "BI4: same id different content -> durable FAIL CLOSED");
+        // BI4: (a) re-storing the EXACT same snapshot is idempotent
+        fresh.store(s1);
+        // (b) a caller CANNOT construct the same id with different content:
+        // the EffectSemanticSnapshot constructor is package-private (B3 — ids
+        // are authority-generated only), so the same-id/different-digest
+        // collision is UNREACHABLE through the typed authority path. The
+        // durable immutability check inside storeTx remains as defense in
+        // depth for direct DB tampering.
+        assertNotEquals(s1.id(), different.id(),
+                "BI4/B3: different authored content always receives a different authority-generated id");
     }
 
     @Test
@@ -161,9 +192,7 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         EffectSemanticSnapshotId id2 = EffectSemanticSnapshotId.generate();
         JdbcEffectDefinitionVersionRegistry durableRegistry = new JdbcEffectDefinitionVersionRegistry(dsl);
         assertThrows(IllegalArgumentException.class,
-                () -> EffectSemanticSnapshotAuthority.mint(
-                        List.of(blurEffect()), List.of(defDiff), key -> clip(key.clipId()),
-                        durableRegistry, id2),
+                () -> new EffectSemanticSnapshotAuthority(durableRegistry, new EffectSemanticSnapshotStore.InMemory()).mintFromAuthoredState(List.of(blurEffect()), List.of(defDiff), sampleDocument()),
                 "D1: same (id, version) different digest across durable snapshots -> FAIL CLOSED");
     }
 
@@ -185,12 +214,10 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         // store instance); reload EXACT empty snapshot verified (digest +
         // version + id), distinct from legacy missing.
         EffectSemanticSnapshotId id = EffectSemanticSnapshotId.generate();
-        EffectSemanticSnapshot empty = EffectSemanticSnapshotAuthority.mint(
-                List.of(), List.of(), key -> clip(key.clipId()),
-                new EffectDefinitionVersionRegistry.InMemory(), id);
+        EffectSemanticSnapshot empty = new EffectSemanticSnapshotAuthority(new EffectDefinitionVersionRegistry.InMemory(), new EffectSemanticSnapshotStore.InMemory()).mintFromAuthoredState(List.of(), List.of(), sampleDocument());
         new JdbcEffectSemanticSnapshotStore(dsl, "proj-1").store(empty);
         JdbcEffectSemanticSnapshotStore fresh = new JdbcEffectSemanticSnapshotStore(dsl, "proj-1");
-        EffectSemanticSnapshot reloaded = fresh.findById(id).orElseThrow();
+        EffectSemanticSnapshot reloaded = fresh.findById(empty.id()).orElseThrow();
         assertEquals(0, reloaded.entries().size(), "EMPTY3: authoritative empty after restart");
         assertEquals(empty.contentDigest(), reloaded.contentDigest(), "EMPTY3: exact empty digest");
         assertEquals(empty.semanticContractVersion(), reloaded.semanticContractVersion(),

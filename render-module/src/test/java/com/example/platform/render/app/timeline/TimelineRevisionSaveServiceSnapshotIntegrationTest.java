@@ -68,7 +68,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         snapshotService = new TimelineSnapshotService(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
     }
 
     @Test
@@ -82,7 +82,10 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         // Exactly one snapshot payload row for the project.
         long snapshotRows = dsl.selectCount().from(TIMELINE_SNAPSHOT)
                 .where(TIMELINE_SNAPSHOT.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
-        assertEquals(1L, snapshotRows, "valid E1 save must write exactly one snapshot payload row");
+        // ROADMAP20 authority-integration: exactly THREE governed rows — the
+        // timeline snapshot payload + the durable Effect snapshot (esnap_) +
+        // the revision semantic context (revctx_).
+        assertEquals(3L, snapshotRows, "valid E1 save must write exactly 3 governed rows (snap + esnap + revctx)");
         // Revision references the payload row (the payload row id, not the revision id).
         String persistedSnapshotId = dsl.select(TIMELINE_REVISION.SNAPSHOT_ID).from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(revision.revisionId())).fetchOne(TIMELINE_REVISION.SNAPSHOT_ID);
@@ -91,7 +94,8 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         // Payload present and digest-equivalent.
         Optional<String> payload = snapshotService.findPayload(persistedSnapshotId);
         assertTrue(payload.isPresent(), "revision must never be visible without its payload");
-        assertEquals(digester.digest(doc), revision.contentDigest());
+        assertEquals(digester.digest(doc), revision.semanticContext().timelineContentDigest(),
+                "contentDigest is the FULL revision semantic digest; the Timeline-only digest lives in the context");
         // One revision row, current pointer updated.
         long revisionRows = dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
@@ -128,7 +132,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
 
         long snapshotRows = dsl.selectCount().from(TIMELINE_SNAPSHOT)
                 .where(TIMELINE_SNAPSHOT.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
-        assertEquals(1L, snapshotRows, "conflict must not leave an orphan snapshot payload");
+        assertEquals(3L, snapshotRows, "conflict must not leave an orphan snapshot payload (3 governed rows from the first save)");
     }
 
     @Test
@@ -144,7 +148,10 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         // Restored revision carries a NEW snapshot row with the copied payload.
         long snapshotRows = dsl.selectCount().from(TIMELINE_SNAPSHOT)
                 .where(TIMELINE_SNAPSHOT.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
-        assertEquals(2L, snapshotRows);
+        // restore writes a NEW timeline snapshot row + NEW revctx row; the
+        // restored revision reuses the SAME immutable Effect snapshot (esnap_
+        // idempotent — no new esnap row).
+        assertEquals(5L, snapshotRows);
         String restoredPayload = snapshotService.findPayload(snapshotIdOf(restored.revisionId())).orElseThrow();
         assertEquals(originalPayload, restoredPayload, "restore must copy the governed payload");
         long revisionRows = dsl.selectCount().from(TIMELINE_REVISION)
@@ -198,4 +205,16 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(trackA, trackB), new TimelineMetadata("Test", "", Map.of()));
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

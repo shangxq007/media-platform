@@ -41,7 +41,8 @@ public final class EffectDefinitionCanonicalSemantics {
         sortedListField(sb, "supportedMediaTypes", definition.supportedMediaTypes());
         List<String> schemaCanonical = new ArrayList<>();
         for (EffectDefinitionSnapshot.EffectParameterSchemaEntry entry : definition.parameterSchema()) {
-            schemaCanonical.add("(" + entry.name() + "|" + entry.type() + ")");
+            schemaCanonical.add("(" + entry.name() + "|" + entry.type()
+                    + "|" + (entry.defaultValue() == null ? "" : entry.defaultValue()) + ")");
         }
         sortedListField(sb, "parameterSchema", schemaCanonical);
         field(sb, "temporalBehavior", definition.temporalBehavior());

@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":render-module"))
     implementation(project(":timeline-module"))
     testImplementation(project(":media-module"))
+    testImplementation(project(":audio-module"))
     implementation(project(":operation-module"))
     implementation(project(":font-text-module"))
     implementation(project(":notification-module"))

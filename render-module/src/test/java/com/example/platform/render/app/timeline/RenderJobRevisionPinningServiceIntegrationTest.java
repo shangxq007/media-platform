@@ -53,7 +53,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         revisionSaveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
         pinningService = new RenderJobRevisionPinningService(dsl);
     }
 
@@ -179,4 +179,16 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

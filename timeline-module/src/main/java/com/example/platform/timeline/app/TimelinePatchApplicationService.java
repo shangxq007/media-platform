@@ -61,8 +61,10 @@ public class TimelinePatchApplicationService {
                     "Expected current revision mismatch", null, null));
         }
 
-        // Validate base digest
-        if (!patch.baseContentDigest().equals(baseRevision.contentDigest())) {
+        // Validate base digest (ROADMAP20 authority-integration: patch bases
+        // are the TIMELINE canonical digest, which lives in the revision
+        // semantic context — contentDigest is the full revision semantic digest).
+        if (!patch.baseContentDigest().equals(baseRevision.semanticContext().timelineContentDigest())) {
             return PatchApplyResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_BASE_DIGEST_MISMATCH,
                     "Base content digest mismatch", null, null));
         }
@@ -127,8 +129,8 @@ public class TimelinePatchApplicationService {
                     "Cross-product patch not allowed", null, null));
         }
 
-        // Validate base digest
-        if (!patch.baseContentDigest().equals(baseRevision.contentDigest())) {
+        // Validate base digest (Timeline canonical digest from the context)
+        if (!patch.baseContentDigest().equals(baseRevision.semanticContext().timelineContentDigest())) {
             return PatchPreviewResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_BASE_DIGEST_MISMATCH,
                     "Base content digest mismatch", null, null));
         }

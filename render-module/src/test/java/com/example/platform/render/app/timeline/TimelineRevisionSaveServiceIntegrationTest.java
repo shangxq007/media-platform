@@ -55,7 +55,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
     }
 
     @Test
@@ -253,12 +253,12 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 new com.example.platform.timeline.app.TimelineArtifactPinValidator(
                         new com.example.platform.render.testutil.NoopArtifactQueryService()),
                 new com.example.platform.artifact.app.ArtifactPinService(
-                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)));
+                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)), effectAuthority(), revisionSemanticContextStore());
         var base = saveServiceLegacy.saveRevision(productId, null, createSampleDocument(), "user-1");
 
         var patch = new com.example.platform.timeline.patch.TimelinePatch(
                 "1.0", "patch-" + java.util.UUID.randomUUID(), productId,
-                base.revisionId(), base.contentDigest(), base.revisionId(),
+                base.revisionId(), base.semanticContext().timelineContentDigest(), base.revisionId(),
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new com.example.platform.timeline.patch.TimelinePatchOperation.AddTrack(
                         "op1", new TimelineTrack("track-2", "V2", TrackType.VIDEO, List.of()), 1)),
@@ -305,4 +305,16 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(track), new TimelineMetadata("Test", "", Map.of()));
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

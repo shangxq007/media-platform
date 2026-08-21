@@ -137,10 +137,8 @@ class RenderPlanDeterminismTest {
                 List.of(),
                 List.of(TestPlans.textElementWithContent("rev-2-content")));
         TimelineContentDigester digester = new TimelineContentDigester();
-        TimelineRevision otherTimelineRevision = new TimelineRevision(
-                "rev-2", "product-1", null,
-                com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION,
-                rev2Doc, digester.digest(rev2Doc), java.time.Instant.EPOCH, "test");
+        TimelineRevision otherTimelineRevision = TestPlans.revisionWithContext(
+                rev2Doc, digester.digest(rev2Doc), TestPlans.effectSnapshot(List.of(), List.of()));
         VerifiedTimelineRevision otherVerified = VerifiedTimelineRevisionFactory.verified(
                 otherTimelineRevision, digester);
         RenderPlanningInput changed = new RenderPlanningInput(

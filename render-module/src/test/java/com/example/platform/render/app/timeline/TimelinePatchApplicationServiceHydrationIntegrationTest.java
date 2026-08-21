@@ -84,7 +84,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         // PRODUCTION wiring: 4-arg constructor enables the Contract P snapshot payload write.
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
     }
 
     // =====================================================================
@@ -115,7 +115,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
                 "semantic change (startTime PT0S -> PT2S) reflected in the result digest");
 
         // A027: preview performs no durable writes
-        assertEquals(1L, countSnapshots(productId), "preview writes zero snapshot rows");
+        assertEquals(3L, countSnapshots(productId), "preview writes zero snapshot rows (base save's 3 governed rows)");
         assertEquals(1L, countRevisions(productId), "preview writes zero revision rows");
         assertEquals(base.revisionId(), currentRevisionService.getCurrentRevisionId(productId),
                 "preview leaves the current revision untouched");
@@ -148,7 +148,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         assertEquals(base.revisionId(), success.parentRevisionId(), "parent lineage recorded");
 
         // A030: new snapshot persists (2 total); A031: new revision persists (2 total)
-        assertEquals(2L, countSnapshots(productId), "new snapshot payload row persisted");
+        assertEquals(6L, countSnapshots(productId), "new snapshot payload row persisted (base 3 + snap/revctx/esnap 3)");
         assertEquals(2L, countRevisions(productId), "new revision row persisted");
         // A032: current revision behavior
         assertEquals(newRevisionId, currentRevisionService.getCurrentRevisionId(productId),
@@ -207,7 +207,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         var legacySave = new TimelineRevisionSaveService(dsl, currentRevisionService, digester,
                 legacySnapshot,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore());
         String productId = "prod-nopay-" + UUID.randomUUID();
         insertProduct(productId);
         TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
@@ -221,7 +221,9 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
                 "missing governed payload must remain fail-closed PAYLOAD_INVALID");
         // Legacy 3-arg wiring never writes a snapshot payload row: zero snapshot rows,
         // one revision row, current unchanged (zero durable mutations).
-        assertEquals(0L, countSnapshots(productId), "zero snapshot rows (legacy path has no payload row)");
+        // Legacy snapshot mock never writes a payload row: only the revision
+        // row + revctx row exist; patch failure adds NO new rows.
+        assertEquals(2L, countSnapshots(productId), "zero NEW snapshot rows (legacy path adds none)");
         assertEquals(1L, countRevisions(productId), "zero new revision rows");
         assertEquals(base.revisionId(), currentRevisionService.getCurrentRevisionId(productId),
                 "current revision unchanged");
@@ -407,7 +409,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     }
 
     private void assertZeroWrites(String productId, String currentRevisionId) {
-        assertEquals(1L, countSnapshots(productId), "zero new snapshot rows");
+        assertEquals(3L, countSnapshots(productId), "zero new snapshot rows (3 governed rows from the base save)");
         assertEquals(1L, countRevisions(productId), "zero new revision rows");
         assertEquals(currentRevisionId, currentRevisionService.getCurrentRevisionId(productId),
                 "current revision unchanged");
@@ -473,4 +475,16 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         }
         return MediaTime.ofRational(num, den);
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

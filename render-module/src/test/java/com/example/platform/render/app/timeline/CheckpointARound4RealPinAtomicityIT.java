@@ -143,7 +143,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService);
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore());
 
         var revision = saveService.saveRevision(productId, null, pinnedDoc("art-1", DIGEST_HEX), "user-1");
         assertNotNull(revision);
@@ -197,7 +197,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService);
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore());
 
         // The pin FK constraint (artifact_pin.artifact_id → artifact.id) fires
         // INSIDE the save transaction: ghost artifact id → statement failure →
@@ -246,7 +246,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService);
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore());
 
         // Two pinned clips: art-1 (real artifact row) + ghost-art (no row).
         TimelineClip clip1 = new TimelineClip(
@@ -280,4 +280,16 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
                         || currentRevisionService.getCurrentRevisionId(productId).isBlank(),
                 "head must remain unchanged");
     }
+    private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
+        // AI14/AI15: production authority wiring — durable Jdbc store + registry.
+        return new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                new com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry(dsl),
+                new com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore(dsl));
+    }
+
+    private static com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore revisionSemanticContextStore() {
+        return new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl);
+    }
+
+
 }

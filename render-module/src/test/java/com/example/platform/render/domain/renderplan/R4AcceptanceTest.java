@@ -4,10 +4,8 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.semantics.clip.MediaClip;
-import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
-import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
 import com.example.platform.timeline.semantics.effect.EffectSemanticStateCanonicalSemantics;
@@ -50,9 +48,7 @@ class R4AcceptanceTest {
         EffectSemanticSnapshotReference canonicalPin = TestPlans.effectSnapshotReference(
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
-                () -> VerifiedRenderSemanticSnapshotFactory.verified(
-                        TestPlans.timelineRevision(), TestPlans.timelineDigester(),
-                        foreignSnapshot, canonicalPin),
+                () -> VerifiedRenderSemanticSnapshotFactory.verified(TestPlans.timelineRevision(), TestPlans.timelineDigester(), foreignSnapshot),
                 "cross-revision effect binding -> fail closed (R4-A1/RP3-C)");
     }
 
@@ -73,7 +69,10 @@ class R4AcceptanceTest {
                 List.of(TestPlans.gaussianBlurEffect()), List.of(TestPlans.effectDefinition()));
         assertThrows(IllegalArgumentException.class,
                 () -> VerifiedEffectSemanticSnapshotFactory.verified(
-                        tamperedSnapshot, canonicalPin, TestPlans.REVISION_ID),
+                        tamperedSnapshot,
+                        new com.example.platform.timeline.version.TimelineRevisionSemanticContext(
+                                "tl-digest-fixture", canonicalPin, "ctx-digest-fixture", com.example.platform.timeline.version.TimelineRevisionSemanticContext.REVISION_SEMANTICS_V1),
+                        TestPlans.REVISION_ID),
                 "effect state digest mismatch -> fail closed (R4-A1/RP2)");
     }
 
@@ -312,8 +311,18 @@ class R4AcceptanceTest {
                 Map.of("a:b", "c"), Map.of(),
                 new ClipEffectTarget(TestPlans.TRACK_ID, TestPlans.CLIP_ID),
                 TestPlans.gaussianBlurEffect().provenance());
+        // the parameter name deliberately contains the pair delimiter — the
+        // definition schema must declare it (PV2 closed-schema semantics).
+        EffectInstance.EffectDefinition hostileDef = new EffectInstance.EffectDefinition(
+                "def-blur", "1",
+                EffectInstance.EffectCategory.GAUSSIAN_BLUR,
+                List.of(EffectInstance.EffectMediaType.VIDEO),
+                Map.of("a:b", new EffectInstance.ParameterSchema(
+                        "a:b", "string", null, null, null, List.of())),
+                EffectInstance.EffectTemporalBehavior.PRESERVE_DURATION,
+                List.of(), List.of(), List.of());
         RenderPlanningInput input = TestPlans.inputWithEffectState(
-                List.of(hostile), List.of(TestPlans.effectDefinition()));
+                List.of(hostile), List.of(hostileDef));
         RenderPlan plan = new DefaultRenderPlanner().plan(input).plan();
         EffectMaterializationRequirement req = plan.nodes().stream()
                 .filter(n -> n.kind() instanceof RenderNodeKind.Effect)

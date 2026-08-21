@@ -4,6 +4,7 @@ import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
 import com.example.platform.timeline.version.TimelineRevision;
+import com.example.platform.timeline.version.TimelineRevisionSemanticContext;
 import java.util.Objects;
 
 /**
@@ -36,29 +37,39 @@ public final class VerifiedRenderSemanticSnapshotFactory {
      * Builds the verified authored semantic snapshot from the revision's
      * exact Effect pin.
      *
-     * @param timelineRevision  authoritative Timeline revision (with canonicalTimeline)
-     * @param digester          timeline canonical content digester
-     * @param effectSnapshot    the immutable Effect semantic snapshot loaded by
-     *                          the revision's pin
-     * @param expectedReference the EXACT reference pinned by the revision
+     * <p>ROADMAP20 authority-integration correction (blocker 2): the expected
+     * Effect pin is derived from the REVISION-OWNED semantic context — the
+     * caller supplies the loaded snapshot only; caller-chosen reference pairs
+     * are not accepted.
+     *
+     * @param timelineRevision authoritative Timeline revision owning the exact
+     *                         Effect pin in its semantic context
+     * @param digester         timeline canonical content digester
+     * @param effectSnapshot   the immutable Effect semantic snapshot loaded by
+     *                         the revision's pin
      * @return one immutable integrity-bound authored semantic snapshot
      * @throws IllegalArgumentException on any verification failure (fail closed)
      */
     public static VerifiedRenderSemanticSnapshot verified(
             TimelineRevision timelineRevision,
             TimelineContentDigester digester,
-            EffectSemanticSnapshot effectSnapshot,
-            EffectSemanticSnapshotReference expectedReference) {
+            EffectSemanticSnapshot effectSnapshot) {
         Objects.requireNonNull(timelineRevision, "timelineRevision");
         Objects.requireNonNull(digester, "digester");
         Objects.requireNonNull(effectSnapshot, "effectSnapshot");
-        Objects.requireNonNull(expectedReference, "expectedReference");
 
+        TimelineRevisionSemanticContext semanticContext = timelineRevision.semanticContext();
+        if (semanticContext == null) {
+            throw new IllegalArgumentException(
+                    "VALID_CANONICAL_REVISION_REQUIRES_SEMANTIC_CONTEXT_V1: revision '"
+                            + timelineRevision.revisionId() + "' has no semantic context — "
+                            + "invalid/corrupt; FAIL CLOSED (no latest lookup, no caller completion)");
+        }
         VerifiedTimelineRevision timeline = VerifiedTimelineRevisionFactory.verified(
                 timelineRevision, digester);
         VerifiedEffectSemanticSnapshot effectsSnapshot =
                 VerifiedEffectSemanticSnapshotFactory.verified(
-                        effectSnapshot, expectedReference, timelineRevision.revisionId());
+                        effectSnapshot, semanticContext, timelineRevision.revisionId());
         return new VerifiedRenderSemanticSnapshot(timeline, effectsSnapshot);
     }
 }

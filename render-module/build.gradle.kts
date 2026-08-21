@@ -233,12 +233,33 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
         // timeline-module semantics/effect package; render consumes them).
         val timelineEffectDir = file("../timeline-module/src/main/java/com/example/platform/timeline/semantics/effect")
         val timelineEffectFiles = fileTree(timelineEffectDir) { include("*.java") }.files
-        val bindingSource = timelineEffectFiles.find { it.name == "EffectSemanticBinding.java" }
-        require(bindingSource != null && bindingSource.readText().contains("private EffectSemanticBinding(")) {
-            "FAIL: EffectSemanticBinding constructor must be private (R5-A no mint path)"
+        // CLEAN-FORWARD (CF6/CF7/CF8): old canonical issuance authorities were
+        // DELETED, not deprecated — no compatibility surface may exist.
+        require(timelineEffectFiles.none { it.name == "EffectSemanticBinding.java" }) {
+            "FAIL: EffectSemanticBinding must be DELETED (CF7 — no compatibility authority)"
         }
-        require(timelineEffectFiles.any { it.name == "AuthoredEffectSemanticAuthority.java" }) {
-            "FAIL: AuthoredEffectSemanticAuthority (single issuance path) missing (R5-A)"
+        require(timelineEffectFiles.none { it.name == "AuthoredEffectSemanticAuthority.java" }) {
+            "FAIL: AuthoredEffectSemanticAuthority must be DELETED (CF6 — no compatibility issuance)"
+        }
+        require(timelineEffectFiles.none { it.name == "RevisionOwnedEffectProjection.java" }) {
+            "FAIL: RevisionOwnedEffectProjection must be DELETED (CF8 — no compatibility projection authority)"
+        }
+        // CLEAN-FORWARD (CF1/CF2): TimelineRevision requires semanticContext +
+        // Effect pin — no compatibility constructor without them.
+        val revisionSource = file("../timeline-module/src/main/java/com/example/platform/timeline/version/TimelineRevision.java").readText()
+        require(revisionSource.contains("semanticContext == null") && revisionSource.contains("REQUIRES_SEMANTIC_CONTEXT")) {
+            "FAIL: TimelineRevision must require semanticContext by construction (CF1)"
+        }
+        require(revisionSource.contains("effectReference() == null") && revisionSource.contains("REQUIRES_EFFECT_SEMANTIC_SNAPSHOT_REFERENCE")) {
+            "FAIL: TimelineRevision must require the Effect pin by construction (CF2)"
+        }
+        // CLEAN-FORWARD (F): no legacy timeline-only semantic version.
+        val contextSource = file("../timeline-module/src/main/java/com/example/platform/timeline/version/TimelineRevisionSemanticContext.java").readText()
+        require(!contextSource.contains("timeline-only-v1")) {
+            "FAIL: legacy timeline-only semantic version must NOT exist (clean-forward)"
+        }
+        require(contextSource.contains("REVISION_SEMANTICS_V1")) {
+            "FAIL: revision-semantics-v1 must be the single valid contract"
         }
         val materializerSource2 = javaFiles.find { it.name == "DefaultRenderMaterializer.java" }?.readText()
         require(materializerSource2 != null
@@ -267,19 +288,25 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
                 && timelineEffectFiles.any { it.name == "ClipEffectTarget.java" }) {
             "FAIL: typed EffectTarget root + ClipEffectTarget variant required (R6-A)"
         }
-        // 2. RevisionOwnedEffectProjection (revision-owned membership authority).
-        require(timelineEffectFiles.any { it.name == "RevisionOwnedEffectProjection.java" }) {
-            "FAIL: RevisionOwnedEffectProjection (revision-owned membership) required (R6-A)"
+        // 2. CLEAN-FORWARD (CF8): RevisionOwnedEffectProjection deleted — the
+        //    new authority derives target context from the canonical document.
+        require(timelineEffectFiles.none { it.name == "RevisionOwnedEffectProjection.java" }) {
+            "FAIL: RevisionOwnedEffectProjection must be DELETED (CF8)"
         }
-        // 3. authority verifies membership via the projection (no overlap-only).
-        val r6AuthoritySource = timelineEffectFiles.find { it.name == "AuthoredEffectSemanticAuthority.java" }?.readText()
-        require(r6AuthoritySource != null && r6AuthoritySource.contains("projection.contains(")
-                && r6AuthoritySource.contains("has no explicit authored")) {
-            "FAIL: authority must verify membership via revision-owned projection, fail closed on target-less (R6-A)"
+        // 3. authority verifies target clips against the canonical document
+        //    (no overlap-only heuristic, no trackId-string heuristics).
+        val r6AuthoritySource = timelineEffectFiles.find { it.name == "EffectSemanticSnapshotAuthority.java" }?.readText()
+        require(r6AuthoritySource != null && r6AuthoritySource.contains("resolveTargetContext")
+                && r6AuthoritySource.contains("does not exist in the canonical document")
+                && !r6AuthoritySource.contains("\\\"audio\\\".equals")) {
+            "FAIL: authority must resolve targets from the canonical document (no trackId heuristics, R6-A/B5)"
         }
-        // 4. no overlap-only ownership heuristic in the authority.
-        require(r6AuthoritySource != null && !r6AuthoritySource.contains("overlaps(")) {
-            "FAIL: authority must not use temporal overlap as ownership (R6-A)"
+        // 4. authority is an INSTANCE (registry + store injected) — no public
+        //    static mint with caller-supplied id/registry.
+        require(r6AuthoritySource != null && r6AuthoritySource.contains("EffectDefinitionVersionRegistry registry")
+                && r6AuthoritySource.contains("EffectSemanticSnapshotStore store")
+                && !r6AuthoritySource.contains("public static EffectSemanticSnapshot mint")) {
+            "FAIL: production mint authority must be instance-based with injected durable registry/store (B3/B4)"
         }
         // 5. EffectInstance carries typed target.
         val r6EffectInstanceSource = timelineEffectFiles.find { it.name == "EffectInstance.java" }?.readText()

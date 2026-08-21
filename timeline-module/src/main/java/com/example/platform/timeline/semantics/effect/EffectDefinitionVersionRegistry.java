@@ -19,6 +19,15 @@ public interface EffectDefinitionVersionRegistry {
     /** @throws IllegalArgumentException on (id, version) -> different digest collision */
     void register(EffectDefinitionSnapshot definition);
 
+    /**
+     * Transaction-aware registration (§12/§21): the identity check joins the
+     * caller's physical transaction (advisory-lock serialization for durable
+     * implementations). Default delegates to {@link #register} for InMemory.
+     */
+    default void registerTx(org.jooq.DSLContext tx, EffectDefinitionSnapshot definition) {
+        register(definition);
+    }
+
     /** In-memory bounded implementation for domain tests (NOT durable). */
     final class InMemory implements EffectDefinitionVersionRegistry {
         private final java.util.Map<String, String> idVersionToDigest = new java.util.LinkedHashMap<>();

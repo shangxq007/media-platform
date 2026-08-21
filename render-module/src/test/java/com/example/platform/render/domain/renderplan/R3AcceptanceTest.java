@@ -1,9 +1,7 @@
 package com.example.platform.render.domain.renderplan;
 
-import com.example.platform.timeline.semantics.effect.AuthoredEffectSemanticAuthority;
 import com.example.platform.timeline.semantics.effect.ClipEffectTarget;
 import com.example.platform.timeline.semantics.effect.EffectInstance;
-import com.example.platform.timeline.semantics.effect.EffectSemanticBinding;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

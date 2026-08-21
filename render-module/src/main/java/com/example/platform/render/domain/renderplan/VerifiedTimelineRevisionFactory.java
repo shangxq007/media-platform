@@ -74,14 +74,19 @@ public final class VerifiedTimelineRevisionFactory {
                             + ": canonicalTimeline is absent (revision not hydrated)");
         }
 
-        // 1. canonical content digest verification (fail closed on mismatch)
+        // 1. canonical content digest verification (fail closed on mismatch).
+        // ROADMAP20 authority-integration: TimelineRevision.contentDigest is the
+        // FULL revision semantic digest (timeline + Effect commitment) — the
+        // TIMELINE-only digest lives in the revision semantic context and is
+        // what the content digester recomputes.
         String computed = digester.digest(document);
-        if (!computed.equals(timelineRevision.contentDigest())) {
+        String recordedTimelineDigest = timelineRevision.semanticContext().timelineContentDigest();
+        if (!computed.equals(recordedTimelineDigest)) {
             throw new IllegalArgumentException(
                     "TimelineRevision content digest mismatch for revision "
                             + timelineRevision.revisionId()
                             + ": computed=" + computed
-                            + " recorded=" + timelineRevision.contentDigest());
+                            + " recorded=" + recordedTimelineDigest);
         }
 
         // 2. extract typed semantic projection from the SAME verified document
@@ -95,7 +100,7 @@ public final class VerifiedTimelineRevisionFactory {
         // canonical form is lowercase hex — convert for the typed pin.
         TimelineRevisionReference reference = new TimelineRevisionReference(
                 timelineRevision.revisionId(),
-                ContentDigest.sha256(base64ToHex(timelineRevision.contentDigest())));
+                ContentDigest.sha256(base64ToHex(recordedTimelineDigest)));
         return VerifiedTimelineRevision.create(reference, clips, audioMix, textElements);
     }
 
