@@ -40,6 +40,8 @@ class Roadmap21EntryResidualGuardTest {
             walk.filter(Files::isRegularFile)
                     .filter(f -> f.toString().contains("/src/main/java/"))
                     .filter(f -> f.toString().endsWith(".java"))
+                    .filter(f -> !f.toString().contains("/.worktrees/"))
+                    .filter(f -> !f.toString().contains("/.git/"))
                     .forEach(out::add);
         }
         return out;
