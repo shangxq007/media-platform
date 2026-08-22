@@ -97,6 +97,23 @@ class RenderResultExtentFailClosedTest {
     }
 
     @Test
+    void directlyConstructedSuccessWithoutAchievedProofIsNotAuthoritative() {
+        // Bypass the success() factory (which already fails closed) and
+        // construct a raw success with requested but NO achieved extent.
+        // authoritativeSuccess() must still be false — this is the RED-5
+        // mutation target (weakening it to 'success && requested != null'
+        // must fail this test).
+        RenderExtent e = extent(10000);
+        var r = new RenderOrchestrator.RenderResult(
+                "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
+                true, "ffmpeg", "chain-1", "1.0", "ok",
+                e, null, null);
+        assertTrue(r.success());
+        assertFalse(r.authoritativeSuccess(),
+                "authoritative extent success requires achieved proof (AUTHORITATIVE_SUCCESS_WITHOUT_EXTENT_PROOF_COUNT=0)");
+    }
+
+    @Test
     void realOrchestratorPathCarriesRequestedExtent() {
         // The real production path: DefaultRenderOrchestrator.execute passes
         // job.requestedExtent() into the result factory. A job declaring a

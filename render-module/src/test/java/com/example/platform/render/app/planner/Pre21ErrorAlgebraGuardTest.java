@@ -104,4 +104,37 @@ class Pre21ErrorAlgebraGuardTest {
         assertTrue(openDalMapper, "provider-native mapping must exist (OpenDalErrorMapper)");
         assertTrue(graphqlMapper, "API transport mapping must exist (GraphQLExceptionMapper)");
     }
+
+    @Test
+    void semanticErrorAuthorityDoesNotImportProviderNativeTypes() throws IOException {
+        // RED-6 detector: semantic failure authority layers must not import
+        // provider-native packages (storage providers, render providers,
+        // outbox coordination). Provider-native codes stay in adapters.
+        List<String> violations = new ArrayList<>();
+        for (Path f : productionJavaFiles()) {
+            String p = f.toString();
+            // semantic/domain error authorities: error type files only
+            String name = f.getFileName().toString();
+            boolean isSemanticAuthority = name.endsWith("ErrorCode.java")
+                    || name.endsWith("Errors.java")
+                    || (name.endsWith("Error.java") && !name.startsWith("Configurable"))
+                    || name.equals("IrErrorCode.java");
+            if (!isSemanticAuthority) {
+                continue;
+            }
+            List<String> lines = Files.readAllLines(f);
+            for (int i = 0; i < lines.size(); i++) {
+                String t = lines.get(i).trim();
+                if (!t.startsWith("import com.example.platform.")) {
+                    continue;
+                }
+                if (t.contains(".storageprovider.") || t.contains(".provider.")
+                        || t.contains("outbox.coordination") || t.contains("infrastructure.")) {
+                    violations.add(f.getFileName() + ":" + (i + 1) + ": " + t);
+                }
+            }
+        }
+        assertEquals(List.of(), violations,
+                "provider-native types must not be imported into semantic failure authority layers");
+    }
 }
