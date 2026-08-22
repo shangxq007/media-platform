@@ -144,13 +144,15 @@ define semantics; durable persistence is a #22 decision.
 
 ## C19. Typed failure algebra
 
-Module-local enum in media-execution-plan-module, V1 classes:
+Module-local enum in media-execution-plan-module, ACTIVE V1 classes:
 INVALID_EXECUTION_REQUIREMENT, INVALID_LOGICAL_GRAPH, CYCLE_DETECTED,
 MISSING_SEMANTIC_INPUT, INCONSISTENT_RENDER_EXTENT, ILLEGAL_PARTITION,
-ILLEGAL_FUSION (reserved), UNSATISFIED_STRUCTURAL_CONSTRAINT,
-UNSUPPORTED_V1_PLANNING_CONSTRUCT, DETERMINISM_INVARIANT_VIOLATION.
-Each with machine-readable context. No free-text semantic branching. No
-global mega error code. ExecutionPlanErrorCode deleted (single authority).
+UNSATISFIED_STRUCTURAL_CONSTRAINT, UNSUPPORTED_V1_PLANNING_CONSTRUCT,
+DETERMINISM_INVARIANT_VIOLATION.
+ILLEGAL_FUSION is NOT an active V1 surface (fusion DEFERRED); it may be
+documented as a future possible failure only. Each failure carries
+machine-readable context. No free-text semantic branching. No global mega
+error code. ExecutionPlanErrorCode deleted (single authority).
 
 ## C20. Module ownership/boundaries
 
@@ -175,20 +177,34 @@ EXECUTION_PLAN_DUAL_AUTHORITY_COUNT=0.
 ## C23. Clean-forward migration/deletion policy (Phase 0)
 
 media-execution-plan-module is the canonical home (MEDIA_EXECUTION_PLAN_MODULE_
-DEFERRED_AS_WHOLE=NO). Phase 0 deletions (shadow authorities, zero external
-callers before delete, zero retired definitions at closure):
-ExecutionCapabilityRequirement, MediaOperation hierarchy (16 types),
-TimelineToExecutionPlanCompiler, GpuRequirement, ExecutionPlanErrorCode,
-MediaBackendCompiler. MIGRATE_RENAME: MediaExecutionPlan / MediaExecutionStep /
-MediaExecutionGraphProjection / ExecutionPlanDomainException.
-DEFER_NONCONFLICTING_ONLY: ExecutionProvider (FROZEN), ExecutionCacheKey.
+DEFERRED_AS_WHOLE=NO). Phase 0 disposition per the 53-row type-disposition
+ledger (zero external callers before delete, zero retired definitions at
+closure): DELETE_SHADOW=21 (ExecutionCapabilityRequirement, MediaOperation
+hierarchy 16, GpuRequirement, TimelineToExecutionPlanCompiler,
+MediaBackendCompiler, ExecutionPlanErrorCode); DEFER_TO_22_PLUS=6
+(ExecutionResourceRequirement, CpuClass, MemoryClass, NetworkRequirement,
+TemporaryStorageClass, ExecutionStepFailurePolicy, ExecutionProvider,
+ExecutionCacheKey); MIGRATE_REDESIGN=13 (ExecutionStepKind,
+ExecutionDependency, ExecutionDependencyType, ExecutionDeterminism,
+MediaExecutionPlan, MediaExecutionStep, ExecutionPlanDigest,
+MediaExecutionPlanBuilder, MediaExecutionPlanValidator,
+MediaExecutionGraphProjection, ExecutionPlanDomainException);
+REUSE_AS_CANONICAL=11 (identity/schema/edge/input/output/step-id types +
+ExecutionCreationContext provenance-only); REUSE_MECHANICS_ONLY=2
+(ExecutionPlanCanonicalSerializer, ExecutionPlanDigestCalculator).
 No compatibility wrappers. DUAL_AUTHORITY_ALLOWED=NO.
 
 ## C24. Implementation acceptance evidence
 
-Guards: SHADOW_EXECUTION_CAPABILITY_REQUIREMENT_COUNT=0,
+Guards (final target): SHADOW_EXECUTION_CAPABILITY_REQUIREMENT_COUNT=0,
 SHADOW_EXECUTION_OPERATION_AUTHORITY_COUNT=0,
 DIRECT_TIMELINE_TO_EXECUTION_PLAN_COMPILER_COUNT=0,
+EXECUTION_STEP_KIND_INDEPENDENT_AUTHORITY_COUNT=0,
+GENERIC_EXECUTION_DEPENDENCY_AUTHORITY_COUNT=0,
+RENDER_DEPENDENCY_VARIANT_LOSS_COUNT=0,
+EXECUTION_DETERMINISM_INDEPENDENT_AUTHORITY_COUNT=0,
+ROADMAP21_INVENTED_RESOURCE_REQUIREMENT_COUNT=0,
+ROADMAP21_RUNTIME_FAILURE_POLICY_COUNT=0,
 EXECUTION_PLAN_DUAL_AUTHORITY_COUNT=0,
 EXECUTION_PLAN_COMPATIBILITY_WRAPPER_COUNT=0, plus the 13 invariants from
 Decision Recovery §16 (runtime reads 0, binding 0, invented capability 0,
