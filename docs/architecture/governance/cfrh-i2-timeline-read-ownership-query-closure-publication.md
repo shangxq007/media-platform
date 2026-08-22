@@ -13,7 +13,7 @@ CLEAN-FORWARD-RUNTIME-HARDENING-I2 — TIMELINE READ OWNERSHIP AND LEGACY QUERY 
 | BASE_TREE | acb60c879babbb0bb32073ac03223103896765e2 (d0fab279 tree) |
 | CANDIDATE_SHA | 9f3d5f35d4f71c181ec37477af4cf528d248fe84 |
 | CANDIDATE_TREE | cb7cd5b48be3ce39eb0acf6dc0e7a564f75fad0c |
-| PUBLICATION_SHA | (set after commit) |
+| PUBLICATION_SHA | 3a30604d022a1558210f3d51d9be7df3368abd26 |
 
 The four previously-reported implementation SHAs (c5a1b4fa, b7c46828, 1a1fe92d, dfd88601)
 existed in the local Git object store (verified via git cat-file) and were recovered
