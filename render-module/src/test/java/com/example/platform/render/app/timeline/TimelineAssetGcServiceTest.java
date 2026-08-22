@@ -48,7 +48,7 @@ class TimelineAssetGcServiceTest extends PostgresTestContainerSupport {
         props.setRetentionDays(0);
         props.setDeleteBlobOnPurge(false);
         gcService = new TimelineAssetGcService(
-                dsl, mock(SystemMaintenanceReader.class), snapshotService, lifecycleService, props, null);
+                mock(SystemMaintenanceReader.class), snapshotService, lifecycleService, props, null);
 
         String json = """
                 {

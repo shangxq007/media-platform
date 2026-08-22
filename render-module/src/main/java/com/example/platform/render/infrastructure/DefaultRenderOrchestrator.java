@@ -82,11 +82,12 @@ public class DefaultRenderOrchestrator implements RenderOrchestrator {
             String storageUri = finalOutput != null ? finalOutput.url() : null;
             long durationMs = Duration.between(startedAt, Instant.now()).toMillis();
 
-            return new RenderResult(job.id(), artifactId, storageUri, durationMs,
+            return RenderResult.success(job.id(), artifactId, storageUri, durationMs,
                     finalOutput != null ? finalOutput.mimeType() : "unknown",
                     finalOutput != null ? finalOutput.width() + "x" + finalOutput.height() : "unknown",
-                    true, "orchestrator", trace.jobId(), trace.jobId(),
-                    "All " + stepResults.size() + " steps completed", trace);
+                    "orchestrator", trace.jobId(), trace.jobId(),
+                    "All " + stepResults.size() + " steps completed",
+                    null, null, trace);
         } catch (Exception e) {
             RenderExecutionTrace trace = new RenderExecutionTrace(
                     job.id(), job.jobType(), job.mode(),

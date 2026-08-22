@@ -12,13 +12,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 
 
 /**
@@ -29,7 +27,6 @@ public class TimelineAssetGcService {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineAssetGcService.class);
 
-    private final DSLContext dsl;
     private final com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader;
     private final TimelineSnapshotService timelineSnapshotService;
     private final TimelineAssetLifecycleService lifecycleService;
@@ -37,13 +34,11 @@ public class TimelineAssetGcService {
     private final Optional<BlobStorage> blobStorage;
 
     public TimelineAssetGcService(
-            DSLContext dsl,
             com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader,
             TimelineSnapshotService timelineSnapshotService,
             TimelineAssetLifecycleService lifecycleService,
             TimelineAssetGcProperties properties,
             @Autowired(required = false) BlobStorage blobStorage) {
-        this.dsl = dsl;
         this.systemMaintenanceReader = systemMaintenanceReader;
         this.timelineSnapshotService = timelineSnapshotService;
         this.lifecycleService = lifecycleService;
