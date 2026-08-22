@@ -213,7 +213,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/rj-1/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
-        when(timelineSnapshotService.findPayload(anyString())).thenReturn(Optional.of("{\"tracks\":[]}"));
+        when(timelineSnapshotService.findOwnedById(anyString(), anyString(), anyString()))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap", "proj-1", "tenant-1", "{\"tracks\":[]}", "internal-1.0")));
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-1", "proj-1", "snap-1", "default_1080p");
@@ -269,8 +270,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/rj-3/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
-        when(timelineSnapshotService.findPayload("snap-3"))
-                .thenReturn(Optional.of("{\"tracks\":[]}"));
+        when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-3")))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-3", "proj-1", "tenant-3", "{\"tracks\":[]}", "internal-1.0")));
 
         String result = service.executeExistingRenderJob("tenant-3", "rj-3");
 
@@ -297,8 +298,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 .thenThrow(new RuntimeException("FFmpeg crashed"));
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
-        when(timelineSnapshotService.findPayload("snap-4"))
-                .thenReturn(Optional.of("{\"tracks\":[]}"));
+        when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-4")))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-4", "proj-1", "tenant-4", "{\"tracks\":[]}", "internal-1.0")));
 
         assertThrows(IllegalStateException.class,
                 () -> service.executeExistingRenderJob("tenant-4", "rj-4"));
@@ -351,8 +352,9 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/rj-5/output.mp4");
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
-        when(timelineSnapshotService.findPayload("snap-5"))
-                .thenReturn(Optional.of("{\"tracks\":[{\"type\":\"VIDEO\"}]}"));
+        when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-5")))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                        "snap-5", "proj-1", "tenant-5", "{\"tracks\":[{\"type\":\"VIDEO\"}]}", "internal-1.0")));
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-5", "proj-5", "snap-5", "default_1080p");

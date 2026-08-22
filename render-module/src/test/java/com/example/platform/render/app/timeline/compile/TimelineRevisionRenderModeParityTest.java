@@ -320,7 +320,10 @@ class TimelineRevisionRenderModeParityTest {
         private final InMemoryTimelineRevisionRepository repo;
         StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) { super(null, null, null, null); this.repo = repo; }
         @Override public Optional<RevisionInfo> findById(String projectId, String tenantId, String revisionId) {
-            return repo.findById(revisionId).map(row -> new RevisionInfo(
+            return repo.findById(revisionId)
+                    .filter(row -> row.projectId().equals(projectId)
+                            && (tenantId == null || row.tenantId().equals(tenantId)))
+                    .map(row -> new RevisionInfo(
                     row.id(), row.projectId(), row.tenantId(), row.parentRevisionId(),
                     row.revisionNumber(), row.snapshotId(), row.internalRevision(),
                     row.contentHash(), row.schemaVersion(), row.source(),
@@ -338,6 +341,12 @@ class TimelineRevisionRenderModeParityTest {
         }
         @Override public Optional<String> findPayload(String snapshotId) {
             return Optional.ofNullable(store.get(snapshotId)).map(SnapshotInfo::payloadJson);
+        }
+
+        @Override
+        public Optional<SnapshotInfo> findOwnedById(String projectId, String tenantId, String snapshotId) {
+            return Optional.ofNullable(store.get(snapshotId))
+                    .filter(s -> s.projectId().equals(projectId) && s.tenantId().equals(tenantId));
         }
     }
     static class InMemoryStorageReferenceRepository extends StorageReferenceRepository {

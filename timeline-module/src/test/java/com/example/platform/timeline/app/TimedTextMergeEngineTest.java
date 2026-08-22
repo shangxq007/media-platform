@@ -106,9 +106,9 @@ class TimedTextMergeEngineTest {
         TimelineRevisionRepository.RevisionRow baseRow = row("base-rev", "snap-base", basePayload);
         TimelineRevisionRepository.RevisionRow srcRow = row("src-rev", "snap-src", sourcePayload);
         TimelineRevisionRepository.RevisionRow tgtRow = row("tgt-rev", "snap-tgt", targetPayload);
-        when(revisionRepo.findById("base-rev")).thenReturn(Optional.of(baseRow));
-        when(revisionRepo.findById("src-rev")).thenReturn(Optional.of(srcRow));
-        when(revisionRepo.findById("tgt-rev")).thenReturn(Optional.of(tgtRow));
+        when(revisionRepo.findOwnedById("base-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(baseRow));
+        when(revisionRepo.findOwnedById("src-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(srcRow));
+        when(revisionRepo.findOwnedById("tgt-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(tgtRow));
         when(snapshotService.findById("snap-base"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", basePayload, "internal-1.0")));
         when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-base"))
@@ -124,7 +124,7 @@ class TimedTextMergeEngineTest {
         when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
                 .thenReturn("snap-merged");
         when(revisionRepo.nextRevisionNumber("proj-1")).thenReturn(9);
-        when(revisionRepo.listByProject("proj-1", 500)).thenReturn(List.of());
+        when(revisionRepo.listOwnedByProject("proj-1", "tenant-1", null, null, null, 500)).thenReturn(List.of());
         when(currentService.getCurrentRevisionId("proj-1")).thenReturn("tgt-rev");
         var previewService = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
         var planner = new TimelineNonConflictingMergePlanner(previewService);

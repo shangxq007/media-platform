@@ -272,11 +272,11 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
     }
 
     private void stubRevisions(String baseJson, String sourceJson, String targetJson) {
-        when(revisionRepository.findById(BASE_REV))
+        when(revisionRepository.findOwnedById(BASE_REV, PROJECT, TENANT))
                 .thenReturn(Optional.of(row(BASE_REV, "snap-base")));
-        when(revisionRepository.findById(SOURCE_REV))
+        when(revisionRepository.findOwnedById(SOURCE_REV, PROJECT, TENANT))
                 .thenReturn(Optional.of(row(SOURCE_REV, "snap-source")));
-        when(revisionRepository.findById(TARGET_REV))
+        when(revisionRepository.findOwnedById(TARGET_REV, PROJECT, TENANT))
                 .thenReturn(Optional.of(row(TARGET_REV, "snap-target")));
         when(snapshotService.findById("snap-base"))
                 .thenReturn(Optional.of(info("snap-base", baseJson)));
@@ -293,7 +293,7 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
         when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
                 .thenAnswer(inv -> "snap-merged-" + inv.getArgument(2).hashCode());
         when(revisionRepository.nextRevisionNumber(PROJECT)).thenReturn(9);
-        when(revisionRepository.listByProject(PROJECT, 500)).thenReturn(List.of());
+        when(revisionRepository.listOwnedByProject(PROJECT, TENANT, null, null, null, 500)).thenReturn(List.of());
         when(currentRevisionService.getCurrentRevisionId(PROJECT)).thenReturn(TARGET_REV);
     }
 

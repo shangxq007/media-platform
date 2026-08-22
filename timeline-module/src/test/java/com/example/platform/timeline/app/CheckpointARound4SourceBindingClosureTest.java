@@ -295,9 +295,9 @@ class CheckpointARound4SourceBindingClosureTest {
         TimelineSnapshotService snap = mock(TimelineSnapshotService.class);
         com.example.platform.timeline.app.ProductCurrentRevisionService cur =
                 mock(com.example.platform.timeline.app.ProductCurrentRevisionService.class);
-        when(repo.findById("base-rev")).thenReturn(Optional.of(row("base-rev", "snap-b")));
-        when(repo.findById("src-rev")).thenReturn(Optional.of(row("src-rev", "snap-s")));
-        when(repo.findById("tgt-rev")).thenReturn(Optional.of(row("tgt-rev", "snap-t")));
+        when(repo.findOwnedById("base-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("base-rev", "snap-b")));
+        when(repo.findOwnedById("src-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("src-rev", "snap-s")));
+        when(repo.findOwnedById("tgt-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("tgt-rev", "snap-t")));
         when(snap.findById("snap-b")).thenReturn(Optional.of(info("snap-b", basePayload)));
         when(snap.findOwnedById(PROJECT, TENANT, "snap-b"))
                 .thenReturn(Optional.of(info("snap-b", basePayload)));
@@ -309,7 +309,7 @@ class CheckpointARound4SourceBindingClosureTest {
                 .thenReturn(Optional.of(info("snap-t", tgtPayload)));
         when(snap.save(anyString(), anyString(), anyString(), anyString())).thenReturn("snap-m");
         when(repo.nextRevisionNumber(PROJECT)).thenReturn(4);
-        when(repo.listByProject(PROJECT, 500)).thenReturn(List.of());
+        when(repo.listOwnedByProject(PROJECT, TENANT, null, null, null, 500)).thenReturn(List.of());
         when(cur.getCurrentRevisionId(PROJECT)).thenReturn("tgt-rev");
         TimelineMergePreviewService pv = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
         com.example.platform.timeline.app.TimelineArtifactPinValidator pinValidator =

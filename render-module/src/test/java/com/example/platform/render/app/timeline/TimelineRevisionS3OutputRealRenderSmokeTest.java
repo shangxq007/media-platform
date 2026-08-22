@@ -430,7 +430,10 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
 
         @Override
         public Optional<RevisionInfo> findById(String projectId, String tenantId, String revisionId) {
-            return repo.findById(revisionId).map(row -> new RevisionInfo(
+            return repo.findById(revisionId)
+                    .filter(row -> row.projectId().equals(projectId)
+                            && (tenantId == null || row.tenantId().equals(tenantId)))
+                    .map(row -> new RevisionInfo(
                     row.id(), row.projectId(), row.tenantId(), null,
                     1, row.snapshotId(), 1,
                     null, "1.0.0", "test",
@@ -473,6 +476,12 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
         public Optional<String> findPayload(String snapshotId) {
             SnapshotInfo info = store.get(snapshotId);
             return info != null ? Optional.of(info.payloadJson()) : Optional.empty();
+        }
+
+        @Override
+        public Optional<SnapshotInfo> findOwnedById(String projectId, String tenantId, String snapshotId) {
+            return Optional.ofNullable(store.get(snapshotId))
+                    .filter(s -> s.projectId().equals(projectId) && s.tenantId().equals(tenantId));
         }
     }
 
