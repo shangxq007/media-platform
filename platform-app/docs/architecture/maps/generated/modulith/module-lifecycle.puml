@@ -1,0 +1,35 @@
+@startuml
+title <size:24>Lifecycle</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
+  Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.Extension, "Extension", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Lifecycle, "Lifecycle", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.OutboxEvents, "Outbox & Events", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Workflow, "Workflow", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(PlatformApplication.PlatformApplication.Lifecycle, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Lifecycle, PlatformApplication.PlatformApplication.OutboxEvents, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Lifecycle, PlatformApplication.PlatformApplication.Workflow, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Workflow, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

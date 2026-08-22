@@ -1,0 +1,9 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.health`
+|Spring components
+|_Controllers_
+
+* `c.e.p.h.HealthController`
+|===

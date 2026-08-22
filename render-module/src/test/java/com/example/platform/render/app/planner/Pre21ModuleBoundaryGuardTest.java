@@ -69,10 +69,28 @@ class Pre21ModuleBoundaryGuardTest {
     }
 
     @Test
-    void staticModulithSnapshotIsRetired() throws IOException {
+    void staticModulithSnapshotIsNotCommitted() throws IOException {
+        // ModulithDocumentationGenerationTest regenerates the architecture map
+        // at test time; the committed static snapshot (91 files) was retired.
+        // Guard: no generated/modulith file may be git-tracked.
         Path gen = repoRoot().resolve("platform-app/docs/architecture/maps/generated/modulith");
-        assertFalse(Files.exists(gen),
-                "static Modulith snapshot must be retired (no stale verification authority)");
+        if (!Files.exists(gen)) {
+            return; // not generated in this run — fine
+        }
+        Process p;
+        try {
+            p = new ProcessBuilder("git", "-C", repoRoot().toString(), "ls-files",
+                    "platform-app/docs/architecture/maps/generated/modulith")
+                    .redirectErrorStream(true).start();
+        } catch (IOException e) {
+            return; // not a git checkout — skip
+        }
+        String out;
+        try (var is = p.getInputStream()) {
+            out = new String(is.readAllBytes());
+        }
+        assertTrue(out.isBlank(),
+                "static Modulith snapshot must not be committed (retired in W3): " + out);
     }
 
     @Test

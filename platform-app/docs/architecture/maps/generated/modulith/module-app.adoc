@@ -1,0 +1,35 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.app`
+|Spring components
+|_Services_
+
+* `c.e.p.a.ai.TenantLitellmKeyCredentialService`
+* `c.e.p.a.ai.TenantLitellmKeyService`
+* `c.e.p.a.ai.TenantLitellmKeyVaultMigrationService`
+
+_Repositories_
+
+* `c.e.p.a.ai.TenantLitellmKeyRepository`
+
+_Event listeners_
+
+* `c.e.p.a.StartupDiagnosticsListener`
+
+_Configuration properties_
+
+* `c.e.p.a.AppCorsProperties`
+
+_Others_
+
+* `c.e.p.a.RateLimitFilter`
+* `c.e.p.a.SecurityConfiguration`
+|Bean references
+|* `c.e.p.i.app.IdentityProperties` (in Identity & Access)
+* `c.e.p.s.api.port.SecretResolver` (in Secrets & Config Access)
+* `c.e.p.s.api.port.SecretRefRegistryPort` (in Secrets & Config Access)
+* `c.e.p.s.api.port.SecretsConfigPort` (in Secrets & Config Access)
+|Events listened to
+|* `org.springframework.boot.context.event.SpringApplicationEvent` 
+|===

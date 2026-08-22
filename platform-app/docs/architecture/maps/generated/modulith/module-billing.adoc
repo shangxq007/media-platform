@@ -1,0 +1,53 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.billing`
+|Spring components
+|_Services_
+
+* `c.e.p.b.app.BillingCycleService`
+* `c.e.p.b.app.BillingDecisionService`
+* `c.e.p.b.app.BillingLedgerService`
+* `c.e.p.b.app.BillingProjectionService`
+* `c.e.p.b.app.BudgetGuardService`
+* `c.e.p.b.app.CostEstimationService`
+* `c.e.p.b.app.CostReservationService`
+* `c.e.p.b.app.CreditWalletService`
+* `c.e.p.b.app.PricingRuleService`
+* `c.e.p.b.app.RatingEngine`
+* `c.e.p.b.app.ReconciliationService`
+* `c.e.p.b.app.SubscriptionBillingService`
+* `c.e.p.b.app.UsageMeteringService`
+* `c.e.p.b.usage.BillingConsumptionBoundary` (via `c.e.p.b.usage.BillingConsumptionBoundaryImpl`)
+* `c.e.p.b.usage.CostObservationEmissionService`
+* `c.e.p.b.usage.UsageOutboxEventPublisher`
+* `c.e.p.b.usage.UsageRecordEmissionPort` (via `c.e.p.b.usage.UsageRecordEmissionService`)
+
+_Repositories_
+
+* `c.e.p.b.infrastructure.BillingInvoiceRepository`
+* `c.e.p.b.infrastructure.BillingLedgerJdbcRepository`
+* `c.e.p.b.infrastructure.CreditWalletJdbcRepository`
+* `c.e.p.b.infrastructure.ProviderCostObservationJdbcRepository`
+* `c.e.p.b.infrastructure.SubscriptionContractRepository`
+* `c.e.p.b.infrastructure.SubscriptionJdbcRepository`
+* `c.e.p.b.infrastructure.UsageRecordJdbcRepository`
+
+_Event listeners_
+
+* `c.e.p.b.BillingCatalogBootstrap`
+* `c.e.p.b.infrastructure.BillingPersistenceBootstrap`
+
+_Others_
+
+* `c.e.p.b.app.BudgetGuardPort` (via `c.e.p.b.app.BudgetGuardPortAdapter`)
+* `c.e.p.b.app.CostEstimationPort` (via `c.e.p.b.app.CostEstimationPortAdapter`)
+* `c.e.p.b.app.CostReservationPort` (via `c.e.p.b.app.CostReservationPortAdapter`)
+* `c.e.p.b.spi.BillingEngine` (via `c.e.p.b.infrastructure.NoopKillBillBillingEngine`)
+|Bean references
+|* `c.e.p.s.audit.AdminAuditPublisher` (in Shared Kernel)
+* `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
+|Events listened to
+|* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+|===

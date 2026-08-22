@@ -1,0 +1,28 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.federation`
+|Bean references
+|* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+* `c.e.p.o.monitoring.SentryMonitoringService` (in Observability)
+* `c.e.p.b.app.UsageMeteringService` (in Billing)
+* `c.e.p.e.app.EntitlementDecisionService` (in Entitlement)
+* `c.e.p.p.app.PromptTemplateService` (in Prompt)
+* `c.e.p.r.app.RenderJobService` (in Render)
+* `c.e.p.i.app.TenantRepository` (in Identity & Access)
+* `c.e.p.i.app.IdentityAccessService` (in Identity & Access)
+* `c.e.p.i.app.WorkspaceService` (in Identity & Access)
+* `c.e.p.b.app.BillingProjectionService` (in Billing)
+* `c.e.p.e.app.ExtensionRegistryService` (in Extension)
+* `c.e.p.r.infrastructure.ExportPolicyService` (in Render)
+* `c.e.p.i.app.ProjectRepository` (in Identity & Access)
+* `c.e.p.e.app.ExtensionRouter` (in Extension)
+* `c.e.p.e.app.ExtensionResourceLimiter` (in Extension)
+* `c.e.p.b.app.BillingDecisionService` (in Billing)
+* `c.e.p.i.app.UserRepository` (in Identity & Access)
+* `c.e.p.p.featureflag.FeatureFlagService` (in Policy Governance)
+* `c.e.p.s.audit.AdminAuditPublisher` (in Shared Kernel)
+* `c.e.p.a.api.AiGatewayPort` (in AI)
+|Events listened to
+|* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+|===

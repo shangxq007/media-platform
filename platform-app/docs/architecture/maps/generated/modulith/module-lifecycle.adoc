@@ -1,0 +1,20 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.lifecycle`
+|Spring components
+|_Event listeners_
+
+* `c.e.p.l.PlatformGracefulShutdownCoordinator`
+
+_Others_
+
+* `c.e.p.l.TemporalWorkerHealthIndicator`
+|Bean references
+|* `c.e.p.o.app.OutboxEventDispatcher` (in Outbox & Events)
+* `c.e.p.e.app.SandboxExecutionService` (in Extension)
+* `c.e.p.e.runtime.sandbox.app.SandboxRuntimeService` (in Extension)
+* `c.e.p.w.temporal.AppTemporalProperties` (in Workflow)
+|Events listened to
+|* `org.springframework.context.event.ContextClosedEvent` 
+|===

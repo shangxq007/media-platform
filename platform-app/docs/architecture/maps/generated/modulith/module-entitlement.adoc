@@ -1,0 +1,30 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.entitlement`
+|Spring components
+|_Services_
+
+* `c.e.p.e.app.AccessDecisionFeatureFlagService`
+* `c.e.p.e.app.AccessDecisionService`
+* `c.e.p.e.app.EntitlementBundleService`
+* `c.e.p.e.app.EntitlementDecisionService`
+* `c.e.p.e.app.EntitlementOverrideService`
+* `c.e.p.e.app.EntitlementPort` (via `c.e.p.e.app.EntitlementPolicyService`)
+* `c.e.p.e.app.EntitlementService`
+* `c.e.p.e.app.QuotaConsumptionBoundary` (via `c.e.p.e.app.QuotaConsumptionBoundaryImpl`)
+* `c.e.p.e.app.QuotaDecisionService`
+* `c.e.p.e.app.QuotaPolicyService`
+* `c.e.p.e.app.QuotaProfileService`
+* `c.e.p.e.app.QuotaUsageService`
+* `c.e.p.e.app.WorkspaceEntitlementPoolService`
+* `c.e.p.e.app.WorkspaceQuotaAllocationService`
+|Bean references
+|* `c.e.p.p.featureflag.FeatureFlagService` (in Policy Governance)
+* `c.e.p.p.featureflag.FeatureFlagAuditService` (in Policy Governance)
+* `c.e.p.s.audit.AuditPort` (in Shared Kernel)
+|Events listened to
+|* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+|===
