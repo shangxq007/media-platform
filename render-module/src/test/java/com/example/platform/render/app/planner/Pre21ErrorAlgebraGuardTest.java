@@ -1,0 +1,107 @@
+package com.example.platform.render.app.planner;
+
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * PRE-#21 W5 — error algebra ownership validation (C12).
+ *
+ * Verified ownership model:
+ * - domain/orchestration modules own semantic failure categories (module-local
+ *   ErrorCode enums: ArtifactErrorCode, ExecutionPlanErrorCode, TimelineError,
+ *   OperationErrorCode, ...)
+ * - provider adapters map provider-native errors (OpenDalErrorMapper, ...)
+ * - API layer owns transport mapping (GlobalExceptionHandler, GraphQLExceptionMapper)
+ * - shared ErrorCodeRegistry is a CONFIG-DRIVEN TRANSPORT code registry
+ *   (error-codes.json), not a semantic mega authority
+ *
+ * Guards: no global mega ErrorCode type; no semantic switch inside the
+ * registry; provider-native code types stay in provider modules.
+ */
+class Pre21ErrorAlgebraGuardTest {
+
+    private static Path repoRoot() {
+        Path p = Path.of(System.getProperty("user.dir"));
+        while (p != null && !Files.exists(p.resolve(".git"))) {
+            p = p.getParent();
+        }
+        return p;
+    }
+
+    private static List<Path> productionJavaFiles() throws IOException {
+        Path root = repoRoot();
+        boolean rootIsWorktree = root.toString().contains("/.worktrees/");
+        Path worktreesDir = rootIsWorktree
+                ? root.getParent().getParent().resolve(".worktrees")
+                : root.resolve(".worktrees");
+        try (Stream<Path> walk = Files.walk(root)) {
+            return walk.filter(Files::isRegularFile)
+                    .filter(f -> f.toString().contains("/src/main/java/"))
+                    .filter(f -> f.toString().endsWith(".java"))
+                    .filter(f -> !f.startsWith(worktreesDir) || (rootIsWorktree && f.startsWith(root)))
+                    .toList();
+        }
+    }
+
+    @Test
+    void noGlobalMegaErrorCodeAuthorityExists() throws IOException {
+        List<String> violations = new ArrayList<>();
+        for (Path f : productionJavaFiles()) {
+            String name = f.getFileName().toString();
+            if (name.matches("(?:Global|Mega|Universal)ErrorCode.*\\.java")) {
+                violations.add(f.toString());
+            }
+        }
+        assertEquals(List.of(), violations,
+                "GLOBAL_MEGA_ERROR_CODE_AUTHORITY_COUNT must be 0 — no Global/Mega/Universal ErrorCode type");
+    }
+
+    @Test
+    void sharedErrorCodeRegistryIsConfigDrivenTransportOnly() throws IOException {
+        Path registry = repoRoot().resolve("shared-kernel/src/main/java/com/example/platform/shared/web/ErrorCodeRegistry.java");
+        assertTrue(Files.exists(registry));
+        String c = Files.readString(registry);
+        // must load from config (error-codes.json) — not encode semantic switches
+        assertTrue(c.contains("error-codes.json"), "registry must be config-driven");
+        assertTrue(c.contains("ConfigurableErrorCode"), "registry holds configurable transport codes");
+        assertFalse(c.contains("switch ("), "registry must not contain semantic mapping switches");
+    }
+
+    @Test
+    void semanticFailureCategoriesAreModuleOwned() throws IOException {
+        // each module's ErrorCode enum lives in its own module (no single owner)
+        List<String> moduleErrorCodes = new ArrayList<>();
+        for (Path f : productionJavaFiles()) {
+            String name = f.getFileName().toString();
+            if (name.endsWith("ErrorCode.java") && !name.startsWith("Configurable")) {
+                String p = f.toString();
+                moduleErrorCodes.add(p.replace(repoRoot() + "/", "").split("/")[0]);
+            }
+        }
+        assertTrue(moduleErrorCodes.size() >= 6,
+                "expected multiple module-owned ErrorCode enums, found " + moduleErrorCodes.size());
+        assertTrue(moduleErrorCodes.stream().distinct().count() >= 5,
+                "error codes must be spread across modules, not centralized");
+    }
+
+    @Test
+    void providerNativeErrorMappersExistInProviderAdapters() throws IOException {
+        boolean openDalMapper = false;
+        boolean graphqlMapper = false;
+        for (Path f : productionJavaFiles()) {
+            String name = f.getFileName().toString();
+            if (name.equals("OpenDalErrorMapper.java")) openDalMapper = true;
+            if (name.equals("GraphQLExceptionMapper.java")) graphqlMapper = true;
+        }
+        assertTrue(openDalMapper, "provider-native mapping must exist (OpenDalErrorMapper)");
+        assertTrue(graphqlMapper, "API transport mapping must exist (GraphQLExceptionMapper)");
+    }
+}

@@ -2,7 +2,7 @@ package com.example.platform.timeline.app;
 
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.timeline.internal.SemanticDiffResult;
+import com.example.platform.timeline.diff.merge.SemanticDiffResult;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;

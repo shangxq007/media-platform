@@ -1,7 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.render.app.timeline.*;
-import com.example.platform.timeline.internal.ReviewDecision;
+import com.example.platform.timeline.diff.merge.ReviewDecision;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;

@@ -9,8 +9,8 @@ import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.app.TimelineMergeEngine;
-import com.example.platform.timeline.internal.TimelineMergeRequest;
-import com.example.platform.timeline.internal.TimelineMergeResult;
+import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
+import com.example.platform.timeline.diff.merge.TimelineMergeResult;
 import org.jooq.DSLContext;
 
 /**

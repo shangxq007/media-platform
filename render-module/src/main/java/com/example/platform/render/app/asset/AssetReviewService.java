@@ -3,7 +3,7 @@ package com.example.platform.render.app.asset;
 import com.example.platform.render.app.timeline.TimelineReviewRepository;
 import com.example.platform.render.app.timeline.TimelineReviewService;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
-import com.example.platform.timeline.internal.ReviewTargetType;
+import com.example.platform.timeline.diff.merge.ReviewTargetType;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;

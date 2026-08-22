@@ -1,12 +1,12 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.domain.planning.DirtyScope;
-import com.example.platform.timeline.internal.EntityRef;
+import com.example.platform.timeline.diff.merge.EntityRef;
 import com.example.platform.render.domain.planning.IncrementalTask;
 import com.example.platform.render.domain.planning.RenderImpactResult;
-import com.example.platform.timeline.internal.SemanticChange;
-import com.example.platform.timeline.internal.SemanticChangeType;
-import com.example.platform.timeline.internal.SemanticDiffResult;
+import com.example.platform.timeline.diff.merge.SemanticChange;
+import com.example.platform.timeline.diff.merge.SemanticChangeType;
+import com.example.platform.timeline.diff.merge.SemanticDiffResult;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -142,7 +142,7 @@ public class RenderImpactAnalyzer {
         }
 
         for (EntityRef entity : dirtyEntities) {
-            if (entity.kind() == com.example.platform.timeline.internal.EntityKind.LAYER) {
+            if (entity.kind() == com.example.platform.timeline.diff.merge.EntityKind.LAYER) {
                 tasks.add(new IncrementalTask("t" + seq++, "RENDER_LAYER", entity.key(),
                         List.of(), java.util.Map.of(
                         "baseRevision", String.valueOf(diff.oldRevision()),

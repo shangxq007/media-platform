@@ -21,11 +21,11 @@ import com.example.platform.render.api.dto.TimelineRevisionRenderResponse;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.shared.events.TimelineMergedEvent;
 import com.example.platform.shared.events.TimelineRestoredEvent;
-import com.example.platform.timeline.internal.TimelineMergeRequest;
-import com.example.platform.timeline.internal.TimelineMergeResult;
-import com.example.platform.timeline.internal.TimelineMergeSummary;
-import com.example.platform.timeline.internal.TimelineConflict;
-import com.example.platform.timeline.internal.TimelineResolutionIntent;
+import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
+import com.example.platform.timeline.diff.merge.TimelineMergeResult;
+import com.example.platform.timeline.diff.merge.TimelineMergeSummary;
+import com.example.platform.timeline.diff.merge.TimelineConflict;
+import com.example.platform.timeline.diff.merge.TimelineResolutionIntent;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -232,13 +232,13 @@ public class TimelineRevisionController {
                 var intent = switch (r.resolutionMode()) {
                     case "USE_SOURCE" ->
                         TimelineResolutionIntent.useSource(
-                            new com.example.platform.timeline.internal.EntityRef(
-                                com.example.platform.timeline.internal.EntityKind.CLIP,
+                            new com.example.platform.timeline.diff.merge.EntityRef(
+                                com.example.platform.timeline.diff.merge.EntityKind.CLIP,
                                 r.entityId()), null);
                     case "USE_TARGET" ->
                         TimelineResolutionIntent.useTarget(
-                            new com.example.platform.timeline.internal.EntityRef(
-                                com.example.platform.timeline.internal.EntityKind.CLIP,
+                            new com.example.platform.timeline.diff.merge.EntityRef(
+                                com.example.platform.timeline.diff.merge.EntityKind.CLIP,
                                 r.entityId()), null);
                     default -> null;
                 };

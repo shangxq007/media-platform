@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.planning;
 
-import com.example.platform.timeline.internal.EntityRef;
-import com.example.platform.timeline.internal.SemanticDiffResult;
+import com.example.platform.timeline.diff.merge.EntityRef;
+import com.example.platform.timeline.diff.merge.SemanticDiffResult;
 import java.util.List;
 import java.util.Set;
 

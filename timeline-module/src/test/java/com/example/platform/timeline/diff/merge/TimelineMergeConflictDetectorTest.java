@@ -1,5 +1,7 @@
 package com.example.platform.timeline.diff.merge;
 
+import com.example.platform.timeline.diff.TimelineConflict;
+import com.example.platform.timeline.diff.TimelineConflictType;
 import com.example.platform.timeline.diff.*;
 import com.example.platform.timeline.diff.calculation.*;
 import java.util.List;

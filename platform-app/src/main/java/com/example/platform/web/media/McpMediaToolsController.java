@@ -21,7 +21,7 @@ import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.domain.planning.IncrementalRenderPlan;
 import com.example.platform.render.domain.planning.RenderImpactResult;
 import com.example.platform.render.domain.planning.ReusableArtifact;
-import com.example.platform.timeline.internal.SemanticDiffResult;
+import com.example.platform.timeline.diff.merge.SemanticDiffResult;
 import com.example.platform.render.app.aaf.AafConversionService;
 
 import com.example.platform.render.domain.standards.AafTimelineAdapter;

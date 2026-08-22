@@ -13,7 +13,7 @@ import com.example.platform.timeline.app.TimelineImportRequest.ImportOutput;
 import com.example.platform.timeline.app.TimelineImportRequest.ImportTextOverlay;
 import com.example.platform.timeline.app.TimelineImportRequest.ImportTrack;
 import com.example.platform.timeline.app.TimelineImportRequest.ImportTransition;
-import com.example.platform.timeline.internal.SemanticChangeType;
+import com.example.platform.timeline.diff.merge.SemanticChangeType;
 import com.example.platform.shared.time.FrameRate;
 import java.util.List;
 import java.util.Map;

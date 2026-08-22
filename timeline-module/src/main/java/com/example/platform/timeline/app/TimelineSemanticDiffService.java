@@ -1,10 +1,10 @@
 package com.example.platform.timeline.app;
 
-import com.example.platform.timeline.internal.EntityKind;
-import com.example.platform.timeline.internal.EntityRef;
-import com.example.platform.timeline.internal.SemanticChange;
-import com.example.platform.timeline.internal.SemanticChangeType;
-import com.example.platform.timeline.internal.SemanticDiffResult;
+import com.example.platform.timeline.diff.merge.EntityKind;
+import com.example.platform.timeline.diff.merge.EntityRef;
+import com.example.platform.timeline.diff.merge.SemanticChange;
+import com.example.platform.timeline.diff.merge.SemanticChangeType;
+import com.example.platform.timeline.diff.merge.SemanticDiffResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;

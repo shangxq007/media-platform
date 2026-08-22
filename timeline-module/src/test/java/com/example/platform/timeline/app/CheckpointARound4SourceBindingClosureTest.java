@@ -26,8 +26,8 @@ import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMerge
 import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
 import com.example.platform.timeline.diff.TimelinePatch;
 import com.example.platform.timeline.diff.TimelinePatchId;
-import com.example.platform.timeline.internal.TimelineMergeRequest;
-import com.example.platform.timeline.internal.TimelineMergeResult;
+import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
+import com.example.platform.timeline.diff.merge.TimelineMergeResult;
 import com.example.platform.timeline.semantics.clip.MediaClip;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.clip.TimelineSourceBinding;

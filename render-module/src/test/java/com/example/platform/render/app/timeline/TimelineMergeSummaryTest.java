@@ -2,7 +2,7 @@ package com.example.platform.render.app.timeline;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.timeline.internal.TimelineMergeSummary;
+import com.example.platform.timeline.diff.merge.TimelineMergeSummary;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.planning;
 
-import com.example.platform.timeline.internal.SemanticDiffResult;
+import com.example.platform.timeline.diff.merge.SemanticDiffResult;
 
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import java.util.List;

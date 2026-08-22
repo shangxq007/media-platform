@@ -3,7 +3,7 @@ package com.example.platform.render.app.timeline;
 import com.example.platform.timeline.app.TimelineCanonicalizer;import com.example.platform.timeline.app.TimelineSemanticDiffService;
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.timeline.internal.SemanticChangeType;
+import com.example.platform.timeline.diff.merge.SemanticChangeType;
 import com.example.platform.render.domain.planning.DirtyScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
