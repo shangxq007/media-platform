@@ -165,7 +165,7 @@ class RemotionCapabilityExtensionTest {
                 true,
                 List.of("remotion"),
                 List.of()
-        );
+        , null);
 
         assertTrue(job.requiredCapabilities().contains(Capabilities.CAPTION_EFFECTS));
         assertTrue(job.requiredCapabilities().contains(Capabilities.TEMPLATE_RENDER));

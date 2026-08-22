@@ -1,5 +1,7 @@
 package com.example.platform.render.app.planner;
 
+import com.example.platform.extension.domain.CapabilityRequirement;
+import com.example.platform.render.domain.renderplan.RenderExtent;
 import java.util.List;
 import java.util.Map;
 
@@ -12,19 +14,29 @@ import java.util.Map;
  * (ProductRuntimeService / ProducerRuntimeService / runtime registries).
  *
  * <p>Purity contract: the logical planner is pure computation over this
- * context. All values are frozen at construction time.
+ * context. All values are frozen at construction time (defensive copies of
+ * every collection input; mutation of caller-owned containers after
+ * construction cannot alter the frozen state).
  *
- * @param targetProductId   the product to plan for
- * @param targetProductType semantic product type (not a capability)
- * @param tenantId          ownership context
- * @param projectId         ownership context
- * @param targetAlreadyReady true if the target product is already in READY
- *                           state (frozen fact supplied by the caller)
- * @param capabilityFacts   frozen capability resolution facts keyed by
- *                          product type (resolved by the resolution layer
- *                          BEFORE planning; never resolved by the planner)
- * @param dependencyFacts   frozen input-product status facts keyed by
- *                          product id
+ * @param targetProductId             the product to plan for
+ * @param targetProductType           semantic product type (not a capability)
+ * @param tenantId                    ownership context
+ * @param projectId                   ownership context
+ * @param targetAlreadyReady          true if the target product is already in
+ *                                    READY state (frozen fact supplied by the caller)
+ * @param declaredCapabilityRequirements the capability requirements DECLARED by
+ *                                    the semantic consumer (W2 authority: the
+ *                                    consumer declares; the resolver resolves;
+ *                                    the planner never invents)
+ * @param capabilityFacts             frozen capability resolution facts keyed by
+ *                                    product type (resolved by the resolution
+ *                                    layer BEFORE planning; never resolved by
+ *                                    the planner)
+ * @param dependencyFacts             frozen input-product status facts keyed by
+ *                                    product id
+ * @param requestedRenderExtent       typed requested render extent (C9/C11),
+ *                                    or null when the planned operation is not
+ *                                    a render-extent operation
  */
 public record FrozenPlanningContext(
         String targetProductId,
@@ -32,8 +44,10 @@ public record FrozenPlanningContext(
         String tenantId,
         String projectId,
         boolean targetAlreadyReady,
+        List<CapabilityRequirement> declaredCapabilityRequirements,
         Map<String, CapabilityResolutionFact> capabilityFacts,
-        Map<String, DependencyFact> dependencyFacts) {
+        Map<String, DependencyFact> dependencyFacts,
+        RenderExtent requestedRenderExtent) {
 
     public static FrozenPlanningContext of(
             String targetProductId,
@@ -41,11 +55,16 @@ public record FrozenPlanningContext(
             String tenantId,
             String projectId,
             boolean targetAlreadyReady,
+            List<CapabilityRequirement> declaredCapabilityRequirements,
             Map<String, CapabilityResolutionFact> capabilityFacts,
-            Map<String, DependencyFact> dependencyFacts) {
+            Map<String, DependencyFact> dependencyFacts,
+            RenderExtent requestedRenderExtent) {
         return new FrozenPlanningContext(targetProductId, targetProductType,
                 tenantId, projectId, targetAlreadyReady,
-                Map.copyOf(capabilityFacts), Map.copyOf(dependencyFacts));
+                declaredCapabilityRequirements == null ? List.of() : List.copyOf(declaredCapabilityRequirements),
+                capabilityFacts == null ? Map.of() : Map.copyOf(capabilityFacts),
+                dependencyFacts == null ? Map.of() : Map.copyOf(dependencyFacts),
+                requestedRenderExtent);
     }
 
     /** Frozen capability resolution fact: which producer/backend was resolved

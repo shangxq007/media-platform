@@ -82,12 +82,17 @@ public class DefaultRenderOrchestrator implements RenderOrchestrator {
             String storageUri = finalOutput != null ? finalOutput.url() : null;
             long durationMs = Duration.between(startedAt, Instant.now()).toMillis();
 
+            // C10/C11: carry the typed requested extent through the real path.
+            // Achieved extent is null because no current provider path reports
+            // execution-evidenced extent facts; a job that declares a requested
+            // extent therefore fails closed (typed failure) — it can never claim
+            // authoritative extent success without real achieved evidence.
             return RenderResult.success(job.id(), artifactId, storageUri, durationMs,
                     finalOutput != null ? finalOutput.mimeType() : "unknown",
                     finalOutput != null ? finalOutput.width() + "x" + finalOutput.height() : "unknown",
                     "orchestrator", trace.jobId(), trace.jobId(),
                     "All " + stepResults.size() + " steps completed",
-                    null, null, trace);
+                    job.requestedExtent(), null, trace);
         } catch (Exception e) {
             RenderExecutionTrace trace = new RenderExecutionTrace(
                     job.id(), job.jobType(), job.mode(),

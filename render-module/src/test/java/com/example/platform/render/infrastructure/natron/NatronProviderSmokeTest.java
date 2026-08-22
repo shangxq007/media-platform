@@ -79,20 +79,20 @@ class NatronProviderSmokeTest {
         return new RenderJob("job-1", "video_export", "production", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", List.of("vfx_composite"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 
     private RenderJob createManualJob() {
         return new RenderJob("job-2", "video_export", "manual", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", List.of("vfx_composite"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 
     private RenderJob createManualJobEmptyCaps() {
         return new RenderJob("job-2", "video_export", "manual", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", List.of(),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 }

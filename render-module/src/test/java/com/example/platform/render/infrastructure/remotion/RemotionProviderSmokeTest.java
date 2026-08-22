@@ -169,20 +169,20 @@ class RemotionProviderSmokeTest {
         return new RenderJob("job-1", "video_export", "production", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", List.of("caption_burn_in"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 
     private RenderJob createManualJob() {
         return new RenderJob("job-2", "video_export", "manual", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", List.of("caption_burn_in"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 
     private RenderJob createExperimentJob() {
         return new RenderJob("job-3", "video_export", "experiment", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", List.of("caption_burn_in"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 }

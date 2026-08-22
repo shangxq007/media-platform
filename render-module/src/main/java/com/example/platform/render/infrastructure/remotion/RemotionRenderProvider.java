@@ -134,7 +134,7 @@ public class RemotionRenderProvider implements RenderProvider {
             return new RenderJob(id, "captioned_video_export",
                     mode != null ? mode : "production",
                     "1920x1080", List.of(), "{}", captions, style, "mp4",
-                    List.of(), null, true, List.of(), List.of());
+                    List.of(), null, true, List.of(), List.of(), null);
         } catch (Exception e) {
             log.debug("Could not extract RenderJob from aiScript for font preflight: {}", e.getMessage());
             return null;

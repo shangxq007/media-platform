@@ -97,7 +97,7 @@ class RemotionDispatchExclusionTest {
                 true,
                 List.of("remotion"),
                 List.of()
-        );
+        , null);
 
         assertFalse(ProviderEligibility.isEligible(remotionStubMetadata, jobPreferringRemotion),
                 "Remotion (STUB) must NOT be eligible even when listed as preferred provider");
@@ -126,7 +126,7 @@ class RemotionDispatchExclusionTest {
                 List.of(Capabilities.CAPTION_BURN_IN),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
                 true, List.of(), List.of("remotion")
-        );
+        , null);
 
         assertTrue(ProviderEligibility.isEligible(ffmpegMetadata, job),
                 "FFmpeg must still be eligible when Remotion is blocked");
@@ -159,7 +159,7 @@ class RemotionDispatchExclusionTest {
                 true,
                 List.of("remotion"),
                 List.of()
-        );
+        , null);
 
         assertFalse(ProviderEligibility.isEligible(remotionStubMetadata, baselineBurnInJob),
                 "Remotion (STUB) must NOT be eligible for baseline subtitle burn-in");
@@ -198,6 +198,6 @@ class RemotionDispatchExclusionTest {
                 List.of(Capabilities.CAPTION_BURN_IN),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
                 true, List.of(), List.of()
-        );
+        , null);
     }
 }

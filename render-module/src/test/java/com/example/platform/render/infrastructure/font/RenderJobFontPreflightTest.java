@@ -35,7 +35,7 @@ class RenderJobFontPreflightTest {
                 List.of(), "{}", "{}", style, "mp4",
                 List.of(Capabilities.CAPTION_EFFECTS),
                 new com.example.platform.render.infrastructure.RenderConstraints(3840, 2160, 60, 3600, null, null),
-                allowDegrade, List.of(), List.of());
+                allowDegrade, List.of(), List.of(), null);
     }
 
     private FontAsset createAsset(String id, FontAssetStatus status, boolean productionSafe) {

@@ -26,7 +26,8 @@ class ExecutionPlannerServiceTest {
     private FrozenPlanningContext ctx(boolean targetReady, String type,
                                       Map<String, FrozenPlanningContext.CapabilityResolutionFact> caps,
                                       Map<String, FrozenPlanningContext.DependencyFact> deps) {
-        return FrozenPlanningContext.of("prod-1", type, "ten-1", "proj-1", targetReady, caps, deps);
+        return FrozenPlanningContext.of("prod-1", type, "ten-1", "proj-1", targetReady,
+                java.util.List.of(), caps, deps, null);
     }
 
     private FrozenPlanningContext.CapabilityResolutionFact resolved(String producer, String backend) {

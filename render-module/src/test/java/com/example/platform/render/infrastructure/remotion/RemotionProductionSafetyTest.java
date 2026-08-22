@@ -166,7 +166,7 @@ class RemotionProductionSafetyTest {
                 List.of(Capabilities.CAPTION_EFFECTS),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
                 true, List.of("remotion"), List.of()
-        );
+        , null);
         assertFalse(ProviderEligibility.isEligible(remotionStub, prodJob),
                 "STUB must never be eligible for dispatch");
     }
@@ -187,7 +187,7 @@ class RemotionProductionSafetyTest {
                 List.of(Capabilities.CAPTION_EFFECTS),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
                 true, List.of(), List.of()
-        );
+        , null);
         assertFalse(ProviderEligibility.isEligible(remotionPoc, productionJob),
                 "POC must not be eligible for production dispatch without explicit allow");
     }

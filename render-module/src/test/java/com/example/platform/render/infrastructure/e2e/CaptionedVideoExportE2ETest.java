@@ -204,7 +204,7 @@ class CaptionedVideoExportE2ETest {
                 new RenderJob("job-1", "video_export", "production", "1920x1080",
                         List.of(), "{}", "{}", "{}", "mp4", List.of(),
                         new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                        true, List.of(), List.of()));
+                        true, List.of(), List.of(), null));
         assertFalse(eligible, "Deprecated provider should not be eligible in production");
     }
 

@@ -65,7 +65,7 @@ public class SubtitleRenderRequestMapper {
                 true,
                 List.of(),
                 List.of()
-        );
+        , null);
     }
 
     public void validate(PublicSubtitleRenderRequest request, String tenantId) {

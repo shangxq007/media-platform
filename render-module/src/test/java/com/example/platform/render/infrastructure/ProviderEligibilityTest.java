@@ -49,21 +49,21 @@ class ProviderEligibilityTest {
         return new RenderJob("job-1", "video_export", "production", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", requiredCaps,
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 
     private RenderJob experimentJob(List<String> requiredCaps) {
         return new RenderJob("job-2", "video_export", "experiment", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", requiredCaps,
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 
     private RenderJob manualJob(List<String> requiredCaps) {
         return new RenderJob("job-3", "video_export", "manual", "1920x1080", List.of(),
                 "{}", "{}", "{}", "mp4", requiredCaps,
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of());
+                true, List.of(), List.of(), null);
     }
 
     @Test
@@ -197,7 +197,7 @@ class ProviderEligibilityTest {
         RenderJob job = new RenderJob("job-1", "video_export", "production", "1920x1080",
                 List.of(), "{}", "{}", "{}", "mp4", List.of("trim"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of("ffmpeg"));
+                true, List.of(), List.of("ffmpeg"), null);
         assertFalse(ProviderEligibility.isEligible(meta, job));
     }
 
@@ -208,7 +208,7 @@ class ProviderEligibilityTest {
         RenderJob job = new RenderJob("job-1", "video_export", "production", "1920x1080",
                 List.of(), "{}", "{}", "{}", "mp4", List.of("trim"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of("ffmpeg"), List.of());
+                true, List.of("ffmpeg"), List.of(), null);
         assertTrue(ProviderEligibility.scoreProvider(preferred, job)
                 < ProviderEligibility.scoreProvider(other, job));
     }
@@ -256,7 +256,7 @@ class ProviderEligibilityTest {
         RenderJob jobWithPreferred = new RenderJob("job-1", "video_export", "production", "1920x1080",
                 List.of(), "{}", "{}", "{}", "mp4", List.of("trim"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of("mlt"), List.of());
+                true, List.of("mlt"), List.of(), null);
         assertTrue(ProviderEligibility.isEligible(poc, jobWithPreferred));
     }
 

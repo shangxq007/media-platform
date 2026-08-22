@@ -77,7 +77,7 @@ public class OTIOTimelineCompiler {
                 requiredCapabilities,
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
                 true, List.of(), List.of()
-        );
+        , null);
     }
 
     private String extractSchemaVersion(Map<String, Object> metadata) {
