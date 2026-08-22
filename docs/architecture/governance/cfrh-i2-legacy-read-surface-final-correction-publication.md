@@ -23,8 +23,8 @@ the old candidate but is SUPERSEDED for final closure by this correction.
 | Field | Value |
 |---|---|
 | CORRECTION_SHA | 1b9473e8e2d6741f8587cb9dbb8d89619d8343ac |
-| NEW_CANDIDATE_SHA | (set after FCV; same as correction SHA) |
-| NEW_PUBLICATION_SHA | (set after commit) |
+| NEW_CANDIDATE_SHA | 1b9473e8e2d6741f8587cb9dbb8d89619d8343ac |
+| NEW_PUBLICATION_SHA | ef060ca6c01249bbc4ed4e89b9104c6f0455b87c |
 
 ## Removed legacy unscoped read definitions
 
@@ -110,7 +110,7 @@ COMPATIBILITY_WRAPPER_COUNT = 0
 
 ## Decision
 
-CLEAN_FORWARD_RUNTIME_HARDENING_I2_RE_FCV = PASS (pending full-suite run)
+CLEAN_FORWARD_RUNTIME_HARDENING_I2_RE_FCV = PASS (7702 tests / 0 failures / 0 errors / 43 skipped, 40 modules)
 BLOCKERS = 0
 ARCHITECTURE_ESCALATION = NONE
 ARCHITECTURE_PREMISE_FAILURE = NO
