@@ -40,7 +40,7 @@ Remains first-pass evidence (not rewritten, not deleted).
 | CORRECTION_IMPLEMENTATION_SHA | ae4c6f6fff13ecd55864145df8be441f32105750 |
 | CORRECTION_CANDIDATE_SHA | ae4c6f6fff13ecd55864145df8be441f32105750 |
 | CORRECTION_CANDIDATE_TREE | (see git) |
-| CORRECTION_PUBLICATION_SHA | (set after commit) |
+| CORRECTION_PUBLICATION_SHA | 227123fd149ce04ccee2bf0ef4a151ff7891207a |
 
 ## CORR-A — C2 FrozenPlanningContext exactness
 
