@@ -66,7 +66,8 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
     private static List<Path> productionJavaFiles() throws IOException {
         List<Path> out = new ArrayList<>();
         Path root = repoRoot();
-        Path siblings = root.toString().contains("/.worktrees/")
+        boolean rootIsWorktree = root.toString().contains("/.worktrees/");
+        Path worktreesDir = rootIsWorktree
                 ? root.getParent().getParent().resolve(".worktrees")
                 : root.resolve(".worktrees");
         try (Stream<Path> walk = Files.walk(root)) {
@@ -76,7 +77,7 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
                     // exclude sibling worktrees — only the checked-out tree counts.
                     // When running inside a worktree, root itself lives under
                     // /.worktrees/ so the exclusion must keep root-prefixed files.
-                    .filter(f -> !(f.startsWith(siblings) && !f.startsWith(root)))
+                    .filter(f -> !f.startsWith(worktreesDir) || (rootIsWorktree && f.startsWith(root)))
                     .forEach(out::add);
         }
         return out;
@@ -164,14 +165,15 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
     }
 
     private static long countSymbol(Path root, String fileName, String token) throws IOException {
-        Path siblings = root.toString().contains("/.worktrees/")
+        boolean rootIsWorktree = root.toString().contains("/.worktrees/");
+        Path worktreesDir = rootIsWorktree
                 ? root.getParent().getParent().resolve(".worktrees")
                 : root.resolve(".worktrees");
         try (Stream<Path> walk = Files.walk(root)) {
             return walk.filter(Files::isRegularFile)
                     .filter(f -> f.getFileName().toString().equals(fileName))
                     .filter(f -> f.toString().contains("/src/main/java/"))
-                    .filter(f -> !(f.startsWith(siblings) && !f.startsWith(root)))
+                    .filter(f -> !f.startsWith(worktreesDir) || (rootIsWorktree && f.startsWith(root)))
                     .flatMap(f -> {
                         try {
                             return Files.readAllLines(f).stream();

@@ -53,14 +53,15 @@ class Cfrhi2SystemAuthorityGuardTest {
     private static List<Path> productionJavaFiles() throws IOException {
         List<Path> out = new ArrayList<>();
         Path root = repoRoot();
-        Path siblings = root.toString().contains("/.worktrees/")
+        boolean rootIsWorktree = root.toString().contains("/.worktrees/");
+        Path worktreesDir = rootIsWorktree
                 ? root.getParent().getParent().resolve(".worktrees")
                 : root.resolve(".worktrees");
         try (Stream<Path> walk = Files.walk(root)) {
             walk.filter(Files::isRegularFile)
                     .filter(f -> f.toString().contains("/src/main/java/"))
                     .filter(f -> f.toString().endsWith(".java"))
-                    .filter(f -> !(f.startsWith(siblings) && !f.startsWith(root)))
+                    .filter(f -> !f.startsWith(worktreesDir) || (rootIsWorktree && f.startsWith(root)))
                     .forEach(out::add);
         }
         return out;
