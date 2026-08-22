@@ -30,6 +30,7 @@ public class TimelineAssetGcService {
     private static final Logger log = LoggerFactory.getLogger(TimelineAssetGcService.class);
 
     private final DSLContext dsl;
+    private final com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader;
     private final TimelineSnapshotService timelineSnapshotService;
     private final TimelineAssetLifecycleService lifecycleService;
     private final TimelineAssetGcProperties properties;
@@ -37,11 +38,13 @@ public class TimelineAssetGcService {
 
     public TimelineAssetGcService(
             DSLContext dsl,
+            com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader,
             TimelineSnapshotService timelineSnapshotService,
             TimelineAssetLifecycleService lifecycleService,
             TimelineAssetGcProperties properties,
             @Autowired(required = false) BlobStorage blobStorage) {
         this.dsl = dsl;
+        this.systemMaintenanceReader = systemMaintenanceReader;
         this.timelineSnapshotService = timelineSnapshotService;
         this.lifecycleService = lifecycleService;
         this.properties = properties;
@@ -49,7 +52,7 @@ public class TimelineAssetGcService {
     }
 
     public GcRunResult runGlobalGc() {
-        List<String> projectIds = listDistinctProjectIds();
+        List<String> projectIds = systemMaintenanceReader.listProjectIdsWithSnapshots();
         int limit = Math.max(1, properties.getMaxProjectsPerRun());
         int scanned = 0;
         int purged = 0;
@@ -72,7 +75,12 @@ public class TimelineAssetGcService {
 
     @Transactional
     public GcProjectResult runProjectGc(String projectId, String tenantId) {
-        Optional<TimelineSnapshotService.SnapshotInfo> latest = timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId);
+        // System sweep (runGlobalGc) has no tenant context: use the explicit
+        // privileged read port. Application path passes tenantId explicitly.
+        Optional<TimelineSnapshotService.SnapshotInfo> latest =
+                tenantId == null || tenantId.isBlank()
+                        ? systemMaintenanceReader.findLatestSnapshot(projectId)
+                        : timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId);
         if (latest.isEmpty()) {
             return new GcProjectResult(projectId, 0, 0, 0, List.of());
         }
@@ -191,12 +199,6 @@ public class TimelineAssetGcService {
             log.warn("Failed to sync timeline tombstone for uri={}: {}", storageUri, e.getMessage());
         }
         return count;
-    }
-
-    private List<String> listDistinctProjectIds() {
-        return dsl.selectDistinct(TIMELINE_SNAPSHOT.PROJECT_ID)
-                .from(TIMELINE_SNAPSHOT)
-                .fetch(TIMELINE_SNAPSHOT.PROJECT_ID);
     }
 
     private void deleteBlob(String storageUri) {

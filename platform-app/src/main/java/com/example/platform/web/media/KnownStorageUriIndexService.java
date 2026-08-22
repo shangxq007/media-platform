@@ -4,7 +4,6 @@ import com.example.platform.artifact.app.ArtifactCatalogRepository;
 import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.delivery.app.DeliveryDestinationUriIndexService;
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.app.InternalTimelineJson;
 import com.example.platform.storage.domain.BlobStorage;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,19 +30,19 @@ public class KnownStorageUriIndexService {
     private final Optional<DSLContext> dsl;
     private final Optional<ArtifactCatalogRepository> artifactRepository;
     private final Optional<DeliveryDestinationUriIndexService> destinationUriIndex;
-    private final TimelineSnapshotService timelineSnapshotService;
+    private final com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader;
     private final BlobStorage blobStorage;
 
     public KnownStorageUriIndexService(
             @Autowired(required = false) DSLContext dsl,
             @Autowired(required = false) ArtifactCatalogRepository artifactRepository,
             @Autowired(required = false) DeliveryDestinationUriIndexService destinationUriIndex,
-            TimelineSnapshotService timelineSnapshotService,
+            com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader,
             BlobStorage blobStorage) {
         this.dsl = Optional.ofNullable(dsl);
         this.artifactRepository = Optional.ofNullable(artifactRepository);
         this.destinationUriIndex = Optional.ofNullable(destinationUriIndex);
-        this.timelineSnapshotService = timelineSnapshotService;
+        this.systemMaintenanceReader = systemMaintenanceReader;
         this.blobStorage = blobStorage;
     }
 
@@ -101,8 +100,8 @@ public class KnownStorageUriIndexService {
     }
 
     private void indexFromTimelines(Set<String> index) {
-        for (String projectId : timelineSnapshotService.listDistinctProjectIds()) {
-            timelineSnapshotService.findLatestByProject(projectId).ifPresent(snapshot -> {
+        for (String projectId : systemMaintenanceReader.listProjectIdsWithSnapshots()) {
+            systemMaintenanceReader.findLatestSnapshot(projectId).ifPresent(snapshot -> {
                 try {
                     JsonNode root = InternalTimelineJson.parse(snapshot.payloadJson());
                     JsonNode registry = root.path("assetRegistry").path("assets");

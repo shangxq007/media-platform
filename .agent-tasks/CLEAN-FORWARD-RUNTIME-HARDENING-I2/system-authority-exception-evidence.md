@@ -2,12 +2,18 @@
 
 ## TimelineSnapshotService.listDistinctProjectIds
 
-### Callers (production, 3 sites)
+### Callers (production, 3 services / 4 call sites + 1 private bypass)
 | Caller | Line | Purpose | Privilege context |
 |---|---|---|---|
 | GlobalAssetIntegrityService | 50 | global asset integrity scan | system maintenance |
 | GlobalAssetIntegrityService | 102 | global integrity sweep | system maintenance |
 | KnownStorageUriIndexService | 104 | storage-URI index rebuild | system maintenance |
+| TimelineAssetGcService.runGlobalGc | 52 | global asset GC sweep | system maintenance (private jOOQ scan, now via SystemMaintenanceReader) |
+
+Note: source-truth audit (2026-08-22) found THREE privileged consumers, not
+two: TimelineAssetGcService.runGlobalGc previously enumerated projects through
+a private jOOQ scan of TIMELINE_SNAPSHOT (bypassing the service layer). It is
+now rewired through SystemMaintenanceReader.listProjectIdsWithSnapshots().
 
 ### Analysis
 - All three callers perform system-level maintenance sweeps across ALL projects.
@@ -15,7 +21,11 @@
 - The reads are legitimate system maintenance, NOT ambient tenant/user authority leakage.
 
 ### Verdict
-- Classification: EXPLICIT_SYSTEM_AUTHORITY_EXCEPTION (category D).
+- Classification: EXPLICIT_SYSTEM_AUTHORITY_EXCEPTION (category D) — 3 approved consumers
+  (GlobalAssetIntegrityService, KnownStorageUriIndexService, TimelineAssetGcService).
+- Implemented port: SystemMaintenanceReader (timeline-module app) exposing
+  listProjectIdsWithSnapshots() + findLatestSnapshot(projectId); all three
+  consumers rewired through it; the AssetGc private jOOQ bypass removed.
 - MUST NOT remain ambient global authority reachable from the generic
   TimelineSnapshotService public surface.
 - Required representation: an explicit privileged system port, e.g.

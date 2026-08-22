@@ -1,6 +1,8 @@
 package com.example.platform.render.app.timeline;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import com.example.platform.timeline.app.SystemMaintenanceReader;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.infrastructure.TimelineAssetGcProperties;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
@@ -45,7 +47,8 @@ class TimelineAssetGcServiceTest extends PostgresTestContainerSupport {
         TimelineAssetGcProperties props = new TimelineAssetGcProperties();
         props.setRetentionDays(0);
         props.setDeleteBlobOnPurge(false);
-        gcService = new TimelineAssetGcService(dsl, snapshotService, lifecycleService, props, null);
+        gcService = new TimelineAssetGcService(
+                dsl, mock(SystemMaintenanceReader.class), snapshotService, lifecycleService, props, null);
 
         String json = """
                 {

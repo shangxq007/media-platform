@@ -4,7 +4,6 @@ import com.example.platform.artifact.app.ArtifactStorageIntegrityScanner;
 import com.example.platform.artifact.app.AssetIntegrityMetrics;
 import com.example.platform.audit.app.ProblematicDataDetectionService;
 import com.example.platform.audit.domain.ProblematicDataRecord;
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.timeline.TimelineAssetIntegrityScanner;
 import com.example.platform.shared.web.TenantContext;
 import java.util.ArrayList;
@@ -16,7 +15,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class GlobalAssetIntegrityService {
 
-    private final TimelineSnapshotService timelineSnapshotService;
+    private final com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader;
     private final TimelineAssetIntegrityScanner timelineScanner;
     private final ArtifactStorageIntegrityScanner storageScanner;
     private final AssetIntegrityMetrics metrics;
@@ -24,13 +23,13 @@ public class GlobalAssetIntegrityService {
     private final StorageBucketOrphanScanner bucketOrphanScanner;
 
     public GlobalAssetIntegrityService(
-            TimelineSnapshotService timelineSnapshotService,
+            com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader,
             TimelineAssetIntegrityScanner timelineScanner,
             ArtifactStorageIntegrityScanner storageScanner,
             AssetIntegrityMetrics metrics,
             ProblematicDataDetectionService problematicDataDetectionService,
             StorageBucketOrphanScanner bucketOrphanScanner) {
-        this.timelineSnapshotService = timelineSnapshotService;
+        this.systemMaintenanceReader = systemMaintenanceReader;
         this.timelineScanner = timelineScanner;
         this.storageScanner = storageScanner;
         this.metrics = metrics;
@@ -47,7 +46,7 @@ public class GlobalAssetIntegrityService {
         int unresolved = 0;
         int projectsScanned = 0;
 
-        for (String projectId : timelineSnapshotService.listDistinctProjectIds()) {
+        for (String projectId : systemMaintenanceReader.listProjectIdsWithSnapshots()) {
             projectsScanned++;
             TimelineAssetIntegrityScanner.ScanResult timeline = timelineScanner.scanProject(projectId);
             for (TimelineAssetIntegrityScanner.Finding f : timeline.findings()) {
@@ -99,7 +98,7 @@ public class GlobalAssetIntegrityService {
 
         int recorded = 0;
         if (recordProblematicData && !findings.isEmpty()) {
-            for (String projectId : timelineSnapshotService.listDistinctProjectIds()) {
+            for (String projectId : systemMaintenanceReader.listProjectIdsWithSnapshots()) {
                 List<Map<String, Object>> projectFindings = findings.stream()
                         .filter(f -> projectId.equals(String.valueOf(f.get("projectId"))))
                         .toList();
