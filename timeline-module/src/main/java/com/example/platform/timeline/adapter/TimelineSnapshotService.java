@@ -47,26 +47,15 @@ public class TimelineSnapshotService {
         return snapshotId;
     }
 
-    public Optional<String> findPayload(String snapshotId) {
-        if (snapshotId == null || snapshotId.isBlank()) {
-            return Optional.empty();
-        }
-        Record record = dsl.select(TIMELINE_SNAPSHOT.PAYLOAD_JSON)
-                .from(TIMELINE_SNAPSHOT)
-                .where(TIMELINE_SNAPSHOT.ID.eq(snapshotId))
-                .fetchOne();
-        if (record == null) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(record.get(TIMELINE_SNAPSHOT.PAYLOAD_JSON));
-    }
+    
+
 
     /**
      * ROADMAP20 FINAL (R1): ownership-scoped authoritative Timeline snapshot
      * read (TIMELINE_SNAPSHOT_LOOKUP_IS_PROJECT_AND_TENANT_SCOPED_V1) —
      * resolves ONLY a snapshot bound to (projectId, tenantId). Identity
      * uniqueness != ownership authority. Canonical restore / verification /
-     * hydration MUST use this path; never unscoped {@link #findPayload}.
+     * hydration MUST use this path; never unscoped global payload reads.
      */
     /** Convenience overload using this service's DSL (non-transactional reads). */
     public Optional<SnapshotInfo> findOwnedById(String projectId, String tenantId,
@@ -97,7 +86,7 @@ public class TimelineSnapshotService {
         return Optional.of(mapSnapshotInfo(record));
     }
 
-    public Optional<SnapshotInfo> findLatestByProject(String projectId) {
+    public Optional<SnapshotInfo> findLatestForSystemMaintenance(String projectId) {
         if (projectId == null || projectId.isBlank()) {
             return Optional.empty();
         }
@@ -141,27 +130,14 @@ public class TimelineSnapshotService {
         return Optional.of(mapSnapshotInfo(record));
     }
 
-    public List<String> listDistinctProjectIds() {
+    public List<String> listProjectIdsForSystemMaintenance() {
         return dsl.selectDistinct(TIMELINE_SNAPSHOT.PROJECT_ID)
                 .from(TIMELINE_SNAPSHOT)
                 .fetch(TIMELINE_SNAPSHOT.PROJECT_ID);
     }
 
-    public Optional<SnapshotInfo> findById(String snapshotId) {
-        Record record = dsl.select(
-                        TIMELINE_SNAPSHOT.ID,
-                        TIMELINE_SNAPSHOT.PROJECT_ID,
-                        TIMELINE_SNAPSHOT.TENANT_ID,
-                        TIMELINE_SNAPSHOT.PAYLOAD_JSON,
-                        TIMELINE_SNAPSHOT.SCHEMA_VERSION)
-                .from(TIMELINE_SNAPSHOT)
-                .where(TIMELINE_SNAPSHOT.ID.eq(snapshotId))
-                .fetchOne();
-        if (record == null) {
-            return Optional.empty();
-        }
-        return Optional.of(mapSnapshotInfo(record));
-    }
+    
+
 
     private static SnapshotInfo mapSnapshotInfo(Record record) {
         return new SnapshotInfo(

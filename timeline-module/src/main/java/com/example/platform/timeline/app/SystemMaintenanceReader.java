@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
  * integrity sweeps, GC sweeps, storage-URI index rebuilds) MUST go through this
  * explicit port — never through ambient global lookup on a normal application
  * service. This is the single allowlisted home of
- * {@link TimelineSnapshotService#listDistinctProjectIds()} for production.
+ * {@link TimelineSnapshotService#listProjectIdsForSystemMaintenance()} for production.
  *
  * <p>Contract: SYSTEM_CANONICAL_READ_REQUIRES_EXPLICIT_PRIVILEGED_PORT_V1.
  * The structural guard
@@ -30,7 +30,7 @@ public class SystemMaintenanceReader {
 
     /** Global enumeration of projects that have timeline snapshots (system maintenance only). */
     public List<String> listProjectIdsWithSnapshots() {
-        return timelineSnapshotService.listDistinctProjectIds();
+        return timelineSnapshotService.listProjectIdsForSystemMaintenance();
     }
 
     /**
@@ -41,6 +41,6 @@ public class SystemMaintenanceReader {
      * use {@code findLatestOwnedByProject(projectId, tenantId)}.
      */
     public Optional<TimelineSnapshotService.SnapshotInfo> findLatestSnapshot(String projectId) {
-        return timelineSnapshotService.findLatestByProject(projectId);
+        return timelineSnapshotService.findLatestForSystemMaintenance(projectId);
     }
 }

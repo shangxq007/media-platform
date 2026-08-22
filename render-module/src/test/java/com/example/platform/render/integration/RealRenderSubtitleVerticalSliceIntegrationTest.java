@@ -204,7 +204,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
 
         // 2. Snapshot payload exists through the sole authority.
         String snapshotId = snapshotIdOf(revision.revisionId());
-        Optional<String> payload = snapshotService.findPayload(snapshotId);
+        Optional<String> payload = payloadOf(snapshotId);
         assertTrue(payload.isPresent(), "E1 save must persist the governed snapshot payload");
         assertTrue(payload.get().contains("\"textOverlays\""), "payload must carry the caption expansion");
 
@@ -581,4 +581,11 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
     }
 
 
+
+    private Optional<String> payloadOf(String snapshotId) {
+        return Optional.ofNullable(dsl.select(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON)
+                .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.ID.eq(snapshotId))
+                .fetchOne(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON));
+    }
 }

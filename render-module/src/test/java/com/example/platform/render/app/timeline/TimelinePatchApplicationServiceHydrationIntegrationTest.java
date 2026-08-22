@@ -101,7 +101,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
 
         String baseSnapshotId = snapshotIdOf(base.revisionId());
-        assertTrue(snapshotService.findPayload(baseSnapshotId).isPresent(),
+        assertTrue(payloadOf(baseSnapshotId).isPresent(),
                 "governed payload exists (precondition)");
 
         TimelinePatch patch = validPatch(productId, base, docBase, "2/1");
@@ -134,8 +134,8 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         TimelineDocument docBase = sampleDocument("clip-1", "0/1", "10/1");
         TimelineRevision base = saveService.saveRevision(productId, null, docBase, "pphr-user");
         String baseSnapshotId = snapshotIdOf(base.revisionId());
-        String basePayload = snapshotService.findPayload(baseSnapshotId).orElseThrow();
-        assertTrue(snapshotService.findPayload(baseSnapshotId).isPresent(), "base payload readable");
+        String basePayload = payloadOf(baseSnapshotId).orElseThrow();
+        assertTrue(payloadOf(baseSnapshotId).isPresent(), "base payload readable");
 
         TimelinePatch patch = validPatch(productId, base, docBase, "2/1");
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
@@ -158,7 +158,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         // A033: persisted payload contains the semantic change
         String newSnapshotId = snapshotIdOf(newRevisionId);
         assertNotNull(newSnapshotId);
-        String newPayload = snapshotService.findPayload(newSnapshotId).orElseThrow();
+        String newPayload = payloadOf(newSnapshotId).orElseThrow();
         TimelineDocument persisted = TimelineDocumentJsonSerializer.mapper()
                 .readValue(newPayload, TimelineDocument.class);
         assertEquals(MediaTime.ofRational(2, 1), persisted.getTracks().get(0).clips().get(0).getStartTime(),
@@ -168,7 +168,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         assertEquals("ten-pphr", persistedRowTenant(newRevisionId), "tenant identity preserved");
         // base revision and base snapshot remain readable
         assertNotNull(saveService.findById(base.revisionId()));
-        assertTrue(snapshotService.findPayload(baseSnapshotId).isPresent(), "base payload still readable");
+        assertTrue(payloadOf(baseSnapshotId).isPresent(), "base payload still readable");
     }
 
     // =====================================================================
@@ -340,7 +340,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
                 List.of(new TimelinePatchOperation.UpdateClipProperty("op1", "clip-1", "startTime", "0", "15/1")),
                 null, null);
         TimelineDocument baseDoc = TimelineDocumentJsonSerializer.mapper()
-                .readValue(snapshotService.findPayload(snapshotIdOf(base.revisionId())).orElseThrow(),
+                .readValue(payloadOf(snapshotIdOf(base.revisionId())).orElseThrow(),
                         TimelineDocument.class);
         PatchApplicationResult engineResult = TimelinePatchEngine.apply(baseDoc, patch);
         assertTrue(engineResult.isSuccess(), "engine applies the timing op (canonically invalid result)");
@@ -489,4 +489,11 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     }
 
 
+
+    private Optional<String> payloadOf(String snapshotId) {
+        return Optional.ofNullable(dsl.select(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON)
+                .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.ID.eq(snapshotId))
+                .fetchOne(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON));
+    }
 }

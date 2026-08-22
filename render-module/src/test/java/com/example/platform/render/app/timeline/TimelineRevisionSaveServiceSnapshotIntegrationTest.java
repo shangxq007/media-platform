@@ -94,7 +94,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         assertTrue(persistedSnapshotId.startsWith("snap"),
                 "SNAPSHOT_ID must reference the payload row written by TimelineSnapshotService");
         // Payload present and digest-equivalent.
-        Optional<String> payload = snapshotService.findPayload(persistedSnapshotId);
+        Optional<String> payload = payloadOf(persistedSnapshotId);
         assertTrue(payload.isPresent(), "revision must never be visible without its payload");
         assertEquals(digester.digest(doc), revision.semanticContext().timelineContentDigest(),
                 "contentDigest is the FULL revision semantic digest; the Timeline-only digest lives in the context");
@@ -143,7 +143,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         insertProduct(productId);
         var doc = createSampleDocument();
         var original = saveService.saveRevision(productId, null, doc, "snap-user");
-        String originalPayload = snapshotService.findPayload(snapshotIdOf(original.revisionId())).orElseThrow();
+        String originalPayload = payloadOf(snapshotIdOf(original.revisionId())).orElseThrow();
 
         var restored = saveService.restoreRevision(productId, original.revisionId(), original.revisionId(), "snap-user");
 
@@ -154,7 +154,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         // restored revision reuses the SAME immutable Effect snapshot (esnap_
         // idempotent — no new esnap row).
         assertEquals(5L, snapshotRows);
-        String restoredPayload = snapshotService.findPayload(snapshotIdOf(restored.revisionId())).orElseThrow();
+        String restoredPayload = payloadOf(snapshotIdOf(restored.revisionId())).orElseThrow();
         assertEquals(originalPayload, restoredPayload, "restore must copy the governed payload");
         long revisionRows = dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
@@ -168,7 +168,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         var doc = createSampleDocument();
         var revision = saveService.saveRevision(productId, null, doc, "snap-user");
 
-        String payload = snapshotService.findPayload(snapshotIdOf(revision.revisionId())).orElseThrow();
+        String payload = payloadOf(snapshotIdOf(revision.revisionId())).orElseThrow();
         TimelineScriptParser parser = new TimelineScriptParser();
         Optional<TimelineSpec> spec = parser.parse(payload);
         assertTrue(spec.isPresent(), "saved payload must parse through the production render parser");
@@ -219,4 +219,11 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
     }
 
 
+
+    private Optional<String> payloadOf(String snapshotId) {
+        return Optional.ofNullable(dsl.select(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON)
+                .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
+                .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.ID.eq(snapshotId))
+                .fetchOne(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT.PAYLOAD_JSON));
+    }
 }

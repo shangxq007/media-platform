@@ -39,3 +39,23 @@ now rewired through SystemMaintenanceReader.listProjectIdsWithSnapshots().
 ## Conclusion
 I2-C4 + SYSTEM_CANONICAL_READ_REQUIRES_EXPLICIT_PRIVILEGED_PORT_V1 adopted.
 Explicit port creation is an I2 implementation task (docs/evidence only here).
+
+## Independent-review final correction (append-forward)
+
+Independent implementation review found LEGACY_GLOBAL_DEFINITION_SURFACE_REMAINED_AFTER_CALLER_MIGRATION:
+adapter definitions of unscoped reads (findPayload, findById(snapshot), findLatestByProject,
+repository findById/findHeadByProject/listByProject) survived even though all production callers
+had migrated. Final correction (this execution) removed those definitions and reclassified the two
+legitimate global primitives as explicit system-only surfaces:
+
+- TimelineSnapshotService.findPayload(String)              -> DELETED
+- TimelineSnapshotService.findById(String)                -> DELETED
+- TimelineSnapshotService.findLatestByProject(projectId)  -> RENAMED findLatestForSystemMaintenance (system-only)
+- TimelineSnapshotService.listDistinctProjectIds()        -> RENAMED listProjectIdsForSystemMaintenance (system-only)
+- TimelineRevisionRepository.findById(String)             -> DELETED
+- TimelineRevisionRepository.findHeadByProject(String)    -> DELETED
+- TimelineRevisionRepository.listByProject(...) ×3        -> DELETED
+- TimelineRevisionRepository.updateAnnotation/listDistinctSources/listAuthorFacets/listEditSessions (unscoped) -> DELETED
+
+System primitives are callable ONLY from SystemMaintenanceReader (guard-enforced).
+Approved consumer count remains 3 (unchanged).

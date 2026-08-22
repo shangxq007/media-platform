@@ -613,19 +613,9 @@ class TimelineRevisionS3InputOutputRealRenderSmokeTest {
         }
 
         @Override
-        public Optional<String> findPayload(String snapshotId) {
-            return Optional.ofNullable(store.get(snapshotId)).map(SnapshotInfo::payloadJson);
-        }
-
-        @Override
         public Optional<SnapshotInfo> findOwnedById(String projectId, String tenantId, String snapshotId) {
             return Optional.ofNullable(store.get(snapshotId))
                     .filter(s -> s.projectId().equals(projectId) && s.tenantId().equals(tenantId));
-        }
-
-        @Override
-        public Optional<SnapshotInfo> findById(String snapshotId) {
-            return Optional.ofNullable(store.get(snapshotId));
         }
     }
 

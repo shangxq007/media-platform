@@ -109,17 +109,11 @@ class TimedTextMergeEngineTest {
         when(revisionRepo.findOwnedById("base-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(baseRow));
         when(revisionRepo.findOwnedById("src-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(srcRow));
         when(revisionRepo.findOwnedById("tgt-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(tgtRow));
-        when(snapshotService.findById("snap-base"))
+                when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-base"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", basePayload, "internal-1.0")));
-        when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-base"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", basePayload, "internal-1.0")));
-        when(snapshotService.findById("snap-src"))
+                when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-src"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", sourcePayload, "internal-1.0")));
-        when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-src"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", sourcePayload, "internal-1.0")));
-        when(snapshotService.findById("snap-tgt"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", targetPayload, "internal-1.0")));
-        when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-tgt"))
+                when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-tgt"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", targetPayload, "internal-1.0")));
         when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
                 .thenReturn("snap-merged");

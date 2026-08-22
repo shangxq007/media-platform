@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Proves the explicit privileged read port (SystemMaintenanceReader) is the
  * ONLY production home for system-wide timeline enumeration:
  *
- *   - TimelineSnapshotService.listDistinctProjectIds may be invoked ONLY from
+ *   - TimelineSnapshotService.listProjectIdsForSystemMaintenance may be invoked ONLY from
  *     SystemMaintenanceReader.java (the explicit privileged port).
  *   - No other production class may perform its own global TIMELINE_SNAPSHOT
  *     enumeration via direct jOOQ (pattern: selectDistinct + TIMELINE_SNAPSHOT
@@ -82,9 +82,9 @@ class Cfrhi2SystemAuthorityGuardTest {
                 }
                 // direct call to the global enumeration on the snapshot service
                 // (exclude the adapter's own method definition)
-                if (trimmed.contains("listDistinctProjectIds(")
+                if (trimmed.contains("listProjectIdsForSystemMaintenance(")
                         && !name.equals(SNAPSHOT_SERVICE)) {
-                    violations.add(f + ":" + (i + 1) + " direct listDistinctProjectIds outside SystemMaintenanceReader");
+                    violations.add(f + ":" + (i + 1) + " direct listProjectIdsForSystemMaintenance outside SystemMaintenanceReader");
                 }
                 // direct jOOQ global scan of TIMELINE_SNAPSHOT project ids outside the adapter
                 if (trimmed.contains("selectDistinct")
@@ -106,11 +106,35 @@ class Cfrhi2SystemAuthorityGuardTest {
             String content = String.join("\n", Files.readAllLines(f));
             assertTrue(content.contains("SystemMaintenanceReader"),
                     consumer + " must reference SystemMaintenanceReader");
-            // no consumer may hold a direct global-enumeration call anymore
-            assertTrue(!content.contains("listDistinctProjectIds(")
+            // no consumer may hold a direct system-primitive call anymore
+            assertTrue(!content.contains("listProjectIdsForSystemMaintenance(")
                             || consumer.equals(SYSTEM_READER),
-                    consumer + " must not call listDistinctProjectIds directly");
+                    consumer + " must not call listProjectIdsForSystemMaintenance directly");
         }
+    }
+
+    @Test
+    void noUnexpectedSystemMaintenanceReaderConsumers() throws IOException {
+        // F. mechanically detect ANY production consumer of SystemMaintenanceReader;
+        // the approved set must be exactly the three frozen consumers.
+        List<String> consumers = new ArrayList<>();
+        for (Path f : productionJavaFiles()) {
+            String name = f.getFileName().toString();
+            if (name.equals(SYSTEM_READER)) {
+                continue;
+            }
+            if (name.equals("Cfrhi2SystemAuthorityGuardTest.java")
+                    || name.equals("Cfrhi2FinalReadAuthorityGuardTest.java")) {
+                continue;
+            }
+            String content = String.join("\n", Files.readAllLines(f));
+            if (content.contains("SystemMaintenanceReader")) {
+                consumers.add(name);
+            }
+        }
+        assertEquals(APPROVED_CONSUMERS.stream().sorted().toList(),
+                consumers.stream().sorted().toList(),
+                "UNAUTHORIZED_SYSTEM_READER_CONSUMER_COUNT must be 0 (approved set = exactly 3)");
     }
 
     @Test

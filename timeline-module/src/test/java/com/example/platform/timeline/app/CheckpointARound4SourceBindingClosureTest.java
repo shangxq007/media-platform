@@ -298,13 +298,10 @@ class CheckpointARound4SourceBindingClosureTest {
         when(repo.findOwnedById("base-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("base-rev", "snap-b")));
         when(repo.findOwnedById("src-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("src-rev", "snap-s")));
         when(repo.findOwnedById("tgt-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("tgt-rev", "snap-t")));
-        when(snap.findById("snap-b")).thenReturn(Optional.of(info("snap-b", basePayload)));
         when(snap.findOwnedById(PROJECT, TENANT, "snap-b"))
                 .thenReturn(Optional.of(info("snap-b", basePayload)));
-        when(snap.findById("snap-s")).thenReturn(Optional.of(info("snap-s", srcPayload)));
         when(snap.findOwnedById(PROJECT, TENANT, "snap-s"))
                 .thenReturn(Optional.of(info("snap-s", srcPayload)));
-        when(snap.findById("snap-t")).thenReturn(Optional.of(info("snap-t", tgtPayload)));
         when(snap.findOwnedById(PROJECT, TENANT, "snap-t"))
                 .thenReturn(Optional.of(info("snap-t", tgtPayload)));
         when(snap.save(anyString(), anyString(), anyString(), anyString())).thenReturn("snap-m");

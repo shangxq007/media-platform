@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * CFRH-I2 final read-authority closure guard (I2-G).
+ * CFRH-I2 final read-authority closure guard (I2-G, final exactness).
  *
  * Mechanically proves the frozen final metrics on production sources:
  *
@@ -24,30 +24,47 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   UNPRIVILEGED_SYSTEM_GLOBAL_TIMELINE_READ_COUNT                = 0
  *   KNOWN_UNSCOPED_PRODUCTION_TIMELINE_READ_SYMBOL_COUNT          = 0
  *
- * Scope is symbol-set bounded (frozen I2 contract): forbidden legacy read
- * symbols and the retired service are detected mechanically; safe owned forms
- * (findOwnedById / findLatestOwnedByProject / listOwnedByProject / query
- * services) may remain.
+ * Final-exactness (independent review): legacy unscoped read API
+ * DEFINITIONS must also be zero, not merely invocations:
+ *
+ *   TimelineSnapshotService.findPayload(String) definition count        = 0
+ *   TimelineSnapshotService.findById(String) definition count          = 0
+ *   TimelineRevisionRepository.findById(String) definition count       = 0
+ *   TimelineRevisionRepository.findHeadByProject(String) definition    = 0
+ *   legacy TimelineRevisionRepository.listByProject(...) definition    = 0
+ *   old project-only latest normal API definition count                = 0
+ *
+ * System primitives are explicitly system-only:
+ *   findLatestForSystemMaintenance / listProjectIdsForSystemMaintenance
+ *   may be called ONLY from SystemMaintenanceReader.
+ *
+ * Scope is symbol-set bounded (frozen I2 contract).
  */
 class Cfrhi2FinalReadAuthorityGuardTest {
 
     // Retired service — zero references anywhere in production.
     private static final String LEGACY_SERVICE = "TimelineRevisionService";
 
-    // Ambient-global read symbols forbidden in production (definitions in the
-    // adapters are allowed; production call sites are not).
+    // Ambient-global read symbols forbidden in production (definitions AND
+    // call sites — final exactness, independent review).
     private static final List<String> FORBIDDEN_GLOBAL_READ_SYMBOLS = List.of(
             "findPayload",
             "findLatestByProject");
 
-    // Repository global reads forbidden in production call sites (adapter
-    // definitions allowed).
-    private static final List<String> FORBIDDEN_REPO_GLOBAL_READS = List.of(
-            "revisionRepository.findById",
-            "revisionRepository.findHeadByProject",
-            "revisionRepository.listByProject");
+    // Legacy unscoped definitions forbidden anywhere in the adapters.
+    private static final List<String> FORBIDDEN_ADAPTER_DEFINITIONS = List.of(
+            "findPayload",
+            "findById",
+            "findHeadByProject",
+            "listByProject");
 
-    // Adapters that own the (still existing) global method definitions.
+    // System-only primitives: definition allowed in adapter; call sites
+    // allowed ONLY inside SystemMaintenanceReader.
+    private static final List<String> SYSTEM_ONLY_PRIMITIVES = List.of(
+            "findLatestForSystemMaintenance",
+            "listProjectIdsForSystemMaintenance");
+
+    // Adapters that must not define the forbidden legacy surface.
     private static final List<String> ADAPTER_FILES = List.of(
             "TimelineSnapshotService.java",
             "TimelineRevisionRepository.java");
@@ -108,6 +125,75 @@ class Cfrhi2FinalReadAuthorityGuardTest {
     }
 
     @Test
+    void legacyUnscopedAdapterDefinitionsAreZero() throws IOException {
+        // Final exactness: legacy unscoped read API definitions must be zero.
+        // - findPayload / findHeadByProject / listByProject / findLatestByProject:
+        //   globally unique legacy names — any production definition is a violation.
+        // - findById: a generic name used by other repositories; the legacy
+        //   timeline definition is bounded to the two timeline adapters.
+        List<String> violations = new ArrayList<>();
+        for (Path f : productionJavaFiles()) {
+            String name = f.getFileName().toString();
+            // Legacy timeline read symbols are unique only within the timeline
+            // module; other modules legitimately define listByProject /
+            // findLatestByProject on their own aggregates.
+            boolean timelineModule = f.toString().contains("/timeline-module/");
+            List<String> lines = Files.readAllLines(f);
+            for (int i = 0; i < lines.size(); i++) {
+                String trimmed = lines.get(i).trim();
+                if (isCommentLine(trimmed)) {
+                    continue;
+                }
+                for (String def : List.of("findPayload", "findHeadByProject", "listByProject", "findLatestByProject")) {
+                    if (timelineModule
+                            && trimmed.matches(".*\\b(public|private|protected)\\s+[\\w<>\\[\\],.\\s]+\\b" + def + "\\s*\\(.*")) {
+                        violations.add(f + ":" + (i + 1) + " legacy definition " + def + ": " + trimmed);
+                    }
+                }
+                // findById legacy definition — bounded to the timeline adapters
+                if (ADAPTER_FILES.contains(name)
+                        && trimmed.matches(".*\\b(public|private|protected)\\s+[\\w<>\\[\\],.\\s]+\\bfindById\\s*\\(.*")) {
+                    violations.add(f + ":" + (i + 1) + " legacy findById definition: " + trimmed);
+                }
+            }
+        }
+        assertEquals(List.of(), violations,
+                "LEGACY_UNSCOPED_READ_DEFINITION_COUNT must be 0 (findPayload/findById/findHeadByProject/listByProject/findLatestByProject)");
+    }
+
+    @Test
+    void systemPrimitivesAreCalledOnlyFromSystemMaintenanceReader() throws IOException {
+        List<String> violations = new ArrayList<>();
+        for (Path f : productionJavaFiles()) {
+            String name = f.getFileName().toString();
+            if (name.equals("TimelineSnapshotService.java")) {
+                continue; // adapter definitions
+            }
+            if (name.equals("SystemMaintenanceReader.java")) {
+                continue; // the privileged port
+            }
+            if (name.equals("Cfrhi2SystemAuthorityGuardTest.java")
+                    || name.equals("Cfrhi2FinalReadAuthorityGuardTest.java")) {
+                continue;
+            }
+            List<String> lines = Files.readAllLines(f);
+            for (int i = 0; i < lines.size(); i++) {
+                String trimmed = lines.get(i).trim();
+                if (isCommentLine(trimmed)) {
+                    continue;
+                }
+                for (String prim : SYSTEM_ONLY_PRIMITIVES) {
+                    if (trimmed.contains(prim + "(")) {
+                        violations.add(f + ":" + (i + 1) + " direct system primitive " + prim + ": " + trimmed);
+                    }
+                }
+            }
+        }
+        assertEquals(List.of(), violations,
+                "DIRECT_SYSTEM_PRIMITIVE_BYPASS_COUNT must be 0 (system primitives callable only from SystemMaintenanceReader)");
+    }
+
+    @Test
     void ambientGlobalTimelineReadsAreZeroInProduction() throws IOException {
         List<String> violations = new ArrayList<>();
         for (Path f : productionJavaFiles()) {
@@ -120,21 +206,12 @@ class Cfrhi2FinalReadAuthorityGuardTest {
                 }
                 for (String sym : FORBIDDEN_GLOBAL_READ_SYMBOLS) {
                     // invocation sites on the TIMELINE snapshot service receiver
-                    // (timelineSnapshotService / snapshotService) — skip adapter
-                    // definitions and the system-maintenance reader's privileged
-                    // wrapper; other modules may have unrelated same-named methods
-                    if ((trimmed.contains("timelineSnapshotService." + sym + "(")
-                            || trimmed.contains("snapshotService." + sym + "("))
-                            && !name.equals("SystemMaintenanceReader.java")
-                            && !ADAPTER_FILES.contains(name)) {
+                    // (timelineSnapshotService / snapshotService); adapter has no
+                    // definitions anymore and SystemMaintenanceReader uses the
+                    // renamed system primitives, so any hit is a violation
+                    if (trimmed.contains("timelineSnapshotService." + sym + "(")
+                            || trimmed.contains("snapshotService." + sym + "(")) {
                         violations.add(f + ":" + (i + 1) + " global read " + sym + ": " + trimmed);
-                    }
-                }
-                for (String repoRead : FORBIDDEN_REPO_GLOBAL_READS) {
-                    if (trimmed.contains(repoRead + "(")
-                            && !name.equals("TimelineRevisionRepository.java")
-                            && !name.equals("Cfrhi2SystemAuthorityGuardTest.java")) {
-                        violations.add(f + ":" + (i + 1) + " repo global read " + repoRead + ": " + trimmed);
                     }
                 }
             }
@@ -227,7 +304,8 @@ class Cfrhi2FinalReadAuthorityGuardTest {
             }
             for (String line : Files.readAllLines(f)) {
                 String t = line.trim();
-                if (!isCommentLine(t) && t.contains("listDistinctProjectIds(")) {
+                if (!isCommentLine(t) && (t.contains("listProjectIdsForSystemMaintenance(")
+                        || t.contains("listDistinctProjectIds("))) {
                     unprivilegedGlobal++;
                 }
             }

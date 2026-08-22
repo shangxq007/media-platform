@@ -161,17 +161,11 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
         when(revisionRepository.findOwnedById("rev-base", PROJECT, TENANT)).thenReturn(Optional.of(row("rev-base", "snap-base")));
         when(revisionRepository.findOwnedById("rev-source", PROJECT, TENANT)).thenReturn(Optional.of(row("rev-source", "snap-source")));
         when(revisionRepository.findOwnedById("rev-target", PROJECT, TENANT)).thenReturn(Optional.of(row("rev-target", "snap-target")));
-        when(snapshotService.findById("snap-base"))
+                when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-base"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", PROJECT, TENANT, base, "internal-1.0")));
-        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-base"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", PROJECT, TENANT, base, "internal-1.0")));
-        when(snapshotService.findById("snap-source"))
+                when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-source"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-source", PROJECT, TENANT, source, "internal-1.0")));
-        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-source"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-source", PROJECT, TENANT, source, "internal-1.0")));
-        when(snapshotService.findById("snap-target"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-target", PROJECT, TENANT, target, "internal-1.0")));
-        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-target"))
+                when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-target"))
                 .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-target", PROJECT, TENANT, target, "internal-1.0")));
         when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
                 .thenAnswer(inv -> "snap-merged-" + inv.getArgument(2).hashCode());

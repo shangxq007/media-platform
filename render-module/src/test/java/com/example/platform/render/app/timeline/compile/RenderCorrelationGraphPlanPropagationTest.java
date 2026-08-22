@@ -355,10 +355,6 @@ class RenderCorrelationGraphPlanPropagationTest {
         void saveWithId(String snapshotId, String projectId, String tenantId, String payloadJson) {
             store.put(snapshotId, new SnapshotInfo(snapshotId, projectId, tenantId, payloadJson, "1.0.0"));
         }
-        @Override
-        public Optional<String> findPayload(String snapshotId) {
-            return Optional.ofNullable(store.get(snapshotId)).map(SnapshotInfo::payloadJson);
-        }
 
         @Override
         public Optional<SnapshotInfo> findOwnedById(String projectId, String tenantId, String snapshotId) {
