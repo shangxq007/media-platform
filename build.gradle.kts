@@ -1083,18 +1083,13 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         require(saveSrc.lines().any { codeLineHas(it, Regex("\\bcopyRevisionPinsTx\\b")) }) {
             "FAIL: canonical restore path missing historical pin copy/reissue (CANONICAL_RESTORE_PIN_COPY_COUNT != 1)"
         }
-        // C. legacy TimelineRevisionService has NO artifact-pin write responsibility
-        val revisionSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionService.java").readText()
-        require(!revisionSrc.contains("artifactPinValidator")) {
-            "FAIL: TimelineRevisionService regained artifact-pin write responsibility (LEGACY_PIN_WRITE_AUTHORITY_COUNT != 0)"
-        }
-        require(!revisionSrc.contains("registerRevisionPins")) {
-            "FAIL: TimelineRevisionService regained pin registration (LEGACY_PIN_REGISTRATION_COUNT != 0)"
-        }
-        // D. no legacy recordRevision fallback exists
-        require(!revisionSrc.contains("recordRevision") && !revisionSrc.contains("recordAiAdoptRevision")
-                && !revisionSrc.contains("backfillHeadFromLatestSnapshot")) {
-            "FAIL: legacy semantic write symbols present in TimelineRevisionService (LEGACY_SEMANTIC_WRITE_COUNT != 0)"
+        // C/D. TimelineRevisionService is DELETED after the CFRH-I2-E behavioral
+        // replacement closure. Its absence is a strictly stronger invariant than
+        // "no pin write responsibility": no class means no legacy pin writes, no
+        // recordRevision, no backfill, no compatibility shell can exist.
+        val revisionServiceFile = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionService.java")
+        require(!revisionServiceFile.exists()) {
+            "FAIL: TimelineRevisionService must be DELETED (CFRH-I2-E): LEGACY_TIMELINE_REVISION_QUERY_SERVICE_CLASS_COUNT != 0"
         }
         // E. forbidden legacy write symbols remain zero across production
         // (definitions AND references; comment lines excluded — CFRH-I1 explanatory
