@@ -57,7 +57,7 @@ _Others_
 * `c.e.p.r.app.timeline.TimelineAssetIntegrityScanner` (in Render)
 * `c.e.p.a.app.ArtifactStorageIntegrityScanner` (in Artifact)
 * `c.e.p.a.app.ProblematicDataDetectionService` (in Audit & Compliance)
-* `c.e.p.t.adapter.TimelineSnapshotService` (in Timeline)
+* `c.e.p.t.app.SystemMaintenanceReader` (in Timeline)
 * `c.e.p.a.app.AssetIntegrityMetrics` (in Artifact)
 * `c.e.p.a.app.ArtifactCatalogRepository` (in Artifact)
 * `c.e.p.d.app.DeliveryDestinationUriIndexService` (in Delivery)
@@ -80,6 +80,7 @@ _Others_
 * `c.e.p.r.app.timeline.TimelineSpecImportAdapter` (in Render)
 * `c.e.p.t.app.TimelineImportService` (in Timeline)
 * `c.e.p.r.app.timeline.TimelineSpecResolver` (in Render)
+* `c.e.p.t.adapter.TimelineSnapshotService` (in Timeline)
 * `c.e.p.r.app.timeline.SegmentPlanFilter` (in Render)
 * `c.e.p.r.app.timeline.TimelineAssetLifecycleService` (in Render)
 * `c.e.p.i.app.RoleService` (in Identity & Access)
@@ -105,10 +106,12 @@ _Others_
 * `c.e.p.t.canonical.TimelineContentDigester` (in Timeline)
 * `c.e.p.t.app.TimelineSemanticDiffV1Service` (in Timeline)
 * `c.e.p.t.app.TimelinePatchApplicationService` (in Timeline)
-* `c.e.p.t.app.TimelineRevisionService` (in Timeline)
+* `c.e.p.t.app.TimelineRevisionQueryService` (in Timeline)
+* `c.e.p.t.app.TimelineRevisionDiffQuery` (in Timeline)
 * `c.e.p.t.app.TimelineMergeEngine` (in Timeline)
 * `c.e.p.r.app.timeline.TimelineRevisionRenderService` (in Render)
 * `c.e.p.r.app.timeline.RenderJobStatusService` (in Render)
+* `c.e.p.t.app.TimelinePayloadCodec` (in Timeline)
 |Events listened to
 |* `c.e.p.s.events.ArtifactTombstonedEvent` 
 |===

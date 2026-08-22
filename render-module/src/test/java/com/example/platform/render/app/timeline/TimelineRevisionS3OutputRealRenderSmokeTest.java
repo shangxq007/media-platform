@@ -431,8 +431,11 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
         @Override
         public Optional<RevisionInfo> findById(String projectId, String tenantId, String revisionId) {
             return repo.findById(revisionId)
-                    .filter(row -> row.projectId().equals(projectId)
-                            && (tenantId == null || row.tenantId().equals(tenantId)))
+                    // project ownership only: Stub is a single-tenant in-memory
+                    // double; tenant-predicate truth is covered by the real
+                    // TimelineRevisionQueryService integration tests. Ignoring the
+                    // ambient TenantContext keeps parallel full-suite runs isolated.
+                    .filter(row -> row.projectId().equals(projectId))
                     .map(row -> new RevisionInfo(
                     row.id(), row.projectId(), row.tenantId(), null,
                     1, row.snapshotId(), 1,
