@@ -44,7 +44,8 @@ public class DefaultRenderOrchestrator implements RenderOrchestrator {
         try {
             FontPreflightResult preflight = fontPreflight.preflight(job);
             if (!preflight.passed()) {
-                return RenderResult.failed(job.id(), "Font preflight failed: " + preflight.errors());
+                return RenderResult.failed(job.id(), RenderResultFailureReason.FONT_PREFLIGHT_FAILED,
+                        "Font preflight failed: " + preflight.errors());
             }
 
             ProviderRenderPlan plan = planner.plan(job);
@@ -59,7 +60,8 @@ public class DefaultRenderOrchestrator implements RenderOrchestrator {
                             job.id(), job.jobType(), job.mode(),
                             stepResults, allArtifacts, false, fallbackOccurred,
                             startedAt, Instant.now());
-                    return RenderResult.failed(job.id(), "Step failed: " + stepResult.stepId(), trace);
+                    return RenderResult.failed(job.id(), RenderResultFailureReason.STEP_FAILED,
+                        "Step failed: " + stepResult.stepId(), trace);
                 }
                 if (stepResult.outputArtifacts() != null) {
                     for (RenderArtifact artifact : stepResult.outputArtifacts()) {
@@ -98,7 +100,8 @@ public class DefaultRenderOrchestrator implements RenderOrchestrator {
                     job.id(), job.jobType(), job.mode(),
                     stepResults, allArtifacts, false, fallbackOccurred,
                     startedAt, Instant.now());
-            return RenderResult.failed(job.id(), "Orchestrator error: " + e.getMessage(), trace);
+            return RenderResult.failed(job.id(), RenderResultFailureReason.ORCHESTRATION_ERROR,
+                        "Orchestrator error: " + e.getMessage(), trace);
         }
     }
 

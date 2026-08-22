@@ -137,4 +137,41 @@ class Pre21ErrorAlgebraGuardTest {
         assertEquals(List.of(), violations,
                 "provider-native types must not be imported into semantic failure authority layers");
     }
+
+    @Test
+    void extentFailurePathUsesTypedReasonNotFreeTextAuthority() throws IOException {
+        // PRE-#21 final exactness: the extent fail-closed path must carry a
+        // typed RenderResultFailureReason; the legacy free-text-only
+        // failed(String) factory must not exist; hitReason is explanation only.
+        Path orchestrator = repoRoot().resolve(
+                "render-module/src/main/java/com/example/platform/render/infrastructure/RenderOrchestrator.java");
+        assertTrue(Files.exists(orchestrator));
+        String c = Files.readString(orchestrator);
+        assertTrue(c.contains("RenderResultFailureReason"), "typed failure reason required");
+        assertTrue(c.contains("RENDER_EXTENT_UNPROVEN"), "RENDER_EXTENT_UNPROVEN typed category required");
+        assertTrue(c.contains("RENDER_EXTENT_NOT_ACHIEVED"), "RENDER_EXTENT_NOT_ACHIEVED typed category required");
+        // legacy free-text-authority factory: failed(String jobId, String error)
+        // (2-arg form with both Strings) must be absent
+        assertFalse(c.contains("failed(String jobId, String error)"),
+                "LEGACY_STRING_FAILURE_FACTORY_DEFINITION_COUNT must be 0");
+        assertFalse(c.contains("failed(String jobId, String error, RenderExecutionTrace"),
+                "LEGACY_STRING_FAILURE_FACTORY_DEFINITION_COUNT must be 0 (trace overload)");
+        // no String semantic branching on failure detail
+        assertFalse(c.contains("hitReason.contains(") && c.contains("extent"),
+                "STRING_FAILURE_SEMANTIC_BRANCH_COUNT must be 0");
+    }
+
+    @Test
+    void typedFailureReasonHasNoProviderNativeImports() throws IOException {
+        Path reason = repoRoot().resolve(
+                "render-module/src/main/java/com/example/platform/render/infrastructure/RenderResultFailureReason.java");
+        assertTrue(Files.exists(reason), "RenderResultFailureReason must exist");
+        String c = Files.readString(reason);
+        assertFalse(c.contains("import com.example.platform.outbox"),
+                "typed failure reason must not depend on outbox coordination");
+        assertFalse(c.contains("import com.example.platform.storage"),
+                "typed failure reason must not depend on storage providers");
+        assertFalse(c.contains("import com.example.platform.render.infrastructure.provider"),
+                "typed failure reason must not depend on provider runtime");
+    }
 }

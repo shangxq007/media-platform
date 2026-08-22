@@ -10,11 +10,13 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * PRE-#21 C10/C11 correction — authoritative render extent fail-closed.
+ * PRE-#21 final — typed render failure algebra + authoritative extent.
  *
  * Typed RenderExtent is the SINGLE extent authority (no String representation).
- * Authoritative extent success requires requested + achieved + semantic
- * equality. Ordinary success without extent proof is never authoritative.
+ * Typed RenderResultFailureReason is the failure identity; hitReason is
+ * explanation only. Authoritative extent success requires requested +
+ * achieved + semantic equality; ordinary success without extent proof is
+ * never authoritative.
  */
 class RenderResultExtentFailClosedTest {
 
@@ -26,6 +28,7 @@ class RenderResultExtentFailClosedTest {
         return new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(endMillis), FrameRate.of(num, den));
     }
 
+    // TEST-3: matching extent → authoritative success
     @Test
     void matchingTypedExtentIsAuthoritativeSuccess() {
         RenderExtent e = extent(10000);
@@ -33,11 +36,13 @@ class RenderResultExtentFailClosedTest {
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
                 "ffmpeg", "chain-1", "1.0", "ok", e, e, null);
         assertTrue(r.success());
+        assertNull(r.failureReason(), "success → typed failure reason absent");
         assertTrue(r.authoritativeSuccess());
         assertEquals(e, r.requestedRenderExtent());
         assertEquals(e, r.achievedRenderExtent());
     }
 
+    // TEST-1: missing achieved extent → typed RENDER_EXTENT_UNPROVEN
     @Test
     void missingAchievedExtentIsTypedFailureWhenRequested() {
         RenderExtent e = extent(10000);
@@ -45,10 +50,14 @@ class RenderResultExtentFailClosedTest {
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
                 "ffmpeg", "chain-1", "1.0", "ok", e, null, null);
         assertFalse(r.success(), "requested extent without achieved evidence must fail closed");
+        assertEquals(RenderResultFailureReason.RENDER_EXTENT_UNPROVEN, r.failureReason(),
+                "typed semantic failure reason required (not free-text)");
         assertFalse(r.authoritativeSuccess());
-        assertTrue(r.hitReason().contains("extent not achieved"));
+        assertNotNull(r.hitReason());
+        assertTrue(r.hitReason().contains("extent not proven"));
     }
 
+    // TEST-2: mismatched achieved extent → typed RENDER_EXTENT_NOT_ACHIEVED
     @Test
     void mismatchedEndIsTypedFailure() {
         var r = RenderOrchestrator.RenderResult.success(
@@ -56,6 +65,7 @@ class RenderResultExtentFailClosedTest {
                 "ffmpeg", "chain-1", "1.0", "ok",
                 extent(10000), extent(5000), null);
         assertFalse(r.success());
+        assertEquals(RenderResultFailureReason.RENDER_EXTENT_NOT_ACHIEVED, r.failureReason());
         assertFalse(r.authoritativeSuccess());
     }
 
@@ -67,6 +77,7 @@ class RenderResultExtentFailClosedTest {
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
                 "ffmpeg", "chain-1", "1.0", "ok", requested, achieved, null);
         assertFalse(r.success());
+        assertEquals(RenderResultFailureReason.RENDER_EXTENT_NOT_ACHIEVED, r.failureReason());
     }
 
     @Test
@@ -76,61 +87,88 @@ class RenderResultExtentFailClosedTest {
                 "ffmpeg", "chain-1", "1.0", "ok",
                 extentWithRate(10000, 25, 1), extentWithRate(10000, 30, 1), null);
         assertFalse(r.success());
+        assertEquals(RenderResultFailureReason.RENDER_EXTENT_NOT_ACHIEVED, r.failureReason());
         assertFalse(r.authoritativeSuccess());
     }
 
+    // TEST-4: ordinary non-extent success → operational success, not authoritative
     @Test
     void ordinarySuccessWithoutExtentIsNotAuthoritative() {
         var r = RenderOrchestrator.RenderResult.success(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
                 "ffmpeg", "chain-1", "1.0", "ok", null, null, null);
         assertTrue(r.success(), "operationally may succeed");
+        assertNull(r.failureReason());
         assertFalse(r.authoritativeSuccess(),
-                "no extent request/proof → NOT authoritative extent success (AUTHORITATIVE_SUCCESS_WITHOUT_EXTENT_PROOF_COUNT=0)");
+                "no extent request/proof → NOT authoritative extent success");
     }
 
     @Test
-    void failedResultIsNeverAuthoritative() {
-        var r = RenderOrchestrator.RenderResult.failed("job-1", "provider error");
+    void failedResultCarriesTypedReason() {
+        var r = RenderOrchestrator.RenderResult.failed("job-1",
+                RenderResultFailureReason.ORCHESTRATION_ERROR, "provider error");
         assertFalse(r.success());
+        assertEquals(RenderResultFailureReason.ORCHESTRATION_ERROR, r.failureReason());
         assertFalse(r.authoritativeSuccess());
     }
 
+    // TEST-5: semantic reason available without parsing String detail
+    @Test
+    void semanticReasonIsAvailableWithoutParsingDetail() {
+        var r = RenderOrchestrator.RenderResult.success(
+                "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
+                "ffmpeg", "chain-1", "1.0", "ok", extent(10000), null, null);
+        assertEquals(RenderResultFailureReason.RENDER_EXTENT_UNPROVEN, r.failureReason(),
+                "semantic branching uses typed reason, never String content");
+    }
+
+    // Direct-constructor bypass: raw success with requested but NO achieved
+    // proof must NOT be authoritative (compact ctor allows it; semantics reject it)
     @Test
     void directlyConstructedSuccessWithoutAchievedProofIsNotAuthoritative() {
-        // Bypass the success() factory (which already fails closed) and
-        // construct a raw success with requested but NO achieved extent.
-        // authoritativeSuccess() must still be false — this is the RED-5
-        // mutation target (weakening it to 'success && requested != null'
-        // must fail this test).
         RenderExtent e = extent(10000);
         var r = new RenderOrchestrator.RenderResult(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                true, "ffmpeg", "chain-1", "1.0", "ok",
+                true, null, "ok", "ffmpeg", "chain-1", "1.0",
                 e, null, null);
         assertTrue(r.success());
         assertFalse(r.authoritativeSuccess(),
-                "authoritative extent success requires achieved proof (AUTHORITATIVE_SUCCESS_WITHOUT_EXTENT_PROOF_COUNT=0)");
+                "authoritative extent success requires achieved proof");
     }
 
+    // TEST-6: real orchestrator path contract
     @Test
-    void realOrchestratorPathCarriesRequestedExtent() {
-        // The real production path: DefaultRenderOrchestrator.execute passes
-        // job.requestedExtent() into the result factory. A job declaring a
-        // requested extent must fail closed because no provider reports
-        // achieved evidence (honest: no fake achieved extent).
+    void realOrchestratorPathCarriesRequestedExtentAndTypedFailure() {
         RenderJob job = new RenderJob("job-r", "captioned_video_export", "production", "1920x1080",
                 List.of("ast_1"), "{}", null, null, "mp4",
                 List.of("render"), new RenderConstraints(1920, 1080, 25, 120, "mp4", "h264"),
                 false, List.of(), List.of(), extent(10000));
-        DefaultRenderOrchestrator orchestrator = new DefaultRenderOrchestrator(null, null, null, null, null);
-        // Execute with a null planner would NPE; we validate the contract at the
-        // factory boundary instead: requested extent must reach the result.
-        // (DefaultRenderOrchestrator wiring is covered by its own integration tests.)
+        // DefaultRenderOrchestrator passes job.requestedExtent(); no provider
+        // reports achieved evidence → typed fail-closed result.
         RenderOrchestrator.RenderResult result = RenderOrchestrator.RenderResult.success(
                 job.id(), "art", "s3://x", 1, "mp4", "1920x1080",
                 "orchestrator", "chain", "1", "ok", job.requestedExtent(), null, null);
-        assertFalse(result.success(), "declared requested extent without achieved evidence → typed failure (real path contract)");
+        assertFalse(result.success(), "declared requested extent without achieved evidence → typed failure");
+        assertEquals(RenderResultFailureReason.RENDER_EXTENT_UNPROVEN, result.failureReason());
+        assertFalse(result.authoritativeSuccess());
         assertEquals(extent(10000), result.requestedRenderExtent());
+    }
+
+    // Success invariant: success=true → failureReason absent (compact ctor)
+    @Test
+    void successResultCannotCarryFailureReason() {
+        assertThrows(IllegalArgumentException.class, () -> new RenderOrchestrator.RenderResult(
+                "job-1", null, null, 0, null, null,
+                true, RenderResultFailureReason.STEP_FAILED, "x", null, null, null,
+                null, null, null));
+    }
+
+    // Failure invariant: success=false → failureReason present (compact ctor)
+    @Test
+    void failedResultMustCarryTypedReason() {
+        assertThrows(IllegalArgumentException.class, () -> new RenderOrchestrator.RenderResult(
+                "job-1", null, null, 0, null, null,
+                false, null, "x", null, null, null,
+                null, null, null));
     }
 }
