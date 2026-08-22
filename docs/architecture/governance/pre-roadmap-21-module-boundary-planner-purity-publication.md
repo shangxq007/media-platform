@@ -9,7 +9,7 @@
 | IMPLEMENTATION_BRANCH | agent/pre21-module-boundary-planner-purity-impl |
 | CANDIDATE_SHA | 0897d5eabcbe8ce7b9a34a69264b717e9d1a5031 |
 | CANDIDATE_TREE | e90f44eed9bf5528a626638627589dd8980fc8e0 |
-| PUBLICATION_SHA | (set after commit) |
+| PUBLICATION_SHA | 715191494cfee1e4adbeadb8651771743536e6d0 |
 
 ## Wave summary
 
