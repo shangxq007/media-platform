@@ -1,9 +1,0 @@
-[%autowidth.stretch, cols="h,a"]
-|===
-|Base package
-|`com.example.platform.quota`
-|Spring components
-|_Services_
-
-* `c.e.p.q.app.QuotaService`
-|===

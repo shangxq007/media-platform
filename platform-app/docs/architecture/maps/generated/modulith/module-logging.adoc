@@ -1,7 +1,0 @@
-[%autowidth.stretch, cols="h,a"]
-|===
-|Base package
-|`com.example.platform.logging`
-|Spring components
-|* `c.e.p.l.PlatformRequestContextFilter`
-|===
