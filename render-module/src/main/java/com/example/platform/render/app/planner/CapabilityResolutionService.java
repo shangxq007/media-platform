@@ -1,86 +1,75 @@
 package com.example.platform.render.app.planner;
 
-import com.example.platform.outbox.coordination.ExecutionBackendRegistry;
-import com.example.platform.outbox.coordination.TaskCapability;
+import com.example.platform.extension.domain.CapabilityRequirement;
 import com.example.platform.render.app.capability.CapabilityCatalogService;
 import com.example.platform.render.domain.capability.CapabilityDescriptor;
-import java.util.*;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Capability Resolution Service — uses CapabilityCatalogService for producer discovery.
- * No direct Producer iteration. No hardcoded mapping.
+ * Capability Resolution Service (PRE-#21 W2, contract C4/C5).
+ *
+ * <p>AUTHORITY: this service RESOLVES DECLARED capability requirements. It
+ * never invents, derives, or guesses semantic requirements from product type,
+ * task type, provider type, or implementation choice. Semantic requirements
+ * are declared by their semantic consumer (OperationDefinition and
+ * equivalents) via {@link CapabilityRequirement}.
+ *
+ * <p>Frozen chain:
+ * <pre>
+ *   Semantic Consumer / OperationDefinition
+ *           → CapabilityRequirement (declared)
+ *           → Capability Registry / Catalog
+ *           → this resolver (filter/validate/select)
+ *           → CapabilityImplementation / Provider
+ * </pre>
+ *
+ * <p>The legacy productType→capability switch mapping has been removed
+ * (CLEAN FORWARD): zero callers, zero definitions, no wrapper, no dual
+ * authority.
  */
 @Service
 public class CapabilityResolutionService {
 
     private static final Logger log = LoggerFactory.getLogger(CapabilityResolutionService.class);
     private final CapabilityCatalogService catalog;
-    private final ExecutionBackendRegistry backendRegistry;
 
-    public CapabilityResolutionService(CapabilityCatalogService catalog,
-                                         ExecutionBackendRegistry backendRegistry) {
+    public CapabilityResolutionService(CapabilityCatalogService catalog) {
         this.catalog = catalog;
-        this.backendRegistry = backendRegistry;
     }
 
-    public record ResolutionResult(String capability, String producerId,
-                                     String backendId, String backendType,
+    public record ResolutionResult(String capabilityId, String producerId,
                                      String selectionReason, boolean resolved) {}
 
-    public ResolutionResult resolve(String productType) {
-        TaskCapability cap = mapToCapability(productType);
-        if (cap == null) {
-            return new ResolutionResult(null, null, null, null,
-                    "No capability mapping for " + productType, false);
-        }
-
-        var candidate = catalog.resolvePreferred(cap.name())
-                .orElseGet(() -> catalog.resolve(cap.name()).orElse(null));
-
+    /**
+     * Resolves a DECLARED capability requirement against the catalog.
+     * The requirement is the semantic authority; the resolver only discovers
+     * and selects eligible implementations.
+     */
+    public ResolutionResult resolve(CapabilityRequirement requirement) {
+        String capabilityId = requirement.capabilityId().value();
+        var candidate = catalog.resolvePreferred(capabilityId)
+                .orElseGet(() -> catalog.resolve(capabilityId).orElse(null));
         if (candidate == null) {
-            return new ResolutionResult(cap.name(), null, null, null,
-                    "No producer in catalog for " + cap, false);
+            return new ResolutionResult(capabilityId, null,
+                    "No producer in catalog for " + capabilityId, false);
         }
-
-        var backend = backendRegistry.resolve(cap);
-        if (backend.isEmpty()) {
-            return new ResolutionResult(cap.name(), candidate.producerId(), null, null,
-                    candidate.producerId() + " but no backend for " + cap, false);
-        }
-
-        String backendId = backend.get().backendId();
         String reason = candidate.preferred()
-                ? "preferred producer for " + cap
-                : "highest priority (" + candidate.priority() + ") for " + cap;
-        return new ResolutionResult(cap.name(), candidate.producerId(), backendId,
-                candidate.backendType(), reason, true);
+                ? "preferred producer for " + capabilityId
+                : "highest priority (" + candidate.priority() + ") for " + capabilityId;
+        return new ResolutionResult(capabilityId, candidate.producerId(), reason, true);
     }
 
-    public String explain(String productType) {
-        var res = resolve(productType);
+    public String explain(CapabilityRequirement requirement) {
+        var res = resolve(requirement);
         if (!res.resolved()) {
-            return "Unresolved: " + productType + " — " + res.selectionReason();
+            return "Unresolved: " + requirement.capabilityId().value()
+                    + " — " + res.selectionReason();
         }
-        return productType + " → " + res.capability()
+        return requirement.capabilityId().value()
                 + " → Producer " + res.producerId()
-                + " → Backend " + res.backendId()
                 + " (" + res.selectionReason() + ")";
-    }
-
-    private TaskCapability mapToCapability(String productType) {
-        return switch (productType.toUpperCase()) {
-            case "TRANSCRIPT" -> TaskCapability.ASR;
-            case "OCR" -> TaskCapability.OCR;
-            case "VISION" -> TaskCapability.VISION;
-            case "EMBEDDING" -> TaskCapability.EMBEDDING;
-            case "THUMBNAIL" -> TaskCapability.THUMBNAIL;
-            case "PROXY", "TRANSCODE" -> TaskCapability.TRANSCODE;
-            case "PREVIEW", "FINAL_RENDER" -> TaskCapability.MEDIA_PIPELINE;
-            case "PACKAGE" -> TaskCapability.PACKAGE;
-            default -> null;
-        };
     }
 }
