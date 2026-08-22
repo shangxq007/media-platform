@@ -179,17 +179,19 @@ EXECUTION_PLAN_DUAL_AUTHORITY_COUNT=0.
 media-execution-plan-module is the canonical home (MEDIA_EXECUTION_PLAN_MODULE_
 DEFERRED_AS_WHOLE=NO). Phase 0 disposition per the 53-row type-disposition
 ledger (zero external callers before delete, zero retired definitions at
-closure): DELETE_SHADOW=21 (ExecutionCapabilityRequirement, MediaOperation
-hierarchy 16, GpuRequirement, TimelineToExecutionPlanCompiler,
-MediaBackendCompiler, ExecutionPlanErrorCode); DEFER_TO_22_PLUS=6
-(ExecutionResourceRequirement, CpuClass, MemoryClass, NetworkRequirement,
-TemporaryStorageClass, ExecutionStepFailurePolicy, ExecutionProvider,
-ExecutionCacheKey); MIGRATE_REDESIGN=13 (ExecutionStepKind,
-ExecutionDependency, ExecutionDependencyType, ExecutionDeterminism,
-MediaExecutionPlan, MediaExecutionStep, ExecutionPlanDigest,
-MediaExecutionPlanBuilder, MediaExecutionPlanValidator,
+closure): DELETE_SHADOW=23 (ExecutionInputRole, ExecutionOutputRole,
+ExecutionCapabilityRequirement, MediaOperation hierarchy 16,
+GpuRequirement, TimelineToExecutionPlanCompiler, MediaBackendCompiler,
+ExecutionPlanErrorCode); DEFER_TO_22_PLUS=8 (ExecutionResourceRequirement,
+CpuClass, MemoryClass, NetworkRequirement, TemporaryStorageClass,
+ExecutionStepFailurePolicy, ExecutionProvider, ExecutionCacheKey);
+MIGRATE_REDESIGN=13 (ExecutionInputBinding, ExecutionOutputDeclaration,
+ExecutionStepKind, ExecutionDependency, ExecutionDependencyType,
+ExecutionDeterminism, MediaExecutionPlan, MediaExecutionStep,
+ExecutionPlanDigest, MediaExecutionPlanBuilder, MediaExecutionPlanValidator,
 MediaExecutionGraphProjection, ExecutionPlanDomainException);
-REUSE_AS_CANONICAL=11 (identity/schema/edge/input/output/step-id types +
+REUSE_AS_CANONICAL=7 (ExecutionPlanId, ExecutionPlanSchemaVersion,
+ExecutionEdgeId, ExecutionInputId, ExecutionOutputId, ExecutionStepId,
 ExecutionCreationContext provenance-only); REUSE_MECHANICS_ONLY=2
 (ExecutionPlanCanonicalSerializer, ExecutionPlanDigestCalculator).
 No compatibility wrappers. DUAL_AUTHORITY_ALLOWED=NO.
@@ -206,9 +208,14 @@ EXECUTION_DETERMINISM_INDEPENDENT_AUTHORITY_COUNT=0,
 ROADMAP21_INVENTED_RESOURCE_REQUIREMENT_COUNT=0,
 ROADMAP21_RUNTIME_FAILURE_POLICY_COUNT=0,
 EXECUTION_PLAN_DUAL_AUTHORITY_COUNT=0,
-EXECUTION_PLAN_COMPATIBILITY_WRAPPER_COUNT=0, plus the 13 invariants from
-Decision Recovery §16 (runtime reads 0, binding 0, invented capability 0,
-free-text extent 0, string failure branch 0, mega error 0, cross-module 0).
+EXECUTION_PLAN_COMPATIBILITY_WRAPPER_COUNT=0,
+EXECUTION_INPUT_ROLE_SHADOW_AUTHORITY_COUNT=0,
+EXECUTION_OUTPUT_ROLE_SHADOW_AUTHORITY_COUNT=0,
+EXECUTION_IO_UPSTREAM_SEMANTIC_REDECLARATION_COUNT=0,
+EXECUTION_INPUT_MUTABLE_AVAILABILITY_AUTHORITY_COUNT=0, plus the 13
+invariants from Decision Recovery §16 (runtime reads 0, binding 0, invented
+capability 0, free-text extent 0, string failure branch 0, mega error 0,
+cross-module 0).
 Behavioral tests: same-inputs determinism, fail-closed invalid/cycle,
 extent pruning, parallel independence, temporal exactness, partition
 preservation, capability propagation, runtime-state invariance, planFingerprint

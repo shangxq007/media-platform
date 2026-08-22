@@ -14,12 +14,12 @@ DELETE_SHADOW / DEFER_TO_22_PLUS
 | 1 | domain/ExecutionPlanId.java | record | REUSE_AS_CANONICAL | #21 identity | plan identity, distinct from semantic content digest |
 | 2 | domain/ExecutionPlanSchemaVersion.java | record | REUSE_AS_CANONICAL | #21 versioning | schema versioning mechanics |
 | 3 | domain/ExecutionEdgeId.java | record | REUSE_AS_CANONICAL | #21 logical edge id | DAG skeleton identity |
-| 4 | domain/ExecutionInputBinding.java | record | REUSE_AS_CANONICAL | #21 node input binding | typed binding mechanics, no old semantic authority |
+| 4 | domain/ExecutionInputBinding.java | record | MIGRATE_REDESIGN | derived #21 input binding | references exact #20 RenderArtifactReference / RenderDependency semantics; NO mutable AVAILABLE-state authority; NO independent media-type/required semantic declaration unless mechanically derived from authoritative upstream semantics (EXECUTION_IO_UPSTREAM_SEMANTIC_REDECLARATION_COUNT=0, EXECUTION_INPUT_MUTABLE_AVAILABILITY_AUTHORITY_COUNT=0) |
 | 5 | domain/ExecutionInputId.java | record | REUSE_AS_CANONICAL | #21 node input id | typed input identity |
-| 6 | domain/ExecutionInputRole.java | enum | REUSE_AS_CANONICAL | #21 input role | typed input role mechanics |
-| 7 | domain/ExecutionOutputDeclaration.java | record | REUSE_AS_CANONICAL | #21 node output decl | typed output declaration mechanics |
+| 6 | domain/ExecutionInputRole.java | enum | DELETE_SHADOW | (none — #20 semantics) | no independent execution input semantic taxonomy (EXECUTION_INPUT_ROLE_SHADOW_AUTHORITY_COUNT=0) |
+| 7 | domain/ExecutionOutputDeclaration.java | record | MIGRATE_REDESIGN | derived #21 output binding/declaration | references RenderOutputRequirement / RenderMaterializationRequirement / RenderArtifactReference; NO independent expectedProperties/retentionClass/output semantic authority (EXECUTION_IO_UPSTREAM_SEMANTIC_REDECLARATION_COUNT=0) |
 | 8 | domain/ExecutionOutputId.java | record | REUSE_AS_CANONICAL | #21 node output id | typed output identity |
-| 9 | domain/ExecutionOutputRole.java | enum | REUSE_AS_CANONICAL | #21 output role | typed output role mechanics |
+| 9 | domain/ExecutionOutputRole.java | enum | DELETE_SHADOW | RenderOutputRole | RenderOutputRole remains the canonical output-role authority (EXECUTION_OUTPUT_ROLE_SHADOW_AUTHORITY_COUNT=0) |
 | 10 | domain/ExecutionStepId.java | record | REUSE_AS_CANONICAL | #21 node id | typed step/node identity |
 | 11 | domain/ExecutionCreationContext.java | record | REUSE_AS_CANONICAL | #21 provenance-only metadata | correlation/createdAt/trace — PROVENANCE_ONLY, excluded from semantic digest (CR-02) |
 | 12 | domain/ExecutionCapabilityRequirement.java | record | DELETE_SHADOW | extension CapabilityRequirement | second CapabilityRequirement model — single authority is extension-module CapabilityRequirement (SHADOW_EXECUTION_CAPABILITY_REQUIREMENT_COUNT=0) |
@@ -66,12 +66,12 @@ DELETE_SHADOW / DEFER_TO_22_PLUS
 | 53 | domain/ExecutionPlanDomainException.java | class | MIGRATE_REDESIGN | #21 typed planning failure carrier | failure carrier aligned to #21 failure algebra |
 
 AGGREGATE (computed from table):
-REUSE_AS_CANONICAL_COUNT=11 (rows 1-11)
+REUSE_AS_CANONICAL_COUNT=7 (rows 1-3, 5, 8, 10-11)
 REUSE_MECHANICS_ONLY_COUNT=2 (rows 51-52)
-MIGRATE_REDESIGN_COUNT=13 (rows 41-50, 53)
-DELETE_SHADOW_COUNT=21 (rows 12-32)
-DEFER_TO_22_PLUS_COUNT=6 (rows 33-40)
-SUM=11+2+13+21+6=53
+MIGRATE_REDESIGN_COUNT=13 (rows 4, 7, 41-50, 53)
+DELETE_SHADOW_COUNT=23 (rows 6, 9, 12-32)
+DEFER_TO_22_PLUS_COUNT=8 (rows 33-40)
+SUM=7+2+13+23+8=53
 UNCLASSIFIED_COUNT=0
 DUPLICATE_ROW_COUNT=0
 
