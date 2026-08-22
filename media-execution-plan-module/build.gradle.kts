@@ -29,6 +29,8 @@ dependencies {
     implementation(project(":artifact-module"))
     implementation(project(":render-module"))
     implementation(project(":extension-module"))
+    implementation(project(":audio-module"))
+    implementation(project(":color-image-module"))
     implementation(project(":platform-algorithms:graph"))
 
     // JSON for canonical serialization helpers

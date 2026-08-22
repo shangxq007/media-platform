@@ -78,14 +78,14 @@ public sealed interface ExecutionProvider permits
         /**
          * Returns the outputs produced by this attempt.
          */
-        List<String> outputHandles();
+        List<com.example.platform.execution.domain.ExecutionOutputId> outputs();
 
         record Stub(
                 String attemptId,
                 AttemptStatus status,
                 Instant startedAt,
                 Instant completedAt,
-                List<String> outputHandles
+                List<com.example.platform.execution.domain.ExecutionOutputId> outputs
         ) implements ExecutionAttempt {
         }
     }

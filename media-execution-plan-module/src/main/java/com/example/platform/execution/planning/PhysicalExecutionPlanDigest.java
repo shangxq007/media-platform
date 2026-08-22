@@ -10,19 +10,18 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Roadmap #21 PhysicalExecutionPlanDigest (C16/C17, Blocker H).
+ * Roadmap #21 PhysicalExecutionPlanDigest (C16/C17, Blocker H/B4).
  *
  * <p>Distinct layer digest from LogicalExecutionGraphDigest. Covers ALL
- * physical semantic content: unit identities (when stable), logical node
- * refs, typed source identity/kind/operation key, typed inputs (dependency
- * variant payloads + windows), typed output declarations, typed dependencies,
- * capability/execution intent refs, temporal windows, propagated extent and
- * deterministic cacheability metadata.
+ * physical semantic content via the explicit {@link Canonical} encoder:
+ * unit stable typed identity, logical refs, typed source identity/kind/op
+ * key, typed inputs (ExecutionInputId + artifact refs + dependency payloads
+ * + windows), typed outputs (ExecutionOutputId + requirements + artifact
+ * expectations), typed dependencies, capability/execution intent refs,
+ * temporal windows, coverage, propagated extent and cacheability metadata.
  *
- * <p>Provenance (plan id is identity, not digest; createdAt/correlation/trace)
- * excluded. Same frozen semantic input → same digest.
- *
- * <p>FAOF-1 law: law:physical-digest-content-complete.
+ * <p>ExecutionPlanId / createdAt / correlation / trace excluded. Same frozen
+ * semantic input → same digest.
  */
 public record PhysicalExecutionPlanDigest(String sha256Hex) {
 
@@ -39,32 +38,42 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
         sb.append("planFingerprint=").append(planFingerprint.sha256Hex()).append('\n');
         sb.append("extent=").append(LogicalExecutionGraphBuilder.canonicalExtent(propagatedExtent)).append('\n');
         var sorted = units.stream()
-                .sorted(Comparator.comparing(PhysicalPlanUnit::planUnitId))
+                .sorted(Comparator.comparing(u -> u.stepId().value()))
                 .toList();
         for (var u : sorted) {
-            sb.append("unit|").append(u.planUnitId())
+            sb.append("unit|").append(u.stepId().value())
                     .append('|').append(u.logicalNodeId())
                     .append('|').append(u.sourceRenderNodeId().value())
                     .append('|').append(u.sourceRenderNodeKind().toString())
                     .append('|').append(u.operationKey()).append('\n');
             for (var i : u.typedInputs()) {
-                sb.append("in|").append(i.producerLogicalNodeId())
-                        .append('|').append(i.dependencyVariant().toString())
-                        .append('|').append(LogicalExecutionGraphBuilder.canonicalWindow(i.requiredSampleWindow()))
+                sb.append("in|").append(i.inputId().value())
+                        .append('|').append(i.producerLogicalNodeId())
+                        .append('|').append(Canonical.dependency(i.dependencyVariant()))
+                        .append('|').append(Canonical.sourceArtifact(i.sourceArtifact()))
+                        .append('|')
+                        .append(LogicalExecutionGraphBuilder.canonicalWindow(i.requiredSampleWindow()))
                         .append('\n');
             }
             for (var o : u.typedOutputs()) {
+                sb.append("out|").append(o.outputId().value()).append('\n');
                 for (var or : o.outputRequirements()) {
-                    sb.append("out|").append(Canonical.output(or)).append('\n');
+                    sb.append("outreq|").append(Canonical.outputRequirement(or)).append('\n');
                 }
                 for (var mr : o.materializationRequirements()) {
                     sb.append("mat|").append(Canonical.materialization(mr)).append('\n');
+                }
+                for (var ia : o.intermediateArtifactExpectations()) {
+                    sb.append("interm|").append(Canonical.intermediateArtifact(ia)).append('\n');
+                }
+                for (var fa : o.finalArtifactExpectations()) {
+                    sb.append("final|").append(Canonical.finalArtifact(fa)).append('\n');
                 }
             }
             for (var d : u.typedDependencies()) {
                 sb.append("dep|").append(d.producerLogicalNodeId())
                         .append('|').append(d.consumerLogicalNodeId())
-                        .append('|').append(d.dependencyVariant().toString()).append('\n');
+                        .append('|').append(Canonical.dependency(d.dependencyVariant())).append('\n');
             }
             for (var cr : u.capabilityRequirementRefs()) {
                 sb.append("cap|").append(Canonical.capability(cr.declaration())).append('\n');
@@ -74,6 +83,8 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
             }
             sb.append("window|")
                     .append(LogicalExecutionGraphBuilder.canonicalWindow(u.temporalWindow())).append('\n');
+            sb.append("coverage|")
+                    .append(LogicalExecutionGraphBuilder.canonicalCoverage(u.executionCoverage())).append('\n');
             sb.append("cacheable|").append(u.deterministicallyCacheable()).append('\n');
         }
         return new PhysicalExecutionPlanDigest(sha256(sb.toString()));

@@ -207,4 +207,82 @@ class Roadmap21PlanningGuardTest {
         assertFalse(planning.contains("BARRIER") || planning.contains("Barrier"),
                 "PLANNER_INVENTED_BARRIER_COUNT=0");
     }
+
+    // ---------- frozen ledger REUSE_AS_CANONICAL presence ----------
+
+    @Test
+    void reuseCanonicalStrongTypesPresentAndUsed() throws IOException {
+        String src = stripComments(join(moduleMain()));
+        assertEquals(1, countDefs(src, "ExecutionPlanId"), "REUSE_EXECUTION_PLAN_ID_PRESENT=1");
+        assertEquals(1, countDefs(src, "ExecutionPlanSchemaVersion"), "REUSE_EXECUTION_PLAN_SCHEMA_VERSION_PRESENT=1");
+        assertEquals(1, countDefs(src, "ExecutionEdgeId"), "REUSE_EXECUTION_EDGE_ID_PRESENT=1");
+        assertEquals(1, countDefs(src, "ExecutionInputId"), "REUSE_EXECUTION_INPUT_ID_PRESENT=1");
+        assertEquals(1, countDefs(src, "ExecutionOutputId"), "REUSE_EXECUTION_OUTPUT_ID_PRESENT=1");
+        assertEquals(1, countDefs(src, "ExecutionStepId"), "REUSE_EXECUTION_STEP_ID_PRESENT=1");
+        assertEquals(1, countDefs(src, "ExecutionCreationContext"), "REUSE_EXECUTION_CREATION_CONTEXT_PRESENT=1");
+        // strong types actually used in the planning model
+        String planning = stripComments(join(planningPackage()));
+        assertTrue(planning.contains("ExecutionPlanId planId") || planning.contains("ExecutionPlanId planId"),
+                "ExecutionPlanId used in PhysicalExecutionPlan");
+        assertTrue(planning.contains("ExecutionInputId inputId"), "ExecutionInputId used in InputBinding");
+        assertTrue(planning.contains("ExecutionOutputId outputId"), "ExecutionOutputId used in OutputDeclaration");
+        assertTrue(planning.contains("ExecutionStepId stepId"), "ExecutionStepId used in PhysicalPlanUnit");
+    }
+
+    @Test
+    void executionPlanIdNotDerivedFromFingerprint() throws IOException {
+        // ExecutionPlanId must be caller-supplied planning input, never
+        // re-derived from semantic fingerprint/content hash
+        String planner = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalPlannerV1.java")));
+        assertTrue(planner.contains("planId") && planner.contains("ExecutionPlanId planId"),
+                "ExecutionPlanId passed in as explicit planner input");
+        assertFalse(planner.matches("(?s).*new ExecutionPlanId\\([^;]*sha256[^;]*\\);.*"),
+                "ExecutionPlanId must NOT be derived from a sha256 of semantic content");
+        assertFalse(planner.matches("(?s).*new ExecutionPlanId\\([^)]*fingerprint[^)]*\\).*"),
+                "ExecutionPlanId must NOT be derived from plan fingerprint");
+    }
+
+    // ---------- C12/C13 coordinate-domain guards ----------
+
+    @Test
+    void noDirectSampleWindowVsExtentComparison() throws IOException {
+        String planning = stripComments(join(planningPackage()));
+        // pruning must reference executionCoverage, never requiredSampleWindow
+        assertTrue(planning.contains("coverageDisjointFromExtent"),
+                "pruning uses typed execution coverage");
+        assertFalse(planning.contains("windowDisjointFromExtent"),
+                "DIRECT_RENDER_SAMPLE_WINDOW_VS_RENDER_EXTENT_COMPARISON_COUNT=0 — old window-based pruning removed");
+        // mechanical: no expression mixing requiredSampleWindow with
+        // requestedExtent (direct comparison in any form)
+        assertFalse(java.util.regex.Pattern.compile(
+                        "requiredSampleWindow[\\s\\S]{0,120}requestedExtent")
+                        .matcher(planning).find(),
+                "DIRECT_RENDER_SAMPLE_WINDOW_VS_RENDER_EXTENT_COMPARISON_COUNT=0 — no sample-window/extent comparison expression");
+    }
+
+    @Test
+    void noAllProducersEliminatedPruning() throws IOException {
+        String planning = stripComments(join(planningPackage()));
+        assertFalse(planning.contains("ALL_PRODUCERS_ELIMINATED"),
+                "ALL_PRODUCERS_ELIMINATED_PRUNING=FORBIDDEN");
+        assertFalse(planning.contains("allProducersEliminated"),
+                "no producer-elimination inference");
+    }
+
+    @Test
+    void noObjectToStringCanonicalSemanticUsage() throws IOException {
+        String planning = stripComments(join(planningPackage()));
+        // Canonical must not rely on Object.toString as semantic contract for
+        // the types it explicitly encodes
+        String canonical = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/Canonical.java")));
+        assertFalse(canonical.contains("dependencyVariant().toString()"),
+                "OBJECT_TOSTRING_CANONICAL_SEMANTIC_USAGE_COUNT=0 — dependency uses explicit encoding");
+        assertFalse(canonical.contains("return d.toString()"),
+                "OBJECT_TOSTRING_CANONICAL_SEMANTIC_USAGE_COUNT=0 — dependency encoding must not delegate to Object.toString");
+        assertFalse(canonical.contains("capability(cr)") && canonical.contains("cr.toString()"),
+                "capability encoding explicit (no toString semantic authority)");
+    }
+
 }

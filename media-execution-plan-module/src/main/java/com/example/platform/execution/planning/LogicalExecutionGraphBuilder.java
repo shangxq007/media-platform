@@ -1,10 +1,10 @@
 package com.example.platform.execution.planning;
 
 import com.example.platform.render.domain.renderplan.RenderDependencyEdge;
+import com.example.platform.render.domain.renderplan.RenderExecutionCoverage;
 import com.example.platform.render.domain.renderplan.RenderExtent;
 import com.example.platform.render.domain.renderplan.RenderGraph;
 import com.example.platform.render.domain.renderplan.RenderNode;
-import com.example.platform.render.domain.renderplan.RenderNodeId;
 import com.example.platform.render.domain.renderplan.RenderSampleWindow;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,20 +16,25 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Roadmap #21 LogicalExecutionGraph builder (C6-C13) — deterministic pure
- * construction with fail-closed validation (Blocker J) and deterministic
- * extent-based elimination (C12/C13, Blocker E).
+ * Roadmap #21 LogicalExecutionGraph builder (C6-C13, C12/C13 architecture
+ * correction Option A) — deterministic pure construction with fail-closed
+ * validation and extent-based elimination over TYPED EXECUTION COVERAGE.
  *
- * <p>FAOF-1 proof obligations (language-neutral):
+ * <p>Coordinate-domain law (FROZEN correction): pruning compares
+ * RenderExecutionCoverage (timeline/render coordinates) against
+ * RenderExtent (timeline/render coordinates). RenderSampleWindow (source
+ * coordinates) NEVER participates in pruning comparison. A node without
+ * coverage (null) is never pruned. ALL_PRODUCERS_ELIMINATED is FORBIDDEN.
+ *
+ * <p>FAOF-1 proof obligations:
  * <ul>
  *   <li>law:graph-1-to-1 — |logical nodes| == |eligible render nodes|</li>
- *   <li>law:dag-acyclic — no directed cycle in logical edges</li>
- *   <li>law:inputs-closed — every edge endpoint resolves to a node</li>
- *   <li>law:extent-elimination-sound — every eliminated node's window is
- *       disjoint from the requested extent, or all its producers were
- *       eliminated (transitive closure, no contributing work removed)</li>
- *   <li>law:extent-elimination-deterministic — same inputs produce the same
- *       elimination set (pure comparison on exact rational time)</li>
+ *   <li>law:dag-acyclic — no directed cycle</li>
+ *   <li>law:inputs-closed — every edge endpoint resolves</li>
+ *   <li>law:extent-elimination-sound — every eliminated node's OWN typed
+ *       execution coverage is provably disjoint from the requested extent
+ *       (exact rational), so no contributing work is removed</li>
+ *   <li>law:extent-elimination-deterministic — same inputs -> same elimination</li>
  * </ul>
  */
 public final class LogicalExecutionGraphBuilder {
@@ -40,6 +45,7 @@ public final class LogicalExecutionGraphBuilder {
     /** Build the logical graph from a validated RenderGraph (1:1, pruned). */
     public static LogicalExecutionGraph build(RenderGraph graph, RenderExtent requestedExtent) {
         Objects.requireNonNull(graph, "graph");
+
         // ---- validation: duplicate source ids ----
         Set<String> sourceIds = new HashSet<>();
         for (RenderNode n : graph.nodes()) {
@@ -52,58 +58,28 @@ public final class LogicalExecutionGraphBuilder {
             }
         }
 
-        // ---- deterministic extent-based elimination (C12/C13) ----
+        // ---- extent validation (fail-closed at #21 public boundary) ----
+        if (requestedExtent != null) {
+            validateExtent(requestedExtent);
+        }
+
+                                // ---- deterministic extent-based elimination over typed coverage ----
         Set<String> eliminated = new LinkedHashSet<>();
         List<LogicalExecutionGraph.PruningEvidence.EliminatedNode> eliminatedRecords = new ArrayList<>();
         boolean extentPresent = requestedExtent != null;
-        // producer -> consumers adjacency for transitive elimination
-        Map<String, List<String>> consumersByProducer = new HashMap<>();
-        if (graph.edges() != null) {
-            for (RenderDependencyEdge e : graph.edges()) {
-                consumersByProducer.computeIfAbsent(e.producerId().value(), k -> new ArrayList<>())
-                        .add(e.consumerId().value());
+        for (RenderNode n : graph.nodes()) {
+            String id = n.id().value();
+            RenderExecutionCoverage coverage = n.executionCoverage();
+            if (!extentPresent || coverage == null) {
+                continue; // no extent or no single coverage interval -> never pruned
             }
-        }
-        if (extentPresent) {
-            boolean changed = true;
-            while (changed) {
-                changed = false;
-                for (RenderNode n : graph.nodes()) {
-                    String id = n.id().value();
-                    if (eliminated.contains(id)) {
-                        continue;
-                    }
-                    RenderSampleWindow w = n.requiredSampleWindow() != null
-                            ? n.requiredSampleWindow().orElse(null) : null;
-                    boolean disjoint = w != null && windowDisjointFromExtent(w, requestedExtent);
-                    if (disjoint) {
-                        eliminated.add(id);
-                        eliminatedRecords.add(new LogicalExecutionGraph.PruningEvidence.EliminatedNode(
-                                "ln-" + id, n.id(), canonicalWindow(w), canonicalExtent(requestedExtent),
-                                "DISJOINT_WINDOW"));
-                        changed = true;
-                        continue;
-                    }
-                    // transitive: all producers eliminated -> consumer has no
-                    // contributing input within extent -> eliminate
-                    List<String> producers = producersOf(id, graph);
-                    if (!producers.isEmpty()) {
-                        boolean allProducersEliminated = true;
-                        for (String p : producers) {
-                            if (!eliminated.contains(p)) {
-                                allProducersEliminated = false;
-                                break;
-                            }
-                        }
-                        if (allProducersEliminated) {
-                            eliminated.add(id);
-                            eliminatedRecords.add(new LogicalExecutionGraph.PruningEvidence.EliminatedNode(
-                                    "ln-" + id, n.id(), canonicalWindow(w), canonicalExtent(requestedExtent),
-                                    "ALL_PRODUCERS_ELIMINATED"));
-                            changed = true;
-                        }
-                    }
-                }
+            if (coverageDisjointFromExtent(coverage, requestedExtent)) {
+                eliminated.add(id);
+                eliminatedRecords.add(new LogicalExecutionGraph.PruningEvidence.EliminatedNode(
+                        "ln-" + id, n.id(),
+                        LogicalExecutionGraphBuilder.canonicalCoverage(coverage),
+                        LogicalExecutionGraphBuilder.canonicalExtent(requestedExtent),
+                        "DISJOINT_COVERAGE"));
             }
         }
 
@@ -124,13 +100,11 @@ public final class LogicalExecutionGraphBuilder {
                     n.executionRequirements() == null ? List.of() : n.executionRequirements(),
                     n.outputRequirements() == null ? List.of() : n.outputRequirements(),
                     n.materializationRequirements() == null ? List.of() : n.materializationRequirements(),
-                    n.requiredSampleWindow() != null ? n.requiredSampleWindow().orElse(null) : null));
+                    n.requiredSampleWindow() != null ? n.requiredSampleWindow().orElse(null) : null,
+                    n.executionCoverage()));
         }
 
         // ---- edges over surviving nodes, fail-closed on dangling refs ----
-        // Distinguish (a) nodes absent from the source RenderGraph (dangling,
-        // fail-closed) from (b) nodes eliminated by extent pruning (edge is
-        // eliminated together with its endpoint).
         Set<String> sourceNodeIds = new HashSet<>();
         for (RenderNode n : graph.nodes()) {
             sourceNodeIds.add(n.id().value());
@@ -159,15 +133,14 @@ public final class LogicalExecutionGraphBuilder {
                                     "dangling producer — no such RenderNode in graph"));
                 }
                 if (!surviving.contains(consumer)) {
-                    // consumer eliminated by extent pruning -> edge eliminated with it
-                    continue;
+                    continue; // consumer eliminated by coverage pruning -> edge eliminated with it
                 }
                 if (!surviving.contains(producer)) {
                     throw new ExecutionPlanningException(
                             ExecutionPlanningFailureReason.INVALID_LOGICAL_GRAPH,
                             new ExecutionPlanningException.MissingReferenceContext(
                                     "producerLogicalNode", producer,
-                                    "dangling producer after extent elimination"));
+                                    "dangling producer after coverage elimination"));
                 }
                 edges.add(new LogicalExecutionGraph.LogicalDependencyEdge(
                         "le-" + e.producerId().value() + "-" + e.consumerId().value(),
@@ -185,29 +158,49 @@ public final class LogicalExecutionGraphBuilder {
                 graph.formatVersion(),
                 graph.planFingerprint(),
                 nodes, edges, evidence,
-                LogicalExecutionGraphDigest.compute(nodes, edges, graph.planFingerprint(), evidence));
+                LogicalExecutionGraphDigest.compute(
+                        graph.formatVersion(), requestedExtent, nodes, edges,
+                        graph.planFingerprint(), evidence));
     }
 
-    private static List<String> producersOf(String nodeId, RenderGraph graph) {
-        List<String> out = new ArrayList<>();
-        if (graph.edges() != null) {
-            for (RenderDependencyEdge e : graph.edges()) {
-                if (e.consumerId().value().equals(nodeId)) {
-                    out.add(e.producerId().value());
-                }
-            }
+    /** law:extent-valid — start < end, frameRate positive. */
+    static void validateExtent(RenderExtent extent) {
+        if (extent.start() == null || extent.end() == null) {
+            throw new ExecutionPlanningException(
+                    ExecutionPlanningFailureReason.INCONSISTENT_RENDER_EXTENT,
+                    new ExecutionPlanningException.ExtentViolationContext(
+                            null, null, canonicalExtent(extent),
+                            "RenderExtent start/end must be present"));
         }
-        return out;
+        if (!extent.end().isGreaterThan(extent.start())) {
+            throw new ExecutionPlanningException(
+                    ExecutionPlanningFailureReason.INCONSISTENT_RENDER_EXTENT,
+                    new ExecutionPlanningException.ExtentViolationContext(
+                            null, null, canonicalExtent(extent),
+                            "RenderExtent end must be > start"));
+        }
+        if (extent.frameRate() != null
+                && extent.frameRate().numerator().signum() <= 0) {
+            throw new ExecutionPlanningException(
+                    ExecutionPlanningFailureReason.INCONSISTENT_RENDER_EXTENT,
+                    new ExecutionPlanningException.ExtentViolationContext(
+                            null, null, canonicalExtent(extent),
+                            "RenderExtent frameRate must be positive"));
+        }
     }
 
-    /** Exact rational-time disjointness (law:extent-elimination-sound). */
-    static boolean windowDisjointFromExtent(RenderSampleWindow w, RenderExtent extent) {
-        if (extent.start() == null || extent.end() == null || w.start() == null || w.end() == null) {
+    /**
+     * Exact rational disjointness in the TIMELINE coordinate domain:
+     * coverage.end <= extent.start OR coverage.start >= extent.end.
+     * RenderSampleWindow NEVER appears in this comparison.
+     */
+    static boolean coverageDisjointFromExtent(RenderExecutionCoverage coverage, RenderExtent extent) {
+        if (extent.start() == null || extent.end() == null
+                || coverage.start() == null || coverage.end() == null) {
             return false;
         }
-        // w.end <= extent.start OR w.start >= extent.end (exact rational comparison)
-        boolean before = w.end().isLessThanOrEqualTo(extent.start());
-        boolean after = w.start().isGreaterThanOrEqualTo(extent.end());
+        boolean before = coverage.end().isLessThanOrEqualTo(extent.start());
+        boolean after = coverage.start().isGreaterThanOrEqualTo(extent.end());
         return before || after;
     }
 
@@ -215,16 +208,24 @@ public final class LogicalExecutionGraphBuilder {
         if (w == null) {
             return "null";
         }
-        return w.start().ticks() + "/" + w.start().timeScale()
-                + "-" + w.end().ticks() + "/" + w.end().timeScale()
-                + "@" + (w.frameRate() != null ? w.frameRate().toString() : "null");
+        return canonicalTime(w.start()) + "-" + canonicalTime(w.end())
+                + "@" + (w.frameRate() != null ? canonicalFrameRate(w.frameRate()) : "null");
+    }
+
+    static String canonicalCoverage(RenderExecutionCoverage c) {
+        if (c == null) {
+            return "null";
+        }
+        return canonicalTime(c.start()) + "-" + canonicalTime(c.end())
+                + "@" + (c.frameRate() != null ? canonicalFrameRate(c.frameRate()) : "null");
     }
 
     static String canonicalExtent(RenderExtent e) {
         if (e == null) {
             return "null";
         }
-        return canonicalTime(e.start()) + "-" + canonicalTime(e.end());
+        return canonicalTime(e.start()) + "-" + canonicalTime(e.end())
+                + "@" + (e.frameRate() != null ? canonicalFrameRate(e.frameRate()) : "null");
     }
 
     static String canonicalTime(com.example.platform.shared.time.MediaTime t) {
@@ -232,5 +233,12 @@ public final class LogicalExecutionGraphBuilder {
             return "null";
         }
         return t.ticks() + "/" + t.timeScale();
+    }
+
+    static String canonicalFrameRate(com.example.platform.shared.time.FrameRate f) {
+        if (f == null) {
+            return "null";
+        }
+        return f.numerator() + "/" + f.denominator();
     }
 }

@@ -58,7 +58,8 @@ public record LogicalExecutionGraph(
             List<com.example.platform.render.domain.renderplan.RenderExecutionRequirement> executionRequirements,
             List<com.example.platform.render.domain.renderplan.RenderOutputRequirement> outputRequirements,
             List<com.example.platform.render.domain.renderplan.RenderMaterializationRequirement> materializationRequirements,
-            RenderSampleWindow requiredSampleWindow) {
+            RenderSampleWindow requiredSampleWindow,
+            com.example.platform.render.domain.renderplan.RenderExecutionCoverage executionCoverage) {
 
         public LogicalExecutionNode {
             Objects.requireNonNull(logicalNodeId, "logicalNodeId");
@@ -70,6 +71,9 @@ public record LogicalExecutionGraph(
             outputRequirements = outputRequirements == null ? List.of() : List.copyOf(outputRequirements);
             materializationRequirements = materializationRequirements == null
                     ? List.of() : List.copyOf(materializationRequirements);
+            // executionCoverage nullable — timeline-coordinate contribution
+            // (C12/C13 correction); DISTINCT from requiredSampleWindow
+            // (source-coordinate sampling). Never compared to each other.
         }
     }
 

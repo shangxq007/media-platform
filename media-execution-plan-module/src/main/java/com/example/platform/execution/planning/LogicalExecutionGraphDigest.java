@@ -30,13 +30,18 @@ public record LogicalExecutionGraphDigest(String sha256Hex) {
     }
 
     public static LogicalExecutionGraphDigest compute(
+            String formatVersion,
+            com.example.platform.render.domain.renderplan.RenderExtent requestedExtent,
             List<LogicalExecutionGraph.LogicalExecutionNode> nodes,
             List<LogicalExecutionGraph.LogicalDependencyEdge> edges,
             RenderPlanFingerprint planFingerprint,
             LogicalExecutionGraph.PruningEvidence pruningEvidence) {
         StringBuilder sb = new StringBuilder();
         sb.append("LOGICAL_EXECUTION_GRAPH_V1\n");
+        sb.append("formatVersion=").append(formatVersion).append('\n');
         sb.append("planFingerprint=").append(planFingerprint.sha256Hex()).append('\n');
+        sb.append("requestedExtent=")
+                .append(LogicalExecutionGraphBuilder.canonicalExtent(requestedExtent)).append('\n');
         for (var n : nodes) {
             sb.append("node|").append(n.sourceRenderNodeId().value())
                     .append('|').append(n.sourceRenderNodeKind().toString())
@@ -52,13 +57,16 @@ public record LogicalExecutionGraphDigest(String sha256Hex) {
                 sb.append("intent|").append(Canonical.executionIntent(er)).append('\n');
             }
             for (var o : n.outputRequirements()) {
-                sb.append("out|").append(Canonical.output(o)).append('\n');
+                sb.append("out|").append(Canonical.outputRequirement(o)).append('\n');
             }
             for (var m : n.materializationRequirements()) {
                 sb.append("mat|").append(Canonical.materialization(m)).append('\n');
             }
             sb.append("window|")
                     .append(LogicalExecutionGraphBuilder.canonicalWindow(n.requiredSampleWindow()))
+                    .append('\n');
+            sb.append("coverage|")
+                    .append(LogicalExecutionGraphBuilder.canonicalCoverage(n.executionCoverage()))
                     .append('\n');
         }
         var sortedEdges = edges.stream()
@@ -69,7 +77,7 @@ public record LogicalExecutionGraphDigest(String sha256Hex) {
             // variant's semantic fields (not just class name) enter the digest
             sb.append("edge|").append(e.producerLogicalNodeId())
                     .append('|').append(e.consumerLogicalNodeId())
-                    .append('|').append(e.dependencyVariant().toString()).append('\n');
+                    .append('|').append(Canonical.dependency(e.dependencyVariant())).append('\n');
         }
         if (pruningEvidence != null && pruningEvidence.pruningApplied()) {
             for (var p : pruningEvidence.eliminatedNodes()) {

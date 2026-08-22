@@ -1,5 +1,7 @@
 package com.example.platform.execution.planning;
 
+import com.example.platform.execution.domain.ExecutionPlanId;
+import com.example.platform.execution.domain.ExecutionPlanSchemaVersion;
 import com.example.platform.execution.planning.ExecutionIoProjection.InputBinding;
 import com.example.platform.execution.planning.ExecutionIoProjection.OutputDeclaration;
 import com.example.platform.render.domain.renderplan.RenderExtent;
@@ -7,23 +9,24 @@ import com.example.platform.render.domain.renderplan.RenderNodeId;
 import com.example.platform.render.domain.renderplan.RenderNodeKind;
 import com.example.platform.render.domain.renderplan.RenderPlanFingerprint;
 import com.example.platform.render.domain.renderplan.RenderSampleWindow;
-import com.example.platform.shared.time.MediaTime;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Roadmap #21 PhysicalExecutionPlan (C16, Blocker F).
+ * Roadmap #21 PhysicalExecutionPlan (C16) — provider-neutral structural plan.
  *
- * <p>Provider-neutral structural plan. ONE_LOGICAL_NODE_TO_ONE_PHYSICAL_PLAN_UNIT.
- * Each unit carries the typed semantic structure required for #22 runtime
- * lowering: typed inputs (exact #20 dependency/artifact semantics), typed
- * output declarations (#20 output/materialization requirements), typed
- * dependencies, exact temporal sample window, propagated RenderExtent and
- * typed requirement references. NO provider/worker/device/queue/availability
- * binding. NO runtime cache semantics — deterministic cacheability metadata is
- * declarative structural metadata only.
+ * <p>ONE_LOGICAL_NODE_TO_ONE_PHYSICAL_PLAN_UNIT. Each unit carries typed
+ * semantic structure for #22 runtime lowering: typed inputs (exact #20
+ * dependency + SourceArtifact semantics), typed output declarations (#20
+ * output/materialization requirements + Intermediate/Final artifact
+ * expectations), typed dependencies, exact temporal sample window,
+ * propagated RenderExtent and typed requirement references. NO
+ * provider/worker/device/queue/availability binding. Deterministic
+ * cacheability metadata is declarative structural metadata only.
  *
- * <p>ExecutionPlanId is plan identity, distinct from semantic content digest.
+ * <p>ExecutionPlanId (frozen ledger REUSE_AS_CANONICAL) is plan identity,
+ * independent from semantic content digest. ExecutionPlanSchemaVersion
+ * carries frozen version semantics.
  */
 public record PhysicalExecutionPlan(
         String formatVersion,
@@ -46,10 +49,10 @@ public record PhysicalExecutionPlan(
 
     /**
      * One physical plan unit = exactly one logical execution node (V1).
-     * Typed semantics throughout; no string-keyed loss.
+     * Typed semantics throughout.
      */
     public record PhysicalPlanUnit(
-            String planUnitId,
+            com.example.platform.execution.domain.ExecutionStepId stepId,
             String logicalNodeId,
             RenderNodeId sourceRenderNodeId,
             RenderNodeKind sourceRenderNodeKind,
@@ -58,13 +61,14 @@ public record PhysicalExecutionPlan(
             List<OutputDeclaration> typedOutputs,
             List<LogicalExecutionGraph.LogicalDependencyEdge> typedDependencies,
             RenderSampleWindow temporalWindow,
+            com.example.platform.render.domain.renderplan.RenderExecutionCoverage executionCoverage,
             List<ExecutionIoProjection.CapabilityRequirementRef> capabilityRequirementRefs,
             List<ExecutionIoProjection.ExecutionIntentRef> executionIntentRefs,
             RenderExtent propagatedExtent,
             boolean deterministicallyCacheable) {
 
         public PhysicalPlanUnit {
-            Objects.requireNonNull(planUnitId, "planUnitId");
+            Objects.requireNonNull(stepId, "stepId");
             Objects.requireNonNull(logicalNodeId, "logicalNodeId");
             Objects.requireNonNull(sourceRenderNodeId, "sourceRenderNodeId");
             Objects.requireNonNull(sourceRenderNodeKind, "sourceRenderNodeKind");
@@ -75,26 +79,6 @@ public record PhysicalExecutionPlan(
                     ? List.of() : List.copyOf(capabilityRequirementRefs);
             executionIntentRefs = executionIntentRefs == null
                     ? List.of() : List.copyOf(executionIntentRefs);
-        }
-    }
-
-    /** Plan identity — NOT a semantic digest. Provenance-level only. */
-    public record ExecutionPlanId(String value) {
-        public ExecutionPlanId {
-            Objects.requireNonNull(value, "value");
-        }
-    }
-
-    /** Plan schema version — semantic format version of the plan structure. */
-    public record ExecutionPlanSchemaVersion(int major, int minor) {
-        public ExecutionPlanSchemaVersion {
-            if (major < 0 || minor < 0) {
-                throw new IllegalArgumentException("schema version must be non-negative");
-            }
-        }
-
-        public String canonical() {
-            return major + "." + minor;
         }
     }
 }

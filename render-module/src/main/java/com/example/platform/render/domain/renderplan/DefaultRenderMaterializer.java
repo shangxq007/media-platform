@@ -100,10 +100,13 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             RenderNodeId decodeId = RenderNodeId.of(
                     new RenderNodeKind.Decode(), decodePath, OP_DECODE, decodeReqFp);
             RenderSampleWindow decodeWindow = computeDecodeWindow(clip, request, diagnostics);
+            RenderExecutionCoverage decodeCoverage = new RenderExecutionCoverage(
+                    clip.timelineRange().start(), clip.timelineRange().end(),
+                    request.extent() != null ? request.extent().frameRate() : null);
             RenderNode decodeNode = new RenderNode(
                     decodeId, new RenderNodeKind.Decode(), decodePath, OP_DECODE,
                     decodeArtifacts, decodeCaps, List.of(), List.of(), List.of(),
-                    Optional.of(decodeWindow));
+                    Optional.of(decodeWindow), decodeCoverage);
             nodes.add(decodeNode);
             putEntry(decodeKeys, decodeValues, clip.clipId(), decodeId);
             putEntry(producerKeys, producerValues, clip.clipId(), decodeId);
@@ -166,10 +169,13 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         effectRequirement, effectCaps));
                 RenderNodeId effectId = RenderNodeId.of(
                         new RenderNodeKind.Effect(), effectPath, opKey, effectReqFp);
+                RenderExecutionCoverage effectCoverage = new RenderExecutionCoverage(
+                        clip.timelineRange().start(), clip.timelineRange().end(),
+                        request.extent() != null ? request.extent().frameRate() : null);
                 RenderNode effectNode = new RenderNode(
                         effectId, new RenderNodeKind.Effect(), effectPath, opKey,
                         List.of(), effectCaps, List.of(), List.of(),
-                        List.of(effectRequirement), Optional.empty());
+                        List.of(effectRequirement), Optional.empty(), effectCoverage);
                 nodes.add(effectNode);
                 // data-flow direction: producer (data source) -> consumer (data sink)
                 edges.add(new RenderDependencyEdge(prevProducer, effectId, new RenderDependency.EffectInput()));

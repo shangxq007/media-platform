@@ -30,9 +30,11 @@ public final class LogicalPhysicalPlanner {
     }
 
     /** Plan a validated RenderPlan (+ its validated RenderGraph) end to end. */
-    public static PlanningResult plan(RenderPlan plan, RenderGraph graph) {
+    public static PlanningResult plan(RenderPlan plan, RenderGraph graph,
+                                      com.example.platform.execution.domain.ExecutionPlanId planId) {
         Objects.requireNonNull(plan, "plan");
         Objects.requireNonNull(graph, "graph");
+        Objects.requireNonNull(planId, "planId");
 
         // CR-02 consistency invariant: graph.planFingerprint == plan.fingerprint
         if (!Objects.equals(graph.planFingerprint(), plan.fingerprint())) {
@@ -51,7 +53,7 @@ public final class LogicalPhysicalPlanner {
         validateAcyclic(logical);
         validateRefsResolve(logical);
 
-        PhysicalExecutionPlan physical = PhysicalPlannerV1.plan(logical, requestedExtent);
+        PhysicalExecutionPlan physical = PhysicalPlannerV1.plan(logical, requestedExtent, planId);
         return new PlanningResult(requirement, logical, physical);
     }
 

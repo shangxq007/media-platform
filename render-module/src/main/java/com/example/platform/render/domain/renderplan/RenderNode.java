@@ -23,7 +23,8 @@ public record RenderNode(
         List<RenderOutputRequirement> outputRequirements,
         List<RenderExecutionRequirement> executionRequirements,
         List<RenderMaterializationRequirement> materializationRequirements,
-        Optional<RenderSampleWindow> requiredSampleWindow) {
+        Optional<RenderSampleWindow> requiredSampleWindow,
+        RenderExecutionCoverage executionCoverage) {
 
     public RenderNode {
         Objects.requireNonNull(id, "id");
@@ -40,6 +41,26 @@ public record RenderNode(
         materializationRequirements = materializationRequirements != null
                 ? List.copyOf(materializationRequirements) : List.of();
         requiredSampleWindow = requiredSampleWindow != null ? requiredSampleWindow : Optional.empty();
+        // executionCoverage nullable: null = no single coverage interval
+        // (C12/C13 correction — timeline-coordinate contribution; distinct
+        // from RenderSampleWindow source-coordinate sampling)
+    }
+
+    /** Compatibility constructor without execution coverage (coverage = null). */
+    public RenderNode(
+            RenderNodeId id,
+            RenderNodeKind kind,
+            RenderComponentPath componentPath,
+            String operationKey,
+            List<RenderArtifactReference> artifactReferences,
+            List<CapabilityRequirement> capabilityRequirements,
+            List<RenderOutputRequirement> outputRequirements,
+            List<RenderExecutionRequirement> executionRequirements,
+            List<RenderMaterializationRequirement> materializationRequirements,
+            Optional<RenderSampleWindow> requiredSampleWindow) {
+        this(id, kind, componentPath, operationKey, artifactReferences, capabilityRequirements,
+                outputRequirements, executionRequirements, materializationRequirements,
+                requiredSampleWindow, null);
     }
 
     /** Backwards-compatible factory without materialization requirements. */

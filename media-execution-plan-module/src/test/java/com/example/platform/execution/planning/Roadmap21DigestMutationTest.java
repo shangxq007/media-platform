@@ -160,10 +160,12 @@ class Roadmap21DigestMutationTest {
         var gNoEdge = buildGraph(n1, n2, List.of());
         var pepWith = PhysicalPlannerV1.plan(gWithEdge,
                 new com.example.platform.render.domain.renderplan.RenderExtent(
-                        MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1)));
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1)),
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-1"));
         var pepNo = PhysicalPlannerV1.plan(gNoEdge,
                 new com.example.platform.render.domain.renderplan.RenderExtent(
-                        MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1)));
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1)),
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-1"));
         assertNotEquals(pepWith.digest(), pepNo.digest(),
                 "physical digest must cover dependency/IO structure");
     }
@@ -179,8 +181,10 @@ class Roadmap21DigestMutationTest {
         var gEffect = buildGraph(n1, n2, List.of(new RenderDependencyEdge(new RenderNodeId("n1"), new RenderNodeId("n2"), new RenderDependency.EffectInput())));
         var extent = new com.example.platform.render.domain.renderplan.RenderExtent(
                 MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1));
-        var pepA = PhysicalPlannerV1.plan(gDecoded, extent);
-        var pepB = PhysicalPlannerV1.plan(gEffect, extent);
+        var pepA = PhysicalPlannerV1.plan(gDecoded, extent,
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-1"));
+        var pepB = PhysicalPlannerV1.plan(gEffect, extent,
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-1"));
         assertNotEquals(pepA.digest(), pepB.digest(),
                 "physical digest must cover exact dependency variant payload");
     }
@@ -190,9 +194,11 @@ class Roadmap21DigestMutationTest {
         var n = node("n1", "x", new RenderNodeKind.Source(), ContractVersionRange.atLeast(ContractVersion.of(1, 0)), List.of(), null, RenderOutputRole.RENDER_MASTER);
         var g = buildGraph(n);
         var pepA = PhysicalPlannerV1.plan(g, new com.example.platform.render.domain.renderplan.RenderExtent(
-                MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1)));
+                MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1)),
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-1"));
         var pepB = PhysicalPlannerV1.plan(g, new com.example.platform.render.domain.renderplan.RenderExtent(
-                MediaTime.ofMillis(0), MediaTime.ofMillis(50000), FrameRate.of(25, 1)));
+                MediaTime.ofMillis(0), MediaTime.ofMillis(50000), FrameRate.of(25, 1)),
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-1"));
         assertNotEquals(pepA.digest(), pepB.digest(),
                 "physical digest must cover propagated extent where it changes plan semantics");
     }

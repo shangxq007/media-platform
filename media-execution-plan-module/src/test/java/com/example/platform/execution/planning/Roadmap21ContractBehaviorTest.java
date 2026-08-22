@@ -54,6 +54,11 @@ class Roadmap21ContractBehaviorTest {
     }
 
     static RenderNode node(String id, String opKey, RenderNodeKind kind, RenderSampleWindow w) {
+        return node(id, opKey, kind, w, null);
+    }
+
+    static RenderNode node(String id, String opKey, RenderNodeKind kind, RenderSampleWindow w,
+                           com.example.platform.render.domain.renderplan.RenderExecutionCoverage coverage) {
         return new RenderNode(new RenderNodeId(id), kind,
                 RenderComponentPath.of(RenderComponentKind.CLIP, "clip-" + id), opKey,
                 List.of(), List.of(
@@ -63,11 +68,18 @@ class Roadmap21ContractBehaviorTest {
                         com.example.platform.render.domain.renderplan.RenderOutputRole.RENDER_MASTER)),
                 List.of(new RenderExecutionRequirement(GpuRequirement.NONE, RenderDeterminismClass.DETERMINISTIC, false)),
                 List.of(), // no materialization declared on this fixture node (typed empty list)
-                w != null ? Optional.of(w) : Optional.empty());
+                w != null ? Optional.of(w) : Optional.empty(),
+                coverage);
     }
 
     static RenderNode node(String id, String opKey) {
-        return node(id, opKey, new RenderNodeKind.Source(), null);
+        return node(id, opKey, new RenderNodeKind.Source(), null, null);
+    }
+
+    static RenderNode nodeWithCoverage(String id, String opKey, long startMs, long endMs) {
+        return node(id, opKey, new RenderNodeKind.Source(), null,
+                new com.example.platform.render.domain.renderplan.RenderExecutionCoverage(
+                        MediaTime.ofMillis(startMs), MediaTime.ofMillis(endMs), FrameRate.of(25, 1)));
     }
 
     static RenderPlan plan(RenderNode... nodes) {
@@ -99,6 +111,10 @@ class Roadmap21ContractBehaviorTest {
         return new RenderDependencyEdge(new RenderNodeId(p), new RenderNodeId(c), dep);
     }
 
+    static com.example.platform.execution.domain.ExecutionPlanId planId() {
+        return new com.example.platform.execution.domain.ExecutionPlanId("plan-1");
+    }
+
     // ---------- C24 matrix ----------
 
     @Test
@@ -106,8 +122,8 @@ class Roadmap21ContractBehaviorTest {
         var n = node("n1", "transcode");
         var p = plan(n);
         var g = graph("fp-1", List.of(n), List.of());
-        var a = LogicalPhysicalPlanner.plan(p, g);
-        var b = LogicalPhysicalPlanner.plan(p, g);
+        var a = LogicalPhysicalPlanner.plan(p, g, planId());
+        var b = LogicalPhysicalPlanner.plan(p, g, planId());
         assertEquals(a.executionRequirement(), b.executionRequirement());
         assertEquals(a.logicalExecutionGraph(), b.logicalExecutionGraph());
         assertEquals(a.logicalExecutionGraph().digest(), b.logicalExecutionGraph().digest());
@@ -116,7 +132,7 @@ class Roadmap21ContractBehaviorTest {
 
     @Test
     void invalidInputFailsClosed() {
-        assertThrows(NullPointerException.class, () -> LogicalPhysicalPlanner.plan(null, null));
+        assertThrows(NullPointerException.class, () -> LogicalPhysicalPlanner.plan(null, null, null));
     }
 
     @Test
@@ -128,7 +144,7 @@ class Roadmap21ContractBehaviorTest {
                 List.of(edge("n1", "n2", new RenderDependency.DecodedFrames()),
                         edge("n2", "n1", new RenderDependency.DecodedFrames())));
         ExecutionPlanningException ex = assertThrows(ExecutionPlanningException.class,
-                () -> LogicalPhysicalPlanner.plan(p, g));
+                () -> LogicalPhysicalPlanner.plan(p, g, planId()));
         assertEquals(ExecutionPlanningFailureReason.CYCLE_DETECTED, ex.reason());
         assertInstanceOf(ExecutionPlanningException.CycleContext.class, ex.context());
         assertFalse(((ExecutionPlanningException.CycleContext) ex.context()).cycleNodeIds().isEmpty());
@@ -136,14 +152,15 @@ class Roadmap21ContractBehaviorTest {
 
     @Test
     void extentPrunesOutsideRequestedRange() {
-        // node n1 window [0,10s] inside extent [0,10s]; node n2 window [20s,30s] disjoint -> pruned
-        var n1 = node("n1", "transcode", new RenderNodeKind.Source(), window(0, 10000));
-        var n2 = node("n2", "outro", new RenderNodeKind.Source(), window(20000, 30000));
+        // C12/C13 correction: pruning uses EXECUTION COVERAGE (timeline coords),
+        // never RenderSampleWindow (source coords)
+        var n1 = nodeWithCoverage("n1", "transcode", 0, 10000);
+        var n2 = nodeWithCoverage("n2", "outro", 20000, 30000);
         var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
         var p = plan(extent, n1, n2);
         var g = graph("fp-1", List.of(n1, n2),
                 List.of(edge("n1", "n2", new RenderDependency.DecodedFrames())));
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         assertEquals(1, result.logicalExecutionGraph().nodes().size());
         assertEquals("n1", result.logicalExecutionGraph().nodes().get(0).sourceRenderNodeId().value());
         var evidence = result.logicalExecutionGraph().pruningEvidence();
@@ -151,21 +168,23 @@ class Roadmap21ContractBehaviorTest {
         assertTrue(evidence.pruningApplied());
         assertEquals(1, evidence.eliminatedNodes().size());
         assertEquals("n2", evidence.eliminatedNodes().get(0).sourceRenderNodeId().value());
-        assertEquals("DISJOINT_WINDOW", evidence.eliminatedNodes().get(0).reason());
+        assertEquals("DISJOINT_COVERAGE", evidence.eliminatedNodes().get(0).reason());
     }
+
 
     @Test
     void extentBoundaryIsExact() {
-        // window ending exactly AT extent.start is disjoint (w.end <= extent.start)
-        var n1 = node("n1", "tail", new RenderNodeKind.Source(), window(0, 5000));
+        // coverage ending exactly AT extent.start is disjoint (coverage.end <= extent.start)
+        var n1 = nodeWithCoverage("n1", "tail", 0, 5000);
         var extent = new RenderExtent(MediaTime.ofMillis(5000), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
         var p = plan(extent, n1);
         var g = graph("fp-1", List.of(n1), List.of());
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         assertTrue(result.logicalExecutionGraph().pruningEvidence().pruningApplied());
         assertEquals(0, result.logicalExecutionGraph().nodes().size(),
-                "window.end == extent.start is provably outside -> pruned");
+                "coverage.end == extent.start is provably outside -> pruned");
     }
+
 
     @Test
     void extentPruningIsDeterministic() {
@@ -174,8 +193,8 @@ class Roadmap21ContractBehaviorTest {
         var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
         var p = plan(extent, n1, n2);
         var g = graph("fp-1", List.of(n1, n2), List.of(edge("n1", "n2", new RenderDependency.DecodedFrames())));
-        var a = LogicalPhysicalPlanner.plan(p, g);
-        var b = LogicalPhysicalPlanner.plan(p, g);
+        var a = LogicalPhysicalPlanner.plan(p, g, planId());
+        var b = LogicalPhysicalPlanner.plan(p, g, planId());
         assertEquals(a.logicalExecutionGraph().digest(), b.logicalExecutionGraph().digest());
         assertEquals(a.logicalExecutionGraph().pruningEvidence(), b.logicalExecutionGraph().pruningEvidence());
     }
@@ -188,7 +207,7 @@ class Roadmap21ContractBehaviorTest {
         var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
         var p = plan(extent, n1, n2);
         var g = graph("fp-1", List.of(n1, n2), List.of(edge("n1", "n2", new RenderDependency.DecodedFrames())));
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         assertEquals(2, result.logicalExecutionGraph().nodes().size(),
                 "overlapping window must NOT be pruned");
     }
@@ -200,7 +219,7 @@ class Roadmap21ContractBehaviorTest {
         var n2 = node("n2", "b");
         var p = plan(n1, n2);
         var g = graph("fp-1", List.of(n1, n2), List.of());
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         assertEquals(0, result.logicalExecutionGraph().edges().size(),
                 "no invented edge -> branches structurally independent");
     }
@@ -211,7 +230,7 @@ class Roadmap21ContractBehaviorTest {
         var n = node("n1", "transcode", new RenderNodeKind.Source(), w);
         var p = plan(n);
         var g = graph("fp-1", List.of(n), List.of());
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         assertEquals(w, result.logicalExecutionGraph().nodes().get(0).requiredSampleWindow());
         assertEquals(w, result.physicalExecutionPlan().units().get(0).temporalWindow());
         // exact rational, canonical reduced form: 9000ms == 9/1 s (MediaTime
@@ -227,7 +246,7 @@ class Roadmap21ContractBehaviorTest {
         var n2 = node("n2", "b");
         var p = plan(n1, n2);
         var g = graph("fp-1", List.of(n1, n2), List.of(edge("n1", "n2", new RenderDependency.DecodedFrames())));
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         assertEquals(2, result.physicalExecutionPlan().units().size());
         for (var u : result.physicalExecutionPlan().units()) {
             assertNotNull(u.sourceRenderNodeKind());
@@ -240,7 +259,7 @@ class Roadmap21ContractBehaviorTest {
         var n = node("n1", "transcribe");
         var p = plan(n);
         var g = graph("fp-1", List.of(n), List.of());
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         var er = result.executionRequirement();
         assertEquals(1, er.capabilityRequirementRefs().size());
         assertEquals(CapabilityId.of("media.transcribe"),
@@ -255,8 +274,8 @@ class Roadmap21ContractBehaviorTest {
         var n = node("n1", "transcode");
         var p = plan(n);
         var g = graph("fp-1", List.of(n), List.of());
-        var a = LogicalPhysicalPlanner.plan(p, g);
-        var b = LogicalPhysicalPlanner.plan(p, g);
+        var a = LogicalPhysicalPlanner.plan(p, g, planId());
+        var b = LogicalPhysicalPlanner.plan(p, g, planId());
         assertEquals(a.physicalExecutionPlan().digest(), b.physicalExecutionPlan().digest());
         // no runtime registry/clock reads possible: planner is pure static
     }
@@ -267,7 +286,7 @@ class Roadmap21ContractBehaviorTest {
         var p = plan(n);
         var g = graph("fp-WRONG", List.of(n), List.of());
         ExecutionPlanningException ex = assertThrows(ExecutionPlanningException.class,
-                () -> LogicalPhysicalPlanner.plan(p, g));
+                () -> LogicalPhysicalPlanner.plan(p, g, planId()));
         assertEquals(ExecutionPlanningFailureReason.UNSATISFIED_STRUCTURAL_CONSTRAINT, ex.reason());
         assertInstanceOf(ExecutionPlanningException.FingerprintMismatchContext.class, ex.context());
     }
@@ -279,7 +298,7 @@ class Roadmap21ContractBehaviorTest {
         var p = plan(n1, n2);
         var g = graph("fp-1", List.of(n1, n2),
                 List.of(edge("n1", "n2", new RenderDependency.DecodedFrames())));
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         var le = result.logicalExecutionGraph().edges().get(0);
         assertInstanceOf(RenderDependency.DecodedFrames.class, le.dependencyVariant());
         // physical digest includes the exact variant payload
@@ -293,7 +312,7 @@ class Roadmap21ContractBehaviorTest {
         var n = node("n1", "transcode");
         var p = plan(n);
         var g = graph("fp-1", List.of(n), List.of());
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         var unit = result.physicalExecutionPlan().units().get(0);
         assertEquals(1, unit.typedOutputs().size());
         assertEquals(1, unit.typedOutputs().get(0).outputRequirements().size());
@@ -312,7 +331,7 @@ class Roadmap21ContractBehaviorTest {
         var g = graph("fp-1", List.of(n1),
                 List.of(edge("n1", "ghost", new RenderDependency.DecodedFrames())));
         ExecutionPlanningException ex = assertThrows(ExecutionPlanningException.class,
-                () -> LogicalPhysicalPlanner.plan(p, g));
+                () -> LogicalPhysicalPlanner.plan(p, g, planId()));
         assertEquals(ExecutionPlanningFailureReason.INVALID_LOGICAL_GRAPH, ex.reason());
         assertInstanceOf(ExecutionPlanningException.MissingReferenceContext.class, ex.context());
     }
@@ -322,7 +341,7 @@ class Roadmap21ContractBehaviorTest {
         var n1 = node("n1", "a");
         var p = plan(n1);
         var g = graph("fp-1", List.of(n1, n1), List.of());
-        assertThrows(ExecutionPlanningException.class, () -> LogicalPhysicalPlanner.plan(p, g));
+        assertThrows(ExecutionPlanningException.class, () -> LogicalPhysicalPlanner.plan(p, g, planId()));
     }
 
     @Test
@@ -330,7 +349,7 @@ class Roadmap21ContractBehaviorTest {
         var n = node("n1", "transcode");
         var p = plan(n);
         var g = graph("fp-1", List.of(n), List.of());
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         var unit = result.physicalExecutionPlan().units().get(0);
         // no #22 binding vocabulary anywhere in the typed plan unit
         assertFalse(unit.toString().toLowerCase().contains("provider"));
@@ -352,7 +371,7 @@ class Roadmap21ContractBehaviorTest {
         var n = node("n1", "transcode");
         var p = plan(n);
         var g = graph("fp-1", List.of(n), List.of());
-        var result = LogicalPhysicalPlanner.plan(p, g);
+        var result = LogicalPhysicalPlanner.plan(p, g, planId());
         var pep = result.physicalExecutionPlan();
         assertNotNull(pep.planId());
         assertNotEquals(pep.planId().value(), pep.digest().sha256Hex(),
@@ -360,4 +379,87 @@ class Roadmap21ContractBehaviorTest {
         assertNotNull(pep.schemaVersion());
         assertEquals("1.0", pep.schemaVersion().canonical());
     }
+
+    // ---------- C12/C13 coordinate-space tests ----------
+
+    @Test
+    void nonZeroSourceOffsetDoesNotFalsePrune() {
+        // timeline coverage [0,10]; source sample window [100,110]; extent [0,10]
+        var n1 = node("n1", "decode", new RenderNodeKind.Source(), window(100000, 110000),
+                new com.example.platform.render.domain.renderplan.RenderExecutionCoverage(
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1)));
+        var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
+        var result = LogicalPhysicalPlanner.plan(plan(extent, n1), graph("fp-1", List.of(n1), List.of()), planId());
+        assertEquals(1, result.logicalExecutionGraph().nodes().size(),
+                "source-offset sample window must NOT false-prune (coordinate domains separated)");
+        assertFalse(result.logicalExecutionGraph().pruningEvidence().pruningApplied());
+    }
+
+    @Test
+    void constantRateMappingUsesCorrectCoordinateDomain() {
+        var n1 = node("n1", "decode", new RenderNodeKind.Source(), window(100000, 110000),
+                new com.example.platform.render.domain.renderplan.RenderExecutionCoverage(
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1)));
+        var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
+        var result = LogicalPhysicalPlanner.plan(plan(extent, n1), graph("fp-1", List.of(n1), List.of()), planId());
+        assertEquals(1, result.logicalExecutionGraph().nodes().size());
+        assertEquals(window(100000, 110000),
+                result.logicalExecutionGraph().nodes().get(0).requiredSampleWindow(),
+                "sample window (source coords) preserved as typed authority");
+    }
+
+    @Test
+    void reverseMappingDoesNotFalsePrune() {
+        var n1 = node("n1", "decode", new RenderNodeKind.Source(), window(0, 100000),
+                new com.example.platform.render.domain.renderplan.RenderExecutionCoverage(
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1)));
+        var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
+        var result = LogicalPhysicalPlanner.plan(plan(extent, n1), graph("fp-1", List.of(n1), List.of()), planId());
+        assertEquals(1, result.logicalExecutionGraph().nodes().size(),
+                "reverse-mapped wide source window must NOT false-prune");
+    }
+
+    @Test
+    void freezeMappingDoesNotFalsePrune() {
+        var n1 = node("n1", "decode", new RenderNodeKind.Source(), window(50000, 50000),
+                new com.example.platform.render.domain.renderplan.RenderExecutionCoverage(
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1)));
+        var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
+        var result = LogicalPhysicalPlanner.plan(plan(extent, n1), graph("fp-1", List.of(n1), List.of()), planId());
+        assertEquals(1, result.logicalExecutionGraph().nodes().size(),
+                "freeze-point sample window must NOT false-prune (source coords)");
+    }
+
+    @Test
+    void outOfCoverageNodePruned() {
+        var n1 = nodeWithCoverage("n1", "a", 0, 10000);
+        var n2 = nodeWithCoverage("n2", "b", 50000, 60000);
+        var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
+        var result = LogicalPhysicalPlanner.plan(plan(extent, n1, n2),
+                graph("fp-1", List.of(n1, n2), List.of()), planId());
+        assertEquals(1, result.logicalExecutionGraph().nodes().size());
+        assertEquals("n1", result.logicalExecutionGraph().nodes().get(0).sourceRenderNodeId().value());
+    }
+
+    @Test
+    void overlappingCoveragePreserved() {
+        var n1 = nodeWithCoverage("n1", "a", 0, 8000);
+        var n2 = nodeWithCoverage("n2", "b", 5000, 12000);
+        var extent = new RenderExtent(MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
+        var result = LogicalPhysicalPlanner.plan(plan(extent, n1, n2),
+                graph("fp-1", List.of(n1, n2), List.of()), planId());
+        assertEquals(2, result.logicalExecutionGraph().nodes().size(),
+                "overlapping coverage must NOT be pruned");
+    }
+
+    @Test
+    void invalidExtentFailsClosed() {
+        var n1 = nodeWithCoverage("n1", "a", 0, 10000);
+        var bad = new RenderExtent(MediaTime.ofMillis(10000), MediaTime.ofMillis(5000), FrameRate.of(25, 1));
+        ExecutionPlanningException ex = assertThrows(ExecutionPlanningException.class,
+                () -> LogicalPhysicalPlanner.plan(plan(bad, n1), graph("fp-1", List.of(n1), List.of()), planId()));
+        assertEquals(ExecutionPlanningFailureReason.INCONSISTENT_RENDER_EXTENT, ex.reason());
+        assertInstanceOf(ExecutionPlanningException.ExtentViolationContext.class, ex.context());
+    }
+
 }
