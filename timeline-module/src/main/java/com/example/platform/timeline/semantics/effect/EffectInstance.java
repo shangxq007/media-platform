@@ -44,33 +44,6 @@ public record EffectInstance(
     }
 
     /**
-     * Legacy 9-arg constructor WITHOUT an explicit authored target.
-     *
-     * <p>R6-A: {@code EffectTarget} is the authoritative WHERE of an authored
-     * effect; a target-less instance carries NO membership and is rejected by
-     * the effect authority (fail closed). This constructor
-     * exists only for construction compatibility; every authoritative path
-     * must use the 10-arg form with an explicit target.
-     *
-     * @deprecated R6-A — use the explicit-target constructor. Target-less
-     * instances fail closed at the authority boundary.
-     */
-    @Deprecated
-    public EffectInstance(
-            String effectInstanceId,
-            String effectDefinitionId,
-            String effectDefinitionVersion,
-            EffectMediaType mediaType,
-            boolean enabled,
-            MediaClip.TimeRange applicationRange,
-            Map<String, String> parameters,
-            Map<String, String> automationBindings,
-            EffectProvenance provenance) {
-        this(effectInstanceId, effectDefinitionId, effectDefinitionVersion, mediaType, enabled,
-                applicationRange, parameters, automationBindings, null, provenance);
-    }
-
-    /**
      * Media type for effects.
      */
     public enum EffectMediaType {

@@ -29,7 +29,7 @@ class AiGatewayServiceTest {
         providers.put("failingProvider", request -> {
             throw new RuntimeException("provider error");
         });
-        service = new AiGatewayService(router, providers);
+        service = new AiGatewayService(router, providers, null);
     }
 
     @Test
@@ -45,7 +45,7 @@ class AiGatewayServiceTest {
     void chatThrowsWhenProviderNotFound() {
         ModelRouter router = capability -> new RoutePlan(List.of(new RouteTarget("nonExistentProvider")));
         Map<String, ChatProvider> providers = new HashMap<>();
-        AiGatewayService svc = new AiGatewayService(router, providers);
+        AiGatewayService svc = new AiGatewayService(router, providers, null);
 
         assertThrows(IllegalStateException.class, () -> svc.chat("cap", "prompt"));
     }
@@ -57,7 +57,7 @@ class AiGatewayServiceTest {
         providers.put("failingProvider", request -> {
             throw new RuntimeException("provider error");
         });
-        AiGatewayService svc = new AiGatewayService(router, providers);
+        AiGatewayService svc = new AiGatewayService(router, providers, null);
 
         assertThrows(RuntimeException.class, () -> svc.chat("cap", "prompt"));
     }
@@ -71,7 +71,7 @@ class AiGatewayServiceTest {
             captured[0] = request;
             return new ChatResult("capturingProvider", "model", "ok");
         });
-        AiGatewayService svc = new AiGatewayService(router, providers);
+        AiGatewayService svc = new AiGatewayService(router, providers, null);
 
         svc.chat("myCapability", "myPrompt");
 

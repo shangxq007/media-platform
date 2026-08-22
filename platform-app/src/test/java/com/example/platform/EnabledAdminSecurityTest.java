@@ -1,7 +1,6 @@
 package com.example.platform;
 
 import com.example.platform.security.JwtProperties;
-import com.example.platform.security.LegacyHmacJwtDecoder;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.net.URI;
 import java.net.http.*;
@@ -55,10 +54,43 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
         client = HttpClient.newHttpClient();
         baseUrl = "http://localhost:" + port;
         jwtHelper = new JwtTestHelper(jwtProperties);
-        // Configure mock to delegate to real HMAC decoder
-        JwtDecoder realDecoder = new LegacyHmacJwtDecoder(jwtProperties);
+        // Configure mock to delegate to real HMAC decode (jjwt, same logic as JwtAuthFilter)
         org.mockito.Mockito.when(jwtDecoder.decode(org.mockito.ArgumentMatchers.anyString()))
-            .thenAnswer(invocation -> realDecoder.decode(invocation.getArgument(0)));
+            .thenAnswer(invocation -> decodeHmac(invocation.getArgument(0)));
+    }
+
+
+    private org.springframework.security.oauth2.jwt.Jwt decodeHmac(String token) {
+        try {
+            javax.crypto.SecretKey key = io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                    jwtProperties.secretKey().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            io.jsonwebtoken.Claims claims = io.jsonwebtoken.Jwts.parser()
+                    .verifyWith(key).build()
+                    .parseSignedClaims(token).getPayload();
+            java.time.Instant issuedAt = claims.getIssuedAt() != null
+                    ? claims.getIssuedAt().toInstant()
+                    : java.time.Instant.now();
+            java.time.Instant expiresAt = claims.getExpiration() != null
+                    ? claims.getExpiration().toInstant()
+                    : issuedAt.plusSeconds(3600);
+            org.springframework.security.oauth2.jwt.Jwt.Builder builder =
+                    org.springframework.security.oauth2.jwt.Jwt.withTokenValue(token)
+                            .header("alg", "HS256")
+                            .subject(claims.getSubject())
+                            .issuedAt(issuedAt)
+                            .expiresAt(expiresAt);
+            for (java.util.Map.Entry<String, Object> entry : claims.entrySet()) {
+                String claimName = entry.getKey();
+                if ("sub".equals(claimName) || "iss".equals(claimName)
+                        || "iat".equals(claimName) || "exp".equals(claimName)) {
+                    continue;
+                }
+                builder.claim(claimName, entry.getValue());
+            }
+            return builder.build();
+        } catch (io.jsonwebtoken.JwtException ex) {
+            throw new org.springframework.security.oauth2.jwt.JwtException("Invalid legacy HMAC JWT", ex);
+        }
     }
 
     @AfterAll

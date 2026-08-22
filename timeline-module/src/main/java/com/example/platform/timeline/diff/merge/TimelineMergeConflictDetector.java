@@ -1,6 +1,8 @@
 package com.example.platform.timeline.diff.merge;
 
-import com.example.platform.timeline.diff.*;
+import com.example.platform.timeline.diff.TimelineChangeOperation;
+import com.example.platform.timeline.diff.TimelineChangeType;
+import com.example.platform.timeline.diff.TimelineDiff;
 import com.example.platform.timeline.diff.calculation.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -103,27 +105,25 @@ public class TimelineMergeConflictDetector {
         compareOperations(oursDiff, theirsDiff, conflicts, issues);
 
         // Determine readiness
-        boolean hasBlocking = conflicts.stream().anyMatch(c -> c.severity() == TimelineConflictSeverity.BLOCKING);
-        boolean hasWarning = conflicts.stream().anyMatch(c -> c.severity() == TimelineConflictSeverity.WARNING);
+        boolean hasBlocking = conflicts.stream().anyMatch(TimelineConflict::resolutionRequired);
 
         TimelineMergeReadiness readiness;
-        if (hasBlocking) {
-            readiness = TimelineMergeReadiness.manualReview(issues);
-        } else if (hasWarning || !conflicts.isEmpty()) {
+        if (hasBlocking || !conflicts.isEmpty()) {
             readiness = TimelineMergeReadiness.manualReview(issues);
         } else {
             readiness = TimelineMergeReadiness.ready();
         }
 
-        // Sort conflicts deterministically: severity desc, type ordinal, path, issue code
+        // Sort conflicts deterministically: resolution-required first,
+        // then conflict type ordinal, conflict id, message
         conflicts.sort(Comparator
-                .comparingInt((TimelineConflict c) -> severityOrder(c.severity())).reversed()
-                .thenComparing(c -> c.type().ordinal())
-                .thenComparing(c -> c.path() != null ? c.path().value() : "")
+                .comparingInt((TimelineConflict c) -> c.resolutionRequired() ? 0 : 1)
+                .thenComparing(c -> c.conflictType().ordinal())
+                .thenComparing(c -> c.conflictId())
                 .thenComparing(c -> c.message() != null ? c.message() : ""));
 
         int blockingCount = (int) conflicts.stream()
-                .filter(c -> c.severity() == TimelineConflictSeverity.BLOCKING).count();
+                .filter(TimelineConflict::resolutionRequired).count();
         int manualReviewCount = conflicts.size() - blockingCount;
 
         TimelineMergeConflictSummary summary = TimelineMergeConflictSummary.of(
@@ -188,9 +188,13 @@ public class TimelineMergeConflictDetector {
                 + " (ours=" + oursType + ", theirs=" + theirsType + ")";
 
         conflicts.add(new TimelineConflict(
-                new TimelineConflictId("conflict-" + path.hashCode()),
-                conflictType, TimelineConflictSeverity.BLOCKING,
-                new TimelineChangePath(path), message, Map.of()));
+                "conflict-" + path.hashCode(),
+                entityRefFor(path),
+                conflictType,
+                null,
+                null,
+                true,
+                message));
 
         issues.add(issue(TimelineMergeConflictIssueSeverity.BLOCKING,
                 issueCode, path, message));
@@ -215,10 +219,13 @@ public class TimelineMergeConflictDetector {
                         + ": " + path;
 
                 conflicts.add(new TimelineConflict(
-                        new TimelineConflictId("conflict-removal-" + path.hashCode()),
-                        TimelineConflictType.UNKNOWN_CONFLICT,
-                        TimelineConflictSeverity.BLOCKING,
-                        new TimelineChangePath(path), message, Map.of()));
+                        "conflict-removal-" + path.hashCode(),
+                        entityRefFor(path),
+                        TimelineConflictType.UNKNOWN,
+                        null,
+                        null,
+                        true,
+                        message));
 
                 issues.add(issue(TimelineMergeConflictIssueSeverity.BLOCKING,
                         TimelineMergeConflictIssueCode.TARGET_REMOVED_AND_MODIFIED, path, message));
@@ -269,20 +276,18 @@ public class TimelineMergeConflictDetector {
 
     private TimelineConflictType mapToConflictType(TimelineChangeType changeType, String path) {
         return switch (changeType) {
-            case TRACK_REORDERED -> TimelineConflictType.TRACK_ORDER_CONFLICT;
-            case CLIP_MOVED, CLIP_TRIMMED -> TimelineConflictType.CLIP_TIMING_CONFLICT;
-            case ASSET_BINDING_CHANGED -> TimelineConflictType.ASSET_BINDING_CONFLICT;
-            case CAPTION_SEGMENT_CHANGED -> TimelineConflictType.CAPTION_TEXT_CONFLICT;
-            case TEXT_STYLE_CHANGED -> TimelineConflictType.TEXT_STYLE_CONFLICT;
-            case WATERMARK_CHANGED -> TimelineConflictType.WATERMARK_POSITION_CONFLICT;
-            case TEXT_ELEMENT_CHANGED -> TimelineConflictType.TEXT_ELEMENT_CONFLICT;
-            case TEMPLATE_PARAMETER_CHANGED -> TimelineConflictType.TEMPLATE_PARAMETER_CONFLICT;
-            case TEMPLATE_PROFILE_CHANGED -> TimelineConflictType.TEMPLATE_PARAMETER_CONFLICT;
-            case COMPOSITE_CHILD_TEMPLATE_CHANGED -> TimelineConflictType.COMPOSITE_TEMPLATE_CHILD_CONFLICT;
-            case WORKFLOW_APPLY_TEMPLATE_STEP_CHANGED -> TimelineConflictType.WORKFLOW_STEP_CONFLICT;
-            case OUTPUT_PROFILE_CHANGED -> TimelineConflictType.OUTPUT_PROFILE_CONFLICT;
-            case METADATA_CHANGED -> TimelineConflictType.UNKNOWN_CONFLICT;
-            default -> TimelineConflictType.UNKNOWN_CONFLICT;
+            case TRACK_REORDERED -> TimelineConflictType.TRACK_STRUCTURE_CONFLICT;
+            case CLIP_MOVED, CLIP_TRIMMED -> TimelineConflictType.CLIP_RANGE_CONFLICT;
+            case CLIP_REMOVED -> TimelineConflictType.CLIP_REMOVED_AND_MODIFIED;
+            case ASSET_BINDING_CHANGED -> TimelineConflictType.CLIP_RANGE_CONFLICT;
+            case CAPTION_SEGMENT_CHANGED, TEXT_STYLE_CHANGED, WATERMARK_CHANGED,
+                    TEXT_ELEMENT_CHANGED, TEMPLATE_PARAMETER_CHANGED,
+                    TEMPLATE_PROFILE_CHANGED -> TimelineConflictType.EFFECT_CONFLICT;
+            case COMPOSITE_CHILD_TEMPLATE_CHANGED, WORKFLOW_APPLY_TEMPLATE_STEP_CHANGED ->
+                    TimelineConflictType.TRACK_STRUCTURE_CONFLICT;
+            case OUTPUT_PROFILE_CHANGED, METADATA_CHANGED, TIMELINE_DURATION_CHANGED,
+                    AUDIO_MIX_CHANGED, BRAND_STYLE_CHANGED -> TimelineConflictType.METADATA_CONFLICT;
+            default -> TimelineConflictType.UNKNOWN;
         };
     }
 
@@ -300,14 +305,6 @@ public class TimelineMergeConflictDetector {
             case OUTPUT_PROFILE_CHANGED -> TimelineMergeConflictIssueCode.OUTPUT_PROFILE_DIVERGENCE;
             case METADATA_CHANGED -> TimelineMergeConflictIssueCode.SAME_PATH_DIVERGENT_CHANGE;
             default -> TimelineMergeConflictIssueCode.SAME_PATH_DIVERGENT_CHANGE;
-        };
-    }
-
-    private int severityOrder(TimelineConflictSeverity severity) {
-        return switch (severity) {
-            case BLOCKING -> 4;
-            case WARNING -> 2;
-            case INFO -> 1;
         };
     }
 
@@ -346,6 +343,23 @@ public class TimelineMergeConflictDetector {
                 }
             }
         }
+    }
+
+    /** Derive the merge entity reference from a canonical path. */
+    private EntityRef entityRefFor(String path) {
+        if (path.contains(".clips.")) {
+            return new EntityRef(EntityKind.CLIP, path);
+        }
+        if (path.contains("tracks.") || path.startsWith("timeline.tracks")) {
+            return new EntityRef(EntityKind.TRACK, path);
+        }
+        if (path.contains("captions.")) {
+            return new EntityRef(EntityKind.SUBTITLE_TRACK, path);
+        }
+        if (path.contains("audioMix") || path.contains("audio_mix")) {
+            return new EntityRef(EntityKind.AUDIO_MIX, path);
+        }
+        return new EntityRef(EntityKind.TRACK, path);
     }
 
     private TimelineMergeConflictIssue issue(

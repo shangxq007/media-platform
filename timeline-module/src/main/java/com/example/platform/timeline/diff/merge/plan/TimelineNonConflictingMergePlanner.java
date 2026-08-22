@@ -1,5 +1,6 @@
 package com.example.platform.timeline.diff.merge.plan;
 
+import com.example.platform.timeline.diff.merge.TimelineConflict;
 import com.example.platform.timeline.diff.*;
 import com.example.platform.timeline.diff.merge.*;
 import com.example.platform.timeline.diff.merge.preview.*;
@@ -122,8 +123,8 @@ public class TimelineNonConflictingMergePlanner {
         Set<String> conflictPaths = new HashSet<>();
         if (analysis.conflicts() != null) {
             for (TimelineConflict conflict : analysis.conflicts()) {
-                if (conflict.path() != null) {
-                    conflictPaths.add(conflict.path().value());
+                if (conflict.entityRef() != null) {
+                    conflictPaths.add(conflict.entityRef().id());
                 }
             }
         }
@@ -197,7 +198,7 @@ public class TimelineNonConflictingMergePlanner {
                     } else {
                         // Find related conflicts for this path
                         List<TimelineConflict> relatedConflicts = analysis.conflicts().stream()
-                                .filter(c -> c.path() != null && path.equals(c.path().value()))
+                                .filter(c -> c.entityRef() != null && path.equals(c.entityRef().id()))
                                 .collect(Collectors.toList());
 
                         for (TimelineChangeOperation op : oursOps) {
@@ -225,7 +226,7 @@ public class TimelineNonConflictingMergePlanner {
                 // Only ours touched this path — check if it's related to a conflict
                 if (conflictPaths.contains(path)) {
                     List<TimelineConflict> relatedConflicts = analysis.conflicts().stream()
-                            .filter(c -> c.path() != null && path.equals(c.path().value()))
+                            .filter(c -> c.entityRef() != null && path.equals(c.entityRef().id()))
                             .collect(Collectors.toList());
                     for (TimelineChangeOperation op : oursOps) {
                         operations.add(TimelineMergePlanOperation.conflict(
@@ -247,7 +248,7 @@ public class TimelineNonConflictingMergePlanner {
                 // Only theirs touched this path
                 if (conflictPaths.contains(path)) {
                     List<TimelineConflict> relatedConflicts = analysis.conflicts().stream()
-                            .filter(c -> c.path() != null && path.equals(c.path().value()))
+                            .filter(c -> c.entityRef() != null && path.equals(c.entityRef().id()))
                             .collect(Collectors.toList());
                     for (TimelineChangeOperation op : theirsOps) {
                         operations.add(TimelineMergePlanOperation.conflict(

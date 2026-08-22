@@ -43,7 +43,7 @@ class R3AcceptanceTest {
                 "eff-orphan", "def-missing", "9",
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.mediaClip().timelineRange(), Map.of(), Map.of(),
-                TestPlans.gaussianBlurEffect().provenance());
+                null, TestPlans.gaussianBlurEffect().provenance());
                 // target removed
         assertThrows(IllegalArgumentException.class,
                 () -> TestPlans.verifiedEffectSnapshot(
@@ -58,7 +58,7 @@ class R3AcceptanceTest {
                 "eff-vm", "def-blur", "2",
                 EffectInstance.EffectMediaType.VIDEO, true,
                 TestPlans.mediaClip().timelineRange(), Map.of(), Map.of(),
-                TestPlans.gaussianBlurEffect().provenance());
+                null, TestPlans.gaussianBlurEffect().provenance());
                 // target removed
         assertThrows(IllegalArgumentException.class,
                 () -> TestPlans.verifiedEffectSnapshot(

@@ -36,7 +36,7 @@ class EffectTransitionCanonicalSemanticsTest {
                 EffectMediaType.VIDEO, true,
                 new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(ZERO,
                         MediaTime.ofTicks(30, 30)), params, Map.of(),
-                EffectInstance.EffectProvenance.untracked());
+                null, EffectInstance.EffectProvenance.untracked());
     }
 
     private static TransitionInstance transition(String id, String defId, Map<String, String> params) {

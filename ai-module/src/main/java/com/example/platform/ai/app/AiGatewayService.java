@@ -32,16 +32,6 @@ public class AiGatewayService implements AiGatewayPort {
     private final Map<String, ChatProvider> providers;
     private final UsageRecordEmissionPort emissionPort;
 
-    /**
-     * @deprecated existing two-argument constructor kept for backward compatibility with
-     * tests/instantiations that do not provide an emission port. The port is optional —
-     * when absent, usage emission is a no-op.
-     */
-    @Deprecated
-    public AiGatewayService(ModelRouter router, Map<String, ChatProvider> providers) {
-        this(router, providers, null);
-    }
-
     @Autowired
     public AiGatewayService(ModelRouter router, Map<String, ChatProvider> providers,
             UsageRecordEmissionPort emissionPort) {

@@ -181,20 +181,7 @@ public class RenderJobRepository {
                 .execute();
     }
 
-    /**
-     * @deprecated In-place retry is replaced by creating a new RenderJob.
-     * Use {@link #createRetryJob} after marking the old job FAILED.
-     */
-    @Deprecated(since = "execution-stack-simplification")
-    public int requeueExecutingJob(String jobId, String reason) {
-        return dsl.update(RENDER_JOB)
-                .set(RENDER_JOB.STATUS, "QUEUED")
-                .set(RENDER_JOB.ERROR_MESSAGE, reason)
-                .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
-                .where(RENDER_JOB.ID.eq(jobId).and(RENDER_JOB.STATUS.eq("EXECUTING")))
-                .execute();
-    }
-
+    
     public void updateStatus(String jobId, String newStatus) {
         dsl.update(RENDER_JOB)
                 .set(RENDER_JOB.STATUS, newStatus)
@@ -461,19 +448,7 @@ public class RenderJobRepository {
                 .fetch();
     }
 
-    /**
-     * @deprecated In-place retry is replaced by creating a new RenderJob.
-     * Use {@link #createRetryJob(String, String, String, String, String)} instead.
-     */
-    @Deprecated(since = "execution-stack-simplification")
-    public int requeueFailedJob(String jobId) {
-        return dsl.update(RENDER_JOB)
-                .set(RENDER_JOB.STATUS, "QUEUED")
-                .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
-                .where(RENDER_JOB.ID.eq(jobId).and(RENDER_JOB.STATUS.eq("FAILED")))
-                .execute();
-    }
-
+    
     /**
      * Create a new RenderJob as a retry of a failed job.
      * The old job remains unchanged (FAILED). The new job references it via base_job_id.

@@ -1,6 +1,5 @@
 package com.example.platform.timeline.diff.merge;
 
-import com.example.platform.timeline.diff.TimelineConflict;
 import com.example.platform.timeline.diff.TimelineDiff;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +8,9 @@ import java.util.Map;
  * Result of three-way merge conflict analysis.
  * Internal domain model. Does not merge, resolve, or persist.
  * Provider-neutral, storage-neutral.
+ *
+ * <p>The conflict model is the merge semantic {@link TimelineConflict}
+ * (single conflict authority for the merge flow).</p>
  */
 public record TimelineMergeConflictAnalysis(
         TimelineMergeConflictAnalysisId id,

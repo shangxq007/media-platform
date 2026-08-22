@@ -1,7 +1,5 @@
 package com.example.platform.timeline.diff.merge;
 
-import com.example.platform.timeline.diff.TimelineConflict;
-import com.example.platform.timeline.diff.TimelineConflictType;
 import com.example.platform.timeline.diff.*;
 import com.example.platform.timeline.diff.calculation.*;
 import java.util.List;
@@ -287,7 +285,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.CAPTION_TEXT_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.EFFECT_CONFLICT));
     }
 
     @Test @DisplayName("Caption style changed differently = TEXT_STYLE_CONFLICT")
@@ -309,7 +307,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.TEXT_STYLE_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.EFFECT_CONFLICT));
     }
 
     @Test @DisplayName("Caption removed on one side = non-merge-ready (different paths)")
@@ -397,7 +395,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.CLIP_TIMING_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.CLIP_RANGE_CONFLICT));
     }
 
     @Test @DisplayName("Same clip trimmed differently = CLIP_TIMING_CONFLICT")
@@ -425,7 +423,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.CLIP_TIMING_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.CLIP_RANGE_CONFLICT));
     }
 
     @Test @DisplayName("Clip removed vs clip moved = conflict")
@@ -480,7 +478,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.TRACK_ORDER_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.TRACK_STRUCTURE_CONFLICT));
     }
 
     // ===== Stage 7: Template / Workflow / Watermark conflicts =====
@@ -533,7 +531,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.TEMPLATE_PARAMETER_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.EFFECT_CONFLICT));
     }
 
     @Test @DisplayName("Template profile changed differently = TEMPLATE_PARAMETER_CONFLICT")
@@ -582,7 +580,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.WORKFLOW_STEP_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.TRACK_STRUCTURE_CONFLICT));
     }
 
     @Test @DisplayName("Watermark position changed differently = WATERMARK_POSITION_CONFLICT")
@@ -607,7 +605,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.WATERMARK_POSITION_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.EFFECT_CONFLICT));
     }
 
     @Test @DisplayName("Watermark opacity changed differently = WATERMARK_POSITION_CONFLICT")
@@ -632,7 +630,7 @@ class TimelineMergeConflictDetectorTest {
 
         TimelineMergeConflictAnalysis r = detector.analyze(base, ours, theirs);
         assertTrue(r.hasConflicts());
-        assertTrue(r.conflicts().stream().anyMatch(c -> c.type() == TimelineConflictType.WATERMARK_POSITION_CONFLICT));
+        assertTrue(r.conflicts().stream().anyMatch(c -> c.conflictType() == TimelineConflictType.EFFECT_CONFLICT));
     }
 
     // ===== Stage 8: Render impact / unsupported =====
@@ -750,8 +748,8 @@ class TimelineMergeConflictDetectorTest {
         TimelineMergeConflictAnalysis r2 = detector.analyze(base, ours, theirs);
         assertEquals(r1.conflicts().size(), r2.conflicts().size());
         for (int i = 0; i < r1.conflicts().size(); i++) {
-            assertEquals(r1.conflicts().get(i).type(), r2.conflicts().get(i).type());
-            assertEquals(r1.conflicts().get(i).path().value(), r2.conflicts().get(i).path().value());
+            assertEquals(r1.conflicts().get(i).conflictType(), r2.conflicts().get(i).conflictType());
+            assertEquals(r1.conflicts().get(i).entityRef().id(), r2.conflicts().get(i).entityRef().id());
         }
     }
 

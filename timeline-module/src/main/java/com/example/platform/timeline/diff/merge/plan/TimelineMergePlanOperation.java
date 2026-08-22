@@ -1,7 +1,7 @@
 package com.example.platform.timeline.diff.merge.plan;
 
 import com.example.platform.timeline.diff.TimelineChangeOperation;
-import com.example.platform.timeline.diff.TimelineConflict;
+import com.example.platform.timeline.diff.merge.TimelineConflict;
 import java.util.List;
 import java.util.Map;
 
