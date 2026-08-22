@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,7 +29,7 @@ class TimelineEditorSyncServiceTest {
     private TimelineSnapshotService snapshotService;
 
     @Mock
-    private TimelineRevisionService revisionService;
+    private TimelineRevisionQueryService revisionQueryService;
     private TimelineSpecImportAdapter importAdapter;
     private TimelineImportService importService;
 
@@ -45,7 +46,7 @@ class TimelineEditorSyncServiceTest {
                 new InternalTimelineToEditorConverter(),
                 snapshotService,
                 resolver,
-                revisionService);
+                revisionQueryService);
     }
 
     @Test
@@ -67,8 +68,8 @@ class TimelineEditorSyncServiceTest {
     void pullLatestUsesRevisionHeadWhenPresent() {
         TimelineSpec spec = TimelineSpec.create("tl-pull", "Pull", TimelineOutputSpec.mp4_1080p30());
         String internal = importService.importTimeline(importAdapter.toRequest(spec));
-        when(revisionService.findHead("prj_2"))
-                .thenReturn(Optional.of(new TimelineRevisionService.RevisionInfo(
+        when(revisionQueryService.findHead("prj_2", "ten_2"))
+                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionInfo(
                         "trev_2",
                         "prj_2",
                         "ten_2",
@@ -89,10 +90,10 @@ class TimelineEditorSyncServiceTest {
                         null,
                         null,
                         null)));
-        when(snapshotService.findById("snap_2"))
+        when(snapshotService.findOwnedById("prj_2", "ten_2", "snap_2"))
                 .thenReturn(Optional.of(new SnapshotInfo("snap_2", "prj_2", "ten_2", internal, "internal-1.0")));
 
-        var result = syncService.pullByProject("prj_2");
+        var result = syncService.pullByProject("prj_2", "ten_2");
 
         assertEquals("snap_2", result.snapshotId());
         assertNotNull(result.headRevision());
@@ -106,11 +107,11 @@ class TimelineEditorSyncServiceTest {
     void pullByProjectFallsThroughToLatestSnapshotWhenNoHead() {
         TimelineSpec spec = TimelineSpec.create("tl-pull2", "Pull2", TimelineOutputSpec.mp4_1080p30());
         String internal = importService.importTimeline(importAdapter.toRequest(spec));
-        when(revisionService.findHead("prj_3")).thenReturn(Optional.empty());
-        when(snapshotService.findLatestByProject("prj_3"))
+        when(revisionQueryService.findHead("prj_3", "ten_3")).thenReturn(Optional.empty());
+        when(snapshotService.findLatestOwnedByProject("prj_3", "ten_3"))
                 .thenReturn(Optional.of(new SnapshotInfo("snap_3", "prj_3", "ten_3", internal, "internal-1.0")));
 
-        var result = syncService.pullByProject("prj_3");
+        var result = syncService.pullByProject("prj_3", "ten_3");
 
         assertEquals("snap_3", result.snapshotId());
         assertNull(result.headRevision());

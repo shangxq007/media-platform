@@ -1,6 +1,7 @@
 package com.example.platform.timeline.app;
 
-import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineSnapshot;

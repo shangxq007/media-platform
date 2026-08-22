@@ -4,7 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.timeline.app.TimelineMergeEngine;
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.render.domain.planning.*; // render-kept internal types only
 import com.example.platform.timeline.internal.EntityKind;
@@ -24,17 +25,21 @@ import org.springframework.http.ResponseEntity;
 
 class TimelineMergeControllerTest {
 
-    private TimelineRevisionService revisionService;
+    private TimelineRevisionQueryService revisionQueryService;
+    private TimelineRevisionDiffQuery revisionDiffQuery;
     private TimelineMergeEngine mergeEngine;
     private TimelineReviewEventPublisher eventPublisher;
     private TimelineRevisionController controller;
 
     @BeforeEach
     void setUp() {
-        revisionService = mock(TimelineRevisionService.class);
+        revisionQueryService = mock(TimelineRevisionQueryService.class);
+        revisionDiffQuery = mock(TimelineRevisionDiffQuery.class);
         mergeEngine = mock(TimelineMergeEngine.class);
         eventPublisher = mock(TimelineReviewEventPublisher.class);
-        controller = new TimelineRevisionController(revisionService, mergeEngine, eventPublisher, null, null, null, null, null);
+        controller = new TimelineRevisionController(
+                revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
+                null, null, null, null, null);
     }
 
     @Test

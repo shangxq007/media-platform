@@ -3,7 +3,9 @@ package com.example.platform.web.render;
 import com.example.platform.timeline.app.ProductCurrentRevisionService;
 import com.example.platform.timeline.app.TimelinePayloadCodec;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
+import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.version.TimelineRevision;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -42,8 +44,8 @@ class TimelineRevisionControllerRestoreResponseTest {
     private static final String EDITOR_PROJECTION =
             "{\"schemaVersion\":\"2.0.0\",\"id\":\"tl-restore-editor\",\"layers\":[],\"clips\":[]}";
 
-    private static TimelineRevisionService.RevisionInfo revisionInfo() {
-        return new TimelineRevisionService.RevisionInfo(
+    private static TimelineRevisionQueryService.RevisionInfo revisionInfo() {
+        return new TimelineRevisionQueryService.RevisionInfo(
                 "trev_restored", "prj_r", "ten_r", null, 4, "snap_r", 3,
                 "hash", "internal-1.0", "restore", "user-1", null,
                 "Restored from revision #2", List.of(), "{}", null, false, null, null, null);
@@ -66,12 +68,13 @@ class TimelineRevisionControllerRestoreResponseTest {
     }
 
     private static TimelineRevisionController controller(
-            TimelineRevisionService revisionService,
+            TimelineRevisionQueryService revisionQueryService,
             TimelineRevisionSaveService saveService,
             ProductCurrentRevisionService currentService,
             TimelinePayloadCodec codec) {
         return new TimelineRevisionController(
-                revisionService,
+                revisionQueryService,
+                mock(TimelineRevisionDiffQuery.class),
                 null,
                 mock(com.example.platform.render.app.event.TimelineReviewEventPublisher.class),
                 null, null,
@@ -80,21 +83,22 @@ class TimelineRevisionControllerRestoreResponseTest {
 
     @Test
     void restoreResponseCarriesDistinctInternalAndEditorProjection() {
-        TimelineRevisionService revisionService = mock(TimelineRevisionService.class);
+        TimelineRevisionQueryService revisionQueryService = mock(TimelineRevisionQueryService.class);
         TimelineRevisionSaveService saveService = mock(TimelineRevisionSaveService.class);
         ProductCurrentRevisionService currentService = mock(ProductCurrentRevisionService.class);
         TimelinePayloadCodec codec = mock(TimelinePayloadCodec.class);
         when(currentService.getCurrentRevisionId("prj_r")).thenReturn("trev_current");
         when(saveService.restoreRevision("prj_r", "trev_restored", "trev_current", "user-1"))
                 .thenReturn(validRestoredRevision("trev_current"));
-        when(revisionService.getDetail("trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionService.RevisionDetail(revisionInfo(), null, null)));
-        when(revisionService.getRevisionSnapshotPayload("prj_r", "trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionService.RevisionSnapshotPayload(
+        when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
+                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
+        when(revisionQueryService.getRevisionSnapshotPayload("prj_r", "ten_r", "trev_restored"))
+                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionSnapshotPayload(
                         "snap_r", INTERNAL_FIXTURE, "internal-1.0")));
         when(codec.toEditorJson(INTERNAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 
-        var c = controller(revisionService, saveService, currentService, codec);
+        TenantContext.set("ten_r");
+        var c = controller(revisionQueryService, saveService, currentService, codec);
         var response = c.restore("prj_r", "trev_restored", "user-1");
 
         assertEquals(org.springframework.http.HttpStatus.CREATED, response.getStatusCode());
@@ -111,21 +115,22 @@ class TimelineRevisionControllerRestoreResponseTest {
 
     @Test
     void editorProjectionIsProducedThroughTimelinePayloadCodec() {
-        TimelineRevisionService revisionService = mock(TimelineRevisionService.class);
+        TimelineRevisionQueryService revisionQueryService = mock(TimelineRevisionQueryService.class);
         TimelineRevisionSaveService saveService = mock(TimelineRevisionSaveService.class);
         ProductCurrentRevisionService currentService = mock(ProductCurrentRevisionService.class);
         TimelinePayloadCodec codec = mock(TimelinePayloadCodec.class);
         when(currentService.getCurrentRevisionId("prj_r")).thenReturn("trev_current");
         when(saveService.restoreRevision("prj_r", "trev_restored", "trev_current", "user-1"))
                 .thenReturn(validRestoredRevision("trev_current"));
-        when(revisionService.getDetail("trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionService.RevisionDetail(revisionInfo(), null, null)));
-        when(revisionService.getRevisionSnapshotPayload("prj_r", "trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionService.RevisionSnapshotPayload(
+        when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
+                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
+        when(revisionQueryService.getRevisionSnapshotPayload("prj_r", "ten_r", "trev_restored"))
+                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionSnapshotPayload(
                         "snap_r", INTERNAL_FIXTURE, "internal-1.0")));
         when(codec.toEditorJson(INTERNAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 
-        var c = controller(revisionService, saveService, currentService, codec);
+        TenantContext.set("ten_r");
+        var c = controller(revisionQueryService, saveService, currentService, codec);
         c.restore("prj_r", "trev_restored", "user-1");
 
         // the exact restored internal payload must be supplied to the projection port
@@ -134,22 +139,25 @@ class TimelineRevisionControllerRestoreResponseTest {
 
     @Test
     void restoreUsesCanonicalSaveServiceExactlyOnce() {
-        TimelineRevisionService revisionService = mock(TimelineRevisionService.class);
+        TimelineRevisionQueryService revisionQueryService = mock(TimelineRevisionQueryService.class);
         TimelineRevisionSaveService saveService = mock(TimelineRevisionSaveService.class);
         ProductCurrentRevisionService currentService = mock(ProductCurrentRevisionService.class);
         TimelinePayloadCodec codec = mock(TimelinePayloadCodec.class);
         when(currentService.getCurrentRevisionId("prj_r")).thenReturn("trev_current");
         when(saveService.restoreRevision("prj_r", "trev_restored", "trev_current", "user-1"))
                 .thenReturn(validRestoredRevision("trev_current"));
-        when(revisionService.getDetail("trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionService.RevisionDetail(revisionInfo(), null, null)));
-        when(revisionService.getRevisionSnapshotPayload("prj_r", "trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionService.RevisionSnapshotPayload(
+        when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
+                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
+        when(revisionQueryService.getRevisionSnapshotPayload("prj_r", "ten_r", "trev_restored"))
+                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionSnapshotPayload(
                         "snap_r", INTERNAL_FIXTURE, "internal-1.0")));
         when(codec.toEditorJson(INTERNAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 
+        TenantContext.set("ten_r");
         var c = new TimelineRevisionController(
-                revisionService, null,
+                revisionQueryService,
+                mock(TimelineRevisionDiffQuery.class),
+                null,
                 mock(com.example.platform.render.app.event.TimelineReviewEventPublisher.class),
                 null, null,
                 saveService, currentService, codec);

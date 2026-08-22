@@ -66,12 +66,17 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
     private static List<Path> productionJavaFiles() throws IOException {
         List<Path> out = new ArrayList<>();
         Path root = repoRoot();
+        Path siblings = root.toString().contains("/.worktrees/")
+                ? root.getParent().getParent().resolve(".worktrees")
+                : root.resolve(".worktrees");
         try (Stream<Path> walk = Files.walk(root)) {
             walk.filter(Files::isRegularFile)
                     .filter(f -> f.toString().contains("/src/main/java/"))
                     .filter(f -> f.toString().endsWith(".java"))
-                    // exclude sibling worktrees — only the checked-out tree counts
-                    .filter(f -> !f.toString().contains("/.worktrees/"))
+                    // exclude sibling worktrees — only the checked-out tree counts.
+                    // When running inside a worktree, root itself lives under
+                    // /.worktrees/ so the exclusion must keep root-prefixed files.
+                    .filter(f -> !(f.startsWith(siblings) && !f.startsWith(root)))
                     .forEach(out::add);
         }
         return out;
@@ -138,25 +143,35 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
     }
 
     @Test
-    void legacyServiceRetainedForI2Queries() throws IOException {
-        // TimelineRevisionService class must still exist (I2 query closure owner)
+    void legacyServiceDeletedAfterReplacementClosure() throws IOException {
+        // CFRH-I2-E: TimelineRevisionService class must be DELETED after full
+        // behavioral replacement closure (all 22 production invocation sites migrated).
         Path root = repoRoot();
         long legacyDefs = countSymbol(root, "TimelineRevisionService.java", "class TimelineRevisionService");
-        assertEquals(1, legacyDefs, "TimelineRevisionService must remain for I2 query closure");
-        // but it must expose NO semantic write methods
+        assertEquals(0, legacyDefs,
+                "LEGACY_TIMELINE_REVISION_QUERY_SERVICE_CLASS_COUNT must be 0 (deleted in I2-E)");
+        // replacement ownership-scoped authorities must exist
+        long queryDefs = countSymbol(root, "TimelineRevisionQueryService.java", "class TimelineRevisionQueryService");
+        assertEquals(1, queryDefs, "TimelineRevisionQueryService must exist (I2-A)");
+        long diffDefs = countSymbol(root, "TimelineRevisionDiffQuery.java", "class TimelineRevisionDiffQuery");
+        assertEquals(1, diffDefs, "TimelineRevisionDiffQuery must exist (I2-A)");
+        // and neither replacement exposes legacy semantic write methods
         for (String symbol : FORBIDDEN_PRODUCTION_SYMBOLS) {
-            long defs = countSymbol(root, "TimelineRevisionService.java",
-                    symbol.equals("restore") ? "RestoreResult" : symbol);
-            assertEquals(0, defs, "TimelineRevisionService must not define '" + symbol + "'");
+            long q = countSymbol(root, "TimelineRevisionQueryService.java", symbol);
+            long d = countSymbol(root, "TimelineRevisionDiffQuery.java", symbol);
+            assertEquals(0, q + d, "query authorities must not define legacy write symbol '" + symbol + "'");
         }
     }
 
     private static long countSymbol(Path root, String fileName, String token) throws IOException {
+        Path siblings = root.toString().contains("/.worktrees/")
+                ? root.getParent().getParent().resolve(".worktrees")
+                : root.resolve(".worktrees");
         try (Stream<Path> walk = Files.walk(root)) {
             return walk.filter(Files::isRegularFile)
                     .filter(f -> f.getFileName().toString().equals(fileName))
                     .filter(f -> f.toString().contains("/src/main/java/"))
-                    .filter(f -> !f.toString().contains("/.worktrees/"))
+                    .filter(f -> !(f.startsWith(siblings) && !f.startsWith(root)))
                     .flatMap(f -> {
                         try {
                             return Files.readAllLines(f).stream();

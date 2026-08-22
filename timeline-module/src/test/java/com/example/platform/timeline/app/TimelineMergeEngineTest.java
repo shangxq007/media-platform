@@ -1,6 +1,7 @@
 package com.example.platform.timeline.app;
 
-import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineMergeEngine;import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineMergeEngine;import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
 import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
@@ -149,29 +150,24 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
     }
 
     private void stubRevisions(String baseJson, String sourceJson, String targetJson) {
-        when(revisionRepository.findById(BASE_REV))
+        when(revisionRepository.findOwnedById(BASE_REV, PROJECT, TENANT))
                 .thenReturn(Optional.of(row(BASE_REV, "snap-base")));
-        when(revisionRepository.findById(SOURCE_REV))
+        when(revisionRepository.findOwnedById(SOURCE_REV, PROJECT, TENANT))
                 .thenReturn(Optional.of(row(SOURCE_REV, "snap-source")));
-        when(revisionRepository.findById(TARGET_REV))
+        when(revisionRepository.findOwnedById(TARGET_REV, PROJECT, TENANT))
                 .thenReturn(Optional.of(row(TARGET_REV, "snap-target")));
-        // Canonical gates always on: loadPayload resolves snapshots via findById (tenant-aware).
-        when(snapshotService.findById("snap-base"))
-                .thenReturn(Optional.of(info("snap-base", baseJson)));
+        // CFRH-I2: loadPayload resolves snapshots via ownership-scoped findOwnedById only.
         when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-base"))
                 .thenReturn(Optional.of(info("snap-base", baseJson)));
-        when(snapshotService.findById("snap-source"))
-                .thenReturn(Optional.of(info("snap-source", sourceJson)));
         when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-source"))
                 .thenReturn(Optional.of(info("snap-source", sourceJson)));
-        when(snapshotService.findById("snap-target"))
-                .thenReturn(Optional.of(info("snap-target", targetJson)));
         when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-target"))
                 .thenReturn(Optional.of(info("snap-target", targetJson)));
         when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
                 .thenAnswer(inv -> "snap-merged-" + inv.getArgument(2).hashCode());
         when(revisionRepository.nextRevisionNumber(PROJECT)).thenReturn(7);
-        when(revisionRepository.listByProject(PROJECT, 500)).thenReturn(List.of());
+        when(revisionRepository.listOwnedByProject(PROJECT, TENANT, null, null, null, 500))
+                .thenReturn(List.of());
         when(currentRevisionService.getCurrentRevisionId(PROJECT)).thenReturn(TARGET_REV);
     }
 
@@ -336,9 +332,8 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
                 "rev-dup", PROJECT, TENANT, TARGET_REV, 6, "snap-dup", 0, hash,
                 "internal-1.0", "merge", "user-1", null, "dup", null, null, null,
                 true, SOURCE_REV + "," + TARGET_REV, BASE_REV, OffsetDateTime.now());
-        when(revisionRepository.listByProject(PROJECT, 500)).thenReturn(List.of(existing));
-        when(snapshotService.findById("snap-dup")).thenReturn(Optional.of(
-                new TimelineSnapshotService.SnapshotInfo("snap-dup", PROJECT, TENANT, payload, "internal-1.0")));
+        when(revisionRepository.listOwnedByProject(PROJECT, TENANT, null, null, null, 500))
+                .thenReturn(List.of(existing));
         when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-dup")).thenReturn(Optional.of(
                 new TimelineSnapshotService.SnapshotInfo("snap-dup", PROJECT, TENANT, payload, "internal-1.0")));
 

@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import com.example.platform.extension.app.ProcessToolRunner;
@@ -419,16 +420,16 @@ class TimelineRevisionS3OutputRealRenderSmokeTest {
 
     // ─── Stub services ───
 
-    static class StubTimelineRevisionService extends TimelineRevisionService {
+    static class StubTimelineRevisionService extends TimelineRevisionQueryService {
         private final InMemoryTimelineRevisionRepository repo;
 
         StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) {
-            super(null, null, null, null, null, null, null);
+            super(null, null, null, null);
             this.repo = repo;
         }
 
         @Override
-        public Optional<RevisionInfo> findById(String revisionId) {
+        public Optional<RevisionInfo> findById(String projectId, String tenantId, String revisionId) {
             return repo.findById(revisionId).map(row -> new RevisionInfo(
                     row.id(), row.projectId(), row.tenantId(), null,
                     1, row.snapshotId(), 1,

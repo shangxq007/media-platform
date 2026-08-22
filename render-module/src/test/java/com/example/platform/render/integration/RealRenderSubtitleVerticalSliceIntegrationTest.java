@@ -28,7 +28,8 @@ import com.example.platform.timeline.app.TimelineRevisionDiffService;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineSemanticDiffService;
 import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.app.timeline.TimelineTestSupport;
@@ -108,7 +109,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
 
     private TimelineRevisionSaveService saveService;
     private TimelineSnapshotService snapshotService;
-    private TimelineRevisionService revisionService;
+    private TimelineRevisionQueryService revisionQueryService;
     private ProductRuntimeService productRuntime;
     private StorageRuntimeService storageRuntime;
     private Path storageRoot;
@@ -171,7 +172,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 new TimelineArtifactPinValidator(new com.example.platform.render.testutil.NoopArtifactQueryService()),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
-        revisionService = buildTimelineRevisionService(dsl, snapshotService);
+        revisionQueryService = buildTimelineRevisionService(dsl, snapshotService);
         ProductRepository productRepo = new ProductRepository(dsl);
         ProductDependencyRepository depRepo = new ProductDependencyRepository(dsl);
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
@@ -320,7 +321,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
 
     // --- wiring ---
 
-    private TimelineRevisionService buildTimelineRevisionService(DSLContext dsl, TimelineSnapshotService snapshotService) {
+    private TimelineRevisionQueryService buildTimelineRevisionService(DSLContext dsl, TimelineSnapshotService snapshotService) {
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         TimelineScriptParser parser = new TimelineScriptParser(extensionsReader);
         TimelineSpecImportAdapter importAdapter = new TimelineSpecImportAdapter(extensionsReader);
@@ -329,13 +330,11 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         TimelineSpecResolver resolver = new TimelineSpecResolver(TimelineTestSupport.internalTimelineAdapter(), parser);
         TimelineConversionService conversionService = new TimelineConversionService(resolver, importAdapter, importService);
         TimelinePatchService patchService = new TimelinePatchService(canonicalizer);
-        return new TimelineRevisionService(
-                new TimelineRevisionRepository(dsl), snapshotService,
-                new com.example.platform.timeline.app.TimelineContentHasher(canonicalizer),
-                new TimelineRevisionDiffService(),
-                new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter()),
-                patchService,
-                new TimelineSemanticDiffService(canonicalizer));
+        var diffService = new TimelineRevisionDiffService();
+        var hasher = new com.example.platform.timeline.app.TimelineContentHasher(canonicalizer);
+        var payloadCodec = new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter());
+        return new TimelineRevisionQueryService(
+                new TimelineRevisionRepository(dsl), snapshotService, diffService, payloadCodec);
     }
 
     private PlanBasedTimelineRevisionRenderService buildPlanBasedRenderService() {
@@ -376,7 +375,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 materializationService, registrationService, productRuntime, toolInventory, runner, auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
         return new PlanBasedTimelineRevisionRenderService(
-                revisionService, snapshotService, mapper, parser, inputProductResolver,
+                revisionQueryService, snapshotService, mapper, parser, inputProductResolver,
                 normalizer, artifactCompiler, capabilityCompiler, bindingCompiler, draftCompiler,
                 planCompiler, policyGuard, planRunner, materializationService, registrationService,
                 productRuntime, storageRuntime, toolInventory, storageRoot);
