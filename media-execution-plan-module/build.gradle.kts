@@ -28,6 +28,7 @@ dependencies {
     // cloud SDKs, bucket names, object keys, signed URLs, Kubernetes, or FFmpeg.
     implementation(project(":artifact-module"))
     implementation(project(":render-module"))
+    implementation(project(":extension-module"))
     implementation(project(":platform-algorithms:graph"))
 
     // JSON for canonical serialization helpers
