@@ -36,11 +36,14 @@ class Roadmap21EntryResidualGuardTest {
 
     private static List<Path> productionJavaFiles() throws IOException {
         List<Path> out = new ArrayList<>();
-        try (var walk = Files.walk(repoRoot())) {
+        Path root = repoRoot();
+        boolean rootIsWorktree = root.toString().contains("/.worktrees/");
+        try (var walk = Files.walk(root)) {
             walk.filter(Files::isRegularFile)
                     .filter(f -> f.toString().contains("/src/main/java/"))
                     .filter(f -> f.toString().endsWith(".java"))
-                    .filter(f -> !f.toString().contains("/.worktrees/"))
+                    .filter(f -> !f.toString().contains("/.worktrees/")
+                            || (rootIsWorktree && f.toString().startsWith(root.toString())))
                     .filter(f -> !f.toString().contains("/.git/"))
                     .forEach(out::add);
         }
