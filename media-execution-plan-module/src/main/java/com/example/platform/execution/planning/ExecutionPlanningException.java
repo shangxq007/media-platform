@@ -34,7 +34,8 @@ public class ExecutionPlanningException extends RuntimeException {
     public sealed interface PlanningFailureContext permits
             CycleContext, MissingReferenceContext, FingerprintMismatchContext,
             ExtentViolationContext, IllegalPartitionContext,
-            DuplicateIdentityContext, UnsupportedConstructContext {
+            DuplicateIdentityContext, UnsupportedConstructContext,
+            RenderStatusRejectedContext {
 
         /** Compact machine-readable summary (non-authoritative, for logs). */
         String summary();
@@ -104,6 +105,15 @@ public class ExecutionPlanningException extends RuntimeException {
         @Override
         public String lawId() {
             return "law:v1-surface-bounded";
+        }
+    }
+
+    /** Render planning result was not PLANNABLE — guarded entry rejected it. */
+    record RenderStatusRejectedContext(String status, String summary)
+            implements PlanningFailureContext {
+        @Override
+        public String lawId() {
+            return "law:render-status-gate";
         }
     }
 }

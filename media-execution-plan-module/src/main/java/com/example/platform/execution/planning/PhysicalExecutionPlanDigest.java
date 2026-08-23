@@ -52,7 +52,9 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
             uw.field("sourceRenderNodeId", u.sourceRenderNodeId().value());
             uw.field("renderNodeKind", Canonical.renderNodeKind(u.sourceRenderNodeKind()));
             uw.field("operationKey", u.operationKey());
-            // inputs: preserved authored order (dependency positional semantics)
+            // inputs: NON_SEMANTIC order — upstream #20 codec sorts artifact
+            // references (sortedEncodings) that project into input bindings
+            // ORDER_SEMANTICS=NON_SEMANTIC_CANONICAL_SORT
             List<String> inputCanonicals = new ArrayList<>();
             for (var i : u.typedInputs()) {
                 CanonicalWriter iw = new CanonicalWriter();
@@ -66,8 +68,10 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
                         LogicalExecutionGraphBuilder.canonicalWindow(i.requiredSampleWindow()));
                 inputCanonicals.add(iw.build());
             }
-            uw.list(inputCanonicals);
-            // outputs: preserved authored order
+            uw.list(CanonicalWriter.sorted(inputCanonicals));
+            // outputs: NON_SEMANTIC order — upstream #20 codec sorts output
+            // requirements (sortedEncodings) projecting into output declarations
+            // ORDER_SEMANTICS=NON_SEMANTIC_CANONICAL_SORT
             List<String> outputCanonicals = new ArrayList<>();
             for (var o : u.typedOutputs()) {
                 CanonicalWriter ow = new CanonicalWriter();
@@ -81,8 +85,10 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
                 ow.list(o.finalArtifactExpectations().stream().map(Canonical::finalArtifact).toList());
                 outputCanonicals.add(ow.build());
             }
-            uw.list(outputCanonicals);
-            // dependencies: preserved authored order
+            uw.list(CanonicalWriter.sorted(outputCanonicals));
+            // dependencies: NON_SEMANTIC order — logical edge collection is
+            // canonical-sorted (C6-A; upstream #20 codec sorts edge encodings)
+            // ORDER_SEMANTICS=NON_SEMANTIC_CANONICAL_SORT
             List<String> depCanonicals = new ArrayList<>();
             for (var d : u.typedDependencies()) {
                 CanonicalWriter dw = new CanonicalWriter();
@@ -93,7 +99,7 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
                 dw.field("dependency", Canonical.dependency(d.dependencyVariant()));
                 depCanonicals.add(dw.build());
             }
-            uw.list(depCanonicals);
+            uw.list(CanonicalWriter.sorted(depCanonicals));
             uw.optional(u.temporalWindow() != null,
                     LogicalExecutionGraphBuilder.canonicalWindow(u.temporalWindow()));
             uw.optional(u.executionCoverage() != null,

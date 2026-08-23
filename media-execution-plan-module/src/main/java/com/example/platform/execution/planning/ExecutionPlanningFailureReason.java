@@ -27,6 +27,10 @@ public enum ExecutionPlanningFailureReason {
     /** Requested RenderExtent is inconsistent with the graph/plan. */
     INCONSISTENT_RENDER_EXTENT("law:extent-single-authority"),
 
+    /** Render planning result is not PLANNABLE (UNRENDERABLE or
+     *  PREPARATION_REQUIRED) — guarded execution entry rejects it. */
+    RENDER_PLANNING_RESULT_NOT_PLANNABLE("law:render-status-gate"),
+
     /** A physical partition violates structural constraints. */
     ILLEGAL_PARTITION("law:partition-1-to-1"),
 

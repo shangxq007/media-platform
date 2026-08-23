@@ -16,6 +16,7 @@ dependencies {
     implementation(project(":notification-module")) // NotificationEventPublisher rehomed to notification (K2)
     api(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))
+    testImplementation(project(":media-execution-plan-module")) // R21 C6-C guarded-entry boundary tests (test-only; no production cycle)
     api(project(":ai-module"))
     api(project(":storage-module"))
     api(project(":artifact-module")) // GCR-2: canonical Artifact authority (frozen direction: Render -> Artifact; no cycle: artifact-module no longer depends on render)

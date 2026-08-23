@@ -99,12 +99,15 @@ public record LogicalExecutionGraph(
     }
 
     /**
-     * Deterministic extent-pruning evidence (C12/C13, Blocker E).
+     * Deterministic extent-pruning evidence (C12/C13 Option A, frozen).
      * Proves that every eliminated node is provably outside the requested
-     * extent: its required sample window is fully disjoint from the extent
-     * (window.end <= extent.start OR window.start >= extent.end), so no
-     * contributing work is removed. Elimination is transitive: a node is also
-     * eliminated when all of its producers were eliminated.
+     * RenderExtent: its OWN typed RenderExecutionCoverage (timeline/render
+     * coordinate domain) is disjoint from the extent
+     * (coverage.end <= extent.start OR coverage.start >= extent.end), so no
+     * contributing work is removed. RenderSampleWindow (source-media sampling
+     * coordinates) NEVER participates in extent-pruning comparison.
+     * ALL_PRODUCERS_ELIMINATED transitive inference is FORBIDDEN — a node is
+     * eliminated only by its own typed coverage evidence.
      */
     public record PruningEvidence(
             String requestedExtent,

@@ -486,4 +486,65 @@ class Roadmap21PlanningGuardTest {
         }
     }
 
+
+    // ---------- Correction 6 guards ----------
+
+    @Test
+    void logicalDigestEdgeOrderNonSemantic() throws IOException {
+        String lg = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraphDigest.java")));
+        assertTrue(lg.contains("CanonicalWriter.sorted(edgeCanonicals)"),
+                "LOGICAL_EDGE_ORDER_SEMANTIC_PRESERVE_ASSUMPTION_COUNT=0 — edges canonical-sorted (upstream #20 sorts edge encodings)");
+        assertFalse(lg.contains("String.join"),
+                "LOGICAL_DIGEST_RAW_ELIMINATED_STRING_JOIN_COUNT=0 — no delimiter join of semantic collections");
+    }
+
+    @Test
+    void physicalDigestCollectionsCanonicalSorted() throws IOException {
+        String pd = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlanDigest.java")));
+        assertTrue(pd.contains("CanonicalWriter.sorted(inputCanonicals)"), "inputs sorted (upstream sorts artifacts)");
+        assertTrue(pd.contains("CanonicalWriter.sorted(outputCanonicals)"), "outputs sorted (upstream sorts outputs)");
+        assertTrue(pd.contains("CanonicalWriter.sorted(depCanonicals)"), "dependencies sorted (edge set non-semantic)");
+    }
+
+    @Test
+    void guardedEntryIsSoleProductionPath() throws IOException {
+        // ExecutionPlanningEntry is the guarded production boundary; no other
+        // production source may invoke LogicalPhysicalPlanner directly
+        String mep = repoRoot().resolve(
+                "media-execution-plan-module/src/main").toString();
+        int plannerCalls = 0;
+        try (var walk = java.nio.file.Files.walk(java.nio.file.Path.of(mep))) {
+            for (var f : (Iterable<java.nio.file.Path>) walk.filter(x -> x.toString().endsWith(".java"))::iterator) {
+                String src = Files.readString(f);
+                if (src.contains("LogicalPhysicalPlanner.plan(")
+                        && !f.toString().endsWith("ExecutionPlanningEntry.java")) {
+                    plannerCalls++;
+                }
+            }
+        }
+        assertEquals(0, plannerCalls,
+                "PRODUCTION_DIRECT_LOGICAL_PHYSICAL_PLANNER_CALLERS_OUTSIDE_GUARDED_ENTRY=0");
+        String entry = Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/ExecutionPlanningEntry.java"));
+        assertTrue(entry.contains("RENDER_PLANNING_RESULT_NOT_PLANNABLE"),
+                "guarded entry rejects with typed reason");
+        assertTrue(entry.contains("RenderPlanStatus.PLANNABLE"), "only PLANNABLE accepted");
+    }
+
+    @Test
+    void pruningEvidenceDocCanonical() throws IOException {
+        String lg = Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraph.java"));
+        assertFalse(lg.contains("required sample window is fully disjoint"),
+                "STALE_SAMPLE_WINDOW_PRUNING_DOC_REMOVED — PruningEvidence javadoc corrected");
+        assertFalse(lg.contains("all of its producers were eliminated"),
+                "ALL_PRODUCERS_ELIMINATED_DOC_REMOVED — stale transitive inference doc removed");
+        assertTrue(lg.contains("OWN typed RenderExecutionCoverage"),
+                "COVERAGE_VS_EXTENT_DOC_CANONICAL — coverage vs extent wording canonical");
+        assertTrue(lg.contains("NEVER participates in extent-pruning"),
+                "RenderSampleWindow excluded from pruning doc");
+    }
+
 }
