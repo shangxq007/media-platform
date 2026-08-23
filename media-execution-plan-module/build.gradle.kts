@@ -34,6 +34,7 @@ dependencies {
     // TEST-ONLY: font-text domain fixtures for the T2 bridge tests; #21
     // production MUST NOT depend on font-text (authority boundary #19/#20/#21)
     testImplementation(project(":font-text-module"))
+    testImplementation(project(":timeline-module")) // test-only fixtures (EffectInstance/MediaClip types for EMR construction); #21 production never depends on timeline
     implementation(project(":platform-algorithms:graph"))
 
     // JSON for canonical serialization helpers

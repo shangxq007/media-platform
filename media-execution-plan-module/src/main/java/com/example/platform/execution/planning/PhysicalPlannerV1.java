@@ -13,6 +13,7 @@ import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPla
 import com.example.platform.render.domain.renderplan.RenderArtifactReference;
 import com.example.platform.render.domain.renderplan.RenderExtent;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +43,15 @@ public final class PhysicalPlannerV1 {
         }
     }
 
+    /** Deterministic sort key for incoming-edge input records (C7-A): the
+     *  complete independent edge semantics (producer + consumer + typed
+     *  dependency variant), NOT traversal position. */
+    static String edgeCanonical(RenderDependencyEdgeLike e) {
+        return e.producerLogicalNodeId() + "\u0001"
+                + (e.dependencyVariant() != null
+                        ? Canonical.dependency(e.dependencyVariant()) : "null");
+    }
+
     private PhysicalPlannerV1() {
     }
 
@@ -65,36 +75,43 @@ public final class PhysicalPlannerV1 {
             // pinned consumed input (semantic direction: SourceArtifact ->
             // InputBinding, ALWAYS — even without a graph producer edge, e.g.
             // a DECODE root node consuming source media); (b) graph edges into
-            // the node bind the exact dependency variant
+            // the node bind the exact dependency variant.
+            //
+            // C7-A (final determinism closure): NO positional SourceArtifact ↔
+            // edge pairing. #20 does NOT establish sourceArtifacts[i] belongs
+            // to incomingEdges[i] merely because both are Lists, so each
+            // SourceArtifact becomes its own independent InputBinding
+            // (producer/dependency null — root/pinned) and each incoming edge
+            // its own independent InputBinding (sourceArtifact null).
+            // ExecutionInputId ordinals are assigned AFTER canonical sorting
+            // of each independent record class — never from pre-normalization
+            // traversal position (law:planning-deterministic).
             var inputs = new ArrayList<InputBinding>();
-            int inputIdx = 0;
             var srcArtifacts = node.artifactReferences().stream()
                     .filter(a -> a instanceof RenderArtifactReference.SourceArtifact)
                     .map(a -> (RenderArtifactReference.SourceArtifact) a)
+                    .sorted(Comparator.comparing(a -> Canonical.sourceArtifact(a)))
                     .toList();
             var incomingEdges = logical.edges().stream()
                     .filter(e -> e.consumerLogicalNodeId().equals(node.logicalNodeId()))
                     .map(RenderDependencyEdgeLike::of)
+                    .sorted(Comparator.comparing(PhysicalPlannerV1::edgeCanonical))
                     .toList();
             for (int i = 0; i < srcArtifacts.size(); i++) {
-                RenderDependencyEdgeLike edgeLike = i < incomingEdges.size() ? incomingEdges.get(i) : null;
                 inputs.add(new InputBinding(
-                        new ExecutionInputId(node.sourceRenderNodeId().value() + "#in" + inputIdx),
+                        new ExecutionInputId(node.sourceRenderNodeId().value() + "#in" + i),
                         node.logicalNodeId(),
                         new ExecutionStepId(node.logicalNodeId()),
                         node.sourceRenderNodeId(),
-                        edgeLike != null ? edgeLike.producerLogicalNodeId() : null,
-                        edgeLike != null ? new ExecutionStepId(edgeLike.producerLogicalNodeId()) : null,
-                        edgeLike != null ? edgeLike.producerRenderNodeId() : null,
-                        edgeLike != null ? edgeLike.dependencyVariant() : null,
+                        null, null, null, null,
                         srcArtifacts.get(i),
                         node.requiredSampleWindow()));
-                inputIdx++;
             }
-            for (int i = srcArtifacts.size(); i < incomingEdges.size(); i++) {
+            for (int i = 0; i < incomingEdges.size(); i++) {
                 var edge = incomingEdges.get(i);
                 inputs.add(new InputBinding(
-                        new ExecutionInputId(node.sourceRenderNodeId().value() + "#in" + inputIdx),
+                        new ExecutionInputId(node.sourceRenderNodeId().value()
+                                + "#in" + (srcArtifacts.size() + i)),
                         node.logicalNodeId(),
                         new ExecutionStepId(node.logicalNodeId()),
                         node.sourceRenderNodeId(),
@@ -104,7 +121,6 @@ public final class PhysicalPlannerV1 {
                         edge.dependencyVariant(),
                         null,
                         node.requiredSampleWindow()));
-                inputIdx++;
             }
 
             // typed outputs: exact #20 output/materialization requirements +

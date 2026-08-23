@@ -78,11 +78,19 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
                 ow.tag("OUTPUT");
                 ow.field("outputId", o.outputId().value());
                 ow.field("logicalNodeId", o.logicalNodeId());
-                ow.list(o.outputRequirements().stream().map(Canonical::outputRequirement).toList());
-                ow.list(o.materializationRequirements().stream().map(Canonical::materialization).toList());
-                ow.list(o.intermediateArtifactExpectations().stream()
-                        .map(Canonical::intermediateArtifact).toList());
-                ow.list(o.finalArtifactExpectations().stream().map(Canonical::finalArtifact).toList());
+                // C7-C: nested output-declaration collections follow #20
+                // NON_SEMANTIC order (codec sorts artifact/output/materialization
+                // encodings; derived intermediate/final expectations must not
+                // reintroduce insertion-order semantics)
+                ow.list(CanonicalWriter.sorted(
+                        o.outputRequirements().stream().map(Canonical::outputRequirement).toList()));
+                ow.list(CanonicalWriter.sorted(
+                        o.materializationRequirements().stream().map(Canonical::materialization).toList()));
+                ow.list(CanonicalWriter.sorted(
+                        o.intermediateArtifactExpectations().stream()
+                                .map(Canonical::intermediateArtifact).toList()));
+                ow.list(CanonicalWriter.sorted(
+                        o.finalArtifactExpectations().stream().map(Canonical::finalArtifact).toList()));
                 outputCanonicals.add(ow.build());
             }
             uw.list(CanonicalWriter.sorted(outputCanonicals));
@@ -105,10 +113,11 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
             uw.optional(u.executionCoverage() != null,
                     LogicalExecutionGraphBuilder.canonicalCoverage(u.executionCoverage()));
             uw.field("unitExtent", LogicalExecutionGraphBuilder.canonicalExtent(u.propagatedExtent()));
-            uw.list(u.capabilityRequirementRefs().stream()
-                    .map(c -> Canonical.capability(c.declaration())).toList());
-            uw.list(u.executionIntentRefs().stream()
-                    .map(e -> Canonical.executionIntent(e.declaration())).toList());
+            // C7-C: unit requirement refs follow #20 NON_SEMANTIC order
+            uw.list(CanonicalWriter.sorted(u.capabilityRequirementRefs().stream()
+                    .map(c -> Canonical.capability(c.declaration())).toList()));
+            uw.list(CanonicalWriter.sorted(u.executionIntentRefs().stream()
+                    .map(e -> Canonical.executionIntent(e.declaration())).toList()));
             uw.field("cacheable", Boolean.toString(u.deterministicallyCacheable()));
             unitCanonicals.add(uw.build());
         }

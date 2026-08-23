@@ -74,11 +74,20 @@ public record LogicalExecutionGraphDigest(String sha256Hex) {
             nw.field("renderNodeKind", Canonical.renderNodeKind(n.sourceRenderNodeKind()));
             nw.field("componentPath", Canonical.componentPath(n.componentPath()));
             nw.field("operationKey", n.operationKey());
-            nw.list(n.artifactReferences().stream().map(Canonical::artifact).toList());
-            nw.list(n.capabilityRequirements().stream().map(Canonical::capability).toList());
-            nw.list(n.executionRequirements().stream().map(Canonical::executionIntent).toList());
-            nw.list(n.outputRequirements().stream().map(Canonical::outputRequirement).toList());
-            nw.list(n.materializationRequirements().stream().map(Canonical::materialization).toList());
+            // C7-B: nested collections follow #20 NON_SEMANTIC order — the #20
+            // codec sorts artifact/capability/output/materialization canonical
+            // encodings (sortedEncodings); executionRequirements carry no #20
+            // positional authority (List container only) -> canonical sort.
+            nw.list(CanonicalWriter.sorted(
+                    n.artifactReferences().stream().map(Canonical::artifact).toList()));
+            nw.list(CanonicalWriter.sorted(
+                    n.capabilityRequirements().stream().map(Canonical::capability).toList()));
+            nw.list(CanonicalWriter.sorted(
+                    n.executionRequirements().stream().map(Canonical::executionIntent).toList()));
+            nw.list(CanonicalWriter.sorted(
+                    n.outputRequirements().stream().map(Canonical::outputRequirement).toList()));
+            nw.list(CanonicalWriter.sorted(
+                    n.materializationRequirements().stream().map(Canonical::materialization).toList()));
             nw.optional(n.requiredSampleWindow() != null,
                     LogicalExecutionGraphBuilder.canonicalWindow(n.requiredSampleWindow()));
             nw.optional(n.executionCoverage() != null,

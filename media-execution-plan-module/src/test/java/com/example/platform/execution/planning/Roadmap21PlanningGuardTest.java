@@ -547,4 +547,77 @@ class Roadmap21PlanningGuardTest {
                 "RenderSampleWindow excluded from pruning doc");
     }
 
+
+    // ---------- Correction 7 guards ----------
+
+    @Test
+    void noPositionalArtifactEdgeZipInPlanner() throws IOException {
+        String planner = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalPlannerV1.java")));
+        // independent input bindings: source artifacts and incoming edges are
+        // never paired by list position — no indexed zip in the SAME loop
+        assertFalse(java.util.regex.Pattern.compile(
+                        "srcArtifacts\\.get\\(i\\)[\\s\\S]{0,1500}?incomingEdges\\.get\\(i\\)")
+                        .matcher(planner).find()
+                        && java.util.regex.Pattern.compile(
+                        "incomingEdges\\.get\\(i\\)[\\s\\S]{0,1500}?srcArtifacts\\.get\\(i\\)")
+                        .matcher(planner).find(),
+                "POSITIONAL_SOURCE_ARTIFACT_EDGE_ZIP_COUNT=0 — no zip by index");
+        assertTrue(planner.contains("Canonical.sourceArtifact(a))"),
+                "source-artifact inputs canonical-sorted before id assignment");
+        assertTrue(planner.contains("edgeCanonical"),
+                "incoming-edge inputs canonical-sorted before id assignment");
+        assertFalse(planner.contains("#in\" + inputIdx"),
+                "RAW_INCOMING_EDGE_ORDER_TO_INPUT_ID_COUNT=0 — no traversal-position input ids");
+    }
+
+    @Test
+    void logicalNestedCollectionsCanonicalSorted() throws IOException {
+        String lg = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraphDigest.java")));
+        for (String f : new String[]{"artifactReferences", "capabilityRequirements",
+                "executionRequirements", "outputRequirements", "materializationRequirements"}) {
+            assertTrue(lg.contains("CanonicalWriter.sorted(\n                    n." + f + "().stream()"),
+                    "logical nested " + f + " canonical-sorted (C7-B)");
+        }
+    }
+
+    @Test
+    void physicalNestedCollectionsCanonicalSorted() throws IOException {
+        String pd = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlanDigest.java")));
+        for (String f : new String[]{"o.outputRequirements", "o.materializationRequirements",
+                "o.intermediateArtifactExpectations", "o.finalArtifactExpectations",
+                "u.capabilityRequirementRefs", "u.executionIntentRefs"}) {
+            assertTrue(java.util.regex.Pattern.compile(
+                            "CanonicalWriter\\.sorted\\(\\s*" + f + "\\(\\)\\.stream\\(\\)")
+                            .matcher(pd).find(),
+                    "physical nested " + f + " canonical-sorted (C7-C)");
+        }
+    }
+
+    @Test
+    void plannerVisibilityPackagePrivate() throws IOException {
+        String planner = Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalPhysicalPlanner.java"));
+        assertFalse(planner.contains("public final class LogicalPhysicalPlanner"),
+                "PUBLIC_LOGICAL_PHYSICAL_LOW_LEVEL_ENTRY_COUNT=0 — planner is package-private");
+        assertFalse(planner.contains("public static PlanningResult plan"),
+                "no public low-level plan entry");
+        // repository-wide: no production source outside the guarded entry calls the planner
+        String mep = repoRoot().resolve("media-execution-plan-module/src/main").toString();
+        int calls = 0;
+        try (var walk = java.nio.file.Files.walk(java.nio.file.Path.of(mep))) {
+            for (var f : (Iterable<java.nio.file.Path>) walk.filter(x -> x.toString().endsWith(".java"))::iterator) {
+                String src = Files.readString(f);
+                if (src.contains("LogicalPhysicalPlanner.plan(")
+                        && !f.toString().endsWith("ExecutionPlanningEntry.java")) {
+                    calls++;
+                }
+            }
+        }
+        assertEquals(0, calls,
+                "PRODUCTION_DIRECT_LOGICAL_PHYSICAL_PLANNER_CALLERS_OUTSIDE_GUARDED_ENTRY=0");
+    }
+
 }

@@ -24,13 +24,13 @@ import java.util.Set;
  * same logical digest → same physical plan content → same physical digest.
  * NO mutable runtime reads, NO provider/worker/device binding.
  */
-public final class LogicalPhysicalPlanner {
+final class LogicalPhysicalPlanner {
 
     private LogicalPhysicalPlanner() {
     }
 
     /** Plan a validated RenderPlan (+ its validated RenderGraph) end to end. */
-    public static PlanningResult plan(RenderPlan plan, RenderGraph graph,
+    static PlanningResult plan(RenderPlan plan, RenderGraph graph,
                                       com.example.platform.execution.domain.ExecutionPlanId planId) {
         Objects.requireNonNull(plan, "plan");
         Objects.requireNonNull(graph, "graph");
