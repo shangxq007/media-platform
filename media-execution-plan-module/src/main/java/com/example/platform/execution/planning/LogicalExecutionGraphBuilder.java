@@ -136,14 +136,19 @@ public final class LogicalExecutionGraphBuilder {
                     continue; // consumer eliminated by coverage pruning -> edge eliminated with it
                 }
                 if (!surviving.contains(producer)) {
-                    throw new ExecutionPlanningException(
-                            ExecutionPlanningFailureReason.INVALID_LOGICAL_GRAPH,
-                            new ExecutionPlanningException.MissingReferenceContext(
-                                    "producerLogicalNode", producer,
-                                    "dangling producer after coverage elimination"));
+                    // GRAPH-CLOSED EXTENT PRUNING (Correction 3 B1): the
+                    // producer carries typed DISJOINT_COVERAGE evidence proving
+                    // its contribution is outside the requested extent; an
+                    // eliminated producer's edge is not a required input of the
+                    // surviving consumer. Removing the edge is semantically
+                    // legal — the input was proven irrelevant. This is NOT
+                    // ALL_PRODUCERS_ELIMINATED node pruning: the consumer
+                    // survives with its remaining (in-extent) inputs.
+                    continue;
                 }
                 edges.add(new LogicalExecutionGraph.LogicalDependencyEdge(
-                        "le-" + e.producerId().value() + "-" + e.consumerId().value(),
+                        new com.example.platform.execution.domain.ExecutionEdgeId(
+                                "le-" + e.producerId().value() + "-" + e.consumerId().value()),
                         producer, consumer,
                         e.producerId(), e.consumerId(), e.dependency()));
             }

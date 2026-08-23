@@ -53,7 +53,7 @@ class Roadmap21DigestMutationTest {
                 List.of(RenderOutputRequirement.of(outputRole)),
                 List.of(new RenderExecutionRequirement(GpuRequirement.NONE,
                         RenderDeterminismClass.DETERMINISTIC, false)),
-                List.of(), w != null ? Optional.of(w) : Optional.empty());
+                List.of(), w != null ? Optional.of(w) : Optional.empty(), null);
     }
 
     static RenderPlanFingerprint FP = new RenderPlanFingerprint("fp-1");

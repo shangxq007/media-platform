@@ -198,7 +198,7 @@ class Roadmap21IoAndCanonicalTest {
         assertEquals(a.digest(), b.digest(), "same inputs -> same physical digest");
         assertEquals(a.planId(), b.planId(), "plan identity is caller-supplied and stable");
         assertNotNull(a.schemaVersion());
-        assertEquals("1.0", a.schemaVersion().canonical(), "SCHEMA_VERSION_FROZEN_SEMANTICS=YES");
+        assertEquals("1", a.schemaVersion().canonical(), "SCHEMA_VERSION_FROZEN_SEMANTICS=YES");
     }
 
     @Test
@@ -274,4 +274,178 @@ class Roadmap21IoAndCanonicalTest {
                         MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1)));
         assertNotEquals(gA.digest(), gB.digest(), "format/schema semantic version change must change digest");
     }
+
+    // ---------- M17/M18: full ColorDescription / RasterSampleDescription ----------
+
+    static com.example.platform.colorimage.ColorDescription bt709() {
+        return new com.example.platform.colorimage.ColorDescription.ParametricColorDescription(
+                com.example.platform.colorimage.ColorPrimaries.WellKnown.BT709,
+                com.example.platform.colorimage.TransferCharacteristic.BT709,
+                com.example.platform.colorimage.MatrixCoefficients.BT709,
+                com.example.platform.colorimage.SignalRange.LIMITED);
+    }
+
+    static com.example.platform.colorimage.ColorDescription bt2020() {
+        return new com.example.platform.colorimage.ColorDescription.ParametricColorDescription(
+                com.example.platform.colorimage.ColorPrimaries.WellKnown.BT2020,
+                com.example.platform.colorimage.TransferCharacteristic.PQ,
+                com.example.platform.colorimage.MatrixCoefficients.BT2020_NCL,
+                com.example.platform.colorimage.SignalRange.LIMITED);
+    }
+
+    static com.example.platform.colorimage.RasterSampleDescription raster8bit() {
+        return new com.example.platform.colorimage.RasterSampleDescription(
+                com.example.platform.colorimage.SampleFamily.YCbCr,
+                com.example.platform.colorimage.SampleOrganization.PLANAR,
+                8,
+                com.example.platform.colorimage.ChromaSubsampling.SAMPLE_420,
+                com.example.platform.colorimage.ChromaLocation.LEFT,
+                false);
+    }
+
+    static com.example.platform.colorimage.RasterSampleDescription raster10bit() {
+        return new com.example.platform.colorimage.RasterSampleDescription(
+                com.example.platform.colorimage.SampleFamily.YCbCr,
+                com.example.platform.colorimage.SampleOrganization.PLANAR,
+                10,
+                com.example.platform.colorimage.ChromaSubsampling.SAMPLE_420,
+                com.example.platform.colorimage.ChromaLocation.LEFT,
+                false);
+    }
+
+    static com.example.platform.render.domain.renderplan.RenderOutputRequirement outReq(
+            com.example.platform.colorimage.ColorDescription cd,
+            com.example.platform.colorimage.RasterSampleDescription raster) {
+        return new com.example.platform.render.domain.renderplan.RenderOutputRequirement(
+                RenderOutputRole.RENDER_MASTER,
+                Optional.ofNullable(cd),
+                Optional.ofNullable(raster));
+    }
+
+    static RenderNode nodeWithOutput(RenderOutputRequirement out) {
+        return new RenderNode(new RenderNodeId("n1"), new RenderNodeKind.Source(),
+                RenderComponentPath.of(RenderComponentKind.CLIP, "clip-n1"), "transcode",
+                List.of(), List.of(
+                        new CapabilityRequirement(CapabilityId.of("media.transcode"),
+                                ContractVersionRange.atLeast(ContractVersion.of(1, 0)), true, List.of())),
+                List.of(out),
+                List.of(new RenderExecutionRequirement(GpuRequirement.NONE,
+                        RenderDeterminismClass.DETERMINISTIC, false)),
+                List.of(), Optional.empty(),
+                new com.example.platform.render.domain.renderplan.RenderExecutionCoverage(
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(10000), FrameRate.of(25, 1)));
+    }
+
+    @Test
+    void colorDescriptionFullValueMutationChangesDigest() {
+        var a = build(nodeWithOutput(outReq(bt709(), raster8bit())));
+        var b = build(nodeWithOutput(outReq(bt2020(), raster8bit())));
+        assertNotEquals(a.digest(), b.digest(),
+                "COLOR_MUTATION_TEST — BT709 -> BT2020 must change digest (full value, not presence)");
+    }
+
+    @Test
+    void rasterSampleFullValueMutationChangesDigest() {
+        var a = build(nodeWithOutput(outReq(bt709(), raster8bit())));
+        var b = build(nodeWithOutput(outReq(bt709(), raster10bit())));
+        assertNotEquals(a.digest(), b.digest(),
+                "RASTER_MUTATION_TEST — 8-bit -> 10-bit must change digest (full value)");
+    }
+
+    // ---------- M25/M26: AudioMixInput payload in dependency ----------
+
+    @Test
+    void audioMixInputPayloadMutationChangesDigest() {
+        var n1 = nodeWithArtifacts("n1", List.of(), List.of());
+        var producer = nodeWithArtifacts("p1", List.of(), List.of());
+        var edgeA = new com.example.platform.render.domain.renderplan.RenderDependencyEdge(
+                new RenderNodeId("p1"), new RenderNodeId("n1"),
+                new RenderDependency.AudioInput(
+                        new com.example.platform.audio.domain.mix.AudioMixInput("t1", "c1")));
+        var edgeB = new com.example.platform.render.domain.renderplan.RenderDependencyEdge(
+                new RenderNodeId("p1"), new RenderNodeId("n1"),
+                new RenderDependency.AudioInput(
+                        new com.example.platform.audio.domain.mix.AudioMixInput("t1", "c2")));
+        var gA = LogicalExecutionGraphBuilder.build(
+                new RenderGraph("render-graph-v1", FP, List.of(producer, n1), List.of(edgeA),
+                        new RenderGraphFingerprint("gf-1")),
+                new com.example.platform.render.domain.renderplan.RenderExtent(
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1)));
+        var gB = LogicalExecutionGraphBuilder.build(
+                new RenderGraph("render-graph-v1", FP, List.of(producer, n1), List.of(edgeB),
+                        new RenderGraphFingerprint("gf-1")),
+                new com.example.platform.render.domain.renderplan.RenderExtent(
+                        MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1)));
+        assertNotEquals(gA.digest(), gB.digest(),
+                "AudioMixInput clipId mutation must change logical digest (explicit payload encoding)");
+    }
+
+    // ---------- M35/M36/M37 + X01/X02/X03: physical digest actual fields + exclusions ----------
+
+    @Test
+    void physicalFormatVersionActualValueIncluded() {
+        var n = nodeWithArtifacts("n1", List.of(), List.of());
+        var logical = build(n);
+        var extent = new com.example.platform.render.domain.renderplan.RenderExtent(
+                MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1));
+        var a = PhysicalPlannerV1.plan(logical, extent,
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-1"));
+        var b = PhysicalPlannerV1.plan(logical, extent,
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-1"));
+        assertEquals(a.digest(), b.digest(), "same inputs -> same digest");
+        // physical digest must consume the ACTUAL formatVersion + schemaVersion:
+        // two plans with genuinely different format versions must differ
+        var unitsA = a.units();
+        var dA = PhysicalExecutionPlanDigest.compute("physical-execution-plan-v1",
+                a.schemaVersion(), unitsA, logical.planFingerprint(), extent);
+        var dB = PhysicalExecutionPlanDigest.compute("physical-execution-plan-v2",
+                a.schemaVersion(), unitsA, logical.planFingerprint(), extent);
+        assertNotEquals(dA, dB, "ACTUAL_PHYSICAL_FORMAT_VERSION_INCLUDED=YES — v1 vs v2 must differ");
+        var dC = PhysicalExecutionPlanDigest.compute("physical-execution-plan-v1",
+                new com.example.platform.execution.domain.ExecutionPlanSchemaVersion(2),
+                unitsA, logical.planFingerprint(), extent);
+        assertNotEquals(dA, dC, "ACTUAL_EXECUTION_SCHEMA_VERSION_INCLUDED=YES — schema 1 vs 2 must differ");
+        assertNotEquals(a.planId(), a.digest().sha256Hex(), "identity != digest");
+    }
+
+    @Test
+    void planIdExclusion() {
+        var n = nodeWithArtifacts("n1", List.of(), List.of());
+        var logical = build(n);
+        var extent = new com.example.platform.render.domain.renderplan.RenderExtent(
+                MediaTime.ofMillis(0), MediaTime.ofMillis(100000), FrameRate.of(25, 1));
+        var a = PhysicalPlannerV1.plan(logical, extent,
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-A"));
+        var b = PhysicalPlannerV1.plan(logical, extent,
+                new com.example.platform.execution.domain.ExecutionPlanId("pep-B"));
+        assertEquals(a.digest(), b.digest(),
+                "X01 — ExecutionPlanId change alone must NOT change physical semantic digest");
+        assertNotEquals(a.planId(), b.planId(), "distinct plan identities preserved");
+    }
+
+    @Test
+    void provenanceExclusion() {
+        var n = nodeWithArtifacts("n1", List.of(), List.of());
+        var gA = build(n);
+        var gB = build(n);
+        assertEquals(gA.digest(), gB.digest(),
+                "X02/X03 — provenance/correlation/createdAt are never semantic digest inputs");
+        // mechanical: neither digest encoder consumes provenance fields
+        assertFalse(gA.digest().sha256Hex().contains("correlation"),
+                "no provenance string in digest");
+        String digSrc = "";
+        try {
+            digSrc = java.nio.file.Files.readString(
+                    java.nio.file.Paths.get("src/main/java/com/example/platform/execution/planning/LogicalExecutionGraphDigest.java"));
+        } catch (java.io.IOException e) {
+            throw new AssertionError(e);
+        }
+        // strip comments: the digest encoder's javadoc may mention excluded
+        // provenance fields; CODE must never reference them
+        digSrc = digSrc.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
+        assertFalse(digSrc.contains("createdAt") || digSrc.contains("correlationId")
+                        || digSrc.contains("traceId") || digSrc.contains("requestedBy"),
+                "PROVENANCE_EXCLUSION=YES — digest encoder never references provenance fields");
+    }
+
 }

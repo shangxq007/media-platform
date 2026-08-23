@@ -285,4 +285,66 @@ class Roadmap21PlanningGuardTest {
                 "capability encoding explicit (no toString semantic authority)");
     }
 
+
+    // ---------- Correction 3 guards (B2/B3) ----------
+
+    @Test
+    void noRenderNodeCompatibilitySurface() throws IOException {
+        // RAW text (comments included): a compatibility constructor/factory
+        // declaration is surface evidence even in javadoc form
+        String rn = Files.readString(repoRoot().resolve(
+                "render-module/src/main/java/com/example/platform/render/domain/renderplan/RenderNode.java"));
+        assertFalse(rn.contains("Compatibility constructor"),
+                "RENDER_NODE_COMPATIBILITY_CONSTRUCTOR_COUNT=0");
+        assertFalse(rn.contains("Backwards-compatible"),
+                "RENDER_NODE_BACKWARDS_COMPATIBLE_FACTORY_COUNT=0");
+        // exactly one canonical constructor (the record canonical ctor)
+        assertTrue(rn.contains("public record RenderNode("), "canonical record ctor present");
+        assertFalse(rn.contains("public RenderNode(\n            RenderNodeId id,\n            RenderNodeKind kind,\n            RenderComponentPath componentPath,\n            String operationKey,\n            List<RenderArtifactReference> artifactReferences,\n            List<CapabilityRequirement> capabilityRequirements,\n            List<RenderOutputRequirement> outputRequirements,\n            List<RenderExecutionRequirement> executionRequirements,\n            List<RenderMaterializationRequirement> materializationRequirements,\n            Optional<RenderSampleWindow> requiredSampleWindow) {"),
+                "no 10-arg compatibility constructor body remains");
+    }
+
+    @Test
+    void noStringLogicalEdgeIdAuthority() throws IOException {
+        String planning = stripComments(join(planningPackage()));
+        assertFalse(planning.contains("String edgeId,"),
+                "STRING_LOGICAL_EDGE_ID_AUTHORITY_COUNT=0 — LogicalDependencyEdge uses ExecutionEdgeId");
+        assertTrue(planning.contains("ExecutionEdgeId edgeId,"),
+                "EXECUTION_EDGE_ID_TYPED_USAGE=YES");
+    }
+
+    @Test
+    void noSchemaVersionMajorMinorRedesign() throws IOException {
+        String sv = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/ExecutionPlanSchemaVersion.java")));
+        assertFalse(sv.contains("major") || sv.contains("minor"),
+                "SCHEMA_VERSION_MAJOR_MINOR_REDESIGN_COUNT=0 — frozen int value semantics");
+        assertTrue(sv.contains("int value") && sv.contains("value < 1"),
+                "EXECUTION_SCHEMA_VERSION_EXACT_FROZEN_SEMANTICS=YES (int value >= 1)");
+    }
+
+    @Test
+    void executionCreationContextFrozenShape() throws IOException {
+        String cc = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/ExecutionCreationContext.java")));
+        for (String field : new String[]{"requestedByUserId", "requestedByTenantId", "requestPurpose",
+                "createdAt", "traceId", "parentPlanId", "comment"}) {
+            assertTrue(cc.contains(field), "EXECUTION_CREATION_CONTEXT_FROZEN_SHAPE=YES — field " + field);
+        }
+    }
+
+    @Test
+    void noAllProducersEliminatedPruningCount() throws IOException {
+        String planning = stripComments(join(planningPackage()));
+        assertFalse(planning.contains("allProducersEliminated") || planning.contains("ALL_PRODUCERS_ELIMINATED"),
+                "ALL_PRODUCERS_ELIMINATED_PRUNING_COUNT=0");
+        // node elimination may ONLY happen via the node's OWN typed coverage
+        // (deterministic coverage loop) — never via producer-elimination inference
+        String builder = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraphBuilder.java")));
+        long eliminationSites = java.util.regex.Pattern.compile("eliminated\\.add\\(").matcher(builder).results().count();
+        assertEquals(1, eliminationSites,
+                "ALL_PRODUCERS_ELIMINATED_PRUNING_COUNT=0 — the ONLY node-elimination site is coverage-based");
+    }
+
 }

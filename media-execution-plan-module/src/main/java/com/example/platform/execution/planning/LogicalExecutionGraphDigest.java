@@ -70,7 +70,7 @@ public record LogicalExecutionGraphDigest(String sha256Hex) {
                     .append('\n');
         }
         var sortedEdges = edges.stream()
-                .sorted(Comparator.comparing(LogicalExecutionGraph.LogicalDependencyEdge::edgeId))
+                .sorted(Comparator.comparing(e -> e.edgeId().value()))
                 .toList();
         for (var e : sortedEdges) {
             // full payload via deterministic canonical record toString — the

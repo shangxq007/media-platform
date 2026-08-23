@@ -83,7 +83,7 @@ public record LogicalExecutionGraph(
      * variant record is the authoritative semantic carrier.
      */
     public record LogicalDependencyEdge(
-            String edgeId,
+            com.example.platform.execution.domain.ExecutionEdgeId edgeId,
             String producerLogicalNodeId,
             String consumerLogicalNodeId,
             RenderNodeId producerRenderNodeId,

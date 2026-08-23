@@ -30,11 +30,15 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
     }
 
     public static PhysicalExecutionPlanDigest compute(
+            String formatVersion,
+            com.example.platform.execution.domain.ExecutionPlanSchemaVersion schemaVersion,
             List<PhysicalPlanUnit> units,
             RenderPlanFingerprint planFingerprint,
             RenderExtent propagatedExtent) {
         StringBuilder sb = new StringBuilder();
         sb.append("PHYSICAL_EXECUTION_PLAN_V1\n");
+        sb.append("formatVersion=").append(formatVersion).append('\n');
+        sb.append("schemaVersion=").append(schemaVersion.canonical()).append('\n');
         sb.append("planFingerprint=").append(planFingerprint.sha256Hex()).append('\n');
         sb.append("extent=").append(LogicalExecutionGraphBuilder.canonicalExtent(propagatedExtent)).append('\n');
         var sorted = units.stream()

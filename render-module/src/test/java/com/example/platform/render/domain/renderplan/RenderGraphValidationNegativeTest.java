@@ -68,11 +68,11 @@ class RenderGraphValidationNegativeTest {
         RenderNode a = new RenderNode(id, new RenderNodeKind.Decode(),
                 RenderComponentPath.of(RenderComponentKind.CLIP, "t1/c1"), "decode",
                 List.of(), List.of(RenderCapabilityVocabulary.videoDecode()),
-                List.of(), List.of(), List.of(), Optional.empty());
+                List.of(), List.of(), List.of(), Optional.empty(), null);
         RenderNode b = new RenderNode(id, new RenderNodeKind.Decode(),
                 RenderComponentPath.of(RenderComponentKind.CLIP, "t1/c1"), "decode",
                 List.of(), List.of(RenderCapabilityVocabulary.videoDecode()),
-                List.of(), List.of(), List.of(), Optional.empty());
+                List.of(), List.of(), List.of(), Optional.empty(), null);
         RenderPlan plan = planWith(List.of(a, b), List.of());
         RenderGraph graph = buildGraph(plan);
         RenderGraphValidationResult result = new RenderGraphValidator().validate(plan, graph, topology(plan, graph));
@@ -90,12 +90,12 @@ class RenderGraphValidationNegativeTest {
         RenderNode nodeA = new RenderNode(a, new RenderNodeKind.Decode(),
                 RenderComponentPath.of(RenderComponentKind.CLIP, "t1/c1"), "decode",
                 List.of(), List.of(RenderCapabilityVocabulary.videoDecode()),
-                List.of(), List.of(), List.of(), Optional.empty());
+                List.of(), List.of(), List.of(), Optional.empty(), null);
         RenderNode nodeB = new RenderNode(b, new RenderNodeKind.Effect(),
                 new RenderComponentPath(RenderComponentKind.EFFECT, List.of("c1", "e1")), "blur",
                 List.of(), List.of(RenderCapabilityVocabulary.forEffect(
                         com.example.platform.timeline.semantics.effect.EffectInstance.EffectCategory.GAUSSIAN_BLUR)),
-                List.of(), List.of(), List.of(), Optional.empty());
+                List.of(), List.of(), List.of(), Optional.empty(), null);
         // edge references a node (missing) not in the node list
         RenderDependencyEdge badEdge = new RenderDependencyEdge(a, missing, new RenderDependency.EffectInput());
         RenderPlan plan = planWith(List.of(nodeA, nodeB), List.of(badEdge));
@@ -111,7 +111,7 @@ class RenderGraphValidationNegativeTest {
         RenderNode nodeA = new RenderNode(a, new RenderNodeKind.Decode(),
                 RenderComponentPath.of(RenderComponentKind.CLIP, "t1/c1"), "decode",
                 List.of(), List.of(RenderCapabilityVocabulary.videoDecode()),
-                List.of(), List.of(), List.of(), Optional.empty());
+                List.of(), List.of(), List.of(), Optional.empty(), null);
         RenderDependencyEdge selfEdge = new RenderDependencyEdge(a, a, new RenderDependency.DecodedFrames());
         RenderPlan plan = planWith(List.of(nodeA), List.of(selfEdge));
         RenderGraph graph = buildGraph(plan);
@@ -130,11 +130,11 @@ class RenderGraphValidationNegativeTest {
         RenderNode nodeMix = new RenderNode(mix, new RenderNodeKind.AudioMix(),
                 RenderComponentPath.of(RenderComponentKind.AUDIO_MIX, "master"), "mix",
                 List.of(), List.of(RenderCapabilityVocabulary.audioMix()),
-                List.of(), List.of(), List.of(), Optional.empty());
+                List.of(), List.of(), List.of(), Optional.empty(), null);
         RenderNode nodeOutput = new RenderNode(output, new RenderNodeKind.Output(),
                 RenderComponentPath.of(RenderComponentKind.OUTPUT, "master"), "encode",
                 List.of(), List.of(RenderCapabilityVocabulary.outputEncode()),
-                List.of(), List.of(), List.of(), Optional.empty());
+                List.of(), List.of(), List.of(), Optional.empty(), null);
         RenderDependencyEdge badEdge = new RenderDependencyEdge(mix, output, new RenderDependency.EffectInput());
         RenderPlan plan = planWith(List.of(nodeMix, nodeOutput), List.of(badEdge));
         RenderGraph graph = buildGraph(plan);

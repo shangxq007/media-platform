@@ -377,7 +377,7 @@ class Roadmap21ContractBehaviorTest {
         assertNotEquals(pep.planId().value(), pep.digest().sha256Hex(),
                 "ExecutionPlanId is identity, NOT semantic digest");
         assertNotNull(pep.schemaVersion());
-        assertEquals("1.0", pep.schemaVersion().canonical());
+        assertEquals("1", pep.schemaVersion().canonical());
     }
 
     // ---------- C12/C13 coordinate-space tests ----------

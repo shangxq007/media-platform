@@ -72,6 +72,11 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
 
         // clipId -> DECODE node, for wiring audio/effect edges (parallel lists; avoids Map<String)
         ArrayList<String> decodeKeys = new ArrayList<>();
+        // clipId -> typed timeline coverage range (for AUDIO_PROCESS coverage;
+        // same clip timeline coordinates as the DECODE node of that clip)
+        ArrayList<String> coverageKeys = new ArrayList<>();
+        ArrayList<com.example.platform.shared.time.MediaTime> coverageStartValues = new ArrayList<>();
+        ArrayList<com.example.platform.shared.time.MediaTime> coverageEndValues = new ArrayList<>();
         ArrayList<RenderNodeId> decodeValues = new ArrayList<>();
         // clipId -> last video producer node (last effect or decode), for OUTPUT wiring
         ArrayList<String> producerKeys = new ArrayList<>();
@@ -109,6 +114,9 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     Optional.of(decodeWindow), decodeCoverage);
             nodes.add(decodeNode);
             putEntry(decodeKeys, decodeValues, clip.clipId(), decodeId);
+            coverageKeys.add(clip.clipId());
+            coverageStartValues.add(clip.timelineRange().start());
+            coverageEndValues.add(clip.timelineRange().end());
             putEntry(producerKeys, producerValues, clip.clipId(), decodeId);
 
             // ── chained EFFECT nodes for enabled video effects on this clip ──
@@ -169,9 +177,19 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         effectRequirement, effectCaps));
                 RenderNodeId effectId = RenderNodeId.of(
                         new RenderNodeKind.Effect(), effectPath, opKey, effectReqFp);
-                RenderExecutionCoverage effectCoverage = new RenderExecutionCoverage(
-                        clip.timelineRange().start(), clip.timelineRange().end(),
-                        request.extent() != null ? request.extent().frameRate() : null);
+                RenderExecutionCoverage effectCoverage;
+                if (effectRequirement != null && effectRequirement.applicationRange() != null) {
+                    // typed authored effect contribution range (may be narrower
+                    // than the full clip range) — exact timeline coordinates
+                    effectCoverage = new RenderExecutionCoverage(
+                            effectRequirement.applicationRange().start(),
+                            effectRequirement.applicationRange().end(),
+                            request.extent() != null ? request.extent().frameRate() : null);
+                } else {
+                    effectCoverage = new RenderExecutionCoverage(
+                            clip.timelineRange().start(), clip.timelineRange().end(),
+                            request.extent() != null ? request.extent().frameRate() : null);
+                }
                 RenderNode effectNode = new RenderNode(
                         effectId, new RenderNodeKind.Effect(), effectPath, opKey,
                         List.of(), effectCaps, List.of(), List.of(),
@@ -207,10 +225,17 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                         List.of(), audioCaps, List.of(), audioParamEncodings));
                 RenderNodeId audioId = RenderNodeId.of(
                         new RenderNodeKind.AudioProcess(), audioPath, OP_GAIN, audioReqFp);
+                RenderExecutionCoverage audioCoverage = null;
+                int coverageIdx = coverageKeys.indexOf(mixInput.clipId());
+                if (coverageIdx >= 0) {
+                    audioCoverage = new RenderExecutionCoverage(
+                            coverageStartValues.get(coverageIdx), coverageEndValues.get(coverageIdx),
+                            request.extent() != null ? request.extent().frameRate() : null);
+                }
                 RenderNode audioNode = new RenderNode(
                         audioId, new RenderNodeKind.AudioProcess(), audioPath, OP_GAIN,
                         List.of(), audioCaps, List.of(), List.of(),
-                        List.of(audioRequirement), Optional.empty());
+                        List.of(audioRequirement), Optional.empty(), audioCoverage);
                 nodes.add(audioNode);
                 audioProcessNodes.add(audioId);
 
@@ -238,7 +263,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     new RenderNodeKind.AudioMix(), mixPath, OP_MIX, mixReqFp);
             RenderNode mixNode = new RenderNode(
                     mixId, new RenderNodeKind.AudioMix(), mixPath, OP_MIX,
-                    List.of(), mixCaps, List.of(), List.of(), List.of(), Optional.empty());
+                    List.of(), mixCaps, List.of(), List.of(), List.of(), Optional.empty(), null); // aggregate
             nodes.add(mixNode);
             for (RenderNodeId audioProcessId : audioProcessNodes) {
                 edges.add(new RenderDependencyEdge(audioProcessId, mixId,
@@ -268,7 +293,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
             RenderNode textNode = new RenderNode(
                     textId, new RenderNodeKind.TimedText(), textPath, OP_RASTER,
                     List.of(), textCaps, List.of(), List.of(),
-                    List.of(textRequirement), Optional.empty());
+                    List.of(textRequirement), Optional.empty(), null); // no timeline interval
             nodes.add(textNode);
             timedTextNodes.add(textId);
         }
@@ -286,7 +311,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     new RenderNodeKind.Composite(), compositePath, OP_COMPOSITE, compositeReqFp);
             RenderNode compositeNode = new RenderNode(
                     compositeId, new RenderNodeKind.Composite(), compositePath, OP_COMPOSITE,
-                    List.of(), compositeCaps, List.of(), List.of(), List.of(), Optional.empty());
+                    List.of(), compositeCaps, List.of(), List.of(), List.of(), Optional.empty(), null); // aggregate
             nodes.add(compositeNode);
             // COMPOSITE depends on the final video producer of the primary clip
             MediaClip primaryClip = clips.get(0);
@@ -317,7 +342,7 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
         RenderNode outputNode = new RenderNode(
                 outputId, new RenderNodeKind.Output(), outputPath, OP_ENCODE,
                 outputArtifacts, outputCaps, List.copyOf(request.outputs()), List.of(),
-                List.of(), Optional.empty());
+                List.of(), Optional.empty(), null); // full-extent sink: never pruned by coverage
         nodes.add(outputNode);
 
         // OUTPUT --CompositeInput--> COMPOSITE when timed text participates,

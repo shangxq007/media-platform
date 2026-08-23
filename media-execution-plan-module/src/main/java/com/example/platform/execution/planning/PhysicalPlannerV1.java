@@ -161,13 +161,16 @@ public final class PhysicalPlannerV1 {
         }
         // ExecutionPlanId: independent identity supplied by the caller
         // (planning context) — NEVER derived from semantic fingerprint
+        ExecutionPlanSchemaVersion schema = new ExecutionPlanSchemaVersion(1);
         return new PhysicalExecutionPlan(
                 "physical-execution-plan-v1",
                 planId,
-                new ExecutionPlanSchemaVersion(1, 0),
+                schema,
                 logical.planFingerprint(),
                 units,
                 requestedExtent,
-                PhysicalExecutionPlanDigest.compute(units, logical.planFingerprint(), requestedExtent));
+                PhysicalExecutionPlanDigest.compute(
+                        "physical-execution-plan-v1", schema, units,
+                        logical.planFingerprint(), requestedExtent));
     }
 }
