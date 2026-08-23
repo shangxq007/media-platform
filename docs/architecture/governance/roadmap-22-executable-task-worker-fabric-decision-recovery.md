@@ -93,8 +93,10 @@ plan-neutral. CapabilityRequirement expresses WHAT capability is required.
 #22 does NOT redefine this.
 
 **CapabilityImplementationId** — AUTHORITY: Roadmap #16 CapabilityRegistry.
-Meaning: one concrete realization of ONE CapabilityId. Existing authority
-unchanged. Provider/Worker/Device do not enter this identity.
+Meaning: one concrete realization of ONE CapabilityId.
+SEMANTIC_CAPABILITY_IDENTITY=NO (it does NOT replace CapabilityId, does NOT
+become semantic Capability contract identity); CAPABILITY_IMPLEMENTATION_IDENTITY=YES.
+Existing authority unchanged. Provider/Worker/Device do not enter this identity.
 CAPABILITY_IMPLEMENTATION_ID_IN_20_21_UPSTREAM_DIGEST_BY_DEFAULT=NO:
 #20/#21 provider-neutral requirements express semantic capability
 requirements through CapabilityId + contract compatibility, NOT concrete
@@ -265,22 +267,21 @@ EXECUTABLE_TASK_GRAPH_V1=PROVIDER_BOUND, WORKER_UNBOUND, DEVICE_UNBOUND.
 
 ### ExecutableTaskGraphDigest — frozen inclusion/exclusion (NOT conditional)
 
-INCLUDE at minimum:
+ETG digest includes canonical ProviderBindingPin semantics; it does NOT
+separately define slightly different provider binding fields (single binding
+authority, LAW_R22_023).
+
+ETG_DIGEST_INCLUDE at minimum:
 - graph format/schema version
 - exact PhysicalPlanUnit identity/reference
 - task dependency topology
-- ExecutableTaskId semantics (deterministic, §11)
-- selected ProviderId
-- selected ProviderImplementationId
-- immutable ProviderExecutionContract version/pin
-- immutable ProviderCapabilityProfile version/digest or equivalent frozen pin
-- typed boundary actions
-- immutable required input Artifact references/pins
-- provider binding semantics necessary to reproduce lowering
-- optional CapabilityImplementationId pin(s) ONLY where explicitly selected
-  (ETG_PROVIDER_BINDING_PARTICIPATION)
+- deterministic ExecutableTaskId (§11)
+- canonical ProviderBindingPin (§10)
+- typed BoundaryAction semantics
+- immutable required input Artifact pins
+- other explicitly frozen lowering semantics
 
-EXCLUDE:
+ETG_DIGEST_EXCLUDE:
 - ExecutableTaskGraphId (business id separate)
 - WorkerId
 - DeviceId
@@ -296,18 +297,56 @@ EXCLUDE:
 - timestamps, metrics, logs
 - correlation, trace
 - observability/provenance-only fields
+- ACTUAL OUTPUT Artifact pins (do not exist before successful execution;
+  they are EXECUTION_RESULT / PROVENANCE_LINEAGE, immutable after Artifact
+  commit — NOT an input to the pre-execution ETG digest; do not confuse
+  output requirements with actual output Artifact identity)
 
 Frozen laws:
 WORKER_ASSIGNMENT_DOES_NOT_CHANGE_EXECUTABLE_TASK_GRAPH_DIGEST_V1
 DEVICE_ASSIGNMENT_DOES_NOT_CHANGE_EXECUTABLE_TASK_GRAPH_DIGEST_V1
 
-### Provider binding pinning (frozen)
+### ProviderBindingPin — SINGLE canonical definition (frozen)
 
-ProviderImplementationId alone is not sufficient if mutable metadata could
-change. Freeze an immutable binding pin sufficient for reproducibility:
-ProviderImplementationId + ProviderVersion + ProviderExecutionContractVersion
-+ ProviderCapabilityProfileVersionOrDigest. Mutable probe results do NOT
-participate.
+PROVIDER_BINDING_PIN_DEFINITION_COUNT=1. There is exactly ONE canonical
+ProviderBindingPin definition; all sections reference this exact definition.
+
+```
+ProviderBindingPin {
+  ProviderId
+  ProviderImplementationId
+  ProviderVersion
+  ProviderExecutionContractVersion
+  ProviderCapabilityProfileVersionOrDigest
+  canonical optional CapabilityImplementationId pins
+}
+```
+
+- ProviderBindingPin is the single executable-binding authority
+  (LAW_R22_023). No separately-defined slightly-different binding fields
+  anywhere.
+- Optional CapabilityImplementationId pin ordering: CAPABILITY_IMPLEMENTATION_PIN_ORDER_IS_NONSEMANTIC_V1 —
+  canonical serialization sorts pins deterministically by typed canonical
+  identity before framing. NO insertion order, NO traversal position.
+- Multiplicity: the pin set represents selected DISTINCT implementations.
+  Duplicate identical pin = INVALID_PROVIDER_BINDING, fail closed
+  (LAW_R22_022). Pin permutation does not change the binding
+  (LAW_R22_021).
+- Mutable probe results do NOT participate.
+
+### ProviderVersion semantics (frozen)
+
+ProviderVersion MUST version the provider implementation behavior that may
+affect deterministic PlanLowerer output / executable provider binding. If
+provider lowering behavior changes incompatibly, ProviderVersion and/or
+ProviderExecutionContractVersion MUST change. ProviderVersion is part of the
+immutable ProviderBindingPin: IMMUTABLE_EXECUTABLE_BINDING=YES,
+ETG_BINDING_PARTICIPATION=YES. It MAY also be copied into execution
+provenance; it is NOT PROVENANCE_ONLY. A RuntimeAdapter implementation
+version may be provenance-only ONLY when changing it does not change
+executable semantic lowering; if runtime adapter behavior changes semantics,
+it must be reflected through an immutable Provider binding/version contract,
+not hidden in provenance. No unpinned semantic execution behavior.
 
 ## 11. ExecutableTaskId — Deterministic Identity (frozen)
 
@@ -513,33 +552,39 @@ UNKNOWN_PROVIDER_SUPPORT≠SUPPORTED, UNKNOWN_RUNTIME_AVAILABILITY≠AVAILABLE).
 - LAW_R22_018 CAPABILITY_IMPLEMENTATION_SELECTION_NEVER_MUTATES_UPSTREAM_PROVIDER_NEUTRAL_SEMANTICS
 - LAW_R22_019 SAME_FROZEN_PHYSICAL_UNIT_AND_PROVIDER_BINDING_PRODUCES_SAME_EXECUTABLE_TASK_ID
 - LAW_R22_020 WORKER_DEVICE_ATTEMPT_ASSIGNMENT_NEVER_CHANGES_EXECUTABLE_TASK_ID
+- LAW_R22_021 CAPABILITY_IMPLEMENTATION_PIN_PERMUTATION_DOES_NOT_CHANGE_PROVIDER_BINDING
+- LAW_R22_022 DUPLICATE_CAPABILITY_IMPLEMENTATION_PIN_FAILS_CLOSED
+- LAW_R22_023 PROVIDER_BINDING_PIN_IS_SINGLE_EXECUTABLE_BINDING_AUTHORITY
+- LAW_R22_024 INPUT_ARTIFACT_PIN_PARTICIPATES_IN_EXECUTABLE_BINDING_WHILE_ACTUAL_OUTPUT_ARTIFACT_PIN_IS_EXECUTION_RESULT
 
 ## 26. Identity/Digest Matrix (final)
 
-| Identity | AUTHORITY | BUSINESS_IDENTITY | SEMANTIC_CAPABILITY_IDENTITY | PROVIDER_IDENTITY | RUNTIME_IDENTITY | STABLE | MUTABLE | PERSISTED | DIGEST_PARTICIPATION |
-|---|---|---|---|---|---|---|---|---|---|
-| CapabilityId | #16 CapabilityRegistry | YES | YES | NO | NO | YES | NO | YES | #20/#21 upstream semantics |
-| CapabilityImplementationId | #16 CapabilityRegistry | YES | YES (realization) | NO | NO | YES | NO | YES | NOT in #20/#21 upstream digests by default; ETG digest ONLY when explicitly pinned via ProviderCapabilityProfile support declaration (ETG_PROVIDER_BINDING_PARTICIPATION) |
-| ProviderId | #22 provider runtime domain | YES | NO | YES | NO | YES | NO | YES | ETG digest (binding) only |
-| ProviderImplementationId | #22 executable provider runtime domain | YES | NO | YES | NO | YES | NO | YES | ETG digest (binding) only |
-| WorkerId | #22 worker domain | YES | NO | NO | YES | YES | NO | YES | NOT in ETG digest (runtime/provenance) |
-| DeviceId | #22 device domain | YES | NO | NO | YES | YES | NO | YES | NOT in ETG digest (runtime/provenance) |
-| ExecutableTaskGraphId | #22 | YES | NO | NO | NO | YES | NO | YES | separate from digest |
-| ExecutableTaskGraphDigest | #22 | NO | NO | NO | NO | YES | NO | YES | ETG semantics per §10 frozen include/exclude (provider-bound; worker/device-excluded) |
-| ExecutableTaskId | #22 | YES | NO | NO | NO | YES | NO | YES | ETG digest constituent (deterministic from PhysicalPlanUnit + ProviderBindingPin) |
-| ExecutionAssignmentId | #22 runtime | YES | NO | NO | YES | NO | YES | transient | NOT in any semantic digest |
-| ExecutionAttemptId | #22 runtime | YES | NO | NO | YES | NO | NO | YES | provenance only |
-| LeaseId | #22 runtime | YES | NO | NO | YES | NO | YES | transient | none |
+| Identity | AUTHORITY | BUSINESS_IDENTITY | SEMANTIC_CAPABILITY_IDENTITY | CAPABILITY_IMPLEMENTATION_IDENTITY | PROVIDER_IDENTITY | RUNTIME_IDENTITY | STABLE | MUTABLE | PERSISTED | DIGEST_PARTICIPATION |
+|---|---|---|---|---|---|---|---|---|---|---|
+| CapabilityId | #16 CapabilityRegistry | YES | YES | NO | NO | NO | YES | NO | YES | #20/#21 upstream semantics |
+| CapabilityImplementationId | #16 CapabilityRegistry | YES | NO | YES | NO | NO | YES | NO | YES | NOT in #20/#21 upstream digests by default; ETG digest ONLY when explicitly pinned via ProviderCapabilityProfile support declaration (ETG_PROVIDER_BINDING_PARTICIPATION) |
+| ProviderId | #22 provider runtime domain | YES | NO | NO | YES | NO | YES | NO | YES | ETG digest (via ProviderBindingPin) only |
+| ProviderImplementationId | #22 executable provider runtime domain | YES | NO | NO | YES | NO | YES | NO | YES | ETG digest (via ProviderBindingPin) only |
+| ProviderVersion | #22 provider runtime domain | NO | NO | NO | component of ProviderBindingPin | NO | YES | NO | YES | ETG digest (via ProviderBindingPin); MAY copy to provenance; NOT provenance-only |
+| WorkerId | #22 worker domain | YES | NO | NO | NO | YES | YES | NO | YES | NOT in ETG digest (runtime/provenance) |
+| DeviceId | #22 device domain | YES | NO | NO | NO | YES | YES | NO | YES | NOT in ETG digest (runtime/provenance) |
+| ExecutableTaskGraphId | #22 | YES | NO | NO | NO | NO | YES | NO | YES | separate from digest |
+| ExecutableTaskGraphDigest | #22 | NO | NO | NO | NO | NO | YES | NO | YES | ETG semantics per §10 frozen include/exclude (provider-bound via ProviderBindingPin; worker/device-excluded) |
+| ExecutableTaskId | #22 | YES | NO | NO | NO | NO | YES | NO | YES | ETG digest constituent (deterministic from PhysicalPlanUnit + ProviderBindingPin) |
+| ExecutionAssignmentId | #22 runtime | YES | NO | NO | NO | YES | NO | YES | transient | NOT in any semantic digest |
+| ExecutionAttemptId | #22 runtime | YES | NO | NO | NO | YES | NO | NO | YES | provenance only |
+| LeaseId | #22 runtime | YES | NO | NO | NO | YES | NO | YES | transient | none |
 
 ## 27. Mutability Matrix (final)
 
 | Class | Types |
 |---|---|
 | IMMUTABLE_SEMANTIC | #20 RenderPlan/RenderGraph/RenderNode/RenderDependency semantics, #21 ExecutionRequirement/LogicalExecutionGraph/PhysicalExecutionPlan + digests, Artifact content pin, CapabilityId/CapabilityImplementationId authority |
-| IMMUTABLE_EXECUTABLE_BINDING | ProviderExecutionContract/ProviderDescriptor (pinned), ProviderCapabilityProfile (immutable pinned declaration), ProviderId/ProviderImplementationId binding pins, ProviderBoundExecutableTaskGraph (immutable executable binding), ExecutableTaskId (deterministic), ProviderCompatibilityGraph (immutable deterministic derivation), PlanLowerer output spec |
+| IMMUTABLE_EXECUTABLE_BINDING | ProviderExecutionContract/ProviderDescriptor (pinned), ProviderCapabilityProfile (immutable pinned declaration), ProviderBindingPin (single canonical definition incl. ProviderId/ProviderImplementationId/ProviderVersion/ProviderExecutionContractVersion/ProviderCapabilityProfileVersionOrDigest/canonical optional CapabilityImplementationId pins), ProviderVersion (ETG_BINDING_PARTICIPATION=YES, NOT provenance-only), immutable required input Artifact pins (ETG_DIGEST_PARTICIPATION=YES, NOT provenance-only), ProviderBoundExecutableTaskGraph (immutable executable binding), ExecutableTaskId (deterministic), ProviderCompatibilityGraph (immutable deterministic derivation), PlanLowerer output spec |
 | MUTABLE_RUNTIME_STATE | WorkerRuntimeState, DeviceRuntimeState, ProviderProbeResult (mutable runtime evidence), ExecutionAssignment (runtime placement), ExecutionAttempt (runtime lifecycle), lease, heartbeat, availability, retry counter, RuntimeEligibleCandidateView (ephemeral mutable derivation) |
+| EXECUTION_RESULT / PROVENANCE_LINEAGE | ACTUAL OUTPUT Artifact pins (do not exist before successful execution; immutable after Artifact commit; NOT input to pre-execution ETG digest) |
 | OBSERVABILITY_ONLY | timestamps, metrics, queue depth, utilization, telemetry |
-| PROVENANCE_ONLY | provider version, worker/device identity, adapter version, attempt ids, input/output pins, failure reasons |
+| PROVENANCE_ONLY | worker/device identity (copy), adapter version (only when it does not change executable semantic lowering), attempt ids, failure reasons, input/output pin copies |
 
 ## 28. #22/#23 Boundary Matrix (final terminology)
 
@@ -621,6 +666,11 @@ concrete provider/worker adapters/apps
   media-execution-plan-module — NOT the reverse.
 - media-execution-plan-module → worker-fabric-module is FORBIDDEN (immutable
   execution binding must not depend on mutable runtime state).
+- ProviderExecutionContract (in media-execution-plan-module) MUST NOT import
+  or reference worker-fabric RuntimeAdapter Java types (guard:
+  PROVIDER_EXECUTION_CONTRACT_IMPORTS_WORKER_FABRIC_COUNT=0). It may define
+  immutable provider runtime compatibility/version requirements; RuntimeAdapter
+  (worker-fabric-module) consumes/conforms to those immutable requirements.
 - Concrete provider adapters may depend on media-execution-plan-module,
   worker-fabric-module, Artifact/Storage ports, required infrastructure ports.
 - Concrete provider adapters must NOT become dependencies of either core
@@ -652,6 +702,9 @@ PROVIDER_ID_AS_CAPABILITY_ID_AUTHORITY_COUNT=0, PROVIDER_CAPABILITY_PROFILE_CAPA
 
 C2 guards:
 STALE_R22_PROVIDER_CONTRACT_AUTHORITY_COUNT=0, STALE_BARE_R22_CAPABILITY_PROFILE_AUTHORITY_COUNT=0, CAPABILITY_IMPLEMENTATION_IN_UPSTREAM_PROVIDER_NEUTRAL_DIGEST_COUNT=0, NONDETERMINISTIC_EXECUTABLE_TASK_ID_SOURCE_COUNT=0, EXECUTABLE_TASK_ID_WORKER_DEVICE_DEPENDENCY_COUNT=0, IMMUTABLE_EXECUTION_BINDING_IMPORTS_MUTABLE_WORKER_FABRIC_COUNT=0, MEDIA_EXECUTION_PLAN_MODULE_MUTABLE_RUNTIME_STATE_COUNT=0, WORKER_FABRIC_GLOBAL_OPTIMIZER_COUNT=0.
+
+C3 guards (contract search guards):
+SEMANTIC_CAPABILITY_IDENTITY_YES_FOR_CAPABILITY_IMPLEMENTATION_ID_COUNT=0, PROVIDER_BINDING_PIN_DEFINITION_COUNT=1, INCOMPLETE_PROVIDER_BINDING_PIN_DEFINITION_COUNT=0, PROVIDER_VERSION_PROVENANCE_ONLY_COUNT=0, INPUT_ARTIFACT_PIN_PROVENANCE_ONLY_COUNT=0, INPUT_OUTPUT_ARTIFACT_PIN_UNDIFFERENTIATED_COUNT=0, INFORMAL_LEDGER_PATH_ELLIPSIS_COUNT=0, INFORMAL_LEDGER_PATH_PLUS_TESTS_COUNT=0, UNDECLARED_LEDGER_DOUBLE_STAR_COUNT=0, LEGACY_TARGET_AUTHORITY_COUNT=0, PROVIDER_EXECUTION_CONTRACT_IMPORTS_WORKER_FABRIC_COUNT=0 (implementation guard-plan level).
 
 All previous zero-guard plans retained.
 
@@ -685,9 +738,9 @@ E. Persisted/external compatibility proves CLEAN FORWARD deletion unsafe → NOT
 F. #22 cannot stay bounded/local → NOT OBSERVED.
 G. Formalization reveals contradiction in laws → NOT OBSERVED (laws are consistent at DR level).
 
-## 38. Final Decision Recovery Status (Correction 2)
+## 38. Final Decision Recovery Status (Correction 3)
 
-ROADMAP_22_DECISION_RECOVERY_CORRECTION_2=PASS (draft, pending ChatGPT review)
+ROADMAP_22_DECISION_RECOVERY_CORRECTION_3=PASS (draft, pending ChatGPT review)
 ROADMAP_22_DECISION_RECOVERY=PASS (as corrected)
 READY_FOR_CHATGPT_FINAL_DECISION_RECOVERY_REVIEW=YES
 ROADMAP_22_IMPLEMENTATION=NO_GO
@@ -695,4 +748,4 @@ ROADMAP_23=NOT_STARTED
 BLOCKERS=0
 ARCHITECTURE_ESCALATION=NONE
 
-NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_CORRECTION_2_FINAL_REVIEW
+NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_CORRECTION_3_FINAL_REVIEW
