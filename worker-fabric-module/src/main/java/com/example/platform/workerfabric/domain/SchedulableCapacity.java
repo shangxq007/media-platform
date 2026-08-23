@@ -52,23 +52,7 @@ public record SchedulableCapacity(
                 hostAvailability.isReachable());
     }
 
-    public static SchedulableCapacity forRuntime(
-            CapacitySnapshot staticCapacity,
-            Collection<Reservation> reservations,
-            SafetyHeadroom safetyHeadroom,
-            PhysicalHostAvailability hostAvailability,
-            WorkerRuntimeAvailability runtimeAvailability,
-            LocalWorkerRuntimeIncarnationBinding binding) {
-        validateRuntimeBinding(hostAvailability, runtimeAvailability, binding);
-        return calculate(
-                staticCapacity,
-                reservations,
-                safetyHeadroom,
-                hostAvailability.physicalHostId(),
-                hostAvailability.isReachable() && runtimeAvailability.isReachable());
-    }
-
-    public static SchedulableCapacity forRuntime(
+    public static SchedulableCapacity forLocalRuntime(
             CapacitySnapshot staticCapacity,
             Collection<Reservation> reservations,
             SafetyHeadroom safetyHeadroom,
@@ -76,8 +60,8 @@ public record SchedulableCapacity(
             WorkerRuntimeAvailability runtimeAvailability,
             LocalWorkerRuntimeIncarnationBinding binding,
             WorkerRuntimeDescriptor runtimeDescriptor) {
-        validateRuntimeBinding(hostAvailability, runtimeAvailability, binding);
-        validateRuntimeDescriptor(binding, runtimeDescriptor);
+        validateLocalRuntimeBinding(
+                hostAvailability, runtimeAvailability, binding, runtimeDescriptor);
         return calculate(
                 staticCapacity,
                 reservations,
@@ -86,44 +70,45 @@ public record SchedulableCapacity(
                 hostAvailability.isReachable() && runtimeAvailability.isReachable());
     }
 
-    private static void validateRuntimeBinding(
+    private static void validateLocalRuntimeBinding(
             PhysicalHostAvailability hostAvailability,
             WorkerRuntimeAvailability runtimeAvailability,
-            LocalWorkerRuntimeIncarnationBinding binding) {
+            LocalWorkerRuntimeIncarnationBinding binding,
+            WorkerRuntimeDescriptor runtimeDescriptor) {
         Objects.requireNonNull(hostAvailability, "hostAvailability");
         Objects.requireNonNull(runtimeAvailability, "runtimeAvailability");
         Objects.requireNonNull(binding, "binding");
+        Objects.requireNonNull(runtimeDescriptor, "runtimeDescriptor");
 
+        if (runtimeDescriptor.lifecycleKind() == RuntimeLifecycleKind.REMOTE_RUNTIME) {
+            throw new IllegalArgumentException(
+                    "REMOTE_RUNTIME cannot participate in local runtime capacity calculation");
+        }
+        if (!runtimeDescriptor.id().equals(binding.workerRuntimeId())) {
+            throw new IllegalArgumentException(
+                    "runtime descriptor WorkerRuntimeId does not match local runtime binding");
+        }
         if (!binding.workerRuntimeId().equals(runtimeAvailability.workerRuntimeId())) {
             throw new IllegalArgumentException(
                     "local runtime binding WorkerRuntimeId does not match runtime availability");
         }
-        if (!binding.workerRuntimeIncarnationId().equals(runtimeAvailability.incarnationId())) {
+        PhysicalHostId descriptorHostId = runtimeDescriptor.physicalHostId().orElseThrow(() ->
+                new IllegalArgumentException("local runtime descriptor must identify a physical host"));
+        if (!descriptorHostId.equals(binding.physicalHostId())) {
             throw new IllegalArgumentException(
-                    "local runtime binding WorkerRuntimeIncarnationId does not match runtime availability");
+                    "runtime descriptor PhysicalHostId does not match local runtime binding");
         }
         if (!binding.physicalHostId().equals(hostAvailability.physicalHostId())) {
             throw new IllegalArgumentException(
                     "local runtime binding PhysicalHostId does not match host availability");
         }
+        if (!binding.workerRuntimeIncarnationId().equals(runtimeAvailability.incarnationId())) {
+            throw new IllegalArgumentException(
+                    "local runtime binding WorkerRuntimeIncarnationId does not match runtime availability");
+        }
         if (!binding.physicalHostIncarnationId().equals(hostAvailability.incarnationId())) {
             throw new IllegalArgumentException(
                     "local runtime binding PhysicalHostIncarnationId does not match host availability");
-        }
-    }
-
-    private static void validateRuntimeDescriptor(
-            LocalWorkerRuntimeIncarnationBinding binding,
-            WorkerRuntimeDescriptor runtimeDescriptor) {
-        Objects.requireNonNull(runtimeDescriptor, "runtimeDescriptor");
-        if (!binding.workerRuntimeId().equals(runtimeDescriptor.id())) {
-            throw new IllegalArgumentException(
-                    "local runtime binding WorkerRuntimeId does not match runtime descriptor");
-        }
-        if (runtimeDescriptor.physicalHostId().isEmpty()
-                || !binding.physicalHostId().equals(runtimeDescriptor.physicalHostId().orElseThrow())) {
-            throw new IllegalArgumentException(
-                    "local runtime binding PhysicalHostId does not match runtime descriptor");
         }
     }
 

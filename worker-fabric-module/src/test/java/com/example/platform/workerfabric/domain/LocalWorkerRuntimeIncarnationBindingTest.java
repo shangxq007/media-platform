@@ -21,7 +21,7 @@ class LocalWorkerRuntimeIncarnationBindingTest {
 
     @Test
     void matchingRuntimeHostIncarnationBindingSucceeds() {
-        SchedulableCapacity result = SchedulableCapacity.forRuntime(
+        SchedulableCapacity result = SchedulableCapacity.forLocalRuntime(
                 staticCapacity(),
                 List.of(),
                 SafetyHeadroom.none(),
@@ -80,7 +80,7 @@ class LocalWorkerRuntimeIncarnationBindingTest {
 
     @Test
     void descriptorHostMismatchFailsClosed() {
-        assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forRuntime(
+        assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
                 staticCapacity(),
                 List.of(),
                 SafetyHeadroom.none(),
@@ -95,13 +95,14 @@ class LocalWorkerRuntimeIncarnationBindingTest {
         PhysicalHostAvailability unreachableHost = new PhysicalHostAvailability(
                 HOST_ID, HOST_INCARNATION, AvailabilityState.UNREACHABLE);
 
-        SchedulableCapacity result = SchedulableCapacity.forRuntime(
+        SchedulableCapacity result = SchedulableCapacity.forLocalRuntime(
                 staticCapacity(),
                 List.of(),
                 SafetyHeadroom.none(),
                 unreachableHost,
                 reachableRuntime(),
-                currentBinding());
+                currentBinding(),
+                localDescriptor(HOST_ID));
 
         assertUnavailable(result);
     }
@@ -111,13 +112,14 @@ class LocalWorkerRuntimeIncarnationBindingTest {
         WorkerRuntimeAvailability unreachableRuntime = new WorkerRuntimeAvailability(
                 RUNTIME_ID, RUNTIME_INCARNATION, AvailabilityState.UNREACHABLE);
 
-        SchedulableCapacity result = SchedulableCapacity.forRuntime(
+        SchedulableCapacity result = SchedulableCapacity.forLocalRuntime(
                 staticCapacity(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 unreachableRuntime,
-                currentBinding());
+                currentBinding(),
+                localDescriptor(HOST_ID));
 
         assertUnavailable(result);
     }
@@ -127,7 +129,7 @@ class LocalWorkerRuntimeIncarnationBindingTest {
         WorkerRuntimeDescriptor wrongRuntimeDescriptor = WorkerRuntimeDescriptor.local(
                 WorkerRuntimeId.of("runtime-2"), RuntimeLifecycleKind.RESIDENT_RUNTIME, HOST_ID);
 
-        assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forRuntime(
+        assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
                 staticCapacity(),
                 List.of(),
                 SafetyHeadroom.none(),
@@ -138,16 +140,80 @@ class LocalWorkerRuntimeIncarnationBindingTest {
     }
 
     @Test
-    void runtimeCapacityApiHasOneBindingAuthorityAndNoBindinglessEntryPoint() {
-        List<Method> runtimeCapacityMethods = Arrays.stream(SchedulableCapacity.class.getMethods())
-                .filter(method -> Modifier.isStatic(method.getModifiers()))
-                .filter(method -> method.getName().equals("forRuntime"))
-                .toList();
+    void remoteRuntimeDescriptorWithFabricatedHostBindingFailsClosed() {
+        WorkerRuntimeDescriptor remoteDescriptor = WorkerRuntimeDescriptor.remote(RUNTIME_ID);
 
-        assertThat(runtimeCapacityMethods).isNotEmpty();
-        assertThat(runtimeCapacityMethods)
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
+                        staticCapacity(),
+                        List.of(),
+                        SafetyHeadroom.none(),
+                        reachableHost(),
+                        reachableRuntime(),
+                        currentBinding(),
+                        remoteDescriptor))
+                .withMessageContaining("REMOTE_RUNTIME");
+    }
+
+    @Test
+    void localRuntimeCapacityCannotBeCalledWithoutDescriptor() {
+        assertThat(localRuntimeCapacityEntrypoints())
+                .hasSize(1)
+                .allSatisfy(method -> assertThat(method.getParameterTypes())
+                        .contains(WorkerRuntimeDescriptor.class));
+    }
+
+    @Test
+    void localRuntimeCapacityCannotBeCalledWithoutIncarnationBinding() {
+        assertThat(localRuntimeCapacityEntrypoints())
+                .hasSize(1)
                 .allSatisfy(method -> assertThat(method.getParameterTypes())
                         .contains(LocalWorkerRuntimeIncarnationBinding.class));
+    }
+
+    @Test
+    void matchingLocalDescriptorBindingAndAvailabilitySucceeds() {
+        SchedulableCapacity result = SchedulableCapacity.forLocalRuntime(
+                staticCapacity(),
+                List.of(),
+                SafetyHeadroom.none(),
+                reachableHost(),
+                reachableRuntime(),
+                currentBinding(),
+                localDescriptor(HOST_ID));
+
+        assertThat(result.available()).isTrue();
+        assertThat(result.cpu()).isEqualTo(CpuCapacity.ofMillicores(8_000));
+    }
+
+    @Test
+    void descriptorStableHostMismatchFailsClosed() {
+        WorkerRuntimeDescriptor wrongHostDescriptor =
+                localDescriptor(PhysicalHostId.of("host-2"));
+
+        assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
+                staticCapacity(),
+                List.of(),
+                SafetyHeadroom.none(),
+                reachableHost(),
+                reachableRuntime(),
+                currentBinding(),
+                wrongHostDescriptor));
+    }
+
+    @Test
+    void runtimeCapacityApiHasOneBindingAuthorityAndNoBindinglessEntryPoint() {
+        List<Method> runtimeCapacityMethods = localRuntimeCapacityEntrypoints();
+
+        assertThat(runtimeCapacityMethods)
+                .singleElement()
+                .extracting(Method::getName)
+                .isEqualTo("forLocalRuntime");
+        assertThat(runtimeCapacityMethods)
+                .allSatisfy(method -> assertThat(method.getParameterTypes())
+                        .contains(
+                                LocalWorkerRuntimeIncarnationBinding.class,
+                                WorkerRuntimeDescriptor.class));
         assertThat(Arrays.stream(LocalWorkerRuntimeIncarnationBinding.class.getRecordComponents())
                         .map(component -> component.getType().getSimpleName()))
                 .containsExactly(
@@ -161,13 +227,22 @@ class LocalWorkerRuntimeIncarnationBindingTest {
             LocalWorkerRuntimeIncarnationBinding binding,
             PhysicalHostAvailability hostAvailability,
             WorkerRuntimeAvailability runtimeAvailability) {
-        assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forRuntime(
+        assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
                 staticCapacity(),
                 List.of(),
                 SafetyHeadroom.none(),
                 hostAvailability,
                 runtimeAvailability,
-                binding));
+                binding,
+                localDescriptor(HOST_ID)));
+    }
+
+    private static List<Method> localRuntimeCapacityEntrypoints() {
+        return Arrays.stream(SchedulableCapacity.class.getMethods())
+                .filter(method -> Modifier.isStatic(method.getModifiers()))
+                .filter(method -> method.getReturnType().equals(SchedulableCapacity.class))
+                .filter(method -> !method.getName().equals("forHost"))
+                .toList();
     }
 
     private static void assertUnavailable(SchedulableCapacity result) {

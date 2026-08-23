@@ -122,13 +122,14 @@ class ResourceModelSafetyTest {
 
         SchedulableCapacity hostResult = SchedulableCapacity.forHost(
                 staticCapacity(), List.of(), SafetyHeadroom.none(), unreachableHost);
-        SchedulableCapacity runtimeResult = SchedulableCapacity.forRuntime(
+        SchedulableCapacity runtimeResult = SchedulableCapacity.forLocalRuntime(
                 staticCapacity(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 unreachableRuntime,
-                currentBinding());
+                currentBinding(),
+                localRuntimeDescriptor());
 
         assertThat(hostResult.available()).isFalse();
         assertThat(hostResult.cpu().millicores()).isZero();
@@ -192,6 +193,11 @@ class ResourceModelSafetyTest {
     private static LocalWorkerRuntimeIncarnationBinding currentBinding() {
         return new LocalWorkerRuntimeIncarnationBinding(
                 RUNTIME_ID, RUNTIME_INCARNATION, HOST_ID, HOST_INCARNATION);
+    }
+
+    private static WorkerRuntimeDescriptor localRuntimeDescriptor() {
+        return WorkerRuntimeDescriptor.local(
+                RUNTIME_ID, RuntimeLifecycleKind.RESIDENT_RUNTIME, HOST_ID);
     }
 
     private static CapacitySnapshot staticCapacity() {
