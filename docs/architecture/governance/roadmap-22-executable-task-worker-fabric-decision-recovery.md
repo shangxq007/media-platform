@@ -1,17 +1,23 @@
 # Roadmap #22 Executable Task Graph and Worker Fabric Runtime — Decision Recovery
 
-STATUS=FROZEN_BOUNDED_ARCHITECTURE_CONTRACT (as amended by Amendment 1 + Amendment 2)
+STATUS=FROZEN_BOUNDED_ARCHITECTURE_CONTRACT (as amended by Amendment 1 + Amendment 2 + Amendment 3)
 READY_FOR_CHATGPT_FINAL_DECISION_RECOVERY_REVIEW=YES
 ROADMAP_22_IMPLEMENTATION=NO_GO
 AMENDMENT_1=docs/architecture/governance/roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md
 AMENDMENT_2=docs/architecture/governance/roadmap-22-native-pull-lease-execution-backend-amendment-2.md
-PRECEDENCE: Amendment 2 wins over Amendment 1 ONLY for assignment protocol,
-  ExecutionBackend/DispatchBackend terminology, Native Pull default role,
-  TaskLease/local admission semantics, OpenCue Role V2, backend-specific
-  placement authority. Amendment 1 remains authority for its non-conflicting
-  frozen content. Where this contract conflicts with either amendment, the
-  amendments govern (LAW_R22_009 is SUPERSEDED by A1; DispatchBackend peer
-  authority and OPEN_CUE_ROLE_V1 are SUPERSEDED by A2).
+AMENDMENT_3=docs/architecture/governance/roadmap-22-runtime-ownership-resource-hold-completion-amendment-3.md
+PRECEDENCE: Amendment 3 supersedes Amendment 2 ONLY for lease-expiry resource
+  release semantics, ExecutionAssignment provider field authority,
+  ExecutionAttempt lifecycle generalization, platform-wide completion fencing,
+  host/runtime incarnation handling. Amendment 2 wins over Amendment 1 ONLY for
+  assignment protocol, ExecutionBackend/DispatchBackend terminology, Native
+  Pull default role, TaskLease/local admission semantics, OpenCue Role V2,
+  backend-specific placement authority. Amendment 1 remains authority for its
+  non-conflicting frozen content. Where this contract conflicts with any
+  amendment, the amendments govern (LAW_R22_009 SUPERSEDED by A1;
+  DispatchBackend peer authority and OPEN_CUE_ROLE_V1 SUPERSEDED by A2;
+  ExecutionAttempt lifecycle, completion fencing and lease-expiry semantics
+  SUPERSEDED by A3).
 
 ## 1. Authority Baseline
 
@@ -712,6 +718,9 @@ STALE_R22_PROVIDER_CONTRACT_AUTHORITY_COUNT=0, STALE_BARE_R22_CAPABILITY_PROFILE
 C3 guards (contract search guards):
 SEMANTIC_CAPABILITY_IDENTITY_YES_FOR_CAPABILITY_IMPLEMENTATION_ID_COUNT=0, PROVIDER_BINDING_PIN_DEFINITION_COUNT=1, INCOMPLETE_PROVIDER_BINDING_PIN_DEFINITION_COUNT=0, PROVIDER_VERSION_PROVENANCE_ONLY_COUNT=0, INPUT_ARTIFACT_PIN_PROVENANCE_ONLY_COUNT=0, INPUT_OUTPUT_ARTIFACT_PIN_UNDIFFERENTIATED_COUNT=0, INFORMAL_LEDGER_PATH_ELLIPSIS_COUNT=0, INFORMAL_LEDGER_PATH_PLUS_TESTS_COUNT=0, UNDECLARED_LEDGER_DOUBLE_STAR_COUNT=0, LEGACY_TARGET_AUTHORITY_COUNT=0, PROVIDER_EXECUTION_CONTRACT_IMPORTS_WORKER_FABRIC_COUNT=0 (implementation guard-plan level).
 
+A3 guards (Amendment 3 §17):
+LEASE_EXPIRY_IMMEDIATE_RESOURCE_RELEASE_WITHOUT_TERMINATION_PROOF_COUNT=0, RECOVERY_HOLD_TREATED_AS_SCHEDULABLE_CAPACITY_COUNT=0, LOST_OWNERSHIP_IMPLIES_RESOURCE_RELEASE_COUNT=0, EXECUTION_ASSIGNMENT_PROVIDER_REBIND_AUTHORITY_COUNT=0, EXECUTION_ASSIGNMENT_PROVIDER_BINDING_MISMATCH_COUNT=0, NATIVE_SPECIFIC_STATE_REQUIRED_BY_OPEN_CUE_ATTEMPT_COUNT=0, NATIVE_SPECIFIC_STATE_REQUIRED_BY_REMOTE_ATTEMPT_COUNT=0, BACKEND_WITHOUT_PLATFORM_COMPLETION_FENCE_COUNT=0, STALE_PLATFORM_GENERATION_AUTHORITATIVE_COMPLETION_COUNT=0, NATIVE_LEASE_FENCE_DIVERGES_FROM_PLATFORM_GENERATION_COUNT=0, UNREACHABLE_HOST_SCHEDULABLE_CAPACITY_COUNT=0, STALE_WORKER_INCARNATION_REQUEST_ACCEPTANCE_COUNT=0.
+
 All previous zero-guard plans retained.
 
 ## 33. Infrastructure Activation Matrix (NOT NOW)
@@ -742,6 +751,12 @@ Native Pull conformance → OpenCue specialized farm backend bounded POC →
 RemoteProvider backend conformance → NVIDIA/cloud Native Pull worker
 conformance → candidate freeze / FCV / independent review.
 Do NOT start these phases yet.
+Phase refinements per Amendment 3 §18: PHASE_3 includes Reservation
+RECOVERY_HOLD semantics; PHASE_11 atomic AssignmentGrant preserves
+ProviderBindingPin authority and creates ExecutionOwnershipGeneration;
+PHASE_12 includes RECOVERY_HOLD + host/runtime incarnation handling;
+PHASE_14 uses platform-wide ExecutionOwnershipGeneration;
+PHASE_21/22 test backend-neutral completion fencing.
 
 ## 35. Parallel Task DAG (future, not now)
 
@@ -767,6 +782,7 @@ G. Formalization reveals contradiction in laws → NOT OBSERVED (laws are consis
 ROADMAP_22_DECISION_RECOVERY_CORRECTION_4=PASS (docs-only, ledger machine closure)
 ROADMAP_22_AMENDMENT_1=PASS (docs-only, shared worker fabric + provider-local composition)
 ROADMAP_22_AMENDMENT_2=PASS (docs-only, Native Pull lease assignment + ExecutionBackend role V2)
+ROADMAP_22_AMENDMENT_3=PASS (docs-only, runtime ownership / resource recovery hold / backend-neutral completion)
 ROADMAP_22_DECISION_RECOVERY=PASS (as corrected and amended)
 READY_FOR_CHATGPT_FINAL_REVIEW=YES
 ROADMAP_22_IMPLEMENTATION=NO_GO
@@ -774,4 +790,4 @@ ROADMAP_23=NOT_STARTED
 BLOCKERS=0
 ARCHITECTURE_ESCALATION=NONE
 
-NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_AMENDMENT_2_FINAL_REVIEW
+NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_AMENDMENT_3_FINAL_REVIEW
