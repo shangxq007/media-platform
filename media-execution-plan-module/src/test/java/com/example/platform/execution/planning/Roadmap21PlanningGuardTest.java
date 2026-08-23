@@ -159,7 +159,7 @@ class Roadmap21PlanningGuardTest {
     @Test
     void noRuntimeOrProviderBindingInPlanningPackage() throws IOException {
         String src = stripComments(join(planningPackage()));
-        for (String forbidden : List.of("ExecutionProvider", "providerId", "workerId", "gpuId",
+        for (String forbidden : List.of("ProviderBindingPin", "providerId", "workerId", "gpuId",
                 "machineId", "podId", "queueDepth", "utilization", "availability", "probeResult")) {
             assertFalse(src.contains(forbidden),
                     "planning package must not reference runtime/binding concept: " + forbidden);
@@ -188,7 +188,7 @@ class Roadmap21PlanningGuardTest {
         String src = stripComments(join(planningPackage()));
         for (String deferred : List.of("ExecutionResourceRequirement", "CpuClass", "MemoryClass",
                 "NetworkRequirement", "TemporaryStorageClass", "ExecutionStepFailurePolicy",
-                "ExecutionProvider", "ExecutionCacheKey")) {
+                "ProviderBindingPin", "ExecutionCacheKey")) {
             assertFalse(src.contains(deferred),
                     "DEFER_TO_22_PLUS type must not participate in #21 planning/digest: " + deferred);
         }

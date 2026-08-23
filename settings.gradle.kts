@@ -39,6 +39,7 @@ include(
     "storage-provider-opendal",
     "artifact-module",
     "media-execution-plan-module",
+    "worker-fabric-module",
     "media-module",
     "color-image-module",
     "font-text-module",
