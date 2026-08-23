@@ -1,8 +1,14 @@
 # Roadmap #22 Executable Task Graph and Worker Fabric Runtime — Decision Recovery
 
-STATUS=FROZEN_BOUNDED_ARCHITECTURE_CONTRACT (Correction 2 final coherence)
+STATUS=FROZEN_BOUNDED_ARCHITECTURE_CONTRACT (as amended by Amendment 1)
 READY_FOR_CHATGPT_FINAL_DECISION_RECOVERY_REVIEW=YES
 ROADMAP_22_IMPLEMENTATION=NO_GO
+AMENDMENT=docs/architecture/governance/roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md
+(Where this contract conflicts with Amendment 1, Amendment 1 governs:
+  shared worker fabric, PhysicalHost/WorkerRuntime/Device separation,
+  Capacity/Reserved/Observed resource model, reservation-first, provider-local
+  composition + ExecutableTaskMembership, DispatchBackend/OpenCue role,
+  revised phase plan, amended laws. LAW_R22_009 is SUPERSEDED.)
 
 ## 1. Authority Baseline
 
@@ -246,14 +252,11 @@ Edge transition algebra (frozen):
 
 ## 10. ProviderBoundExecutableTaskGraph V1 (frozen)
 
-EXECUTABLE_TASK_GRAPH_V1=PROVIDER_BOUND, WORKER_UNBOUND, DEVICE_UNBOUND.
+EXECUTABLE_TASK_GRAPH_V1=PROVIDER_BOUND, WORKER_RUNTIME_UNBOUND, PHYSICAL_HOST_UNBOUND, DEVICE_ASSIGNMENT_UNBOUND (until runtime placement). Amended by Amendment 1 §4/§16: membership model (every PhysicalPlanUnit → exactly one ExecutableTaskMembership; ExecutableTask → one or more memberships when provider-local composition is proven). LAW_R22_009 (strict 1:1) is SUPERSEDED.
 
-- ONE PhysicalPlanUnit → ONE PRIMARY executable work task in V1
-  (LAW_R22_009). No semantic fusion, no arbitrary N:M decomposition.
 - Provider selection occurs BEFORE ETG V1 construction/freeze.
-- Specific WorkerId and DeviceId are NOT part of ETG semantic content;
-  worker/device placement is runtime dispatch/attempt state
-  (ExecutionAssignment, §13).
+- Specific WorkerRuntimeId / PhysicalHostId / DeviceId are NOT part of ETG
+  semantic content; runtime placement is ExecutionAssignment (§13).
 - Infrastructure boundary representation: **B — typed boundary actions
   attached to primary tasks** (single authority, no parallel task-kind
   authority).
@@ -540,7 +543,7 @@ UNKNOWN_PROVIDER_SUPPORT≠SUPPORTED, UNKNOWN_RUNTIME_AVAILABILITY≠AVAILABLE).
 - LAW_R22_006 RETRY_CREATES_NEW_ATTEMPT_NOT_NEW_SEMANTIC_TASK
 - LAW_R22_007 CROSS_PROVIDER_DEPENDENCY_REQUIRES_EXPLICIT_COMPATIBLE_BOUNDARY
 - LAW_R22_008 PROVIDER_LOWERING_PRESERVES_PHYSICAL_UNIT_SEMANTICS
-- LAW_R22_009 ONE_PRIMARY_EXECUTABLE_WORK_TASK_PER_PHYSICAL_PLAN_UNIT_V1
+- LAW_R22_009 ~~ONE_PRIMARY_EXECUTABLE_WORK_TASK_PER_PHYSICAL_PLAN_UNIT_V1~~ **SUPERSEDED by Amendment 1** — replaced by membership model (LAW_R22_025: every PhysicalPlanUnit → exactly one ExecutableTaskMembership; LAW_R22_026: ExecutableTask may contain multiple memberships only when provider-local composition is proven). Not retained as parallel V1 contract. See Amendment 1 §3-§6.
 - LAW_R22_010 NO_PROVIDER_SPECIFIC_COMMAND_IS_CANONICAL_SEMANTIC_AUTHORITY
 - LAW_R22_011 CAPABILITY_ID_IS_PROVIDER_NEUTRAL_AUTHORITY
 - LAW_R22_012 PROVIDER_ID_NEVER_REPLACES_CAPABILITY_ID
@@ -715,9 +718,19 @@ All previous zero-guard plans retained.
 #22 LATE: AWS NVIDIA ephemeral worker, Blender GPU, NIM/provider conformance.
 Redis: only if concrete cache/lease/probe consumer exists. Novu/n8n: external ecosystem later, not core prerequisite. KUBERNETES=DEFER.
 
-## 34. Implementation Phase Plan (frozen proposal)
+## 34. Implementation Phase Plan (frozen proposal, as amended)
 
-PHASE_0 CLEAN FORWARD disposition → PHASE_1 Provider identity / ProviderDescriptor / ProviderExecutionContract / ProviderCapabilityProfile → PHASE_2 worker-fabric-module foundation: Worker/Device static + runtime-state separation → PHASE_3 CompatibilityKernel + typed STATIC compatibility algebra → PHASE_4 ProviderCompatibilityGraph → PHASE_5 ProviderBoundExecutableTaskGraph + ExecutableTaskId + ETG digest + BoundaryAction → PHASE_6 PlanLowerer + RuntimeAdapter contracts → PHASE_7 Artifact materialization boundary → PHASE_8 RuntimeEligibilityEvaluator + ExecutionAssignment + ExecutionAttempt + bounded local dispatch → PHASE_9 retry / cancellation / lease / heartbeat / ProviderProbePort → PHASE_10 sandbox/isolation integration → PHASE_11 FAOF-2 Lean4 + complementary Coq → PHASE_12 FFmpeg CPU + Intel QSV/VAAPI provider conformance → PHASE_13 NVIDIA/cloud conformance → PHASE_14 candidate freeze / FCV / independent review.
+Revised by Amendment 1 §25 (PHASE_0..18): CLEAN_FORWARD legacy provider/runtime
+shadows → immutable Provider contract/profile/binding foundations →
+PhysicalHost/WorkerRuntime/Device identity + descriptor foundations → resource
+capacity + reservation primitives → CompatibilityKernel/ProviderCompatibilityGraph
+→ provider-local composition legality + membership model → ProviderBoundExecutableTaskGraph
++ deterministic ids/digest → RuntimeEligibility + HostResourceAgent ports/snapshots
+→ ExecutionAssignment + reservation-aware bounded placement → PlanLowerer/RuntimeAdapter/
+DispatchBackend → retry/attempt/lease/heartbeat/cancellation → Artifact boundary +
+staging → sandbox/isolation → FAOF-2 Lean4 + Coq → FFmpeg CPU conformance →
+Intel VAAPI/QSV conformance → OpenCue bounded adapter POC → NVIDIA/cloud conformance
+→ candidate freeze / FCV / independent review. Do NOT start these phases yet.
 
 ## 35. Parallel Task DAG (future, not now)
 
@@ -738,14 +751,15 @@ E. Persisted/external compatibility proves CLEAN FORWARD deletion unsafe → NOT
 F. #22 cannot stay bounded/local → NOT OBSERVED.
 G. Formalization reveals contradiction in laws → NOT OBSERVED (laws are consistent at DR level).
 
-## 38. Final Decision Recovery Status (Correction 3)
+## 38. Final Decision Recovery Status (as amended)
 
-ROADMAP_22_DECISION_RECOVERY_CORRECTION_3=PASS (draft, pending ChatGPT review)
-ROADMAP_22_DECISION_RECOVERY=PASS (as corrected)
-READY_FOR_CHATGPT_FINAL_DECISION_RECOVERY_REVIEW=YES
+ROADMAP_22_DECISION_RECOVERY_CORRECTION_4=PASS (docs-only, ledger machine closure)
+ROADMAP_22_AMENDMENT_1=PASS (docs-only, shared worker fabric + provider-local composition)
+ROADMAP_22_DECISION_RECOVERY=PASS (as corrected and amended)
+READY_FOR_CHATGPT_FINAL_REVIEW=YES
 ROADMAP_22_IMPLEMENTATION=NO_GO
 ROADMAP_23=NOT_STARTED
 BLOCKERS=0
 ARCHITECTURE_ESCALATION=NONE
 
-NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_CORRECTION_3_FINAL_REVIEW
+NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_AMENDMENT_1_FINAL_REVIEW
