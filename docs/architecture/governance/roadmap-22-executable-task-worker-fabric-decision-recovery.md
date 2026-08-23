@@ -82,54 +82,248 @@ Key existing surfaces (details in source disposition ledger):
 ### 5.1 PhysicalExecutionPlan
 Remains provider-neutral / worker-neutral / device-neutral. Must NOT gain providerId, workerId, deviceId, queue/probe state, availability, lease, heartbeat, runtime retries. #22 consumes it; does not redefine it.
 
-### 5.2 Provider identity
-- ProviderId — semantic capability identity (stable, typed).
-- ProviderImplementationId — replaceable implementation identity.
-- ProviderVersion — implementation version.
-- One semantic capability may have multiple providers/implementations/versions.
-- ProviderDescriptor — declared static provider metadata (contract, version, declared capability profile reference).
-- ProviderContract — the authority contract a provider implementation commits to.
-- CapabilityProfile — typed declared executable support (NOT Map<String,String>; bounded typed extension points: supported capabilities, input/output artifact kinds, codecs, pixel/sample constraints, execution requirements, device class requirements, determinism properties, sandbox requirements).
+### 5.2 Capability / Provider identity authority separation (R22-DR-C1, frozen)
+
+**CapabilityId** — AUTHORITY: Roadmap #16 CapabilityRegistry. Meaning: semantic
+capability contract identity (e.g. media.decode.*, video.encode.*, render.*).
+Stable, typed, namespaced, implementation-neutral, provider-neutral,
+plan-neutral. CapabilityRequirement expresses WHAT capability is required.
+#22 does NOT redefine this.
+
+**CapabilityImplementationId** — AUTHORITY: Roadmap #16 CapabilityRegistry.
+Meaning: one concrete realization of ONE CapabilityId. Existing authority
+unchanged. Provider/Worker/Device do not enter this identity.
+
+**ProviderId** — AUTHORITY: Roadmap #22 provider runtime domain. Meaning:
+stable provider/backend family identity (FFmpeg, Blender, NVIDIA_NIM, future
+scene provider). ProviderId has NO semantic capability authority. It MUST NOT
+replace CapabilityId, MUST NOT mint semantic capability namespaces, MUST NOT
+become CapabilityRegistry authority.
+
+**ProviderImplementationId** — AUTHORITY: Roadmap #22 executable provider
+runtime domain. Meaning: stable identity of one provider runtime/adapter
+implementation. It MUST NOT represent a Worker, a Device, a runtime
+installation instance, a CapabilityId, or a CapabilityImplementationId. A
+ProviderImplementation may expose/realize MANY existing capability
+implementations.
+
+**ProviderVersion** — implementation version.
+
+**ProviderDescriptor** — declared static provider metadata (ProviderId,
+ProviderImplementationId, ProviderVersion, ProviderExecutionContractVersion,
+declared ProviderCapabilityProfile reference).
+
+**ProviderExecutionContract** — the provider execution/SPI contract (NOT a
+semantic Capability contract): provider SPI compatibility, lowering contract,
+runtime adapter contract, provider implementation schema/version. It MUST
+reference upstream Capability contracts rather than redefine them.
+
+**ProviderCapabilityProfile** — typed declared executable support (NOT
+Map<String,String>). Freeze
+PROVIDER_CAPABILITY_PROFILE_IS_EXECUTION_SUPPORT_PROJECTION_NOT_CAPABILITY_AUTHORITY_V1.
+Each support declaration references existing capability authority:
+CapabilityId + compatible ContractVersion/ContractVersionRange, and where
+repository architecture requires concrete implementation identity,
+CapabilityImplementationId. ProviderCapabilityProfile is an
+EXECUTION_FEASIBILITY_PROJECTION — NOT a CapabilityRegistry, NOT capability
+definition authority, NOT capability contract lifecycle authority. It does NOT
+copy or recreate capability lifecycle authority.
+
+Typed relationship (frozen shape):
+
+```
+ProviderImplementation {
+  ProviderImplementationId
+  ProviderId
+  ProviderVersion
+  ProviderExecutionContractVersion
+  ProviderCapabilityProfile   // typed support declarations -> CapabilityId(s)
+                              // + ContractVersion/Range + optional CapabilityImplementationId
+}
+```
 
 ### 5.3 ProviderProbePort
 - DECLARED_PROVIDER_CAPABILITY vs OBSERVED_RUNTIME_AVAILABILITY separation.
 - Probe results: mutable, time-sensitive, ephemeral. Never enter Timeline content hash / RenderPlan fingerprint / LogicalExecutionGraph digest / PhysicalExecutionPlan digest.
 
-## 6. Two-Stage Feasibility (frozen)
+## 6. Two-Stage Feasibility (frozen, R22-DR-C3)
 
-- Stage 1 SEMANTIC/TECHNICAL COMPATIBILITY: can this provider implementation execute this PhysicalUnit in principle? Deterministic over frozen inputs (PhysicalPlanUnit, ExecutionRequirement, ProviderContract, ProviderDescriptor, CapabilityProfile, artifact compatibility). Independent of queue depth/utilization/heartbeat age/free memory/worker load.
-- Stage 2 RUNTIME ELIGIBILITY: can a current worker/device execute it now? Inputs: WorkerDescriptor, DeviceDescriptor, probe snapshot, availability snapshot, sandbox readiness, runtime health. Mutable; outside canonical digests.
+- Stage 1 **CompatibilityKernel** (a.k.a. ProviderCompatibilityKernel) — PURE
+  deterministic static stage. Inputs MUST be frozen/immutable:
+  PhysicalPlanUnit, ExecutionRequirement, ProviderDescriptor,
+  ProviderExecutionContract, ProviderCapabilityProfile, immutable Artifact
+  requirements, typed cross-provider boundary requirements. It MUST NOT read:
+  ProviderProbeResult, WorkerRuntimeState, DeviceRuntimeState, queue depth,
+  utilization, heartbeat, lease, current free memory, current device
+  availability, current runtime health, wall clock. Output:
+  **CompatibilityDecision** — algebra COMPATIBLE | INCOMPATIBLE |
+  UNKNOWN_FAIL_CLOSED with typed static explanations (CAPABILITY_UNSUPPORTED,
+  CAPABILITY_CONTRACT_VERSION_UNSUPPORTED, INPUT_ARTIFACT_INCOMPATIBLE,
+  OUTPUT_ARTIFACT_INCOMPATIBLE, CODEC_UNSUPPORTED, DEVICE_KIND_UNSUPPORTED,
+  PROVIDER_RUNTIME_CLASS_UNSUPPORTED, PROVIDER_CONTRACT_INCOMPATIBLE,
+  SANDBOX_MODE_UNSUPPORTED, DETERMINISM_UNSUPPORTED,
+  CROSS_PROVIDER_BOUNDARY_INCOMPATIBLE, LOWERING_SEMANTICALLY_UNREPRESENTABLE).
+  No runtime-state reasons here.
+- Stage 2 **RuntimeEligibilityEvaluator** — separate stage. Inputs:
+  compatible ProviderImplementation candidate, WorkerDescriptor,
+  DeviceDescriptor, ProviderProbeResult, WorkerRuntimeState,
+  DeviceRuntimeState, sandbox runtime state, availability snapshot. Output:
+  **RuntimeEligibilityDecision** — algebra ELIGIBLE | INELIGIBLE |
+  UNKNOWN_FAIL_CLOSED with runtime explanations (PROBE_UNKNOWN, PROBE_STALE,
+  PROBE_FAILED, NO_ELIGIBLE_WORKER, NO_ELIGIBLE_DEVICE, WORKER_UNAVAILABLE,
+  DEVICE_UNAVAILABLE, RUNTIME_UNAVAILABLE, SANDBOX_RUNTIME_UNAVAILABLE,
+  INSUFFICIENT_CURRENT_RESOURCE). These are mutable runtime facts.
 
-## 7. Constraint Kernel (frozen)
+### Graph separation (frozen)
 
-Purpose: answer feasibility, not global optimization.
-Pipeline: PhysicalExecutionPlan → ExecutionRequirement → Provider Candidates → Constraint Kernel → Compatibility Results → Feasible Provider Compatibility Graph.
+- **ProviderCompatibilityGraph** = Stage-1 deterministic graph ONLY. It MUST
+  NOT contain probe state, worker health, device availability, queue state,
+  heartbeat, lease, current utilization. Immutable deterministic derivation.
+- **RuntimeEligibleCandidateView** (ephemeral) = ProviderCompatibilityGraph +
+  runtime eligibility evidence. Mutable runtime view; NOT a new semantic
+  authority; no semantic digest required for the mutable eligibility view.
 
-Typed explanations (at minimum):
-CAPABILITY_UNSUPPORTED, INPUT_ARTIFACT_INCOMPATIBLE, OUTPUT_ARTIFACT_INCOMPATIBLE, CODEC_UNSUPPORTED, DEVICE_CLASS_UNAVAILABLE, RUNTIME_VERSION_INCOMPATIBLE, SANDBOX_REQUIREMENT_UNSATISFIED, DETERMINISM_REQUIREMENT_UNSATISFIED, CROSS_PROVIDER_BOUNDARY_UNAVAILABLE, PROBE_UNKNOWN, RUNTIME_UNAVAILABLE.
+## 7. Selection Pipeline (frozen exact order)
 
-No generic "provider unavailable" as the only failure model.
+```
+PhysicalExecutionPlan
+        ↓
+Provider candidate discovery
+        ↓
+STATIC CompatibilityKernel
+        ↓
+ProviderCompatibilityGraph
+        ↓
+RuntimeEligibilityEvaluator
+        ↓
+RuntimeEligibleCandidateView
+        ↓
+bounded local Provider selection
+        ↓
+ProviderBoundExecutableTaskGraph
+        ↓
+Worker/Device dispatch
+        ↓
+ExecutionAttempt
+```
+CAN_RUN before WHICH_IS_BEST. Optimization never creates compatibility.
 
-## 8. Provider Compatibility Graph (frozen)
+## 8. Constraint Kernel (frozen)
 
-Bounded typed model: PhysicalPlanUnit → feasible ProviderImplementation candidate set + feasible transitions across provider boundaries.
-Edge result: DIRECT_COMPATIBLE | ARTIFACT_MATERIALIZATION_REQUIRED | INCOMPATIBLE | UNKNOWN_FAIL_CLOSED.
-No optimization across INCOMPATIBLE edges. No universal interoperability claim.
+Purpose: answer feasibility, not global optimization. The Constraint Kernel is
+the bounded static feasibility engine embodied by CompatibilityKernel (Stage
+1) + ProviderCompatibilityGraph. It does not read mutable runtime state, and
+its results are deterministic over frozen inputs.
 
-## 9. ExecutableTaskGraph V1 (frozen)
+## 9. Provider Compatibility Graph (frozen, R22-DR-C3)
 
-- ONE PhysicalPlanUnit → ONE PRIMARY executable work task in V1 (LAW_R22_009). No semantic fusion, no arbitrary N:M decomposition.
-- Infrastructure boundary representation DECISION (from §14 options A/B):
-  **B. TYPED BOUNDARY ACTIONS ATTACHED TO PRIMARY TASKS** — artifact materialization, artifact transfer, sandbox preparation, runtime staging are typed boundary actions on the primary task (single authority, no parallel task-kind authority). Rationale: avoids a parallel task taxonomy, keeps one-primary-task-per-unit law clean, and infrastructure actions have no PhysicalPlanUnit identity of their own.
-- ExecutableTaskId / ExecutableTaskGraphId / ExecutableTaskGraphDigest: business identity != semantic digest; runtime attempt identity != task identity; retry creates new attempt, never new task.
+Bounded typed model: PhysicalPlanUnit → feasible ProviderImplementation
+candidate set + feasible transitions across provider boundaries. Stage-1
+deterministic graph ONLY — no probe state, worker health, device availability,
+queue state, heartbeat, lease, current utilization.
 
-## 10. Provider Binding / PlanLowerer / RuntimeAdapter (frozen)
+Edge transition algebra (frozen):
+- Default for cross-provider transitions: **ARTIFACT_MATERIALIZATION_REQUIRED**
+- DIRECT_COMPATIBLE allowed ONLY when: same provider/runtime boundary where no
+  provider crossing occurs, OR an explicit typed interoperability/transport
+  contract proves compatibility. No inferred shared memory. No vendor-specific
+  implicit shortcut.
+- INCOMPATIBLE — no optimization across this edge.
+- UNKNOWN — fail closed.
 
-- CapabilityRequirement ≠ ProviderImplementation. PhysicalPlanUnit says WHAT; executable binding says WHICH. No provider name in canonical #20/#21 semantics.
-- PlanLowerer: typed PhysicalPlanUnit/ExecutableTask → provider-specific executable specification. MUST NOT redefine semantic meaning; fails closed if it cannot represent requested semantics. FFmpeg/Blender/CUDA command lines never canonical semantic authority (LAW_R22_010).
-- RuntimeAdapter: HOW a request is launched/monitored/cancelled (separate from PlanLowerer's WHAT). Same provider semantics + different runtime environments (FFmpeg local / container / remote worker) without redefining capability semantics.
+## 10. ExecutableTaskGraph V1 (frozen, R22-DR-C4)
 
-## 11. Worker / Device (frozen)
+EXECUTABLE_TASK_GRAPH_V1=PROVIDER_BOUND, WORKER_UNBOUND, DEVICE_UNBOUND.
+
+- ONE PhysicalPlanUnit → ONE PRIMARY executable work task in V1
+  (LAW_R22_009). No semantic fusion, no arbitrary N:M decomposition.
+- Provider selection occurs BEFORE ETG V1 construction/freeze.
+- Specific WorkerId and DeviceId are NOT part of ETG semantic content;
+  worker/device placement is runtime dispatch/attempt state
+  (ExecutionAssignment, §14).
+- Infrastructure boundary representation: **B — typed boundary actions
+  attached to primary tasks** (single authority, no parallel task-kind
+  authority).
+- ExecutableTaskId / ExecutableTaskGraphId / ExecutableTaskGraphDigest:
+  business identity != semantic digest; runtime attempt identity != task
+  identity; retry creates new attempt, never new task.
+
+### ExecutableTaskGraphDigest — frozen inclusion/exclusion (NOT conditional)
+
+INCLUDE at minimum:
+- graph format/schema version
+- exact PhysicalPlanUnit identity/reference
+- task dependency topology
+- ExecutableTaskId semantics
+- selected ProviderId
+- selected ProviderImplementationId
+- immutable ProviderExecutionContract version/pin
+- immutable ProviderCapabilityProfile version/digest or equivalent frozen pin
+- typed boundary actions
+- immutable required input Artifact references/pins
+- provider binding semantics necessary to reproduce lowering
+
+EXCLUDE:
+- ExecutableTaskGraphId (if business id separate)
+- WorkerId
+- DeviceId
+- ExecutionAttemptId
+- ProviderProbeResult
+- WorkerRuntimeState
+- DeviceRuntimeState
+- queue state
+- current locality/cache state
+- utilization, free memory
+- heartbeat, lease, retry count
+- timestamps, metrics, logs
+- correlation, trace
+- observability/provenance-only fields
+
+Frozen laws:
+WORKER_ASSIGNMENT_DOES_NOT_CHANGE_EXECUTABLE_TASK_GRAPH_DIGEST_V1
+DEVICE_ASSIGNMENT_DOES_NOT_CHANGE_EXECUTABLE_TASK_GRAPH_DIGEST_V1
+
+### Provider binding pinning (frozen)
+
+ProviderImplementationId alone is not sufficient if mutable metadata could
+change. Freeze an immutable binding pin sufficient for reproducibility:
+ProviderImplementationId + ProviderVersion + ProviderExecutionContractVersion
++ ProviderCapabilityProfileVersionOrDigest. Mutable probe results do NOT
+participate.
+
+## 11. Provider Binding / PlanLowerer / RuntimeAdapter (frozen)
+
+- CapabilityRequirement ≠ ProviderImplementation. PhysicalPlanUnit says WHAT;
+  executable binding says WHICH. No provider name in canonical #20/#21
+  semantics.
+- PlanLowerer: typed PhysicalPlanUnit/ExecutableTask → provider-specific
+  executable specification. MUST NOT redefine semantic meaning; fails closed if
+  it cannot represent requested semantics. FFmpeg/Blender/CUDA command lines
+  never canonical semantic authority (LAW_R22_010).
+- RuntimeAdapter: HOW a request is launched/monitored/cancelled (separate from
+  PlanLowerer's WHAT). Same provider semantics + different runtime
+  environments (FFmpeg local / container / remote worker) without redefining
+  capability semantics.
+- ProviderExecutionContract covers provider SPI compatibility, lowering
+  contract, runtime adapter contract, provider implementation schema/version —
+  and references upstream Capability contracts rather than redefining them.
+
+## 12. ExecutionAssignment (frozen, R22-DR-C4)
+
+Separate runtime concept:
+```
+ExecutionAssignment {
+  ExecutableTaskId
+  ProviderImplementationId
+  WorkerId
+  optional DeviceId(s)
+}
+```
+Mutable/runtime-scoped. It does NOT modify ETG digest. ExecutionAttempt
+references the assignment. WorkerId/DeviceId are NOT added back into
+PhysicalExecutionPlan.
+
+## 13. Worker / Device (frozen)
 
 - WorkerDescriptor (stable/static: WorkerId, runtime environment, supported isolation modes, declared device inventory refs, execution backend class) separate from WorkerRuntimeState (AVAILABLE/BUSY/DEGRADED/UNAVAILABLE/DRAINING — mutable, not in digests).
 - DeviceDescriptor (stable: DeviceId, DeviceKind CPU|GPU|MEDIA_ACCELERATOR|OTHER_ACCELERATOR, vendor, model, driver compatibility, memory class, media engines, compute features) separate from DeviceRuntimeState (free memory/utilization/temperature — mutable).
@@ -155,12 +349,39 @@ No optimization across INCOMPATIBLE edges. No universal interoperability claim.
 - ExecutableTask ≠ ExecutionAttempt. Retries create new attempts (ExecutionAttemptId), never new semantic tasks (LAW_R22_006).
 - Retry typed and bounded: RETRYABLE_RUNTIME_FAILURE vs NON_RETRYABLE_RUNTIME_FAILURE vs SEMANTIC_INCOMPATIBILITY. Never retry semantic incompatibility. Retry policy NOT in PhysicalExecutionPlan.
 
-## 15. Lease / Heartbeat / Cancellation (frozen)
+## 15. BoundaryAction V1 (frozen, R22-DR-C5)
+
+Keep Decision B: typed boundary actions attached to primary tasks.
+BOUNDARY_ACTION_IS_NOT_SCHEDULABLE_TASK_V1.
+
+BoundaryAction MUST have:
+- typed action kind (examples: FETCH_ARTIFACT, STAGE_ARTIFACT,
+  VERIFY_ARTIFACT, PREPARE_SANDBOX, PREPARE_RUNTIME)
+- owning ExecutableTaskId
+- phase = PRE_EXECUTION | POST_EXECUTION
+- typed dependency/artifact reference where applicable
+- deterministic ordering semantics
+
+BoundaryAction has NO independent task lifecycle, scheduler identity, lease,
+heartbeat, or ExecutionAttempt. It executes within the owning task attempt.
+Its immutable semantics participate in ETG digest.
+
+### Cross-provider materialization ownership (frozen)
+
+- Producer task success means: all declared immutable output Artifacts have
+  been successfully committed to Artifact authority.
+- Consumer cross-provider acquisition/staging is a PRE_EXECUTION
+  BoundaryAction.
+- Do NOT create an independently schedulable transfer task in V1.
+- Failure is typed. Artifact materialization/staging failure must not silently
+  mutate canonical Artifact identity.
+
+## 16. Lease / Heartbeat / Cancellation (frozen)
 
 - Lease, heartbeat, lease expiry, worker loss are runtime mechanics; never canonical media state / RenderPlan state / PhysicalExecutionPlan semantics. #22 establishes the local/bounded primitive contract; distributed fleet coordination is #23.
 - Cancellation distinguishes cancel task attempt vs delete canonical media result. Cancellation never rewrites historical media state; explicit semantics when a completed immutable Artifact exists.
 
-## 16. Runtime Probe Cache (frozen)
+## 17. Runtime Probe Cache (frozen)
 
 - CACHE != AUTHORITY. ProviderProbePort remains evidence source. Cache entries require timestamp/freshness, provider implementation identity, worker/device identity, probe schema/version. Stale probe fails closed or re-probes per contract. Redis may be implementation later; REDIS_IS_NOT_REQUIRED_ARCHITECTURE_V1.
 
@@ -175,12 +396,33 @@ No god interface. Separated responsibilities:
 - RuntimeAdapter (HOW launch/monitor/cancel)
 Design test cases: FFmpeg software, FFmpeg Intel QSV/VAAPI, FFmpeg NVIDIA NVENC/NVDEC, Blender CPU, Blender CUDA/OptiX, NVIDIA NIM, future Omniverse/RTX, future AI providers.
 
-## 18. Failure Algebra (frozen)
+## 19. Failure Algebra (frozen, corrected)
 
-Distinguish at minimum: PLANNING_INPUT_INVALID, NO_COMPATIBLE_PROVIDER, PROVIDER_CONTRACT_MISMATCH, ARTIFACT_BOUNDARY_INCOMPATIBLE, PROBE_FAILED, PROBE_STALE, NO_ELIGIBLE_WORKER, NO_ELIGIBLE_DEVICE, LOWERING_UNSUPPORTED, RUNTIME_START_FAILED, RUNTIME_EXECUTION_FAILED, RUNTIME_TIMEOUT, LEASE_LOST, WORKER_LOST, DEVICE_LOST, ARTIFACT_MATERIALIZATION_FAILED, CANCELLED.
-Semantic incompatibility and transient runtime failure MUST be separate. UNKNOWN fails closed everywhere (UNKNOWN_COMPATIBILITY≠COMPATIBLE, UNKNOWN_PROVIDER_SUPPORT≠SUPPORTED, UNKNOWN_RUNTIME_AVAILABILITY≠AVAILABLE).
+Split failure families into THREE distinct sealed/typed families
+(no single generic enum that permits authority confusion):
 
-## 19. Determinism / Resource / ExecutionRequirement authority (frozen)
+1. **STATIC COMPATIBILITY FAILURE** — deterministic, from CompatibilityKernel:
+   CAPABILITY_UNSUPPORTED, CAPABILITY_CONTRACT_VERSION_UNSUPPORTED,
+   INPUT_ARTIFACT_INCOMPATIBLE, OUTPUT_ARTIFACT_INCOMPATIBLE,
+   CODEC_UNSUPPORTED, DEVICE_KIND_UNSUPPORTED,
+   PROVIDER_RUNTIME_CLASS_UNSUPPORTED, PROVIDER_CONTRACT_INCOMPATIBLE,
+   SANDBOX_MODE_UNSUPPORTED, DETERMINISM_UNSUPPORTED,
+   CROSS_PROVIDER_BOUNDARY_INCOMPATIBLE, LOWERING_SEMANTICALLY_UNREPRESENTABLE.
+2. **RUNTIME ELIGIBILITY FAILURE** — mutable facts from
+   RuntimeEligibilityEvaluator: PROBE_UNKNOWN, PROBE_STALE, PROBE_FAILED,
+   NO_ELIGIBLE_WORKER, NO_ELIGIBLE_DEVICE, WORKER_UNAVAILABLE,
+   DEVICE_UNAVAILABLE, RUNTIME_UNAVAILABLE, SANDBOX_RUNTIME_UNAVAILABLE,
+   INSUFFICIENT_CURRENT_RESOURCE.
+3. **RUNTIME EXECUTION ATTEMPT FAILURE** — execution lifecycle: RUNTIME_START_FAILED,
+   RUNTIME_EXECUTION_FAILED, RUNTIME_TIMEOUT, LEASE_LOST, WORKER_LOST,
+   DEVICE_LOST, ARTIFACT_MATERIALIZATION_FAILED, CANCELLED.
+
+Runtime failures must NOT leak into CompatibilityKernel deterministic result.
+Semantic incompatibility and transient runtime failure MUST be separate.
+UNKNOWN fails closed everywhere (UNKNOWN_COMPATIBILITY≠COMPATIBLE,
+UNKNOWN_PROVIDER_SUPPORT≠SUPPORTED, UNKNOWN_RUNTIME_AVAILABILITY≠AVAILABLE).
+
+## 20. Determinism / Resource / ExecutionRequirement authority (frozen)
 
 - SEMANTIC_DETERMINISM_REQUIREMENT vs PROVIDER_DECLARED_DETERMINISM_SUPPORT vs RUNTIME_OBSERVED_EXECUTION separated; no second independent determinism authority; compatibility respects upstream RenderExecutionRequirement determinism.
 - Runtime resource descriptors for feasibility only; REQUIRED_RESOURCE_CONSTRAINT (frozen input) vs CURRENT_AVAILABLE_RESOURCE (mutable runtime state). Do not redefine upstream semantic requirements.
@@ -203,28 +445,38 @@ Semantic incompatibility and transient runtime failure MUST be separate. UNKNOWN
 - LAW_R22_008 PROVIDER_LOWERING_PRESERVES_PHYSICAL_UNIT_SEMANTICS
 - LAW_R22_009 ONE_PRIMARY_EXECUTABLE_WORK_TASK_PER_PHYSICAL_PLAN_UNIT_V1
 - LAW_R22_010 NO_PROVIDER_SPECIFIC_COMMAND_IS_CANONICAL_SEMANTIC_AUTHORITY
+- LAW_R22_011 CAPABILITY_ID_IS_PROVIDER_NEUTRAL_AUTHORITY
+- LAW_R22_012 PROVIDER_ID_NEVER_REPLACES_CAPABILITY_ID
+- LAW_R22_013 CAPABILITY_IMPLEMENTATION_ID_NEVER_REPLACED_BY_PROVIDER_IMPLEMENTATION_ID
+- LAW_R22_014 STATIC_COMPATIBILITY_IS_INDEPENDENT_OF_MUTABLE_RUNTIME_STATE
+- LAW_R22_015 RUNTIME_ELIGIBILITY_DOES_NOT_MUTATE_PROVIDER_COMPATIBILITY_GRAPH
+- LAW_R22_016 WORKER_DEVICE_ASSIGNMENT_DOES_NOT_CHANGE_ETG_DIGEST
+- LAW_R22_017 BOUNDARY_ACTION_IS_NOT_INDEPENDENT_SCHEDULABLE_TASK_V1
 
-## 22. Identity/Digest Matrix
+## 22. Identity/Digest Matrix (corrected)
 
-| Identity | BUSINESS_IDENTITY | SEMANTIC_DIGEST | RUNTIME_ID | STABLE | MUTABLE | PERSISTED | INCLUDED_IN | EXCLUDED_FROM |
-|---|---|---|---|---|---|---|---|---|
-| ProviderId | YES | NO | NO | YES | NO | YES | executable graph (as binding, if bound graph) | #20/#21 digests |
-| ProviderImplementationId | YES | NO | NO | YES | NO | YES | executable binding | #20/#21 digests |
-| WorkerId | YES | NO | runtime | YES | NO | YES | runtime/provenance | upstream semantic digests |
-| DeviceId | YES | NO | runtime | YES | NO | YES | runtime/provenance | upstream semantic digests |
-| ExecutableTaskGraphId | YES | NO | NO | YES | NO | YES | — | digest separate |
-| ExecutableTaskGraphDigest | NO | YES | NO | YES | NO | YES | executable graph semantics (excluding mutable runtime fields; MAY include provider binding if graph defined as bound executable artifact — explicit contract decision) | queue/health/lease/heartbeat/metrics |
-| ExecutableTaskId | YES | NO | NO | YES | NO | YES | graph digest as constituent | — |
-| ExecutionAttemptId | YES | NO | runtime | NO | NO | YES | provenance only | task identity, semantic digests |
-| LeaseId | YES | NO | runtime | NO | YES | transient | none | all semantic digests |
+| Identity | AUTHORITY | BUSINESS_IDENTITY | SEMANTIC_CAPABILITY_IDENTITY | PROVIDER_IDENTITY | RUNTIME_IDENTITY | STABLE | MUTABLE | PERSISTED | DIGEST_PARTICIPATION |
+|---|---|---|---|---|---|---|---|---|---|
+| CapabilityId | #16 CapabilityRegistry | YES | YES | NO | NO | YES | NO | YES | #20/#21 upstream semantics |
+| CapabilityImplementationId | #16 CapabilityRegistry | YES | YES (realization) | NO | NO | YES | NO | YES | upstream semantics |
+| ProviderId | #22 provider runtime domain | YES | NO | YES | NO | YES | NO | YES | ETG digest (binding) only |
+| ProviderImplementationId | #22 executable provider runtime domain | YES | NO | YES | NO | YES | NO | YES | ETG digest (binding) only |
+| WorkerId | #22 worker domain | YES | NO | NO | YES | YES | NO | YES | NOT in ETG digest (runtime/provenance) |
+| DeviceId | #22 device domain | YES | NO | NO | YES | YES | NO | YES | NOT in ETG digest (runtime/provenance) |
+| ExecutableTaskGraphId | #22 | YES | NO | NO | NO | YES | NO | YES | separate from digest |
+| ExecutableTaskGraphDigest | #22 | NO | NO | NO | NO | YES | NO | YES | ETG semantics per §10 frozen include/exclude (provider-bound; worker/device-excluded) |
+| ExecutableTaskId | #22 | YES | NO | NO | NO | YES | NO | YES | ETG digest constituent |
+| ExecutionAssignmentId | #22 runtime | YES | NO | NO | YES | NO | YES | transient | NOT in any semantic digest |
+| ExecutionAttemptId | #22 runtime | YES | NO | NO | YES | NO | NO | YES | provenance only |
+| LeaseId | #22 runtime | YES | NO | NO | YES | NO | YES | transient | none |
 
-## 23. Mutability Matrix
+## 23. Mutability Matrix (corrected)
 
 | Class | Types |
 |---|---|
-| IMMUTABLE_SEMANTIC | #20 RenderPlan/RenderGraph/RenderNode/RenderDependency semantics, #21 ExecutionRequirement/LogicalExecutionGraph/PhysicalExecutionPlan + digests, Artifact content pin |
-| IMMUTABLE_EXECUTABLE_BINDING | ProviderContract/Descriptor, CapabilityProfile, bound ExecutableTaskGraph identity components, PlanLowerer output spec |
-| MUTABLE_RUNTIME_STATE | WorkerRuntimeState, DeviceRuntimeState, lease, heartbeat, availability, probe snapshot, attempt lifecycle, retry counter |
+| IMMUTABLE_SEMANTIC | #20 RenderPlan/RenderGraph/RenderNode/RenderDependency semantics, #21 ExecutionRequirement/LogicalExecutionGraph/PhysicalExecutionPlan + digests, Artifact content pin, CapabilityId/CapabilityImplementationId authority |
+| IMMUTABLE_EXECUTABLE_BINDING | ProviderExecutionContract/ProviderDescriptor (pinned), ProviderCapabilityProfile (immutable pinned declaration), ProviderId/ProviderImplementationId binding pins, ProviderBoundExecutableTaskGraph (immutable executable binding), ProviderCompatibilityGraph (immutable deterministic derivation), PlanLowerer output spec |
+| MUTABLE_RUNTIME_STATE | WorkerRuntimeState, DeviceRuntimeState, ProviderProbeResult (mutable runtime evidence), ExecutionAssignment (runtime placement), ExecutionAttempt (runtime lifecycle), lease, heartbeat, availability, retry counter, RuntimeEligibleCandidateView (ephemeral mutable derivation) |
 | OBSERVABILITY_ONLY | timestamps, metrics, queue depth, utilization, telemetry |
 | PROVENANCE_ONLY | provider version, worker/device identity, adapter version, attempt ids, input/output pins, failure reasons |
 
@@ -277,7 +529,13 @@ DEPENDENCY_DIRECTION: #20 Render → #21 Execution Planning → #22 Runtime Cont
 
 ## 28. Zero Guard Plan (implementation phase)
 
+Original guards:
 PHYSICAL_PLAN_PROVIDER_BINDING_COUNT=0, PHYSICAL_PLAN_WORKER_BINDING_COUNT=0, PHYSICAL_PLAN_DEVICE_BINDING_COUNT=0, UPSTREAM_DIGEST_MUTABLE_RUNTIME_FIELD_COUNT=0, PROVIDER_SPECIFIC_COMMAND_CANONICAL_AUTHORITY_COUNT=0, STRINGLY_TYPED_PROVIDER_CAPABILITY_AUTHORITY_COUNT=0, UNKNOWN_COMPATIBILITY_ACCEPTANCE_COUNT=0, INCOMPATIBLE_PROVIDER_SELECTION_COUNT=0, CROSS_PROVIDER_IMPLICIT_MEMORY_BOUNDARY_COUNT=0, TASK_RETRY_CREATES_NEW_SEMANTIC_TASK_COUNT=0, PROVIDER_PROBE_CANONICAL_AUTHORITY_COUNT=0, ROADMAP_23_GLOBAL_OPTIMIZER_COUNT=0, KUBERNETES_DOMAIN_AUTHORITY_COUNT=0, COMPATIBILITY_WRAPPER_COUNT=0.
+
+Additional guards (R22-DR-C1..C5 correction):
+PROVIDER_ID_AS_CAPABILITY_ID_AUTHORITY_COUNT=0, PROVIDER_CAPABILITY_PROFILE_CAPABILITY_REGISTRY_AUTHORITY_COUNT=0, PROVIDER_IMPLEMENTATION_REPLACES_CAPABILITY_IMPLEMENTATION_COUNT=0, COMPATIBILITY_KERNEL_MUTABLE_RUNTIME_READ_COUNT=0, PROVIDER_COMPATIBILITY_GRAPH_RUNTIME_STATE_FIELD_COUNT=0, ETG_WORKER_ID_SEMANTIC_FIELD_COUNT=0, ETG_DEVICE_ID_SEMANTIC_FIELD_COUNT=0, ETG_MUTABLE_PROBE_FIELD_COUNT=0, BOUNDARY_ACTION_INDEPENDENT_TASK_AUTHORITY_COUNT=0.
+
+All previous zero-guard plans retained.
 
 ## 29. Infrastructure Activation Matrix (NOT NOW)
 
@@ -309,13 +567,14 @@ E. Persisted/external compatibility proves CLEAN FORWARD deletion unsafe → NOT
 F. #22 cannot stay bounded/local → NOT OBSERVED.
 G. Formalization reveals contradiction in laws → NOT OBSERVED (laws are consistent at DR level).
 
-## 34. Final Decision Recovery Status
+## 34. Final Decision Recovery Status (Correction 1)
 
-ROADMAP_22_DECISION_RECOVERY=PASS (draft, pending ChatGPT review)
-READY_FOR_CHATGPT_ROADMAP_22_DECISION_RECOVERY_REVIEW=YES
+ROADMAP_22_DECISION_RECOVERY_CORRECTION_1=PASS (draft, pending ChatGPT review)
+ROADMAP_22_DECISION_RECOVERY=PASS (as corrected)
+READY_FOR_CHATGPT_ROADMAP_22_DECISION_RECOVERY_CORRECTION_1_REVIEW=YES
 ROADMAP_22_IMPLEMENTATION=NO_GO
 ROADMAP_23=NOT_STARTED
 BLOCKERS=0
 ARCHITECTURE_ESCALATION=NONE
 
-NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_REVIEW
+NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_CORRECTION_1_REVIEW
