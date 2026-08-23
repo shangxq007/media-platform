@@ -34,12 +34,11 @@ public final class CompatibilityKernel {
         Objects.requireNonNull(candidate, "candidate");
 
         var unitId = request.physicalPlanUnit().stepId();
-        var binding = candidate.bindingPin();
         if (candidate.staticCompatibility().knowledge()
                 == ProviderStaticCompatibility.Knowledge.UNKNOWN) {
             return CompatibilityDecision.unknown(
-                    unitId,
-                    binding,
+                    request,
+                    candidate,
                     List.of(evidence(
                             StaticCompatibilityFailure.UNKNOWN_STATIC_COMPATIBILITY,
                             ReferenceKind.PROVIDER_CONTRACT,
@@ -47,8 +46,8 @@ public final class CompatibilityKernel {
         }
         if (candidate.staticCompatibility().loweringSupport() == LoweringSupport.UNKNOWN) {
             return CompatibilityDecision.unknown(
-                    unitId,
-                    binding,
+                    request,
+                    candidate,
                     List.of(evidence(
                             StaticCompatibilityFailure.UNKNOWN_STATIC_COMPATIBILITY,
                             ReferenceKind.LOWERING,
@@ -73,9 +72,46 @@ public final class CompatibilityKernel {
         }
 
         if (failures.isEmpty()) {
-            return CompatibilityDecision.compatible(unitId, binding);
+            KernelProof proof = new KernelProof(request, candidate);
+            return CompatibilityDecision.kernelCompatible(request, candidate, proof);
         }
-        return CompatibilityDecision.incompatible(unitId, binding, List.copyOf(failures), evidence);
+        return CompatibilityDecision.incompatible(
+                request, candidate, List.copyOf(failures), evidence);
+    }
+
+    /** The sole permitted proof implementation; its constructor is inaccessible to callers. */
+    static final class KernelProof implements StaticProviderCompatibilityProof {
+        private final CompatibilityRequest compatibilityRequest;
+        private final ProviderCandidate providerCandidate;
+
+        private KernelProof(
+                CompatibilityRequest compatibilityRequest,
+                ProviderCandidate providerCandidate) {
+            this.compatibilityRequest = compatibilityRequest;
+            this.providerCandidate = providerCandidate;
+        }
+
+        @Override
+        public CompatibilityRequest compatibilityRequest() {
+            return compatibilityRequest;
+        }
+
+        @Override
+        public ProviderCandidate providerCandidate() {
+            return providerCandidate;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof KernelProof that
+                    && compatibilityRequest.equals(that.compatibilityRequest)
+                    && providerCandidate.equals(that.providerCandidate);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(compatibilityRequest, providerCandidate);
+        }
     }
 
     private static void evaluateProviderContract(

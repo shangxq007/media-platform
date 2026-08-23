@@ -1,5 +1,9 @@
 package com.example.platform.execution.taskgraph;
 
+import com.example.platform.execution.compatibility.CompatibilityRequest;
+import com.example.platform.execution.compatibility.ProviderCandidate;
+import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.composition.CompositionDecision;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.composition.FailureAttribution.MemberAttribution;
@@ -17,6 +21,7 @@ import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersion;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest;
+import com.example.platform.execution.domain.provider.ProviderDescriptor;
 import com.example.platform.execution.domain.provider.ProviderExecutionContract;
 import com.example.platform.execution.domain.provider.ProviderExecutionContractSchemaVersion;
 import com.example.platform.execution.domain.provider.ProviderExecutionContractVersion;
@@ -57,13 +62,14 @@ class ProviderBoundExecutableTaskGraphTest {
     @Test
     void executableTaskIdIsDeterministicAcrossEquivalentMembershipPermutations() {
         UnitPair pair = dependentPair(false);
+        TaskContext context = context(plan(pair.producer(), pair.consumer()), "provider-a");
 
         ExecutableTask first = task(
-                binding("provider-a"),
+                context, "provider-a",
                 List.of(pair.producer(), pair.consumer()),
                 List.of());
         ExecutableTask permuted = task(
-                binding("provider-a"),
+                context, "provider-a",
                 List.of(pair.consumer(), pair.producer()),
                 List.of());
 
@@ -77,9 +83,10 @@ class ProviderBoundExecutableTaskGraphTest {
     void executableTaskIdIsDeterministicAcrossEquivalentInputPermutations() {
         PhysicalPlanUnit forward = sourcePinnedUnitWithInputPermutation(false);
         PhysicalPlanUnit reverse = sourcePinnedUnitWithInputPermutation(true);
+        TaskContext context = context(plan(forward), "provider-a");
 
-        ExecutableTask first = task(binding("provider-a"), List.of(forward), List.of());
-        ExecutableTask permuted = task(binding("provider-a"), List.of(reverse), List.of());
+        ExecutableTask first = task(context, "provider-a", List.of(forward), List.of());
+        ExecutableTask permuted = task(context, "provider-a", List.of(reverse), List.of());
 
         assertEquals(forward, reverse);
         assertEquals(first.id(), permuted.id());
@@ -88,10 +95,11 @@ class ProviderBoundExecutableTaskGraphTest {
     @Test
     void semanticallyDifferentMembershipsProduceDifferentCanonicalBytesAndTaskIds() {
         UnitPair pair = dependentPair(false);
+        TaskContext context = context(plan(pair.producer(), pair.consumer()), "provider-a");
         ExecutableTask producer = task(
-                binding("provider-a"), List.of(pair.producer()), List.of());
+                context, "provider-a", List.of(pair.producer()), List.of());
         ExecutableTask consumer = task(
-                binding("provider-a"), List.of(pair.consumer()), List.of());
+                context, "provider-a", List.of(pair.consumer()), List.of());
 
         assertNotEquals(producer.memberships(), consumer.memberships());
         assertNotEquals(
@@ -110,22 +118,26 @@ class ProviderBoundExecutableTaskGraphTest {
     void nullAndEmptyMembershipFieldsRemainCanonicallyDistinct() {
         PhysicalPlanUnit absentProducer = sourcePinnedUnitWithProducerLogicalNodeId(null);
         PhysicalPlanUnit emptyProducer = sourcePinnedUnitWithProducerLogicalNodeId("");
+        TaskContext absentContext = context(plan(absentProducer), "provider-a");
+        TaskContext emptyContext = context(plan(emptyProducer), "provider-a");
 
         assertNotEquals(absentProducer, emptyProducer);
         assertNotEquals(
-                task(binding("provider-a"), List.of(absentProducer), List.of()).id(),
-                task(binding("provider-a"), List.of(emptyProducer), List.of()).id());
+                task(absentContext, "provider-a", List.of(absentProducer), List.of()).id(),
+                task(emptyContext, "provider-a", List.of(emptyProducer), List.of()).id());
     }
 
     @Test
     void membershipOrProviderBindingChangeChangesExecutableTaskId() {
         UnitPair pair = dependentPair(false);
+        TaskContext context = context(
+                plan(pair.producer(), pair.consumer()), "provider-a", "provider-b");
         ExecutableTask producerOnly = task(
-                binding("provider-a"), List.of(pair.producer()), List.of());
+                context, "provider-a", List.of(pair.producer()), List.of());
         ExecutableTask both = task(
-                binding("provider-a"), List.of(pair.producer(), pair.consumer()), List.of());
+                context, "provider-a", List.of(pair.producer(), pair.consumer()), List.of());
         ExecutableTask otherBinding = task(
-                binding("provider-b"), List.of(pair.producer()), List.of());
+                context, "provider-b", List.of(pair.producer()), List.of());
 
         assertNotEquals(producerOnly.id(), both.id());
         assertNotEquals(producerOnly.id(), otherBinding.id());
@@ -136,13 +148,16 @@ class ProviderBoundExecutableTaskGraphTest {
     void graphDigestIsDeterministicAcrossTaskPermutationAndDistinctFromTaskIdentity() {
         UnitPair pair = dependentPair(false);
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
-        ExecutableTask producer = task(binding("provider-a"), List.of(pair.producer()), List.of());
-        ExecutableTask consumer = task(binding("provider-b"), List.of(pair.consumer()), List.of());
+        TaskContext context = context(plan, "provider-a");
+        ExecutableTask producer = task(
+                context, "provider-a", List.of(pair.producer()), List.of());
+        ExecutableTask consumer = task(
+                context, "provider-a", List.of(pair.consumer()), List.of());
 
         ProviderBoundExecutableTaskGraph forward = ProviderBoundExecutableTaskGraph.derive(
-                plan, List.of(producer, consumer));
+                plan, context.graph(), List.of(producer, consumer), List.of());
         ProviderBoundExecutableTaskGraph reverse = ProviderBoundExecutableTaskGraph.derive(
-                plan, List.of(consumer, producer));
+                plan, context.graph(), List.of(consumer, producer), List.of());
 
         assertEquals(forward.digest(), reverse.digest());
         assertEquals(List.of(producer.id(), consumer.id()).stream().sorted().toList(),
@@ -155,10 +170,13 @@ class ProviderBoundExecutableTaskGraphTest {
     void separateAndCoalescedDependenciesAreBothPreservedWithoutLoss() {
         UnitPair pair = dependentPair(false);
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
-        ExecutableTask producer = task(binding("provider-a"), List.of(pair.producer()), List.of());
-        ExecutableTask consumer = task(binding("provider-a"), List.of(pair.consumer()), List.of());
+        TaskContext context = context(plan, "provider-a");
+        ExecutableTask producer = task(
+                context, "provider-a", List.of(pair.producer()), List.of());
+        ExecutableTask consumer = task(
+                context, "provider-a", List.of(pair.consumer()), List.of());
         ProviderBoundExecutableTaskGraph separate = ProviderBoundExecutableTaskGraph.derive(
-                plan, List.of(producer, consumer));
+                plan, context.graph(), List.of(producer, consumer), List.of());
 
         assertEquals(1, separate.taskDependencies().size());
         assertEquals(pair.edge(), separate.taskDependencies().getFirst().sourceDependency());
@@ -166,9 +184,9 @@ class ProviderBoundExecutableTaskGraphTest {
         assertEquals(0, separate.dependencyLossCount());
 
         ExecutableTask coalesced = task(
-                binding("provider-a"), List.of(pair.consumer(), pair.producer()), List.of());
+                context, "provider-a", List.of(pair.consumer(), pair.producer()), List.of());
         ProviderBoundExecutableTaskGraph internal = ProviderBoundExecutableTaskGraph.derive(
-                plan, List.of(coalesced));
+                plan, context.graph(), List.of(coalesced), List.of());
 
         assertEquals(0, internal.taskDependencies().size());
         assertEquals(1, internal.providerLocalDependencies().size());
@@ -180,44 +198,63 @@ class ProviderBoundExecutableTaskGraphTest {
     }
 
     @Test
-    void providerBoundGraphRejectsUnprovenMultiUnitCompositionDecision() {
+    void executableTaskRejectsUnprovenSingleAndMultiUnitCompositionDecisions() {
         UnitPair pair = dependentPair(false);
-        PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
-        List<ExecutableTaskMembership> memberships =
-                ExecutableTaskMembership.canonicalForUnits(
-                        List.of(pair.producer(), pair.consumer()));
-        CompositionDecision unproven = new CompositionDecision(
+        List<ExecutableTaskMembership> singleMembership =
+                ExecutableTaskMembership.canonicalForUnits(List.of(pair.producer()));
+        CompositionDecision unprovenSingle = new CompositionDecision(
                 CompositionDecision.Status.ALLOWED,
                 binding("provider-a"),
-                memberships,
+                singleMembership,
                 List.of(),
-                memberships.stream()
+                singleMembership.stream()
                         .map(ExecutableTaskMembership::failureAttributionMapping)
                         .map(MemberAttribution.class::cast)
                         .toList());
-        ExecutableTask task = ExecutableTask.create(unproven, List.of());
+        List<ExecutableTaskMembership> multiMembership =
+                ExecutableTaskMembership.canonicalForUnits(
+                        List.of(pair.producer(), pair.consumer()));
+        CompositionDecision unprovenMulti = new CompositionDecision(
+                CompositionDecision.Status.ALLOWED,
+                binding("provider-a"),
+                multiMembership,
+                List.of(),
+                multiMembership.stream()
+                        .map(ExecutableTaskMembership::failureAttributionMapping)
+                        .map(MemberAttribution.class::cast)
+                        .toList());
 
-        assertFalse(unproven.evaluatorProvenAllowed());
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
-                () -> ProviderBoundExecutableTaskGraph.derive(plan, List.of(task)));
-        assertTrue(failure.getMessage().contains("evaluator-proven ALLOWED"));
+        assertFalse(unprovenSingle.evaluatorProvenAllowed());
+        assertFalse(unprovenMulti.evaluatorProvenAllowed());
+        assertThrows(IllegalArgumentException.class,
+                () -> ExecutableTask.create(unprovenSingle, List.of()),
+                "UNPROVEN_SINGLE_MEMBER_EXECUTABLE_TASK_ACCEPTANCE_COUNT=0");
+        assertThrows(IllegalArgumentException.class,
+                () -> ExecutableTask.create(unprovenMulti, List.of()),
+                "UNPROVEN_MULTI_MEMBER_EXECUTABLE_TASK_ACCEPTANCE_COUNT=0");
     }
 
     @Test
     void exactCoverageRejectsMissingAndDuplicateMemberships() {
         UnitPair pair = dependentPair(false);
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
-        ExecutableTask producer = task(binding("provider-a"), List.of(pair.producer()), List.of());
+        TaskContext context = context(plan, "provider-a", "provider-b");
+        ExecutableTask producer = task(
+                context, "provider-a", List.of(pair.producer()), List.of());
 
         IllegalArgumentException missing = assertThrows(IllegalArgumentException.class,
-                () -> ProviderBoundExecutableTaskGraph.derive(plan, List.of(producer)));
+                () -> ProviderBoundExecutableTaskGraph.derive(
+                        plan, context.graph(), List.of(producer), List.of()));
         assertTrue(missing.getMessage().contains("without membership"));
 
         ExecutableTask duplicateOnOtherBinding = task(
-                binding("provider-b"), List.of(pair.producer()), List.of());
+                context, "provider-b", List.of(pair.producer()), List.of());
         IllegalArgumentException duplicate = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
-                        plan, List.of(producer, duplicateOnOtherBinding)));
+                        plan,
+                        context.graph(),
+                        List.of(producer, duplicateOnOtherBinding),
+                        List.of()));
         assertTrue(duplicate.getMessage().contains("duplicate physical plan unit membership"));
     }
 
@@ -227,11 +264,14 @@ class ProviderBoundExecutableTaskGraphTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         List<PhysicalPlanUnit> before = List.copyOf(plan.units());
         PhysicalExecutionPlanDigest digestBefore = plan.digest();
-        ExecutableTask producer = task(binding("provider-a"), List.of(pair.producer()), List.of());
-        ExecutableTask consumer = task(binding("provider-a"), List.of(pair.consumer()), List.of());
+        TaskContext context = context(plan, "provider-a");
+        ExecutableTask producer = task(
+                context, "provider-a", List.of(pair.producer()), List.of());
+        ExecutableTask consumer = task(
+                context, "provider-a", List.of(pair.consumer()), List.of());
 
         ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
-                plan, List.of(producer, consumer));
+                plan, context.graph(), List.of(producer, consumer), List.of());
 
         assertSame(plan, graph.sourcePhysicalPlan());
         assertEquals(before, plan.units());
@@ -247,10 +287,11 @@ class ProviderBoundExecutableTaskGraphTest {
     @Test
     void boundaryActionIsTaskOwnedDataAndNeverIndependentlySchedulable() {
         PhysicalPlanUnit unit = sourcePinnedUnit("unit-source");
+        TaskContext context = context(plan(unit), "provider-a");
         BoundaryAction preAction = preInputAction(unit, 0);
         BoundaryAction postAction = postIntermediateAction(unit, 0);
         ExecutableTask task = task(
-                binding("provider-a"), List.of(unit), List.of(postAction, preAction));
+                context, "provider-a", List.of(unit), List.of(postAction, preAction));
 
         assertFalse(BoundaryAction.INDEPENDENTLY_SCHEDULABLE);
         assertTrue(BoundaryAction.OUTPUT_SUCCESS_REQUIRES_ARTIFACT_AUTHORITY_COMMIT);
@@ -269,16 +310,19 @@ class ProviderBoundExecutableTaskGraphTest {
     void mandatoryArtifactBoundaryCannotBeHiddenInsideOneTask() {
         UnitPair pair = dependentPair(true);
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
+        TaskContext context = context(plan, "provider-a");
         CompositionDecision forbidden = compositionDecision(
-                binding("provider-a"), List.of(pair.producer(), pair.consumer()));
+                context, "provider-a", List.of(pair.producer(), pair.consumer()));
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ExecutableTask.create(forbidden, List.of()));
         assertTrue(failure.getMessage().contains("proven ALLOWED"));
 
-        ExecutableTask producer = task(binding("provider-a"), List.of(pair.producer()), List.of());
-        ExecutableTask consumer = task(binding("provider-a"), List.of(pair.consumer()), List.of());
+        ExecutableTask producer = task(
+                context, "provider-a", List.of(pair.producer()), List.of());
+        ExecutableTask consumer = task(
+                context, "provider-a", List.of(pair.consumer()), List.of());
         ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
-                plan, List.of(producer, consumer));
+                plan, context.graph(), List.of(producer, consumer), List.of());
         assertEquals(1, graph.mandatoryArtifactBoundaries().size());
         assertEquals(0, graph.mandatoryArtifactBoundaryViolationCount());
     }
@@ -292,42 +336,86 @@ class ProviderBoundExecutableTaskGraphTest {
         PhysicalPlanUnit unitB = unit(
                 "unit-b", List.of(), List.of(output("unit-b", false)), List.of(edgeAB, edgeBA));
         PhysicalExecutionPlan plan = plan(unitA, unitB);
+        TaskContext context = context(plan, "provider-a");
 
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
                         plan,
+                        context.graph(),
                         List.of(
-                                task(binding("provider-a"), List.of(unitA), List.of()),
-                                task(binding("provider-a"), List.of(unitB), List.of()))));
+                                task(context, "provider-a", List.of(unitA), List.of()),
+                                task(context, "provider-a", List.of(unitB), List.of())),
+                        List.of()));
         assertTrue(failure.getMessage().contains("acyclic"));
     }
 
     private static ExecutableTask task(
-            ProviderBindingPin binding,
+            TaskContext context,
+            String provider,
             List<PhysicalPlanUnit> units,
             List<BoundaryAction> actions) {
-        return ExecutableTask.create(compositionDecision(binding, units), actions);
+        return ExecutableTask.create(compositionDecision(context, provider, units), actions);
     }
 
     private static CompositionDecision compositionDecision(
-            ProviderBindingPin binding,
+            TaskContext context,
+            String provider,
             List<PhysicalPlanUnit> units) {
+        ProviderCandidate candidate = context.candidate(provider);
+        ProviderBindingPin binding = candidate.bindingPin();
         List<ExecutableTaskMembership> memberships =
                 ExecutableTaskMembership.canonicalForUnits(units);
+        ProviderLocalCompositionRequest request = ProviderLocalCompositionRequest.of(
+                memberships,
+                context.graph(),
+                candidate,
+                new ProviderCompositionDeclaration(binding, NativePipelineSupport.SUPPORTED),
+                List.of());
+        return ProviderLocalCompositionEvaluator.evaluate(request);
+    }
+
+    private static TaskContext context(PhysicalExecutionPlan plan, String... providers) {
+        List<ProviderCandidate> candidates = Arrays.stream(providers)
+                .map(ProviderBoundExecutableTaskGraphTest::candidate)
+                .toList();
+        ProviderCompatibilityGraph graph = ProviderCompatibilityGraph.build(
+                plan,
+                plan.units().stream().map(CompatibilityRequest::forUnit).toList(),
+                candidates,
+                List.of());
+        return new TaskContext(plan, graph, candidates);
+    }
+
+    private static ProviderCandidate candidate(String provider) {
+        ProviderBindingPin binding = binding(provider);
         ProviderCapabilityProfile profile = new ProviderCapabilityProfile(
                 binding.providerCapabilityProfileVersionOrDigest(), List.of());
         ProviderExecutionContract contract = new ProviderExecutionContract(
                 ProviderExecutionContractSchemaVersion.of(1),
                 binding.providerExecutionContractVersion(),
                 List.of());
-        ProviderLocalCompositionRequest request = ProviderLocalCompositionRequest.of(
-                memberships,
-                binding,
-                profile,
-                contract,
-                new ProviderCompositionDeclaration(binding, NativePipelineSupport.SUPPORTED),
-                List.of());
-        return ProviderLocalCompositionEvaluator.evaluate(request);
+        ProviderDescriptor descriptor = new ProviderDescriptor(
+                binding.providerId(),
+                binding.providerImplementationId(),
+                binding.providerVersion(),
+                binding.providerExecutionContractVersion(),
+                binding.providerCapabilityProfileVersionOrDigest());
+        ProviderStaticCompatibility staticCompatibility = new ProviderStaticCompatibility(
+                ProviderStaticCompatibility.Knowledge.DECLARED,
+                List.of(
+                        ProviderStaticCompatibility.ArtifactRequirementKind.PINNED_SOURCE_INPUT,
+                        ProviderStaticCompatibility.ArtifactRequirementKind.MANDATORY_MATERIALIZATION,
+                        ProviderStaticCompatibility.ArtifactRequirementKind.INTERMEDIATE_OUTPUT,
+                        ProviderStaticCompatibility.ArtifactRequirementKind.FINAL_OUTPUT),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
+        return new ProviderCandidate(
+                binding, descriptor, contract, profile, staticCompatibility);
     }
 
     private static ProviderBindingPin binding(String provider) {
@@ -522,5 +610,18 @@ class ProviderBoundExecutableTaskGraphTest {
             PhysicalPlanUnit producer,
             PhysicalPlanUnit consumer,
             LogicalDependencyEdge edge) {
+    }
+
+    private record TaskContext(
+            PhysicalExecutionPlan plan,
+            ProviderCompatibilityGraph graph,
+            List<ProviderCandidate> candidates) {
+
+        private ProviderCandidate candidate(String provider) {
+            return candidates.stream()
+                    .filter(value -> value.bindingPin().providerId().equals(ProviderId.of(provider)))
+                    .findFirst()
+                    .orElseThrow();
+        }
     }
 }

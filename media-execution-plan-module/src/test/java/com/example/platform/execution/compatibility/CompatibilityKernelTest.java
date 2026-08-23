@@ -67,6 +67,8 @@ class CompatibilityKernelTest {
 
         assertEquals(CompatibilityDecision.Status.COMPATIBLE, decision.status());
         assertTrue(decision.compatible());
+        assertTrue(decision.kernelProvenCompatible());
+        assertTrue(decision.staticCompatibilityProof().isPresent());
         assertTrue(decision.reasons().isEmpty());
         assertTrue(decision.evidence().isEmpty());
     }

@@ -1,5 +1,6 @@
 package com.example.platform.execution.composition;
 
+import com.example.platform.execution.composition.FailureAttribution.MemberAttribution;
 import com.example.platform.execution.composition.ProviderCompositionDeclaration.NativePipelineSupport;
 import com.example.platform.execution.domain.ExecutionStepId;
 import com.example.platform.execution.planning.ExecutionIoProjection.InputBinding;
@@ -25,16 +26,37 @@ public final class ProviderLocalCompositionEvaluator {
     /** Frozen hard law: mandatory artifact boundaries are never optimized away. */
     public static final boolean MANDATORY_ARTIFACT_BOUNDARY_BLOCKS_COALESCING = true;
 
+    private static final Object EVALUATOR_PROVENANCE = new EvaluatorProvenance();
+
     private ProviderLocalCompositionEvaluator() {
     }
 
     public static CompositionDecision evaluate(ProviderLocalCompositionRequest request) {
         Objects.requireNonNull(request, "request");
-        if (request.memberships().size() == 1) {
-            return CompositionDecision.allowed(request);
-        }
+        request.requireStaticFeasibility();
+
+        List<MemberAttribution> attributions = request.memberships().stream()
+                .map(ExecutableTaskMembership::failureAttributionMapping)
+                .toList();
 
         EnumSet<CompositionBlocker> blockers = EnumSet.noneOf(CompositionBlocker.class);
+        if (!providerDeclarationsMatch(request)) {
+            blockers.add(CompositionBlocker.PROVIDER_NATIVE_PIPELINE_UNSUPPORTED);
+        }
+        if (request.memberships().size() == 1) {
+            return new CompositionDecision(
+                    blockers.isEmpty()
+                            ? CompositionDecision.Status.ALLOWED
+                            : CompositionDecision.Status.FORBIDDEN,
+                    request.providerBindingPin(),
+                    request.memberships(),
+                    List.copyOf(blockers),
+                    attributions,
+                    EVALUATOR_PROVENANCE,
+                    request.compatibilityGraph(),
+                    request.providerCandidate(),
+                    request.staticCompatibilityProofs());
+        }
         Map<ExecutionStepId, PhysicalPlanUnit> units = unitsByStep(request);
         Map<String, PhysicalPlanUnit> unitsByLogicalNode = unitsByLogicalNode(request);
 
@@ -43,25 +65,68 @@ public final class ProviderLocalCompositionEvaluator {
         evaluateStaticExecutionRequirements(units.values(), blockers);
         request.boundaryConstraints().forEach(constraint -> blockers.add(constraint.blocker()));
 
-        if (!providerDeclarationsMatch(request)
-                || request.providerCompositionDeclaration().nativePipelineSupport()
+        if (request.providerCompositionDeclaration().nativePipelineSupport()
                         == NativePipelineSupport.UNSUPPORTED) {
             blockers.add(CompositionBlocker.PROVIDER_NATIVE_PIPELINE_UNSUPPORTED);
         }
 
         if (!blockers.isEmpty()) {
-            return CompositionDecision.forbidden(request, List.copyOf(blockers));
+            return new CompositionDecision(
+                    CompositionDecision.Status.FORBIDDEN,
+                    request.providerBindingPin(),
+                    request.memberships(),
+                    List.copyOf(blockers),
+                    attributions,
+                    EVALUATOR_PROVENANCE,
+                    request.compatibilityGraph(),
+                    request.providerCandidate(),
+                    request.staticCompatibilityProofs());
         }
         if (request.providerCompositionDeclaration().nativePipelineSupport()
                 == NativePipelineSupport.UNKNOWN) {
-            return CompositionDecision.unknown(request);
+            return new CompositionDecision(
+                    CompositionDecision.Status.UNKNOWN_FAIL_CLOSED,
+                    request.providerBindingPin(),
+                    request.memberships(),
+                    List.of(CompositionBlocker.UNKNOWN_PROVIDER_COMPOSITION_SEMANTICS),
+                    attributions,
+                    EVALUATOR_PROVENANCE,
+                    request.compatibilityGraph(),
+                    request.providerCandidate(),
+                    request.staticCompatibilityProofs());
         }
-        return CompositionDecision.allowed(request);
+        return new CompositionDecision(
+                CompositionDecision.Status.ALLOWED,
+                request.providerBindingPin(),
+                request.memberships(),
+                List.of(),
+                attributions,
+                EVALUATOR_PROVENANCE,
+                request.compatibilityGraph(),
+                request.providerCandidate(),
+                request.staticCompatibilityProofs());
+    }
+
+    static boolean isEvaluatorProvenance(Object candidate) {
+        return candidate == EVALUATOR_PROVENANCE;
+    }
+
+    /** Private evaluator-owned capability; no same-package caller can manufacture it. */
+    private static final class EvaluatorProvenance {
+        private EvaluatorProvenance() {
+        }
     }
 
     private static boolean providerDeclarationsMatch(ProviderLocalCompositionRequest request) {
+        var candidate = request.providerCandidate();
         return request.providerCompositionDeclaration().providerBindingPin()
                         .equals(request.providerBindingPin())
+                && candidate.descriptor().providerId()
+                        .equals(request.providerBindingPin().providerId())
+                && candidate.descriptor().providerImplementationId()
+                        .equals(request.providerBindingPin().providerImplementationId())
+                && candidate.descriptor().providerVersion()
+                        .equals(request.providerBindingPin().providerVersion())
                 && request.providerCapabilityProfile().reference()
                         .equals(request.providerBindingPin()
                                 .providerCapabilityProfileVersionOrDigest())

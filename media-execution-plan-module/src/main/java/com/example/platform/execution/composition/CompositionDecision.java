@@ -1,6 +1,9 @@
 package com.example.platform.execution.composition;
 
 import com.example.platform.execution.composition.FailureAttribution.MemberAttribution;
+import com.example.platform.execution.compatibility.ProviderCandidate;
+import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -10,20 +13,21 @@ import java.util.Objects;
 /** Typed, immutable, fail-closed result of provider-local composition evaluation. */
 public final class CompositionDecision {
 
-    private static final EvaluationProof EVALUATOR_PROOF = new EvaluationProof();
-
     private final Status status;
     private final ProviderBindingPin providerBindingPin;
     private final List<ExecutableTaskMembership> memberships;
     private final List<CompositionBlocker> blockers;
     private final List<MemberAttribution> memberFailureAttributions;
-    private final EvaluationProof evaluationProof;
+    private final Object evaluatorProvenance;
+    private final ProviderCompatibilityGraph compatibilityGraph;
+    private final ProviderCandidate providerCandidate;
+    private final List<StaticProviderCompatibilityProof> staticCompatibilityProofs;
 
     /**
      * Constructs typed decision data without claiming evaluator provenance.
      *
      * <p>This remains available for immutable decision transport and validation tests. A
-     * multi-membership task carrying such a decision is rejected by the provider-bound graph;
+     * task carrying such a decision is rejected before it can enter the provider-bound graph;
      * only {@link ProviderLocalCompositionEvaluator#evaluate(ProviderLocalCompositionRequest)}
      * can attach the opaque evaluator proof.
      */
@@ -39,16 +43,22 @@ public final class CompositionDecision {
                 memberships,
                 blockers,
                 memberFailureAttributions,
-                null);
+                null,
+                null,
+                null,
+                List.of());
     }
 
-    private CompositionDecision(
+    CompositionDecision(
             Status status,
             ProviderBindingPin providerBindingPin,
             List<ExecutableTaskMembership> memberships,
             List<CompositionBlocker> blockers,
             List<MemberAttribution> memberFailureAttributions,
-            EvaluationProof evaluationProof) {
+            Object evaluatorProvenance,
+            ProviderCompatibilityGraph compatibilityGraph,
+            ProviderCandidate providerCandidate,
+            List<StaticProviderCompatibilityProof> staticCompatibilityProofs) {
         this.status = Objects.requireNonNull(status, "status");
         this.providerBindingPin = Objects.requireNonNull(providerBindingPin, "providerBindingPin");
         Objects.requireNonNull(memberships, "memberships");
@@ -93,7 +103,38 @@ public final class CompositionDecision {
                         "failure attribution must reference the membership's canonical unit");
             }
         }
-        this.evaluationProof = evaluationProof;
+        if (evaluatorProvenance != null
+                && !ProviderLocalCompositionEvaluator.isEvaluatorProvenance(
+                        evaluatorProvenance)) {
+            throw new IllegalArgumentException(
+                    "evaluator provenance must be issued by ProviderLocalCompositionEvaluator");
+        }
+        this.evaluatorProvenance = evaluatorProvenance;
+        this.compatibilityGraph = compatibilityGraph;
+        this.providerCandidate = providerCandidate;
+        this.staticCompatibilityProofs = List.copyOf(staticCompatibilityProofs);
+        if (evaluatorProvenance != null) {
+            Objects.requireNonNull(compatibilityGraph, "compatibilityGraph");
+            Objects.requireNonNull(providerCandidate, "providerCandidate");
+            if (this.staticCompatibilityProofs.size() != this.memberships.size()) {
+                throw new IllegalArgumentException(
+                        "evaluator provenance requires one static proof per membership");
+            }
+            for (int i = 0; i < this.memberships.size(); i++) {
+                StaticProviderCompatibilityProof proof = this.staticCompatibilityProofs.get(i);
+                if (!proof.compatibilityRequest().physicalPlanUnit()
+                                .equals(this.memberships.get(i).physicalPlanUnit())
+                        || !proof.providerCandidate().equals(providerCandidate)) {
+                    throw new IllegalArgumentException(
+                            "evaluator provenance must bind exact membership/provider semantics");
+                }
+            }
+        } else if (compatibilityGraph != null
+                || providerCandidate != null
+                || !this.staticCompatibilityProofs.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "unproven decision cannot carry evaluator proof context");
+        }
     }
 
     public Status status() {
@@ -122,7 +163,30 @@ public final class CompositionDecision {
 
     /** True only for an ALLOWED result returned by the canonical evaluator. */
     public boolean evaluatorProvenAllowed() {
-        return allowed() && evaluationProof == EVALUATOR_PROOF;
+        return allowed()
+                && ProviderLocalCompositionEvaluator.isEvaluatorProvenance(
+                        evaluatorProvenance)
+                && compatibilityGraph != null
+                && providerCandidate != null
+                && staticCompatibilityProofs.size() == memberships.size();
+    }
+
+    public ProviderCompatibilityGraph provenCompatibilityGraph() {
+        if (!evaluatorProvenAllowed()) {
+            throw new IllegalStateException("composition decision is not evaluator-proven ALLOWED");
+        }
+        return compatibilityGraph;
+    }
+
+    public ProviderCandidate provenProviderCandidate() {
+        if (!evaluatorProvenAllowed()) {
+            throw new IllegalStateException("composition decision is not evaluator-proven ALLOWED");
+        }
+        return providerCandidate;
+    }
+
+    public List<StaticProviderCompatibilityProof> staticCompatibilityProofs() {
+        return staticCompatibilityProofs;
     }
 
     @Override
@@ -160,47 +224,9 @@ public final class CompositionDecision {
                 + "]";
     }
 
-    static CompositionDecision allowed(ProviderLocalCompositionRequest request) {
-        return decision(Status.ALLOWED, request, List.of());
-    }
-
-    static CompositionDecision forbidden(
-            ProviderLocalCompositionRequest request, List<CompositionBlocker> blockers) {
-        return decision(Status.FORBIDDEN, request, blockers);
-    }
-
-    static CompositionDecision unknown(ProviderLocalCompositionRequest request) {
-        return decision(
-                Status.UNKNOWN_FAIL_CLOSED,
-                request,
-                List.of(CompositionBlocker.UNKNOWN_PROVIDER_COMPOSITION_SEMANTICS));
-    }
-
-    private static CompositionDecision decision(
-            Status status,
-            ProviderLocalCompositionRequest request,
-            List<CompositionBlocker> blockers) {
-        List<MemberAttribution> attributions = request.memberships().stream()
-                .map(ExecutableTaskMembership::failureAttributionMapping)
-                .toList();
-        return new CompositionDecision(
-                status,
-                request.providerBindingPin(),
-                request.memberships(),
-                blockers,
-                attributions,
-                EVALUATOR_PROOF);
-    }
-
     public enum Status {
         ALLOWED,
         FORBIDDEN,
         UNKNOWN_FAIL_CLOSED
-    }
-
-    /** Opaque identity token: no caller can manufacture evaluator provenance. */
-    private static final class EvaluationProof {
-        private EvaluationProof() {
-        }
     }
 }

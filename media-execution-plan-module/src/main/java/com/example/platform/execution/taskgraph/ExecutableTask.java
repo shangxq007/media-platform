@@ -43,13 +43,15 @@ public final class ExecutableTask {
             Collection<BoundaryAction> boundaryActions) {
         Objects.requireNonNull(compositionDecision, "compositionDecision");
         Objects.requireNonNull(boundaryActions, "boundaryActions");
-        if (!compositionDecision.allowed()) {
+        if (!compositionDecision.evaluatorProvenAllowed()) {
             throw new IllegalArgumentException(
-                    "ExecutableTask requires a proven ALLOWED provider-local composition decision");
+                    "ExecutableTask requires an evaluator-proven ALLOWED provider-local composition decision");
         }
 
         List<BoundaryAction> canonicalActions = canonicalActions(
-                compositionDecision.memberships(), boundaryActions);
+                compositionDecision.memberships(),
+                compositionDecision.providerBindingPin(),
+                boundaryActions);
         List<RequiredInputArtifactPin> inputPins = requiredInputPins(
                 compositionDecision.memberships());
         String canonical = ExecutableTaskCanonicalCodec.taskSemantics(
@@ -90,6 +92,7 @@ public final class ExecutableTask {
 
     private static List<BoundaryAction> canonicalActions(
             List<ExecutableTaskMembership> memberships,
+            ProviderBindingPin providerBindingPin,
             Collection<BoundaryAction> actions) {
         Map<ExecutionStepId, ExecutableTaskMembership> members = new HashMap<>();
         memberships.forEach(member -> members.put(member.physicalPlanUnitId(), member));
@@ -103,7 +106,7 @@ public final class ExecutableTask {
                 throw new IllegalArgumentException(
                         "BoundaryAction target must belong to the primary task membership");
             }
-            validateActionTarget(action, member);
+            validateActionTarget(action, member, providerBindingPin);
             String position = action.phase().name() + "\u0000" + action.deterministicOrder();
             if (!positions.add(position)) {
                 throw new IllegalArgumentException(
@@ -117,8 +120,31 @@ public final class ExecutableTask {
 
     private static void validateActionTarget(
             BoundaryAction action,
-            ExecutableTaskMembership member) {
+            ExecutableTaskMembership member,
+            ProviderBindingPin providerBindingPin) {
         BoundaryAction.Target target = action.target();
+        if (target instanceof BoundaryAction.CrossProviderMaterializeTarget materialize) {
+            CrossProviderArtifactBoundary boundary = materialize.boundary();
+            if (action.phase() != BoundaryAction.Phase.POST_EXECUTION
+                    || !member.outputMapping().contains(boundary.producerOutput())
+                    || !member.physicalPlanUnitId().equals(boundary.producerUnitId())
+                    || !providerBindingPin.equals(boundary.producerBindingPin())) {
+                throw new IllegalArgumentException(
+                        "cross-provider materialize action must be producer task-owned POST_EXECUTION semantics");
+            }
+            return;
+        }
+        if (target instanceof BoundaryAction.CrossProviderAcquireTarget acquire) {
+            CrossProviderArtifactBoundary boundary = acquire.boundary();
+            if (action.phase() != BoundaryAction.Phase.PRE_EXECUTION
+                    || !member.inputMapping().contains(boundary.consumerInput())
+                    || !member.physicalPlanUnitId().equals(boundary.consumerUnitId())
+                    || !providerBindingPin.equals(boundary.consumerBindingPin())) {
+                throw new IllegalArgumentException(
+                        "cross-provider acquire action must be consumer task-owned PRE_EXECUTION semantics");
+            }
+            return;
+        }
         if (target instanceof BoundaryAction.RequiredInputArtifactTarget required) {
             if (action.phase() != BoundaryAction.Phase.PRE_EXECUTION
                     || !member.inputMapping().contains(required.inputBinding())) {

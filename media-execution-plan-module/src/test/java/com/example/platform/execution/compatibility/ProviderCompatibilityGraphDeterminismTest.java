@@ -1,6 +1,8 @@
 package com.example.platform.execution.compatibility;
 
 import com.example.platform.execution.domain.ExecutionStepId;
+import com.example.platform.execution.domain.ExecutionPlanId;
+import com.example.platform.execution.domain.ExecutionPlanSchemaVersion;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersion;
@@ -13,6 +15,9 @@ import com.example.platform.execution.domain.provider.ProviderId;
 import com.example.platform.execution.domain.provider.ProviderImplementationId;
 import com.example.platform.execution.domain.provider.ProviderVersion;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
+import com.example.platform.execution.planning.PhysicalExecutionPlan;
+import com.example.platform.execution.planning.PhysicalExecutionPlanDigest;
+import com.example.platform.render.domain.renderplan.RenderPlanFingerprint;
 import com.example.platform.render.domain.renderplan.RenderNodeId;
 import com.example.platform.render.domain.renderplan.RenderNodeKind;
 import java.util.List;
@@ -31,11 +36,12 @@ class ProviderCompatibilityGraphDeterminismTest {
         CompatibilityRequest secondUnit = CompatibilityRequest.forUnit(unit("unit-b"));
         ProviderCandidate ffmpeg = candidate("ffmpeg", CompatibilityKernelTest.fullySupported());
         ProviderCandidate blender = candidate("blender", CompatibilityKernelTest.fullySupported());
+        PhysicalExecutionPlan plan = plan(firstUnit.physicalPlanUnit(), secondUnit.physicalPlanUnit());
 
         ProviderCompatibilityGraph first = ProviderCompatibilityGraph.build(
-                List.of(secondUnit, firstUnit), List.of(ffmpeg, blender));
+                plan, List.of(secondUnit, firstUnit), List.of(ffmpeg, blender), List.of());
         ProviderCompatibilityGraph permuted = ProviderCompatibilityGraph.build(
-                List.of(firstUnit, secondUnit), List.of(blender, ffmpeg));
+                plan, List.of(firstUnit, secondUnit), List.of(blender, ffmpeg), List.of());
 
         assertEquals(first, permuted);
         assertEquals(first.hashCode(), permuted.hashCode());
@@ -57,8 +63,10 @@ class ProviderCompatibilityGraphDeterminismTest {
         ProviderCandidate incompatible = candidate("incompatible", cannotLower);
 
         ProviderCompatibilityGraph graph = ProviderCompatibilityGraph.build(
+                plan(unit("unit-a")),
                 List.of(CompatibilityRequest.forUnit(unit("unit-a"))),
-                List.of(unknown, incompatible, compatible));
+                List.of(unknown, incompatible, compatible),
+                List.of());
 
         assertEquals(1, graph.unitCandidates().getFirst().feasibleProviderBindings().size());
         assertEquals(ProviderId.of("ffmpeg"),
@@ -70,11 +78,25 @@ class ProviderCompatibilityGraphDeterminismTest {
     void duplicateUnitOrBindingCandidateFailsStructurally() {
         CompatibilityRequest request = CompatibilityRequest.forUnit(unit("unit-a"));
         ProviderCandidate candidate = candidate("ffmpeg", CompatibilityKernelTest.fullySupported());
+        PhysicalExecutionPlan plan = plan(request.physicalPlanUnit());
 
         assertThrows(IllegalArgumentException.class,
-                () -> ProviderCompatibilityGraph.build(List.of(request, request), List.of(candidate)));
+                () -> ProviderCompatibilityGraph.build(
+                        plan, List.of(request, request), List.of(candidate), List.of()));
         assertThrows(IllegalArgumentException.class,
-                () -> ProviderCompatibilityGraph.build(List.of(request), List.of(candidate, candidate)));
+                () -> ProviderCompatibilityGraph.build(
+                        plan, List.of(request), List.of(candidate, candidate), List.of()));
+    }
+
+    private static PhysicalExecutionPlan plan(PhysicalPlanUnit... units) {
+        return new PhysicalExecutionPlan(
+                "1",
+                new ExecutionPlanId("compatibility-plan"),
+                ExecutionPlanSchemaVersion.V1,
+                new RenderPlanFingerprint("compatibility-fingerprint"),
+                List.of(units),
+                null,
+                new PhysicalExecutionPlanDigest("declared-digest"));
     }
 
     private static PhysicalPlanUnit unit(String id) {

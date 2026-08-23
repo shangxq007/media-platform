@@ -1,5 +1,9 @@
 package com.example.platform.execution.composition;
 
+import com.example.platform.execution.compatibility.CompatibilityRequest;
+import com.example.platform.execution.compatibility.ProviderCandidate;
+import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.composition.CompositionDecision.Status;
 import com.example.platform.execution.composition.FailureAttribution.UnknownMemberAttribution;
 import com.example.platform.execution.composition.ProviderCompositionDeclaration.NativePipelineSupport;
@@ -13,6 +17,7 @@ import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersion;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest;
+import com.example.platform.execution.domain.provider.ProviderDescriptor;
 import com.example.platform.execution.domain.provider.ProviderExecutionContract;
 import com.example.platform.execution.domain.provider.ProviderExecutionContractSchemaVersion;
 import com.example.platform.execution.domain.provider.ProviderExecutionContractVersion;
@@ -30,6 +35,8 @@ import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderPlanFingerprint;
 import com.example.platform.render.domain.renderplan.RenderNodeId;
 import com.example.platform.render.domain.renderplan.RenderNodeKind;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -191,6 +198,53 @@ class ProviderLocalCompositionEvaluatorTest {
                 decision.blockers());
     }
 
+    @Test
+    void samePackageCallerCannotForgeEvaluatorProvenAllowedDecision()
+            throws ReflectiveOperationException {
+        UnitPair pair = dependentPair(false);
+        CompositionDecision evaluated = ProviderLocalCompositionEvaluator.evaluate(
+                request(pair, NativePipelineSupport.SUPPORTED, List.of()));
+        CompositionDecision manuallyConstructed = new CompositionDecision(
+                Status.ALLOWED,
+                evaluated.providerBindingPin(),
+                evaluated.memberships(),
+                List.of(),
+                evaluated.memberFailureAttributions());
+
+        assertTrue(evaluated.evaluatorProvenAllowed());
+        assertEquals(0, List.of(manuallyConstructed).stream()
+                        .filter(CompositionDecision::evaluatorProvenAllowed)
+                        .count(),
+                "MANUALLY_CONSTRUCTED_EVALUATOR_PROVEN_ALLOWED_COUNT=0");
+        assertThrows(IllegalArgumentException.class, () -> new CompositionDecision(
+                Status.ALLOWED,
+                evaluated.providerBindingPin(),
+                evaluated.memberships(),
+                List.of(),
+                evaluated.memberFailureAttributions(),
+                new Object(),
+                evaluated.provenCompatibilityGraph(),
+                evaluated.provenProviderCandidate(),
+                evaluated.staticCompatibilityProofs()));
+
+        assertTrue(Modifier.isPrivate(CompositionDecision.class
+                .getDeclaredField("evaluatorProvenance").getModifiers()));
+        assertEquals(0, Arrays.stream(CompositionDecision.class.getDeclaredMethods())
+                        .filter(method -> !Modifier.isPrivate(method.getModifiers()))
+                        .filter(method -> Modifier.isStatic(method.getModifiers()))
+                        .filter(method -> method.getReturnType() == CompositionDecision.class)
+                        .count(),
+                "CompositionDecision exposes no public/package evaluator-proven factory");
+        assertTrue(Modifier.isPrivate(ProviderLocalCompositionEvaluator.class
+                .getDeclaredField("EVALUATOR_PROVENANCE").getModifiers()));
+        List<Class<?>> provenanceTypes = Arrays.stream(
+                        ProviderLocalCompositionEvaluator.class.getDeclaredClasses())
+                .filter(type -> type.getSimpleName().equals("EvaluatorProvenance"))
+                .toList();
+        assertEquals(1, provenanceTypes.size());
+        assertTrue(Modifier.isPrivate(provenanceTypes.getFirst().getModifiers()));
+    }
+
     private static ProviderLocalCompositionRequest request(
             UnitPair pair,
             NativePipelineSupport support,
@@ -211,12 +265,35 @@ class ProviderLocalCompositionEvaluatorTest {
                 new ProviderCapabilityProfile(profileReference, List.of());
         ProviderExecutionContract contract = new ProviderExecutionContract(
                 ProviderExecutionContractSchemaVersion.of(1), contractVersion, List.of());
+        ProviderDescriptor descriptor = new ProviderDescriptor(
+                binding.providerId(),
+                binding.providerImplementationId(),
+                binding.providerVersion(),
+                contractVersion,
+                profileReference);
+        ProviderStaticCompatibility staticCompatibility = new ProviderStaticCompatibility(
+                ProviderStaticCompatibility.Knowledge.DECLARED,
+                List.of(ProviderStaticCompatibility.ArtifactRequirementKind.MANDATORY_MATERIALIZATION),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
+        ProviderCandidate candidate = new ProviderCandidate(
+                binding, descriptor, contract, profile, staticCompatibility);
+        PhysicalExecutionPlan sourcePlan = plan(pair);
+        ProviderCompatibilityGraph compatibilityGraph = ProviderCompatibilityGraph.build(
+                sourcePlan,
+                sourcePlan.units().stream().map(CompatibilityRequest::forUnit).toList(),
+                List.of(candidate),
+                List.of());
         return ProviderLocalCompositionRequest.of(
                 ExecutableTaskMembership.canonicalForUnits(
                         List.of(pair.consumer(), pair.producer())),
-                binding,
-                profile,
-                contract,
+                compatibilityGraph,
+                candidate,
                 new ProviderCompositionDeclaration(binding, support),
                 constraints);
     }
