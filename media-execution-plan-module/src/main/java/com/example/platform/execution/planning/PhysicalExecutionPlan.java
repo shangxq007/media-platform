@@ -44,7 +44,7 @@ public record PhysicalExecutionPlan(
         Objects.requireNonNull(planFingerprint, "planFingerprint");
         Objects.requireNonNull(units, "units");
         Objects.requireNonNull(digest, "digest");
-        units = List.copyOf(units);
+        units = PlanningCanonicalOrder.physicalUnits(units);
     }
 
     /**
@@ -72,13 +72,11 @@ public record PhysicalExecutionPlan(
             Objects.requireNonNull(logicalNodeId, "logicalNodeId");
             Objects.requireNonNull(sourceRenderNodeId, "sourceRenderNodeId");
             Objects.requireNonNull(sourceRenderNodeKind, "sourceRenderNodeKind");
-            typedInputs = typedInputs == null ? List.of() : List.copyOf(typedInputs);
-            typedOutputs = typedOutputs == null ? List.of() : List.copyOf(typedOutputs);
-            typedDependencies = typedDependencies == null ? List.of() : List.copyOf(typedDependencies);
-            capabilityRequirementRefs = capabilityRequirementRefs == null
-                    ? List.of() : List.copyOf(capabilityRequirementRefs);
-            executionIntentRefs = executionIntentRefs == null
-                    ? List.of() : List.copyOf(executionIntentRefs);
+            typedInputs = PlanningCanonicalOrder.inputBindings(typedInputs);
+            typedOutputs = PlanningCanonicalOrder.outputDeclarations(typedOutputs);
+            typedDependencies = PlanningCanonicalOrder.logicalEdges(typedDependencies);
+            capabilityRequirementRefs = PlanningCanonicalOrder.capabilityRequirementRefs(capabilityRequirementRefs);
+            executionIntentRefs = PlanningCanonicalOrder.executionIntentRefs(executionIntentRefs);
         }
     }
 }

@@ -84,13 +84,11 @@ public final class ExecutionIoProjection {
             Objects.requireNonNull(outputId, "outputId");
             Objects.requireNonNull(logicalNodeId, "logicalNodeId");
             Objects.requireNonNull(sourceRenderNodeId, "sourceRenderNodeId");
-            outputRequirements = outputRequirements == null ? List.of() : List.copyOf(outputRequirements);
-            materializationRequirements = materializationRequirements == null
-                    ? List.of() : List.copyOf(materializationRequirements);
-            intermediateArtifactExpectations = intermediateArtifactExpectations == null
-                    ? List.of() : List.copyOf(intermediateArtifactExpectations);
-            finalArtifactExpectations = finalArtifactExpectations == null
-                    ? List.of() : List.copyOf(finalArtifactExpectations);
+            outputRequirements = PlanningCanonicalOrder.outputRequirements(outputRequirements);
+            materializationRequirements = PlanningCanonicalOrder.materializations(materializationRequirements);
+            intermediateArtifactExpectations =
+                    PlanningCanonicalOrder.intermediateArtifacts(intermediateArtifactExpectations);
+            finalArtifactExpectations = PlanningCanonicalOrder.finalArtifacts(finalArtifactExpectations);
         }
     }
 

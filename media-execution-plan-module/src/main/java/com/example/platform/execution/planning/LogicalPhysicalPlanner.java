@@ -30,7 +30,7 @@ final class LogicalPhysicalPlanner {
     }
 
     /** Plan a validated RenderPlan (+ its validated RenderGraph) end to end. */
-    static PlanningResult plan(RenderPlan plan, RenderGraph graph,
+    static ExecutionPlanningEntry.PlanningResult plan(RenderPlan plan, RenderGraph graph,
                                       com.example.platform.execution.domain.ExecutionPlanId planId) {
         Objects.requireNonNull(plan, "plan");
         Objects.requireNonNull(graph, "graph");
@@ -54,7 +54,7 @@ final class LogicalPhysicalPlanner {
         validateRefsResolve(logical);
 
         PhysicalExecutionPlan physical = PhysicalPlannerV1.plan(logical, requestedExtent, planId);
-        return new PlanningResult(requirement, logical, physical);
+        return new ExecutionPlanningEntry.PlanningResult(requirement, logical, physical);
     }
 
     /** law:dag-acyclic — deterministic DFS cycle detection. */
@@ -133,10 +133,4 @@ final class LogicalPhysicalPlanner {
         }
     }
 
-    /** End-to-end planning result (transient derived values + digests). */
-    public record PlanningResult(
-            ExecutionRequirement executionRequirement,
-            LogicalExecutionGraph logicalExecutionGraph,
-            PhysicalExecutionPlan physicalExecutionPlan) {
-    }
 }

@@ -16,7 +16,7 @@ import java.util.Objects;
  *   RenderPlanningResult
  *     → require status == PLANNABLE        (render-status gate)
  *     → exact RenderPlan + RenderGraph
- *     → LogicalPhysicalPlanner.plan(...)
+ *     → internal logical/physical planning chain
  * </pre>
  *
  * <p>PLANNABLE/UNRENDERABLE authority stays with the render planning result
@@ -37,7 +37,7 @@ public final class ExecutionPlanningEntry {
      * @throws ExecutionPlanningException with reason
      *         RENDER_PLANNING_RESULT_NOT_PLANNABLE when status != PLANNABLE
      */
-    public static LogicalPhysicalPlanner.PlanningResult plan(
+    public static PlanningResult plan(
             RenderPlanningResult renderResult, ExecutionPlanId planId) {
         Objects.requireNonNull(renderResult, "renderResult");
         Objects.requireNonNull(planId, "planId");
@@ -52,5 +52,12 @@ public final class ExecutionPlanningEntry {
         Objects.requireNonNull(plan, "plan");
         return LogicalPhysicalPlanner.plan(
                 plan, renderResult.graph(), planId);
+    }
+
+    /** Public execution-planning result carrier owned by the public entry. */
+    public record PlanningResult(
+            ExecutionRequirement executionRequirement,
+            LogicalExecutionGraph logicalExecutionGraph,
+            PhysicalExecutionPlan physicalExecutionPlan) {
     }
 }

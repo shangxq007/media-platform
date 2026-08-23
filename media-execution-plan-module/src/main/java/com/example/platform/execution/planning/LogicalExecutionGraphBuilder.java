@@ -37,13 +37,13 @@ import java.util.Set;
  *   <li>law:extent-elimination-deterministic — same inputs -> same elimination</li>
  * </ul>
  */
-public final class LogicalExecutionGraphBuilder {
+final class LogicalExecutionGraphBuilder {
 
     private LogicalExecutionGraphBuilder() {
     }
 
     /** Build the logical graph from a validated RenderGraph (1:1, pruned). */
-    public static LogicalExecutionGraph build(RenderGraph graph, RenderExtent requestedExtent) {
+    static LogicalExecutionGraph build(RenderGraph graph, RenderExtent requestedExtent) {
         Objects.requireNonNull(graph, "graph");
 
         // ---- validation: duplicate source ids ----

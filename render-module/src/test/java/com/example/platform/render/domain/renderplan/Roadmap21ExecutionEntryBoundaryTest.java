@@ -4,9 +4,6 @@ import com.example.platform.execution.domain.ExecutionPlanId;
 import com.example.platform.execution.planning.ExecutionPlanningEntry;
 import com.example.platform.execution.planning.ExecutionPlanningException;
 import com.example.platform.execution.planning.ExecutionPlanningFailureReason;
-import com.example.platform.execution.planning.LogicalExecutionGraph;
-import com.example.platform.execution.planning.PhysicalExecutionPlan;
-import com.example.platform.execution.planning.PhysicalPlannerV1;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
@@ -21,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   DefaultRenderPlanner.plan(input)
  *     → RenderPlanningResult
  *     → guarded ExecutionPlanningEntry (only PLANNABLE accepted)
- *     → LogicalPhysicalPlanner.plan(...)
+ *     → internal #21 logical/physical planning chain
  * </pre>
  *
  * Overflow TIMED_TEXT → PLANNING_UNSUPPORTED ERROR → UNRENDERABLE → entry

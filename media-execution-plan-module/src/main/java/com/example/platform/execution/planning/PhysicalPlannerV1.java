@@ -11,7 +11,10 @@ import com.example.platform.execution.planning.LogicalExecutionGraph.LogicalDepe
 import com.example.platform.execution.planning.LogicalExecutionGraph.LogicalExecutionNode;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.render.domain.renderplan.RenderArtifactReference;
+import com.example.platform.render.domain.renderplan.RenderDependency;
 import com.example.platform.render.domain.renderplan.RenderExtent;
+import com.example.platform.render.domain.renderplan.RenderNodeId;
+import com.example.platform.render.domain.renderplan.RenderSampleWindow;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -29,33 +32,107 @@ import java.util.Set;
  * artifact expectations → OutputDeclaration. NO provider/worker/device/queue/
  * availability binding.
  */
-public final class PhysicalPlannerV1 {
+final class PhysicalPlannerV1 {
 
     /** Structural edge projection used to unify SourceArtifact + edge inputs. */
-    public record RenderDependencyEdgeLike(
+    record RenderDependencyEdgeLike(
             String producerLogicalNodeId,
+            String consumerLogicalNodeId,
             com.example.platform.render.domain.renderplan.RenderNodeId producerRenderNodeId,
+            com.example.platform.render.domain.renderplan.RenderNodeId consumerRenderNodeId,
             com.example.platform.render.domain.renderplan.RenderDependency dependencyVariant) {
 
-        public static RenderDependencyEdgeLike of(LogicalExecutionGraph.LogicalDependencyEdge e) {
-            return new RenderDependencyEdgeLike(e.producerLogicalNodeId(), e.producerRenderNodeId(),
+        static RenderDependencyEdgeLike of(LogicalExecutionGraph.LogicalDependencyEdge e) {
+            return new RenderDependencyEdgeLike(e.producerLogicalNodeId(), e.consumerLogicalNodeId(),
+                    e.producerRenderNodeId(), e.consumerRenderNodeId(),
                     e.dependencyVariant());
         }
     }
 
-    /** Deterministic sort key for incoming-edge input records (C7-A): the
-     *  complete independent edge semantics (producer + consumer + typed
-     *  dependency variant), NOT traversal position. */
+    /**
+     * Deterministic structurally-framed sort key for incoming-edge input
+     * records (C8-A): complete independent edge semantics, never traversal
+     * position or delimiter-only tuple framing.
+     */
     static String edgeCanonical(RenderDependencyEdgeLike e) {
-        return e.producerLogicalNodeId() + "\u0001"
-                + (e.dependencyVariant() != null
-                        ? Canonical.dependency(e.dependencyVariant()) : "null");
+        CanonicalWriter w = new CanonicalWriter();
+        w.tag("EDGE_INPUT");
+        w.field("producerLogicalNodeId", e.producerLogicalNodeId());
+        w.field("producerRenderNodeId",
+                e.producerRenderNodeId() != null ? e.producerRenderNodeId().value() : null);
+        w.field("consumerLogicalNodeId", e.consumerLogicalNodeId());
+        w.field("consumerRenderNodeId",
+                e.consumerRenderNodeId() != null ? e.consumerRenderNodeId().value() : null);
+        w.field("dependency", Canonical.dependency(e.dependencyVariant()));
+        return w.build();
+    }
+
+    private record PendingInput(
+            String consumerLogicalNodeId,
+            ExecutionStepId consumerStepId,
+            RenderNodeId consumerRenderNodeId,
+            String producerLogicalNodeId,
+            ExecutionStepId producerStepId,
+            RenderNodeId producerRenderNodeId,
+            RenderDependency dependencyVariant,
+            RenderArtifactReference.SourceArtifact sourceArtifact,
+            RenderSampleWindow requiredSampleWindow) {
+
+        static PendingInput source(LogicalExecutionNode node, RenderArtifactReference.SourceArtifact sourceArtifact) {
+            return new PendingInput(
+                    node.logicalNodeId(),
+                    new ExecutionStepId(node.logicalNodeId()),
+                    node.sourceRenderNodeId(),
+                    null, null, null, null,
+                    sourceArtifact,
+                    node.requiredSampleWindow());
+        }
+
+        static PendingInput edge(LogicalExecutionNode node, RenderDependencyEdgeLike edge) {
+            return new PendingInput(
+                    node.logicalNodeId(),
+                    new ExecutionStepId(node.logicalNodeId()),
+                    node.sourceRenderNodeId(),
+                    edge.producerLogicalNodeId(),
+                    new ExecutionStepId(edge.producerLogicalNodeId()),
+                    edge.producerRenderNodeId(),
+                    edge.dependencyVariant(),
+                    null,
+                    node.requiredSampleWindow());
+        }
+
+        String canonicalKey() {
+            return PlanningCanonicalOrder.inputBindingSemanticKey(
+                    consumerLogicalNodeId,
+                    consumerStepId != null ? consumerStepId.value() : null,
+                    consumerRenderNodeId,
+                    producerLogicalNodeId,
+                    producerStepId != null ? producerStepId.value() : null,
+                    producerRenderNodeId,
+                    dependencyVariant,
+                    sourceArtifact,
+                    requiredSampleWindow);
+        }
+
+        InputBinding toInputBinding(ExecutionInputId inputId) {
+            return new InputBinding(
+                    inputId,
+                    consumerLogicalNodeId,
+                    consumerStepId,
+                    consumerRenderNodeId,
+                    producerLogicalNodeId,
+                    producerStepId,
+                    producerRenderNodeId,
+                    dependencyVariant,
+                    sourceArtifact,
+                    requiredSampleWindow);
+        }
     }
 
     private PhysicalPlannerV1() {
     }
 
-    public static PhysicalExecutionPlan plan(LogicalExecutionGraph logical,
+    static PhysicalExecutionPlan plan(LogicalExecutionGraph logical,
                                              RenderExtent requestedExtent,
                                              ExecutionPlanId planId) {
         Objects.requireNonNull(logical, "logical");
@@ -84,43 +161,28 @@ public final class PhysicalPlannerV1 {
             // (producer/dependency null — root/pinned) and each incoming edge
             // its own independent InputBinding (sourceArtifact null).
             // ExecutionInputId ordinals are assigned AFTER canonical sorting
-            // of each independent record class — never from pre-normalization
-            // traversal position (law:planning-deterministic).
-            var inputs = new ArrayList<InputBinding>();
+            // of the unified independent input model — never from
+            // pre-normalization traversal position (law:planning-deterministic).
+            var pendingInputs = new ArrayList<PendingInput>();
             var srcArtifacts = node.artifactReferences().stream()
                     .filter(a -> a instanceof RenderArtifactReference.SourceArtifact)
                     .map(a -> (RenderArtifactReference.SourceArtifact) a)
-                    .sorted(Comparator.comparing(a -> Canonical.sourceArtifact(a)))
                     .toList();
             var incomingEdges = logical.edges().stream()
                     .filter(e -> e.consumerLogicalNodeId().equals(node.logicalNodeId()))
                     .map(RenderDependencyEdgeLike::of)
-                    .sorted(Comparator.comparing(PhysicalPlannerV1::edgeCanonical))
                     .toList();
-            for (int i = 0; i < srcArtifacts.size(); i++) {
-                inputs.add(new InputBinding(
-                        new ExecutionInputId(node.sourceRenderNodeId().value() + "#in" + i),
-                        node.logicalNodeId(),
-                        new ExecutionStepId(node.logicalNodeId()),
-                        node.sourceRenderNodeId(),
-                        null, null, null, null,
-                        srcArtifacts.get(i),
-                        node.requiredSampleWindow()));
+            for (var srcArtifact : srcArtifacts) {
+                pendingInputs.add(PendingInput.source(node, srcArtifact));
             }
-            for (int i = 0; i < incomingEdges.size(); i++) {
-                var edge = incomingEdges.get(i);
-                inputs.add(new InputBinding(
-                        new ExecutionInputId(node.sourceRenderNodeId().value()
-                                + "#in" + (srcArtifacts.size() + i)),
-                        node.logicalNodeId(),
-                        new ExecutionStepId(node.logicalNodeId()),
-                        node.sourceRenderNodeId(),
-                        edge.producerLogicalNodeId(),
-                        new ExecutionStepId(edge.producerLogicalNodeId()),
-                        edge.producerRenderNodeId(),
-                        edge.dependencyVariant(),
-                        null,
-                        node.requiredSampleWindow()));
+            for (var edge : incomingEdges) {
+                pendingInputs.add(PendingInput.edge(node, edge));
+            }
+            pendingInputs.sort(Comparator.comparing(PendingInput::canonicalKey));
+            var inputs = new ArrayList<InputBinding>();
+            for (int i = 0; i < pendingInputs.size(); i++) {
+                inputs.add(pendingInputs.get(i).toInputBinding(
+                        new ExecutionInputId(node.sourceRenderNodeId().value() + "#in" + i)));
             }
 
             // typed outputs: exact #20 output/materialization requirements +
@@ -138,10 +200,10 @@ public final class PhysicalPlannerV1 {
                     new ExecutionOutputId(node.sourceRenderNodeId().value() + "#out"),
                     node.logicalNodeId(),
                     node.sourceRenderNodeId(),
-                    node.outputRequirements(),
-                    node.materializationRequirements(),
-                    intermediate,
-                    finals));
+                    PlanningCanonicalOrder.outputRequirements(node.outputRequirements()),
+                    PlanningCanonicalOrder.materializations(node.materializationRequirements()),
+                    PlanningCanonicalOrder.intermediateArtifacts(intermediate),
+                    PlanningCanonicalOrder.finalArtifacts(finals)));
 
             var deps = new ArrayList<LogicalDependencyEdge>();
             for (var edge : logical.edges()) {
@@ -159,13 +221,13 @@ public final class PhysicalPlannerV1 {
                     node.operationKey(),
                     inputs,
                     outputs,
-                    deps,
+                    PlanningCanonicalOrder.logicalEdges(deps),
                     node.requiredSampleWindow(),
                     node.executionCoverage(),
-                    node.capabilityRequirements().stream()
+                    PlanningCanonicalOrder.capabilities(node.capabilityRequirements()).stream()
                             .map(ExecutionIoProjection.CapabilityRequirementRef::new)
                             .toList(),
-                    node.executionRequirements().stream()
+                    PlanningCanonicalOrder.executionRequirements(node.executionRequirements()).stream()
                             .map(ExecutionIoProjection.ExecutionIntentRef::new)
                             .toList(),
                     requestedExtent,
@@ -178,15 +240,16 @@ public final class PhysicalPlannerV1 {
         // ExecutionPlanId: independent identity supplied by the caller
         // (planning context) — NEVER derived from semantic fingerprint
         ExecutionPlanSchemaVersion schema = ExecutionPlanSchemaVersion.V1;
+        var normalizedUnits = PlanningCanonicalOrder.physicalUnits(units);
         return new PhysicalExecutionPlan(
                 "physical-execution-plan-v1",
                 planId,
                 schema,
                 logical.planFingerprint(),
-                units,
+                normalizedUnits,
                 requestedExtent,
                 PhysicalExecutionPlanDigest.compute(
-                        "physical-execution-plan-v1", schema, units,
+                        "physical-execution-plan-v1", schema, normalizedUnits,
                         logical.planFingerprint(), requestedExtent));
     }
 }

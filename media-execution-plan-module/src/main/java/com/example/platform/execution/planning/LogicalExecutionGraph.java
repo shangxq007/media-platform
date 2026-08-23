@@ -37,8 +37,8 @@ public record LogicalExecutionGraph(
         Objects.requireNonNull(nodes, "nodes");
         Objects.requireNonNull(edges, "edges");
         Objects.requireNonNull(digest, "digest");
-        nodes = List.copyOf(nodes);
-        edges = List.copyOf(edges);
+        nodes = PlanningCanonicalOrder.logicalNodes(nodes);
+        edges = PlanningCanonicalOrder.logicalEdges(edges);
         // pruningEvidence may be null when no pruning was performed (no extent
         // in request or nothing was out of range); when non-null it proves the
         // elimination.
@@ -65,12 +65,11 @@ public record LogicalExecutionGraph(
             Objects.requireNonNull(logicalNodeId, "logicalNodeId");
             Objects.requireNonNull(sourceRenderNodeId, "sourceRenderNodeId");
             Objects.requireNonNull(sourceRenderNodeKind, "sourceRenderNodeKind — typed preservation required");
-            artifactReferences = artifactReferences == null ? List.of() : List.copyOf(artifactReferences);
-            capabilityRequirements = capabilityRequirements == null ? List.of() : List.copyOf(capabilityRequirements);
-            executionRequirements = executionRequirements == null ? List.of() : List.copyOf(executionRequirements);
-            outputRequirements = outputRequirements == null ? List.of() : List.copyOf(outputRequirements);
-            materializationRequirements = materializationRequirements == null
-                    ? List.of() : List.copyOf(materializationRequirements);
+            artifactReferences = PlanningCanonicalOrder.artifacts(artifactReferences);
+            capabilityRequirements = PlanningCanonicalOrder.capabilities(capabilityRequirements);
+            executionRequirements = PlanningCanonicalOrder.executionRequirements(executionRequirements);
+            outputRequirements = PlanningCanonicalOrder.outputRequirements(outputRequirements);
+            materializationRequirements = PlanningCanonicalOrder.materializations(materializationRequirements);
             // executionCoverage nullable — timeline-coordinate contribution
             // (C12/C13 correction); DISTINCT from requiredSampleWindow
             // (source-coordinate sampling). Never compared to each other.
@@ -115,7 +114,7 @@ public record LogicalExecutionGraph(
             boolean pruningApplied) {
 
         public PruningEvidence {
-            eliminatedNodes = eliminatedNodes == null ? List.of() : List.copyOf(eliminatedNodes);
+            eliminatedNodes = PlanningCanonicalOrder.eliminatedNodes(eliminatedNodes);
         }
 
         public record EliminatedNode(

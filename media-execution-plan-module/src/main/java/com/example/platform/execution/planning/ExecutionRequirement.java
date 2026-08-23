@@ -3,6 +3,7 @@ package com.example.platform.execution.planning;
 import com.example.platform.render.domain.renderplan.RenderExtent;
 import com.example.platform.render.domain.renderplan.RenderPlan;
 import com.example.platform.render.domain.renderplan.RenderPlanFingerprint;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,8 +31,12 @@ public record ExecutionRequirement(
         Objects.requireNonNull(planFingerprint, "planFingerprint");
         Objects.requireNonNull(capabilityRequirementRefs, "capabilityRequirementRefs");
         Objects.requireNonNull(executionIntentRefs, "executionIntentRefs");
-        capabilityRequirementRefs = List.copyOf(capabilityRequirementRefs);
-        executionIntentRefs = List.copyOf(executionIntentRefs);
+        capabilityRequirementRefs = List.copyOf(capabilityRequirementRefs.stream()
+                .sorted(Comparator.comparing(ref -> Canonical.capability(ref.declaration())))
+                .toList());
+        executionIntentRefs = List.copyOf(executionIntentRefs.stream()
+                .sorted(Comparator.comparing(ref -> Canonical.executionIntent(ref.declaration())))
+                .toList());
         // requestedExtent may be null when the request carries no extent; when
         // present it is the typed single authority.
     }
