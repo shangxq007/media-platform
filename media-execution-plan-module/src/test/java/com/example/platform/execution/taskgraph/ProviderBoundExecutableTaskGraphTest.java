@@ -1,9 +1,12 @@
 package com.example.platform.execution.taskgraph;
 
 import com.example.platform.execution.compatibility.CompatibilityRequest;
+import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
+import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration.Declaration;
 import com.example.platform.execution.compatibility.ProviderCandidate;
 import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
+import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
 import com.example.platform.execution.composition.CompositionDecision;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.composition.FailureAttribution.MemberAttribution;
@@ -48,6 +51,7 @@ import com.example.platform.shared.identity.ArtifactId;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,6 +62,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProviderBoundExecutableTaskGraphTest {
+
+    private static final BoundaryContractId DIRECT_CONTRACT =
+            BoundaryContractId.of("taskgraph-test-direct.v1");
 
     @Test
     void executableTaskIdIsDeterministicAcrossEquivalentMembershipPermutations() {
@@ -153,15 +160,17 @@ class ProviderBoundExecutableTaskGraphTest {
                 context, "provider-a", List.of(pair.producer()), List.of());
         ExecutableTask consumer = task(
                 context, "provider-a", List.of(pair.consumer()), List.of());
+        ExecutionArtifactBoundary boundary = executionBoundary(
+                pair, context.candidate("provider-a"), context.candidate("provider-a"));
 
         ProviderBoundExecutableTaskGraph forward = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of());
+                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
         ProviderBoundExecutableTaskGraph reverse = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(consumer, producer), List.of());
+                plan, context.graph(), List.of(consumer, producer), List.of(boundary));
 
         assertEquals(forward.digest(), reverse.digest());
-        assertEquals(List.of(producer.id(), consumer.id()).stream().sorted().toList(),
-                forward.tasks().stream().map(ExecutableTask::id).toList());
+        assertEquals(forward.tasks().stream().map(ExecutableTask::id).toList(),
+                reverse.tasks().stream().map(ExecutableTask::id).toList());
         assertFalse(ExecutableTaskGraphDigest.class.isAssignableFrom(ExecutableTaskId.class));
         assertNotEquals(forward.digest().sha256Hex(), producer.id().sha256Hex());
     }
@@ -175,8 +184,10 @@ class ProviderBoundExecutableTaskGraphTest {
                 context, "provider-a", List.of(pair.producer()), List.of());
         ExecutableTask consumer = task(
                 context, "provider-a", List.of(pair.consumer()), List.of());
+        ExecutionArtifactBoundary boundary = executionBoundary(
+                pair, context.candidate("provider-a"), context.candidate("provider-a"));
         ProviderBoundExecutableTaskGraph separate = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of());
+                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
 
         assertEquals(1, separate.taskDependencies().size());
         assertEquals(pair.edge(), separate.taskDependencies().getFirst().sourceDependency());
@@ -269,9 +280,11 @@ class ProviderBoundExecutableTaskGraphTest {
                 context, "provider-a", List.of(pair.producer()), List.of());
         ExecutableTask consumer = task(
                 context, "provider-a", List.of(pair.consumer()), List.of());
+        ExecutionArtifactBoundary boundary = executionBoundary(
+                pair, context.candidate("provider-a"), context.candidate("provider-a"));
 
         ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of());
+                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
 
         assertSame(plan, graph.sourcePhysicalPlan());
         assertEquals(before, plan.units());
@@ -321,8 +334,10 @@ class ProviderBoundExecutableTaskGraphTest {
                 context, "provider-a", List.of(pair.producer()), List.of());
         ExecutableTask consumer = task(
                 context, "provider-a", List.of(pair.consumer()), List.of());
+        ExecutionArtifactBoundary boundary = executionBoundary(
+                pair, context.candidate("provider-a"), context.candidate("provider-a"));
         ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of());
+                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
         assertEquals(1, graph.mandatoryArtifactBoundaries().size());
         assertEquals(0, graph.mandatoryArtifactBoundaryViolationCount());
     }
@@ -336,7 +351,13 @@ class ProviderBoundExecutableTaskGraphTest {
         PhysicalPlanUnit unitB = unit(
                 "unit-b", List.of(), List.of(output("unit-b", false)), List.of(edgeAB, edgeBA));
         PhysicalExecutionPlan plan = plan(unitA, unitB);
-        TaskContext context = context(plan, "provider-a");
+        ProviderBindingPin binding = binding("provider-a");
+        TaskContext context = context(
+                plan,
+                List.of(
+                        directDeclaration(edgeAB, binding, binding),
+                        directDeclaration(edgeBA, binding, binding)),
+                "provider-a");
 
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
@@ -375,6 +396,13 @@ class ProviderBoundExecutableTaskGraphTest {
     }
 
     private static TaskContext context(PhysicalExecutionPlan plan, String... providers) {
+        return context(plan, List.of(), providers);
+    }
+
+    private static TaskContext context(
+            PhysicalExecutionPlan plan,
+            List<ProviderBoundaryCompatibilityDeclaration> declarations,
+            String... providers) {
         List<ProviderCandidate> candidates = Arrays.stream(providers)
                 .map(ProviderBoundExecutableTaskGraphTest::candidate)
                 .toList();
@@ -382,7 +410,7 @@ class ProviderBoundExecutableTaskGraphTest {
                 plan,
                 plan.units().stream().map(CompatibilityRequest::forUnit).toList(),
                 candidates,
-                List.of());
+                declarations);
         return new TaskContext(plan, graph, candidates);
     }
 
@@ -412,7 +440,7 @@ class ProviderBoundExecutableTaskGraphTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of(),
+                List.of(DIRECT_CONTRACT),
                 ProviderStaticCompatibility.LoweringSupport.SUPPORTED);
         return new ProviderCandidate(
                 binding, descriptor, contract, profile, staticCompatibility);
@@ -429,6 +457,39 @@ class ProviderBoundExecutableTaskGraphTest {
                 ProviderExecutionContractVersion.of(1, 0),
                 profile,
                 List.of());
+    }
+
+    private static ProviderBoundaryCompatibilityDeclaration directDeclaration(
+            LogicalDependencyEdge edge,
+            ProviderBindingPin producer,
+            ProviderBindingPin consumer) {
+        return new ProviderBoundaryCompatibilityDeclaration(
+                edge,
+                producer,
+                consumer,
+                DIRECT_CONTRACT,
+                Declaration.DIRECT_INTEROPERABILITY_ALLOWED);
+    }
+
+    private static ExecutionArtifactBoundary executionBoundary(
+            UnitPair pair,
+            ProviderCandidate producer,
+            ProviderCandidate consumer) {
+        return new ExecutionArtifactBoundary(
+                pair.edge(),
+                pair.producer().stepId(),
+                pair.consumer().stepId(),
+                producer.bindingPin(),
+                consumer.bindingPin(),
+                pair.producer().typedOutputs().getFirst(),
+                pair.consumer().typedInputs().getFirst(),
+                ExecutionArtifactBoundary.MaterializationContract
+                        .IMMUTABLE_ARTIFACT_AUTHORITY_V1,
+                producer.bindingPin().equals(consumer.bindingPin())
+                        ? ExecutionArtifactBoundary.MaterializationReason
+                                .INTER_TASK_RUNTIME_BOUNDARY_UNPROVEN
+                        : ExecutionArtifactBoundary.MaterializationReason.PROVIDER_BINDING_CHANGE,
+                Optional.empty());
     }
 
     private static BoundaryAction preInputAction(PhysicalPlanUnit unit, int order) {

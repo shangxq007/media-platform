@@ -123,25 +123,25 @@ public final class ExecutableTask {
             ExecutableTaskMembership member,
             ProviderBindingPin providerBindingPin) {
         BoundaryAction.Target target = action.target();
-        if (target instanceof BoundaryAction.CrossProviderMaterializeTarget materialize) {
-            CrossProviderArtifactBoundary boundary = materialize.boundary();
+        if (target instanceof BoundaryAction.ExecutionArtifactMaterializeTarget materialize) {
+            ExecutionArtifactBoundary boundary = materialize.boundary();
             if (action.phase() != BoundaryAction.Phase.POST_EXECUTION
                     || !member.outputMapping().contains(boundary.producerOutput())
                     || !member.physicalPlanUnitId().equals(boundary.producerUnitId())
                     || !providerBindingPin.equals(boundary.producerBindingPin())) {
                 throw new IllegalArgumentException(
-                        "cross-provider materialize action must be producer task-owned POST_EXECUTION semantics");
+                        "execution Artifact materialize action must be producer task-owned POST_EXECUTION semantics");
             }
             return;
         }
-        if (target instanceof BoundaryAction.CrossProviderAcquireTarget acquire) {
-            CrossProviderArtifactBoundary boundary = acquire.boundary();
+        if (target instanceof BoundaryAction.ExecutionArtifactAcquireTarget acquire) {
+            ExecutionArtifactBoundary boundary = acquire.boundary();
             if (action.phase() != BoundaryAction.Phase.PRE_EXECUTION
                     || !member.inputMapping().contains(boundary.consumerInput())
                     || !member.physicalPlanUnitId().equals(boundary.consumerUnitId())
                     || !providerBindingPin.equals(boundary.consumerBindingPin())) {
                 throw new IllegalArgumentException(
-                        "cross-provider acquire action must be consumer task-owned PRE_EXECUTION semantics");
+                        "execution Artifact acquire action must be consumer task-owned PRE_EXECUTION semantics");
             }
             return;
         }

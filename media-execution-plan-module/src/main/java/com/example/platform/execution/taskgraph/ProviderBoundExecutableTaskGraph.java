@@ -32,7 +32,7 @@ import java.util.TreeSet;
  */
 public final class ProviderBoundExecutableTaskGraph {
 
-    public static final String GRAPH_SCHEMA_VERSION = "roadmap22.provider-bound-etg.v1";
+    public static final String GRAPH_SCHEMA_VERSION = "roadmap22.provider-bound-etg.v2";
 
     private final PhysicalExecutionPlan sourcePhysicalPlan;
     private final ProviderCompatibilityGraph providerCompatibilityGraph;
@@ -41,7 +41,7 @@ public final class ProviderBoundExecutableTaskGraph {
     private final List<ExecutableTaskDependency> taskDependencies;
     private final List<ProviderCompatibilityTransition> selectedProviderTransitions;
     private final List<MandatoryArtifactBoundary> mandatoryArtifactBoundaries;
-    private final List<CrossProviderArtifactBoundary> crossProviderArtifactBoundaries;
+    private final List<ExecutionArtifactBoundary> executionArtifactBoundaries;
     private final List<ExecutableTask.RequiredInputArtifactPin> requiredInputArtifactPins;
     private final int sourceDependencyCount;
     private final ExecutableTaskGraphDigest digest;
@@ -54,7 +54,7 @@ public final class ProviderBoundExecutableTaskGraph {
             List<ExecutableTaskDependency> taskDependencies,
             List<ProviderCompatibilityTransition> selectedProviderTransitions,
             List<MandatoryArtifactBoundary> mandatoryArtifactBoundaries,
-            List<CrossProviderArtifactBoundary> crossProviderArtifactBoundaries,
+            List<ExecutionArtifactBoundary> executionArtifactBoundaries,
             List<ExecutableTask.RequiredInputArtifactPin> requiredInputArtifactPins,
             int sourceDependencyCount,
             ExecutableTaskGraphDigest digest) {
@@ -65,7 +65,7 @@ public final class ProviderBoundExecutableTaskGraph {
         this.taskDependencies = taskDependencies;
         this.selectedProviderTransitions = selectedProviderTransitions;
         this.mandatoryArtifactBoundaries = mandatoryArtifactBoundaries;
-        this.crossProviderArtifactBoundaries = crossProviderArtifactBoundaries;
+        this.executionArtifactBoundaries = executionArtifactBoundaries;
         this.requiredInputArtifactPins = requiredInputArtifactPins;
         this.sourceDependencyCount = sourceDependencyCount;
         this.digest = digest;
@@ -75,11 +75,11 @@ public final class ProviderBoundExecutableTaskGraph {
             PhysicalExecutionPlan sourcePhysicalPlan,
             ProviderCompatibilityGraph providerCompatibilityGraph,
             Collection<ExecutableTask> tasks,
-            Collection<CrossProviderArtifactBoundary> crossProviderArtifactBoundaries) {
+            Collection<ExecutionArtifactBoundary> executionArtifactBoundaries) {
         Objects.requireNonNull(sourcePhysicalPlan, "sourcePhysicalPlan");
         Objects.requireNonNull(providerCompatibilityGraph, "providerCompatibilityGraph");
         Objects.requireNonNull(tasks, "tasks");
-        Objects.requireNonNull(crossProviderArtifactBoundaries, "crossProviderArtifactBoundaries");
+        Objects.requireNonNull(executionArtifactBoundaries, "executionArtifactBoundaries");
         if (!providerCompatibilityGraph.bindsExactSourcePlan(sourcePhysicalPlan)) {
             throw new IllegalArgumentException(
                     "ProviderCompatibilityGraph must bind the exact source plan semantics");
@@ -89,41 +89,48 @@ public final class ProviderBoundExecutableTaskGraph {
         }
 
         List<ExecutableTask> baseTasks = canonicalTasks(tasks);
+        Coverage baseCoverage = validateCoverage(sourcePhysicalPlan, baseTasks);
         validateEvaluatorProvenComposition(
                 sourcePhysicalPlan, providerCompatibilityGraph, baseTasks);
-        Coverage baseCoverage = validateCoverage(sourcePhysicalPlan, baseTasks);
         SourceTopology sourceTopology = sourceTopology(sourcePhysicalPlan);
         validateInputDependencyMappings(sourcePhysicalPlan, sourceTopology);
-        List<CrossProviderArtifactBoundary> canonicalCrossProviderBoundaries =
-                canonicalCrossProviderBoundaries(crossProviderArtifactBoundaries);
-        validatePreAttachedCrossProviderActions(
-                baseTasks, canonicalCrossProviderBoundaries);
+        DependencyClassification dependencyClassification = classifyDependencies(
+                sourceTopology, baseCoverage);
+        List<ExecutionArtifactBoundary> canonicalExecutionBoundaries =
+                canonicalExecutionArtifactBoundaries(executionArtifactBoundaries);
+        validatePreAttachedExecutionArtifactActions(
+                baseTasks, canonicalExecutionBoundaries);
         List<ProviderCompatibilityTransition> selectedTransitions = validateTransitionsAndBoundaries(
                 providerCompatibilityGraph,
                 sourceTopology,
                 baseCoverage,
-                canonicalCrossProviderBoundaries);
-        List<ExecutableTask> canonicalTasks = lowerCrossProviderBoundaryActions(
-                baseTasks, canonicalCrossProviderBoundaries);
+                dependencyClassification.externalDependencies(),
+                canonicalExecutionBoundaries);
+        List<ExecutableTask> canonicalTasks = lowerExecutionArtifactBoundaryActions(
+                baseTasks, canonicalExecutionBoundaries);
         Coverage coverage = validateCoverage(sourcePhysicalPlan, canonicalTasks);
 
         List<ProviderLocalTaskDependency> internalDependencies = new ArrayList<>();
         List<ExecutableTaskDependency> externalDependencies = new ArrayList<>();
-        for (LogicalDependencyEdge dependency : sourceTopology.dependencies()) {
+        for (LogicalDependencyEdge dependency : dependencyClassification.internalDependencies()) {
             PhysicalPlanUnit producer = sourceTopology.byLogicalNode()
                     .get(dependency.producerLogicalNodeId());
             PhysicalPlanUnit consumer = sourceTopology.byLogicalNode()
                     .get(dependency.consumerLogicalNodeId());
-            ExecutableTask producerTask = coverage.taskByUnit().get(producer.stepId());
-            ExecutableTask consumerTask = coverage.taskByUnit().get(consumer.stepId());
-            if (producerTask.id().equals(consumerTask.id())) {
-                validateInternalOrdering(producerTask, producer.stepId(), consumer.stepId());
-                internalDependencies.add(new ProviderLocalTaskDependency(
-                        producerTask.id(), producer.stepId(), consumer.stepId(), dependency));
-            } else {
-                externalDependencies.add(new ExecutableTaskDependency(
-                        producerTask.id(), consumerTask.id(), dependency));
-            }
+            ExecutableTask task = coverage.taskByUnit().get(producer.stepId());
+            validateInternalOrdering(task, producer.stepId(), consumer.stepId());
+            internalDependencies.add(new ProviderLocalTaskDependency(
+                    task.id(), producer.stepId(), consumer.stepId(), dependency));
+        }
+        for (LogicalDependencyEdge dependency : dependencyClassification.externalDependencies()) {
+            PhysicalPlanUnit producer = sourceTopology.byLogicalNode()
+                    .get(dependency.producerLogicalNodeId());
+            PhysicalPlanUnit consumer = sourceTopology.byLogicalNode()
+                    .get(dependency.consumerLogicalNodeId());
+            externalDependencies.add(new ExecutableTaskDependency(
+                    coverage.taskByUnit().get(producer.stepId()).id(),
+                    coverage.taskByUnit().get(consumer.stepId()).id(),
+                    dependency));
         }
         internalDependencies.sort(Comparator.comparing(
                 ExecutableTaskCanonicalCodec::internalDependency));
@@ -152,7 +159,7 @@ public final class ProviderBoundExecutableTaskGraph {
                 externalDependencies,
                 selectedTransitions,
                 boundaries,
-                canonicalCrossProviderBoundaries,
+                canonicalExecutionBoundaries,
                 inputPins);
         ExecutableTaskGraphDigest digest = new ExecutableTaskGraphDigest(
                 ExecutableTaskCanonicalCodec.sha256(graphCanonical));
@@ -164,7 +171,7 @@ public final class ProviderBoundExecutableTaskGraph {
                 List.copyOf(externalDependencies),
                 selectedTransitions,
                 boundaries,
-                canonicalCrossProviderBoundaries,
+                canonicalExecutionBoundaries,
                 List.copyOf(inputPins),
                 sourceTopology.dependencies().size(),
                 digest);
@@ -198,8 +205,8 @@ public final class ProviderBoundExecutableTaskGraph {
         return mandatoryArtifactBoundaries;
     }
 
-    public List<CrossProviderArtifactBoundary> crossProviderArtifactBoundaries() {
-        return crossProviderArtifactBoundaries;
+    public List<ExecutionArtifactBoundary> executionArtifactBoundaries() {
+        return executionArtifactBoundaries;
     }
 
     public List<ExecutableTask.RequiredInputArtifactPin> requiredInputArtifactPins() {
@@ -277,18 +284,18 @@ public final class ProviderBoundExecutableTaskGraph {
         }
     }
 
-    private static List<CrossProviderArtifactBoundary> canonicalCrossProviderBoundaries(
-            Collection<CrossProviderArtifactBoundary> values) {
-        List<CrossProviderArtifactBoundary> canonical = new ArrayList<>(values.size());
-        for (CrossProviderArtifactBoundary boundary : values) {
+    private static List<ExecutionArtifactBoundary> canonicalExecutionArtifactBoundaries(
+            Collection<ExecutionArtifactBoundary> values) {
+        List<ExecutionArtifactBoundary> canonical = new ArrayList<>(values.size());
+        for (ExecutionArtifactBoundary boundary : values) {
             canonical.add(Objects.requireNonNull(
-                    boundary, "crossProviderArtifactBoundaries element"));
+                    boundary, "executionArtifactBoundaries element"));
         }
         canonical.sort(Comparator.comparing(
-                ExecutableTaskCanonicalCodec::crossProviderArtifactBoundary));
+                ExecutableTaskCanonicalCodec::executionArtifactBoundary));
         for (int i = 1; i < canonical.size(); i++) {
             if (canonical.get(i - 1).equals(canonical.get(i))) {
-                throw new IllegalArgumentException("duplicate cross-provider Artifact boundary");
+                throw new IllegalArgumentException("duplicate execution Artifact boundary");
             }
         }
         return List.copyOf(canonical);
@@ -298,10 +305,11 @@ public final class ProviderBoundExecutableTaskGraph {
             ProviderCompatibilityGraph compatibilityGraph,
             SourceTopology topology,
             Coverage coverage,
-            List<CrossProviderArtifactBoundary> boundaries) {
+            List<LogicalDependencyEdge> externalDependencies,
+            List<ExecutionArtifactBoundary> boundaries) {
         List<ProviderCompatibilityTransition> selected = new ArrayList<>();
-        Set<CrossProviderArtifactBoundary> usedBoundaries = new HashSet<>();
-        for (LogicalDependencyEdge dependency : topology.dependencies()) {
+        Set<ExecutionArtifactBoundary> usedBoundaries = new HashSet<>();
+        for (LogicalDependencyEdge dependency : externalDependencies) {
             PhysicalPlanUnit producer = topology.byLogicalNode()
                     .get(dependency.producerLogicalNodeId());
             PhysicalPlanUnit consumer = topology.byLogicalNode()
@@ -316,7 +324,7 @@ public final class ProviderBoundExecutableTaskGraph {
                     consumerTask.providerBindingPin());
             selected.add(transition);
 
-            List<CrossProviderArtifactBoundary> matching = boundaries.stream()
+            List<ExecutionArtifactBoundary> matching = boundaries.stream()
                     .filter(boundary -> boundary.sourceDependency().equals(dependency)
                             && boundary.producerUnitId().equals(producer.stepId())
                             && boundary.consumerUnitId().equals(consumer.stepId())
@@ -327,7 +335,7 @@ public final class ProviderBoundExecutableTaskGraph {
                     .toList();
             if (matching.size() > 1) {
                 throw new IllegalArgumentException(
-                        "one source dependency may have only one canonical cross-provider boundary");
+                        "one source dependency may have only one canonical execution Artifact boundary");
             }
             switch (transition.decision()) {
                 case DIRECT_COMPATIBLE -> {
@@ -337,16 +345,12 @@ public final class ProviderBoundExecutableTaskGraph {
                     }
                 }
                 case ARTIFACT_MATERIALIZATION_REQUIRED -> {
-                    if (producerTask.id().equals(consumerTask.id())) {
-                        throw new IllegalArgumentException(
-                                "materializing provider transition cannot be hidden inside one task");
-                    }
                     if (matching.size() != 1) {
                         throw new IllegalArgumentException(
-                                "provider transition requires explicit cross-provider Artifact boundary");
+                                "inter-task provider transition requires explicit execution Artifact boundary");
                     }
-                    CrossProviderArtifactBoundary boundary = matching.getFirst();
-                    validateCrossProviderBoundary(
+                    ExecutionArtifactBoundary boundary = matching.getFirst();
+                    validateExecutionArtifactBoundary(
                             boundary, producer, producerTask, consumer, consumerTask, transition);
                     usedBoundaries.add(boundary);
                 }
@@ -358,14 +362,14 @@ public final class ProviderBoundExecutableTaskGraph {
         }
         if (usedBoundaries.size() != boundaries.size()) {
             throw new IllegalArgumentException(
-                    "cross-provider Artifact boundary has no exact required source transition");
+                    "execution Artifact boundary has no exact required external source transition");
         }
         selected.sort(Comparator.comparing(ExecutableTaskCanonicalCodec::providerTransition));
         return List.copyOf(selected);
     }
 
-    private static void validateCrossProviderBoundary(
-            CrossProviderArtifactBoundary boundary,
+    private static void validateExecutionArtifactBoundary(
+            ExecutionArtifactBoundary boundary,
             PhysicalPlanUnit producer,
             ExecutableTask producerTask,
             PhysicalPlanUnit consumer,
@@ -375,90 +379,102 @@ public final class ProviderBoundExecutableTaskGraph {
                 || !consumer.typedInputs().contains(boundary.consumerInput())
                 || !producerTask.providerBindingPin().equals(boundary.producerBindingPin())
                 || !consumerTask.providerBindingPin().equals(boundary.consumerBindingPin())
-                || !transition.boundaryContractId().equals(
-                        boundary.interoperabilityContract())) {
+                || !transition.boundaryContractId().equals(boundary.interoperabilityContract())
+                || boundary.reason() != requiredMaterializationReason(transition)) {
             throw new IllegalArgumentException(
-                    "cross-provider Artifact boundary must bind exact transition/output/input semantics");
+                    "execution Artifact boundary must bind exact transition/output/input/reason semantics");
         }
     }
 
-    private static void validatePreAttachedCrossProviderActions(
+    private static ExecutionArtifactBoundary.MaterializationReason requiredMaterializationReason(
+            ProviderCompatibilityTransition transition) {
+        if (transition.boundaryContractId().isPresent()) {
+            return ExecutionArtifactBoundary.MaterializationReason
+                    .EXPLICIT_MATERIALIZATION_REQUIREMENT;
+        }
+        return transition.producerBindingPin().equals(transition.consumerBindingPin())
+                ? ExecutionArtifactBoundary.MaterializationReason
+                        .INTER_TASK_RUNTIME_BOUNDARY_UNPROVEN
+                : ExecutionArtifactBoundary.MaterializationReason.PROVIDER_BINDING_CHANGE;
+    }
+
+    private static void validatePreAttachedExecutionArtifactActions(
             List<ExecutableTask> tasks,
-            List<CrossProviderArtifactBoundary> canonicalBoundaries) {
+            List<ExecutionArtifactBoundary> canonicalBoundaries) {
         List<BoundaryAction> supplied = tasks.stream()
                 .flatMap(task -> task.boundaryActions().stream())
-                .filter(ProviderBoundExecutableTaskGraph::isCrossProviderAction)
+                .filter(ProviderBoundExecutableTaskGraph::isExecutionArtifactAction)
                 .toList();
         if (supplied.isEmpty()) {
             return;
         }
 
-        Set<CrossProviderArtifactBoundary> manifested = Set.copyOf(canonicalBoundaries);
+        Set<ExecutionArtifactBoundary> manifested = Set.copyOf(canonicalBoundaries);
         for (BoundaryAction action : supplied) {
-            CrossProviderArtifactBoundary boundary = crossProviderBoundary(action);
+            ExecutionArtifactBoundary boundary = executionArtifactBoundary(action);
             if (!manifested.contains(boundary)) {
                 throw new IllegalArgumentException(
-                        "caller-supplied cross-provider action has no exact canonical boundary");
+                        "caller-supplied execution Artifact action has no exact canonical boundary");
             }
         }
-        for (CrossProviderArtifactBoundary boundary : canonicalBoundaries) {
+        for (ExecutionArtifactBoundary boundary : canonicalBoundaries) {
             long producerActionCount = supplied.stream()
                     .filter(action -> action.target()
-                            instanceof BoundaryAction.CrossProviderMaterializeTarget target
+                            instanceof BoundaryAction.ExecutionArtifactMaterializeTarget target
                             && target.boundary().equals(boundary))
                     .count();
             long consumerActionCount = supplied.stream()
                     .filter(action -> action.target()
-                            instanceof BoundaryAction.CrossProviderAcquireTarget target
+                            instanceof BoundaryAction.ExecutionArtifactAcquireTarget target
                             && target.boundary().equals(boundary))
                     .count();
             if (producerActionCount != 1 || consumerActionCount != 1) {
                 throw new IllegalArgumentException(
-                        "pre-attached cross-provider actions require exactly one producer and "
+                        "pre-attached execution Artifact actions require exactly one producer and "
                                 + "one consumer action per canonical boundary");
             }
         }
     }
 
-    private static boolean isCrossProviderAction(BoundaryAction action) {
-        return action.target() instanceof BoundaryAction.CrossProviderMaterializeTarget
-                || action.target() instanceof BoundaryAction.CrossProviderAcquireTarget;
+    private static boolean isExecutionArtifactAction(BoundaryAction action) {
+        return action.target() instanceof BoundaryAction.ExecutionArtifactMaterializeTarget
+                || action.target() instanceof BoundaryAction.ExecutionArtifactAcquireTarget;
     }
 
-    private static CrossProviderArtifactBoundary crossProviderBoundary(BoundaryAction action) {
-        if (action.target() instanceof BoundaryAction.CrossProviderMaterializeTarget target) {
+    private static ExecutionArtifactBoundary executionArtifactBoundary(BoundaryAction action) {
+        if (action.target() instanceof BoundaryAction.ExecutionArtifactMaterializeTarget target) {
             return target.boundary();
         }
-        if (action.target() instanceof BoundaryAction.CrossProviderAcquireTarget target) {
+        if (action.target() instanceof BoundaryAction.ExecutionArtifactAcquireTarget target) {
             return target.boundary();
         }
-        throw new IllegalArgumentException("BoundaryAction is not cross-provider lowering");
+        throw new IllegalArgumentException("BoundaryAction is not execution Artifact lowering");
     }
 
-    private static List<ExecutableTask> lowerCrossProviderBoundaryActions(
+    private static List<ExecutableTask> lowerExecutionArtifactBoundaryActions(
             List<ExecutableTask> tasks,
-            List<CrossProviderArtifactBoundary> boundaries) {
+            List<ExecutionArtifactBoundary> boundaries) {
         List<ExecutableTask> lowered = new ArrayList<>(tasks.size());
         for (ExecutableTask task : tasks) {
             List<BoundaryAction> actions = new ArrayList<>(task.boundaryActions().stream()
-                    .filter(action -> !isCrossProviderAction(action))
+                    .filter(action -> !isExecutionArtifactAction(action))
                     .toList());
             int nextPreOrder = nextOrder(actions, BoundaryAction.Phase.PRE_EXECUTION);
             int nextPostOrder = nextOrder(actions, BoundaryAction.Phase.POST_EXECUTION);
-            for (CrossProviderArtifactBoundary boundary : boundaries) {
+            for (ExecutionArtifactBoundary boundary : boundaries) {
                 if (task.memberships().stream().anyMatch(member ->
                         member.physicalPlanUnitId().equals(boundary.producerUnitId()))) {
                     actions.add(new BoundaryAction(
                             BoundaryAction.Phase.POST_EXECUTION,
                             nextPostOrder++,
-                            new BoundaryAction.CrossProviderMaterializeTarget(boundary)));
+                            new BoundaryAction.ExecutionArtifactMaterializeTarget(boundary)));
                 }
                 if (task.memberships().stream().anyMatch(member ->
                         member.physicalPlanUnitId().equals(boundary.consumerUnitId()))) {
                     actions.add(new BoundaryAction(
                             BoundaryAction.Phase.PRE_EXECUTION,
                             nextPreOrder++,
-                            new BoundaryAction.CrossProviderAcquireTarget(boundary)));
+                            new BoundaryAction.ExecutionArtifactAcquireTarget(boundary)));
                 }
             }
             lowered.add(ExecutableTask.create(task.compositionDecision(), actions));
@@ -531,6 +547,28 @@ public final class ProviderBoundExecutableTaskGraph {
         }
         return new SourceTopology(
                 Map.copyOf(byLogicalNode), List.copyOf(byEdgeId.values()));
+    }
+
+    private static DependencyClassification classifyDependencies(
+            SourceTopology topology,
+            Coverage coverage) {
+        List<LogicalDependencyEdge> internal = new ArrayList<>();
+        List<LogicalDependencyEdge> external = new ArrayList<>();
+        for (LogicalDependencyEdge dependency : topology.dependencies()) {
+            PhysicalPlanUnit producer = topology.byLogicalNode()
+                    .get(dependency.producerLogicalNodeId());
+            PhysicalPlanUnit consumer = topology.byLogicalNode()
+                    .get(dependency.consumerLogicalNodeId());
+            ExecutableTask producerTask = coverage.taskByUnit().get(producer.stepId());
+            ExecutableTask consumerTask = coverage.taskByUnit().get(consumer.stepId());
+            if (producerTask.id().equals(consumerTask.id())) {
+                validateInternalOrdering(producerTask, producer.stepId(), consumer.stepId());
+                internal.add(dependency);
+            } else {
+                external.add(dependency);
+            }
+        }
+        return new DependencyClassification(List.copyOf(internal), List.copyOf(external));
     }
 
     private static void validateInputDependencyMappings(
@@ -627,6 +665,11 @@ public final class ProviderBoundExecutableTaskGraph {
     private record SourceTopology(
             Map<String, PhysicalPlanUnit> byLogicalNode,
             List<LogicalDependencyEdge> dependencies) {
+    }
+
+    private record DependencyClassification(
+            List<LogicalDependencyEdge> internalDependencies,
+            List<LogicalDependencyEdge> externalDependencies) {
     }
 
     private static final class TaskGraphView implements DirectedGraphView<ExecutableTaskId> {

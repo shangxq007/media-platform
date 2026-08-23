@@ -112,7 +112,7 @@ class Correction1CompatibilityProofAndTransitionTest {
 
         ProviderCompatibilityGraph defaults = graph(
                 plan, List.of(providerA, providerB), List.of());
-        assertEquals(ProviderCompatibilityTransitionDecision.DIRECT_COMPATIBLE,
+        assertEquals(ProviderCompatibilityTransitionDecision.ARTIFACT_MATERIALIZATION_REQUIRED,
                 transition(defaults, pair, providerA, providerA).decision());
         assertEquals(ProviderCompatibilityTransitionDecision.ARTIFACT_MATERIALIZATION_REQUIRED,
                 transition(defaults, pair, providerA, providerB).decision(),

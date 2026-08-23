@@ -31,10 +31,9 @@ public record ProviderCompatibilityTransition(
                     "transition dependency must bind its exact producer and consumer units");
         }
         if (decision == ProviderCompatibilityTransitionDecision.DIRECT_COMPATIBLE
-                && !producerBindingPin.equals(consumerBindingPin)
                 && boundaryContractId.isEmpty()) {
             throw new IllegalArgumentException(
-                    "direct cross-provider transition requires typed interoperability evidence");
+                    "direct inter-task transition requires typed interoperability evidence");
         }
     }
 }

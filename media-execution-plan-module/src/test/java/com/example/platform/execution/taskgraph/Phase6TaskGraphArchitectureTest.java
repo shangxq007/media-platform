@@ -94,7 +94,7 @@ class Phase6TaskGraphArchitectureTest {
             throws IOException {
         String source = stripComments(readJavaSources(taskGraphSourceRoot()));
         assertTrue(source.contains("roadmap22.executable-task.v1"));
-        assertTrue(source.contains("roadmap22.provider-bound-executable-task-graph.v1"));
+        assertTrue(source.contains("roadmap22.provider-bound-executable-task-graph.v2"));
         assertFalse(source.contains("ObjectOutputStream"));
         assertFalse(source.contains("java.lang.reflect"));
         assertFalse(source.contains("Object::toString"));

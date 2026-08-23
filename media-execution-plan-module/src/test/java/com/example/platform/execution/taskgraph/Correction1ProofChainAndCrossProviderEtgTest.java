@@ -98,18 +98,18 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                 plan, List.of(providerA, providerB), List.of());
         ExecutableTask producer = task(graph, providerA, pair.producer());
         ExecutableTask consumer = task(graph, providerB, pair.consumer());
-        CrossProviderArtifactBoundary boundary = boundary(pair, providerA, providerB);
+        ExecutionArtifactBoundary boundary = boundary(pair, providerA, providerB);
 
         ProviderBoundExecutableTaskGraph etg = ProviderBoundExecutableTaskGraph.derive(
                 plan, graph, List.of(consumer, producer), List.of(boundary));
 
-        assertEquals(List.of(boundary), etg.crossProviderArtifactBoundaries());
+        assertEquals(List.of(boundary), etg.executionArtifactBoundaries());
         assertEquals(1, etg.taskDependencies().size());
         assertEquals(1, etg.selectedProviderTransitions().size());
-        assertFalse(CrossProviderArtifactBoundary.INDEPENDENTLY_SCHEDULABLE);
+        assertFalse(ExecutionArtifactBoundary.INDEPENDENTLY_SCHEDULABLE);
         assertFalse(MandatoryArtifactBoundary.class.isAssignableFrom(
-                CrossProviderArtifactBoundary.class));
-        assertTrue(List.of(CrossProviderArtifactBoundary.class.getRecordComponents()).stream()
+                ExecutionArtifactBoundary.class));
+        assertTrue(List.of(ExecutionArtifactBoundary.class.getRecordComponents()).stream()
                 .noneMatch(component -> component.getType().getSimpleName().equals("ArtifactId")),
                 "ACTUAL_OUTPUT_ARTIFACT_PIN_IN_PREEXECUTION_ETG_COUNT=0");
         assertNotEquals(
@@ -118,8 +118,8 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         List<BoundaryAction> crossActions = etg.tasks().stream()
                 .flatMap(task -> task.boundaryActions().stream())
                 .filter(action -> action.target()
-                                instanceof BoundaryAction.CrossProviderMaterializeTarget
-                        || action.target() instanceof BoundaryAction.CrossProviderAcquireTarget)
+                                instanceof BoundaryAction.ExecutionArtifactMaterializeTarget
+                        || action.target() instanceof BoundaryAction.ExecutionArtifactAcquireTarget)
                 .toList();
         assertEquals(2, crossActions.size());
         assertTrue(crossActions.stream().anyMatch(action ->
@@ -127,9 +127,9 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         assertTrue(crossActions.stream().anyMatch(action ->
                 action.phase() == BoundaryAction.Phase.PRE_EXECUTION));
         crossActions.forEach(action -> {
-            if (action.target() instanceof BoundaryAction.CrossProviderMaterializeTarget target) {
+            if (action.target() instanceof BoundaryAction.ExecutionArtifactMaterializeTarget target) {
                 assertSame(boundary, target.boundary());
-            } else if (action.target() instanceof BoundaryAction.CrossProviderAcquireTarget target) {
+            } else if (action.target() instanceof BoundaryAction.ExecutionArtifactAcquireTarget target) {
                 assertSame(boundary, target.boundary());
             }
         });
@@ -163,7 +163,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        CrossProviderArtifactBoundary boundary = boundary(pair, providerA, providerB);
+        ExecutionArtifactBoundary boundary = boundary(pair, providerA, providerB);
 
         ProviderCompatibilityGraph incompatible = graph(
                 plan,
@@ -216,7 +216,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                 List.of());
 
         assertEquals(1, etg.taskDependencies().size());
-        assertTrue(etg.crossProviderArtifactBoundaries().isEmpty());
+        assertTrue(etg.executionArtifactBoundaries().isEmpty());
     }
 
     @Test
@@ -260,8 +260,8 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         ProviderCandidate foreignProvider = candidate("provider-foreign");
         ProviderCompatibilityGraph graph = graph(
                 plan, List.of(providerA, providerB, foreignProvider), List.of());
-        CrossProviderArtifactBoundary selectedBoundary = boundary(pair, providerA, providerB);
-        CrossProviderArtifactBoundary foreignBoundary = boundary(
+        ExecutionArtifactBoundary selectedBoundary = boundary(pair, providerA, providerB);
+        ExecutionArtifactBoundary foreignBoundary = boundary(
                 pair, providerA, foreignProvider);
         ExecutableTask producer = task(graph, providerA, pair.producer());
         ExecutableTask producerWithForeignAction = ExecutableTask.create(
@@ -294,7 +294,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                         providerA,
                         providerB,
                         Declaration.DIRECT_INTEROPERABILITY_ALLOWED)));
-        CrossProviderArtifactBoundary unmanifested = boundary(pair, providerA, providerB);
+        ExecutionArtifactBoundary unmanifested = boundary(pair, providerA, providerB);
         ExecutableTask producer = task(directGraph, providerA, pair.producer());
         ExecutableTask consumer = task(directGraph, providerB, pair.consumer());
 
@@ -322,7 +322,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         ProviderCandidate providerB = candidate("provider-b");
         ProviderCompatibilityGraph graph = graph(
                 plan, List.of(providerA, providerB), List.of());
-        CrossProviderArtifactBoundary boundary = boundary(pair, providerA, providerB);
+        ExecutionArtifactBoundary boundary = boundary(pair, providerA, providerB);
         ExecutableTask producer = task(graph, providerA, pair.producer());
         ExecutableTask consumer = task(graph, providerB, pair.consumer());
 
@@ -352,7 +352,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         ProviderCandidate providerB = candidate("provider-b");
         ProviderCompatibilityGraph graph = graph(
                 plan, List.of(providerA, providerB), List.of());
-        CrossProviderArtifactBoundary boundary = boundary(pair, providerA, providerB);
+        ExecutionArtifactBoundary boundary = boundary(pair, providerA, providerB);
         ProviderBoundExecutableTaskGraph first = ProviderBoundExecutableTaskGraph.derive(
                 plan,
                 graph,
@@ -395,11 +395,11 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                 List.of());
     }
 
-    private static CrossProviderArtifactBoundary boundary(
+    private static ExecutionArtifactBoundary boundary(
             UnitPair pair,
             ProviderCandidate producer,
             ProviderCandidate consumer) {
-        return new CrossProviderArtifactBoundary(
+        return new ExecutionArtifactBoundary(
                 pair.edge(),
                 pair.producer().stepId(),
                 pair.consumer().stepId(),
@@ -407,27 +407,28 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                 consumer.bindingPin(),
                 pair.producer().typedOutputs().getFirst(),
                 pair.consumer().typedInputs().getFirst(),
-                CrossProviderArtifactBoundary.MaterializationContract
+                ExecutionArtifactBoundary.MaterializationContract
                         .IMMUTABLE_ARTIFACT_AUTHORITY_V1,
+                ExecutionArtifactBoundary.MaterializationReason.PROVIDER_BINDING_CHANGE,
                 Optional.empty());
     }
 
     private static BoundaryAction materializeAction(
-            CrossProviderArtifactBoundary boundary,
+            ExecutionArtifactBoundary boundary,
             int order) {
         return new BoundaryAction(
                 BoundaryAction.Phase.POST_EXECUTION,
                 order,
-                new BoundaryAction.CrossProviderMaterializeTarget(boundary));
+                new BoundaryAction.ExecutionArtifactMaterializeTarget(boundary));
     }
 
     private static BoundaryAction acquireAction(
-            CrossProviderArtifactBoundary boundary,
+            ExecutionArtifactBoundary boundary,
             int order) {
         return new BoundaryAction(
                 BoundaryAction.Phase.PRE_EXECUTION,
                 order,
-                new BoundaryAction.CrossProviderAcquireTarget(boundary));
+                new BoundaryAction.ExecutionArtifactAcquireTarget(boundary));
     }
 
     private static ProviderBoundaryCompatibilityDeclaration declaration(

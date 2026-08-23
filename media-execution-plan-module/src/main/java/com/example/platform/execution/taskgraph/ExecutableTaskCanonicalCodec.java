@@ -74,7 +74,7 @@ final class ExecutableTaskCanonicalCodec {
             List<ExecutableTaskDependency> taskDependencies,
             List<ProviderCompatibilityTransition> selectedProviderTransitions,
             List<MandatoryArtifactBoundary> mandatoryArtifactBoundaries,
-            List<CrossProviderArtifactBoundary> crossProviderArtifactBoundaries,
+            List<ExecutionArtifactBoundary> executionArtifactBoundaries,
             List<ExecutableTask.RequiredInputArtifactPin> requiredInputArtifactPins) {
         List<String> taskCanonicals = tasks.stream()
                 .map(ExecutableTaskCanonicalCodec::taskWithIdentity).sorted().toList();
@@ -118,12 +118,12 @@ final class ExecutableTaskCanonicalCodec {
                 .map(ExecutableTaskCanonicalCodec::providerTransition).sorted().toList();
         List<String> boundaries = mandatoryArtifactBoundaries.stream()
                 .map(ExecutableTaskCanonicalCodec::mandatoryArtifactBoundary).sorted().toList();
-        List<String> crossProviderBoundaries = crossProviderArtifactBoundaries.stream()
-                .map(ExecutableTaskCanonicalCodec::crossProviderArtifactBoundary).sorted().toList();
+        List<String> executionBoundaries = executionArtifactBoundaries.stream()
+                .map(ExecutableTaskCanonicalCodec::executionArtifactBoundary).sorted().toList();
         List<String> inputPins = requiredInputArtifactPins.stream()
                 .map(ExecutableTaskCanonicalCodec::requiredInputArtifactPin).sorted().toList();
         return new CanonicalWriter()
-                .tag("roadmap22.provider-bound-executable-task-graph.v1")
+                .tag("roadmap22.provider-bound-executable-task-graph.v2")
                 .field("graphSchemaVersion", graphSchemaVersion)
                 .field("sourcePlanFormatVersion", sourcePlanFormatVersion)
                 .field("sourcePlanSchemaVersion", Integer.toString(sourcePlanSchemaVersion))
@@ -136,7 +136,7 @@ final class ExecutableTaskCanonicalCodec {
                 .field("providerBindingSemantics", list(providerBindings))
                 .field("boundaryActionSemantics", list(actions))
                 .field("mandatoryMaterializationSemantics", list(boundaries))
-                .field("crossProviderMaterializationSemantics", list(crossProviderBoundaries))
+                .field("executionArtifactBoundarySemantics", list(executionBoundaries))
                 .field("requiredInputArtifactPins", list(inputPins))
                 .field("providerLocalCompositionDecisions", list(compositionDecisions))
                 .build();
@@ -221,9 +221,9 @@ final class ExecutableTaskCanonicalCodec {
                 .build();
     }
 
-    static String crossProviderArtifactBoundary(CrossProviderArtifactBoundary boundary) {
+    static String executionArtifactBoundary(ExecutionArtifactBoundary boundary) {
         return new CanonicalWriter()
-                .tag("roadmap22.cross-provider-artifact-boundary.v1")
+                .tag("roadmap22.execution-artifact-boundary.v1")
                 .field("sourceDependency", dependency(boundary.sourceDependency()))
                 .field("producerUnitId", boundary.producerUnitId().value())
                 .field("consumerUnitId", boundary.consumerUnitId().value())
@@ -236,6 +236,7 @@ final class ExecutableTaskCanonicalCodec {
                 .field("producerOutput", output(boundary.producerOutput()))
                 .field("consumerInput", input(boundary.consumerInput()))
                 .field("materializationContract", boundary.materializationContract().name())
+                .field("materializationReason", boundary.reason().name())
                 .field("interoperabilityContract", optional(
                         "BoundaryContractId",
                         boundary.interoperabilityContract()
@@ -390,16 +391,16 @@ final class ExecutableTaskCanonicalCodec {
                     .field("dependencyTarget", optional("LogicalDependencyEdge", dependency))
                     .build();
         }
-        if (target instanceof BoundaryAction.CrossProviderMaterializeTarget materialize) {
+        if (target instanceof BoundaryAction.ExecutionArtifactMaterializeTarget materialize) {
             return new CanonicalWriter()
-                    .tag("CrossProviderMaterializeTarget")
-                    .field("boundary", crossProviderArtifactBoundary(materialize.boundary()))
+                    .tag("ExecutionArtifactMaterializeTarget")
+                    .field("boundary", executionArtifactBoundary(materialize.boundary()))
                     .build();
         }
-        if (target instanceof BoundaryAction.CrossProviderAcquireTarget acquire) {
+        if (target instanceof BoundaryAction.ExecutionArtifactAcquireTarget acquire) {
             return new CanonicalWriter()
-                    .tag("CrossProviderAcquireTarget")
-                    .field("boundary", crossProviderArtifactBoundary(acquire.boundary()))
+                    .tag("ExecutionArtifactAcquireTarget")
+                    .field("boundary", executionArtifactBoundary(acquire.boundary()))
                     .build();
         }
         throw new IllegalStateException("unknown BoundaryAction.Target variant");

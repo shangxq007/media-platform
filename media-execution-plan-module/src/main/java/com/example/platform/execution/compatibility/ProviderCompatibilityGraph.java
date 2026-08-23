@@ -28,7 +28,7 @@ import java.util.TreeMap;
  */
 public final class ProviderCompatibilityGraph {
 
-    public static final int CURRENT_SCHEMA_VERSION = 2;
+    public static final int CURRENT_SCHEMA_VERSION = 3;
 
     private final int schemaVersion;
     private final PhysicalExecutionPlan sourcePhysicalPlan;
@@ -195,7 +195,7 @@ public final class ProviderCompatibilityGraph {
                 .map(ProviderCompatibilityGraph::canonicalTransition)
                 .toList();
         String canonical = new CanonicalWriter()
-                .tag("roadmap22.provider-compatibility-graph.v2")
+                .tag("roadmap22.provider-compatibility-graph.v3")
                 .field("schemaVersion", Integer.toString(schemaVersion))
                 .field("sourcePlanSemanticDigest", sourcePlanSemanticDigest.sha256Hex())
                 .field("unitCandidates", new CanonicalWriter().list(nodes).build())
@@ -283,8 +283,6 @@ public final class ProviderCompatibilityGraph {
                 case UNKNOWN_FAIL_CLOSED ->
                         ProviderCompatibilityTransitionDecision.UNKNOWN_FAIL_CLOSED;
             };
-        } else if (producerCandidate.bindingPin().equals(consumerCandidate.bindingPin())) {
-            decision = ProviderCompatibilityTransitionDecision.DIRECT_COMPATIBLE;
         } else {
             decision = ProviderCompatibilityTransitionDecision.ARTIFACT_MATERIALIZATION_REQUIRED;
         }
@@ -480,7 +478,7 @@ public final class ProviderCompatibilityGraph {
 
     private static String canonicalTransition(ProviderCompatibilityTransition transition) {
         return new CanonicalWriter()
-                .tag("ProviderCompatibilityTransition.v1")
+                .tag("ProviderCompatibilityTransition.v2")
                 .field("sourceDependency", canonicalDependency(transition.sourceDependency()))
                 .field("producerUnitId", transition.producerUnit().stepId().value())
                 .field("producerBinding", utf8(ProviderCanonicalCodec.serialize(

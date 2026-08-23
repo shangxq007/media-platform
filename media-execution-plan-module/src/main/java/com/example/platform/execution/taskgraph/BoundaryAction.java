@@ -35,7 +35,7 @@ public record BoundaryAction(Phase phase, int deterministicOrder, Target target)
     /** Typed artifact/materialization target; no storage location or transfer behavior. */
     public sealed interface Target permits RequiredInputArtifactTarget,
             IntermediateArtifactTarget, FinalArtifactTarget, MandatoryMaterializationTarget,
-            CrossProviderMaterializeTarget, CrossProviderAcquireTarget {
+            ExecutionArtifactMaterializeTarget, ExecutionArtifactAcquireTarget {
 
         ExecutionStepId memberUnitId();
     }
@@ -108,10 +108,10 @@ public record BoundaryAction(Phase phase, int deterministicOrder, Target target)
     }
 
     /** #22 producer-side POST_EXECUTION materialization; references one canonical boundary. */
-    public record CrossProviderMaterializeTarget(
-            CrossProviderArtifactBoundary boundary) implements Target {
+    public record ExecutionArtifactMaterializeTarget(
+            ExecutionArtifactBoundary boundary) implements Target {
 
-        public CrossProviderMaterializeTarget {
+        public ExecutionArtifactMaterializeTarget {
             Objects.requireNonNull(boundary, "boundary");
         }
 
@@ -122,10 +122,10 @@ public record BoundaryAction(Phase phase, int deterministicOrder, Target target)
     }
 
     /** #22 consumer-side PRE_EXECUTION acquisition; references the same canonical boundary. */
-    public record CrossProviderAcquireTarget(
-            CrossProviderArtifactBoundary boundary) implements Target {
+    public record ExecutionArtifactAcquireTarget(
+            ExecutionArtifactBoundary boundary) implements Target {
 
-        public CrossProviderAcquireTarget {
+        public ExecutionArtifactAcquireTarget {
             Objects.requireNonNull(boundary, "boundary");
         }
 
