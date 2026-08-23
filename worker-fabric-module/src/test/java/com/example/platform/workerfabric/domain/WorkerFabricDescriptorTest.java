@@ -111,4 +111,25 @@ class WorkerFabricDescriptorTest {
         assertThatThrownBy(() -> descriptor.devices().clear())
                 .isInstanceOf(UnsupportedOperationException.class);
     }
+
+    @Test
+    void duplicateDeviceIdInPhysicalHostDescriptorFailsClosed() {
+        DeviceId duplicateId = DeviceId.of("accelerator-0");
+        DeviceDescriptor first = new DeviceDescriptor(
+                duplicateId,
+                DeviceKind.GPU,
+                DeviceVendor.of("vendor-a"),
+                DeviceModel.of("model-a"));
+        DeviceDescriptor second = new DeviceDescriptor(
+                duplicateId,
+                DeviceKind.MEDIA_ACCELERATOR,
+                DeviceVendor.of("vendor-b"),
+                DeviceModel.of("model-b"));
+
+        assertThatIllegalArgumentException().isThrownBy(() -> new PhysicalHostDescriptor(
+                PhysicalHostId.of("host-1"),
+                HostLocation.of("region-a/zone-1"),
+                TrustZoneId.of("trusted-internal"),
+                List.of(first, second)));
+    }
 }

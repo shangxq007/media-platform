@@ -13,6 +13,9 @@ class ResourceModelSafetyTest {
     private static final PhysicalHostIncarnationId HOST_INCARNATION =
             PhysicalHostIncarnationId.of("host-boot-1");
     private static final DeviceId DEVICE_ID = DeviceId.of("accelerator-0");
+    private static final WorkerRuntimeId RUNTIME_ID = WorkerRuntimeId.of("runtime-1");
+    private static final WorkerRuntimeIncarnationId RUNTIME_INCARNATION =
+            WorkerRuntimeIncarnationId.of("runtime-registration-1");
 
     @Test
     void activeReservationReducesSchedulableCapacity() {
@@ -120,7 +123,12 @@ class ResourceModelSafetyTest {
         SchedulableCapacity hostResult = SchedulableCapacity.forHost(
                 staticCapacity(), List.of(), SafetyHeadroom.none(), unreachableHost);
         SchedulableCapacity runtimeResult = SchedulableCapacity.forRuntime(
-                staticCapacity(), List.of(), SafetyHeadroom.none(), reachableHost(), unreachableRuntime);
+                staticCapacity(),
+                List.of(),
+                SafetyHeadroom.none(),
+                reachableHost(),
+                unreachableRuntime,
+                currentBinding());
 
         assertThat(hostResult.available()).isFalse();
         assertThat(hostResult.cpu().millicores()).isZero();
@@ -179,6 +187,11 @@ class ResourceModelSafetyTest {
 
     private static PhysicalHostAvailability reachableHost() {
         return new PhysicalHostAvailability(HOST_ID, HOST_INCARNATION, AvailabilityState.REACHABLE);
+    }
+
+    private static LocalWorkerRuntimeIncarnationBinding currentBinding() {
+        return new LocalWorkerRuntimeIncarnationBinding(
+                RUNTIME_ID, RUNTIME_INCARNATION, HOST_ID, HOST_INCARNATION);
     }
 
     private static CapacitySnapshot staticCapacity() {
