@@ -44,8 +44,8 @@ public record LogicalExecutionGraphDigest(String sha256Hex) {
                 .append(LogicalExecutionGraphBuilder.canonicalExtent(requestedExtent)).append('\n');
         for (var n : nodes) {
             sb.append("node|").append(n.sourceRenderNodeId().value())
-                    .append('|').append(n.sourceRenderNodeKind().toString())
-                    .append('|').append(n.componentPath() != null ? n.componentPath().toString() : "null")
+                    .append('|').append(Canonical.renderNodeKind(n.sourceRenderNodeKind()))
+                    .append('|').append(n.componentPath() != null ? Canonical.componentPath(n.componentPath()) : "null")
                     .append('|').append(n.operationKey()).append('\n');
             for (var a : n.artifactReferences()) {
                 sb.append("artifact|").append(Canonical.artifact(a)).append('\n');

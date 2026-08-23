@@ -290,10 +290,33 @@ public final class DefaultRenderMaterializer implements RenderMaterializer {
                     List.of(), textCaps, List.of(), textParamEncodings));
             RenderNodeId textId = RenderNodeId.of(
                     new RenderNodeKind.TimedText(), textPath, OP_RASTER, textReqFp);
+            // TIMED_TEXT temporal bridge (Phase A T2): exact #20-owned projection
+            // of authored FontRational timing into RenderExecutionCoverage
+            // (timeline coordinates). coverage = [exact(start), exact(start+duration)].
+            // Unrepresentable values FAIL CLOSED (no node, typed diagnostic).
+            RenderExecutionCoverage textCoverage = null;
+            var textStart = ExactTextTimelineTimeProjection.project(textElement.start());
+            var textEnd = ExactTextTimelineTimeProjection.projectEnd(
+                    textElement.start(), textElement.duration());
+            if (!textStart.exact() || !textEnd.exact()) {
+                diagnostics.add(new RenderPlanningDiagnostic(
+                        RenderPlanningDiagnosticCode.PLANNING_UNSUPPORTED,
+                        Optional.of(textId),
+                        RenderDiagnosticSeverity.ERROR,
+                        "TIMED_TEXT " + textElement.id().value()
+                                + " timing not exactly representable in timeline coordinates: "
+                                + (textStart.exact() ? "" : ((ExactTextTimelineTimeProjection.Overflow) textStart).reason())
+                                + " " + (textEnd.exact() ? "" : ((ExactTextTimelineTimeProjection.Overflow) textEnd).reason())));
+            } else {
+                textCoverage = new RenderExecutionCoverage(
+                        ((ExactTextTimelineTimeProjection.Projected) textStart).mediaTime(),
+                        ((ExactTextTimelineTimeProjection.Projected) textEnd).mediaTime(),
+                        request.extent() != null ? request.extent().frameRate() : null);
+            }
             RenderNode textNode = new RenderNode(
                     textId, new RenderNodeKind.TimedText(), textPath, OP_RASTER,
                     List.of(), textCaps, List.of(), List.of(),
-                    List.of(textRequirement), Optional.empty(), null); // no timeline interval
+                    List.of(textRequirement), Optional.empty(), textCoverage);
             nodes.add(textNode);
             timedTextNodes.add(textId);
         }

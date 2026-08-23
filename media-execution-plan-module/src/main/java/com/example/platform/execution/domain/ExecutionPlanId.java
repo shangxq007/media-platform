@@ -1,5 +1,6 @@
 package com.example.platform.execution.domain;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
@@ -11,12 +12,17 @@ import java.util.Objects;
  * non-semantic provenance identity is permitted; otherwise the id is supplied
  * as planning input / context.
  */
-public record ExecutionPlanId(String value) {
+public record ExecutionPlanId(String value) implements Serializable {
 
     public ExecutionPlanId {
         Objects.requireNonNull(value, "value");
         if (value.isBlank()) {
             throw new IllegalArgumentException("ExecutionPlanId must not be blank");
         }
+    }
+
+    @Override
+    public String toString() {
+        return value;
     }
 }

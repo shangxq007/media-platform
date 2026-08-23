@@ -715,4 +715,28 @@ public final class RenderPlanCanonicalCodec {
         }
         return sb.toString();
     }
+
+
+    /**
+     * ROADMAP #21 Correction 4 (B3) — narrow public exposure of the
+     * authoritative #20 materialization canonical encoding. #21 consumes this
+     * canonical representation instead of reimplementing it (no semantic
+     * duplication; length-prefixed scalar framing; sealed-variant FAIL CLOSED).
+     * SEMANTIC OWNER stays #20 (this codec).
+     */
+    public String materializationRequirementCanonicalPublic(
+            RenderMaterializationRequirement requirement) {
+        return materializationRequirementCanonical(requirement);
+    }
+
+    /**
+     * ROADMAP #21 Correction 4 (B3) — narrow public exposure of the
+     * authoritative #20 node-requirements canonical encoding (artifact /
+     * capability / output / materialization requirements fingerprint).
+     * SEMANTIC OWNER stays #20 (this codec).
+     */
+    public String nodeRequirementsFingerprintCanonicalPublic(RenderNode node) {
+        return nodeRequirementsFingerprintCanonical(node);
+    }
 }
+

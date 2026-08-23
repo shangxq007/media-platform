@@ -38,7 +38,7 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
         StringBuilder sb = new StringBuilder();
         sb.append("PHYSICAL_EXECUTION_PLAN_V1\n");
         sb.append("formatVersion=").append(formatVersion).append('\n');
-        sb.append("schemaVersion=").append(schemaVersion.canonical()).append('\n');
+        sb.append("schemaVersion=").append(schemaVersion.value()).append('\n');
         sb.append("planFingerprint=").append(planFingerprint.sha256Hex()).append('\n');
         sb.append("extent=").append(LogicalExecutionGraphBuilder.canonicalExtent(propagatedExtent)).append('\n');
         var sorted = units.stream()
@@ -48,7 +48,7 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
             sb.append("unit|").append(u.stepId().value())
                     .append('|').append(u.logicalNodeId())
                     .append('|').append(u.sourceRenderNodeId().value())
-                    .append('|').append(u.sourceRenderNodeKind().toString())
+                    .append('|').append(Canonical.renderNodeKind(u.sourceRenderNodeKind()))
                     .append('|').append(u.operationKey()).append('\n');
             for (var i : u.typedInputs()) {
                 sb.append("in|").append(i.inputId().value())
@@ -89,6 +89,8 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
                     .append(LogicalExecutionGraphBuilder.canonicalWindow(u.temporalWindow())).append('\n');
             sb.append("coverage|")
                     .append(LogicalExecutionGraphBuilder.canonicalCoverage(u.executionCoverage())).append('\n');
+            sb.append("unitExtent|")
+                    .append(LogicalExecutionGraphBuilder.canonicalExtent(u.propagatedExtent())).append('\n');
             sb.append("cacheable|").append(u.deterministicallyCacheable()).append('\n');
         }
         return new PhysicalExecutionPlanDigest(sha256(sb.toString()));

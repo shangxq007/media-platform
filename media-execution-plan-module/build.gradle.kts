@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":extension-module"))
     implementation(project(":audio-module"))
     implementation(project(":color-image-module"))
+    implementation(project(":font-text-module"))
     implementation(project(":platform-algorithms:graph"))
 
     // JSON for canonical serialization helpers

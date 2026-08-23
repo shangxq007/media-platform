@@ -198,7 +198,7 @@ class Roadmap21IoAndCanonicalTest {
         assertEquals(a.digest(), b.digest(), "same inputs -> same physical digest");
         assertEquals(a.planId(), b.planId(), "plan identity is caller-supplied and stable");
         assertNotNull(a.schemaVersion());
-        assertEquals("1", a.schemaVersion().canonical(), "SCHEMA_VERSION_FROZEN_SEMANTICS=YES");
+        assertEquals("1", a.schemaVersion().toString(), "SCHEMA_VERSION_FROZEN_SEMANTICS=YES");
     }
 
     @Test

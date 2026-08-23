@@ -14,26 +14,40 @@ import java.util.Comparator;
 import java.util.Objects;
 
 /**
- * Roadmap #21 explicit canonical encoder (Blocker B4).
+ * Roadmap #21 explicit canonical encoder (Correction 4, B3).
  *
- * <p>Principles: fixed field order; explicit variant tag; explicit scalar
- * encoding (full semantic values — no presence-only tokens); deterministic
- * collection ordering where order is non-semantic; preserved positional order
- * where order IS semantic; unknown future variants FAIL CLOSED; NO
- * Object.toString() semantic authority; no locale-dependent formatting; no
- * object identity/hashCode. CapabilityRequirement.toString() omits
- * alternatives — explicit field encoding is mandatory.
+ * <p>EVERY scalar is LENGTH-PREFIXED ({@code len:value}) so arbitrary
+ * supported strings (parameter values, automation references, ids) can never
+ * collide with framing — no delimiter-only concatenation for free strings.
+ * Fixed field order; explicit variant tags; explicit scalar encoding
+ * (full semantic values); deterministic collection ordering where order is
+ * non-semantic; FAIL CLOSED on unknown variants; NO Object.toString()
+ * semantic authority.
  */
 public final class Canonical {
 
     private Canonical() {
     }
 
+    // ------------------------------------------------------------------
+    // Length-prefixed scalar framing (delimiter-collision-safe)
+    // ------------------------------------------------------------------
+
+    /** Frame an arbitrary string: {@code len:value} — unambiguous, injective. */
+    public static String framed(String value) {
+        String v = value == null ? "" : value;
+        return v.length() + ":" + v;
+    }
+
+    // ------------------------------------------------------------------
+    // Capability / contract
+    // ------------------------------------------------------------------
+
     /** CapabilityRequirement: id | required | range | sorted alternatives. */
     public static String capability(CapabilityRequirement cr) {
         Objects.requireNonNull(cr, "cr");
         StringBuilder sb = new StringBuilder();
-        sb.append(cr.capabilityId().value())
+        sb.append(framed(cr.capabilityId().value()))
                 .append('|').append(cr.required())
                 .append('|').append(contractRange(cr.contractRange()));
         if (cr.alternatives() != null && !cr.alternatives().isEmpty()) {
@@ -46,7 +60,7 @@ public final class Canonical {
                 if (i > 0) {
                     sb.append(',');
                 }
-                sb.append(alts.get(i));
+                sb.append(framed(alts.get(i)));
             }
         }
         return sb.toString();
@@ -71,31 +85,23 @@ public final class Canonical {
                 + "|" + er.sandboxedIntent();
     }
 
-    /**
-     * RenderOutputRequirement: FULL value encoding — role + complete
-     * ColorDescription variant payload + complete RasterSampleDescription.
-     * No presence-only tokens (B4: full color/raster digest participation).
-     */
+    // ------------------------------------------------------------------
+    // Output requirement / color / raster (full values)
+    // ------------------------------------------------------------------
+
     public static String outputRequirement(RenderOutputRequirement o) {
         Objects.requireNonNull(o, "o");
         StringBuilder sb = new StringBuilder();
         sb.append(o.role() != null ? o.role().name() : "null");
         sb.append('|');
-        if (o.colorDescription() != null) {
-            sb.append(colorDescription(o.colorDescription().orElse(null)));
-        } else {
-            sb.append("null");
-        }
+        sb.append(o.colorDescription() != null
+                ? colorDescription(o.colorDescription().orElse(null)) : "null");
         sb.append('|');
-        if (o.rasterSample() != null) {
-            sb.append(rasterSample(o.rasterSample().orElse(null)));
-        } else {
-            sb.append("null");
-        }
+        sb.append(o.rasterSample() != null
+                ? rasterSample(o.rasterSample().orElse(null)) : "null");
         return sb.toString();
     }
 
-    /** ColorDescription: sealed variant tag + full typed fields. */
     public static String colorDescription(ColorDescription cd) {
         if (cd == null) {
             return "null";
@@ -114,8 +120,7 @@ public final class Canonical {
         throw new IllegalStateException("unknown ColorDescription variant — FAIL CLOSED: " + cd.getClass());
     }
 
-    /** ColorPrimaries: sealed variant — WellKnown enum or explicit custom chromaticities. */
-    static String primaries(com.example.platform.colorimage.ColorPrimaries cp) {
+    public static String primaries(com.example.platform.colorimage.ColorPrimaries cp) {
         if (cp == null) {
             return "null";
         }
@@ -131,15 +136,20 @@ public final class Canonical {
         throw new IllegalStateException("unknown ColorPrimaries variant — FAIL CLOSED: " + cp.getClass());
     }
 
-    static String chromaticity(com.example.platform.colorimage.Chromaticity ch) {
+    public static String chromaticity(com.example.platform.colorimage.Chromaticity ch) {
         if (ch == null) {
             return "null";
         }
-        return (ch.x() != null ? ch.x().toString() : "null")
-                + "," + (ch.y() != null ? ch.y().toString() : "null");
+        return framed(rational(ch.x())) + "," + framed(rational(ch.y()));
     }
 
-    /** RasterSampleDescription: full typed fields. */
+    private static String rational(com.example.platform.colorimage.Rational r) {
+        if (r == null) {
+            return "null";
+        }
+        return r.numerator() + "/" + r.denominator();
+    }
+
     public static String rasterSample(RasterSampleDescription r) {
         if (r == null) {
             return "null";
@@ -152,101 +162,50 @@ public final class Canonical {
                 + "|" + r.alphaComponentPresent();
     }
 
+    // ------------------------------------------------------------------
+    // Materialization — explicit sealed variants, full payload
+    // ------------------------------------------------------------------
+
+    private static final com.example.platform.render.domain.renderplan.RenderPlanCanonicalCodec CODEC =
+            com.example.platform.render.domain.renderplan.RenderPlanFingerprintCalculator.codec();
+
     /**
-     * RenderMaterializationRequirement: explicit sealed-variant full payload
-     * encoding — NEVER variantTag + toString().
+     * Materialization canonical encoding — DELEGATED to the #20 authoritative
+     * RenderPlanCanonicalCodec (Correction 4 B3): length-prefixed scalar
+     * framing, explicit sealed-variant full payload (Effect / AudioProcess /
+     * TimedText), FAIL CLOSED on unknown variants. #21 does not reimplement
+     * #20 semantic encoding; the #20 codec remains the single canonical owner.
      */
     public static String materialization(RenderMaterializationRequirement m) {
         Objects.requireNonNull(m, "m");
-        if (m instanceof com.example.platform.render.domain.renderplan.EffectMaterializationRequirement e) {
-            return "EFFECT|" + (e.category() != null ? e.category().name() : "null")
-                    + "|" + effectParameters(e)
-                    + "|" + (e.effectInstanceId() != null ? e.effectInstanceId() : "null")
-                    + "|" + (e.effectDefinitionId() != null ? e.effectDefinitionId() : "null")
-                    + "|" + (e.effectDefinitionVersion() != null ? e.effectDefinitionVersion() : "null")
-                    + "|" + e.enabled()
-                    + "|" + (e.applicationRange() != null
-                            ? (e.applicationRange().start() != null
-                                    ? e.applicationRange().start().ticks() + "/" + e.applicationRange().start().timeScale() : "null")
-                            + "-" + (e.applicationRange().end() != null
-                                    ? e.applicationRange().end().ticks() + "/" + e.applicationRange().end().timeScale() : "null")
-                            : "null")
-                    + "|" + automationBindings(e)
-                    + "|" + (e.temporalBehavior() != null ? e.temporalBehavior().name() : "null")
-                    + "|" + effectTarget(e);
-        }
-        if (m instanceof com.example.platform.render.domain.renderplan.AudioProcessMaterializationRequirement a) {
-            return "AUDIO_PROCESS|" + a.toString(); // typed immutable value record
-        }
-        if (m instanceof com.example.platform.render.domain.renderplan.TimedTextMaterializationRequirement t) {
-            return "TIMED_TEXT|" + t.toString(); // typed immutable value record
-        }
-        throw new IllegalStateException(
-                "unknown RenderMaterializationRequirement variant — FAIL CLOSED: " + m.getClass());
+        return CODEC.materializationRequirementCanonicalPublic(m);
     }
 
-    private static String effectParameters(
-            com.example.platform.render.domain.renderplan.EffectMaterializationRequirement e) {
-        if (e.parameters() == null || e.parameters().isEmpty()) {
-            return "none";
-        }
-        return e.parameters().stream()
-                .sorted(Comparator.comparing(p -> p.key() != null ? p.key() : ""))
-                .map(p -> (p.key() != null ? p.key() : "null") + "=" + (p.value() != null ? p.value() : "null"))
-                .reduce((x, y) -> x + "," + y)
-                .orElse("none");
-    }
+                                                // ------------------------------------------------------------------
+    // Artifacts — explicit sealed variants
+    // ------------------------------------------------------------------
 
-    private static String automationBindings(
-            com.example.platform.render.domain.renderplan.EffectMaterializationRequirement e) {
-        if (e.automationBindings() == null || e.automationBindings().isEmpty()) {
-            return "none";
-        }
-        return e.automationBindings().stream()
-                .sorted(Comparator.comparing(b -> b.parameterKey() != null ? b.parameterKey() : ""))
-                .map(b -> (b.parameterKey() != null ? b.parameterKey() : "null")
-                        + "->" + (b.automationReference() != null ? b.automationReference() : "null"))
-                .reduce((x, y) -> x + "," + y)
-                .orElse("none");
-    }
-
-    private static String effectTarget(
-            com.example.platform.render.domain.renderplan.EffectMaterializationRequirement e) {
-        if (e.target() == null) {
-            return "null";
-        }
-        if (e.target() instanceof com.example.platform.timeline.semantics.effect.ClipEffectTarget c) {
-            return "CLIP|" + (c.trackId() != null ? c.trackId() : "null")
-                    + "|" + (c.clipId() != null ? c.clipId() : "null");
-        }
-        return "TARGET|" + e.target().toString();
-    }
-
-    /** SourceArtifact: explicit artifactId + digest algorithm + digest value. */
     public static String sourceArtifact(RenderArtifactReference.SourceArtifact a) {
         if (a == null) {
             return "null";
         }
-        return "SOURCE|" + a.artifactId().value()
+        return "SOURCE|" + framed(a.artifactId().value())
                 + "|" + (a.contentDigest() != null && a.contentDigest().algorithm() != null
                         ? a.contentDigest().algorithm().name() : "null")
-                + "|" + (a.contentDigest() != null ? a.contentDigest().value() : "null");
+                + "|" + (a.contentDigest() != null ? framed(a.contentDigest().value()) : "null");
     }
 
-    /** IntermediateArtifactExpectation: explicit fields (logicalId + role). */
     public static String intermediateArtifact(RenderArtifactReference.IntermediateArtifactExpectation a) {
         Objects.requireNonNull(a, "a");
-        return "INTERMEDIATE|" + (a.logicalId() != null ? a.logicalId().toString() : "null")
+        return "INTERMEDIATE|" + framed(a.logicalId() != null ? a.logicalId().value() : "null")
                 + "|" + (a.role() != null ? a.role().name() : "null");
     }
 
-    /** FinalArtifactExpectation: explicit field (role). */
     public static String finalArtifact(RenderArtifactReference.FinalArtifactExpectation a) {
         Objects.requireNonNull(a, "a");
         return "FINAL|" + (a.role() != null ? a.role().name() : "null");
     }
 
-    /** Any artifact reference: explicit sealed-variant encoding. */
     public static String artifact(RenderArtifactReference a) {
         Objects.requireNonNull(a, "a");
         if (a instanceof RenderArtifactReference.SourceArtifact sa) {
@@ -261,11 +220,10 @@ public final class Canonical {
         throw new IllegalStateException("unknown RenderArtifactReference variant — FAIL CLOSED: " + a.getClass());
     }
 
-    /**
-     * RenderDependency: explicit sealed-variant encoding with exact semantic
-     * payload — NEVER .toString() as the semantic contract. Unknown future
-     * subtype fails closed.
-     */
+    // ------------------------------------------------------------------
+    // Dependencies — explicit sealed variants
+    // ------------------------------------------------------------------
+
     public static String dependency(RenderDependency d) {
         if (d == null) {
             return "NONE"; // root source-artifact input without a producer edge
@@ -278,11 +236,9 @@ public final class Canonical {
             return "EFFECT_INPUT";
         }
         if (d instanceof RenderDependency.AudioInput ai) {
-            // exact semantic payload: AudioMixInput trackId + clipId
             String trackId = ai.mixInput() != null ? ai.mixInput().trackId() : "null";
             String clipId = ai.mixInput() != null ? ai.mixInput().clipId() : "null";
-            return "AUDIO_INPUT|" + (trackId != null ? trackId : "null")
-                    + "|" + (clipId != null ? clipId : "null");
+            return "AUDIO_INPUT|" + framed(trackId) + "|" + framed(clipId);
         }
         if (d instanceof RenderDependency.SubtitleRaster) {
             return "SUBTITLE_RASTER";
@@ -291,6 +247,57 @@ public final class Canonical {
             return "COMPOSITE_INPUT";
         }
         throw new IllegalStateException("unknown RenderDependency variant — FAIL CLOSED: " + d.getClass());
+    }
+
+    // ------------------------------------------------------------------
+    // Node identity — explicit (no record toString)
+    // ------------------------------------------------------------------
+
+    /** RenderNodeKind: explicit sealed variant tag. */
+    public static String renderNodeKind(com.example.platform.render.domain.renderplan.RenderNodeKind k) {
+        if (k == null) {
+            return "null";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Decode) {
+            return "DECODE";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Effect) {
+            return "EFFECT";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.AudioProcess) {
+            return "AUDIO_PROCESS";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.AudioMix) {
+            return "AUDIO_MIX";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.TimedText) {
+            return "TIMED_TEXT";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Composite) {
+            return "COMPOSITE";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Output) {
+            return "OUTPUT";
+        }
+        if (k instanceof com.example.platform.render.domain.renderplan.RenderNodeKind.Source) {
+            return "SOURCE";
+        }
+        throw new IllegalStateException("unknown RenderNodeKind variant — FAIL CLOSED: " + k.getClass());
+    }
+
+    /** RenderComponentPath: explicit kind + ordered segments. */
+    public static String componentPath(com.example.platform.render.domain.renderplan.RenderComponentPath p) {
+        if (p == null) {
+            return "null";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(p.kind() != null ? p.kind().name() : "null");
+        if (p.segments() != null) {
+            for (String s : p.segments()) {
+                sb.append('|').append(framed(s));
+            }
+        }
+        return sb.toString();
     }
 
     static String sorted(java.util.List<String> values) {

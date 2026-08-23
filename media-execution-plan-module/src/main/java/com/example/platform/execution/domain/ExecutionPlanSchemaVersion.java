@@ -1,15 +1,21 @@
 package com.example.platform.execution.domain;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * ROADMAP #21 canonical plan schema version (frozen ledger REUSE_AS_CANONICAL).
+ * Schema version for the Media Execution Plan model.
  *
- * <p>FROZEN canonical semantics (Decision Recovery): single integer value,
- * V1 = new ExecutionPlanSchemaVersion(1), value &gt;= 1. Distinct from the
- * plan formatVersion concept in the #21 model — never conflated.
+ * <p>Version-governed — serialization and validation reject unknown versions.
+ * FROZEN Decision Recovery canonical surface (REUSE_AS_CANONICAL):
+ * int value &gt;= 1, V1 constant, of(int) factory, toString = value.
  */
-public record ExecutionPlanSchemaVersion(int value) {
+public record ExecutionPlanSchemaVersion(int value) implements Serializable {
+
+    /**
+     * Current schema version for Media Execution Plan V1.
+     */
+    public static final ExecutionPlanSchemaVersion V1 = new ExecutionPlanSchemaVersion(1);
 
     public ExecutionPlanSchemaVersion {
         if (value < 1) {
@@ -17,7 +23,12 @@ public record ExecutionPlanSchemaVersion(int value) {
         }
     }
 
-    public String canonical() {
+    public static ExecutionPlanSchemaVersion of(int value) {
+        return new ExecutionPlanSchemaVersion(value);
+    }
+
+    @Override
+    public String toString() {
         return String.valueOf(value);
     }
 }

@@ -161,7 +161,7 @@ public final class PhysicalPlannerV1 {
         }
         // ExecutionPlanId: independent identity supplied by the caller
         // (planning context) — NEVER derived from semantic fingerprint
-        ExecutionPlanSchemaVersion schema = new ExecutionPlanSchemaVersion(1);
+        ExecutionPlanSchemaVersion schema = ExecutionPlanSchemaVersion.V1;
         return new PhysicalExecutionPlan(
                 "physical-execution-plan-v1",
                 planId,

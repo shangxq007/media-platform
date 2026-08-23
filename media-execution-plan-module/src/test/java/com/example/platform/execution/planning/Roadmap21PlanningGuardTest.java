@@ -347,4 +347,81 @@ class Roadmap21PlanningGuardTest {
                 "ALL_PRODUCERS_ELIMINATED_PRUNING_COUNT=0 — the ONLY node-elimination site is coverage-based");
     }
 
+
+    // ---------- Correction 4 guards ----------
+
+    @Test
+    void timedTextCoverageNeverNullInMaterializer() throws IOException {
+        String mat = stripComments(Files.readString(repoRoot().resolve(
+                "render-module/src/main/java/com/example/platform/render/domain/renderplan/DefaultRenderMaterializer.java")));
+        // TIMED_TEXT coverage assignment present; NO null-coverage path for
+        // the TIMED_TEXT node construction
+        assertTrue(mat.contains("textCoverage = new RenderExecutionCoverage"),
+                "TIMED_TEXT_NULL_EXECUTION_COVERAGE_IN_MATERIALIZER_COUNT=0 — materializer assigns exact coverage");
+        assertTrue(mat.contains("List.of(textRequirement), Optional.empty(), textCoverage);"),
+                "TIMED_TEXT_NULL_EXECUTION_COVERAGE_IN_MATERIALIZER_COUNT=0 — "
+                        + "TIMED_TEXT node construction uses the exact projected coverage (never null)");
+        assertTrue(mat.contains("ExactTextTimelineTimeProjection"),
+                "exact #20-owned projection used");
+        // no float/double/millisecond text-time conversion in the BRIDGE
+        String projection = stripComments(Files.readString(repoRoot().resolve(
+                "render-module/src/main/java/com/example/platform/render/domain/renderplan/ExactTextTimelineTimeProjection.java")));
+        assertFalse(projection.contains("doubleValue()") || projection.contains("toDouble")
+                        || projection.contains("BigDecimal") || projection.contains("toMillis"),
+                "TIMED_TEXT_FLOAT_TIME_CONVERSION_COUNT=0 — bridge is exact rational only");
+        assertFalse(projection.contains("double") || projection.contains("float"),
+                "no float/double in the exact projection");
+    }
+
+    @Test
+    void schemaVersionFrozenV1ConstantPresent() throws IOException {
+        String sv = Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/ExecutionPlanSchemaVersion.java"));
+        assertTrue(sv.contains("V1 = new ExecutionPlanSchemaVersion(1)"),
+                "EXECUTION_SCHEMA_VERSION_V1_CONSTANT_MISSING_COUNT=0 — V1 constant present");
+        assertTrue(sv.contains("implements Serializable"), "frozen Serializable surface");
+        assertTrue(sv.contains("public static ExecutionPlanSchemaVersion of(int value)"),
+                "frozen of(int) factory");
+        assertFalse(sv.contains("int major") || sv.contains("int minor"),
+                "SCHEMA_VERSION_MAJOR_MINOR_REDESIGN_COUNT=0");
+    }
+
+    @Test
+    void creationContextFrozenShapeAndInvariants() throws IOException {
+        String cc = Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/ExecutionCreationContext.java"));
+        assertTrue(cc.contains("String parentPlanId"),
+                "EXECUTION_CREATION_CONTEXT_PARENT_PLAN_ID_NONFROZEN_TYPE_COUNT=0 — parentPlanId is String");
+        assertFalse(cc.contains("ExecutionPlanId parentPlanId"),
+                "parentPlanId must remain frozen String (not ExecutionPlanId)");
+        assertTrue(cc.contains("Objects.requireNonNull(createdAt"),
+                "EXECUTION_CREATION_CONTEXT_NULLABLE_CREATED_AT_COUNT=0 — createdAt required");
+        assertTrue(cc.contains("implements Serializable"), "frozen Serializable surface");
+        for (String f : new String[]{"requestedByUserId", "requestedByTenantId", "requestPurpose",
+                "Instant createdAt", "traceId", "String parentPlanId", "comment"}) {
+            assertTrue(cc.contains(f), "frozen field " + f);
+        }
+    }
+
+    @Test
+    void noDelimiterOnlyFramingForFreeStrings() throws IOException {
+        String canonical = Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/Canonical.java"));
+        assertTrue(canonical.contains("framed("),
+                "DELIMITER_ONLY_CANONICAL_SCALAR_ENCODING_COUNT=0 — length-prefixed framing used");
+        String code = canonical.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
+        // effect parameter values / automation references / ids must be framed
+        assertFalse(code.contains("p.value() != null ? p.value() : \"null\") + \"=\"") && !code.contains("framed(p.value()"),
+                "free-string scalars must be length-prefixed");
+    }
+
+    @Test
+    void physicalUnitExtentParticipatesInDigest() throws IOException {
+        String pd = Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlanDigest.java"));
+        assertTrue(pd.contains("unitExtent|"),
+                "PHYSICAL_UNIT_PROPAGATED_EXTENT_DIGEST_OMISSION_COUNT=0 — unit propagatedExtent in digest");
+        assertTrue(pd.contains("u.propagatedExtent()"), "digest reads unit propagatedExtent");
+    }
+
 }

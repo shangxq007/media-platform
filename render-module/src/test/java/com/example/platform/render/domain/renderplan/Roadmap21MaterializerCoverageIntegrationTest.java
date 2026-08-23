@@ -50,8 +50,11 @@ class Roadmap21MaterializerCoverageIntegrationTest {
                 assertNull(n.executionCoverage(),
                         "AUDIO_MIX is aggregate — null coverage (never pruned)");
             } else if (k instanceof RenderNodeKind.TimedText) {
-                assertNull(n.executionCoverage(),
-                        "TIMED_TEXT has no timeline interval in #20 TextElement — null coverage (never pruned)");
+                // Correction 4 (Phase A T2): TIMED_TEXT receives exact typed
+                // coverage from the #20-owned FontRational→MediaTime bridge
+                assertNotNull(n.executionCoverage(),
+                        "TIMED_TEXT must carry exact typed execution coverage "
+                                + "(authored FontRational timing projected into timeline coordinates)");
             } else if (k instanceof RenderNodeKind.Composite) {
                 assertNull(n.executionCoverage(),
                         "COMPOSITE is aggregate — null coverage (never pruned)");
