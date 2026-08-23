@@ -147,8 +147,8 @@ final class LogicalExecutionGraphBuilder {
                     continue;
                 }
                 edges.add(new LogicalExecutionGraph.LogicalDependencyEdge(
-                        new com.example.platform.execution.domain.ExecutionEdgeId(
-                                "le-" + e.producerId().value() + "-" + e.consumerId().value()),
+                        LogicalEdgeIdentity.derive(
+                                e.producerId(), e.consumerId(), e.dependency()),
                         producer, consumer,
                         e.producerId(), e.consumerId(), e.dependency()));
             }

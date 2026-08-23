@@ -649,4 +649,74 @@ class Roadmap21PlanningGuardTest {
                 "PRODUCTION_DIRECT_LOGICAL_PHYSICAL_PLANNER_CALLERS_OUTSIDE_GUARDED_ENTRY=0");
     }
 
+
+    // ---------- Correction 9 guards ----------
+
+    @Test
+    void endpointOnlyExecutionEdgeIdDerivationAbsent() throws IOException {
+        String builder = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraphBuilder.java")));
+        String identity = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalEdgeIdentity.java")));
+        long endpointOnlyCount = java.util.regex.Pattern.compile(
+                        "new\\s+(?:[\\w.]+\\.)?ExecutionEdgeId\\s*\\(\\s*\"le-\"\\s*\\+\\s*e\\.producerId")
+                .matcher(builder).results().count();
+
+        assertEquals(0, endpointOnlyCount,
+                "ENDPOINT_ONLY_EXECUTION_EDGE_ID_DERIVATION_COUNT=0");
+        assertTrue(builder.contains(
+                        "LogicalEdgeIdentity.derive(\n                                e.producerId(), e.consumerId(), e.dependency())"),
+                "builder delegates complete typed edge semantics to identity derivation");
+        assertTrue(identity.contains("writer.field(\"producerRenderNodeId\"")
+                        && identity.contains("writer.field(\"consumerRenderNodeId\"")
+                        && identity.contains("writer.field(\"dependency\", Canonical.dependency(dependency))"),
+                "LOGICAL_EDGE_IDENTITY_V1 includes both endpoints and canonical typed dependency semantics");
+    }
+
+    @Test
+    void duplicateExecutionEdgeIdAcceptanceAbsent() throws IOException {
+        String planner = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalPhysicalPlanner.java")));
+        boolean failClosed = planner.contains("Set<ExecutionEdgeId> edgeIds = new HashSet<>()")
+                && planner.contains("if (!edgeIds.add(e.edgeId()))")
+                && planner.contains("ExecutionPlanningFailureReason.INVALID_LOGICAL_GRAPH")
+                && planner.contains("new ExecutionPlanningException.DuplicateIdentityContext(")
+                && planner.contains("\"executionEdgeId\", e.edgeId().value()");
+        int duplicateAcceptanceCount = failClosed ? 0 : 1;
+
+        assertEquals(0, duplicateAcceptanceCount,
+                "DUPLICATE_EXECUTION_EDGE_ID_ACCEPTANCE_COUNT=0");
+    }
+
+    @Test
+    void traversalPositionEdgeIdentityAbsent() throws IOException {
+        String identity = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalEdgeIdentity.java")));
+        long traversalPositionCount = java.util.regex.Pattern.compile(
+                        "(?i)(edgeIndex|edgeOrdinal|traversalPosition|insertionOrder|listPosition)")
+                .matcher(identity).results().count();
+
+        assertEquals(0, traversalPositionCount,
+                "TRAVERSAL_POSITION_EDGE_IDENTITY_COUNT=0");
+    }
+
+    @Test
+    void rawEdgeIdentityDelimiterGrammarAbsent() throws IOException {
+        String identity = stripComments(Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalEdgeIdentity.java")));
+        long rawDelimiterCount = java.util.regex.Pattern.compile(
+                        "(?:producerRenderNodeId\\.value\\(\\)|consumerRenderNodeId\\.value\\(\\)|"
+                                + "Canonical\\.dependency\\(dependency\\))\\s*\\+")
+                .matcher(identity).results().count();
+        if (identity.contains("String.join(")) {
+            rawDelimiterCount++;
+        }
+
+        assertEquals(0, rawDelimiterCount,
+                "RAW_EDGE_IDENTITY_DELIMITER_GRAMMAR_COUNT=0");
+        assertTrue(identity.contains("CanonicalWriter writer = new CanonicalWriter()")
+                        && identity.contains("writer.tag(\"LOGICAL_EDGE_IDENTITY_V1\")"),
+                "edge identity uses structurally framed canonical encoding");
+    }
+
 }

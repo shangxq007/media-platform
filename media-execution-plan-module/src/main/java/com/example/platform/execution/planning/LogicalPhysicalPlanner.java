@@ -1,5 +1,6 @@
 package com.example.platform.execution.planning;
 
+import com.example.platform.execution.domain.ExecutionEdgeId;
 import com.example.platform.execution.planning.LogicalExecutionGraph.LogicalDependencyEdge;
 import com.example.platform.execution.planning.LogicalExecutionGraph.LogicalExecutionNode;
 import com.example.platform.render.domain.renderplan.RenderGraph;
@@ -106,6 +107,7 @@ final class LogicalPhysicalPlanner {
     /** law:inputs-closed — every edge endpoint resolves to a node. */
     static void validateRefsResolve(LogicalExecutionGraph logical) {
         Set<String> ids = new HashSet<>();
+        Set<ExecutionEdgeId> edgeIds = new HashSet<>();
         for (var n : logical.nodes()) {
             if (!ids.add(n.logicalNodeId())) {
                 throw new ExecutionPlanningException(
@@ -116,6 +118,13 @@ final class LogicalPhysicalPlanner {
             }
         }
         for (var e : logical.edges()) {
+            if (!edgeIds.add(e.edgeId())) {
+                throw new ExecutionPlanningException(
+                        ExecutionPlanningFailureReason.INVALID_LOGICAL_GRAPH,
+                        new ExecutionPlanningException.DuplicateIdentityContext(
+                                "executionEdgeId", e.edgeId().value(),
+                                "duplicate execution edge identity"));
+            }
             if (!ids.contains(e.producerLogicalNodeId())) {
                 throw new ExecutionPlanningException(
                         ExecutionPlanningFailureReason.INVALID_LOGICAL_GRAPH,
