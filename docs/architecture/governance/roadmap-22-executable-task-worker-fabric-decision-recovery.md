@@ -1,14 +1,17 @@
 # Roadmap #22 Executable Task Graph and Worker Fabric Runtime — Decision Recovery
 
-STATUS=FROZEN_BOUNDED_ARCHITECTURE_CONTRACT (as amended by Amendment 1)
+STATUS=FROZEN_BOUNDED_ARCHITECTURE_CONTRACT (as amended by Amendment 1 + Amendment 2)
 READY_FOR_CHATGPT_FINAL_DECISION_RECOVERY_REVIEW=YES
 ROADMAP_22_IMPLEMENTATION=NO_GO
-AMENDMENT=docs/architecture/governance/roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md
-(Where this contract conflicts with Amendment 1, Amendment 1 governs:
-  shared worker fabric, PhysicalHost/WorkerRuntime/Device separation,
-  Capacity/Reserved/Observed resource model, reservation-first, provider-local
-  composition + ExecutableTaskMembership, DispatchBackend/OpenCue role,
-  revised phase plan, amended laws. LAW_R22_009 is SUPERSEDED.)
+AMENDMENT_1=docs/architecture/governance/roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md
+AMENDMENT_2=docs/architecture/governance/roadmap-22-native-pull-lease-execution-backend-amendment-2.md
+PRECEDENCE: Amendment 2 wins over Amendment 1 ONLY for assignment protocol,
+  ExecutionBackend/DispatchBackend terminology, Native Pull default role,
+  TaskLease/local admission semantics, OpenCue Role V2, backend-specific
+  placement authority. Amendment 1 remains authority for its non-conflicting
+  frozen content. Where this contract conflicts with either amendment, the
+  amendments govern (LAW_R22_009 is SUPERSEDED by A1; DispatchBackend peer
+  authority and OPEN_CUE_ROLE_V1 are SUPERSEDED by A2).
 
 ## 1. Authority Baseline
 
@@ -720,17 +723,25 @@ Redis: only if concrete cache/lease/probe consumer exists. Novu/n8n: external ec
 
 ## 34. Implementation Phase Plan (frozen proposal, as amended)
 
-Revised by Amendment 1 §25 (PHASE_0..18): CLEAN_FORWARD legacy provider/runtime
-shadows → immutable Provider contract/profile/binding foundations →
-PhysicalHost/WorkerRuntime/Device identity + descriptor foundations → resource
-capacity + reservation primitives → CompatibilityKernel/ProviderCompatibilityGraph
-→ provider-local composition legality + membership model → ProviderBoundExecutableTaskGraph
-+ deterministic ids/digest → RuntimeEligibility + HostResourceAgent ports/snapshots
-→ ExecutionAssignment + reservation-aware bounded placement → PlanLowerer/RuntimeAdapter/
-DispatchBackend → retry/attempt/lease/heartbeat/cancellation → Artifact boundary +
-staging → sandbox/isolation → FAOF-2 Lean4 + Coq → FFmpeg CPU conformance →
-Intel VAAPI/QSV conformance → OpenCue bounded adapter POC → NVIDIA/cloud conformance
-→ candidate freeze / FCV / independent review. Do NOT start these phases yet.
+Revised by Amendment 1 §25 then Amendment 2 §36 (PHASE_0..24):
+CLEAN_FORWARD legacy provider/runtime/queue shadows → Provider immutable
+identity/contract/profile/binding → PhysicalHost/WorkerRuntime/Device
+foundations → Capacity/Reservation/Observed primitives →
+CompatibilityKernel/ProviderCompatibilityGraph → Provider-local composition +
+ExecutableTaskMembership → ProviderBoundExecutableTaskGraph + IDs/digest →
+HostResourceAgent + runtime eligibility → ExecutionBackend +
+ExecutionBackendSelection contracts → Native Pull RequestWork +
+registration/freshness/idempotency → CentralWorkMatcher bounded matching →
+ExecutionAssignment + Reservation + TaskLease + ExecutionAttempt atomic grant
+→ TaskLease fencing/heartbeat/expiry/disconnect recovery → LocalAdmission +
+typed decline + reservation reconciliation → retry/cancellation/late
+completion/duplicate-execution fencing → PlanLowerer/RuntimeAdapter → Artifact
+staging/materialization + fenced output completion → sandbox/isolation →
+FAOF-2 Lean4 + Coq → FFmpeg CPU Native Pull conformance → Intel VAAPI/QSV
+Native Pull conformance → OpenCue specialized farm backend bounded POC →
+RemoteProvider backend conformance → NVIDIA/cloud Native Pull worker
+conformance → candidate freeze / FCV / independent review.
+Do NOT start these phases yet.
 
 ## 35. Parallel Task DAG (future, not now)
 
@@ -755,6 +766,7 @@ G. Formalization reveals contradiction in laws → NOT OBSERVED (laws are consis
 
 ROADMAP_22_DECISION_RECOVERY_CORRECTION_4=PASS (docs-only, ledger machine closure)
 ROADMAP_22_AMENDMENT_1=PASS (docs-only, shared worker fabric + provider-local composition)
+ROADMAP_22_AMENDMENT_2=PASS (docs-only, Native Pull lease assignment + ExecutionBackend role V2)
 ROADMAP_22_DECISION_RECOVERY=PASS (as corrected and amended)
 READY_FOR_CHATGPT_FINAL_REVIEW=YES
 ROADMAP_22_IMPLEMENTATION=NO_GO
@@ -762,4 +774,4 @@ ROADMAP_23=NOT_STARTED
 BLOCKERS=0
 ARCHITECTURE_ESCALATION=NONE
 
-NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_AMENDMENT_1_FINAL_REVIEW
+NEXT_ACTION=CHATGPT_ROADMAP_22_DECISION_RECOVERY_AMENDMENT_2_FINAL_REVIEW
