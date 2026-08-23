@@ -1,17 +1,16 @@
 package com.example.platform.execution.domain;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
- * ROADMAP #21 typed output declaration identity (frozen ledger
- * REUSE_AS_CANONICAL). Stable typed identity of an output declaration.
+ * Business identity of an Execution Output declaration within a plan.
+ *
+ * <p>Immutable strong type scoped to a single plan.
  */
 public record ExecutionOutputId(String value) implements Serializable {
 
     public ExecutionOutputId {
-        Objects.requireNonNull(value, "value");
-        if (value.isBlank()) {
+        if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("ExecutionOutputId must not be blank");
         }
     }

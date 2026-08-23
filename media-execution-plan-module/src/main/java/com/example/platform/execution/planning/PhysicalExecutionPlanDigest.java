@@ -1,27 +1,25 @@
 package com.example.platform.execution.planning;
 
+import com.example.platform.execution.domain.ExecutionPlanSchemaVersion;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.render.domain.renderplan.RenderExtent;
 import com.example.platform.render.domain.renderplan.RenderPlanFingerprint;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Roadmap #21 PhysicalExecutionPlanDigest (C16/C17, Blocker H/B4).
+ * Roadmap #21 PhysicalExecutionPlanDigest (C16/C17) — end-to-end injective
+ * canonical encoding via {@link CanonicalWriter} (Correction 5 B2).
  *
- * <p>Distinct layer digest from LogicalExecutionGraphDigest. Covers ALL
- * physical semantic content via the explicit {@link Canonical} encoder:
- * unit stable typed identity, logical refs, typed source identity/kind/op
- * key, typed inputs (ExecutionInputId + artifact refs + dependency payloads
- * + windows), typed outputs (ExecutionOutputId + requirements + artifact
- * expectations), typed dependencies, capability/execution intent refs,
- * temporal windows, coverage, propagated extent and cacheability metadata.
- *
- * <p>ExecutionPlanId / createdAt / correlation / trace excluded. Same frozen
- * semantic input → same digest.
+ * <p>Full-stream framing; actual formatVersion + schemaVersion.value +
+ * planFingerprint + plan-level extent + per-unit semantic fields (typed
+ * inputs/outputs/dependencies, temporal window, coverage, per-unit
+ * propagatedExtent, requirement refs, cacheability). ExecutionPlanId and
+ * provenance EXCLUDED (identity/provenance, never semantic).
  */
 public record PhysicalExecutionPlanDigest(String sha256Hex) {
 
@@ -31,69 +29,85 @@ public record PhysicalExecutionPlanDigest(String sha256Hex) {
 
     public static PhysicalExecutionPlanDigest compute(
             String formatVersion,
-            com.example.platform.execution.domain.ExecutionPlanSchemaVersion schemaVersion,
+            ExecutionPlanSchemaVersion schemaVersion,
             List<PhysicalPlanUnit> units,
             RenderPlanFingerprint planFingerprint,
             RenderExtent propagatedExtent) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("PHYSICAL_EXECUTION_PLAN_V1\n");
-        sb.append("formatVersion=").append(formatVersion).append('\n');
-        sb.append("schemaVersion=").append(schemaVersion.value()).append('\n');
-        sb.append("planFingerprint=").append(planFingerprint.sha256Hex()).append('\n');
-        sb.append("extent=").append(LogicalExecutionGraphBuilder.canonicalExtent(propagatedExtent)).append('\n');
-        var sorted = units.stream()
-                .sorted(Comparator.comparing(u -> u.stepId().value()))
-                .toList();
-        for (var u : sorted) {
-            sb.append("unit|").append(u.stepId().value())
-                    .append('|').append(u.logicalNodeId())
-                    .append('|').append(u.sourceRenderNodeId().value())
-                    .append('|').append(Canonical.renderNodeKind(u.sourceRenderNodeKind()))
-                    .append('|').append(u.operationKey()).append('\n');
+        CanonicalWriter w = new CanonicalWriter();
+        w.tag("PHYSICAL_EXECUTION_PLAN_V1");
+        w.field("formatVersion", formatVersion);
+        w.field("schemaVersion", Integer.toString(schemaVersion.value()));
+        w.field("planFingerprint", planFingerprint.sha256Hex());
+        w.field("planExtent", LogicalExecutionGraphBuilder.canonicalExtent(propagatedExtent));
+        // units: deterministic order by step identity (structural partition —
+        // unit order is NOT semantic)
+        List<PhysicalPlanUnit> sortedUnits = new ArrayList<>(units);
+        sortedUnits.sort(Comparator.comparing(u -> u.stepId().value()));
+        List<String> unitCanonicals = new ArrayList<>();
+        for (var u : sortedUnits) {
+            CanonicalWriter uw = new CanonicalWriter();
+            uw.tag("UNIT");
+            uw.field("stepId", u.stepId().value());
+            uw.field("logicalNodeId", u.logicalNodeId());
+            uw.field("sourceRenderNodeId", u.sourceRenderNodeId().value());
+            uw.field("renderNodeKind", Canonical.renderNodeKind(u.sourceRenderNodeKind()));
+            uw.field("operationKey", u.operationKey());
+            // inputs: preserved authored order (dependency positional semantics)
+            List<String> inputCanonicals = new ArrayList<>();
             for (var i : u.typedInputs()) {
-                sb.append("in|").append(i.inputId().value())
-                        .append('|').append(i.producerLogicalNodeId())
-                        .append('|').append(Canonical.dependency(i.dependencyVariant()))
-                        .append('|').append(Canonical.sourceArtifact(i.sourceArtifact()))
-                        .append('|')
-                        .append(LogicalExecutionGraphBuilder.canonicalWindow(i.requiredSampleWindow()))
-                        .append('\n');
+                CanonicalWriter iw = new CanonicalWriter();
+                iw.tag("INPUT");
+                iw.field("inputId", i.inputId().value());
+                iw.field("consumer", i.consumerLogicalNodeId());
+                iw.field("producer", i.producerLogicalNodeId());
+                iw.field("dependency", Canonical.dependency(i.dependencyVariant()));
+                iw.optional(i.sourceArtifact() != null, Canonical.sourceArtifact(i.sourceArtifact()));
+                iw.optional(i.requiredSampleWindow() != null,
+                        LogicalExecutionGraphBuilder.canonicalWindow(i.requiredSampleWindow()));
+                inputCanonicals.add(iw.build());
             }
+            uw.list(inputCanonicals);
+            // outputs: preserved authored order
+            List<String> outputCanonicals = new ArrayList<>();
             for (var o : u.typedOutputs()) {
-                sb.append("out|").append(o.outputId().value()).append('\n');
-                for (var or : o.outputRequirements()) {
-                    sb.append("outreq|").append(Canonical.outputRequirement(or)).append('\n');
-                }
-                for (var mr : o.materializationRequirements()) {
-                    sb.append("mat|").append(Canonical.materialization(mr)).append('\n');
-                }
-                for (var ia : o.intermediateArtifactExpectations()) {
-                    sb.append("interm|").append(Canonical.intermediateArtifact(ia)).append('\n');
-                }
-                for (var fa : o.finalArtifactExpectations()) {
-                    sb.append("final|").append(Canonical.finalArtifact(fa)).append('\n');
-                }
+                CanonicalWriter ow = new CanonicalWriter();
+                ow.tag("OUTPUT");
+                ow.field("outputId", o.outputId().value());
+                ow.field("logicalNodeId", o.logicalNodeId());
+                ow.list(o.outputRequirements().stream().map(Canonical::outputRequirement).toList());
+                ow.list(o.materializationRequirements().stream().map(Canonical::materialization).toList());
+                ow.list(o.intermediateArtifactExpectations().stream()
+                        .map(Canonical::intermediateArtifact).toList());
+                ow.list(o.finalArtifactExpectations().stream().map(Canonical::finalArtifact).toList());
+                outputCanonicals.add(ow.build());
             }
+            uw.list(outputCanonicals);
+            // dependencies: preserved authored order
+            List<String> depCanonicals = new ArrayList<>();
             for (var d : u.typedDependencies()) {
-                sb.append("dep|").append(d.producerLogicalNodeId())
-                        .append('|').append(d.consumerLogicalNodeId())
-                        .append('|').append(Canonical.dependency(d.dependencyVariant())).append('\n');
+                CanonicalWriter dw = new CanonicalWriter();
+                dw.tag("DEP");
+                dw.field("edgeId", d.edgeId().value());
+                dw.field("producer", d.producerLogicalNodeId());
+                dw.field("consumer", d.consumerLogicalNodeId());
+                dw.field("dependency", Canonical.dependency(d.dependencyVariant()));
+                depCanonicals.add(dw.build());
             }
-            for (var cr : u.capabilityRequirementRefs()) {
-                sb.append("cap|").append(Canonical.capability(cr.declaration())).append('\n');
-            }
-            for (var er : u.executionIntentRefs()) {
-                sb.append("intent|").append(Canonical.executionIntent(er.declaration())).append('\n');
-            }
-            sb.append("window|")
-                    .append(LogicalExecutionGraphBuilder.canonicalWindow(u.temporalWindow())).append('\n');
-            sb.append("coverage|")
-                    .append(LogicalExecutionGraphBuilder.canonicalCoverage(u.executionCoverage())).append('\n');
-            sb.append("unitExtent|")
-                    .append(LogicalExecutionGraphBuilder.canonicalExtent(u.propagatedExtent())).append('\n');
-            sb.append("cacheable|").append(u.deterministicallyCacheable()).append('\n');
+            uw.list(depCanonicals);
+            uw.optional(u.temporalWindow() != null,
+                    LogicalExecutionGraphBuilder.canonicalWindow(u.temporalWindow()));
+            uw.optional(u.executionCoverage() != null,
+                    LogicalExecutionGraphBuilder.canonicalCoverage(u.executionCoverage()));
+            uw.field("unitExtent", LogicalExecutionGraphBuilder.canonicalExtent(u.propagatedExtent()));
+            uw.list(u.capabilityRequirementRefs().stream()
+                    .map(c -> Canonical.capability(c.declaration())).toList());
+            uw.list(u.executionIntentRefs().stream()
+                    .map(e -> Canonical.executionIntent(e.declaration())).toList());
+            uw.field("cacheable", Boolean.toString(u.deterministicallyCacheable()));
+            unitCanonicals.add(uw.build());
         }
-        return new PhysicalExecutionPlanDigest(sha256(sb.toString()));
+        w.list(unitCanonicals);
+        return new PhysicalExecutionPlanDigest(sha256(w.build()));
     }
 
     static String sha256(String input) {

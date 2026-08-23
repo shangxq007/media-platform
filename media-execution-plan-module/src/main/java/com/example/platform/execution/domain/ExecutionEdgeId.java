@@ -1,17 +1,16 @@
 package com.example.platform.execution.domain;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
- * ROADMAP #21 typed logical dependency edge identity (frozen ledger
- * REUSE_AS_CANONICAL). Stable typed identity of a logical dependency edge.
+ * Business identity of an Execution Edge (dependency) within a plan.
+ *
+ * <p>Immutable strong type scoped to a single plan.
  */
 public record ExecutionEdgeId(String value) implements Serializable {
 
     public ExecutionEdgeId {
-        Objects.requireNonNull(value, "value");
-        if (value.isBlank()) {
+        if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("ExecutionEdgeId must not be blank");
         }
     }

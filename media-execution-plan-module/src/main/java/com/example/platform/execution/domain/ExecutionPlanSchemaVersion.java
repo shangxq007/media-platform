@@ -7,8 +7,6 @@ import java.util.Objects;
  * Schema version for the Media Execution Plan model.
  *
  * <p>Version-governed — serialization and validation reject unknown versions.
- * FROZEN Decision Recovery canonical surface (REUSE_AS_CANONICAL):
- * int value &gt;= 1, V1 constant, of(int) factory, toString = value.
  */
 public record ExecutionPlanSchemaVersion(int value) implements Serializable {
 

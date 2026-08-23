@@ -419,9 +419,71 @@ class Roadmap21PlanningGuardTest {
     void physicalUnitExtentParticipatesInDigest() throws IOException {
         String pd = Files.readString(repoRoot().resolve(
                 "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlanDigest.java"));
-        assertTrue(pd.contains("unitExtent|"),
+        assertTrue(pd.contains("unitExtent"),
                 "PHYSICAL_UNIT_PROPAGATED_EXTENT_DIGEST_OMISSION_COUNT=0 — unit propagatedExtent in digest");
         assertTrue(pd.contains("u.propagatedExtent()"), "digest reads unit propagatedExtent");
+    }
+
+
+    // ---------- Correction 5 guards ----------
+
+    @Test
+    void noProductionFontTextDependency() throws IOException {
+        String build = Files.readString(repoRoot().resolve(
+                "media-execution-plan-module/build.gradle.kts"));
+        assertFalse(build.contains("implementation(project(\":font-text-module\"))"),
+                "ROADMAP_21_PRODUCTION_FONT_TEXT_DEPENDENCY_COUNT=0 — no production font-text dependency");
+        assertTrue(build.contains("testImplementation(project(\":font-text-module\"))"),
+                "font-text only testImplementation (T2 bridge test fixtures)");
+        // zero FontRational references in #21 production sources
+        try (var walk = java.nio.file.Files.walk(repoRoot().resolve(
+                "media-execution-plan-module/src/main"))) {
+            long refs = walk.filter(f -> f.toString().endsWith(".java"))
+                    .filter(f -> {
+                        try { return java.nio.file.Files.readString(f).contains("FontRational"); }
+                        catch (java.io.IOException e) { return false; }
+                    }).count();
+            assertEquals(0, refs,
+                    "ROADMAP_21_PRODUCTION_FONTRATIONAL_REFERENCE_COUNT=0");
+        }
+    }
+
+    @Test
+    void reuseTypesFrozenSignatures() throws IOException {
+        String domain = repoRoot().resolve(
+                "media-execution-plan-module/src/main/java/com/example/platform/execution/domain").toString();
+        for (String t : new String[]{"ExecutionPlanId", "ExecutionEdgeId", "ExecutionInputId",
+                "ExecutionOutputId", "ExecutionStepId"}) {
+            String src = Files.readString(java.nio.file.Path.of(domain, t + ".java"));
+            assertTrue(src.contains("implements Serializable"), t + " Serializable");
+            assertTrue(src.contains("value == null || value.isBlank()"), t + " frozen null/blank check");
+            assertTrue(src.contains("IllegalArgumentException"), t + " frozen exception type");
+            assertTrue(src.contains("return value;"), t + " frozen toString=value");
+        }
+        String cc = Files.readString(java.nio.file.Path.of(domain, "ExecutionCreationContext.java"));
+        assertTrue(cc.contains("withTraceId"), "frozen withTraceId present");
+        assertTrue(cc.contains("withComment"), "frozen withComment present");
+        assertTrue(cc.contains("creationCtx{"), "frozen explicit toString present");
+        assertFalse(cc.contains("getRequestPurpose"),
+                "non-frozen public drift removed (no getRequestPurpose in frozen 99aa4162)");
+        assertFalse(cc.contains("absent()"), "Correction-2 invented absent() removed");
+        String sv = Files.readString(java.nio.file.Path.of(domain, "ExecutionPlanSchemaVersion.java"));
+        assertTrue(sv.contains("V1 = new ExecutionPlanSchemaVersion(1)"), "frozen V1");
+        assertTrue(sv.contains("of(int value)"), "frozen of(int)");
+    }
+
+    @Test
+    void noRawOuterDelimiterGrammarInDigests() throws IOException {
+        for (String f : new String[]{"LogicalExecutionGraphDigest.java", "PhysicalExecutionPlanDigest.java"}) {
+            String src = Files.readString(repoRoot().resolve(
+                    "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/" + f));
+            assertTrue(src.contains("CanonicalWriter"),
+                    f + " uses the framed canonical writer");
+            String code = src.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
+            // no raw append('|') / append("|") delimiter grammar in digest encoders
+            assertFalse(code.contains("append('|')") || code.contains("append(\"|\")"),
+                    f + " LOGICAL_OUTER_DELIMITER_GRAMMAR_REMOVED — framed writer only");
+        }
     }
 
 }

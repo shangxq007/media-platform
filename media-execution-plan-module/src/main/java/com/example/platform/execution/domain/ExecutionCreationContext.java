@@ -10,8 +10,7 @@ import java.util.Optional;
  *
  * <p>Immutable value object capturing the origin and intent of an execution
  * plan — who requested it, when, and why. This metadata does NOT affect
- * the plan digest or cache key. FROZEN Decision Recovery canonical surface
- * (REUSE_AS_CANONICAL): parentPlanId is String; createdAt REQUIRED.
+ * the plan digest or cache key.
  */
 public record ExecutionCreationContext(
         String requestedByUserId,
@@ -57,10 +56,10 @@ public record ExecutionCreationContext(
     }
 
     /**
-     * Returns the request purpose as Optional.
+     * Returns the parent plan ID as Optional.
      */
-    public Optional<String> getRequestPurpose() {
-        return Optional.ofNullable(requestPurpose);
+    public Optional<String> getParentPlanId() {
+        return Optional.ofNullable(parentPlanId);
     }
 
     /**
@@ -71,16 +70,40 @@ public record ExecutionCreationContext(
     }
 
     /**
-     * Returns the parent plan ID as Optional.
-     */
-    public Optional<String> getParentPlanId() {
-        return Optional.ofNullable(parentPlanId);
-    }
-
-    /**
      * Returns the comment as Optional.
      */
     public Optional<String> getComment() {
         return Optional.ofNullable(comment);
+    }
+
+    /**
+     * Creates a new context with an updated trace ID.
+     */
+    public ExecutionCreationContext withTraceId(String traceId) {
+        return new ExecutionCreationContext(
+                requestedByUserId, requestedByTenantId, requestPurpose,
+                createdAt, traceId, parentPlanId, comment);
+    }
+
+    /**
+     * Creates a new context with an updated comment.
+     */
+    public ExecutionCreationContext withComment(String comment) {
+        return new ExecutionCreationContext(
+                requestedByUserId, requestedByTenantId, requestPurpose,
+                createdAt, traceId, parentPlanId, comment);
+    }
+
+    @Override
+    public String toString() {
+        return "creationCtx{" +
+                "user=" + (requestedByUserId != null ? requestedByUserId : "") +
+                ",tenant=" + (requestedByTenantId != null ? requestedByTenantId : "") +
+                ",purpose=" + (requestPurpose != null ? requestPurpose : "") +
+                ",at=" + createdAt +
+                ",trace=" + (traceId != null ? traceId : "") +
+                ",parent=" + (parentPlanId != null ? parentPlanId : "") +
+                ",comment=" + (comment != null ? comment : "") +
+                '}';
     }
 }

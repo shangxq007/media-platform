@@ -31,7 +31,9 @@ dependencies {
     implementation(project(":extension-module"))
     implementation(project(":audio-module"))
     implementation(project(":color-image-module"))
-    implementation(project(":font-text-module"))
+    // TEST-ONLY: font-text domain fixtures for the T2 bridge tests; #21
+    // production MUST NOT depend on font-text (authority boundary #19/#20/#21)
+    testImplementation(project(":font-text-module"))
     implementation(project(":platform-algorithms:graph"))
 
     // JSON for canonical serialization helpers

@@ -1,17 +1,16 @@
 package com.example.platform.execution.domain;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
- * ROADMAP #21 typed input binding identity (frozen ledger REUSE_AS_CANONICAL).
- * Stable typed identity of an input binding on a logical/physical node.
+ * Business identity of an Execution Input binding within a plan.
+ *
+ * <p>Immutable strong type scoped to a single plan.
  */
 public record ExecutionInputId(String value) implements Serializable {
 
     public ExecutionInputId {
-        Objects.requireNonNull(value, "value");
-        if (value.isBlank()) {
+        if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("ExecutionInputId must not be blank");
         }
     }

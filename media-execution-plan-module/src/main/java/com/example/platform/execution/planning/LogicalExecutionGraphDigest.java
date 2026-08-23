@@ -1,27 +1,25 @@
 package com.example.platform.execution.planning;
 
+import com.example.platform.render.domain.renderplan.RenderExtent;
 import com.example.platform.render.domain.renderplan.RenderPlanFingerprint;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Roadmap #21 LogicalExecutionGraphDigest (C16/C17, Blocker H).
+ * Roadmap #21 LogicalExecutionGraphDigest (C6/C17) — end-to-end injective
+ * canonical encoding via {@link CanonicalWriter} (Correction 5 B2).
  *
- * <p>Deterministic semantic-content digest over ALL logical semantic fields:
- * node identities, typed kind, component path, operation key, artifact refs,
- * capability declarations (contract range + alternatives + required),
- * execution intents, output/materialization requirements, exact sample
- * window, exact dependency variant payloads, pruning evidence and plan
- * fingerprint.
+ * <p>The COMPLETE semantic stream is framed: every variable-length scalar is
+ * UTF-8 byte-length-prefixed; lists carry explicit counts; optionals carry
+ * presence markers; #20-owned objects delegate to the #20 canonical codec.
+ * Different supported semantic structures ⇒ different canonical bytes.
  *
- * <p>Provenance/correlation/createdAt/trace are EXCLUDED. Same frozen semantic
- * input → same digest. Different layer digests are NOT equivalence proof.
- *
- * <p>FAOF-1 law: law:logical-digest-content-complete — every semantic field
- * that changes logical meaning changes the digest.
+ * <p>ExecutionPlanId / createdAt / correlation / trace / provenance EXCLUDED
+ * (identity and provenance, never semantic content).
  */
 public record LogicalExecutionGraphDigest(String sha256Hex) {
 
@@ -31,63 +29,66 @@ public record LogicalExecutionGraphDigest(String sha256Hex) {
 
     public static LogicalExecutionGraphDigest compute(
             String formatVersion,
-            com.example.platform.render.domain.renderplan.RenderExtent requestedExtent,
+            RenderExtent requestedExtent,
             List<LogicalExecutionGraph.LogicalExecutionNode> nodes,
             List<LogicalExecutionGraph.LogicalDependencyEdge> edges,
             RenderPlanFingerprint planFingerprint,
             LogicalExecutionGraph.PruningEvidence pruningEvidence) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("LOGICAL_EXECUTION_GRAPH_V1\n");
-        sb.append("formatVersion=").append(formatVersion).append('\n');
-        sb.append("planFingerprint=").append(planFingerprint.sha256Hex()).append('\n');
-        sb.append("requestedExtent=")
-                .append(LogicalExecutionGraphBuilder.canonicalExtent(requestedExtent)).append('\n');
-        for (var n : nodes) {
-            sb.append("node|").append(n.sourceRenderNodeId().value())
-                    .append('|').append(Canonical.renderNodeKind(n.sourceRenderNodeKind()))
-                    .append('|').append(n.componentPath() != null ? Canonical.componentPath(n.componentPath()) : "null")
-                    .append('|').append(n.operationKey()).append('\n');
-            for (var a : n.artifactReferences()) {
-                sb.append("artifact|").append(Canonical.artifact(a)).append('\n');
+        CanonicalWriter w = new CanonicalWriter();
+        w.tag("LOGICAL_EXECUTION_GRAPH_V1");
+        w.field("formatVersion", formatVersion);
+        w.field("planFingerprint", planFingerprint.sha256Hex());
+        w.field("requestedExtent", LogicalExecutionGraphBuilder.canonicalExtent(requestedExtent));
+        // pruning evidence: typed eliminated-node set (semantic: which nodes
+        // were proven outside the requested extent)
+        if (pruningEvidence != null && pruningEvidence.eliminatedNodes() != null) {
+            List<String> eliminated = new ArrayList<>();
+            for (var en : pruningEvidence.eliminatedNodes()) {
+                eliminated.add(en.sourceRenderNodeId().value());
             }
-            for (var cr : n.capabilityRequirements()) {
-                sb.append("cap|").append(Canonical.capability(cr)).append('\n');
-            }
-            for (var er : n.executionRequirements()) {
-                sb.append("intent|").append(Canonical.executionIntent(er)).append('\n');
-            }
-            for (var o : n.outputRequirements()) {
-                sb.append("out|").append(Canonical.outputRequirement(o)).append('\n');
-            }
-            for (var m : n.materializationRequirements()) {
-                sb.append("mat|").append(Canonical.materialization(m)).append('\n');
-            }
-            sb.append("window|")
-                    .append(LogicalExecutionGraphBuilder.canonicalWindow(n.requiredSampleWindow()))
-                    .append('\n');
-            sb.append("coverage|")
-                    .append(LogicalExecutionGraphBuilder.canonicalCoverage(n.executionCoverage()))
-                    .append('\n');
+            w.field("eliminated", String.join("\n", CanonicalWriter.sorted(eliminated)));
+        } else {
+            w.field("eliminated", "");
         }
-        var sortedEdges = edges.stream()
-                .sorted(Comparator.comparing(e -> e.edgeId().value()))
-                .toList();
-        for (var e : sortedEdges) {
-            // full payload via deterministic canonical record toString — the
-            // variant's semantic fields (not just class name) enter the digest
-            sb.append("edge|").append(e.producerLogicalNodeId())
-                    .append('|').append(e.consumerLogicalNodeId())
-                    .append('|').append(Canonical.dependency(e.dependencyVariant())).append('\n');
+        // nodes: deterministic order by logical node id (structural partition —
+        // node order is NOT semantic; edge order is preserved where semantic)
+        List<LogicalExecutionGraph.LogicalExecutionNode> sortedNodes = new ArrayList<>(nodes);
+        sortedNodes.sort(Comparator.comparing(LogicalExecutionGraph.LogicalExecutionNode::logicalNodeId));
+        List<String> nodeCanonicals = new ArrayList<>();
+        for (var n : sortedNodes) {
+            CanonicalWriter nw = new CanonicalWriter();
+            nw.tag("NODE");
+            nw.field("logicalNodeId", n.logicalNodeId());
+            nw.field("sourceRenderNodeId", n.sourceRenderNodeId().value());
+            nw.field("renderNodeKind", Canonical.renderNodeKind(n.sourceRenderNodeKind()));
+            nw.field("componentPath", Canonical.componentPath(n.componentPath()));
+            nw.field("operationKey", n.operationKey());
+            nw.list(n.artifactReferences().stream().map(Canonical::artifact).toList());
+            nw.list(n.capabilityRequirements().stream().map(Canonical::capability).toList());
+            nw.list(n.executionRequirements().stream().map(Canonical::executionIntent).toList());
+            nw.list(n.outputRequirements().stream().map(Canonical::outputRequirement).toList());
+            nw.list(n.materializationRequirements().stream().map(Canonical::materialization).toList());
+            nw.optional(n.requiredSampleWindow() != null,
+                    LogicalExecutionGraphBuilder.canonicalWindow(n.requiredSampleWindow()));
+            nw.optional(n.executionCoverage() != null,
+                    LogicalExecutionGraphBuilder.canonicalCoverage(n.executionCoverage()));
+            nodeCanonicals.add(nw.build());
         }
-        if (pruningEvidence != null && pruningEvidence.pruningApplied()) {
-            for (var p : pruningEvidence.eliminatedNodes()) {
-                sb.append("pruned|").append(p.sourceRenderNodeId().value())
-                        .append('|').append(p.requiredWindow())
-                        .append('|').append(p.extentWindow())
-                        .append('|').append(p.reason()).append('\n');
-            }
+        w.list(nodeCanonicals);
+        // edges: preserved authored order (dependency semantics positional
+        // within the RenderGraph) — framed individually
+        List<String> edgeCanonicals = new ArrayList<>();
+        for (var e : edges) {
+            CanonicalWriter ew = new CanonicalWriter();
+            ew.tag("EDGE");
+            ew.field("edgeId", e.edgeId().value());
+            ew.field("producer", e.producerLogicalNodeId());
+            ew.field("consumer", e.consumerLogicalNodeId());
+            ew.field("dependency", Canonical.dependency(e.dependencyVariant()));
+            edgeCanonicals.add(ew.build());
         }
-        return new LogicalExecutionGraphDigest(sha256(sb.toString()));
+        w.list(edgeCanonicals);
+        return new LogicalExecutionGraphDigest(sha256(w.build()));
     }
 
     static String sha256(String input) {
