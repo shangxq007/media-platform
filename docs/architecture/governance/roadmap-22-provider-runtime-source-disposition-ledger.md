@@ -11,10 +11,10 @@ Classification basis: actual inspection of callers/behavior, not filename alone.
 |---|---|---|---|---|---|---|---|---|---|
 | media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ExecutionProvider.java | sealed FROZEN provider SPI (Stub) | placeholder provider contract, "out of scope for V1", always throws | none (Stub only) | DELETE_SHADOW | #22 Provider SPI | #22 owns provider contract; sealed Stub is a placeholder that would compete with the frozen #22 SPI | tests referencing Stub (to be migrated) | delete after #22 SPI freeze; migrate any test references; guard PUBLIC_LEGACY_EXECUTION_PROVIDER_COUNT=0 | YES |
 | media-execution-plan-module/.../execution/domain/ExecutionManifest.java (via ExecutionProvider) | stringly-typed manifest placeholder | backendType + manifestData strings | none | DELETE_SHADOW | #22 PlanLowerer output spec | #22 must use typed provider-native spec, not stringly manifest | ExecutionProvider.Stub | delete with ExecutionProvider | YES |
-| media-execution-plan-module/.../execution/domain/ProviderCapabilities.java (via ExecutionProvider) | stringly-typed capability | providerType string + supportsGpu boolean | none | DELETE_SHADOW | #22 CapabilityProfile | #22 ProviderCapabilityProfile is typed; stringly capability authority is forbidden (STRINGLY_TYPED_PROVIDER_CAPABILITY_AUTHORITY_COUNT=0) | ExecutionProvider.Stub | delete with ExecutionProvider | YES |
+| media-execution-plan-module/.../execution/domain/ProviderCapabilities.java (via ExecutionProvider) | stringly-typed capability | providerType string + supportsGpu boolean | none | DELETE_SHADOW | #22 ProviderCapabilityProfile | #22 ProviderCapabilityProfile is typed; stringly capability authority is forbidden (STRINGLY_TYPED_PROVIDER_CAPABILITY_AUTHORITY_COUNT=0) | ExecutionProvider.Stub | delete with ExecutionProvider | YES |
 | media-execution-plan-module/.../execution/domain/ExecutionAttempt.java (via ExecutionProvider) | attempt placeholder | attemptId/status/timestamps | none | DELETE_SHADOW | #22 ExecutionAttempt | #22 freezes attempt semantics; placeholder is unshipped | ExecutionProvider.Stub | delete with ExecutionProvider | YES |
 | render-module/src/main/java/com/example/platform/render/infrastructure/RenderProvider.java | legacy provider god-interface | render(jobId, aiScript, profile) + getSupportedProfiles + supports(String) | render execution (legacy) | MIGRATE_REDESIGN | #22 Provider SPI + RenderProviderCapability typed model | god-interface + string capability violates #22 separation; render pipeline must move to bounded SPI | GStreamerRenderProvider + render app callers + tests | redesign as typed provider contract consuming #22 ProviderCapabilityProfile; migrate callers; then reduce visibility | YES |
-| render-module/.../infrastructure/RenderProviderCapability.java | legacy typed capability record | sets of strings + flags | render provider metadata | MIGRATE_REDESIGN | #22 CapabilityProfile | string sets are weakly typed; migrate to typed ProviderCapabilityProfile extension | RenderProvider implementations | migrate fields to typed ProviderCapabilityProfile; retain only bounded typed extension | YES |
+| render-module/.../infrastructure/RenderProviderCapability.java | legacy typed capability record | sets of strings + flags | render provider metadata | MIGRATE_REDESIGN | #22 ProviderCapabilityProfile | string sets are weakly typed; migrate to typed ProviderCapabilityProfile extension | RenderProvider implementations | migrate fields to typed ProviderCapabilityProfile; retain only bounded typed extension | YES |
 | render-module/.../infrastructure/ProviderStatus.java, ProviderType.java, RenderPreset.java | provider metadata enums | status/type/preset | render provider metadata | REUSE_MECHANICS_ONLY | #22 typed equivalents | enums useful as mechanics; #22 must own canonical types | RenderProvider | reuse patterns; #22 defines canonical enums | NO |
 | render-module/src/main/java/com/example/platform/render/infrastructure/gstreamer/GStreamerRenderProvider.java | provider implementation | GStreamer real-time pipelines | provider implementation (legacy) | MIGRATE_REDESIGN | #22 provider adapter | implementation must conform to #22 SPI and typed ProviderCapabilityProfile | render pipeline | adapt to #22 SPI; typed capability profile; conformance suite | YES |
 | docs/deprecated/javacv/GPACRenderProvider.java, JavaCVRenderProvider.java, OFXRenderProvider.java, JavaCVRenderService.java, JavaCVTranscodeService.java, JavaCVMediaProbeAdapter.java + tests | deprecated provider implementations | deprecated (docs/deprecated path) | none (deprecated) | DELETE_SHADOW | none | already deprecated; CLEAN FORWARD | none (deprecated) | delete in #22 PHASE_0 | YES |
@@ -35,19 +35,23 @@ Classification basis: actual inspection of callers/behavior, not filename alone.
 | cloud-resource-module/.../CloudQueue.java + catalog | cloud resource abstraction | cloud queue/catalog abstraction | cloud resource | DEFER_TO_23_PLUS | #23 distributed | cloud queue abstraction is distributed-concern | cloud | defer | NO |
 | render-module/src/main/java/com/example/platform/render/domain/compile/execution/ProviderExecutionDocumentDraftType.java | provider execution doc draft enum | execution doc draft classification | render domain | REUSE_MECHANICS_ONLY | #22 typed lowering docs | draft-type enum mechanics may inform PlanLowerer output typing | render compile | reuse patterns | NO |
 
-## Classification Counts (corrected — R22-DR ledger uniqueness)
+## Classification Counts (Correction 2 — mechanically parsed from the table)
+
+RELEVANT_LEDGER_ROWS=25 (mechanically parsed from Markdown table data rows;
+each row = one surface key, aggregated multi-file rows count as ONE row;
+UNCLASSIFIED=0; DUPLICATE_ROWS=0; PATH keys unique)
 
 | Category | Count |
 |---|---|
-| REUSE_AS_CANONICAL | 1 (Artifact authority) |
-| PRESERVE_EXISTING_CANONICAL_OUTSIDE_22 | 1 (visual EffectCapabilityProfile / TransitionCapabilityProfile — visual-domain ONLY, NOT #22 execution capability authority) |
-| REUSE_MECHANICS_ONLY | 13 |
-| MIGRATE_REDESIGN | 5 |
-| DELETE_SHADOW | 4 |
+| REUSE_AS_CANONICAL | 1 |
+| PRESERVE_EXISTING_CANONICAL_OUTSIDE_22 | 1 |
+| REUSE_MECHANICS_ONLY | 10 |
+| MIGRATE_REDESIGN | 4 |
+| DELETE_SHADOW | 5 |
 | DEFER_TO_23_PLUS | 1 |
 | EXTERNAL_CONFORMANCE_ONLY | 1 |
 | OUT_OF_SCOPE | 2 |
 | UNCLASSIFIED | 0 |
 | DUPLICATE_ROWS | 0 |
-
-RELEVANT_LEDGER_ROWS=27 (duplicate ProviderExecutionDocumentDraftType row removed; each row uses the exact repository path; UNCLASSIFIED=0, DUPLICATE_ROWS=0).
+| CATEGORY_SUM | 25 |
+| CATEGORY_SUM_EQUALS_LEDGER_ROWS | YES |
