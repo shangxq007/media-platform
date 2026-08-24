@@ -1704,7 +1704,7 @@
   authority_scope: GOVERNANCE
   summary: Validation projects are first-class governance artifacts and must be indexed as evidence for technology adoption, rejection, or deferral.
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/validation-projects.yaml]
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/validation-inventory.yaml]
 
 - id: TECHNOLOGY_CANDIDATE_IS_DISTINCT_FROM_ADOPTED_ARCHITECTURE_DEPENDENCY_V1
   status: ADOPTED

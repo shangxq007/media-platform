@@ -18,7 +18,7 @@ repository:
     sha: 224d3a907ce76c79f868d3615c681aa833cff2b2
     tree: 6a868801c001b5ffce64a7440de1e1bf2b917fa0
     accepted_implementation_remote_reachable: true
-  latest_governance_publication:
+  governance_bootstrap_publication:
     sha: 3e69c109c44db2f78fff88b62dd724c18a299edb
     tree: ab245cc5b9a6ac1114e6ca2bb6908513fe1fd71a
   moving_branch_tip:
@@ -59,7 +59,7 @@ roadmap_23:
   status: NOT_STARTED
 
 governance_execution:
-  immediate_next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_REVIEW_CORRECTION_1
+  immediate_next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_CORRECTION_2_FINAL_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 15
@@ -91,7 +91,9 @@ governance:
   bootstrap_revision: 2
   bootstrap_status: REPOSITORY_PERSISTED
   immutable_record: docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
-  governance_review_correction_1_record: docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md
+  correction_records:
+    - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md
+    - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_REVIEW_CORRECTION_1
+  next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_CORRECTION_2_FINAL_REVIEW
