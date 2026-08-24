@@ -1,42 +1,38 @@
-# DEFERRED ITEMS — media-platform
-# Consciously deferred work must never silently disappear from project memory.
-# Every entry is DEFERRED or RESOLVED (with evidence). Mutable index.
-# Status vocabulary: DEFERRED / RESOLVED
-
 deferred_items:
-
 - id: TIMELINE_ARTIFACT_PIN_EXISTENCE_VALIDATION
   title: Timeline Artifact-pin existence validation
   status: RESOLVED
   originating_context: Previously deferred due dependency-cycle concerns; validation required repository evidence
   resolution_evidence:
-    - timeline-module TimelineArtifactPinExtractor / TimelineArtifactPinValidator (source of record)
-    - checkpoint-a-independent-final-pass.md - ARTIFACT_PIN_REVISION_INVARIANT_GATE PASS
-    - first-real-media-cut-v1.md - immutable ArtifactId + ContentDigest pins exercised end-to-end
-    - roadmap-17-otio-v2-asset-source-boundary.md S2/S11 - immutable pinning preserved in TimelineSourceBinding
+  - timeline-module TimelineArtifactPinExtractor / TimelineArtifactPinValidator (source of record)
+  - checkpoint-a-independent-final-pass.md - ARTIFACT_PIN_REVISION_INVARIANT_GATE PASS
+  - first-real-media-cut-v1.md - immutable ArtifactId + ContentDigest pins exercised end-to-end
+  - roadmap-17-otio-v2-asset-source-boundary.md S2/S11 - immutable pinning preserved in TimelineSourceBinding
   earliest_revisit: null
   trigger: null
   blocking_now: false
-  references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md, docs/architecture/governance/first-real-media-cut-v1.md, docs/architecture/governance/checkpoint-a-independent-final-pass.md]
-
+  references:
+  - docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md
+  - docs/architecture/governance/first-real-media-cut-v1.md
+  - docs/architecture/governance/checkpoint-a-independent-final-pass.md
 - id: TIMELINE_ARTIFACT_PIN_VALUE_OBJECT_FORM
   title: Dedicated Timeline ArtifactPin value-object form
   status: DEFERRED
-  originating_context: Roadmap #17 S6 - ArtifactPin VO deferred; pin semantics exist as immutable ArtifactId/ContentDigest fields on TimelineSourceBinding
-  earliest_revisit: Artifact staging phase (Roadmap #22 Phase 16)
+  originating_context: Roadmap
+  earliest_revisit: Artifact staging phase (Roadmap
   trigger: Artifact staging/materialization work starts
   blocking_now: false
-  references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md]
-
+  references:
+  - docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md
 - id: TEMPORAL_MAPPING_FOUNDATION_IMPLEMENTATION
   title: Temporal mapping foundation implementation
   status: DEFERRED
-  originating_context: Roadmap #17 S10 - TemporalMapping deferred; exact TimeRange stays in MediaStreamSourceBinding; contract at temporal-mapping-foundation-v1.md
+  originating_context: Roadmap
   earliest_revisit: Real consumer of temporal mapping appears
   trigger: A concrete timeline/effect temporal-mapping requirement
   blocking_now: false
-  references: [docs/architecture/governance/temporal-mapping-foundation-v1.md]
-
+  references:
+  - docs/architecture/governance/temporal-mapping-foundation-v1.md
 - id: SEMANTIC_RELATIONSHIP_SELECTION_FOUNDATION_IMPLEMENTATION
   title: Semantic relationship / selection foundation implementation
   status: DEFERRED
@@ -44,8 +40,8 @@ deferred_items:
   earliest_revisit: Multi-surface selection need (operation/recipe/canvas/agent/MCP/workflow)
   trigger: A second surface needs typed semantic relationship/selection
   blocking_now: false
-  references: [docs/architecture/governance/semantic-relationship-selection-foundation-v1.md]
-
+  references:
+  - docs/architecture/governance/semantic-relationship-selection-foundation-v1.md
 - id: CANONICAL_SCHEMA_EVOLUTION_IMPLEMENTATION
   title: Canonical schema evolution implementation
   status: DEFERRED
@@ -53,8 +49,8 @@ deferred_items:
   earliest_revisit: Next schema-breaking semantic change
   trigger: A semantic migration that cannot be expressed as a new revision under current model
   blocking_now: false
-  references: [docs/architecture/governance/revision-command-model-v1.md]
-
+  references:
+  - docs/architecture/governance/revision-command-model-v1.md
 - id: GRAPHQL_QUERY_ADAPTER
   title: GraphQL query adapter
   status: DEFERRED
@@ -62,8 +58,8 @@ deferred_items:
   earliest_revisit: Application adapter surface work starts
   trigger: First real frontend application surface needing GraphQL transport
   blocking_now: false
-  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
-
+  references:
+  - docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md
 - id: GRAPHQL_SUBSCRIPTIONS
   title: GraphQL subscriptions
   status: DEFERRED
@@ -71,8 +67,8 @@ deferred_items:
   earliest_revisit: After GRAPHQL_QUERY_ADAPTER
   trigger: Query adapter accepted and realtime needs appear
   blocking_now: false
-  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
-
+  references:
+  - docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md
 - id: GRAPHQL_BOUNDED_MUTATIONS
   title: GraphQL bounded mutations
   status: DEFERRED
@@ -80,8 +76,8 @@ deferred_items:
   earliest_revisit: After subscriptions
   trigger: Command surfaces justify mutation transport
   blocking_now: false
-  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
-
+  references:
+  - docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md
 - id: GRAPHQL_FEDERATION
   title: GraphQL Federation
   status: DEFERRED
@@ -89,17 +85,17 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Concrete distributed-schema requirement
   blocking_now: false
-  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
-
+  references:
+  - docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md
 - id: PLUGIN_RUNTIME_V1
   title: Bounded Plugin Runtime V1
   status: DEFERRED
   originating_context: Adopted architecture (9N/9O); bounded scope defined - explicit PluginDescriptor, typed contribution discovery, plugins/*.jar loading, basic classloader boundary, compatibility/version validation, registration, coreDistribution, fullDistribution
-  earliest_revisit: After first real Provider plugin accepted (Roadmap #22 Phase 19 FFmpeg)
+  earliest_revisit: After first real Provider plugin accepted (Roadmap
   trigger: provider-ffmpeg.jar accepted and operational
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: PLUGIN_HOT_RELOAD
   title: Plugin hot reload
   status: DEFERRED
@@ -107,8 +103,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Real operational need for in-place plugin update
   blocking_now: false
-  references: [docs/architecture/governance/project-state/roadmap-tracks.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/roadmap-tracks.yaml
 - id: PLUGIN_MARKETPLACE
   title: Plugin marketplace
   status: DEFERRED
@@ -116,8 +112,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: External third-party plugin distribution need
   blocking_now: false
-  references: [docs/architecture/governance/project-state/roadmap-tracks.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/roadmap-tracks.yaml
 - id: PLUGIN_REMOTE_CATALOG
   title: Plugin remote catalog
   status: DEFERRED
@@ -125,8 +121,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Multi-machine plugin fleet management need
   blocking_now: false
-  references: [docs/architecture/governance/project-state/roadmap-tracks.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/roadmap-tracks.yaml
 - id: PROVIDER_RUNTIME_ARTIFACT_CONTENT_PINNING
   title: Provider runtime artifact content pinning
   status: DEFERRED
@@ -134,8 +130,8 @@ deferred_items:
   earliest_revisit: First real provider plugin (Phase 19)
   trigger: provider-ffmpeg.jar content pinning requirement
   blocking_now: false
-  references: [docs/architecture/governance/project-state/deferred-items.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/deferred-items.yaml
 - id: PROVIDER_VERSION_LIFECYCLE_POLICY
   title: Provider version lifecycle policy
   status: DEFERRED
@@ -143,8 +139,8 @@ deferred_items:
   earliest_revisit: First real provider plugin (Phase 19)
   trigger: Multiple provider versions coexist operationally
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: AUTO_RENEWAL
   title: Automatic subscription renewal
   status: DEFERRED
@@ -152,8 +148,8 @@ deferred_items:
   earliest_revisit: After manual renewal validated
   trigger: Dogfooding shows manual renewal friction
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: OFF_SESSION_PAYMENT
   title: Off-session payment (charge)
   status: DEFERRED
@@ -161,8 +157,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Automatic payment flows require off-session charging
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: DUNNING
   title: Automatic dunning
   status: DEFERRED
@@ -170,8 +166,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Failed manual/auto renewals create recovery need
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: AUTOMATIC_PAYMENT_RETRY
   title: Automatic payment retry
   status: DEFERRED
@@ -179,8 +175,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Payment failure recovery automation need
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: COMPLEX_MANDATE_LIFECYCLE
   title: Complex mandate lifecycle
   status: DEFERRED
@@ -188,8 +184,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Subscription model requires mandates beyond explicit payment intent
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: KILL_BILL_POC
   title: Kill Bill POC
   status: DEFERRED
@@ -197,8 +193,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Hyperswitch/OpenMeter preferred POC fails evaluation
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: FLEXPRICE_POC
   title: Flexprice POC
   status: DEFERRED
@@ -206,8 +202,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Preferred usage-metering POC fails evaluation
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: LAGO_POC
   title: Lago POC
   status: DEFERRED
@@ -215,8 +211,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Preferred billing POC fails evaluation
   blocking_now: false
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
-
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
 - id: PARTIO_REAL_CONSUMER_GATE
   title: Partio legacy particle interop gate
   status: DEFERRED
@@ -224,8 +220,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: A real particle-interop consumer appears
   blocking_now: false
-  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/foundation-inventory.yaml
 - id: PANAMA_FFM_EVALUATION
   title: Panama FFM evaluation
   status: DEFERRED
@@ -233,8 +229,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Native binding needs outgrow JavaCPP/JNI approaches
   blocking_now: false
-  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/foundation-inventory.yaml
 - id: TIMESCALEDB_REEVALUATION
   title: TimescaleDB re-evaluation
   status: DEFERRED
@@ -242,8 +238,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Telemetry volume justifies time-series store
   blocking_now: false
-  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/foundation-inventory.yaml
 - id: PGVECTOR_ADOPTION
   title: pgvector adoption
   status: DEFERRED
@@ -251,8 +247,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Semantic media search / AI retrieval requirement
   blocking_now: false
-  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/foundation-inventory.yaml
 - id: OPENFX_HOST
   title: OpenFX foreign plugin host
   status: DEFERRED
@@ -260,8 +256,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Real need to host OpenFX plugins
   blocking_now: false
-  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/foundation-inventory.yaml
 - id: OPENUSD_SCENE_FOUNDATION
   title: OpenUSD scene foundation
   status: DEFERRED
@@ -269,8 +265,8 @@ deferred_items:
   earliest_revisit: When scene domain work starts
   trigger: Scene composition domain requirement
   blocking_now: false
-  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/foundation-inventory.yaml
 - id: MATERIALX_OPENPBR_FOUNDATION
   title: MaterialX / OpenPBR material foundation
   status: DEFERRED
@@ -278,8 +274,8 @@ deferred_items:
   earliest_revisit: When material domain work starts
   trigger: Material graph/domain requirement
   blocking_now: false
-  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/foundation-inventory.yaml
 - id: OPENVDB_VOLUME_FOUNDATION
   title: OpenVDB volume foundation
   status: DEFERRED
@@ -287,26 +283,26 @@ deferred_items:
   earliest_revisit: When volume domain work starts
   trigger: Volumetric representation requirement
   blocking_now: false
-  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/foundation-inventory.yaml
 - id: FAOF_2
   title: FAOF-2 formal foundation (Lean4 primary + Coq complementary POC)
   status: DEFERRED
-  originating_context: Planned after #21 / in #22 later phase; Roadmap #22 Phase 18
-  earliest_revisit: Roadmap #22 Phase 18
+  originating_context: Planned after
+  earliest_revisit: Roadmap
   trigger: Execution semantics stabilize enough for machine-checked laws
   blocking_now: false
-  references: [docs/architecture/governance/project-state/roadmap-tracks.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/roadmap-tracks.yaml
 - id: FAOF_3
   title: FAOF-3 bounded feasibility / distributed global optimization
   status: DEFERRED
-  originating_context: Bounded feasibility in #22; distributed/global optimization belongs to #23
-  earliest_revisit: Late Roadmap #22 / Roadmap #23
+  originating_context: Bounded feasibility in
+  earliest_revisit: Late Roadmap
   trigger: Semantic rewrite laws proven (FAOF-2)
   blocking_now: false
-  references: [docs/architecture/governance/project-state/roadmap-tracks.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/roadmap-tracks.yaml
 - id: FAOF_4
   title: FAOF-4 proved semantic rewrite / cost optimization
   status: DEFERRED
@@ -314,8 +310,8 @@ deferred_items:
   earliest_revisit: After FAOF-3
   trigger: Cost optimization need with stable execution semantics
   blocking_now: false
-  references: [docs/architecture/governance/project-state/roadmap-tracks.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/roadmap-tracks.yaml
 - id: CONTENT_PLATFORM_PUBLISHING_ADAPTERS
   title: Content platform publishing adapters (YouTube / Bilibili / Douyin / other)
   status: DEFERRED
@@ -323,8 +319,8 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Publication becomes a real product need
   blocking_now: false
-  references: [docs/architecture/governance/project-state/roadmap-tracks.yaml]
-
+  references:
+  - docs/architecture/governance/project-state/roadmap-tracks.yaml
 - id: ARTIFACT_DAG_INDEFINITE_DEFERRAL
   title: Artifact DAG indefinite deferral
   status: DEFERRED
@@ -332,17 +328,18 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: Artifact DAG optimization requirement reappears
   blocking_now: false
-  references: [docs/architecture/adr/ADR-025-artifact-dag-indefinite-deferral.md]
-
+  references:
+  - docs/architecture/adr/ADR-025-artifact-dag-indefinite-deferral.md
 - id: OUTPUT_ARTIFACT_PERSISTENCE_FULL_AUTHORITY
   title: Output artifact persistence full authority
   status: DEFERRED
   originating_context: FRMC deferred list - output artifact persistence path gap (file digest preserved; no second Artifact authority); artifact authority contracts established later (gcr-2)
-  earliest_revisit: Roadmap #22 Phase 16 (artifact staging/materialization)
+  earliest_revisit: Roadmap
   trigger: Phase 16 fenced output completion work starts
   blocking_now: false
-  references: [docs/architecture/governance/first-real-media-cut-v1.md, docs/architecture/governance/gcr-2-artifact-authority.md]
-
+  references:
+  - docs/architecture/governance/first-real-media-cut-v1.md
+  - docs/architecture/governance/gcr-2-artifact-authority.md
 - id: OASDIFF_CHECKSUM_PIN_HARDENING
   title: OASDIFF checksum pin hardening
   status: DEFERRED
@@ -350,4 +347,176 @@ deferred_items:
   earliest_revisit: Not scheduled
   trigger: API contract diff checksum pinning requirement
   blocking_now: false
-  references: [docs/architecture/governance/first-real-media-cut-v1.md]
+  references:
+  - docs/architecture/governance/first-real-media-cut-v1.md
+- id: EMBABEL_AGENT_FRAMEWORK_POC
+  title: Embabel Agent-framework POC
+  status: DEFERRED
+  originating_context: Embabel selected as preferred bounded replaceable Agent-framework POC candidate; no implementation now.
+  earliest_revisit: Not scheduled
+  trigger: Agent-first Studio work requires a concrete Agent orchestration framework POC
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: AGENT_OPERATION_PLAN_ADAPTER
+  title: Agent OperationPlan adapter
+  status: DEFERRED
+  originating_context: Agent actions must lower to canonical Operation / OperationPlan instead of directly mutating canonical state.
+  earliest_revisit: Not scheduled
+  trigger: Agent runtime work begins after semantic foundations demand it
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: AGENT_EFFECTIVE_CAPABILITY_DISCOVERY
+  title: Agent effective capability discovery
+  status: DEFERRED
+  originating_context: Agent discovery must use principal-filtered EffectiveCapabilityView and never bypass entitlement/policy/quota/authorization.
+  earliest_revisit: Not scheduled
+  trigger: Agent capability discovery surface is implemented
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: EXTERNAL_INTEGRATION_RUNTIME
+  title: External integration runtime
+  status: DEFERRED
+  originating_context: External APIs/callbacks/polling/streaming/webhooks require bounded integration runtime semantics.
+  earliest_revisit: Not scheduled
+  trigger: First real external integration product need
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: APACHE_CAMEL_POC
+  title: Apache Camel POC
+  status: DEFERRED
+  originating_context: Camel is integration mechanics, not execution/domain authority; status remains reference/POC until evidence changes.
+  earliest_revisit: Not scheduled
+  trigger: Protocol mediation need justifies a bounded Camel POC
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: INBOUND_WEBHOOK_RUNTIME
+  title: Inbound Webhook runtime
+  status: DEFERRED
+  originating_context: WebhookIngress is authentication/signature/trust validation and normalization boundary only.
+  earliest_revisit: Not scheduled
+  trigger: First inbound webhook integration is required
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: OUTBOUND_WEBHOOK_RUNTIME
+  title: Outbound Webhook runtime
+  status: DEFERRED
+  originating_context: Outbound delivery must be async, outbox-driven, retry/backoff/dead-letter capable, and never roll back committed domain state.
+  earliest_revisit: Not scheduled
+  trigger: First outbound webhook delivery product need
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: EVENT_CATALOG
+  title: Event catalog
+  status: DEFERRED
+  originating_context: EventCatalog is a versioned contract index, not event authority.
+  earliest_revisit: Not scheduled
+  trigger: Typed event subscription work starts
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: EVENT_SUBSCRIPTION_V1
+  title: EventSubscription V1
+  status: DEFERRED
+  originating_context: 'Bounded user-managed EventSubscription semantic model: selector, typed filter, delivery target/policy/status.'
+  earliest_revisit: Not scheduled
+  trigger: Subscription APIs are scheduled
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: EVENT_FILTER_V1
+  title: EventFilter V1
+  status: DEFERRED
+  originating_context: EventFilter must be bounded and typed; no arbitrary executable script filter in V1.
+  earliest_revisit: Not scheduled
+  trigger: EventSubscription V1 implementation starts
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: NOTIFICATION_DOMAIN_V1
+  title: Notification domain V1
+  status: DEFERRED
+  originating_context: NotificationPreference/Intent/Event/DeliveryRecord/DeliveryPort semantics deferred; not source domain authority.
+  earliest_revisit: Not scheduled
+  trigger: Human notification product requirement appears
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: NOVU_NOTIFICATION_POC
+  title: Novu notification POC
+  status: DEFERRED
+  originating_context: Novu may be evaluated for channel/template/inbox mechanics, not notification semantic authority.
+  earliest_revisit: Not scheduled
+  trigger: Notification delivery provider POC needed
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: AI_REMOTE_PROVIDER_CONFORMANCE
+  title: AI remote provider conformance
+  status: DEFERRED
+  originating_context: Remote AI provider status must converge to fenced ExecutionObservation and Artifact authority; no parallel AiJob authority.
+  earliest_revisit: Not scheduled
+  trigger: Real remote AI provider integration begins
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: CREATIVE_DEVELOPMENT_DOMAIN_V1
+  title: Creative Development domain V1
+  status: DEFERRED
+  originating_context: CreativeBrief/DirectorIntent/Screenplay/Sequence/Scene/Beat/Storyboard/ShotPlan are optional independently versioned creative semantics.
+  earliest_revisit: Not scheduled
+  trigger: AI/Hybrid Film Studio or GOLDEN_STORY_01 planning starts
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: DIRECTOR_INTENT_DOMAIN
+  title: DirectorIntent domain
+  status: DEFERRED
+  originating_context: DirectorIntent is creative semantics, not provider prompt or provider-native parameters.
+  earliest_revisit: Not scheduled
+  trigger: Creative domain modeling starts
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: SCREENPLAY_DOMAIN
+  title: Screenplay domain
+  status: DEFERRED
+  originating_context: Screenplay is narrative structure, not Timeline composition.
+  earliest_revisit: Not scheduled
+  trigger: Creative domain modeling starts
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: NARRATIVE_SEQUENCE_SCENE_BEAT_DOMAIN
+  title: Narrative Sequence/Scene/Beat domain
+  status: DEFERRED
+  originating_context: Sequence, Scene and Beat are narrative structure, not Timeline track hierarchy or execution steps.
+  earliest_revisit: Not scheduled
+  trigger: Creative domain modeling starts
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: STORYBOARD_DOMAIN
+  title: Storyboard domain
+  status: DEFERRED
+  originating_context: Storyboard and StoryboardPanel are previsualization semantics, not Timeline clips.
+  earliest_revisit: Not scheduled
+  trigger: Creative domain modeling starts
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+- id: SHOT_PLAN_DOMAIN
+  title: ShotPlan domain
+  status: DEFERRED
+  originating_context: ShotPlan is production intent, not RenderPlan.
+  earliest_revisit: Not scheduled
+  trigger: Creative domain modeling starts
+  blocking_now: false
+  references:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md

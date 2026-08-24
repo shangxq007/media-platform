@@ -1722,3 +1722,440 @@
   implementation_status: ADOPTED
   references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/current-state.yaml]
 
+## 9AE CREATIVE DEVELOPMENT FOUNDATION
+
+- id: CREATIVE_DEVELOPMENT_OBJECTS_ARE_OPTIONAL_AND_INDEPENDENTLY_VERSIONED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'CreativeBrief, DirectorIntent, Screenplay, Sequence, Scene, Beat, Storyboard and ShotPlan are optional independently versioned creative semantics; a project may contain only some of them.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: NO_FIXED_CREATIVE_ARTIFACT_PIPELINE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'Creative development objects do not form one mandatory linear pipeline; they relate through typed references as needed.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: PROJECT_IS_CONTAINER_NOT_CREATIVE_GOD_OBJECT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'Project/container groups creative artifacts but is not a creative god object or semantic authority for all creative meaning.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: NARRATIVE_STRUCTURE_IS_DISTINCT_FROM_TIMELINE_STRUCTURE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'Narrative structure is distinct from Timeline media-composition structure.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: BEAT_SEQUENCE_AND_SCENE_ARE_NARRATIVE_STRUCTURE_NOT_EXECUTION_STRUCTURE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'Beat, Sequence and Scene are narrative structure, not execution steps or worker/runtime structure.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: SCREENPLAY_IS_DISTINCT_FROM_TIMELINE_COMPOSITION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'Screenplay is narrative/script semantics and is distinct from Timeline composition.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: STORYBOARD_IS_PREVISUALIZATION_NOT_TIMELINE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'Storyboard and StoryboardPanel are previsualization semantics, not Timeline or Timeline clips.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: SHOT_PLAN_IS_PRODUCTION_INTENT_NOT_RENDER_PLAN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'ShotPlan is production intent and blocking/composition guidance, not RenderPlan render WHAT authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: DIRECTOR_INTENT_IS_CREATIVE_SEMANTICS_NOT_PROVIDER_PROMPT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'DirectorIntent is creative semantics, not provider prompt, FFmpeg/Blender parameter, or provider-native execution configuration.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: CREATIVE_OBJECTS_USE_TYPED_RELATIONSHIPS_WITHOUT_FORMING_A_GENERIC_GRAPH_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CREATIVE_DEVELOPMENT
+  summary: 'Creative objects use typed relationships without creating a generic graph authority over platform semantics.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+## 9AF AGENT AND INTELLIGENT ORCHESTRATION FOUNDATION
+
+- id: AGENT_IS_APPLICATION_ORCHESTRATION_NOT_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Agent is application orchestration over canonical semantics, not domain authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AGENT_OWNS_REASONING_AND_ACTION_SELECTION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Agent owns reasoning and action selection within authorized effective capability views.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AGENT_ACTIONS_LOWER_TO_CANONICAL_OPERATION_AND_OPERATION_PLAN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Agent actions lower to canonical Operation and OperationPlan before execution.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AGENT_DISCOVERY_USES_PRINCIPAL_FILTERED_EFFECTIVE_CAPABILITY_VIEW_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Agent capability discovery uses principal-filtered EffectiveCapabilityView.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AGENT_MUST_NOT_DIRECTLY_MUTATE_CANONICAL_DOMAIN_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Agent must not directly mutate canonical domain state; mutations go through application commands/operations and transaction boundaries.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AGENT_MUST_NOT_BYPASS_ENTITLEMENT_POLICY_QUOTA_OR_AUTHORIZATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Agent must not bypass entitlement, policy, quota or authorization.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AGENT_MAY_COMPOSE_OPERATIONS_RECIPES_WORKFLOWS_AND_TOOLS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Agent may compose operations, recipes, workflows and tools while preserving canonical authority boundaries.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AGENT_REASONING_STATE_IS_NOT_CANONICAL_MEDIA_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Agent reasoning state is not canonical media state and never replaces Timeline/Artifact/domain records.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AGENT_FRAMEWORK_IS_REPLACEABLE_APPLICATION_INFRASTRUCTURE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'The Agent framework is replaceable application/orchestration infrastructure.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: EMBABEL_IS_AGENT_ORCHESTRATION_MECHANICS_NOT_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AGENT_ORCHESTRATION
+  summary: 'Embabel is bounded Agent orchestration mechanics, not domain/workflow/capability/execution authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+## 9AG AI PROVIDER INTEGRATION FOUNDATION
+
+- id: AI_PROVIDER_INTEGRATION_USES_PROVIDER_EXECUTION_FABRIC_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AI_PROVIDER_INTEGRATION
+  summary: 'AI provider integration uses the provider execution fabric rather than a parallel AI job authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AI_PROVIDER_ROUTING_IS_NOT_EXECUTION_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AI_PROVIDER_INTEGRATION
+  summary: 'AI provider routing/selection is not execution authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: REMOTE_AI_PROVIDER_STATUS_CONVERGES_TO_EXECUTION_OBSERVATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AI_PROVIDER_INTEGRATION
+  summary: 'Remote AI provider status converges to fenced ExecutionObservation.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: REMOTE_AI_PROVIDER_OUTPUT_ENTERS_ARTIFACT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AI_PROVIDER_INTEGRATION
+  summary: 'Remote AI provider output enters Artifact authority before becoming canonical output data.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: AI_GENERATION_REQUEST_IS_NOT_EXECUTION_ATTEMPT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: AI_PROVIDER_INTEGRATION
+  summary: 'AI GenerationRequest is request/intent semantics, not an ExecutionAttempt authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+## 9AH ROADMAP 22 REMOTE RUNTIME INTEGRATION RECONCILIATION
+
+- id: PROVIDER_INTERACTION_MECHANICS_ARE_NOT_EXECUTION_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Provider interaction mechanics are not execution authority; database/fabric lifecycle state remains authoritative.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: SYNC_CALLBACK_POLL_AND_STREAM_CONVERGE_TO_EXECUTION_OBSERVATIONS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Synchronous callbacks, polling and streams all converge to ExecutionObservation rather than separate lifecycle authorities.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: REMOTE_POLLERS_ARE_EPHEMERAL_OBSERVERS_NOT_TASK_AUTHORITIES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Remote pollers are ephemeral observers and never task authorities.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: WEBHOOK_INGRESS_IS_A_TRUST_AND_NORMALIZATION_BOUNDARY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'WebhookIngress is a trust/authentication/signature validation and normalization boundary.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: REMOTE_STATUS_OBSERVATIONS_MUST_BE_ATTEMPT_AND_GENERATION_FENCED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Remote status observations must be fenced by execution attempt and generation.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: POLLING_POLICY_IS_INTEGRATION_RUNTIME_POLICY_NOT_CAPABILITY_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Polling policy is integration runtime policy, not capability semantics.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: CAMEL_IS_INTEGRATION_MECHANICS_NOT_EXECUTION_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Apache Camel is integration mechanics, not execution authority.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: REMOTE_STATUS_OBSERVATION_MAY_BE_DELEGATED_TO_EDGE_OR_SERVERLESS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Remote status observation may be delegated to edge/serverless mechanics without transferring execution-state authority.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: CORE_SERVICES_MUST_NOT_BLOCK_ON_LONG_RUNNING_REMOTE_EXECUTION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Core services must not synchronously block on long-running remote execution.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: ASYNC_DELEGATION_MUST_SURVIVE_PROCESS_AND_DEPLOYMENT_RESTART_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: 'Async delegation must survive process and deployment restart.'
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+## 9AI EXTERNAL INTEGRATION AND WEBHOOK FOUNDATION
+
+- id: OUTBOUND_WEBHOOK_IS_ASYNC_INTEGRATION_DELIVERY_NOT_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: WEBHOOK_INTEGRATION
+  summary: 'Outbound webhook is async integration delivery, not domain authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: OUTBOUND_WEBHOOK_IS_DRIVEN_FROM_COMMITTED_TYPED_EVENTS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: WEBHOOK_INTEGRATION
+  summary: 'Outbound webhook delivery is driven from committed typed events.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: OUTBOUND_WEBHOOK_DELIVERY_USES_TRANSACTIONAL_OUTBOX_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: WEBHOOK_INTEGRATION
+  summary: 'Outbound webhook delivery uses the transactional outbox reliability boundary.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: WEBHOOK_DELIVERY_IS_AT_LEAST_ONCE_AND_IDEMPOTENCY_AWARE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: WEBHOOK_INTEGRATION
+  summary: 'Webhook delivery is at-least-once and idempotency-aware.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: WEBHOOK_DELIVERY_FAILURE_DOES_NOT_ROLL_BACK_COMMITTED_DOMAIN_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: WEBHOOK_INTEGRATION
+  summary: 'Webhook delivery failure may retry/backoff/fail/dead-letter/suspend according to policy but must not roll back committed domain state.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: INBOUND_WEBHOOK_NEVER_DIRECTLY_MUTATES_CANONICAL_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: WEBHOOK_INTEGRATION
+  summary: 'Inbound webhook never directly mutates canonical state; it normalizes to typed Observation/Command/Event routed through canonical authority boundaries.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+## 9AJ EVENT SUBSCRIPTION FOUNDATION
+
+- id: EVENT_CATALOG_IS_CONTRACT_INDEX_NOT_EVENT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EVENT_SUBSCRIPTION
+  summary: 'EventCatalog is a versioned contract index, not event authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: EVENT_SUBSCRIPTION_IS_INTEGRATION_CONFIGURATION_NOT_EVENT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EVENT_SUBSCRIPTION
+  summary: 'EventSubscription is integration configuration, not event authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: EVENT_SUBSCRIPTION_REFERENCES_VERSIONED_EVENT_CONTRACTS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EVENT_SUBSCRIPTION
+  summary: 'EventSubscription references versioned typed event contracts through EventSelector.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: SUBSCRIPTION_FILTER_DOES_NOT_REDEFINE_EVENT_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EVENT_SUBSCRIPTION
+  summary: 'Subscription filters are bounded and typed and do not redefine event semantics.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: UNSUBSCRIBE_STOPS_FUTURE_DELIVERY_NOT_HISTORICAL_EVENT_EXISTENCE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EVENT_SUBSCRIPTION
+  summary: 'Unsubscribe stops future delivery and does not delete historical events or audit records.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: NOTIFICATION_PREFERENCE_IS_DISTINCT_FROM_EVENT_SUBSCRIPTION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EVENT_SUBSCRIPTION
+  summary: 'NotificationPreference for human delivery is distinct from Integration EventSubscription.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: EVENT_DELIVERY_RECORD_IS_AUDIT_NOT_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EVENT_SUBSCRIPTION
+  summary: 'EventDeliveryRecord is audit/delivery state, not source domain authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: USER_MANAGED_EVENT_SUBSCRIPTION_SUPPORTS_CREATE_SUSPEND_RESUME_CANCEL_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EVENT_SUBSCRIPTION
+  summary: 'User-managed EventSubscription supports create, suspend, resume and cancel lifecycle semantics.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+## 9AK NOTIFICATION FOUNDATION
+
+- id: NOTIFICATION_DOMAIN_IS_NOT_SOURCE_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: NOTIFICATION
+  summary: 'Notification domain controls human delivery semantics and is not source domain authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: NOTIFICATION_PREFERENCE_CONTROLS_HUMAN_DELIVERY_NOT_EVENT_EXISTENCE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: NOTIFICATION
+  summary: 'NotificationPreference controls human delivery, not event existence.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: NOTIFICATION_DELIVERY_PROVIDER_IS_REPLACEABLE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: NOTIFICATION
+  summary: 'NotificationDeliveryProvider is replaceable delivery mechanics.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+- id: NOTIFICATION_DELIVERY_RECORD_IS_AUDIT_NOT_BUSINESS_STATE_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: NOTIFICATION
+  summary: 'NotificationDeliveryRecord is audit/delivery record, not business state authority.'
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]

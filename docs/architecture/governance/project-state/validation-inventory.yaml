@@ -1,133 +1,275 @@
-# VALIDATION INVENTORY — media-platform
-# First-class validation projects. One status each.
-# Validation levels: V1 TECHNICAL CAPABILITY VALIDATION / V2 PRODUCT EXPERIENCE VALIDATION / V3 FULL PLATFORM DOGFOODING
-# No demo is marked complete unless it actually exists. Mutable index.
-
 validation_projects:
-
 - id: FIRST_REAL_MEDIA_CUT_V1
   title: First Real Media Cut
   purpose: Simple traditional NLE end-to-end real media validation - import real media, trim, multi-clip edit, audio level, BGM, subtitle, simple color adjustment, export, publishable video.
   status: PLANNED
   validation_level: V2
-  required_foundations: [Traditional NLE P1 frontend, Timeline V2, Media V2, Audio V2, Source bindings, Export pipeline]
-  success_criteria: [publishable video exported from the NLE surface, deterministic edit semantics preserved, external tool escape rate measured]
+  required_foundations:
+  - Traditional NLE P1 frontend
+  - Timeline V2
+  - Media V2
+  - Audio V2
+  - Source bindings
+  - Export pipeline
+  success_criteria:
+  - publishable video exported from the NLE surface
+  - deterministic edit semantics preserved
+  - external tool escape rate measured
   metrics:
-    - production completion
-    - export success
-    - external tool escape rate
-    - manual workaround count
-    - failure/retry count
-    - edit-to-publish time
+  - production completion
+  - export success
+  - external tool escape rate
+  - manual workaround count
+  - failure/retry count
+  - edit-to-publish time
   artifacts: []
   next_trigger: Traditional NLE P1 product surface lands
   notes: Distinct from the CLOSED FRMC milestone (2026-08-15) which validated the canonical stack through a harness (first-real-media-cut-v1.md). This project validates the product surface.
-
 - id: GOLDEN_STORY_01_XIN_GONGPING_SHANG_XIAN
   title: Golden Story 01《辛公平上仙》
   purpose: Creative content project + AI-film pipeline validation + regression/golden story + product demo + commercial dogfooding + cost-accounting validation. Planned chapters GCS-01A《榆林店》, GCS-01B《阴吏》, GCS-01C《夜入长安》, GCS-01D《上仙》.
   status: PLANNED
   validation_level: V3
-  required_foundations: [CreativeBrief, Script, Storyboard, ShotPlan, GenerationRequest/Intent, Operation/Recipe/Workflow, Provider, Execution Fabric, Artifact, MediaAsset/MediaStream, TimelineSourceBinding]
-  success_criteria: [accepted shot pipeline, published minutes, platform-completed-step ratio, provenance completeness]
+  required_foundations:
+  - DirectorIntent
+  - Screenplay
+  - Sequence
+  - Scene
+  - Beat
+  - Storyboard
+  - ShotPlan
+  - generation
+  - provider execution
+  - Artifact
+  - Timeline
+  - provenance
+  - event delivery
+  - cost attribution
+  success_criteria:
+  - accepted shot pipeline
+  - published minutes
+  - platform-completed-step ratio
+  - provenance completeness
   metrics:
-    - production cost
-    - cost per accepted shot
-    - cost per published minute
-    - accepted/rejected generations
-    - external tool escape rate
-    - platform-completed-step ratio
-    - provenance completeness
+  - production cost
+  - cost per accepted shot
+  - cost per published minute
+  - accepted/rejected generations
+  - external tool escape rate
+  - platform-completed-step ratio
+  - provenance completeness
   artifacts: []
-  commercial_signals: [cost accounting validation, dogfooding economics]
+  commercial_signals:
+  - cost accounting validation
+  - dogfooding economics
   next_trigger: AI/Hybrid Film Studio P4 surface planning
-  notes: Episodes NOT produced. Do not claim production.
-
+  notes: Episodes NOT produced. Future validation should cover DirectorIntent, Screenplay, Sequence, Scene, Beat, Storyboard, ShotPlan, generation, provider execution, Artifact, Timeline, provenance, event delivery, and cost attribution. Do not claim completion.
 - id: TRADITIONAL_NLE_PRODUCT_VALIDATION
   title: Traditional NLE product validation
   purpose: Validate the Traditional NLE application surface against real editing workflows.
   status: PLANNED
   validation_level: V2
-  required_foundations: [P1 Traditional NLE, design system, workspace shell]
-  success_criteria: [first real media cut completed through the NLE surface]
-  metrics: [edit-to-publish time, manual workaround count]
+  required_foundations:
+  - P1 Traditional NLE
+  - design system
+  - workspace shell
+  success_criteria:
+  - first real media cut completed through the NLE surface
+  metrics:
+  - edit-to-publish time
+  - manual workaround count
   artifacts: []
   next_trigger: P1 frontend foundations
-
 - id: FLOW_PRODUCT_VALIDATION
   title: Visual Workflow / FLOW product validation
   purpose: Validate Operation/Recipe composition through the visual workflow surface (P2).
   status: PLANNED
   validation_level: V2
-  required_foundations: [FLOW surface, Operation model, Recipe model]
-  success_criteria: [operation/recipe validated end-to-end through FLOW]
-  metrics: [recipe composition success, external tool escape rate]
+  required_foundations:
+  - FLOW surface
+  - Operation model
+  - Recipe model
+  success_criteria:
+  - operation/recipe validated end-to-end through FLOW
+  metrics:
+  - recipe composition success
+  - external tool escape rate
   artifacts: []
   next_trigger: P2 FLOW surface work
-
 - id: INFINITE_CANVAS_PRODUCT_VALIDATION
   title: Infinite Canvas product validation
   purpose: Validate the Infinite Canvas surface as a product surface over the semantic core (P3).
   status: PLANNED
   validation_level: V2
-  required_foundations: [Canvas surface, shared selection infrastructure]
-  success_criteria: [canvas-driven composition reaches media output]
-  metrics: [canvas composition completion]
+  required_foundations:
+  - Canvas surface
+  - shared selection infrastructure
+  success_criteria:
+  - canvas-driven composition reaches media output
+  metrics:
+  - canvas composition completion
   artifacts: []
   next_trigger: P3 Canvas surface work
-
 - id: AI_HYBRID_FILM_STUDIO_VALIDATION
   title: AI / Hybrid Film Studio validation
   purpose: Validate the AI/hybrid film studio surface with GOLDEN_STORY_01 (P4).
   status: PLANNED
   validation_level: V3
-  required_foundations: [CreativeBrief, Script, Storyboard, ShotPlan, generation intent, Provider, Execution Fabric]
-  success_criteria: [golden story chapters produced through platform pipeline]
-  metrics: [cost per accepted shot, accepted/rejected generations, provenance completeness]
+  required_foundations:
+  - CreativeBrief
+  - Script
+  - Storyboard
+  - ShotPlan
+  - generation intent
+  - Provider
+  - Execution Fabric
+  success_criteria:
+  - golden story chapters produced through platform pipeline
+  metrics:
+  - cost per accepted shot
+  - accepted/rejected generations
+  - provenance completeness
   artifacts: []
   next_trigger: P4 surface planning
-
 - id: COMMERCIAL_SELF_DOGFOODING_V1
   title: Commercial self-dogfooding V1
   purpose: Owner/operator becomes the first real user/tenant; commercial semantics exercised through production authorization paths without bypassing entitlement/quota/cost accounting.
   status: PLANNED
   validation_level: V3
-  required_foundations: [Tenant/BillingAccount/Subscription/EntitlementGrant/EffectiveCapabilityView/Quota/Budget/CostLedger semantics, dogfooding flows]
-  success_criteria: [self-granted entitlements flow through production authorization path, cost accounting records dogfooding usage]
-  metrics: [dogfooding usage cost, entitlement path compliance]
+  required_foundations:
+  - Tenant/BillingAccount/Subscription/EntitlementGrant/EffectiveCapabilityView/Quota/Budget/CostLedger semantics
+  - dogfooding flows
+  success_criteria:
+  - self-granted entitlements flow through production authorization path
+  - cost accounting records dogfooding usage
+  metrics:
+  - dogfooding usage cost
+  - entitlement path compliance
   artifacts: []
-  commercial_signals: [cost accounting independent from real payment flow]
+  commercial_signals:
+  - cost accounting independent from real payment flow
   next_trigger: commercial foundations become operational
-
 - id: MULTI_TENANT_SELF_DOGFOODING_V1
   title: Multi-tenant self-dogfooding V1
   purpose: Single operator running multiple tenants to validate multi-tenancy semantics (SINGLE_OPERATOR_MULTI_TENANT_DOGFOODING_V1).
   status: PLANNED
   validation_level: V3
-  required_foundations: [multi-tenancy, tenant isolation]
-  success_criteria: [tenants operate isolated with correct entitlement views]
-  metrics: [tenant isolation violations (target 0)]
+  required_foundations:
+  - multi-tenancy
+  - tenant isolation
+  success_criteria:
+  - tenants operate isolated with correct entitlement views
+  metrics:
+  - tenant isolation violations (target 0)
   artifacts: []
   next_trigger: commercial foundations become operational
-
 - id: PROVIDER_CONFORMANCE_VALIDATION
   title: Provider conformance validation
   purpose: Validate provider integration through typed lowering and conformance - first real Provider plugin (FFmpeg CPU, Phase 19).
   status: PLANNED
   validation_level: V1
-  required_foundations: [PlanLowerer, RuntimeAdapter, FFmpegPlanLowerer, FFmpegExecutionGraph, FFmpegCommandCompiler, ExecutionBackend]
-  success_criteria: [provider-ffmpeg.jar accepted, conformance suite green]
-  metrics: [conformance suite pass, capability profile revalidation]
+  required_foundations:
+  - PlanLowerer
+  - RuntimeAdapter
+  - FFmpegPlanLowerer
+  - FFmpegExecutionGraph
+  - FFmpegCommandCompiler
+  - ExecutionBackend
+  success_criteria:
+  - provider-ffmpeg.jar accepted
+  - conformance suite green
+  metrics:
+  - conformance suite pass
+  - capability profile revalidation
   artifacts: []
-  next_trigger: Roadmap #22 Phase 19
-
+  next_trigger: Roadmap
 - id: MULTI_SURFACE_SEMANTIC_EQUIVALENCE_V1
   title: Multi-surface semantic equivalence validation
   purpose: Prove that UI/REST/GraphQL/MCP/agents/recipes/DSL/canvas/workflow surfaces reach the same canonical semantics (one semantic core).
   status: PLANNED
   validation_level: V1
-  required_foundations: [operation plan transaction model, adapter surfaces, semantic equality]
-  success_criteria: [equivalent operations across surfaces produce identical canonical results]
-  metrics: [equivalence test coverage, semantic divergence count (target 0)]
+  required_foundations:
+  - operation plan transaction model
+  - adapter surfaces
+  - semantic equality
+  success_criteria:
+  - equivalent operations across surfaces produce identical canonical results
+  metrics:
+  - equivalence test coverage
+  - semantic divergence count (target 0)
   artifacts: []
   next_trigger: second application adapter surface exists
+- id: AGENT_OPERATION_PLAN_CONFORMANCE
+  title: Agent OperationPlan conformance
+  purpose: Future validation that Agent-selected actions lower to canonical Operation / OperationPlan and never bypass principal-filtered EffectiveCapabilityView.
+  status: NOT_YET_VALIDATED
+  validation_level: V1
+  required_foundations:
+  - Agent framework POC
+  - EffectiveCapabilityView
+  - Operation
+  - OperationPlan
+  success_criteria:
+  - agent action selection produces canonical OperationPlan only
+  - no direct canonical state mutation
+  metrics:
+  - bypass count (target 0)
+  - semantic equivalence failures
+  artifacts: []
+  next_trigger: Agent runtime POC begins
+- id: REMOTE_AI_PROVIDER_CONFORMANCE
+  title: Remote AI provider conformance
+  purpose: Future validation that remote AI provider generation requests/status/callbacks/polls/streams converge to fenced ExecutionObservation and Artifact authority.
+  status: NOT_YET_VALIDATED
+  validation_level: V1
+  required_foundations:
+  - Provider execution fabric
+  - RemoteProviderBackend
+  - ExecutionObservation
+  - Artifact authority
+  success_criteria:
+  - remote status fenced by attempt and generation
+  - provider output enters Artifact authority
+  metrics:
+  - fencing violations (target 0)
+  - orphan provider outputs
+  artifacts: []
+  next_trigger: First real remote AI provider integration
+- id: EVENT_SUBSCRIPTION_WEBHOOK_CONFORMANCE
+  title: Event subscription and Webhook conformance
+  purpose: Future validation that typed event subscriptions drive outbound webhook delivery from committed events via transactional outbox with retry/idempotency semantics.
+  status: NOT_YET_VALIDATED
+  validation_level: V1
+  required_foundations:
+  - TypedDomainEvent
+  - EventCatalog
+  - EventSubscription
+  - Transactional Outbox
+  - WebhookDelivery
+  success_criteria:
+  - unsubscribe stops future delivery only
+  - delivery failure does not roll back committed domain state
+  metrics:
+  - duplicate delivery idempotency failures
+  - invalid filter count
+  artifacts: []
+  next_trigger: EventSubscription V1 / Webhook runtime begins
+- id: CREATIVE_DEVELOPMENT_SEMANTIC_CONFORMANCE
+  title: Creative Development semantic conformance
+  purpose: Future validation that CreativeBrief, DirectorIntent, Screenplay, Sequence, Scene, Beat, Storyboard and ShotPlan remain optional independently versioned creative semantics distinct from Timeline/RenderPlan/provider execution.
+  status: NOT_YET_VALIDATED
+  validation_level: V2
+  required_foundations:
+  - Creative Development domain V1
+  - Timeline authority
+  - RenderPlan authority
+  - Provider execution fabric
+  success_criteria:
+  - no fixed mandatory creative pipeline
+  - creative objects relate through typed references
+  - GOLDEN_STORY_01 can validate creative-to-execution provenance when implemented
+  metrics:
+  - semantic boundary violations
+  - missing provenance links
+  artifacts: []
+  next_trigger: AI/Hybrid Film Studio or GOLDEN_STORY_01 planning

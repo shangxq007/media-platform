@@ -1,198 +1,279 @@
-# ROADMAP TRACKS — media-platform
-# Cross-cutting tracks. These are NOT roadmap milestone renumbering.
-# The existing 28-milestone identity model (media-platform-integrated-architecture-roadmap-v2.md section 14) is preserved.
-# Mutable index.
-
 tracks:
-
 - id: EXECUTION_AND_PROVIDER_RUNTIME
   status: ACTIVE
-  purpose: Worker fabric, execution backend, provider runtime and native pull - the core of Roadmap #22 after Epoch 3.
-  current_dependencies: Roadmap #22 epochs 1-3 CLOSED (provider immutable foundation, worker-fabric module, resource model, ETG, runtime authority + Native Pull V1)
+  purpose: Worker fabric, execution backend, provider runtime and native pull - the core of Roadmap
+  current_dependencies: Roadmap
   next_actions:
-    - Phase 15 - PlanLowerer / RuntimeAdapter (NOT_STARTED)
-    - Phase 16 - Artifact staging / materialization / fenced completion integration
-    - Phase 17 - sandbox / isolation
-    - Phase 19 - FFmpeg CPU Native Pull (first real Provider plugin)
-    - Phases 20-24 - VAAPI/QSV, OpenCue POC, remote backend conformance, NVIDIA/cloud, candidate freeze/FCV/closure
-  roadmap_relationship: Roadmap #22 phases 15-24 (phase numbering per project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md; matches DR section 34 PHASE_0..24 sequence)
+  - Phase 15 - PlanLowerer / RuntimeAdapter (NOT_STARTED)
+  - Phase 16 - Artifact staging / materialization / fenced completion integration
+  - Phase 17 - sandbox / isolation
+  - Phase 19 - FFmpeg CPU Native Pull (first real Provider plugin)
+  - Phases 20-24 - VAAPI/QSV, OpenCue POC, remote backend conformance, NVIDIA/cloud, candidate freeze/FCV/closure
+  roadmap_relationship: Roadmap
   validation_target: PROVIDER_CONFORMANCE_VALIDATION; first real Provider plugin (FFmpeg) proving plugin architecture
   explicit_exclusions:
-    - No Global Execution Optimizer (#23 scope)
-    - No merge of canonical main in this governance bootstrap
-    - No production code changes in governance persistence tasks
-
+  - No Global Execution Optimizer (#23 scope)
+  - No merge of canonical main in this governance bootstrap
+  - No production code changes in governance persistence tasks
 - id: SEMANTIC_COMPOSITION_FOUNDATION
   status: ACTIVE
   purpose: Operation model, operation plan transaction, Recipe/DSL/IR semantic composition (families 9C/9D).
   current_dependencies: Operation model V1 + OperationPlan Transaction V1 IMPLEMENTED; revision command model implemented
   next_actions:
-    - Widen operation transaction coverage to every frontend
-    - Recipe algebra / typed recipe IR / DSL lowering when composition surface work starts
-  roadmap_relationship: Roadmap #13-#20 closed foundations; #22 later phases; roadmap v2 sections 5-8
+  - Widen operation transaction coverage to every frontend
+  - Recipe algebra / typed recipe IR / DSL lowering when composition surface work starts
+  roadmap_relationship: Roadmap
   validation_target: FLOW_PRODUCT_VALIDATION (P2 - Operation/Recipe validation)
   explicit_exclusions:
-    - No DSL implementation now
-    - No recipe runtime now
-
+  - No DSL implementation now
+  - No recipe runtime now
 - id: COMMERCIAL_ACCESS_CONTROL_FOUNDATION
   status: ACTIVE_PLANNED
   purpose: Tenant/BillingAccount/Subscription/EntitlementGrant/EffectiveCapabilityView/Quota/Budget/CostLedger semantics; cost vs price vs charge vs revenue distinction; self-dogfooding as first tenant.
   current_dependencies: Bounded commercial modules exist (payment/commerce/entitlement/quota-billing/billing); capability authority
   next_actions:
-    - Complete dogfooding flows through production authorization path (SELF_GRANTED_ENTITLEMENTS_USE_PRODUCTION_AUTHORIZATION_PATH_V1)
-    - Usage metering must work before external commercialization
+  - Complete dogfooding flows through production authorization path (SELF_GRANTED_ENTITLEMENTS_USE_PRODUCTION_AUTHORIZATION_PATH_V1)
+  - Usage metering must work before external commercialization
   roadmap_relationship: Cross-cutting track, not a numbered milestone
   validation_target: COMMERCIAL_SELF_DOGFOODING_V1; MULTI_TENANT_SELF_DOGFOODING_V1
   explicit_exclusions:
-    - REAL_EXTERNAL_COMMERCIALIZATION=DEFERRED
-    - Auto-renewal / off-session charge / dunning / payment retry deferred
-    - No Hyperswitch/OpenMeter integration in this governance task
-
+  - REAL_EXTERNAL_COMMERCIALIZATION=DEFERRED
+  - Auto-renewal / off-session charge / dunning / payment retry deferred
+  - No Hyperswitch/OpenMeter integration in this governance task
 - id: CREATIVE_GENERATIVE_PRODUCTION_FOUNDATION
   status: ACTIVE_PLANNED
   purpose: CreativeBrief -> Script -> Storyboard -> ShotPlan -> GenerationRequest/Intent -> Operation/Recipe/Workflow -> Provider -> Execution Fabric -> Artifact -> MediaAsset/MediaStream -> TimelineSourceBinding (family 9T).
   current_dependencies: Artifact authority, operation model, execution fabric
   next_actions:
-    - Foundation work begins only when product tracks demand it
-    - GOLDEN_STORY_01 planning as validation vehicle
+  - Foundation work begins only when product tracks demand it
+  - GOLDEN_STORY_01 planning as validation vehicle
   roadmap_relationship: Cross-cutting; product track P4 (AI/Hybrid Film Studio)
   validation_target: AI_HYBRID_FILM_STUDIO_VALIDATION; GOLDEN_STORY_01_XIN_GONGPING_SHANG_XIAN
   explicit_exclusions:
-    - No generation pipeline implementation now
-    - No《辛公平上仙》production now
-
+  - No generation pipeline implementation now
+  - No《辛公平上仙》production now
 - id: PLUGIN_AND_DISTRIBUTION_FOUNDATION
   status: ACTIVE_PLANNED
   purpose: Plugin packaging/module/distribution strategy (families 9N/9O/9P); logical platform-plugins/ umbrella; leaf modules as build units; distribution compositions.
   current_dependencies: Provider SPI; execution fabric; CORE_MUST_NOT_COMPILE_AGAINST_CONCRETE_PROVIDER_IMPLEMENTATIONS
   next_actions:
-    - Phase 19 - FFmpeg as first real Provider plugin (platform-plugins/provider/ffmpeg -> provider-ffmpeg.jar)
-    - Bounded PLUGIN_RUNTIME_V1 after first real plugin (explicit PluginDescriptor, typed contribution discovery, plugins/*.jar loading, basic classloader boundary, compatibility/version validation, registration, coreDistribution, fullDistribution)
-  roadmap_relationship: Roadmap #22 Phase 19+; deferred-items PLUGIN_RUNTIME_V1
+  - Phase 19 - FFmpeg as first real Provider plugin (platform-plugins/provider/ffmpeg -> provider-ffmpeg.jar)
+  - Bounded PLUGIN_RUNTIME_V1 after first real plugin (explicit PluginDescriptor, typed contribution discovery, plugins/*.jar loading, basic classloader boundary, compatibility/version validation, registration, coreDistribution, fullDistribution)
+  roadmap_relationship: Roadmap
   validation_target: PROVIDER_CONFORMANCE_VALIDATION
   explicit_exclusions:
-    - No platform-plugins/ modules created in this governance task
-    - No marketplace / hot-reload / remote catalog / complex dependency solver
-
+  - No platform-plugins/ modules created in this governance task
+  - No marketplace / hot-reload / remote catalog / complex dependency solver
 - id: OPEN_MEDIA_SCENE_AND_NATIVE_FOUNDATION
   status: ACTIVE_REFERENCE
   purpose: Open media/scene/native ecosystem inventory and authority boundaries (family 9Y; foundation-inventory.yaml) - OTIO, OIIO, OCIO, ACES, EXR, MaterialX, OpenPBR, OSL, USD/Hydra/Storm, OpenVDB/NanoVDB, Partio, OpenFX, Open RV, Gaffer, Blender, Vulkan, WebGPU, JavaCPP/JNI/Panama FFM.
   current_dependencies: Typed provider/adapter boundaries; scene/material/volume domains NOT_STARTED
   next_actions:
-    - Integrate per concrete need through typed adapters only
-    - OpenFX host when foreign plugin ecosystem becomes real
-    - OpenUSD/MaterialX/OpenVDB foundations when respective domains start
+  - Integrate per concrete need through typed adapters only
+  - OpenFX host when foreign plugin ecosystem becomes real
+  - OpenUSD/MaterialX/OpenVDB foundations when respective domains start
   roadmap_relationship: Cross-cutting; future epochs
   validation_target: None standalone; conformance exercised through provider validation
   explicit_exclusions:
-    - No foundation library becomes canonical domain authority
-    - No OpenUSD scene foundation now
-
+  - No foundation library becomes canonical domain authority
+  - No OpenUSD scene foundation now
 - id: FORMAL_VERIFICATION_TRACK
   status: ACTIVE
   purpose: FAOF-1..FAOF-4; machine-checked laws; model checking for concurrent runtime protocols (family 9AB).
-  current_dependencies: FAOF-1 IMPLEMENTED (Roadmap #21); execution semantics still stabilizing
+  current_dependencies: FAOF-1 IMPLEMENTED (Roadmap
   next_actions:
-    - Phase 18 - FAOF-2 Lean4 (primary) + Coq (complementary) POC
-    - TLA+/PlusCal for concurrent lease/reservation/generation protocols
-    - FAOF-4 only after execution semantics stabilize
-  roadmap_relationship: Roadmap #22 Phase 18; #23 global optimization scope
+  - Phase 18 - FAOF-2 Lean4 (primary) + Coq (complementary) POC
+  - TLA+/PlusCal for concurrent lease/reservation/generation protocols
+  - FAOF-4 only after execution semantics stabilize
+  roadmap_relationship: Roadmap
   validation_target: Executable laws; property tests; model-checked protocol invariants
   explicit_exclusions:
-    - No formal proof for every provider parameter
-    - Ordinary API binding stays covered by unit/integration/property tests
-
+  - No formal proof for every provider parameter
+  - Ordinary API binding stays covered by unit/integration/property tests
 - id: PRODUCT_AND_APPLICATION_TRACK
   status: ACTIVE_PLANNED
   purpose: Application surfaces over one semantic core - Traditional NLE, Infinite Canvas, Visual Workflow/FLOW, AI/Hybrid Film Studio, Agent-first Studio, Automation Studio, Template Studio; conceptual surfaces CREATE/PLAN/CANVAS/FLOW/EDIT/PRODUCE (family 9U).
-  current_dependencies: Shared semantic core (implemented #13-#20); design system and workspace shell (P0)
+  current_dependencies: Shared semantic core (implemented
   next_actions:
-    - P0 - design system, workspace shell, information architecture, interactive prototypes
-    - P1 - Traditional NLE -> FIRST_REAL_MEDIA_CUT
-    - P2 - FLOW -> Operation/Recipe validation
-    - P3 - Infinite Canvas
-    - P4 - AI/Hybrid Film Studio -> GOLDEN_STORY_01
+  - P0 - design system, workspace shell, information architecture, interactive prototypes
+  - P1 - Traditional NLE -> FIRST_REAL_MEDIA_CUT
+  - P2 - FLOW -> Operation/Recipe validation
+  - P3 - Infinite Canvas
+  - P4 - AI/Hybrid Film Studio -> GOLDEN_STORY_01
   roadmap_relationship: Cross-cutting product track (no milestone renumbering)
   validation_target: TRADITIONAL_NLE_PRODUCT_VALIDATION; FLOW_PRODUCT_VALIDATION; INFINITE_CANVAS_PRODUCT_VALIDATION; AI_HYBRID_FILM_STUDIO_VALIDATION
   explicit_exclusions:
-    - No NLE frontend implementation in this governance task
-    - Product surfaces are not separate canonical domain models
-
+  - No NLE frontend implementation in this governance task
+  - Product surfaces are not separate canonical domain models
 - id: CAPABILITY_VALIDATION_TRACK
   status: ACTIVE
   purpose: First-class validation projects with V1 TECHNICAL / V2 PRODUCT EXPERIENCE / V3 FULL DOGFOODING levels; demos as validation artifacts; owner/operator as first real user/tenant (family 9V/9W).
   current_dependencies: Foundations + product surfaces; validation_priority increased
   next_actions:
-    - FIRST_REAL_MEDIA_CUT planning (product-track; FRMC technical milestone already CLOSED)
-    - GOLDEN_STORY_01 planning with cost-accounting metrics
-    - EXTERNAL_TOOL_ESCAPE_RATE as validation metric candidate (not yet telemetry)
+  - FIRST_REAL_MEDIA_CUT planning (product-track; FRMC technical milestone already CLOSED)
+  - GOLDEN_STORY_01 planning with cost-accounting metrics
+  - EXTERNAL_TOOL_ESCAPE_RATE as validation metric candidate (not yet telemetry)
   roadmap_relationship: Cross-cutting; validation-inventory.yaml is the index
   validation_target: All entries in validation-inventory.yaml
   explicit_exclusions:
-    - No validation claim without repository evidence
-    - EXTERNAL_TOOL_ESCAPE_RATE is a metric candidate, not implemented telemetry
-
+  - No validation claim without repository evidence
+  - EXTERNAL_TOOL_ESCAPE_RATE is a metric candidate, not implemented telemetry
 - id: PRODUCT_REFERENCE_AND_COMPETITIVE_RESEARCH_TRACK
   status: ACTIVE_REFERENCE
   purpose: Reference intent for Adobe Premiere/Firefly/Creative Cloud, Runway, LTX Studio, Higgsfield, Autodesk Flow Studio, ComfyUI, Blender, NVIDIA Omniverse (family 9X).
   current_dependencies: None (references create no architecture dependency)
   next_actions:
-    - Study each reference when its corresponding surface work starts
-    - No web competitive research needed for this governance persistence
+  - Study each reference when its corresponding surface work starts
+  - No web competitive research needed for this governance persistence
   roadmap_relationship: Cross-cutting; product-reference-inventory.yaml is the index
   validation_target: None standalone
   explicit_exclusions:
-    - References never become technology dependencies unless separately adopted
-    - No copying of proprietary design
-
+  - References never become technology dependencies unless separately adopted
+  - No copying of proprietary design
 - id: ARCHITECTURE_STATE_AND_GOVERNANCE_MEMORY
   status: ACTIVE
   purpose: Repository as canonical project memory; project-state mutable indexes; immutable adoption records; authority precedence (source-of-truth/authority-precedence.md).
   current_dependencies: This bootstrap revision 2 (project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md)
   next_actions:
-    - Keep indexes updated on every adopted change
-    - Next gate - CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_REVIEW
+  - Keep indexes updated on every adopted change
+  - Next gate - CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_REVIEW
   roadmap_relationship: Cross-cutting governance track
   validation_target: Cross-file consistency (duplicate IDs, statuses, SHAs)
   explicit_exclusions:
-    - Conversation memory is not project authority
-    - No conversation-transcript dumps into Git
-
+  - Conversation memory is not project authority
+  - No conversation-transcript dumps into Git
 - id: CANONICAL_SCHEMA_AND_RELATIONSHIP_FOUNDATION
   status: ACTIVE_PARTIALLY_DEFERRED
   purpose: Canonical schema evolution, temporal mapping foundation, semantic relationship/selection foundation (families 9B/9E).
-  current_dependencies: Revision backend + revision command model implemented (Roadmap #19)
+  current_dependencies: Revision backend + revision command model implemented (Roadmap
   next_actions:
-    - Revisit per deferred-items triggers (CANONICAL_SCHEMA_EVOLUTION_IMPLEMENTATION, TEMPORAL_MAPPING_FOUNDATION_IMPLEMENTATION, SEMANTIC_RELATIONSHIP_SELECTION_FOUNDATION_IMPLEMENTATION)
+  - Revisit per deferred-items triggers (CANONICAL_SCHEMA_EVOLUTION_IMPLEMENTATION, TEMPORAL_MAPPING_FOUNDATION_IMPLEMENTATION, SEMANTIC_RELATIONSHIP_SELECTION_FOUNDATION_IMPLEMENTATION)
   roadmap_relationship: Cross-cutting; deferred-items.yaml is the revisit index
   validation_target: MULTI_SURFACE_SEMANTIC_EQUIVALENCE_V1
   explicit_exclusions:
-    - Not a generic graph-database domain authority
-    - Presentation/canvas edges stay distinct from typed semantic relationships
-
+  - Not a generic graph-database domain authority
+  - Presentation/canvas edges stay distinct from typed semantic relationships
 - id: GRAPHQL_APPLICATION_ADAPTER_TRACK
   status: PLANNED_DEFERRED
   purpose: GraphQL adapter family - query-first, then subscriptions, then bounded mutations; peer adapter to MCP (family 9H).
   current_dependencies: Operation plan transaction model; typed domain events
   next_actions:
-    - Deferred; revisit when application adapter surface work starts
-    - Ordering stays query-first -> subscriptions -> bounded mutations
+  - Deferred; revisit when application adapter surface work starts
+  - Ordering stays query-first -> subscriptions -> bounded mutations
   roadmap_relationship: Cross-cutting; deferred-items GRAPHQL_QUERY_ADAPTER / GRAPHQL_SUBSCRIPTIONS / GRAPHQL_BOUNDED_MUTATIONS
   validation_target: MULTI_SURFACE_SEMANTIC_EQUIVALENCE_V1
   explicit_exclusions:
-    - No Federation requirement yet
-    - GraphQL is never canonical schema
-
+  - No Federation requirement yet
+  - GraphQL is never canonical schema
 - id: CONTENT_DISTRIBUTION_AND_PUBLICATION_TRACK
   status: PLANNED_DEFERRED
   purpose: PublicationPackage concept (MasterArtifact, Renditions[], Thumbnail, TitleCandidates[], Description, SubtitleTracks[], Chapters[], Tags[], Provenance, AI disclosure metadata); EXPORT_PACKAGE -> MANUAL_PUBLISH initial policy; future YouTube/Bilibili/Douyin adapters as Integration Adapters.
   current_dependencies: Artifact authority; media stack foundations
   next_actions:
-    - Deferred (deferred-items CONTENT_PLATFORM_PUBLISHING_ADAPTERS)
-    - Revisit when publication becomes a real product need
+  - Deferred (deferred-items CONTENT_PLATFORM_PUBLISHING_ADAPTERS)
+  - Revisit when publication becomes a real product need
   roadmap_relationship: Cross-cutting future application/integration foundation
   validation_target: Publication-completion metrics when implemented
   explicit_exclusions:
-    - No platform publishing APIs now
-    - PublicationPackage is NOT canonical media authority
+  - No platform publishing APIs now
+  - PublicationPackage is NOT canonical media authority
+- id: AGENT_AND_INTELLIGENT_ORCHESTRATION_FOUNDATION
+  status: PLANNED_DEFERRED
+  purpose: Agent reasoning/action orchestration over the same Capability / Operation / Recipe / Workflow / OperationPlan semantic core; Embabel is the preferred bounded replaceable Agent-framework POC candidate.
+  architecture:
+  - Agent-first Studio
+  - Embabel / replaceable Agent framework
+  - EffectiveCapabilityView
+  - Operation / Recipe / Workflow / MCP
+  - OperationPlan
+  - canonical authorities
+  current_dependencies: Capability / Operation / Recipe / Workflow / OperationPlan semantic foundations; no Agent runtime implementation now.
+  next_actions:
+  - EMBABEL_AGENT_FRAMEWORK_POC
+  - AGENT_OPERATION_PLAN_ADAPTER
+  - AGENT_EFFECTIVE_CAPABILITY_DISCOVERY
+  roadmap_relationship: 'Operation/Capability/Recipe foundations -> later Agent/Embabel integration; not Roadmap #22 Phase 15.'
+  validation_target: AGENT_OPERATION_PLAN_CONFORMANCE
+  explicit_boundaries:
+  - Agent != domain authority
+  - Agent != workflow durable-process authority
+  - Agent != capability authority
+  - Agent != execution authority
+  - Agent reasoning state != canonical media state
+  - Agent must never bypass entitlement, policy, authorization, quota, or OperationPlan
+  explicit_exclusions:
+  - Do not implement Embabel now
+  - No Agent runtime in this governance expansion
+  - 'No Roadmap #22 Phase 15 PlanLowerer/RuntimeAdapter work'
+- id: EXTERNAL_INTEGRATION_AND_WEBHOOK_FOUNDATION
+  status: PLANNED_DEFERRED
+  purpose: External APIs, callbacks, polling, streaming, inbound/outbound Webhooks, protocol mediation, integration adapters, and serverless observer deployment.
+  architecture:
+  - 'Inbound: External System -> WebhookIngress -> authentication/signature/trust validation -> normalization -> typed Observation / Command / Event -> canonical application/runtime authority'
+  - 'Outbound: committed canonical state/event -> Transactional Outbox -> subscription/delivery resolution -> WebhookDeliveryAdapter -> HTTP/Camel -> external consumer'
+  current_dependencies: Typed domain events, transactional outbox, execution observations, provider/runtime foundations.
+  next_actions:
+  - EXTERNAL_INTEGRATION_RUNTIME
+  - APACHE_CAMEL_POC
+  - INBOUND_WEBHOOK_RUNTIME
+  - OUTBOUND_WEBHOOK_RUNTIME
+  roadmap_relationship: '#22 Provider/runtime foundations -> later real AI Provider integration; technology != authority.'
+  validation_target: EVENT_SUBSCRIPTION_WEBHOOK_CONFORMANCE
+  explicit_boundaries:
+  - No synchronous external HTTP call may become part of canonical DB commit authority
+  - Apache Camel/native HTTP/Workers/Lambda are mechanics, not authority
+  explicit_exclusions:
+  - No Apache Camel runtime implementation now
+  - No Webhook runtime now
+  - No event subscription APIs now
+- id: CREATIVE_DEVELOPMENT_FOUNDATION
+  status: PLANNED_DEFERRED
+  purpose: Higher-level narrative/directorial/creative semantics modeled independently from Timeline, RenderPlan, Provider, and Execution semantics.
+  conceptual_objects:
+  - CreativeBrief
+  - DirectorIntent
+  - Screenplay
+  - Sequence
+  - Scene
+  - Beat
+  - Storyboard
+  - ShotPlan
+  current_dependencies: Timeline authority, RenderPlan authority, provider/execution authority boundaries.
+  next_actions:
+  - CREATIVE_DEVELOPMENT_DOMAIN_V1
+  - DIRECTOR_INTENT_DOMAIN
+  - SCREENPLAY_DOMAIN
+  - NARRATIVE_SEQUENCE_SCENE_BEAT_DOMAIN
+  - STORYBOARD_DOMAIN
+  - SHOT_PLAN_DOMAIN
+  roadmap_relationship: 'Creative Development -> future AI/Hybrid Film Studio + GOLDEN_STORY_01; no Roadmap #22 Phase 15 implementation.'
+  validation_target: CREATIVE_DEVELOPMENT_SEMANTIC_CONFORMANCE; GOLDEN_STORY_01_XIN_GONGPING_SHANG_XIAN
+  explicit_boundaries:
+  - Optional typed semantic graph; no mandatory linear pipeline
+  - Project/container is not a creative god object
+  - Screenplay/Storyboard are not Timeline; ShotPlan is not RenderPlan; DirectorIntent is not provider prompt
+  explicit_exclusions:
+  - No creative domain production code now
+  - No GOLDEN_STORY_01 production now
+- id: EVENT_NOTIFICATION_AND_SUBSCRIPTION_FOUNDATION
+  status: PLANNED_DEFERRED
+  purpose: Expose typed platform events for internal reactive automation, human notification, external integration, user-managed event subscriptions, and outbound Webhook delivery.
+  architecture:
+  - 'Human Notification: TypedDomainEvent -> NotificationPolicy -> NotificationPreference -> NotificationIntent/Event -> NotificationDeliveryPort -> email/inbox/push/other provider'
+  - 'Integration subscription: TypedDomainEvent -> EventContract/EventCatalog -> EventSubscription -> bounded typed EventFilter -> Transactional Outbox -> WebhookDelivery -> External Consumer'
+  current_dependencies: TYPED_DOMAIN_EVENTS_V1 and transactional outbox foundations.
+  next_actions:
+  - EVENT_CATALOG
+  - EVENT_SUBSCRIPTION_V1
+  - EVENT_FILTER_V1
+  - NOTIFICATION_DOMAIN_V1
+  - NOVU_NOTIFICATION_POC
+  roadmap_relationship: Typed Domain Events -> Event Subscription / Notification / Webhook integrations; not event sourcing.
+  validation_target: EVENT_SUBSCRIPTION_WEBHOOK_CONFORMANCE
+  explicit_boundaries:
+  - NotificationPreference != EventSubscription
+  - Event sourcing is not introduced as canonical authority
+  - Unsubscribe stops future delivery, not historical event existence
+  explicit_exclusions:
+  - No notification system implementation now
+  - No Novu integration now

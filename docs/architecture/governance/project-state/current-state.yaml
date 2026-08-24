@@ -1,12 +1,6 @@
-# CURRENT PROJECT STATE SNAPSHOT — media-platform
-# Mutable index (see README.md for update rules).
-# Full 40-character SHAs; repository reality after governance review correction 1.
-# Moving branch-tip state is intentionally derived from Git, not persisted here.
-
 project:
   name: media-platform
   governance_schema_version: 1
-
 repository:
   canonical_main:
     sha: 036f21f7f94f61da92faa2e91934675d024d99e8
@@ -25,75 +19,63 @@ repository:
     source: DERIVED_FROM_GIT
     persisted_value: false
   main_merged_roadmap_22: false
-
 local_observation:
   authority: INFORMATIONAL_ONLY
   roadmap_22_worktree: .worktrees/roadmap22-decision-recovery
-
 current_roadmap:
   number: 22
   name: EXECUTABLE_TASK_GRAPH_AND_WORKER_FABRIC_RUNTIME
   status: IN_PROGRESS
-
 roadmap_21:
   status: CLOSED
   closure_evidence: docs/architecture/governance/roadmap-21-execution-graph-planning-final-review-and-integration.md
   integrated_main: 036f21f7f94f61da92faa2e91934675d024d99e8
-
 roadmap_22:
   status: IN_PROGRESS
   phase_15_started: false
-
 roadmap_22_epochs:
   epoch_1: CLOSED
   epoch_2: CLOSED
   epoch_3: CLOSED
-
 epoch_3:
   accepted_sha: 224d3a907ce76c79f868d3615c681aa833cff2b2
   accepted_tree: 6a868801c001b5ffce64a7440de1e1bf2b917fa0
   parent_sha: a17d637f273b9eab402da1ff3a8a4b55924d8cb4
   epoch_3_base_sha: 964271ebdc03037429d2a6821e33edb62558a8b9
-
 roadmap_23:
   status: NOT_STARTED
-
 governance_execution:
-  immediate_next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_CORRECTION_2_FINAL_REVIEW
+  immediate_next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_EXPANSION_1_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 15
     topic:
-      - PlanLowerer
-      - RuntimeAdapter
-      - Provider-native execution planning
-
+    - PlanLowerer
+    - RuntimeAdapter
+    - Provider-native execution planning
 architecture_escalation: NONE
 known_architecture_blockers: 0
-
 commercial_strategy:
   real_external_commercialization: DEFERRED
   commercial_foundation: ACTIVE_PLANNED
   self_dogfooding: ADOPTED
-
 preferred_commercial_poc:
   payment_orchestration: Hyperswitch
   usage_metering: OpenMeter
-
 plugin_strategy:
   first_real_provider_plugin: FFmpeg
   plugin_runtime_v1: DEFERRED_UNTIL_FIRST_REAL_PLUGIN
-
 validation_priority:
   increased: true
-
 governance:
   bootstrap_revision: 2
   bootstrap_status: REPOSITORY_PERSISTED
   immutable_record: docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
   correction_records:
-    - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md
-    - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
+  - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md
+  - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_CORRECTION_2_FINAL_REVIEW
+  next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_EXPANSION_1_REVIEW
+  expansion_records:
+  - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
