@@ -20,6 +20,19 @@ Applications → Workflow → Creative Planning → Timeline → Capability Runt
 
 **New contributors start here:** [Reading Guide](docs/handoff/reading-guide.md)
 
+
+## Project State Discoverability
+
+PROJECT_STATE_CURRENTLY_BRANCH_SCOPED=YES
+
+While Roadmap #22 remains intentionally unmerged, the project-state index exists on the active governed Roadmap #22 branch:
+
+`agent/roadmap22-executable-task-graph-worker-fabric-decision-recovery`
+
+Canonical `main` does not yet contain `docs/architecture/governance/project-state/`. Do not advance canonical main independently merely to publish these files, because that would diverge the fast-forward Roadmap #22 integration history.
+
+After Roadmap #22 canonical integration, project-state becomes reachable from canonical main. Do not create a second project-state authority.
+
 ## Quick Start
 
 ```bash

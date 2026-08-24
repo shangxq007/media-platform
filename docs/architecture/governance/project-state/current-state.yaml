@@ -1,6 +1,7 @@
 # CURRENT PROJECT STATE SNAPSHOT — media-platform
 # Mutable index (see README.md for update rules).
-# Full 40-character SHAs; repository reality at bootstrap revision 2.
+# Full 40-character SHAs; repository reality after governance review correction 1.
+# Moving branch-tip state is intentionally derived from Git, not persisted here.
 
 project:
   name: media-platform
@@ -10,11 +11,23 @@ repository:
   canonical_main:
     sha: 036f21f7f94f61da92faa2e91934675d024d99e8
     tree: 7a61effeb2840c428cab2705a9f529159fc4e345
-  roadmap_22_branch: agent/roadmap22-executable-task-graph-worker-fabric-decision-recovery
-  roadmap_22_branch_tip: 224d3a907ce76c79f868d3615c681aa833cff2b2
-  roadmap_22_branch_tree: 6a868801c001b5ffce64a7440de1e1bf2b917fa0
-  roadmap_22_branch_remote_synced: true
+  active_governed_branch:
+    name: agent/roadmap22-executable-task-graph-worker-fabric-decision-recovery
+  accepted_implementation:
+    milestone: ROADMAP_22_EPOCH_3
+    sha: 224d3a907ce76c79f868d3615c681aa833cff2b2
+    tree: 6a868801c001b5ffce64a7440de1e1bf2b917fa0
+    accepted_implementation_remote_reachable: true
+  latest_governance_publication:
+    sha: 3e69c109c44db2f78fff88b62dd724c18a299edb
+    tree: ab245cc5b9a6ac1114e6ca2bb6908513fe1fd71a
+  moving_branch_tip:
+    source: DERIVED_FROM_GIT
+    persisted_value: false
   main_merged_roadmap_22: false
+
+local_observation:
+  authority: INFORMATIONAL_ONLY
   roadmap_22_worktree: .worktrees/roadmap22-decision-recovery
 
 current_roadmap:
@@ -29,6 +42,7 @@ roadmap_21:
 
 roadmap_22:
   status: IN_PROGRESS
+  phase_15_started: false
 
 roadmap_22_epochs:
   epoch_1: CLOSED
@@ -44,13 +58,15 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 
-next_execution_step:
-  roadmap: 22
-  phase: 15
-  topic:
-    - PlanLowerer
-    - RuntimeAdapter
-    - Provider-native execution planning
+governance_execution:
+  immediate_next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_REVIEW_CORRECTION_1
+  next_roadmap_execution_after_governance_gate:
+    roadmap: 22
+    phase: 15
+    topic:
+      - PlanLowerer
+      - RuntimeAdapter
+      - Provider-native execution planning
 
 architecture_escalation: NONE
 known_architecture_blockers: 0
@@ -75,6 +91,7 @@ governance:
   bootstrap_revision: 2
   bootstrap_status: REPOSITORY_PERSISTED
   immutable_record: docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
+  governance_review_correction_1_record: docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_REVIEW
+  next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_REVIEW_CORRECTION_1

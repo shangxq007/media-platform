@@ -1640,3 +1640,85 @@
   summary: Ephemeral compute only - resource TTL required, idle cloud GPU forbidden, no secrets in repository governance. Infrastructure inventory may record non-secret role info (Z8 dev CPU workstation, pve1 infrastructure/CI virtualization, pve2 Intel media worker, future NVIDIA/cloud workers). Host inventory is not architecture authority.
   implementation_status: ADOPTED (policy; inventory non-secret only)
   references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+## 9AD GOVERNANCE / PROJECT MEMORY
+
+- id: REPOSITORY_IS_CANONICAL_PROJECT_MEMORY_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: The repository is the canonical project memory authority; conversational memory may assist recall but never supersedes repository-persisted governance state.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md]
+
+- id: CONVERSATION_MEMORY_IS_A_CONVENIENCE_CACHE_NOT_PROJECT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: Conversation memory is a convenience cache for operator continuity, not a source of project authority.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md]
+
+- id: DISCUSSION_ADOPTION_IS_DISTINCT_FROM_REPOSITORY_PERSISTENCE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: Discussion-level adoption is distinct from repository persistence; architecture authority becomes durable only when recorded in repository governance artifacts.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md]
+
+- id: CURRENT_STATE_INDEX_IS_MUTABLE_BUT_HISTORY_IS_GIT_VERSIONED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: The current-state index is mutable for discoverability, while every historical state remains Git-versioned by immutable commits and trees.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/current-state.yaml]
+
+- id: ARCHITECTURE_DECISIONS_HAVE_STABLE_IDS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: Architecture decisions have stable IDs so later roadmaps and validation records can reference decisions without relying on conversational context.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/architecture-registry.yaml]
+
+- id: ROADMAP_STATUS_MUST_REFERENCE_CONCRETE_REPOSITORY_EVIDENCE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: "Roadmap status must reference concrete repository evidence: commits, trees, records, and indexed artifacts rather than memory-only assertions."
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/current-state.yaml]
+
+- id: DEFERRED_WORK_MUST_BE_EXPLICITLY_INDEXED_NOT_LEFT_TO_MEMORY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: Deferred work must be explicitly indexed in repository artifacts instead of being left to human or agent memory.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: VALIDATION_PROJECTS_ARE_FIRST_CLASS_GOVERNANCE_ARTIFACTS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: Validation projects are first-class governance artifacts and must be indexed as evidence for technology adoption, rejection, or deferral.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/validation-projects.yaml]
+
+- id: TECHNOLOGY_CANDIDATE_IS_DISTINCT_FROM_ADOPTED_ARCHITECTURE_DEPENDENCY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: A technology candidate, proof of concept, or reference option is distinct from an adopted architecture dependency.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/foundation-inventory.yaml]
+
+- id: REPOSITORY_STATE_MUST_DISTINGUISH_ADOPTED_PERSISTED_DEFERRED_AND_POC_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: GOVERNANCE
+  summary: Repository state must distinguish adopted architecture, persisted evidence, deferred work, and proof-of-concept candidates.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-review-correction-1.md, docs/architecture/governance/project-state/current-state.yaml]
+
