@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.stereotype.Repository;
 import static com.example.platform.typedschema.jooq.generated.tables.RenderWorker.RENDER_WORKER;
 import org.jooq.impl.DSL;
 
@@ -16,7 +15,6 @@ import org.jooq.impl.DSL;
 /**
  * Repository for the {@code render_worker} table.
  */
-@Repository
 public class RenderWorkerRepository {
 
     private final DSLContext dsl;

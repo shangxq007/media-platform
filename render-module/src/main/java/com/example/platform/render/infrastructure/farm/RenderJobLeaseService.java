@@ -12,7 +12,6 @@ import java.util.Set;
 import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
  * Only one active lease per job is allowed. Workers must renew their lease
  * before it expires, or the lease will be reclaimed by the stale compensation service.
  */
-@Service
 public class RenderJobLeaseService {
 
     private static final Logger log = LoggerFactory.getLogger(RenderJobLeaseService.class);

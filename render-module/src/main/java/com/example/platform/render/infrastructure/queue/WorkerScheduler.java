@@ -1,13 +1,10 @@
 package com.example.platform.render.infrastructure.queue;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 /**
  * Worker Scheduler - periodically polls the queue for jobs.
  */
-@Component
 @ConditionalOnProperty(prefix = "app.render.worker-queue", name = "enabled", havingValue = "true")
 public class WorkerScheduler {
 
@@ -20,7 +17,6 @@ public class WorkerScheduler {
     /**
      * Poll the queue every 5 seconds.
      */
-    @Scheduled(fixedDelayString = "${render.worker.poll-interval-ms:5000}")
     public void pollQueue() {
         if (!workerService.isRunning()) {
             return;

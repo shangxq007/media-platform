@@ -2,9 +2,12 @@ package com.example.platform.workerfabric.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class ResourceModelSafetyTest {
@@ -16,6 +19,10 @@ class ResourceModelSafetyTest {
     private static final WorkerRuntimeId RUNTIME_ID = WorkerRuntimeId.of("runtime-1");
     private static final WorkerRuntimeIncarnationId RUNTIME_INCARNATION =
             WorkerRuntimeIncarnationId.of("runtime-registration-1");
+    private static final Instant NOW = Instant.parse("2026-08-24T00:00:00Z");
+    private static final HostResourceSnapshotFreshnessPolicy FRESHNESS_POLICY =
+            new HostResourceSnapshotFreshnessPolicy(
+                    Duration.ofMinutes(5), HostResourceSnapshotSchemaVersion.CURRENT);
 
     @Test
     void activeReservationReducesSchedulableCapacity() {
@@ -28,7 +35,7 @@ class ResourceModelSafetyTest {
                 resources(500, 4_000, 5_000, 1_000, 5, 0, 1));
 
         SchedulableCapacity result = SchedulableCapacity.forHost(
-                staticCapacity(), List.of(active), headroom, reachableHost());
+                snapshot(), List.of(active), headroom, reachableHost(), FRESHNESS_POLICY, NOW);
 
         assertThat(result.available()).isTrue();
         assertThat(result.cpu().millicores()).isEqualTo(6_500);
@@ -47,7 +54,12 @@ class ResourceModelSafetyTest {
                 resources(2_000, 16_000, 20_000, 4_000, 50, 1, 1));
 
         SchedulableCapacity result = SchedulableCapacity.forHost(
-                staticCapacity(), List.of(recoveryHold), SafetyHeadroom.none(), reachableHost());
+                snapshot(),
+                List.of(recoveryHold),
+                SafetyHeadroom.none(),
+                reachableHost(),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertThat(recoveryHold.keepsCapacityUnavailable()).isTrue();
         assertThat(result.cpu().millicores()).isEqualTo(6_000);
@@ -63,7 +75,12 @@ class ResourceModelSafetyTest {
                 resources(8_000, 64_000, 100_000, 16_000, 100, 2, 2));
 
         SchedulableCapacity result = SchedulableCapacity.forHost(
-                staticCapacity(), List.of(released), SafetyHeadroom.none(), reachableHost());
+                snapshot(),
+                List.of(released),
+                SafetyHeadroom.none(),
+                reachableHost(),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertThat(released.keepsCapacityUnavailable()).isFalse();
         assertThat(result).isEqualTo(fullSchedulableCapacity());
@@ -78,7 +95,12 @@ class ResourceModelSafetyTest {
                 resources(1_500, 24_000, 0, 8_000, 60, 1, 1));
 
         SchedulableCapacity result = SchedulableCapacity.forHost(
-                staticCapacity(), List.of(resident), SafetyHeadroom.none(), reachableHost());
+                snapshot(),
+                List.of(resident),
+                SafetyHeadroom.none(),
+                reachableHost(),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertThat(resident.isResident()).isTrue();
         assertThat(result.cpu().millicores()).isEqualTo(6_500);
@@ -100,7 +122,12 @@ class ResourceModelSafetyTest {
                 Map.of(DEVICE_ID, new ObservedDeviceUsage(DEVICE_ID, 0.01, 1, 0.0, 0.0)));
 
         SchedulableCapacity result = SchedulableCapacity.forHost(
-                staticCapacity(), List.of(resident), SafetyHeadroom.none(), reachableHost());
+                snapshot(lowUsage),
+                List.of(resident),
+                SafetyHeadroom.none(),
+                reachableHost(),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertThat(lowUsage.cpu().utilizationRatio()).isEqualTo(0.01);
         assertThat(resident.state()).isEqualTo(ReservationState.ACTIVE);
@@ -121,15 +148,22 @@ class ResourceModelSafetyTest {
                 AvailabilityState.UNREACHABLE);
 
         SchedulableCapacity hostResult = SchedulableCapacity.forHost(
-                staticCapacity(), List.of(), SafetyHeadroom.none(), unreachableHost);
+                snapshot(),
+                List.of(),
+                SafetyHeadroom.none(),
+                unreachableHost,
+                FRESHNESS_POLICY,
+                NOW);
         SchedulableCapacity runtimeResult = SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 unreachableRuntime,
                 currentBinding(),
-                localRuntimeDescriptor());
+                localRuntimeDescriptor(),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertThat(hostResult.available()).isFalse();
         assertThat(hostResult.cpu().millicores()).isZero();
@@ -208,9 +242,31 @@ class ResourceModelSafetyTest {
                 Map.of(DEVICE_ID, new DeviceResourceCapacity(DEVICE_ID, 16_000, 100, 2, 2)));
     }
 
+    private static HostResourceSnapshot snapshot() {
+        return snapshot(new ObservedUsage(
+                new ObservedCpuUsage(0.0),
+                new ObservedMemoryUsage(0),
+                new ObservedTemporaryStorageUsage(0),
+                Map.of(DEVICE_ID, new ObservedDeviceUsage(DEVICE_ID, 0.0, 0, 0.0, 0.0))));
+    }
+
+    private static HostResourceSnapshot snapshot(ObservedUsage observedUsage) {
+        return new HostResourceSnapshot(
+                HOST_ID,
+                HOST_INCARNATION,
+                HostResourceSnapshotGeneration.first(),
+                NOW,
+                HostResourceSnapshotSchemaVersion.CURRENT,
+                staticCapacity(),
+                observedUsage,
+                Optional.empty());
+    }
+
     private static SchedulableCapacity fullSchedulableCapacity() {
         return new SchedulableCapacity(
-                true,
+                HOST_ID,
+                HOST_INCARNATION,
+                SchedulableCapacityDisposition.AVAILABLE,
                 CpuCapacity.ofMillicores(8_000),
                 MemoryCapacity.ofBytes(64_000),
                 TemporaryStorageCapacity.ofBytes(100_000),

@@ -4,7 +4,6 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -21,7 +20,6 @@ import org.jooq.impl.DSL;
  * <p>Provides deterministic, at-least-once job execution.
  * No distributed consensus complexity - single DB-backed queue.
  */
-@Repository
 public class RenderJobQueue {
 
     private static final Logger log = LoggerFactory.getLogger(RenderJobQueue.class);

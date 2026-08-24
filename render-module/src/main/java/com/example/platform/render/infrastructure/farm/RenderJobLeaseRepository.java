@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.springframework.stereotype.Repository;
 import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLease.RENDER_JOB_LEASE;
 
 
@@ -16,7 +15,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLe
  * <p>Provides atomic claim, renew, release, fail, and expire operations
  * for the job lease queue.
  */
-@Repository
 public class RenderJobLeaseRepository {
 
     private final DSLContext dsl;

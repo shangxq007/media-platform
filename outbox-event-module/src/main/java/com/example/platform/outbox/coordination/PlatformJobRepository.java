@@ -44,33 +44,11 @@ public class PlatformJobRepository {
         return r == null ? Optional.empty() : Optional.of(mapJob(r));
     }
 
-    public void updateStatus(String jobId, String status) {
-        dsl.update(PLATFORM_JOB)
-                .set(PLATFORM_JOB.STATUS, status)
-                .set(PLATFORM_JOB.UPDATED_AT, LocalDateTime.now())
-                .where(PLATFORM_JOB.ID.eq(jobId)).execute();
-    }
-
     public void updateMask(String jobId, int requiredMask, int completedMask, int failedMask) {
         dsl.update(PLATFORM_JOB)
                 .set(PLATFORM_JOB.REQUIRED_MASK, Integer.valueOf(requiredMask))
                 .set(PLATFORM_JOB.COMPLETED_MASK, Integer.valueOf(completedMask))
                 .set(PLATFORM_JOB.FAILED_MASK, Integer.valueOf(failedMask))
-                .set(PLATFORM_JOB.UPDATED_AT, LocalDateTime.now())
-                .where(PLATFORM_JOB.ID.eq(jobId)).execute();
-    }
-
-    public void markCompleted(String jobId) {
-        dsl.update(PLATFORM_JOB)
-                .set(PLATFORM_JOB.STATUS, "COMPLETED")
-                .set(PLATFORM_JOB.COMPLETED_AT, LocalDateTime.now())
-                .set(PLATFORM_JOB.UPDATED_AT, LocalDateTime.now())
-                .where(PLATFORM_JOB.ID.eq(jobId)).execute();
-    }
-
-    public void markFailed(String jobId) {
-        dsl.update(PLATFORM_JOB)
-                .set(PLATFORM_JOB.STATUS, "FAILED")
                 .set(PLATFORM_JOB.UPDATED_AT, LocalDateTime.now())
                 .where(PLATFORM_JOB.ID.eq(jobId)).execute();
     }

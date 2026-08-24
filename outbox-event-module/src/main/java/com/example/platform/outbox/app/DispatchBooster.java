@@ -1,7 +1,5 @@
 package com.example.platform.outbox.app;
 
-import com.example.platform.outbox.coordination.PlatformTaskDispatcher;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,12 +19,9 @@ public class DispatchBooster {
 
     private static final Logger log = LoggerFactory.getLogger(DispatchBooster.class);
     private final OutboxEventDispatcher outboxDispatcher;
-    private final PlatformTaskDispatcher taskDispatcher;
 
-    public DispatchBooster(OutboxEventDispatcher outboxDispatcher,
-                              PlatformTaskDispatcher taskDispatcher) {
+    public DispatchBooster(OutboxEventDispatcher outboxDispatcher) {
         this.outboxDispatcher = outboxDispatcher;
-        this.taskDispatcher = taskDispatcher;
     }
 
     @Scheduled(fixedDelay = 500)
@@ -38,12 +33,4 @@ public class DispatchBooster {
         }
     }
 
-    @Scheduled(fixedDelay = 500)
-    public void boostTasks() {
-        try {
-            taskDispatcher.dispatch();
-        } catch (Exception e) {
-            log.trace("Boost tasks: {}", e.getMessage());
-        }
-    }
 }

@@ -107,6 +107,30 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertTrue(tables.contains("render_job_lease"), "render_job_lease required");
         assertTrue(tables.contains("render_job_queue"), "render_job_queue required");
         assertTrue(tables.contains("render_worker"), "render_worker required");
+        assertTrue(tables.contains("wf_request_work_resolution"),
+                "worker-fabric RequestWork resolution authority required");
+        assertTrue(tables.contains("wf_host_resource_snapshot"),
+                "worker-fabric host snapshot authority required");
+        assertTrue(tables.contains("wf_host_resource_snapshot_device"),
+                "worker-fabric immutable host snapshot device membership required");
+        assertTrue(tables.contains("wf_host_snapshot_generation_authority"),
+                "worker-fabric durable host snapshot generation authority required");
+        assertTrue(tables.contains("wf_host_registration"),
+                "worker-fabric host registration authority required");
+        assertTrue(tables.contains("wf_runtime_registration"),
+                "worker-fabric runtime registration authority required");
+        assertTrue(tables.contains("wf_execution_backend_selection"),
+                "worker-fabric placement authority required");
+        assertTrue(tables.contains("wf_execution_assignment"),
+                "worker-fabric execution assignment authority required");
+        assertTrue(tables.contains("wf_reservation"),
+                "worker-fabric reservation authority required");
+        assertTrue(tables.contains("wf_task_lease"),
+                "worker-fabric task lease authority required");
+        assertTrue(tables.contains("wf_execution_observation"),
+                "worker-fabric normalized observation evidence required");
+        assertTrue(tables.contains("wf_completion_event"),
+                "worker-fabric fenced completion authority required");
         assertTrue(tables.contains("render_usage_record"), "render_usage_record required");
         assertTrue(tables.contains("render_billing_record"), "render_billing_record required");
         // P1: ownerless Product-layer tables retired (render_history, render_preset, asset_library,

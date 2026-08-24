@@ -7,9 +7,15 @@ EPOCH_2_STATUS=CLOSED
 EPOCH_3_STATUS=GO
 
 MASTER_SPEC_SHA256_PREFIX=729a83af
-CORRECTION_1_PACKET_SHA256=60a9e805dd5fb4453f0e1f72f6b3ce52cf87c0ba12e62f9e2c03e9cf7fbfe6dc
+CORRECTION_1_PACKET_SHA256=80933ebb346af1ccae829ef6dc1fb12c7bfe95780b014a929b624d612b2f2fbe
 CORRECTION_2_PACKET_SHA256=10a9b7127a46cfd6b3738c3bb134fb6dfce785aaa5f26fcc25c0dd8a0a2bd160
 ADDENDUM=docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md
+
+CORRECTION_1_HASH_RECONCILIATION=The previously recorded 60a9e805dd5fb4453f0e1f72f6b3ce52cf87c0ba12e62f9e2c03e9cf7fbfe6dc
+  matches neither the authoritative/worktree E3-CORRECTION1 packet nor the separately named
+  Epoch-2 CORRECTION1 master prompt. The authoritative Hermes packet and worktree packet are byte
+  identical at 80933ebb346af1ccae829ef6dc1fb12c7bfe95780b014a929b624d612b2f2fbe.
+EPOCH_2_CORRECTION1_MASTER_PROMPT_SHA256=f0449d2fde27c76efe8430b30957c4f55ca8e903566b9c7905af4878cf7ff280
 
 ## Implementation scope (bounded, per ChatGPT Epoch-3 prompt §38)
 

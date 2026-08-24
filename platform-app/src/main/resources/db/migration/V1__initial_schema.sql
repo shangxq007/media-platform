@@ -2970,3 +2970,481 @@ $$ language plpgsql;
 create trigger trg_svd_snapshot_immutable
     before update on source_visual_description_snapshot
     for each row execute function trg_fn_svd_snapshot_immutable();
+
+-- ============================================================
+-- 11. WORKER FABRIC EXECUTION AUTHORITY
+-- ============================================================
+-- Canonical PostgreSQL authority for Roadmap #22 execution-fabric registration,
+-- host snapshots, placement selection, assignment, reservation, lease and lifecycle.
+
+create table wf_worker_runtime_connection (
+    worker_runtime_id varchar(128) primary key,
+    current_incarnation_id varchar(128) not null,
+    connected boolean not null,
+    updated_at timestamptz not null
+);
+
+create table wf_physical_host_connection (
+    physical_host_id varchar(128) primary key,
+    current_incarnation_id varchar(128) not null,
+    connected boolean not null,
+    updated_at timestamptz not null
+);
+
+create table wf_host_registration (
+    physical_host_id varchar(128) not null,
+    physical_host_incarnation_id varchar(128) not null,
+    registered_at timestamptz not null,
+    valid_until timestamptz not null,
+    active boolean not null,
+    primary key (physical_host_id, physical_host_incarnation_id),
+    check (valid_until > registered_at)
+);
+
+create unique index ux_wf_one_active_host_registration
+    on wf_host_registration (physical_host_id) where active;
+
+create table wf_host_snapshot_generation_authority (
+    physical_host_id varchar(128) not null,
+    physical_host_incarnation_id varchar(128) not null,
+    current_generation bigint not null check (current_generation > 0),
+    primary key (physical_host_id, physical_host_incarnation_id),
+    foreign key (physical_host_id, physical_host_incarnation_id)
+        references wf_host_registration (physical_host_id, physical_host_incarnation_id)
+);
+
+create or replace function wf_reject_snapshot_generation_regression()
+returns trigger language plpgsql as $$
+begin
+    if new.current_generation <= old.current_generation then
+        raise exception 'host resource snapshot generation must increase: old %, new %',
+            old.current_generation, new.current_generation;
+    end if;
+    return new;
+end
+$$;
+
+create trigger wf_snapshot_generation_strictly_increases
+before update of current_generation on wf_host_snapshot_generation_authority
+for each row execute function wf_reject_snapshot_generation_regression();
+
+create table wf_host_resource_snapshot (
+    physical_host_id varchar(128) not null,
+    physical_host_incarnation_id varchar(128) not null,
+    snapshot_generation bigint not null check (snapshot_generation > 0),
+    snapshot_fingerprint varchar(64) not null check (length(snapshot_fingerprint) = 64),
+    captured_at timestamptz not null,
+    schema_version integer not null check (schema_version > 0),
+    cpu_millicores bigint not null check (cpu_millicores >= 0),
+    memory_bytes bigint not null check (memory_bytes >= 0),
+    temporary_storage_bytes bigint not null check (temporary_storage_bytes >= 0),
+    safety_headroom_cpu_millicores bigint not null check (
+        safety_headroom_cpu_millicores >= 0),
+    safety_headroom_memory_bytes bigint not null check (
+        safety_headroom_memory_bytes >= 0),
+    safety_headroom_temporary_storage_bytes bigint not null check (
+        safety_headroom_temporary_storage_bytes >= 0),
+    publication_transaction_id bigint not null default txid_current(),
+    primary key (physical_host_id, physical_host_incarnation_id, snapshot_generation),
+    foreign key (physical_host_id, physical_host_incarnation_id)
+        references wf_host_registration (physical_host_id, physical_host_incarnation_id),
+    check (safety_headroom_cpu_millicores <= cpu_millicores),
+    check (safety_headroom_memory_bytes <= memory_bytes),
+    check (safety_headroom_temporary_storage_bytes <= temporary_storage_bytes)
+);
+
+create or replace function wf_reject_published_snapshot_mutation()
+returns trigger language plpgsql as $$
+begin
+    raise exception 'durable host resource snapshot publication is immutable';
+end
+$$;
+
+create trigger wf_host_snapshot_publication_immutable
+before update or delete on wf_host_resource_snapshot
+for each row execute function wf_reject_published_snapshot_mutation();
+
+create table wf_host_resource_snapshot_device (
+    physical_host_id varchar(128) not null,
+    physical_host_incarnation_id varchar(128) not null,
+    snapshot_generation bigint not null,
+    device_id varchar(128) not null,
+    vram_bytes bigint not null check (vram_bytes >= 0),
+    compute_units bigint not null check (compute_units >= 0),
+    encoder_engines bigint not null check (encoder_engines >= 0),
+    decoder_engines bigint not null check (decoder_engines >= 0),
+    safety_headroom_vram_bytes bigint not null check (safety_headroom_vram_bytes >= 0),
+    safety_headroom_compute_units bigint not null check (safety_headroom_compute_units >= 0),
+    safety_headroom_encoder_engines bigint not null check (
+        safety_headroom_encoder_engines >= 0),
+    safety_headroom_decoder_engines bigint not null check (
+        safety_headroom_decoder_engines >= 0),
+    primary key (
+        physical_host_id, physical_host_incarnation_id, snapshot_generation, device_id),
+    foreign key (physical_host_id, physical_host_incarnation_id, snapshot_generation)
+        references wf_host_resource_snapshot (
+            physical_host_id, physical_host_incarnation_id, snapshot_generation),
+    check (safety_headroom_vram_bytes <= vram_bytes),
+    check (safety_headroom_compute_units <= compute_units),
+    check (safety_headroom_encoder_engines <= encoder_engines),
+    check (safety_headroom_decoder_engines <= decoder_engines)
+);
+
+create or replace function wf_require_snapshot_device_publication_transaction()
+returns trigger language plpgsql as $$
+declare snapshot_publication_transaction_id bigint;
+begin
+    select publication_transaction_id into snapshot_publication_transaction_id
+      from wf_host_resource_snapshot
+     where physical_host_id = new.physical_host_id
+       and physical_host_incarnation_id = new.physical_host_incarnation_id
+       and snapshot_generation = new.snapshot_generation;
+    if snapshot_publication_transaction_id is null
+       or snapshot_publication_transaction_id <> txid_current() then
+        raise exception 'host resource snapshot device membership must be inserted in snapshot publication transaction';
+    end if;
+    return new;
+end
+$$;
+
+create trigger wf_snapshot_device_insert_during_publication
+before insert on wf_host_resource_snapshot_device
+for each row execute function wf_require_snapshot_device_publication_transaction();
+
+create or replace function wf_reject_published_snapshot_device_mutation()
+returns trigger language plpgsql as $$
+begin
+    raise exception 'durable host resource snapshot device membership is immutable';
+end
+$$;
+
+create trigger wf_snapshot_device_membership_immutable
+before update or delete on wf_host_resource_snapshot_device
+for each row execute function wf_reject_published_snapshot_device_mutation();
+
+create table wf_runtime_registration (
+    worker_runtime_id varchar(128) not null,
+    worker_runtime_incarnation_id varchar(128) not null,
+    physical_host_id varchar(128) not null,
+    physical_host_incarnation_id varchar(128) not null,
+    registered_at timestamptz not null,
+    valid_until timestamptz not null,
+    active boolean not null,
+    primary key (worker_runtime_id, worker_runtime_incarnation_id),
+    foreign key (physical_host_id, physical_host_incarnation_id)
+        references wf_host_registration (physical_host_id, physical_host_incarnation_id),
+    check (valid_until > registered_at)
+);
+
+create unique index ux_wf_one_active_runtime_registration
+    on wf_runtime_registration (worker_runtime_id) where active;
+
+create table wf_execution_backend_selection (
+    selection_id varchar(128) primary key,
+    task_id varchar(128) not null,
+    backend varchar(64) not null check (
+        backend in ('NATIVE_PULL_WORKER','OPEN_CUE_FARM','REMOTE_PROVIDER')),
+    placement_authority_scope varchar(64) not null check (
+        placement_authority_scope in (
+            'PLATFORM_MANAGED','BACKEND_DELEGATED','REMOTE_PROVIDER_MANAGED')),
+    active boolean not null,
+    selected_at timestamptz not null,
+    terminal_at timestamptz,
+    unique (selection_id, task_id, backend),
+    check ((active and terminal_at is null) or (not active and terminal_at is not null)),
+    check ((backend = 'NATIVE_PULL_WORKER'
+                and placement_authority_scope = 'PLATFORM_MANAGED')
+        or (backend = 'OPEN_CUE_FARM'
+                and placement_authority_scope = 'BACKEND_DELEGATED')
+        or (backend = 'REMOTE_PROVIDER'
+                and placement_authority_scope = 'REMOTE_PROVIDER_MANAGED'))
+);
+
+create unique index ux_wf_one_active_backend_selection_per_task
+    on wf_execution_backend_selection (task_id) where active;
+
+create table wf_execution_ownership_generation (
+    task_id varchar(128) not null,
+    generation bigint not null check (generation > 0),
+    created_at timestamptz not null,
+    primary key (task_id, generation)
+);
+
+create table wf_execution_attempt (
+    attempt_id varchar(128) primary key,
+    task_id varchar(128) not null,
+    generation bigint not null,
+    backend varchar(64) not null,
+    state varchar(32) not null check (
+        state in ('CREATED','RUNNING','SUCCEEDED','FAILED','CANCELLED','ABANDONED')),
+    backend_selection_id varchar(128) not null unique,
+    backend_local_handle_reference varchar(512),
+    created_at timestamptz not null,
+    updated_at timestamptz not null,
+    unique (task_id, generation),
+    constraint ux_wf_execution_attempt_task_generation
+        unique (attempt_id, task_id, generation),
+    constraint ux_wf_execution_attempt_generation
+        unique (attempt_id, generation),
+    foreign key (task_id, generation)
+        references wf_execution_ownership_generation (task_id, generation),
+    foreign key (backend_selection_id, task_id, backend)
+        references wf_execution_backend_selection (selection_id, task_id, backend)
+);
+
+create table wf_execution_assignment (
+    assignment_id varchar(128) primary key,
+    task_id varchar(128) not null,
+    attempt_id varchar(128) not null unique,
+    generation bigint not null,
+    worker_runtime_id varchar(128) not null,
+    worker_runtime_incarnation_id varchar(128) not null,
+    physical_host_id varchar(128) not null,
+    physical_host_incarnation_id varchar(128) not null,
+    created_at timestamptz not null,
+    unique (assignment_id, task_id),
+    unique (assignment_id, task_id, physical_host_id, physical_host_incarnation_id),
+    unique (assignment_id, task_id, attempt_id, generation,
+        worker_runtime_id, worker_runtime_incarnation_id),
+    unique (assignment_id, task_id, attempt_id, generation),
+    foreign key (attempt_id, task_id, generation)
+        references wf_execution_attempt (attempt_id, task_id, generation)
+);
+
+create table wf_execution_observation (
+    observation_id varchar(128) primary key,
+    attempt_id varchar(128) not null,
+    generation bigint not null,
+    observed_state varchar(32) not null check (
+        observed_state in ('SUBMITTED','RUNNING','SUCCEEDED','FAILED','CANCELLED','UNKNOWN')),
+    current_evidence boolean not null,
+    observed_at timestamptz not null,
+    foreign key (attempt_id, generation)
+        references wf_execution_attempt (attempt_id, generation)
+);
+
+create table wf_completion_event (
+    completion_event_id varchar(128) primary key,
+    task_id varchar(128) not null,
+    attempt_id varchar(128) not null,
+    generation bigint not null,
+    artifact_commit_reference varchar(512) not null,
+    artifact_committed_at timestamptz not null,
+    completed_at timestamptz not null,
+    foreign key (attempt_id, task_id, generation)
+        references wf_execution_attempt (attempt_id, task_id, generation)
+);
+
+create table wf_execution_assignment_device (
+    assignment_id varchar(128) not null
+        references wf_execution_assignment (assignment_id) on delete cascade,
+    device_id varchar(128) not null,
+    primary key (assignment_id, device_id)
+);
+
+create table wf_reservation (
+    reservation_id varchar(128) primary key,
+    assignment_id varchar(128) not null references wf_execution_assignment (assignment_id),
+    task_id varchar(128) not null,
+    physical_host_id varchar(128) not null,
+    physical_host_incarnation_id varchar(128) not null,
+    kind varchar(32) not null check (kind in ('TASK','RESIDENT_RUNTIME')),
+    state varchar(32) not null check (state in ('ACTIVE','RECOVERY_HOLD','RELEASED')),
+    cpu_millicores bigint not null check (cpu_millicores >= 0),
+    memory_bytes bigint not null check (memory_bytes >= 0),
+    temporary_storage_bytes bigint not null check (temporary_storage_bytes >= 0),
+    created_at timestamptz not null,
+    unique (reservation_id, assignment_id),
+    foreign key (assignment_id, task_id, physical_host_id, physical_host_incarnation_id)
+        references wf_execution_assignment (
+            assignment_id, task_id, physical_host_id, physical_host_incarnation_id)
+);
+
+create table wf_reservation_device (
+    reservation_id varchar(128) not null
+        references wf_reservation (reservation_id) on delete cascade,
+    device_id varchar(128) not null,
+    vram_bytes bigint not null check (vram_bytes >= 0),
+    compute_units bigint not null check (compute_units >= 0),
+    encoder_engines bigint not null check (encoder_engines >= 0),
+    decoder_engines bigint not null check (decoder_engines >= 0),
+    primary key (reservation_id, device_id)
+);
+
+create unique index ux_wf_one_active_reservation_per_task
+    on wf_reservation (task_id) where state = 'ACTIVE';
+
+create table wf_task_lease (
+    lease_id varchar(128) primary key,
+    task_id varchar(128) not null,
+    assignment_id varchar(128) not null,
+    attempt_id varchar(128) not null,
+    generation bigint not null,
+    worker_runtime_id varchar(128) not null,
+    worker_runtime_incarnation_id varchar(128) not null,
+    expires_at timestamptz not null,
+    last_heartbeat_at timestamptz not null,
+    heartbeat_interval_millis bigint not null check (heartbeat_interval_millis > 0),
+    lease_duration_millis bigint not null check (
+        lease_duration_millis > heartbeat_interval_millis),
+    fencing_token varchar(128) not null unique,
+    active boolean not null,
+    created_at timestamptz not null,
+    unique (lease_id, assignment_id),
+    unique (lease_id, attempt_id, generation),
+    unique (lease_id, task_id, assignment_id, attempt_id, generation),
+    foreign key (assignment_id, task_id, attempt_id, generation)
+        references wf_execution_assignment (assignment_id, task_id, attempt_id, generation),
+    foreign key (assignment_id, task_id, attempt_id, generation,
+            worker_runtime_id, worker_runtime_incarnation_id)
+        references wf_execution_assignment (assignment_id, task_id, attempt_id, generation,
+            worker_runtime_id, worker_runtime_incarnation_id),
+    check (expires_at > last_heartbeat_at)
+);
+
+create unique index ux_wf_one_active_native_lease_per_task
+    on wf_task_lease (task_id) where active;
+
+create table wf_task_lease_reservation (
+    lease_id varchar(128) not null,
+    reservation_id varchar(128) not null,
+    assignment_id varchar(128) not null,
+    primary key (lease_id, reservation_id),
+    foreign key (lease_id, assignment_id)
+        references wf_task_lease (lease_id, assignment_id) on delete cascade,
+    foreign key (reservation_id, assignment_id)
+        references wf_reservation (reservation_id, assignment_id)
+);
+
+create table wf_task_ownership (
+    task_id varchar(128) primary key,
+    current_generation bigint not null check (current_generation >= 0),
+    current_attempt_id varchar(128),
+    active_assignment_id varchar(128),
+    active_lease_id varchar(128),
+    claimable boolean not null,
+    updated_at timestamptz not null,
+    check ((claimable and current_attempt_id is null
+                and active_assignment_id is null and active_lease_id is null)
+        or (not claimable and current_generation > 0
+                and current_attempt_id is not null
+                and active_assignment_id is not null and active_lease_id is not null)),
+    foreign key (active_assignment_id, task_id, current_attempt_id, current_generation)
+        references wf_execution_assignment (assignment_id, task_id, attempt_id, generation),
+    foreign key (active_lease_id, task_id, active_assignment_id,
+            current_attempt_id, current_generation)
+        references wf_task_lease (lease_id, task_id, assignment_id, attempt_id, generation)
+);
+
+create table wf_request_work_resolution (
+    request_work_id varchar(128) primary key,
+    request_context_fingerprint varchar(64) not null
+        check (length(request_context_fingerprint) = 64),
+    result_kind varchar(32) not null check (
+        result_kind in ('PENDING','GRANTED','NO_WORK','REJECTED','REPROBE_REQUIRED')),
+    failure_reason varchar(128),
+    assignment_id varchar(128) unique references wf_execution_assignment (assignment_id),
+    task_id varchar(128),
+    created_at timestamptz not null,
+    check ((result_kind = 'GRANTED' and assignment_id is not null and task_id is not null
+                and failure_reason is null)
+        or (result_kind in ('PENDING','NO_WORK') and assignment_id is null
+                and task_id is null and failure_reason is null)
+        or (result_kind in ('REJECTED','REPROBE_REQUIRED') and assignment_id is null
+                and task_id is null and failure_reason is not null)),
+    foreign key (assignment_id, task_id)
+        references wf_execution_assignment (assignment_id, task_id)
+);
+
+create table wf_local_admission (
+    lease_id varchar(128) primary key references wf_task_lease (lease_id),
+    attempt_id varchar(128) not null,
+    generation bigint not null,
+    decision varchar(16) not null check (decision in ('ACCEPT','DECLINE')),
+    decline_reason varchar(128),
+    result varchar(64) not null,
+    received_at timestamptz not null,
+    foreign key (lease_id, attempt_id, generation)
+        references wf_task_lease (lease_id, attempt_id, generation),
+    check ((decision = 'ACCEPT' and decline_reason is null)
+        or (decision = 'DECLINE' and decline_reason is not null))
+);
+
+create table wf_physical_release_confirmation (
+    confirmation_id varchar(128) primary key,
+    lease_id varchar(128) not null references wf_task_lease (lease_id),
+    confirmed_at timestamptz not null
+);
+
+create or replace function wf_assert_assignment_has_reservation()
+returns trigger language plpgsql as $$
+declare target_assignment varchar(128);
+begin
+    target_assignment := coalesce(new.assignment_id, old.assignment_id);
+    if exists (select 1 from wf_execution_assignment where assignment_id = target_assignment)
+       and not exists (select 1 from wf_reservation where assignment_id = target_assignment) then
+        raise exception 'execution assignment % has no reservation', target_assignment;
+    end if;
+    return null;
+end
+$$;
+
+create constraint trigger wf_assignment_requires_reservation
+after insert or update on wf_execution_assignment
+deferrable initially deferred
+for each row execute function wf_assert_assignment_has_reservation();
+
+create constraint trigger wf_reservation_delete_preserves_assignment
+after delete or update of assignment_id on wf_reservation
+deferrable initially deferred
+for each row execute function wf_assert_assignment_has_reservation();
+
+create or replace function wf_assert_lease_reservation_set()
+returns trigger language plpgsql as $$
+declare target_lease varchar(128);
+declare target_assignment varchar(128);
+begin
+    target_lease := coalesce(new.lease_id, old.lease_id);
+    select assignment_id into target_assignment
+      from wf_task_lease where lease_id = target_lease;
+    if target_assignment is not null and (
+        not exists (select 1 from wf_task_lease_reservation where lease_id = target_lease)
+        or exists (
+            select 1 from wf_reservation r
+             where r.assignment_id = target_assignment
+               and not exists (
+                   select 1 from wf_task_lease_reservation lr
+                    where lr.lease_id = target_lease
+                      and lr.reservation_id = r.reservation_id))) then
+        raise exception 'lease % does not cover its assignment reservations', target_lease;
+    end if;
+    return null;
+end
+$$;
+
+create constraint trigger wf_lease_requires_reservation_set
+after insert or update on wf_task_lease
+deferrable initially deferred
+for each row execute function wf_assert_lease_reservation_set();
+
+create constraint trigger wf_lease_reservation_delete_preserves_set
+after delete or update on wf_task_lease_reservation
+deferrable initially deferred
+for each row execute function wf_assert_lease_reservation_set();
+
+create or replace function wf_close_terminal_backend_selection()
+returns trigger language plpgsql as $$
+begin
+    if new.state in ('SUCCEEDED','FAILED','CANCELLED','ABANDONED')
+       and old.state is distinct from new.state then
+        update wf_execution_backend_selection
+           set active = false, terminal_at = new.updated_at
+         where selection_id = new.backend_selection_id and active;
+    end if;
+    return new;
+end
+$$;
+
+create trigger wf_attempt_terminal_closes_backend_selection
+after update of state on wf_execution_attempt
+for each row execute function wf_close_terminal_backend_selection();

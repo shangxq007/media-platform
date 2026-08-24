@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class LocalWorkerRuntimeIncarnationBindingTest {
@@ -18,17 +21,23 @@ class LocalWorkerRuntimeIncarnationBindingTest {
     private static final WorkerRuntimeId RUNTIME_ID = WorkerRuntimeId.of("runtime-1");
     private static final WorkerRuntimeIncarnationId RUNTIME_INCARNATION =
             WorkerRuntimeIncarnationId.of("runtime-registration-1");
+    private static final Instant NOW = Instant.parse("2026-08-24T00:00:00Z");
+    private static final HostResourceSnapshotFreshnessPolicy FRESHNESS_POLICY =
+            new HostResourceSnapshotFreshnessPolicy(
+                    Duration.ofMinutes(5), HostResourceSnapshotSchemaVersion.CURRENT);
 
     @Test
     void matchingRuntimeHostIncarnationBindingSucceeds() {
         SchedulableCapacity result = SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 reachableRuntime(),
                 currentBinding(),
-                localDescriptor(HOST_ID));
+                localDescriptor(HOST_ID),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertThat(result.available()).isTrue();
         assertThat(result.cpu()).isEqualTo(CpuCapacity.ofMillicores(8_000));
@@ -81,13 +90,15 @@ class LocalWorkerRuntimeIncarnationBindingTest {
     @Test
     void descriptorHostMismatchFailsClosed() {
         assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 reachableRuntime(),
                 currentBinding(),
-                localDescriptor(PhysicalHostId.of("host-2"))));
+                localDescriptor(PhysicalHostId.of("host-2")),
+                FRESHNESS_POLICY,
+                NOW));
     }
 
     @Test
@@ -96,13 +107,15 @@ class LocalWorkerRuntimeIncarnationBindingTest {
                 HOST_ID, HOST_INCARNATION, AvailabilityState.UNREACHABLE);
 
         SchedulableCapacity result = SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 unreachableHost,
                 reachableRuntime(),
                 currentBinding(),
-                localDescriptor(HOST_ID));
+                localDescriptor(HOST_ID),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertUnavailable(result);
     }
@@ -113,13 +126,15 @@ class LocalWorkerRuntimeIncarnationBindingTest {
                 RUNTIME_ID, RUNTIME_INCARNATION, AvailabilityState.UNREACHABLE);
 
         SchedulableCapacity result = SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 unreachableRuntime,
                 currentBinding(),
-                localDescriptor(HOST_ID));
+                localDescriptor(HOST_ID),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertUnavailable(result);
     }
@@ -130,13 +145,15 @@ class LocalWorkerRuntimeIncarnationBindingTest {
                 WorkerRuntimeId.of("runtime-2"), RuntimeLifecycleKind.RESIDENT_RUNTIME, HOST_ID);
 
         assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 reachableRuntime(),
                 currentBinding(),
-                wrongRuntimeDescriptor));
+                wrongRuntimeDescriptor,
+                FRESHNESS_POLICY,
+                NOW));
     }
 
     @Test
@@ -145,13 +162,15 @@ class LocalWorkerRuntimeIncarnationBindingTest {
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
-                        staticCapacity(),
+                        snapshot(),
                         List.of(),
                         SafetyHeadroom.none(),
                         reachableHost(),
                         reachableRuntime(),
                         currentBinding(),
-                        remoteDescriptor))
+                        remoteDescriptor,
+                        FRESHNESS_POLICY,
+                        NOW))
                 .withMessageContaining("REMOTE_RUNTIME");
     }
 
@@ -174,13 +193,15 @@ class LocalWorkerRuntimeIncarnationBindingTest {
     @Test
     void matchingLocalDescriptorBindingAndAvailabilitySucceeds() {
         SchedulableCapacity result = SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 reachableRuntime(),
                 currentBinding(),
-                localDescriptor(HOST_ID));
+                localDescriptor(HOST_ID),
+                FRESHNESS_POLICY,
+                NOW);
 
         assertThat(result.available()).isTrue();
         assertThat(result.cpu()).isEqualTo(CpuCapacity.ofMillicores(8_000));
@@ -192,13 +213,15 @@ class LocalWorkerRuntimeIncarnationBindingTest {
                 localDescriptor(PhysicalHostId.of("host-2"));
 
         assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 reachableHost(),
                 reachableRuntime(),
                 currentBinding(),
-                wrongHostDescriptor));
+                wrongHostDescriptor,
+                FRESHNESS_POLICY,
+                NOW));
     }
 
     @Test
@@ -228,13 +251,15 @@ class LocalWorkerRuntimeIncarnationBindingTest {
             PhysicalHostAvailability hostAvailability,
             WorkerRuntimeAvailability runtimeAvailability) {
         assertThatIllegalArgumentException().isThrownBy(() -> SchedulableCapacity.forLocalRuntime(
-                staticCapacity(),
+                snapshot(),
                 List.of(),
                 SafetyHeadroom.none(),
                 hostAvailability,
                 runtimeAvailability,
                 binding,
-                localDescriptor(HOST_ID)));
+                localDescriptor(HOST_ID),
+                FRESHNESS_POLICY,
+                NOW));
     }
 
     private static List<Method> localRuntimeCapacityEntrypoints() {
@@ -277,5 +302,21 @@ class LocalWorkerRuntimeIncarnationBindingTest {
                 MemoryCapacity.ofBytes(64_000),
                 TemporaryStorageCapacity.ofBytes(100_000),
                 Map.of());
+    }
+
+    private static HostResourceSnapshot snapshot() {
+        return new HostResourceSnapshot(
+                HOST_ID,
+                HOST_INCARNATION,
+                HostResourceSnapshotGeneration.first(),
+                NOW,
+                HostResourceSnapshotSchemaVersion.CURRENT,
+                staticCapacity(),
+                new ObservedUsage(
+                        new ObservedCpuUsage(0.0),
+                        new ObservedMemoryUsage(0),
+                        new ObservedTemporaryStorageUsage(0),
+                        Map.of()),
+                Optional.empty());
     }
 }

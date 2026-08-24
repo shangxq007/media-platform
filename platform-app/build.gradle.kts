@@ -38,6 +38,7 @@ dependencies {
     implementation(project(":federation-query-module"))
     implementation(project(":user-analytics-module"))
     implementation(project(":social-publish-module"))
+    implementation(project(":worker-fabric-module"))
 
     implementation("org.springframework.boot:spring-boot-starter-graphql")
 

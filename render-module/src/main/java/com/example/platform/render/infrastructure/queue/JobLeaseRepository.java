@@ -4,7 +4,6 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -20,7 +19,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.RenderJobLe
  * <p>Workers must acquire a lease before executing a job.
  * Leases expire after a timeout to prevent deadlocks.
  */
-@Repository
 public class JobLeaseRepository {
 
     private static final Logger log = LoggerFactory.getLogger(JobLeaseRepository.class);

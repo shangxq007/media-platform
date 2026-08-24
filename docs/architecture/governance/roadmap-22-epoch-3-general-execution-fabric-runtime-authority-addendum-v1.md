@@ -66,8 +66,9 @@ REMOTE_RUNTIME_DECISION=KEEP_NARROW_PLATFORM_MANAGED
 
 | Surface | Classification | Rationale |
 |---|---|---|
-| render-module farm RenderJobLease* (5 files) + RenderFarmWorkerController | REUSE_MECHANICS_ONLY | lease/heartbeat mechanics reusable; NOT execution authority; #22 TaskLease is canonical |
-| outbox-event-module PlatformTask/Dispatcher/CoordinationService (5 files) | DEFER_WITH_EXPLICIT_REASON | outbox delivery coordination; Epoch 3 freezes outbox architecture (DB→outbox→dispatcher→idempotent consumer) but does NOT replace PlatformTask mechanics yet |
+| render-module farm lease mechanics (5 structurally detected files) | RETIRED_INERT_MECHANICS | controller removed; farm services/repositories and stale compensation are not Spring components or scheduled consumers; active registration/heartbeat/claim/completion/expiry consumer count is zero; #22 TaskLease is canonical |
+| render-module legacy queue/lease execution path (4 files) | RETIRED_INERT_MECHANICS | WorkerScheduler, RenderWorkerService, JobLeaseRepository, and RenderJobQueue are no longer Spring components/scheduled consumers; active queue lifecycle authority count is zero |
+| outbox-event-module PlatformTask delivery data/coordination (4 structurally detected files) | DELIVERY_COORDINATION_ONLY | PlatformTask dispatcher and all lease/complete/fail/expiry mutators removed; remaining surfaces create/read immutable delivery intents and cannot mutate execution lifecycle state |
 | render-module MultiProviderPipelineService | NON_OVERLAPPING_KEEP | render-domain pipeline routing, not runtime authority |
 | extension-module PlatformPluginPoints/ThirdPartyRenderProviderExtension | NON_OVERLAPPING_KEEP | extension SPI, not runtime authority |
 | docs/deprecated/javacv/ (deleted Epoch 1) | N/A | already removed |

@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
-import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
@@ -49,52 +48,6 @@ public class PlatformTaskRepository {
                 .where(PLATFORM_TASK.JOB_ID.eq(jobId))
                 .orderBy(PLATFORM_TASK.BIT_POSITION.asc())
                 .fetch().map(PlatformTaskRepository::mapTask);
-    }
-
-    public boolean lease(String taskId) {
-        return dsl.update(PLATFORM_TASK)
-                .set(PLATFORM_TASK.STATUS, "LEASED")
-                .set(PLATFORM_TASK.STARTED_AT, LocalDateTime.now())
-                .set(PLATFORM_TASK.UPDATED_AT, LocalDateTime.now())
-                .where(PLATFORM_TASK.ID.eq(taskId).and(PLATFORM_TASK.STATUS.eq("PENDING")))
-                .execute() > 0;
-    }
-
-    public void complete(String taskId, String resultRef) {
-        dsl.update(PLATFORM_TASK)
-                .set(PLATFORM_TASK.STATUS, "COMPLETED")
-                .set(PLATFORM_TASK.RESULT_REF, resultRef)
-                .set(PLATFORM_TASK.COMPLETED_AT, LocalDateTime.now())
-                .set(PLATFORM_TASK.UPDATED_AT, LocalDateTime.now())
-                .where(PLATFORM_TASK.ID.eq(taskId)).execute();
-    }
-
-    public void fail(String taskId, String errorMessage) {
-        dsl.update(PLATFORM_TASK)
-                .set(PLATFORM_TASK.STATUS, "FAILED")
-                .set(PLATFORM_TASK.ERROR_MESSAGE, errorMessage)
-                .set(PLATFORM_TASK.UPDATED_AT, LocalDateTime.now())
-                .where(PLATFORM_TASK.ID.eq(taskId)).execute();
-    }
-
-    public List<PlatformTask> listPendingByCapability(TaskCapability capability, int limit) {
-        return dsl.select().from(PLATFORM_TASK)
-                .where(PLATFORM_TASK.CAPABILITY.eq(capability.name())
-                        .and(PLATFORM_TASK.STATUS.eq("PENDING")))
-                .orderBy(PLATFORM_TASK.CREATED_AT.asc())
-                .limit(limit)
-                .fetch().map(PlatformTaskRepository::mapTask);
-    }
-
-    public int resetStaleLeases(int leaseTimeoutMinutes) {
-        Condition stale = PLATFORM_TASK.STATUS.eq("LEASED")
-                .and(PLATFORM_TASK.STARTED_AT.lt(LocalDateTime.now().minusMinutes(leaseTimeoutMinutes)));
-        return dsl.update(PLATFORM_TASK)
-                .set(PLATFORM_TASK.STATUS, "PENDING")
-                .set(PLATFORM_TASK.STARTED_AT, (LocalDateTime) null)
-                .set(PLATFORM_TASK.UPDATED_AT, LocalDateTime.now())
-                .where(stale)
-                .execute();
     }
 
     private static PlatformTask mapTask(Record r) {

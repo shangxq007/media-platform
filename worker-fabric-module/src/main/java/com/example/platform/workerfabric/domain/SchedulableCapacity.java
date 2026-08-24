@@ -1,5 +1,6 @@
 package com.example.platform.workerfabric.domain;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,16 +10,22 @@ import java.util.Objects;
  * Capacity available for placement after the frozen reservation-first rule.
  *
  * <p>STATIC_CAPACITY - ACTIVE_RESERVATIONS - RECOVERY_HOLD_RESERVATIONS
- * - RESIDENT_RESERVATIONS - SAFETY_HEADROOM. Observed usage is deliberately not an input.
+ * - RESIDENT_RESERVATIONS - SAFETY_HEADROOM. Observation never replaces that arithmetic;
+ * contradictory observation only fails new assignment closed for reconciliation.
  */
 public record SchedulableCapacity(
-        boolean available,
+        PhysicalHostId physicalHostId,
+        PhysicalHostIncarnationId physicalHostIncarnationId,
+        SchedulableCapacityDisposition disposition,
         CpuCapacity cpu,
         MemoryCapacity memory,
         TemporaryStorageCapacity temporaryStorage,
         Map<DeviceId, DeviceResourceCapacity> deviceResources) {
 
     public SchedulableCapacity {
+        Objects.requireNonNull(physicalHostId, "physicalHostId");
+        Objects.requireNonNull(physicalHostIncarnationId, "physicalHostIncarnationId");
+        Objects.requireNonNull(disposition, "disposition");
         Objects.requireNonNull(cpu, "cpu");
         Objects.requireNonNull(memory, "memory");
         Objects.requireNonNull(temporaryStorage, "temporaryStorage");
@@ -30,7 +37,8 @@ public record SchedulableCapacity(
                 throw new IllegalArgumentException("device resource key must match its DeviceId");
             }
         });
-        if (!available && (cpu.millicores() != 0
+        if (disposition != SchedulableCapacityDisposition.AVAILABLE
+                && (cpu.millicores() != 0
                 || memory.bytes() != 0
                 || temporaryStorage.bytes() != 0
                 || deviceResources.values().stream().anyMatch(SchedulableCapacity::hasCapacity))) {
@@ -38,39 +46,82 @@ public record SchedulableCapacity(
         }
     }
 
+    public boolean available() {
+        return disposition == SchedulableCapacityDisposition.AVAILABLE;
+    }
+
     public static SchedulableCapacity forHost(
-            CapacitySnapshot staticCapacity,
+            HostResourceSnapshot snapshot,
             Collection<Reservation> reservations,
             SafetyHeadroom safetyHeadroom,
-            PhysicalHostAvailability hostAvailability) {
-        Objects.requireNonNull(hostAvailability, "hostAvailability");
+            PhysicalHostAvailability hostAvailability,
+            HostResourceSnapshotFreshnessPolicy freshnessPolicy,
+            Instant evaluatedAt) {
+        validateHostSnapshot(snapshot, hostAvailability);
+        validateReservationScope(reservations, snapshot.physicalHostId());
+        Objects.requireNonNull(safetyHeadroom, "safetyHeadroom");
+        HostResourceSnapshotFreshness freshness = Objects.requireNonNull(freshnessPolicy, "freshnessPolicy")
+                .assess(java.util.Optional.of(snapshot), hostAvailability, evaluatedAt);
+        if (!freshness.permitsAssignment()) {
+            return unavailable(snapshot, disposition(freshness));
+        }
+        if (observationContradictsStaticCapacity(snapshot)) {
+            return unavailable(snapshot, SchedulableCapacityDisposition.RECONCILIATION_REQUIRED);
+        }
         return calculate(
-                staticCapacity,
+                snapshot,
                 reservations,
                 safetyHeadroom,
-                hostAvailability.physicalHostId(),
                 hostAvailability.isReachable());
     }
 
     public static SchedulableCapacity forLocalRuntime(
-            CapacitySnapshot staticCapacity,
+            HostResourceSnapshot snapshot,
             Collection<Reservation> reservations,
             SafetyHeadroom safetyHeadroom,
             PhysicalHostAvailability hostAvailability,
             WorkerRuntimeAvailability runtimeAvailability,
             LocalWorkerRuntimeIncarnationBinding binding,
-            WorkerRuntimeDescriptor runtimeDescriptor) {
+            WorkerRuntimeDescriptor runtimeDescriptor,
+            HostResourceSnapshotFreshnessPolicy freshnessPolicy,
+            Instant evaluatedAt) {
+        validateHostSnapshot(snapshot, hostAvailability);
         validateLocalRuntimeBinding(
-                hostAvailability, runtimeAvailability, binding, runtimeDescriptor);
+                snapshot, hostAvailability, runtimeAvailability, binding, runtimeDescriptor);
+        validateReservationScope(reservations, snapshot.physicalHostId());
+        Objects.requireNonNull(safetyHeadroom, "safetyHeadroom");
+        HostResourceSnapshotFreshness freshness = Objects.requireNonNull(freshnessPolicy, "freshnessPolicy")
+                .assess(java.util.Optional.of(snapshot), hostAvailability, evaluatedAt);
+        if (!freshness.permitsAssignment()) {
+            return unavailable(snapshot, disposition(freshness));
+        }
+        if (!runtimeAvailability.isReachable()) {
+            return unavailable(snapshot, SchedulableCapacityDisposition.NO_ASSIGNMENT);
+        }
+        if (observationContradictsStaticCapacity(snapshot)) {
+            return unavailable(snapshot, SchedulableCapacityDisposition.RECONCILIATION_REQUIRED);
+        }
         return calculate(
-                staticCapacity,
+                snapshot,
                 reservations,
                 safetyHeadroom,
-                hostAvailability.physicalHostId(),
                 hostAvailability.isReachable() && runtimeAvailability.isReachable());
     }
 
+    private static void validateHostSnapshot(
+            HostResourceSnapshot snapshot,
+            PhysicalHostAvailability hostAvailability) {
+        Objects.requireNonNull(snapshot, "snapshot");
+        Objects.requireNonNull(hostAvailability, "hostAvailability");
+        if (!hostAvailability.matchesCurrentIncarnation(
+                snapshot.physicalHostId(), snapshot.physicalHostIncarnationId())) {
+            throw new IllegalArgumentException(
+                    "host resource snapshot does not match the available physical-host incarnation");
+        }
+    }
+
     private static void validateLocalRuntimeBinding(
+            HostResourceSnapshot snapshot,
             PhysicalHostAvailability hostAvailability,
             WorkerRuntimeAvailability runtimeAvailability,
             LocalWorkerRuntimeIncarnationBinding binding,
@@ -110,21 +161,28 @@ public record SchedulableCapacity(
             throw new IllegalArgumentException(
                     "local runtime binding PhysicalHostIncarnationId does not match host availability");
         }
+        if (!binding.physicalHostId().equals(snapshot.physicalHostId())) {
+            throw new IllegalArgumentException(
+                    "local runtime binding PhysicalHostId does not match host resource snapshot");
+        }
+        if (!binding.physicalHostIncarnationId().equals(snapshot.physicalHostIncarnationId())) {
+            throw new IllegalArgumentException(
+                    "local runtime binding PhysicalHostIncarnationId does not match host resource snapshot");
+        }
     }
 
     private static SchedulableCapacity calculate(
-            CapacitySnapshot staticCapacity,
+            HostResourceSnapshot snapshot,
             Collection<Reservation> reservations,
             SafetyHeadroom safetyHeadroom,
-            PhysicalHostId physicalHostId,
             boolean targetReachable) {
+        CapacitySnapshot staticCapacity = snapshot.staticCapacity();
         Objects.requireNonNull(staticCapacity, "staticCapacity");
         Objects.requireNonNull(reservations, "reservations");
         Objects.requireNonNull(safetyHeadroom, "safetyHeadroom");
-        Objects.requireNonNull(physicalHostId, "physicalHostId");
 
         if (!targetReachable) {
-            return unavailable(staticCapacity);
+            return unavailable(snapshot, SchedulableCapacityDisposition.NO_ASSIGNMENT);
         }
 
         ResourceAccumulator active = new ResourceAccumulator();
@@ -133,8 +191,7 @@ public record SchedulableCapacity(
 
         for (Reservation reservation : reservations) {
             Objects.requireNonNull(reservation, "reservation");
-            if (!physicalHostId.equals(reservation.physicalHostId())
-                    || reservation.state() == ReservationState.RELEASED) {
+            if (reservation.state() == ReservationState.RELEASED) {
                 continue;
             }
             if (reservation.isResident()) {
@@ -152,12 +209,17 @@ public record SchedulableCapacity(
         unavailable.add(resident);
         unavailable.add(safetyHeadroom.resources());
 
-        return subtract(staticCapacity, unavailable);
+        if (unavailable.exceeds(staticCapacity)) {
+            return unavailable(snapshot, SchedulableCapacityDisposition.RECONCILIATION_REQUIRED);
+        }
+
+        return subtract(snapshot, unavailable);
     }
 
     private static SchedulableCapacity subtract(
-            CapacitySnapshot staticCapacity,
+            HostResourceSnapshot snapshot,
             ResourceAccumulator unavailable) {
+        CapacitySnapshot staticCapacity = snapshot.staticCapacity();
         Map<DeviceId, DeviceResourceCapacity> remainingDevices = new LinkedHashMap<>();
         staticCapacity.deviceResources().forEach((deviceId, capacity) -> {
             DeviceTotals withheld = unavailable.devices.getOrDefault(deviceId, DeviceTotals.NONE);
@@ -177,7 +239,9 @@ public record SchedulableCapacity(
         });
 
         return new SchedulableCapacity(
-                true,
+                snapshot.physicalHostId(),
+                snapshot.physicalHostIncarnationId(),
+                SchedulableCapacityDisposition.AVAILABLE,
                 CpuCapacity.ofMillicores(remaining(
                         staticCapacity.cpu().millicores(), unavailable.cpuMillicores)),
                 MemoryCapacity.ofBytes(remaining(
@@ -187,16 +251,61 @@ public record SchedulableCapacity(
                 remainingDevices);
     }
 
-    private static SchedulableCapacity unavailable(CapacitySnapshot staticCapacity) {
+    private static SchedulableCapacity unavailable(
+            HostResourceSnapshot snapshot,
+            SchedulableCapacityDisposition disposition) {
+        if (disposition == SchedulableCapacityDisposition.AVAILABLE) {
+            throw new IllegalArgumentException("unavailable capacity requires a fail-closed disposition");
+        }
+        CapacitySnapshot staticCapacity = snapshot.staticCapacity();
         Map<DeviceId, DeviceResourceCapacity> unavailableDevices = new LinkedHashMap<>();
         staticCapacity.deviceResources().keySet()
                 .forEach(deviceId -> unavailableDevices.put(deviceId, DeviceResourceCapacity.none(deviceId)));
         return new SchedulableCapacity(
-                false,
+                snapshot.physicalHostId(),
+                snapshot.physicalHostIncarnationId(),
+                disposition,
                 CpuCapacity.ofMillicores(0),
                 MemoryCapacity.ofBytes(0),
                 TemporaryStorageCapacity.ofBytes(0),
                 unavailableDevices);
+    }
+
+    private static SchedulableCapacityDisposition disposition(
+            HostResourceSnapshotFreshness freshness) {
+        return switch (freshness.status()) {
+            case FRESH -> SchedulableCapacityDisposition.AVAILABLE;
+            case NO_ASSIGNMENT -> SchedulableCapacityDisposition.NO_ASSIGNMENT;
+            case REPROBE_REQUIRED -> SchedulableCapacityDisposition.REPROBE_REQUIRED;
+            case FAIL_CLOSED -> SchedulableCapacityDisposition.FAIL_CLOSED;
+        };
+    }
+
+    private static void validateReservationScope(
+            Collection<Reservation> reservations,
+            PhysicalHostId physicalHostId) {
+        Objects.requireNonNull(reservations, "reservations");
+        Objects.requireNonNull(physicalHostId, "physicalHostId");
+        reservations.forEach(reservation -> {
+            Objects.requireNonNull(reservation, "reservation");
+            if (!physicalHostId.equals(reservation.physicalHostId())) {
+                throw new IllegalArgumentException(
+                        "reservation host scope does not match host resource snapshot");
+            }
+        });
+    }
+
+    private static boolean observationContradictsStaticCapacity(HostResourceSnapshot snapshot) {
+        CapacitySnapshot capacity = snapshot.staticCapacity();
+        ObservedUsage usage = snapshot.observedUsage();
+        if (usage.memory().usedBytes() > capacity.memory().bytes()
+                || usage.temporaryStorage().usedBytes() > capacity.temporaryStorage().bytes()) {
+            return true;
+        }
+        return usage.deviceUsage().entrySet().stream().anyMatch(entry -> {
+            DeviceResourceCapacity deviceCapacity = capacity.deviceResources().get(entry.getKey());
+            return deviceCapacity == null || entry.getValue().vramUsedBytes() > deviceCapacity.vramBytes();
+        });
     }
 
     private static long remaining(long capacity, long unavailable) {
@@ -238,6 +347,23 @@ public record SchedulableCapacity(
                     temporaryStorageBytes, other.temporaryStorageBytes);
             other.devices.forEach((deviceId, totals) ->
                     devices.merge(deviceId, totals, DeviceTotals::plus));
+        }
+
+        private boolean exceeds(CapacitySnapshot capacity) {
+            if (cpuMillicores > capacity.cpu().millicores()
+                    || memoryBytes > capacity.memory().bytes()
+                    || temporaryStorageBytes > capacity.temporaryStorage().bytes()) {
+                return true;
+            }
+            return devices.entrySet().stream().anyMatch(entry -> {
+                DeviceResourceCapacity deviceCapacity = capacity.deviceResources().get(entry.getKey());
+                DeviceTotals totals = entry.getValue();
+                return deviceCapacity == null
+                        || totals.vramBytes > deviceCapacity.vramBytes()
+                        || totals.computeUnits > deviceCapacity.computeUnits()
+                        || totals.encoderEngines > deviceCapacity.encoderEngines()
+                        || totals.decoderEngines > deviceCapacity.decoderEngines();
+            });
         }
     }
 

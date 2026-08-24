@@ -11,8 +11,7 @@ import org.junit.jupiter.api.Test;
  *
  * ONE_TASK_CAPABILITY_ONE_HANDLER_AUTHORITY_V1: a capability resolves to
  * exactly one active handler; duplicate registration fails closed regardless
- * of order; missing capability is never silently successful (dispatcher
- * fails the task — see PlatformTaskDispatcher).
+ * of order; missing capability is never silently successful.
  */
 class TaskHandlerRegistryTest {
 
@@ -83,8 +82,7 @@ class TaskHandlerRegistryTest {
         assertThrows(IllegalStateException.class, b::init);
     }
 
-    // TEST-F: missing capability resolves to null → dispatcher fails the task
-    // (PlatformTaskDispatcher: handler == null → coordinationService.failTask)
+    // TEST-F: missing capability resolves to null and can never become a silent success.
     @Test
     void missingCapabilityIsNeverASuccessfulResolution() {
         TaskHandlerRegistry registry = new TaskHandlerRegistry(List.of(new AsrHandler()));

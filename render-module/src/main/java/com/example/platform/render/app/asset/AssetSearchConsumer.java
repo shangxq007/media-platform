@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
  * Consumes asset domain events and triggers search reindex jobs.
  *
  * <p>This consumer does NOT execute the reindex directly. It creates a
- * platform_job with a REINDEX task. The PlatformTaskDispatcher picks up
- * the task and delegates to SearchReindexTaskHandler.</p>
+ * platform_job with a REINDEX delivery intent. Execution lifecycle authority is deliberately
+ * absent from the outbox coordination module.</p>
  */
 @Component
 public class AssetSearchConsumer {

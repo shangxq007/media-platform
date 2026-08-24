@@ -20,7 +20,7 @@ class ModularityTest {
         "identity' depends on named interface(s) 'artifact",
         // identity -> storage: required for project asset storage during import/export
         "identity' depends on named interface(s) 'storage",
-        // render -> outbox: render module uses outbox coordination for task execution, marketplace, search
+        // render -> outbox: render module records delivery coordination intents for marketplace/search
         "render' depends on module 'outbox",
         // render -> outbox app: render uses OutboxEventService for event publishing
         "render' depends on named interface(s) 'outbox",
@@ -121,7 +121,15 @@ class ModularityTest {
         // non-Spring library module (no @ApplicationModule), so Modulith cannot
         // express it in allowedDependencies; registered here per debt-register pattern.
         "render' depends on module 'colorimage",
-        "render' depends on module 'graph"
+        "render' depends on module 'graph",
+        // ROADMAP_22_EPOCH_3: adding worker-fabric to platform-app also makes the
+        // media-execution-plan library visible to Modulith. These are its frozen
+        // #21 render-plan/audio inputs and shared graph-mechanics dependencies.
+        // The target packages are not exposed named interfaces, so retain the
+        // repository debt-register convention with package-specific matches.
+        "execution' depends on non-exposed type com.example.platform.render.domain.renderplan",
+        "execution' depends on non-exposed type com.example.platform.audio.domain.mix",
+        "execution' depends on non-exposed type com.example.platform.graph"
     );
 
     @Test
