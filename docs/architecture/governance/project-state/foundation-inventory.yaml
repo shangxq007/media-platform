@@ -1,3 +1,8 @@
+# FOUNDATION INVENTORY — media-platform
+# Technology/foundation choices with exactly ONE primary status each.
+# Status vocabulary: ADOPTED / PLANNED / POC_CANDIDATE / REFERENCE_ONLY / DEFERRED
+# A tool is never marked integrated unless repository evidence proves it.
+# Mutable index.
 foundations:
 - name: JGit
   category: revision-graph
@@ -165,7 +170,7 @@ foundations:
   category: open-media-interchange
   status: ADOPTED
   architecture_role: editorial interchange adapter/projection (OpenTimelineioAdapter); NOT Timeline authority
-  authority_boundary: adapter/projection boundary frozen by Roadmap
+  authority_boundary: "adapter/projection boundary frozen by Roadmap #17 S1-S20"
   planned_window: current (boundary); library-level integration future
   references:
   - docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md
@@ -400,7 +405,7 @@ foundations:
   status: POC_CANDIDATE
   architecture_role: specialized VFX/offline farm ExecutionBackend
   authority_boundary: execution backend contribution (backend-opencue), never execution-state authority
-  planned_window: Roadmap
+  planned_window: "Roadmap #22 Phase 21 bounded POC"
   references:
   - docs/architecture/governance/roadmap-22-native-pull-lease-execution-backend-amendment-2.md
   notes: OpenCue research examples exist under docs/examples/opencue; no production integration
@@ -490,7 +495,7 @@ foundations:
   status: PLANNED
   architecture_role: FAOF-2 primary theorem-proving POC
   authority_boundary: machine-checked laws for shared semantic/runtime invariants
-  planned_window: Roadmap
+  planned_window: "Roadmap #22 Phase 18"
   references:
   - docs/architecture/governance/project-state/deferred-items.yaml
   notes: deferred-items FAOF_2
@@ -499,7 +504,7 @@ foundations:
   status: POC_CANDIDATE
   architecture_role: FAOF-2 complementary theorem-proving POC
   authority_boundary: machine-checked laws
-  planned_window: Roadmap
+  planned_window: "Roadmap #22 Phase 18"
   references:
   - docs/architecture/governance/project-state/deferred-items.yaml
   notes: deferred-items FAOF_2

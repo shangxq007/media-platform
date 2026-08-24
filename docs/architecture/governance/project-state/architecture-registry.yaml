@@ -12,7 +12,7 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: PLATFORM
   summary: Capability existence != runtime availability != entitlement != permission != quota. Agents/MCP/Skills/Recipes receive principal-filtered effective Capability view. Subscription/business policy never redefines canonical domain semantics.
-  implementation_status: PARTIALLY_IMPLEMENTED (canonical core implemented #13-#19; principal-filtered effective capability view bounded)
+  implementation_status: "PARTIALLY_IMPLEMENTED (canonical core implemented #13-#19; principal-filtered effective capability view bounded)"
   references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md, docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
 
 - id: INFINITE_CANVAS_AND_VISUAL_WORKFLOW_AS_PRODUCT_SURFACES_V1
@@ -36,7 +36,7 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: CANONICAL_SEMANTICS
   summary: Timeline is the canonical media composition authority; applications render/project it but do not own composition semantics.
-  implementation_status: IMPLEMENTED (Timeline V2, Roadmap #14 CLOSED; timeline-module)
+  implementation_status: "IMPLEMENTED (Timeline V2, Roadmap #14 CLOSED; timeline-module)"
   references: [docs/architecture/governance/roadmap-14-timeline-v2.md, docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
 
 - id: APPLICATION_IS_NOT_DOMAIN_AUTHORITY_V1
@@ -61,8 +61,8 @@
   status: IMPLEMENTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: CANONICAL_SEMANTICS
-  summary: Timeline composes media regardless of source kind; TimelineSourceBinding is the sealed typed root (Roadmap #17 S1).
-  implementation_status: IMPLEMENTED (Roadmap #17 CLOSED; timeline-module)
+  summary: "Timeline composes media regardless of source kind; TimelineSourceBinding is the sealed typed root (Roadmap #17 S1)."
+  implementation_status: "IMPLEMENTED (Roadmap #17 CLOSED; timeline-module)"
   references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md]
 
 - id: MEDIA_STREAM_SOURCE_IS_ONE_TIMELINE_SOURCE_KIND_V1
@@ -70,7 +70,7 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: CANONICAL_SEMANTICS
   summary: MEDIA_STREAM is the typed source kind (S4); future kinds are extensible through the sealed model.
-  implementation_status: IMPLEMENTED (Roadmap #17 S4)
+  implementation_status: "IMPLEMENTED (Roadmap #17 S4)"
   references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md]
 
 - id: TIMELINE_SOURCE_BINDINGS_PIN_IMMUTABLE_SOURCE_SEMANTICS_V1
@@ -282,7 +282,7 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: CANONICAL_SEMANTICS
   summary: Canonical transaction flow request -> resolve -> plan -> validate -> preview -> authorize -> atomic apply -> new revision. UI/REST/GraphQL/MCP/agents/recipes/DSL/canvas/workflow must not bypass this boundary.
-  implementation_status: IMPLEMENTED (OperationPlan Transaction V1, Roadmap #19 completion; operation-plan-transaction-model-v1.md)
+  implementation_status: "IMPLEMENTED (OperationPlan Transaction V1, Roadmap #19 completion; operation-plan-transaction-model-v1.md)"
   references: [docs/architecture/governance/operation-plan-transaction-model-v1.md, docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
 
 ## 9E TEMPORAL / RELATIONSHIP / SELECTION
@@ -291,7 +291,7 @@
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: CANONICAL_SEMANTICS
-  summary: Temporal mapping foundation; TimeRange currently lives in MediaStreamSourceBinding (Roadmap #17 S10).
+  summary: "Temporal mapping foundation; TimeRange currently lives in MediaStreamSourceBinding (Roadmap #17 S10)."
   implementation_status: DEFERRED (deferred-items TEMPORAL_MAPPING_FOUNDATION_IMPLEMENTATION)
   references: [docs/architecture/governance/temporal-mapping-foundation-v1.md, docs/architecture/governance/project-state/deferred-items.yaml]
 
@@ -327,7 +327,7 @@
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: PLATFORM
-  summary: Trust, permission and sandbox boundary for extensions and foreign code (Roadmap #22 Phase 17 sandbox/isolation).
+  summary: "Trust, permission and sandbox boundary for extensions and foreign code (Roadmap #22 Phase 17 sandbox/isolation)."
   implementation_status: NOT_STARTED
   references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
 
@@ -623,7 +623,7 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: PROVIDER
   summary: Provider-bound ETG carries execution semantics, never provider-native commands.
-  implementation_status: NOT_STARTED (lowering is Roadmap #22 Phase 15)
+  implementation_status: "NOT_STARTED (lowering is Roadmap #22 Phase 15)"
   references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
 
 - id: PLAN_LOWERER_TRANSLATES_PROVIDER_BOUND_EXECUTION_SEMANTICS_TO_PROVIDER_NATIVE_EXECUTION_PLAN_V1
@@ -737,7 +737,7 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: PROVIDER
   summary: Formal verification targets shared semantic laws, not every provider parameter. Ordinary API binding -> tests; shared laws -> executable laws/Lean4/Coq; concurrent lease/reservation protocols -> TLA+/PlusCal.
-  implementation_status: PARTIALLY_IMPLEMENTED (FAOF-1 in Roadmap #21; FAOF-2+ planned)
+  implementation_status: "PARTIALLY_IMPLEMENTED (FAOF-1 in Roadmap #21; FAOF-2+ planned)"
   references: [docs/architecture/governance/roadmap-21-execution-graph-planning-final-review-and-integration.md]
 
 - id: LEGALITY_BEFORE_OPTIMIZATION_V1
@@ -843,7 +843,7 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: PROVIDER
   summary: Provider version lifecycle is distinct from capability contract lifecycle.
-  implementation_status: NOT_STARTED (capability version lifecycle implemented #16; provider-level lifecycle deferred)
+  implementation_status: "NOT_STARTED (capability version lifecycle implemented #16; provider-level lifecycle deferred)"
   references: [docs/architecture/governance/roadmap-16-capability-version-lifecycle.md]
 
 - id: PROVIDER_VERSION_SUPPORT_POLICY_CONSTRAINS_NEW_BINDING_WITHOUT_REWRITING_HISTORY_V1
@@ -1571,8 +1571,8 @@
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: PLATFORM
-  summary: FAOF-1 implemented in Roadmap #21; FAOF-2 planned after #21/in #22 later phase (Lean4 primary POC, Coq complementary POC); FAOF-3 bounded feasibility in #22, distributed/global optimization #23; FAOF-4 proved semantic rewrite/cost optimization only after execution semantics stabilize.
-  implementation_status: PARTIALLY_IMPLEMENTED (FAOF-1 in Roadmap #21; FAOF-2/3/4 deferred - deferred-items)
+  summary: "FAOF-1 implemented in Roadmap #21; FAOF-2 planned after #21/in #22 later phase (Lean4 primary POC, Coq complementary POC); FAOF-3 bounded feasibility in #22, distributed/global optimization #23; FAOF-4 proved semantic rewrite/cost optimization only after execution semantics stabilize."
+  implementation_status: "PARTIALLY_IMPLEMENTED (FAOF-1 in Roadmap #21; FAOF-2/3/4 deferred - deferred-items)"
   references: [docs/architecture/governance/roadmap-21-execution-graph-planning-final-review-and-integration.md, docs/architecture/governance/project-state/deferred-items.yaml]
 
 - id: FORMAL_VERIFICATION_IS_APPLIED_TO_SHARED_SEMANTIC_AND_RUNTIME_INVARIANTS_NOT_TO_ALL_IMPLEMENTATION_CODE_V1

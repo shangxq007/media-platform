@@ -1,3 +1,7 @@
+# DEFERRED ITEMS — media-platform
+# Consciously deferred work must never silently disappear from project memory.
+# Every entry is DEFERRED or RESOLVED (with evidence). Mutable index.
+# Status vocabulary: DEFERRED / RESOLVED
 deferred_items:
 - id: TIMELINE_ARTIFACT_PIN_EXISTENCE_VALIDATION
   title: Timeline Artifact-pin existence validation
@@ -18,8 +22,8 @@ deferred_items:
 - id: TIMELINE_ARTIFACT_PIN_VALUE_OBJECT_FORM
   title: Dedicated Timeline ArtifactPin value-object form
   status: DEFERRED
-  originating_context: Roadmap
-  earliest_revisit: Artifact staging phase (Roadmap
+  originating_context: "Roadmap #17 S6 - ArtifactPin VO deferred; pin semantics exist as immutable ArtifactId/ContentDigest fields on TimelineSourceBinding"
+  earliest_revisit: "Artifact staging phase (Roadmap #22 Phase 16)"
   trigger: Artifact staging/materialization work starts
   blocking_now: false
   references:
@@ -27,7 +31,7 @@ deferred_items:
 - id: TEMPORAL_MAPPING_FOUNDATION_IMPLEMENTATION
   title: Temporal mapping foundation implementation
   status: DEFERRED
-  originating_context: Roadmap
+  originating_context: "Roadmap #17 S10 - TemporalMapping deferred; exact TimeRange stays in MediaStreamSourceBinding; contract at temporal-mapping-foundation-v1.md"
   earliest_revisit: Real consumer of temporal mapping appears
   trigger: A concrete timeline/effect temporal-mapping requirement
   blocking_now: false
@@ -91,7 +95,7 @@ deferred_items:
   title: Bounded Plugin Runtime V1
   status: DEFERRED
   originating_context: Adopted architecture (9N/9O); bounded scope defined - explicit PluginDescriptor, typed contribution discovery, plugins/*.jar loading, basic classloader boundary, compatibility/version validation, registration, coreDistribution, fullDistribution
-  earliest_revisit: After first real Provider plugin accepted (Roadmap
+  earliest_revisit: "After first real Provider plugin accepted (Roadmap #22 Phase 19 FFmpeg)"
   trigger: provider-ffmpeg.jar accepted and operational
   blocking_now: false
   references:
@@ -288,8 +292,8 @@ deferred_items:
 - id: FAOF_2
   title: FAOF-2 formal foundation (Lean4 primary + Coq complementary POC)
   status: DEFERRED
-  originating_context: Planned after
-  earliest_revisit: Roadmap
+  originating_context: "Planned after #21 / in #22 later phase; Roadmap #22 Phase 18"
+  earliest_revisit: "Roadmap #22 Phase 18"
   trigger: Execution semantics stabilize enough for machine-checked laws
   blocking_now: false
   references:
@@ -297,8 +301,8 @@ deferred_items:
 - id: FAOF_3
   title: FAOF-3 bounded feasibility / distributed global optimization
   status: DEFERRED
-  originating_context: Bounded feasibility in
-  earliest_revisit: Late Roadmap
+  originating_context: "Bounded feasibility in #22; distributed/global optimization belongs to #23"
+  earliest_revisit: "Late Roadmap #22 / Roadmap #23"
   trigger: Semantic rewrite laws proven (FAOF-2)
   blocking_now: false
   references:
@@ -334,7 +338,7 @@ deferred_items:
   title: Output artifact persistence full authority
   status: DEFERRED
   originating_context: FRMC deferred list - output artifact persistence path gap (file digest preserved; no second Artifact authority); artifact authority contracts established later (gcr-2)
-  earliest_revisit: Roadmap
+  earliest_revisit: "Roadmap #22 Phase 16 (artifact staging/materialization)"
   trigger: Phase 16 fenced output completion work starts
   blocking_now: false
   references:

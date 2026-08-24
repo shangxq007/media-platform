@@ -1,3 +1,7 @@
+# VALIDATION INVENTORY — media-platform
+# First-class validation projects. One status each.
+# Validation levels: V1 TECHNICAL CAPABILITY VALIDATION / V2 PRODUCT EXPERIENCE VALIDATION / V3 FULL PLATFORM DOGFOODING
+# No demo is marked complete unless it actually exists. Mutable index.
 validation_projects:
 - id: FIRST_REAL_MEDIA_CUT_V1
   title: First Real Media Cut
@@ -182,7 +186,7 @@ validation_projects:
   - conformance suite pass
   - capability profile revalidation
   artifacts: []
-  next_trigger: Roadmap
+  next_trigger: "Roadmap #22 Phase 19"
 - id: MULTI_SURFACE_SEMANTIC_EQUIVALENCE_V1
   title: Multi-surface semantic equivalence validation
   purpose: Prove that UI/REST/GraphQL/MCP/agents/recipes/DSL/canvas/workflow surfaces reach the same canonical semantics (one semantic core).

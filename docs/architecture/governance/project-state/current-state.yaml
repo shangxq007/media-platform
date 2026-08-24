@@ -45,7 +45,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_EXPANSION_1_REVIEW
+  immediate_next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_YAML_INTEGRITY_CORRECTION_1_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 15
@@ -76,6 +76,8 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_GOVERNANCE_EXPANSION_1_REVIEW
+  next_gate: CHATGPT_PROJECT_ARCHITECTURE_STATE_V1_YAML_INTEGRITY_CORRECTION_1_REVIEW
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+  data_integrity_correction_records:
+  - docs/architecture/governance/project-architecture-state-v1-yaml-semantic-integrity-correction-1.md
