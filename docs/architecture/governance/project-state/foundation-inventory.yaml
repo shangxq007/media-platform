@@ -1,0 +1,583 @@
+# FOUNDATION INVENTORY — media-platform
+# Technology/foundation choices with exactly ONE primary status each.
+# Status vocabulary: ADOPTED / PLANNED / POC_CANDIDATE / REFERENCE_ONLY / DEFERRED
+# A tool is never marked integrated unless repository evidence proves it.
+# Mutable index.
+
+foundations:
+
+- name: JGit
+  category: revision-graph
+  status: PLANNED
+  architecture_role: preferred revision graph mechanics backend
+  authority_boundary: replaceable mechanics; platform owns canonical domain contract, semantic equality, diff, merge
+  planned_window: future revision-backend work
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet a build dependency
+
+- name: Jujutsu
+  category: revision-graph
+  status: POC_CANDIDATE
+  architecture_role: competitive POC candidate to JGit (jj-lib)
+  authority_boundary: replaceable mechanics only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: jj-lib variant; do not combine with JGit into one canonical engine
+
+- name: Dolt
+  category: revision-graph
+  status: REFERENCE_ONLY
+  architecture_role: versioned structured-database architectural reference
+  authority_boundary: reference only; PostgreSQL remains canonical relational store
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no integration intent
+
+- name: PostgreSQL
+  category: relational-database
+  status: ADOPTED
+  architecture_role: canonical relational store
+  authority_boundary: canonical database authority for domain and execution lifecycle state
+  planned_window: current
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+  notes: Flyway V1__initial_schema.sql; pg extensions below are candidates
+
+- name: pg_stat_statements
+  category: postgres-extension
+  status: PLANNED
+  architecture_role: query statistics baseline (early)
+  authority_boundary: diagnostic/observability
+  planned_window: early
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet enabled
+
+- name: pg_trgm
+  category: postgres-extension
+  status: PLANNED
+  architecture_role: trigram indexing (early)
+  authority_boundary: index mechanics
+  planned_window: early
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet enabled
+
+- name: auto_explain
+  category: postgres-extension
+  status: PLANNED
+  architecture_role: query plan diagnostics
+  authority_boundary: diagnostic
+  planned_window: diagnostic phase
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet enabled
+
+- name: HypoPG
+  category: postgres-extension
+  status: PLANNED
+  architecture_role: hypothetical index planning diagnostics
+  authority_boundary: diagnostic
+  planned_window: diagnostic phase
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet enabled
+
+- name: pgvector
+  category: postgres-extension
+  status: DEFERRED
+  architecture_role: vector search for semantic media search / AI retrieval
+  authority_boundary: index mechanics
+  planned_window: when semantic media search becomes real
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items PGVECTOR_ADOPTION
+
+- name: TimescaleDB
+  category: postgres-extension
+  status: DEFERRED
+  architecture_role: time-series for provider/worker/render telemetry
+  authority_boundary: telemetry storage
+  planned_window: when substantial telemetry exists
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items TIMESCALEDB_REEVALUATION
+
+- name: btree_gist
+  category: postgres-extension
+  status: DEFERRED
+  architecture_role: generalized index mechanics
+  authority_boundary: index mechanics
+  planned_window: when concrete use case appears
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet needed
+
+- name: ltree
+  category: postgres-extension
+  status: DEFERRED
+  architecture_role: tree path indexing
+  authority_boundary: index mechanics
+  planned_window: when concrete use case appears
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet needed
+
+- name: Apache AGE
+  category: postgres-extension
+  status: DEFERRED
+  architecture_role: graph extension candidate
+  authority_boundary: none until real requirement; no generic graph-database domain authority
+  planned_window: when real requirement appears
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: deferred until real requirement
+
+- name: PostGIS
+  category: postgres-extension
+  status: DEFERRED
+  architecture_role: geospatial extension candidate
+  authority_boundary: none until real requirement
+  planned_window: when real requirement appears
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: deferred until real requirement
+
+- name: Citus
+  category: postgres-extension
+  status: DEFERRED
+  architecture_role: distributed postgres candidate
+  authority_boundary: none until real requirement
+  planned_window: when real requirement appears
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: deferred until real requirement
+
+- name: OpenDAL
+  category: storage-backend
+  status: ADOPTED
+  architecture_role: storage abstraction layer (storage-provider-opendal module, opendal-java 0.46.4)
+  authority_boundary: mechanics; not Artifact authority
+  planned_window: current
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: validated storage backends via StorageProvider SPI - local, MinIO, S3 (storage-provider-validation.md)
+
+- name: RustFS
+  category: storage-backend
+  status: POC_CANDIDATE
+  architecture_role: self-hosted S3-compatible storage backend
+  authority_boundary: storage mechanics, not Artifact authority
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: candidate through storage abstraction
+
+- name: Cloudflare R2
+  category: storage-backend
+  status: POC_CANDIDATE
+  architecture_role: S3-compatible storage backend
+  authority_boundary: storage mechanics, not Artifact authority
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: candidate through storage abstraction
+
+- name: OpenTimelineIO
+  category: open-media-interchange
+  status: ADOPTED
+  architecture_role: editorial interchange adapter/projection (OpenTimelineioAdapter); NOT Timeline authority
+  authority_boundary: adapter/projection boundary frozen by Roadmap #17 S1-S20
+  planned_window: current (boundary); library-level integration future
+  references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md]
+  notes: TimelineSpec projection exists in render-module interchange
+
+- name: OpenAssetIO
+  category: open-media-interchange
+  status: REFERENCE_ONLY
+  architecture_role: asset/content-management integration interop
+  authority_boundary: not MediaAsset authority
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no integration intent yet
+
+- name: OpenColorIO
+  category: color
+  status: PLANNED
+  architecture_role: color transform execution/interchange
+  authority_boundary: not canonical color authority (color/image foundation implemented natively)
+  planned_window: when color interchange execution is needed
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not a build dependency yet
+
+- name: ACES
+  category: color
+  status: PLANNED
+  architecture_role: camera RAW / ACES ingestion path (rawtoaces)
+  authority_boundary: ingestion mechanics
+  planned_window: when camera RAW ingestion is needed
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet integrated
+
+- name: OpenImageIO
+  category: image
+  status: POC_CANDIDATE
+  architecture_role: image I/O and processing foundation
+  authority_boundary: foundation library, not domain authority
+  planned_window: when native image I/O breadth is needed
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: color-image-module implemented natively; OIIO evaluation pending
+
+- name: OpenEXR
+  category: image
+  status: POC_CANDIDATE
+  architecture_role: image/data representation foundation
+  authority_boundary: foundation library, not domain authority
+  planned_window: when EXR I/O is needed
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: not yet integrated
+
+- name: MaterialX
+  category: material
+  status: DEFERRED
+  architecture_role: primary open material graph/interchange
+  authority_boundary: not canonical material authority
+  planned_window: when material domain starts
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items MATERIALX_OPENPBR_FOUNDATION
+
+- name: OpenPBR
+  category: material
+  status: DEFERRED
+  architecture_role: bounded/common PBR material profile
+  authority_boundary: not global material authority
+  planned_window: with MaterialX foundation
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items MATERIALX_OPENPBR_FOUNDATION
+
+- name: OSL
+  category: shader
+  status: REFERENCE_ONLY
+  architecture_role: shader/lowering target
+  authority_boundary: not platform DSL or domain authority
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no integration intent yet
+
+- name: OpenUSD
+  category: scene
+  status: DEFERRED
+  architecture_role: scene composition/interchange backend
+  authority_boundary: not canonical Scene authority
+  planned_window: when scene domain starts
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items OPENUSD_SCENE_FOUNDATION
+
+- name: Hydra
+  category: scene
+  status: REFERENCE_ONLY
+  architecture_role: scene render delegation/change processing
+  authority_boundary: USD mechanics
+  planned_window: follows OpenUSD foundation
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: reference only
+
+- name: Storm
+  category: scene
+  status: REFERENCE_ONLY
+  architecture_role: reference preview renderer
+  authority_boundary: USD mechanics
+  planned_window: follows OpenUSD foundation
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: reference only
+
+- name: OpenVDB
+  category: volume
+  status: DEFERRED
+  architecture_role: volumetric representation/execution foundation
+  authority_boundary: not canonical volume authority
+  planned_window: when volume domain starts
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items OPENVDB_VOLUME_FOUNDATION
+
+- name: NanoVDB
+  category: volume
+  status: DEFERRED
+  architecture_role: derived GPU representation of OpenVDB
+  authority_boundary: volume mechanics
+  planned_window: follows OpenVDB
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred with OpenVDB
+
+- name: Partio
+  category: particles
+  status: DEFERRED
+  architecture_role: legacy particle interop
+  authority_boundary: interop mechanics
+  planned_window: until real consumer (deferred-items PARTIO_REAL_CONSUMER_GATE)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred until real consumer
+
+- name: OpenFX
+  category: foreign-plugin
+  status: DEFERRED
+  architecture_role: foreign plugin ecosystem hosted through platform adapter/provider
+  authority_boundary: adapter boundary; foreign plugins never get canonical authority
+  planned_window: when hosting need is real (deferred-items OPENFX_HOST)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items OPENFX_HOST
+
+- name: Open RV
+  category: review
+  status: REFERENCE_ONLY
+  architecture_role: review/playback reference/application surface
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no integration intent yet
+
+- name: Gaffer
+  category: review
+  status: REFERENCE_ONLY
+  architecture_role: VFX/lookdev/node-graph/render-dispatch reference
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: study reference for node-graph UX and render dispatch
+
+- name: Blender
+  category: dcc
+  status: POC_CANDIDATE
+  architecture_role: concrete Provider candidate + reference/conformance target
+  authority_boundary: provider contribution, never core domain authority
+  planned_window: future provider work (not scheduled)
+  references: [docs/architecture/governance/project-state/product-reference-inventory.yaml]
+  notes: also a product reference (see product-reference-inventory.yaml)
+
+- name: NVIDIA OpenUSD Exchange SDK
+  category: scene
+  status: POC_CANDIDATE
+  architecture_role: USD interchange SDK candidate
+  authority_boundary: mechanics
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: POC candidate only
+
+- name: NVIDIA Omniverse
+  category: dcc
+  status: POC_CANDIDATE
+  architecture_role: optional product/provider surface
+  authority_boundary: not core authority
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-state/product-reference-inventory.yaml]
+  notes: also a product reference
+
+- name: Vulkan
+  category: gpu
+  status: REFERENCE_ONLY
+  architecture_role: native GPU execution mechanics
+  authority_boundary: mechanics
+  planned_window: when native GPU providers are built
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: reference only
+
+- name: WebGPU
+  category: gpu
+  status: REFERENCE_ONLY
+  architecture_role: browser/client GPU mechanics
+  authority_boundary: mechanics
+  planned_window: when browser surfaces need GPU
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: reference only
+
+- name: JavaCPP
+  category: native-binding
+  status: REFERENCE_ONLY
+  architecture_role: native binding mechanics
+  authority_boundary: not a provider or execution backend (JAVA_CPP_IS_NATIVE_BINDING_MECHANICS_NOT_PROVIDER_OR_EXECUTION_BACKEND_V1)
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: JavaCV previously removed from worker in favor of FFmpeg CLI
+
+- name: JNI
+  category: native-binding
+  status: REFERENCE_ONLY
+  architecture_role: alternative native binding mechanics
+  authority_boundary: mechanics
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: reference only
+
+- name: Panama FFM
+  category: native-binding
+  status: DEFERRED
+  architecture_role: future native binding evaluation
+  authority_boundary: mechanics
+  planned_window: future evaluation (deferred-items PANAMA_FFM_EVALUATION)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items PANAMA_FFM_EVALUATION
+
+- name: OpenCue
+  category: scheduler
+  status: POC_CANDIDATE
+  architecture_role: specialized VFX/offline farm ExecutionBackend
+  authority_boundary: execution backend contribution (backend-opencue), never execution-state authority
+  planned_window: Roadmap #22 Phase 21 bounded POC
+  references: [docs/architecture/governance/roadmap-22-native-pull-lease-execution-backend-amendment-2.md]
+  notes: docs/examples/opencue research exists; no production integration
+
+- name: Kueue
+  category: scheduler
+  status: REFERENCE_ONLY
+  architecture_role: Kubernetes admission/quota reference/candidate
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no universal scheduler replacement
+
+- name: Volcano
+  category: scheduler
+  status: REFERENCE_ONLY
+  architecture_role: batch/HPC scheduler reference
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no universal scheduler replacement
+
+- name: Ray
+  category: scheduler
+  status: REFERENCE_ONLY
+  architecture_role: AI/data distributed execution reference
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no universal scheduler replacement
+
+- name: Slurm
+  category: scheduler
+  status: REFERENCE_ONLY
+  architecture_role: HPC reference
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no universal scheduler replacement
+
+- name: Temporal
+  category: workflow-orchestration
+  status: ADOPTED
+  architecture_role: durable workflow/orchestration implementation (temporal-sdk 1.33.0 in workflow-module + platform-app)
+  authority_boundary: replaceable implementation, not domain authority (WORKFLOW_OWNS_PROCESS; workflow semantics stay platform-owned)
+  planned_window: current
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+  notes: replaceable mechanics; temporal-testing used for retry/timeout/cancellation/heartbeat tests
+
+- name: Argo Workflows
+  category: workflow-orchestration
+  status: REFERENCE_ONLY
+  architecture_role: Kubernetes workflow adapter/reference
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no universal scheduler replacement
+
+- name: Apache Camel
+  category: integration
+  status: REFERENCE_ONLY
+  architecture_role: integration mechanics reference
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: no integration intent yet
+
+- name: Cloudflare Workers
+  category: serverless
+  status: REFERENCE_ONLY
+  architecture_role: lightweight integration/observer deployment mechanics
+  authority_boundary: never execution-state authority
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: reference only
+
+- name: AWS Lambda
+  category: serverless
+  status: REFERENCE_ONLY
+  architecture_role: lightweight integration/observer deployment mechanics
+  authority_boundary: never execution-state authority
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: reference only
+
+- name: Lean4
+  category: formal-methods
+  status: PLANNED
+  architecture_role: FAOF-2 primary theorem-proving POC
+  authority_boundary: machine-checked laws for shared semantic/runtime invariants
+  planned_window: Roadmap #22 Phase 18
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items FAOF_2
+
+- name: Coq
+  category: formal-methods
+  status: POC_CANDIDATE
+  architecture_role: FAOF-2 complementary theorem-proving POC
+  authority_boundary: machine-checked laws
+  planned_window: Roadmap #22 Phase 18
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items FAOF_2
+
+- name: TLA+ / PlusCal
+  category: formal-methods
+  status: PLANNED
+  architecture_role: preferred model-checking direction for concurrent lease/reservation/generation protocols
+  authority_boundary: protocol invariant verification
+  planned_window: when concurrent runtime protocols are modeled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: preferred direction per CONCURRENT_RUNTIME_PROTOCOLS_PREFER_STATE_MACHINE_MODEL_CHECKING_V1
+
+- name: Alloy
+  category: formal-methods
+  status: REFERENCE_ONLY
+  architecture_role: lightweight modeling reference
+  authority_boundary: reference only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: listed for completeness; not currently selected
+
+- name: Hyperswitch
+  category: commercial
+  status: POC_CANDIDATE
+  architecture_role: PAYMENT_ORCHESTRATION_BACKEND (preferred POC)
+  authority_boundary: payment orchestration provider, not commercial domain authority (HYPERSWITCH_IS_A_PAYMENT_ORCHESTRATION_PROVIDER_NOT_COMMERCIAL_DOMAIN_AUTHORITY_V1)
+  planned_window: commercial POC phase
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: bounded HyperswitchHttpPaymentProvider exists in payment-module; end-to-end POC NOT integrated
+
+- name: OpenMeter
+  category: commercial
+  status: POC_CANDIDATE
+  architecture_role: USAGE_METERING_BACKEND + INITIAL_BILLING_MECHANICS_BACKEND (preferred POC)
+  authority_boundary: one usage-metering authority behind platform port; not commercial domain authority
+  planned_window: commercial POC phase
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  notes: NOT integrated (no build dependency)
+
+- name: Kill Bill
+  category: commercial
+  status: POC_CANDIDATE
+  architecture_role: deferred competitive billing candidate (NOT rejected)
+  authority_boundary: billing backend candidate only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items KILL_BILL_POC
+
+- name: Flexprice
+  category: commercial
+  status: POC_CANDIDATE
+  architecture_role: deferred competitive metering/pricing candidate (NOT rejected)
+  authority_boundary: metering backend candidate only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items FLEXPRICE_POC
+
+- name: Lago
+  category: commercial
+  status: POC_CANDIDATE
+  architecture_role: deferred competitive billing candidate (NOT rejected)
+  authority_boundary: billing backend candidate only
+  planned_window: not scheduled
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+  notes: deferred-items LAGO_POC
+
+- name: FFmpeg
+  category: provider
+  status: ADOPTED
+  architecture_role: execution adapter (HOW, never canonical WHAT); first real Provider plugin target (provider-ffmpeg.jar)
+  authority_boundary: provider contribution; concrete provider implementations never enter core domain authority
+  planned_window: Phase 19 for Provider-plugin form; adapter already exercised in FRMC
+  references: [docs/architecture/governance/first-real-media-cut-v1.md]
+  notes: FFmpeg 7.0.2 CLI adapter used by FRMC; platform-plugins/provider/ffmpeg NOT created yet; lowering chain planned - FFmpegPlanLowerer -> FFmpegExecutionGraph -> FFmpegCommandCompiler -> typed ProcessInvocation

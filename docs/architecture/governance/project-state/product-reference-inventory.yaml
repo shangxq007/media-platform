@@ -1,0 +1,106 @@
+# PRODUCT REFERENCE INVENTORY — media-platform
+# Product/competitor references. Status REFERENCE unless separately adopted as a technology dependency.
+# PRODUCT_REFERENCE_DOES_NOT_IMPLY_ARCHITECTURE_DEPENDENCY_V1.
+# Mutable index.
+
+product_references:
+
+- product: Adobe Premiere
+  status: REFERENCE
+  study: [traditional NLE UX and interaction, timeline editing conventions, media management patterns]
+  do_not_copy: [proprietary UX specifics, closed architecture, platform lock-in]
+  relevant_surfaces: [Traditional NLE]
+  relevant_foundations: [Timeline, Media V2, Audio V2]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: Adobe Firefly
+  status: REFERENCE
+  study: [AI + conventional editing integration, generative fill/inpainting UX, candidate iteration patterns]
+  do_not_copy: [closed model integration, proprietary pipeline]
+  relevant_surfaces: [Traditional NLE, AI/Hybrid Film Studio]
+  relevant_foundations: [Operation, Artifact, Provider]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: Adobe Creative Cloud
+  status: REFERENCE
+  study: [application ecosystem / cross-app UX, asset sync and shared contexts, workspace shell patterns]
+  do_not_copy: [subscription-centric architecture, closed ecosystem]
+  relevant_surfaces: [All product surfaces]
+  relevant_foundations: [Shared semantic core, Project-state]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: Runway
+  status: REFERENCE
+  study: [generation iteration / candidate management, preview-driven generation UX]
+  do_not_copy: [proprietary generation pipeline, opaque artifact handling]
+  relevant_surfaces: [AI/Hybrid Film Studio]
+  relevant_foundations: [GenerationRequest/Intent, Artifact, Provider]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: LTX Studio
+  status: REFERENCE
+  study: [script -> storyboard -> shot -> edit continuity, narrative-to-production workflows]
+  do_not_copy: [proprietary narrative model]
+  relevant_surfaces: [AI/Hybrid Film Studio]
+  relevant_foundations: [CreativeBrief, Script, ShotPlan]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: Higgsfield
+  status: REFERENCE
+  study: [camera / cinematography intent UX, motion intent controls]
+  do_not_copy: [proprietary camera model]
+  relevant_surfaces: [AI/Hybrid Film Studio, Infinite Canvas]
+  relevant_foundations: [ShotPlan, GenerationIntent]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: Autodesk Flow Studio
+  status: REFERENCE
+  study: [AI + editable 3D/VFX production interaction, asset-centric production flows]
+  do_not_copy: [proprietary DCC integration]
+  relevant_surfaces: [AI/Hybrid Film Studio]
+  relevant_foundations: [Scene (future), Artifact]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: ComfyUI
+  status: REFERENCE
+  study: [node graph interaction grammar, visual workflow UX, iterative graph editing]
+  do_not_copy: [ComfyUI product ontology as platform domain model (COMFYUI_PRODUCT_ONTOLOGY_IS_NOT_PLATFORM_DOMAIN_MODEL_V1)]
+  relevant_surfaces: [Visual Workflow / FLOW]
+  relevant_foundations: [Workflow, Operation, Recipe]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: Blender
+  status: REFERENCE
+  study: [open DCC interaction, node-based material/shader UX, render pipeline integration]
+  do_not_copy: [Blender-internal domain model as platform authority]
+  relevant_surfaces: [Traditional NLE, AI/Hybrid Film Studio]
+  relevant_foundations: [Provider (Blender as concrete provider candidate), Material (future)]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"
+
+- product: NVIDIA Omniverse
+  status: REFERENCE
+  study: [OpenUSD/RTX extensible 3D product reference, USD-based collaboration, extensible kit architecture]
+  do_not_copy: [Omniverse-internal authority model]
+  relevant_surfaces: [AI/Hybrid Film Studio (optional surface)]
+  relevant_foundations: [OpenUSD (deferred), Scene (future)]
+  architecture_dependency: false
+  research_status: ADOPTED_INTENT
+  last_updated: "2026-08-25"

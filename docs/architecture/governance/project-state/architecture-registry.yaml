@@ -1,0 +1,1642 @@
+# ARCHITECTURE REGISTRY — media-platform
+# Machine-navigable stable-ID index of adopted architecture principles.
+# Mutable index. Family sections mirror the bootstrap prompt sections 9A-9AC.
+# Status vocabulary: ADOPTED / FROZEN / IMPLEMENTED / PARTIALLY_IMPLEMENTED /
+#   DEFERRED / POC_CANDIDATE / REFERENCE_ONLY / REJECTED
+# No invented implementation completion. Full evidence in referenced records.
+
+## 9A CANONICAL CORE / PRODUCT SURFACES
+
+- id: ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Capability existence != runtime availability != entitlement != permission != quota. Agents/MCP/Skills/Recipes receive principal-filtered effective Capability view. Subscription/business policy never redefines canonical domain semantics.
+  implementation_status: PARTIALLY_IMPLEMENTED (canonical core implemented #13-#19; principal-filtered effective capability view bounded)
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md, docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: INFINITE_CANVAS_AND_VISUAL_WORKFLOW_AS_PRODUCT_SURFACES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PRODUCT_SURFACE
+  summary: Infinite Canvas and Visual Workflow are product surfaces over one semantic core; Canvas owns spatial/visual layout, Workflow owns process.
+  implementation_status: NOT_STARTED (surface work future; roadmap v2 section 10.1/10.2)
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+
+- id: WORKFLOW_OWNS_PROCESS
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Workflow owns the process (durable orchestration). Recipe does not own durable orchestration (see RECIPE_IS_FINITE_DECLARATIVE_COMPOSITION_NOT_DURABLE_WORKFLOW_V1).
+  implementation_status: PARTIALLY_IMPLEMENTED (workflow-module with Temporal 1.33.0; full workflow surface evolution future)
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+
+- id: TIMELINE_OWNS_MEDIA_COMPOSITION
+  status: IMPLEMENTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: Timeline is the canonical media composition authority; applications render/project it but do not own composition semantics.
+  implementation_status: IMPLEMENTED (Timeline V2, Roadmap #14 CLOSED; timeline-module)
+  references: [docs/architecture/governance/roadmap-14-timeline-v2.md, docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+
+- id: APPLICATION_IS_NOT_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Applications are surfaces, not domain authorities. Domain semantics live in the canonical core.
+  implementation_status: PARTIALLY_IMPLEMENTED (enforced by gcr-1 timeline application authority corrections)
+  references: [docs/architecture/governance/gcr-1-timeline-application-authority-correction-publication-v1.md]
+
+- id: MULTIPLE_APPLICATIONS_SHARE_ONE_SEMANTIC_CORE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: NLE, Canvas, FLOW, film studio, automation and other applications share one semantic core and never fork domain models.
+  implementation_status: NOT_STARTED (product surfaces planned; see PRODUCT_AND_APPLICATION_TRACK_V1)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9B TIMELINE / SOURCE / SCHEMA EVOLUTION
+
+- id: TIMELINE_IS_SOURCE_AGNOSTIC_COMPOSITION_AUTHORITY_V1
+  status: IMPLEMENTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: Timeline composes media regardless of source kind; TimelineSourceBinding is the sealed typed root (Roadmap #17 S1).
+  implementation_status: IMPLEMENTED (Roadmap #17 CLOSED; timeline-module)
+  references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md]
+
+- id: MEDIA_STREAM_SOURCE_IS_ONE_TIMELINE_SOURCE_KIND_V1
+  status: IMPLEMENTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: MEDIA_STREAM is the typed source kind (S4); future kinds are extensible through the sealed model.
+  implementation_status: IMPLEMENTED (Roadmap #17 S4)
+  references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md]
+
+- id: TIMELINE_SOURCE_BINDINGS_PIN_IMMUTABLE_SOURCE_SEMANTICS_V1
+  status: IMPLEMENTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: TimelineSourceBinding pins ArtifactId + ContentDigest + exact TimeRange; historical immutable semantics preserved (S2/S11/S13).
+  implementation_status: IMPLEMENTED (TimelineArtifactPinExtractor/TimelineArtifactPinValidator; FRMC immutable pins; checkpoint A ARTIFACT_PIN_REVISION_INVARIANT_GATE PASS)
+  references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md, docs/architecture/governance/first-real-media-cut-v1.md]
+
+- id: NO_UNIVERSAL_ASSET_GOD_OBJECT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: No universal MediaAsset god object; artifact authority is bounded and platform-owned (gcr-2).
+  implementation_status: PARTIALLY_IMPLEMENTED (artifact-module; artifact authority contracts)
+  references: [docs/architecture/governance/gcr-2-artifact-authority.md]
+
+- id: CANONICAL_SCHEMA_EVOLUTION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: Historical immutable revisions remain readable; semantic migration creates new revision/state rather than rewriting history.
+  implementation_status: PARTIALLY_IMPLEMENTED (revision backend + revision command model implemented; full evolution semantics deferred — deferred-items CANONICAL_SCHEMA_EVOLUTION_IMPLEMENTATION)
+  references: [docs/architecture/governance/revision-command-model-v1.md, docs/architecture/governance/project-state/deferred-items.yaml]
+
+## 9C OPERATION / DSL / RECIPE
+
+- id: DSL_IS_A_TYPED_COMPOSITION_LANGUAGE_NOT_A_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: DSL is a typed composition language over canonical operation semantics, never a parallel domain model.
+  implementation_status: NOT_STARTED (DSL future; roadmap v2 section 10.5)
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+
+- id: IR_BEFORE_SYNTAX_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Typed IR precedes syntax; syntax lowers to IR (recipe IR / operation IR).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: ONE_SEMANTIC_OPERATION_MODEL_MANY_FRONTENDS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: One semantic operation model serves UI, REST, GraphQL, MCP, agents, recipes, DSL, canvas, workflow.
+  implementation_status: PARTIALLY_IMPLEMENTED (Operation model V1 + transaction model implemented; full multi-frontend coverage future)
+  references: [docs/architecture/governance/operation-plan-transaction-model-v1.md, docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+
+- id: PUBLIC_SEMANTIC_PRIMITIVE_IS_OPERATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Operation is the public semantic primitive; capabilities are exposed as operations.
+  implementation_status: PARTIALLY_IMPLEMENTED (operation model V1 bounded)
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+
+- id: RECIPE_IS_A_HIGHER_ORDER_PUBLIC_COMPOSITION_ASSET_OVER_OPERATIONS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Recipe is a higher-order public composition asset composed of operations.
+  implementation_status: NOT_STARTED (recipe surface future)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: OPERATIONS_ARE_EXPOSED_INDEPENDENTLY_OF_RECIPES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Operations remain directly invocable; recipes do not gate operation exposure.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: BOUND_RECIPE_LOWERS_TO_OPERATION_PLAN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: A bound recipe lowers to an operation plan; no side-channel execution.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: OPERATION_PLAN_IS_PER_REQUEST_TRANSACTIONAL_INTENT_NOT_REUSABLE_RECIPE_ASSET_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Operation plan is per-request transactional intent, distinct from the reusable recipe asset.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_IS_A_VERSIONED_TYPED_OPERATION_COMPOSITION_ASSET_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Recipe is a versioned, typed composition asset with identity and semantic digest.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_IS_FINITE_DECLARATIVE_COMPOSITION_NOT_DURABLE_WORKFLOW_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Recipe is finite declarative composition; durable orchestration belongs to Workflow.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_ALGEBRA_OPERATES_OVER_CANONICAL_OPERATION_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Recipe algebra composes canonical operation semantics (laws over effects), not ad-hoc recipe syntax.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_SEQUENCE_IS_ASSOCIATIVE_WHERE_TYPED_COMPOSITION_IS_DEFINED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Sequence composition is associative where typed composition is defined.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_HAS_TYPED_IDENTITY_COMPOSITION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Recipe identity is typed composition identity (structural), distinct from semantic digest.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_COMMUTATIVITY_REQUIRES_PROVEN_SEMANTIC_INDEPENDENCE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Commutativity rewrites require proven semantic independence of operations.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_PARALLELISM_EXPRESSES_SEMANTIC_INDEPENDENCE_NOT_RUNTIME_SCHEDULING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Recipe parallelism expresses semantic independence; runtime scheduling stays with the execution fabric.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_REWRITES_FAIL_CLOSED_WHEN_LAW_PRECONDITIONS_ARE_UNKNOWN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Rewrites fail closed unless law preconditions are proven (see UNPROVEN_SEMANTIC_REWRITE_FAILS_CLOSED_V1).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: OPERATION_EFFECTS_DRIVE_RECIPE_INDEPENDENCE_AND_CONFLICT_ANALYSIS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Operation effects are the basis for recipe independence and conflict analysis.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_CANONICALIZATION_PRECEDES_SEMANTIC_DIGEST_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Canonicalization precedes semantic digest computation (deterministic digests).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RECIPE_ID_IS_DISTINCT_FROM_RECIPE_SEMANTIC_DIGEST_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Recipe identity and semantic digest are distinct, both typed.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: TEMPLATE_IS_PARTIAL_BINDING_AND_DEFAULT_POLICY_OVER_RECIPE_NOT_SEMANTIC_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Template supplies partial bindings/default policy over a recipe; it is not a semantic authority.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: WORKFLOW_MAY_INVOKE_RECIPES_BUT_RECIPE_DOES_NOT_OWN_DURABLE_ORCHESTRATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Workflow may invoke recipes; recipes never own durable orchestration.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: DSL_LOWERS_TO_TYPED_RECIPE_IR_AND_OPERATION_IR_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: DSL lowers to typed recipe IR and operation IR (IR_BEFORE_SYNTAX_V1).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9D OPERATION PLAN TRANSACTION
+
+- id: OPERATION_PLAN_TRANSACTION_MODEL_V1
+  status: IMPLEMENTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: Canonical transaction flow request -> resolve -> plan -> validate -> preview -> authorize -> atomic apply -> new revision. UI/REST/GraphQL/MCP/agents/recipes/DSL/canvas/workflow must not bypass this boundary.
+  implementation_status: IMPLEMENTED (OperationPlan Transaction V1, Roadmap #19 completion; operation-plan-transaction-model-v1.md)
+  references: [docs/architecture/governance/operation-plan-transaction-model-v1.md, docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+
+## 9E TEMPORAL / RELATIONSHIP / SELECTION
+
+- id: TEMPORAL_MAPPING_FOUNDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: Temporal mapping foundation; TimeRange currently lives in MediaStreamSourceBinding (Roadmap #17 S10).
+  implementation_status: DEFERRED (deferred-items TEMPORAL_MAPPING_FOUNDATION_IMPLEMENTATION)
+  references: [docs/architecture/governance/temporal-mapping-foundation-v1.md, docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: SEMANTIC_RELATIONSHIP_SELECTION_FOUNDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: Typed semantic relationships and presentation/canvas edges remain distinct; selection/scope resolution is shared infrastructure for Operation/Recipe/Canvas/Agent/MCP/Workflow — not a generic graph-database domain authority.
+  implementation_status: DEFERRED (deferred-items SEMANTIC_RELATIONSHIP_SELECTION_FOUNDATION_IMPLEMENTATION)
+  references: [docs/architecture/governance/semantic-relationship-selection-foundation-v1.md, docs/architecture/governance/project-state/deferred-items.yaml]
+
+## 9F PROVENANCE / EVENTS
+
+- id: PROVENANCE_LINEAGE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Provenance is explanatory/reproducibility metadata, not canonical state authority.
+  implementation_status: PARTIALLY_IMPLEMENTED (FRMC provenance + Version Governance; full lineage future)
+  references: [docs/architecture/governance/first-real-media-cut-v1.md]
+
+- id: TYPED_DOMAIN_EVENTS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Typed events enable reactive integration/automation but do not make the system event-sourced canonical authority.
+  implementation_status: PARTIALLY_IMPLEMENTED (outbox-event-module + typed domain events; reactive integration future)
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+
+## 9G TRUST / EXTENSION / CONFORMANCE
+
+- id: TRUST_PERMISSION_SANDBOX_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Trust, permission and sandbox boundary for extensions and foreign code (Roadmap #22 Phase 17 sandbox/isolation).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: CAPABILITY_CONFORMANCE_INTROSPECTION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Capability conformance introspection; provider/plugin contributions must be introspectable against capability contracts.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: SEMANTIC_EXTENSION_CONTRACT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Third-party semantic extensions require deterministic serialization, validation, semantic equality, diff, merge, migration and must not acquire unrestricted canonical authority.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9H GRAPHQL
+
+- id: GRAPHQL_IS_APPLICATION_QUERY_PROJECTION_AND_COMMAND_TRANSPORT_NOT_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: APPLICATION_ADAPTER
+  summary: GraphQL is application query projection and command transport, never domain authority.
+  implementation_status: DEFERRED (deferred-items GRAPHQL_QUERY_ADAPTER)
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md, docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: GRAPHQL_SCHEMA_IS_A_PROJECTION_NOT_THE_CANONICAL_SCHEMA_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: APPLICATION_ADAPTER
+  summary: GraphQL schema is a projection; the canonical schema stays platform-owned.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: GRAPHQL_MUTATIONS_LOWER_TO_APPLICATION_COMMANDS_AND_OPERATION_PLAN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: APPLICATION_ADAPTER
+  summary: Mutations lower to application commands and operation plan (transaction boundary never bypassed).
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: GRAPHQL_SUBSCRIPTIONS_PROJECT_TYPED_EVENTS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: APPLICATION_ADAPTER
+  summary: Subscriptions project typed domain events.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: GRAPHQL_AND_MCP_ARE_PEER_ADAPTERS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: APPLICATION_ADAPTER
+  summary: GraphQL and MCP are peer adapters over the same semantic core.
+  implementation_status: PARTIALLY_IMPLEMENTED (MCP surface exists; GraphQL deferred)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: GRAPHQL_IS_CONTROL_METADATA_PLANE_NOT_MEDIA_DATA_PLANE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: APPLICATION_ADAPTER
+  summary: GraphQL transports control/metadata; media data flows through the artifact/data plane.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+## 9I EXECUTION FABRIC
+
+- id: EXECUTION_FABRIC_IS_CROSS_DOMAIN_RUNTIME_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: The execution fabric is the cross-domain runtime authority for executing work; domains contribute producers, not runtime authorities.
+  implementation_status: PARTIALLY_IMPLEMENTED (Epochs 1-3 CLOSED - runtime authority foundation + Native Pull V1; phases 15+ NOT_STARTED)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+
+- id: RENDER_IS_ONE_EXECUTION_PRODUCER_NOT_EXECUTION_RUNTIME_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Render is one execution producer; it does not own the execution runtime authority.
+  implementation_status: PARTIALLY_IMPLEMENTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: EXECUTABLE_TASK_IS_CROSS_DOMAIN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: ExecutableTask is a cross-domain runtime concept, not a render-only concept.
+  implementation_status: PARTIALLY_IMPLEMENTED (E2/E3 implemented executable task graph + runtime authority)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: EXECUTION_BACKEND_IS_CROSS_DOMAIN_EXECUTION_MECHANICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: ExecutionBackend is cross-domain execution mechanics; it supersedes DispatchBackend (Amendment 2).
+  implementation_status: PARTIALLY_IMPLEMENTED (E3 backend/placement authority contracts)
+  references: [docs/architecture/governance/roadmap-22-native-pull-lease-execution-backend-amendment-2.md]
+
+- id: PLACEMENT_AUTHORITY_IS_EXPLICIT_PER_EXECUTION_BACKEND_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Placement authority is explicit per execution backend; never implicit or shared.
+  implementation_status: PARTIALLY_IMPLEMENTED (E3 placement authority mapping frozen)
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+
+- id: WORKER_RUNTIME_IS_EXECUTION_ENDPOINT_NOT_HOST_CAPACITY_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: WorkerRuntime is an execution endpoint; host capacity truth belongs to the host scope.
+  implementation_status: PARTIALLY_IMPLEMENTED (E1 worker-fabric module + E3 host resource truth)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: PHYSICAL_HOST_IS_HOST_CAPACITY_SCOPE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: PhysicalHost is the host-capacity scope; host-level resource truth is required for platform-managed backends.
+  implementation_status: PARTIALLY_IMPLEMENTED (E3 host resource truth)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: DEVICE_CAPACITY_IS_DEVICE_ID_SCOPED_NOT_WORKER_SCOPED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Device capacity is scoped by DeviceId, not by worker incarnation.
+  implementation_status: PARTIALLY_IMPLEMENTED (E1 device model + E1C1 incarnation binding)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: CAPACITY_RESERVATION_AND_OBSERVATION_ARE_DISTINCT_AUTHORITIES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Capacity (advertised) / Reserved (reserved) / Observed (measured) are distinct authorities (Amendment 1).
+  implementation_status: PARTIALLY_IMPLEMENTED (E1 resource model)
+  references: [docs/architecture/governance/roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md]
+
+- id: PLATFORM_MANAGED_BACKENDS_REQUIRE_HOST_LEVEL_RESOURCE_TRUTH_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Platform-managed backends must report host-level resource truth.
+  implementation_status: PARTIALLY_IMPLEMENTED (E3 Task A)
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+
+- id: DELEGATED_BACKENDS_MAY_KEEP_INTERNAL_PLACEMENT_AND_LOAD_OPAQUE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Delegated backends may keep internal placement and load opaque.
+  implementation_status: PARTIALLY_IMPLEMENTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: BACKEND_OPACITY_IS_ALLOWED_WHEN_PLACEMENT_AUTHORITY_IS_DELEGATED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Backend opacity is permitted only where placement authority is delegated.
+  implementation_status: PARTIALLY_IMPLEMENTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: NO_MULTIPLE_ACTIVE_PLACEMENT_AUTHORITIES_FOR_ONE_EXECUTION_SCOPE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: One execution scope has exactly one active placement authority.
+  implementation_status: PARTIALLY_IMPLEMENTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: HEAVY_OR_LONG_RUNNING_COMPUTE_EXECUTES_ON_WORKER_FABRIC_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Heavy or long-running compute runs on the worker fabric, not serverless.
+  implementation_status: ADOPTED (fabric foundation in place; heavy compute providers future)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: LIGHTWEIGHT_STATELESS_INTEGRATION_MAY_EXECUTE_ON_SERVERLESS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Lightweight stateless integration may execute on serverless mechanics.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: SERVERLESS_INTEGRATION_IS_NOT_EXECUTION_STATE_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Serverless integration never becomes execution-state authority.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: DATABASE_IS_AUTHORITATIVE_EXECUTION_LIFECYCLE_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: The database is the authoritative execution lifecycle state.
+  implementation_status: PARTIALLY_IMPLEMENTED (E3 database authority + idempotent replay)
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+
+- id: ARTIFACT_AUTHORITY_IS_AUTHORITATIVE_OUTPUT_DATA_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Artifact authority is the authoritative output data state.
+  implementation_status: PARTIALLY_IMPLEMENTED (artifact-module; staging/materialization is Phase 16)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: MESSAGE_QUEUE_IS_DURABLE_DELIVERY_MECHANICS_NOT_STATE_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Message queues are durable delivery mechanics, never state authority.
+  implementation_status: PARTIALLY_IMPLEMENTED (outbox-event-module)
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+
+- id: AT_LEAST_ONCE_DELIVERY_WITH_IDEMPOTENT_FENCED_CONSUMERS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: At-least-once delivery with idempotent, fenced consumers.
+  implementation_status: PARTIALLY_IMPLEMENTED (E3 fencing + idempotent replay)
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+
+- id: TRANSACTIONAL_OUTBOX_BRIDGES_DATABASE_STATE_TO_ASYNC_DELIVERY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Transactional outbox bridges database state to async delivery.
+  implementation_status: PARTIALLY_IMPLEMENTED (outbox-event-module; E3 render-outbox disposition)
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+
+## 9J PROVIDER COMPATIBILITY
+
+- id: PROVIDER_COMPOSITION_IS_CONSTRAINT_SOLVING_NOT_UNIVERSAL_INTEROPERABILITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider composition is constraint solving over a static compatibility graph, not universal interoperability.
+  implementation_status: PARTIALLY_IMPLEMENTED (E2 CompatibilityKernel/ProviderCompatibilityGraph)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: PARTIAL_PROVIDER_COMPOSABILITY_IS_NORMAL_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Partial provider composability is the normal case; incompatibility is a first-class result.
+  implementation_status: PARTIALLY_IMPLEMENTED (E2 four-value transition algebra)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: CROSS_PROVIDER_OPTIMIZATION_OPERATES_ONLY_OVER_FEASIBLE_COMPATIBILITY_GRAPH_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Cross-provider optimization only operates over the feasible compatibility graph.
+  implementation_status: ADOPTED (optimizer scopes future; see 9L)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: PROVIDER_SELECTION_FAILS_CLOSED_ON_INCOMPATIBILITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider selection fails closed on incompatibility; no silent fallback.
+  implementation_status: PARTIALLY_IMPLEMENTED (E2 fail-closed selection)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: OPTIMIZATION_NEVER_CREATES_SEMANTIC_COMPATIBILITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Optimization never creates semantic compatibility that does not exist (LEGALITY_BEFORE_OPTIMIZATION_V1).
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: CAN_RUN_BEFORE_WHICH_IS_BEST_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Feasibility (can run) precedes optimality (which is best). ProviderCompatibilityGraph is static Stage-1; RuntimeEligibility is mutable Stage-2. Cross-provider boundaries prefer immutable typed Artifact materialization.
+  implementation_status: PARTIALLY_IMPLEMENTED (Stage-1 static graph implemented E2; Stage-2 runtime eligibility E3 host/runtime)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+## 9K PROVIDER BOUND ETG TO REAL INVOCATION
+
+- id: PROVIDER_BOUND_ETG_DOES_NOT_CONTAIN_PROVIDER_NATIVE_COMMANDS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider-bound ETG carries execution semantics, never provider-native commands.
+  implementation_status: NOT_STARTED (lowering is Roadmap #22 Phase 15)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: PLAN_LOWERER_TRANSLATES_PROVIDER_BOUND_EXECUTION_SEMANTICS_TO_PROVIDER_NATIVE_EXECUTION_PLAN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: PlanLowerer translates provider-bound execution semantics to a provider-native execution plan.
+  implementation_status: NOT_STARTED (Phase 15)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: PROVIDER_NATIVE_EXECUTION_PLAN_IS_NOT_CANONICAL_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: The provider-native execution plan is an artifact of lowering, never canonical domain authority.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: EXECUTION_COMMAND_IS_A_TYPED_RUNTIME_INVOCATION_NOT_A_SHELL_STRING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: ExecutionCommand is a typed runtime invocation, not a shell string.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_NATIVE_INVOCATION_SYNTHESIS_OPERATES_ONLY_WITHIN_ONE_EXECUTABLE_TASK_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Native invocation synthesis never spans multiple executable tasks.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: COMMAND_FUSION_MUST_NOT_CROSS_REQUIRED_ARTIFACT_BOUNDARY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Command fusion must not cross a required artifact boundary.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: SAME_PROVIDER_BINDING_DOES_NOT_AUTHORIZE_CROSS_TASK_COMMAND_FUSION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Equal provider binding does not authorize cross-task command fusion.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: MULTIPLE_PROVIDER_NATIVE_COMMANDS_MAY_SHARE_ONE_PLATFORM_EXECUTION_ATTEMPT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Multiple native commands may share one platform execution attempt.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_NATIVE_COMMANDS_DO_NOT_HAVE_INDEPENDENT_PLATFORM_SCHEDULER_IDENTITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider-native commands have no independent platform scheduler identity.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_LOCAL_LOWERING_MAY_REDUCE_MULTIPLE_MEMBERSHIPS_TO_ONE_NATIVE_INVOCATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider-local lowering may reduce multiple memberships to one native invocation. FFmpeg planned typed lowering chain - ExecutableTask -> FFmpegPlanLowerer -> FFmpegExecutionGraph -> FFmpegCommandCompiler -> typed ProcessInvocation.
+  implementation_status: NOT_STARTED (Phase 15/19)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9L PROVIDER INTEGRATION / OPTIMIZATION / FORMAL VERIFICATION
+
+- id: REAL_PROVIDER_INTEGRATION_IS_A_MAJOR_ENGINEERING_DISCIPLINE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Real provider integration is a major engineering discipline (typed lowering + conformance), not a thin adapter.
+  implementation_status: ADOPTED (first real integration = FFmpeg, Phase 19)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_INTEGRATION_REQUIRES_TYPED_LOWERING_AND_CONFORMANCE_NOT_THIN_ADAPTERS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider integration requires typed lowering and conformance verification.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_NATIVE_IR_PRECEDES_PROVIDER_COMMAND_OPTIMIZATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider-native IR precedes provider command optimization.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_LOCAL_OPTIMIZATION_OPERATES_ONLY_OVER_LEGAL_LOWERINGS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider-local optimization operates only over legal lowerings.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: FORMAL_VERIFICATION_TARGETS_SHARED_SEMANTIC_LAWS_NOT_EVERY_PROVIDER_PARAMETER_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Formal verification targets shared semantic laws, not every provider parameter. Ordinary API binding -> tests; shared laws -> executable laws/Lean4/Coq; concurrent lease/reservation protocols -> TLA+/PlusCal.
+  implementation_status: PARTIALLY_IMPLEMENTED (FAOF-1 in Roadmap #21; FAOF-2+ planned)
+  references: [docs/architecture/governance/roadmap-21-execution-graph-planning-final-review-and-integration.md]
+
+- id: LEGALITY_BEFORE_OPTIMIZATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Legality is established before any optimization is applied.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: OPTIMIZATION_NEVER_CREATES_LEGALITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Optimization never creates legality. Three optimizer scopes recorded - Semantic Rewrite Optimizer, Provider Local Lowering Optimizer, Global Execution Optimizer (#23).
+  implementation_status: ADOPTED (optimizers future)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9M PROVIDER VERSIONING
+
+- id: PROVIDER_BINARY_VERSION_DOES_NOT_IMPLY_RUNTIME_AVAILABILITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Installed provider binary version does not imply runtime availability.
+  implementation_status: NOT_STARTED (provider version lifecycle deferred)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: PROVIDER_UPGRADE_REQUIRES_CAPABILITY_PROFILE_REVALIDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider upgrade requires capability profile revalidation.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: PROVIDER_UPGRADE_REQUIRES_CONFORMANCE_REVALIDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider upgrade requires conformance revalidation.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: PROVIDER_BINDING_PINS_EXACT_EXECUTION_CONTRACT_AND_IMPLEMENTATION_VERSION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider binding pins the exact execution contract and implementation version.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: HISTORICAL_EXECUTION_DOES_NOT_REBIND_TO_NEW_PROVIDER_VERSION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Historical executions never rebind to a new provider version.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: PROVIDER_NATIVE_IR_SHIELDS_PLATFORM_SEMANTICS_FROM_PROVIDER_SYNTAX_CHURN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider-native IR shields platform semantics from provider syntax churn.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: MULTIPLE_PROVIDER_VERSIONS_MAY_COEXIST_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Multiple provider implementation versions may coexist.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: PROVIDER_VERSION_IS_PART_OF_EXECUTION_REALIZATION_NOT_CAPABILITY_IDENTITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider version participates in execution realization, not capability identity.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+- id: NEW_EXECUTION_MAY_SELECT_AMONG_MULTIPLE_AVAILABLE_PROVIDER_VERSIONS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: New executions may select among multiple available provider versions.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: PINNED_EXECUTION_MUST_NOT_SILENTLY_FALL_FORWARD_TO_NEW_PROVIDER_VERSION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Pinned executions must never silently fall forward to a new provider version.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: PROVIDER_VERSION_LIFECYCLE_IS_DISTINCT_FROM_CAPABILITY_CONTRACT_LIFECYCLE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider version lifecycle is distinct from capability contract lifecycle.
+  implementation_status: NOT_STARTED (capability version lifecycle implemented #16; provider-level lifecycle deferred)
+  references: [docs/architecture/governance/roadmap-16-capability-version-lifecycle.md]
+
+- id: PROVIDER_VERSION_SUPPORT_POLICY_CONSTRAINS_NEW_BINDING_WITHOUT_REWRITING_HISTORY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider version support policy constrains new bindings without rewriting history.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: WORKERS_MAY_EXPOSE_DIFFERENT_PROVIDER_IMPLEMENTATION_VERSION_SETS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Workers may expose different provider implementation version sets.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: PROVIDER_RUNTIME_ARTIFACT_MAY_BE_CONTENT_PINNED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider runtime artifacts may be content-pinned. Future lifecycle candidate states (NOT-YET-IMPLEMENTED) - ACTIVE, DRAINING, PINNED_ONLY, RETIRED, UNAVAILABLE.
+  implementation_status: NOT_STARTED (deferred-items PROVIDER_RUNTIME_ARTIFACT_CONTENT_PINNING)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+## 9N PLUGIN ARCHITECTURE
+
+- id: PLUGIN_IS_IMPLEMENTATION_PACKAGING_NOT_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: A plugin is implementation packaging, never a domain authority.
+  implementation_status: NOT_STARTED (platform-plugins/ not created; first real plugin = FFmpeg Phase 19)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_PACKAGE_MAY_CONTAIN_MULTIPLE_TYPED_CONTRIBUTIONS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: One plugin package may contain multiple typed contributions, each registering into its own authority.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_IMPLEMENTATION_AND_EXECUTION_BACKEND_ARE_DISTINCT_PLUGIN_CONTRIBUTIONS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Provider implementation and execution backend are distinct plugin contribution kinds.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: EXECUTION_BACKEND_PLUGIN_DOES_NOT_DEFINE_CAPABILITY_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: An execution backend plugin never defines capability semantics.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: INTEGRATION_ADAPTER_PLUGIN_DOES_NOT_OWN_EXECUTION_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Integration adapter plugins never own execution state.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_CONTRIBUTIONS_REGISTER_INTO_THEIR_RESPECTIVE_ARCHITECTURE_AUTHORITIES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Each plugin contribution registers into its respective architecture authority (capability, execution, integration).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_REGISTRY_IS_PACKAGE_AND_LIFECYCLE_AUTHORITY_NOT_CAPABILITY_OR_EXECUTION_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: The plugin registry is package/lifecycle authority only, never capability or execution authority.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_MUST_NOT_DIRECTLY_MUTATE_CANONICAL_EXECUTION_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugins must not directly mutate canonical execution state.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_MUST_NOT_DIRECTLY_MUTATE_CANONICAL_DOMAIN_STATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugins must not directly mutate canonical domain state.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_RUNTIME_AVAILABILITY_IS_DISTINCT_FROM_PLUGIN_INSTALLATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugin runtime availability is distinct from plugin installation.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: SEMANTIC_EXTENSION_PLUGIN_REQUIRES_SEMANTIC_EXTENSION_CONTRACT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Semantic-extension plugins must satisfy the semantic extension contract (SEMANTIC_EXTENSION_CONTRACT_V1).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: ONE_PLUGIN_PACKAGE_MAY_IMPLEMENT_PROVIDER_BACKEND_AND_INTEGRATION_ADAPTERS_WITHOUT_MERGING_THEIR_AUTHORITIES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: One package may implement multiple contribution kinds without merging their authorities.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: FIRST_PARTY_PROVIDERS_ARE_PLUGIN_CONTRIBUTIONS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: First-party providers are plugin contributions, subject to the same boundaries.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: FIRST_PARTY_PROVIDER_PLUGINS_MAY_LIVE_IN_MONOREPO_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: First-party provider plugins may live in the monorepo under platform-plugins/.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: CONCRETE_PROVIDER_IMPLEMENTATIONS_MUST_NOT_ENTER_CORE_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Concrete provider implementations must never enter the core domain authority.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_PLUGIN_AND_EXECUTION_BACKEND_PLUGIN_ARE_INDEPENDENTLY_COMPOSABLE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Provider plugins and execution backend plugins compose independently.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PROVIDER_SPI_STABILITY_PRECEDES_REPOSITORY_SPLITTING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Provider SPI stability precedes any repository splitting decision.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: NEW_PROVIDER_FOR_EXISTING_CAPABILITY_IS_NOT_AN_ARCHITECTURE_EVENT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Adding a new provider for an existing capability is implementation work, not an architecture event.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9O PLUGIN MODULE / DISTRIBUTION STRATEGY
+
+- id: PLUGINS_USE_LOGICAL_UMBRELLA_MODULE_FAMILY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugins use a logical umbrella module family (platform-plugins/) with leaf modules as build units.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLATFORM_PLUGINS_PARENT_IS_NAMESPACE_NOT_PRODUCTION_MODULE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: The platform-plugins parent is a logical namespace, not a production module.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_MODULES_ARE_GROUPED_BY_CONTRIBUTION_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugin modules group by contribution authority (provider/, backend/, integration/, semantic-extension/, foreign-host/).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_SPI_REMAINS_PLATFORM_OWNED_AND_OUTSIDE_CONCRETE_PLUGIN_IMPLEMENTATION_UMBRELLA_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugin SPI stays platform-owned, outside the concrete plugin implementation umbrella.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: LEAF_PLUGIN_MODULE_IS_THE_DEFAULT_BUILD_AND_DEPLOYMENT_UNIT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Leaf plugin module is the default build/deployment unit (example - :platform-plugins:provider:ffmpeg -> provider-ffmpeg.jar).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: NO_UNIVERSAL_ALL_PLUGINS_RUNTIME_JAR_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: No universal all-plugins runtime jar; full distribution is core plus preinstalled plugin jars.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_AGGREGATION_FOR_PRODUCT_PACKAGING_BELONGS_TO_DISTRIBUTION_NOT_RUNTIME_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugin aggregation for product packaging belongs to distribution, not runtime authority.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: LOGICAL_UMBRELLA_DIRECTORY_IS_NOT_A_PRODUCTION_MODULE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: A logical umbrella directory (platform-plugins/) is not a production module.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: FIRST_PARTY_PLUGINS_LIVE_AS_INDEPENDENT_MONOREPO_MODULES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: First-party plugins live as independent monorepo modules.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: ONE_PLUGIN_DEPLOYMENT_UNIT_SHOULD_DEFAULT_TO_ONE_PRIMARY_JAR_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: One plugin deployment unit defaults to one primary jar.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_SOURCE_LAYOUT_IS_INDEPENDENT_FROM_PRODUCT_DISTRIBUTION_LAYOUT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugin source layout is independent from product distribution layout.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: SAME_PLUGIN_ARTIFACTS_SUPPORT_BUNDLED_AND_EXTERNAL_LOADING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: The same plugin artifacts support both bundled and externally loaded deployment.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: FULL_PRODUCT_IS_CORE_PLUS_PREINSTALLED_PLUGINS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Full product is core plus preinstalled plugins; not one merged universal fat jar.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: BUILD_VARIANTS_CHANGE_ARTIFACT_COMPOSITION_NOT_DOMAIN_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Build variants (coreDistribution/fullDistribution/creatorDistribution/...) change artifact composition, never domain semantics.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: CORE_MUST_NOT_COMPILE_AGAINST_CONCRETE_PROVIDER_IMPLEMENTATIONS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Core must never compile against concrete provider implementations.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_DISCOVERY_USES_EXPLICIT_SPI_NOT_GLOBAL_CLASSPATH_SCANNING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Plugin discovery uses explicit SPI registration, never global classpath scanning.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PLUGIN_REPOSITORY_SPLITTING_IS_A_LATER_DELIVERY_DECISION_NOT_AN_ARCHITECTURE_REQUIREMENT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Repository splitting is a later delivery decision, not an architecture requirement.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9P DISTRIBUTION VARIANTS
+
+- id: DISTRIBUTION_COMPOSITION_VARIANTS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: One monorepo, multiple leaf plugin modules, same plugin artifacts, different distribution compositions. Examples - coreDistribution, fullDistribution; potential future variants creatorDistribution, filmStudioDistribution, serverDistribution, workerCpuDistribution, workerIntelDistribution, workerNvidiaDistribution (future product possibilities, not current implementation commitments).
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9Q COMMERCIAL DOMAIN
+
+- id: COMMERCIAL_FOUNDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Commercial domain authority boundaries. Priorities unchanged - COMMERCIAL_FOUNDATION_PRIORITY=UNCHANGED, MULTI_TENANCY_PRIORITY=UNCHANGED, ENTITLEMENT_PRIORITY=UNCHANGED, SUBSCRIPTION_PRIORITY=UNCHANGED, USAGE_METERING_PRIORITY=UNCHANGED, COST_ACCOUNTING_PRIORITY=UNCHANGED, REAL_EXTERNAL_COMMERCIALIZATION=DEFERRED, CAPABILITY_VALIDATION_IMPORTANCE=INCREASED. Commercial distinction - Cost != Price != Charge != Revenue; Tenant != BillingAccount != PaymentMerchantBinding. Canonical platform-owned concepts - Tenant, BillingAccount, Subscription semantic authority, EntitlementGrant, EffectiveCapabilityView, Quota, Budget, CostLedger.
+  implementation_status: PARTIALLY_IMPLEMENTED (bounded commercial modules exist - payment/commerce/entitlement/quota-billing/billing; full V1 commercial semantics and dogfooding NOT complete)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: SELF_DOGFOODING_COMMERCIAL_AND_CREATIVE_VALIDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Self-dogfooding serves both commercial and creative validation.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: SINGLE_OPERATOR_MULTI_TENANT_DOGFOODING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Single operator runs multiple tenants to validate multi-tenancy semantics.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: SELF_GRANTED_ENTITLEMENTS_USE_PRODUCTION_AUTHORIZATION_PATH_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Self-granted entitlements must use the production authorization path.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: DOGFOODING_MUST_NOT_BYPASS_ENTITLEMENT_QUOTA_OR_COST_ACCOUNTING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Dogfooding must never bypass entitlement, quota or cost accounting.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: COST_ACCOUNTING_IS_INDEPENDENT_FROM_REAL_PAYMENT_FLOW_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Cost accounting is independent from any real payment flow.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: USAGE_METERING_MUST_WORK_BEFORE_EXTERNAL_COMMERCIALIZATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Usage metering must work before external commercialization.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: REAL_PAYMENT_FLOW_MAY_BE_DEFERRED_WITHOUT_DEFERRING_SUBSCRIPTION_AND_ENTITLEMENT_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Real payment flow may be deferred without deferring subscription and entitlement semantics.
+  implementation_status: ADOPTED (payment flow deferred; subscription/entitlement semantics stay active)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9R SUBSCRIPTION / RENEWAL
+
+- id: PAYMENT_ORCHESTRATION_IS_NOT_SUBSCRIPTION_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Payment orchestration is not the subscription authority; the platform owns subscription lifecycle.
+  implementation_status: NOT_STARTED (manual renewal V1 planned; auto-renewal deferred)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: SUBSCRIPTION_LIFECYCLE_IS_PLATFORM_OWNED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Subscription lifecycle is platform-owned; V1 lifecycle PENDING_ACTIVATION -> ACTIVE -> GRACE_PERIOD -> EXPIRED -> CANCELLED.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: MANUAL_RENEWAL_PRECEDES_AUTOMATIC_RENEWAL_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Manual renewal precedes automatic renewal; primary V1 renewal is MANUAL.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: MANUAL_RENEWAL_USES_NEW_EXPLICIT_PAYMENT_INTENT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Manual renewal creates a new explicit payment intent.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RENEWAL_POLICY_IS_EXPLICIT_AND_VERSIONABLE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Renewal policy is explicit and versionable.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PAYMENT_SUCCESS_MAY_ADVANCE_SUBSCRIPTION_BUT_DOES_NOT_DEFINE_SUBSCRIPTION_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Payment success may advance a subscription but never defines subscription semantics.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PAYMENT_PROVIDER_MERCHANT_IDENTITY_IS_DISTINCT_FROM_PLATFORM_TENANT_IDENTITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Payment-provider merchant identity is distinct from platform tenant identity.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PAYMENT_PROCESSING_COST_IS_ONE_INPUT_TO_PLATFORM_COST_ACCOUNTING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Payment processing cost is one input to platform cost accounting.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: RENEWAL_NOTIFICATION_IS_DISTINCT_FROM_PAYMENT_EXECUTION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Renewal notification is distinct from payment execution.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9S HYPERSWITCH / OPENMETER COMMERCIAL POC
+
+- id: COMMERCIAL_STACK_V1_PREFERRED_POC
+  status: POC_CANDIDATE
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: COMMERCIAL_STACK_V1_PREFERRED_POC - PAYMENT_ORCHESTRATION_BACKEND=HYPERSWITCH, USAGE_METERING_BACKEND=OPENMETER, INITIAL_BILLING_MECHANICS_BACKEND=OPENMETER, CANONICAL_SUBSCRIPTION_AUTHORITY=MEDIA_PLATFORM, CANONICAL_ENTITLEMENT_AUTHORITY=MEDIA_PLATFORM, CANONICAL_COST_ACCOUNTING_AUTHORITY=MEDIA_PLATFORM.
+  implementation_status: POC_PLANNED (bounded HyperswitchHttpPaymentProvider exists in payment-module; end-to-end POC NOT integrated; OpenMeter NOT integrated)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: HYPERSWITCH_IS_A_PAYMENT_ORCHESTRATION_PROVIDER_NOT_COMMERCIAL_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Hyperswitch is a payment orchestration provider, never a commercial domain authority.
+  implementation_status: PARTIALLY_IMPLEMENTED (bounded provider implementation exists)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: ONE_SUBSCRIPTION_BILLING_ENGINE_AUTHORITY_BEHIND_PLATFORM_PORT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: One subscription/billing engine authority sits behind the platform port.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: ONE_USAGE_METERING_AUTHORITY_BEHIND_PLATFORM_PORT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: One usage metering authority sits behind the platform port.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: DO_NOT_DUPLICATE_PLAN_SUBSCRIPTION_ENTITLEMENT_OR_INVOICE_AUTHORITY_ACROSS_BILLING_BACKENDS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL
+  summary: Do not duplicate plan/subscription/entitlement/invoice authority across billing backends. Kill Bill, Flexprice, Lago remain deferred competitive candidates, NOT rejected.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+## 9T CREATIVE / GENERATIVE FOUNDATION
+
+- id: CREATIVE_GENERATIVE_PRODUCTION_FOUNDATION
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Target conceptual chain - CreativeBrief -> Script -> Storyboard -> ShotPlan -> GenerationRequest/GenerationIntent -> Operation/Recipe/Workflow -> Provider -> Execution Fabric -> Artifact -> MediaAsset/MediaStream -> TimelineSourceBinding. CreativeBrief is typed/versioned intent; Script is its own revisioned domain object; Storyboard != Timeline; StoryboardPanel != Timeline clip; ShotPlan bridges creative to production intent; ShotPlan != RenderPlan; GenerationRequest/Intent != ExecutableTask; generated output enters Artifact authority first; no new universal MediaArtifact god object.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9U PRODUCT APPLICATIONS
+
+- id: PRODUCT_AND_APPLICATION_TRACK_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PRODUCT_SURFACE
+  summary: Planned application surfaces - Traditional NLE, Infinite Canvas, Visual Workflow/FLOW, AI/Hybrid Film Studio, Agent-first Studio, Automation Studio, Template Studio. Conceptual product surfaces - CREATE, PLAN, CANVAS, FLOW, EDIT, PRODUCE (not separate canonical domain models). Landing sequence - P0 design system/workspace shell/information architecture/interactive prototypes; P1 Traditional NLE -> FIRST_REAL_MEDIA_CUT; P2 FLOW -> Operation/Recipe validation; P3 Infinite Canvas; P4 AI/Hybrid Film Studio -> GOLDEN_STORY_01.
+  implementation_status: NOT_STARTED (frontend track planned)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+## 9V CAPABILITY VALIDATION / DOGFOODING
+
+- id: CAPABILITY_VALIDATION_TRACK_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: VALIDATION
+  summary: Validation levels - V1 TECHNICAL CAPABILITY VALIDATION, V2 PRODUCT EXPERIENCE VALIDATION, V3 FULL PLATFORM DOGFOODING. Commercial architecture is not demoted; the owner/operator becomes the first real user/tenant.
+  implementation_status: PLANNED (validation projects in validation-inventory.yaml)
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: CREATOR_DOGFOODING_IS_PRIMARY_PRODUCT_VALIDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: VALIDATION
+  summary: Creator dogfooding is the primary product validation.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: DEMO_IS_A_FIRST_CLASS_CAPABILITY_VALIDATION_ARTIFACT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: VALIDATION
+  summary: A demo is a first-class capability validation artifact.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: MAJOR_PLATFORM_FOUNDATIONS_REQUIRE_END_TO_END_DOGFOODING_VALIDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: VALIDATION
+  summary: Major platform foundations require end-to-end dogfooding validation.
+  implementation_status: PLANNED
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+- id: GOLDEN_STORIES_VALIDATE_PLATFORM_SEMANTICS_PRODUCT_EXPERIENCE_AND_OPERATING_ECONOMICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: VALIDATION
+  summary: Golden stories validate platform semantics, product experience and operating economics together.
+  implementation_status: PLANNED (GOLDEN_STORY_01 NOT_YET_VALIDATED)
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+## 9W GOLDEN VALIDATION PROJECTS
+
+- id: FIRST_REAL_MEDIA_CUT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: VALIDATION
+  summary: Purpose - simple traditional NLE end-to-end real media validation - import real media, trim, multi-clip edit, audio level, BGM, subtitle, simple color adjustment, export, publishable video. Distinct from the CLOSED FRMC milestone (technical harness validation, 2026-08-15).
+  implementation_status: PLANNED (product-track validation NOT_YET_VALIDATED; requires Traditional NLE P1)
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml, docs/architecture/governance/first-real-media-cut-v1.md]
+
+- id: GOLDEN_STORY_01_XIN_GONGPING_SHANG_XIAN
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: VALIDATION
+  summary: Golden Story 01《辛公平上仙》; planned chapters GCS-01A《榆林店》, GCS-01B《阴吏》, GCS-01C《夜入长安》, GCS-01D《上仙}. Creative content project + AI-film pipeline validation + regression/golden story + product demo + commercial dogfooding + cost-accounting validation. Episodes NOT produced.
+  implementation_status: PLANNED (NOT_YET_VALIDATED)
+  references: [docs/architecture/governance/project-state/validation-inventory.yaml]
+
+## 9X PRODUCT / COMPETITOR REFERENCES
+
+- id: PRODUCT_REFERENCE_DOES_NOT_IMPLY_ARCHITECTURE_DEPENDENCY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PRODUCT_SURFACE
+  summary: A product reference never implies an architecture dependency.
+  implementation_status: REFERENCE_ONLY
+  references: [docs/architecture/governance/project-state/product-reference-inventory.yaml]
+
+- id: COMPETITOR_WORKFLOWS_ARE_REFERENCE_INPUTS_NOT_DOMAIN_AUTHORITIES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PRODUCT_SURFACE
+  summary: Competitor workflows are reference inputs, never domain authorities.
+  implementation_status: REFERENCE_ONLY
+  references: [docs/architecture/governance/project-state/product-reference-inventory.yaml]
+
+- id: COMFYUI_INTERACTION_GRAMMAR_MAY_BE_REFERENCED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PRODUCT_SURFACE
+  summary: ComfyUI node-graph interaction grammar may be referenced for visual workflow UX.
+  implementation_status: REFERENCE_ONLY
+  references: [docs/architecture/governance/project-state/product-reference-inventory.yaml]
+
+- id: COMFYUI_PRODUCT_ONTOLOGY_IS_NOT_PLATFORM_DOMAIN_MODEL_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PRODUCT_SURFACE
+  summary: ComfyUI product ontology is not the platform domain model.
+  implementation_status: REFERENCE_ONLY
+  references: [docs/architecture/governance/project-state/product-reference-inventory.yaml]
+
+## 9Y OPEN MEDIA / SCENE / NATIVE
+
+- id: OPEN_SOURCE_FOUNDATION_LIBRARY_IS_NOT_AUTOMATICALLY_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: An open-source foundation library is not automatically a domain authority.
+  implementation_status: ADOPTED (boundary enforced per tool in foundation-inventory.yaml)
+  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
+
+- id: EXTERNAL_STANDARD_MAY_DEFINE_INTERCHANGE_WITHOUT_OWNING_CANONICAL_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: External standards may define interchange without owning canonical semantics.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
+
+- id: FOUNDATION_LIBRARIES_INTEGRATE_THROUGH_TYPED_PROVIDER_OR_ADAPTER_BOUNDARIES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Foundation libraries integrate through typed provider or adapter boundaries (OpenTimelineioAdapter precedent).
+  implementation_status: PARTIALLY_IMPLEMENTED (OTIO adapter boundary; other libraries future)
+  references: [docs/architecture/governance/roadmap-17-otio-v2-asset-source-boundary.md]
+
+- id: OPEN_USD_IS_SCENE_COMPOSITION_AND_INTERCHANGE_BACKEND_NOT_CANONICAL_SCENE_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: OpenUSD is scene composition/interchange backend, not canonical Scene authority.
+  implementation_status: DEFERRED (deferred-items OPENUSD_SCENE_FOUNDATION)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: MATERIAL_X_IS_PRIMARY_OPEN_MATERIAL_INTERCHANGE_NOT_CANONICAL_MATERIAL_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: MaterialX is the primary open material graph/interchange, not canonical material authority.
+  implementation_status: DEFERRED (deferred-items MATERIALX_OPENPBR_FOUNDATION)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: OPEN_PBR_IS_STANDARD_MATERIAL_PROFILE_NOT_GLOBAL_MATERIAL_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: OpenPBR is the bounded/common PBR material profile, not a global material authority.
+  implementation_status: DEFERRED (with MaterialX foundation)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: OPEN_VDB_IS_VOLUME_REPRESENTATION_AND_EXECUTION_FOUNDATION_NOT_CANONICAL_VOLUME_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: OpenVDB is volume representation/execution foundation, not canonical volume authority.
+  implementation_status: DEFERRED (deferred-items OPENVDB_VOLUME_FOUNDATION)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: OPEN_COLOR_IO_IS_COLOR_EXECUTION_INFRASTRUCTURE_NOT_COLOR_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: OpenColorIO is color transform execution/interchange infrastructure, not canonical color authority.
+  implementation_status: PLANNED (color/image foundation implemented natively; OCIO execution future)
+  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
+
+- id: OPEN_FX_IS_A_FOREIGN_PLUGIN_ECOSYSTEM_HOSTED_BY_PLATFORM_ADAPTER_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: OpenFX is a foreign plugin ecosystem hosted through the platform adapter/provider boundary.
+  implementation_status: DEFERRED (deferred-items OPENFX_HOST)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: OPEN_ASSET_IO_IS_ASSET_MANAGEMENT_INTEROP_NOT_MEDIA_ASSET_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: OpenAssetIO is asset/content-management integration interop, not MediaAsset authority.
+  implementation_status: REFERENCE_ONLY
+  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
+
+- id: JAVA_CPP_IS_NATIVE_BINDING_MECHANICS_NOT_PROVIDER_OR_EXECUTION_BACKEND_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: JavaCPP is native binding mechanics, never a provider or execution backend.
+  implementation_status: REFERENCE_ONLY (JavaCV removed from worker; FFmpeg CLI adopted)
+  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
+
+- id: NATIVE_BINDING_MECHANICS_ARE_DISTINCT_FROM_NATIVE_WORKER_RUNTIME_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Native binding mechanics (JavaCPP/JNI/Panama FFM) are distinct from the native worker runtime.
+  implementation_status: REFERENCE_ONLY
+  references: [docs/architecture/governance/project-state/foundation-inventory.yaml]
+
+- id: NATIVE_PROVIDER_EXECUTION_MAY_BE_IN_PROCESS_OR_ISOLATED_PROCESS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Native provider execution may be in-process or an isolated process (isolation phase decides per provider).
+  implementation_status: NOT_STARTED (Phase 17 sandbox/isolation)
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+
+## 9AB FAOF / FORMAL FOUNDATION
+
+- id: FORMAL_ALGORITHM_AND_OPTIMIZATION_FOUNDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: FAOF-1 implemented in Roadmap #21; FAOF-2 planned after #21/in #22 later phase (Lean4 primary POC, Coq complementary POC); FAOF-3 bounded feasibility in #22, distributed/global optimization #23; FAOF-4 proved semantic rewrite/cost optimization only after execution semantics stabilize.
+  implementation_status: PARTIALLY_IMPLEMENTED (FAOF-1 in Roadmap #21; FAOF-2/3/4 deferred - deferred-items)
+  references: [docs/architecture/governance/roadmap-21-execution-graph-planning-final-review-and-integration.md, docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: FORMAL_VERIFICATION_IS_APPLIED_TO_SHARED_SEMANTIC_AND_RUNTIME_INVARIANTS_NOT_TO_ALL_IMPLEMENTATION_CODE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Formal verification applies to shared semantic and runtime invariants, not all implementation code.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: MACHINE_CHECKED_LAWS_GOVERN_SEMANTIC_REWRITE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Machine-checked laws govern semantic rewrite.
+  implementation_status: ADOPTED (FAOF-2/4 future)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: UNPROVEN_SEMANTIC_REWRITE_FAILS_CLOSED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Unproven semantic rewrites fail closed.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: EXECUTABLE_CONFORMANCE_PRECEDES_FORMAL_PROOF_REQUIREMENT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Executable conformance precedes any formal proof requirement.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: FORMAL_PROOF_REQUIREMENTS_SCALE_WITH_ARCHITECTURAL_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Formal proof requirements scale with architectural authority.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+
+- id: PURE_ALGORITHMIC_AND_ALGEBRAIC_FOUNDATIONS_PREFER_THEOREM_PROVING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Pure algorithmic/algebraic foundations prefer theorem proving (Lean4/Coq).
+  implementation_status: ADOPTED (FAOF-2 future)
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+- id: CONCURRENT_RUNTIME_PROTOCOLS_PREFER_STATE_MACHINE_MODEL_CHECKING_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: Concurrent runtime protocols prefer state-machine model checking; TLA+/PlusCal is the preferred direction.
+  implementation_status: ADOPTED
+  references: [docs/architecture/governance/project-state/deferred-items.yaml]
+
+## 9AC INFRASTRUCTURE POLICY
+
+- id: EPHEMERAL_COMPUTE_ONLY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: INFRASTRUCTURE
+  summary: Ephemeral compute only - resource TTL required, idle cloud GPU forbidden, no secrets in repository governance. Infrastructure inventory may record non-secret role info (Z8 dev CPU workstation, pve1 infrastructure/CI virtualization, pve2 Intel media worker, future NVIDIA/cloud workers). Host inventory is not architecture authority.
+  implementation_status: ADOPTED (policy; inventory non-secret only)
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
