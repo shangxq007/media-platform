@@ -29,7 +29,7 @@
   authority_scope: PLATFORM
   summary: Workflow owns the process (durable orchestration). Recipe does not own durable orchestration (see RECIPE_IS_FINITE_DECLARATIVE_COMPOSITION_NOT_DURABLE_WORKFLOW_V1).
   implementation_status: PARTIALLY_IMPLEMENTED (workflow-module with Temporal 1.33.0; full workflow surface evolution future)
-  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md]
+  references: [docs/architecture/governance/media-platform-integrated-architecture-roadmap-v2.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: TIMELINE_OWNS_MEDIA_COMPOSITION
   status: IMPLEMENTED
@@ -404,7 +404,7 @@
   authority_scope: EXECUTION
   summary: The execution fabric is the cross-domain runtime authority for executing work; domains contribute producers, not runtime authorities.
   implementation_status: PARTIALLY_IMPLEMENTED (Epochs 1-3 CLOSED - runtime authority foundation + Native Pull V1; phases 15+ NOT_STARTED)
-  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
 
 - id: RENDER_IS_ONE_EXECUTION_PRODUCER_NOT_EXECUTION_RUNTIME_AUTHORITY_V1
   status: ADOPTED
@@ -436,7 +436,7 @@
   authority_scope: EXECUTION
   summary: Placement authority is explicit per execution backend; never implicit or shared.
   implementation_status: PARTIALLY_IMPLEMENTED (E3 placement authority mapping frozen)
-  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md]
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
 
 - id: WORKER_RUNTIME_IS_EXECUTION_ENDPOINT_NOT_HOST_CAPACITY_AUTHORITY_V1
   status: ADOPTED
@@ -444,7 +444,7 @@
   authority_scope: EXECUTION
   summary: WorkerRuntime is an execution endpoint; host capacity truth belongs to the host scope.
   implementation_status: PARTIALLY_IMPLEMENTED (E1 worker-fabric module + E3 host resource truth)
-  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
 
 - id: PHYSICAL_HOST_IS_HOST_CAPACITY_SCOPE_V1
   status: ADOPTED
@@ -452,7 +452,7 @@
   authority_scope: EXECUTION
   summary: PhysicalHost is the host-capacity scope; host-level resource truth is required for platform-managed backends.
   implementation_status: PARTIALLY_IMPLEMENTED (E3 host resource truth)
-  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
 
 - id: DEVICE_CAPACITY_IS_DEVICE_ID_SCOPED_NOT_WORKER_SCOPED_V1
   status: ADOPTED
@@ -468,7 +468,7 @@
   authority_scope: EXECUTION
   summary: Capacity (advertised) / Reserved (reserved) / Observed (measured) are distinct authorities (Amendment 1).
   implementation_status: PARTIALLY_IMPLEMENTED (E1 resource model)
-  references: [docs/architecture/governance/roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md]
+  references: [docs/architecture/governance/roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
 
 - id: PLATFORM_MANAGED_BACKENDS_REQUIRE_HOST_LEVEL_RESOURCE_TRUTH_V1
   status: ADOPTED
@@ -484,7 +484,7 @@
   authority_scope: EXECUTION
   summary: Delegated backends may keep internal placement and load opaque.
   implementation_status: PARTIALLY_IMPLEMENTED
-  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
 
 - id: BACKEND_OPACITY_IS_ALLOWED_WHEN_PLACEMENT_AUTHORITY_IS_DELEGATED_V1
   status: ADOPTED
@@ -500,7 +500,7 @@
   authority_scope: EXECUTION
   summary: One execution scope has exactly one active placement authority.
   implementation_status: PARTIALLY_IMPLEMENTED
-  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
 
 - id: HEAVY_OR_LONG_RUNNING_COMPUTE_EXECUTES_ON_WORKER_FABRIC_V1
   status: ADOPTED
@@ -516,7 +516,7 @@
   authority_scope: EXECUTION
   summary: Lightweight stateless integration may execute on serverless mechanics.
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: SERVERLESS_INTEGRATION_IS_NOT_EXECUTION_STATE_AUTHORITY_V1
   status: ADOPTED
@@ -524,7 +524,7 @@
   authority_scope: EXECUTION
   summary: Serverless integration never becomes execution-state authority.
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: DATABASE_IS_AUTHORITATIVE_EXECUTION_LIFECYCLE_STATE_V1
   status: ADOPTED
@@ -539,8 +539,8 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: Artifact authority is the authoritative output data state.
-  implementation_status: PARTIALLY_IMPLEMENTED (artifact-module; staging/materialization is Phase 16)
-  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md]
+  implementation_status: "PARTIALLY_IMPLEMENTED (artifact-module; Roadmap #22 Phase 16 staging/materialization/reuse CLOSED)"
+  references: [docs/architecture/governance/roadmap-22-executable-task-worker-fabric-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: MESSAGE_QUEUE_IS_DURABLE_DELIVERY_MECHANICS_NOT_STATE_AUTHORITY_V1
   status: ADOPTED
@@ -845,16 +845,16 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Phase 16 bounded architecture contract for artifact staging, materialization, reuse, cache, validation, output commit, pruning, fencing, and observability is frozen."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED at aa95b5d81e8df11ae03854b874f778f3cd4760c1)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: PHASE_16_MODULE_OWNERSHIP_CONTRACT_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Phase 16 module ownership is explicit: media-execution-plan owns pure reuse-key and pruning semantics; worker-fabric owns runtime reuse/materialization orchestration; artifact and storage modules retain their existing authorities."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: EXECUTION_REUSE_KEY_OWNED_BY_MEDIA_EXECUTION_PLAN_MODULE_V1
   status: ADOPTED
@@ -1263,7 +1263,7 @@
   authority_scope: PLUGIN
   summary: Provider implementation and execution backend are distinct plugin contribution kinds.
   implementation_status: NOT_STARTED
-  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md]
+  references: [docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
 
 - id: EXECUTION_BACKEND_PLUGIN_DOES_NOT_DEFINE_CAPABILITY_SEMANTICS_V1
   status: ADOPTED
@@ -2314,7 +2314,7 @@
   authority_scope: EXECUTION_INTEGRATION
   summary: 'Synchronous callbacks, polling and streams all converge to ExecutionObservation rather than separate lifecycle authorities.'
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: REMOTE_POLLERS_ARE_EPHEMERAL_OBSERVERS_NOT_TASK_AUTHORITIES_V1
   status: ADOPTED
@@ -2322,7 +2322,7 @@
   authority_scope: EXECUTION_INTEGRATION
   summary: 'Remote pollers are ephemeral observers and never task authorities.'
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: WEBHOOK_INGRESS_IS_A_TRUST_AND_NORMALIZATION_BOUNDARY_V1
   status: ADOPTED
@@ -2330,7 +2330,7 @@
   authority_scope: EXECUTION_INTEGRATION
   summary: 'WebhookIngress is a trust/authentication/signature validation and normalization boundary.'
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: REMOTE_STATUS_OBSERVATIONS_MUST_BE_ATTEMPT_AND_GENERATION_FENCED_V1
   status: ADOPTED
@@ -2338,7 +2338,7 @@
   authority_scope: EXECUTION_INTEGRATION
   summary: 'Remote status observations must be fenced by execution attempt and generation.'
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: POLLING_POLICY_IS_INTEGRATION_RUNTIME_POLICY_NOT_CAPABILITY_SEMANTICS_V1
   status: ADOPTED
@@ -2362,7 +2362,7 @@
   authority_scope: EXECUTION_INTEGRATION
   summary: 'Remote status observation may be delegated to edge/serverless mechanics without transferring execution-state authority.'
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: CORE_SERVICES_MUST_NOT_BLOCK_ON_LONG_RUNNING_REMOTE_EXECUTION_V1
   status: ADOPTED
@@ -2370,7 +2370,7 @@
   authority_scope: EXECUTION_INTEGRATION
   summary: 'Core services must not synchronously block on long-running remote execution.'
   implementation_status: ADOPTED
-  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: ASYNC_DELEGATION_MUST_SURVIVE_PROCESS_AND_DEPLOYMENT_RESTART_V1
   status: ADOPTED
@@ -2404,7 +2404,7 @@
   authority_scope: WEBHOOK_INTEGRATION
   summary: 'Outbound webhook delivery uses the transactional outbox reliability boundary.'
   implementation_status: NOT_STARTED
-  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 - id: WEBHOOK_DELIVERY_IS_AT_LEAST_ONCE_AND_IDEMPOTENCY_AWARE_V1
   status: ADOPTED
@@ -2428,7 +2428,7 @@
   authority_scope: WEBHOOK_INTEGRATION
   summary: 'Inbound webhook never directly mutates canonical state; it normalizes to typed Observation/Command/Event routed through canonical authority boundaries.'
   implementation_status: NOT_STARTED
-  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+  references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md, docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
 
 ## 9AJ EVENT SUBSCRIPTION FOUNDATION
 
@@ -2529,3 +2529,183 @@
   summary: 'NotificationDeliveryRecord is audit/delivery record, not business state authority.'
   implementation_status: NOT_STARTED
   references: [docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md]
+
+## 9AL ROADMAP 22 WORKER RUNTIME, BACKEND, AND RESOURCE ACCOUNTING
+
+- id: OPEN_CUE_IS_A_SPECIALIZED_FARM_EXECUTION_BACKEND_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: OpenCue is an optional specialized VFX/offline farm ExecutionBackend plugin, not the default general worker fabric.
+  implementation_status: "DEFERRED (Roadmap #22 Phase 21 bounded POC)"
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: OPEN_CUE_IS_NOT_CAPABILITY_OR_PROVIDER_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: OpenCue does not own Capability semantics or Provider/ProviderImplementation semantic authority.
+  implementation_status: "DEFERRED (Roadmap #22 Phase 21 bounded POC)"
+  references: [docs/architecture/governance/roadmap-22-epoch-3-general-execution-fabric-runtime-authority-addendum-v1.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: BACKEND_PLUGIN_MAY_EXPOSE_NATIVE_MANAGEMENT_SURFACE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: An ExecutionBackend plugin may expose typed deep links or a native management surface without transferring canonical platform authority.
+  implementation_status: DEFERRED (first delegated backend with a real native console; Phase 21 earliest)
+  references: [docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: PLUGINIZATION_MUST_NOT_ERASE_BACKEND_NATIVE_CONTROL_PLANE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLUGIN
+  summary: Pluginization preserves the delegated backend native control plane and does not recreate its farm administration as fake platform objects or UI.
+  implementation_status: "DEFERRED (Roadmap #22 Phase 21 bounded POC)"
+  references: [docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: BACKEND_INTERNAL_WORKER_DOES_NOT_BECOME_PLATFORM_WORKER_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: A delegated backend internal worker or host does not become a platform WorkerRuntime or PhysicalHost merely through adapter mapping.
+  implementation_status: "DEFERRED (Roadmap #22 Phase 21 bounded POC)"
+  references: [docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: WORKER_RUNTIME_SUPPORT_ADVERTISEMENT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: WorkerRuntime support advertisement is typed candidate evidence; CAN_RUN is the server-validated intersection of semantics, implementation/profile, installation/probe, incarnation, device, resources, and trust/policy.
+  implementation_status: "DEFERRED (blocking Roadmap #22 Phase 19 first real Provider runtime gate)"
+  references: [docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: MULTIPLE_RUNTIMES_ON_ONE_HOST_MUST_NOT_DUPLICATE_PHYSICAL_CAPACITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Multiple platform runtimes or incarnations sharing one PhysicalHost must share the applicable accounting domain and must not each advertise the same physical capacity.
+  implementation_status: DEFERRED (blocking before multi-runtime shared-host production)
+  references: [docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: RESOURCE_ACCOUNTING_DOMAIN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: ResourceAccountingDomain is the exact-once capacity/reservation boundary, defaulting to PhysicalHost and extensible to proven VM, cgroup, MIG, or SR-IOV isolation domains.
+  implementation_status: DEFERRED (blocking before multi-runtime shared-host production)
+  references: [docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: DEDICATED_WORKER_POOLS_ARE_POLICY_OPTIMIZATIONS_NOT_DOMAIN_ARCHITECTURE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Worker pools are placement-policy views and do not create semantic Video, AI, Heavy, or other machine-domain taxonomies.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md, docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: CACHE_LOCALITY_IS_OPTIMIZATION_NOT_ARTIFACT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Cache locality may influence bounded placement scoring but never Artifact existence, digest, authorization, reuse, or completion authority.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+- id: MAINTENANCE_SCHEDULER_IS_NOT_EXECUTION_PLACEMENT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "Cron, cleanup, and maintenance scheduling mechanics are not worker-fabric ownership, durable Workflow authority, backend-internal placement, or Roadmap #23 optimization."
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md]
+
+## 9AM EDGE, SERVERLESS, INTEGRATION, AND COMPUTE
+
+- id: SEMANTICS_IN_CORE_COMPUTE_AT_EDGE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: Canonical semantics remain in platform core compute even when replaceable mechanics execute at the edge.
+  implementation_status: NOT_STARTED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: EXTERNAL_SERVICE_COMPLEXITY_STAYS_BEHIND_TYPED_INTEGRATION_ADAPTER_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: External protocol, authentication, callback, polling, rate-limit, SDK, and error-mapping complexity stays behind a typed integration adapter.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: CALLBACK_IS_PREFERRED_OVER_POLLING_WHEN_AVAILABLE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION_INTEGRATION
+  summary: Authenticated idempotency-aware callbacks are preferred to polling; bounded asynchronous polling is the fallback observation mechanic.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: EDGE_COMPUTE_IS_DATA_PLANE_AND_ACCESS_EDGE_NOT_CANONICAL_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: DATA_PLANE
+  summary: Edge compute is a data-plane and access-edge mechanic, not canonical media, Artifact, workflow, or execution-state authority.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: APPLICATION_CONTROL_PLANE_MUST_NOT_PROXY_LARGE_MEDIA_BYTES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: DATA_PLANE
+  summary: The application control plane does not proxy large media bytes by default; authorized clients use the storage data plane.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: DIRECT_CLIENT_UPLOAD_USES_BOUNDED_STORAGE_GRANT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: DATA_PLANE
+  summary: Direct client upload uses a time- and scope-bounded platform-authorized storage grant.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: DIRECT_UPLOAD_BYPASSES_APPLICATION_BYTES_PROXY_NOT_ARTIFACT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: ARTIFACT
+  summary: Direct upload bypasses the application bytes proxy only; trusted validation, finalization, and Artifact authority remain mandatory.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: SIGNED_URL_IS_EPHEMERAL_ACCESS_MECHANICS_NOT_ARTIFACT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: ACCESS_CONTROL
+  summary: A signed URL or equivalent token is ephemeral access mechanics and never Artifact existence, lifecycle, digest, or authorization authority.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: ACCESS_POLICY_IS_PLATFORM_AUTHORITY_SIGNING_FORMAT_IS_ADAPTER_MECHANICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: ACCESS_CONTROL
+  summary: Access policy remains platform authority while provider signing format, SDK, URL, CDN token, and expiry encoding remain adapter mechanics.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: FRONTEND_COMPUTATION_IS_UNTRUSTED_HINT_UNLESS_SERVER_VERIFIED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CANONICAL_SEMANTICS
+  summary: Frontend-computed media metadata, digest, safety, or completion values are untrusted hints until verified by a trusted platform path.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+- id: EDGE_TRANSFORM_IS_DELIVERY_MECHANICS_UNLESS_EXPLICITLY_LOWERED_AS_PLATFORM_OPERATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: An edge transform is non-canonical delivery mechanics unless explicitly lowered through platform Operation/ExecutableTask, staging, publication, Artifact, and fenced completion authority.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]

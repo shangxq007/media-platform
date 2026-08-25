@@ -336,14 +336,16 @@ deferred_items:
   - docs/architecture/adr/ADR-025-artifact-dag-indefinite-deferral.md
 - id: OUTPUT_ARTIFACT_PERSISTENCE_FULL_AUTHORITY
   title: Output artifact persistence full authority
-  status: DEFERRED
+  status: RESOLVED
   originating_context: FRMC deferred list - output artifact persistence path gap (file digest preserved; no second Artifact authority); artifact authority contracts established later (gcr-2)
   earliest_revisit: "Roadmap #22 Phase 16 (artifact staging/materialization)"
   trigger: Phase 16 fenced output completion work starts
   blocking_now: false
+  resolution: "Roadmap #22 Phase 16 closed the durable storage publication -> Artifact commit -> fenced completion path for the exactly-one authoritative output V1 contract."
   references:
   - docs/architecture/governance/first-real-media-cut-v1.md
   - docs/architecture/governance/gcr-2-artifact-authority.md
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md
 - id: OASDIFF_CHECKSUM_PIN_HARDENING
   title: OASDIFF checksum pin hardening
   status: DEFERRED
@@ -464,12 +466,14 @@ deferred_items:
 - id: AI_REMOTE_PROVIDER_CONFORMANCE
   title: AI remote provider conformance
   status: DEFERRED
-  originating_context: Remote AI provider status must converge to fenced ExecutionObservation and Artifact authority; no parallel AiJob authority.
-  earliest_revisit: Not scheduled
-  trigger: Real remote AI provider integration begins
+  originating_context: Remote Provider status must prefer authenticated callbacks when available, otherwise use bounded asynchronous polling, and converge to attempt/generation-fenced ExecutionObservation and Artifact authority; no parallel AiJob or poller authority.
+  earliest_revisit: First real remote Provider integration
+  trigger: A real remote Provider operation outlives a synchronous request, exposes a callback, or requires bounded status polling
   blocking_now: false
+  blocking_at_trigger: true
   references:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+  - docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
 - id: CREATIVE_DEVELOPMENT_DOMAIN_V1
   title: Creative Development domain V1
   status: DEFERRED
@@ -561,3 +565,81 @@ deferred_items:
   blocking_now: false
   references:
   - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+
+- id: WORKER_RUNTIME_SUPPORT_ADVERTISEMENT
+  title: Worker Runtime Support Advertisement implementation
+  status: DEFERRED
+  originating_context: Typed WorkerRuntime candidate advertisement and authoritative CAN_RUN intersection are adopted; worker self-advertisement alone is insufficient.
+  earliest_revisit: "Roadmap #22 Phase 19"
+  trigger: First real Provider runtime becomes operational (FFmpeg Native Pull vertical slice)
+  blocking_now: false
+  blocking_at_trigger: true
+  references:
+  - docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md
+
+- id: RESOURCE_ACCOUNTING_DOMAIN_IMPLEMENTATION
+  title: Resource Accounting Domain implementation
+  status: DEFERRED
+  originating_context: ResourceAccountingDomain exact-once capacity and reservation boundary is adopted; default scope is PhysicalHost with future VM/cgroup/MIG/SR-IOV scopes.
+  earliest_revisit: "Roadmap #22 Phase 20, before multi-runtime shared-host production"
+  trigger: Two platform WorkerRuntime incarnations share the same physical capacity
+  blocking_now: false
+  blocking_at_trigger: true
+  references:
+  - docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md
+
+- id: OPEN_CUE_BACKEND_PLUGIN_MIGRATION
+  title: OpenCue specialized ExecutionBackend plugin migration
+  status: DEFERRED
+  originating_context: OpenCue stays an optional specialized VFX/offline backend; adapter/plugin mapping must preserve Cuebot/RQD placement and control-plane authority.
+  earliest_revisit: "Roadmap #22 Phase 21 bounded POC"
+  trigger: OpenCue bounded mapping/conformance POC begins
+  blocking_now: false
+  blocking_at_trigger: true
+  references:
+  - docs/architecture/governance/roadmap-22-native-pull-lease-execution-backend-amendment-2.md
+  - docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md
+
+- id: BACKEND_NATIVE_MANAGEMENT_SURFACE
+  title: Delegated backend native management surface
+  status: DEFERRED
+  originating_context: Backend plugins may expose authorized typed deep links/native management surfaces without recreating the backend farm UI or erasing its control plane.
+  earliest_revisit: "Roadmap #22 Phase 21 or later"
+  trigger: First delegated ExecutionBackend provides a real native operational console
+  blocking_now: false
+  blocking_at_trigger: false
+  references:
+  - docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md
+
+- id: DIRECT_LARGE_WEB_UPLOAD
+  title: Direct large-media web upload
+  status: DEFERRED
+  originating_context: Application control plane should issue bounded storage grants instead of proxying large bytes; trusted finalization and Artifact authority remain platform-owned.
+  earliest_revisit: First large-media browser upload product path
+  trigger: Browser/client upload size or throughput makes application bytes proxy inappropriate
+  blocking_now: false
+  blocking_at_trigger: true
+  references:
+  - docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
+
+- id: PRIVATE_DELIVERY_SIGNED_ACCESS
+  title: Private delivery signed access
+  status: DEFERRED
+  originating_context: Signed URLs/tokens are ephemeral access mechanics; platform policy and Artifact authorization remain authoritative.
+  earliest_revisit: First private-media delivery product path
+  trigger: A private Artifact must be delivered directly through storage/CDN data plane
+  blocking_now: false
+  blocking_at_trigger: true
+  references:
+  - docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
+
+- id: EDGE_TRANSFORM_CLASSIFICATION
+  title: Edge transform canonical-versus-delivery classification
+  status: DEFERRED
+  originating_context: Edge transforms are delivery mechanics unless explicitly lowered to platform Operation/ExecutableTask, staging, publication, Artifact, and completion authority.
+  earliest_revisit: First proposed edge resize/transcode/thumbnail/package transform
+  trigger: An edge-produced output is proposed for reuse, canonical reference, provenance, or later execution input
+  blocking_now: false
+  blocking_at_trigger: true
+  references:
+  - docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md

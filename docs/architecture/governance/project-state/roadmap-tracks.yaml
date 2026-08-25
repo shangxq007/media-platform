@@ -6,18 +6,24 @@ tracks:
 - id: EXECUTION_AND_PROVIDER_RUNTIME
   status: ACTIVE
   purpose: "Worker fabric, execution backend, provider runtime and native pull - the core of Roadmap #22 after Epoch 3."
-  current_dependencies: "Roadmap #22 epochs 1-3 CLOSED (provider immutable foundation, worker-fabric module, resource model, ETG, runtime authority + Native Pull V1)"
+  current_dependencies: "Roadmap #22 epochs 1-3, Phase 15, and Phase 16 CLOSED; provider immutable foundation, worker-fabric module, resource model, ETG, runtime authority, Native Pull V1, typed PlanLowerer/RuntimeAdapter, and Artifact staging/materialization/reuse closure are accepted"
   next_actions:
-  - Phase 15 - PlanLowerer / RuntimeAdapter (NOT_STARTED)
-  - Phase 16 - Artifact staging / materialization / fenced completion integration
-  - Phase 17 - sandbox / isolation
-  - Phase 19 - FFmpeg CPU Native Pull (first real Provider plugin)
-  - Phases 20-24 - VAAPI/QSV, OpenCue POC, remote backend conformance, NVIDIA/cloud, candidate freeze/FCV/closure
+  - Phase 17 - sandbox / isolation (NEXT; NOT_STARTED)
+  - Phase 19 - blocking WorkerRuntime Support Advertisement plus first real FFmpeg CPU Native Pull Provider vertical slice (NOT_STARTED)
+  - Phase 20 - Resource Accounting Domain implementation before two platform runtime incarnations share physical capacity in production (NOT_STARTED; trigger-gated)
+  - Phase 21 - OpenCue specialized VFX/offline ExecutionBackend plugin bounded POC, mapping, and native-management-surface preservation (NOT_STARTED)
+  - Phases 22-24 - remote backend conformance, NVIDIA/cloud, candidate freeze/FCV/closure
   roadmap_relationship: "Roadmap #22 phases 15-24 (phase numbering per project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md; matches DR section 34 PHASE_0..24 sequence)"
   validation_target: PROVIDER_CONFORMANCE_VALIDATION; first real Provider plugin (FFmpeg) proving plugin architecture
+  authority_boundaries:
+  - WorkerRuntime support advertisement is candidate evidence; server-validated CAN_RUN remains authoritative
+  - ResourceAccountingDomain prevents duplicate physical capacity across runtime incarnations
+  - OpenCue owns backend-internal Cuebot/RQD hosts, allocations, services, placement, retry, and administration after delegation
+  - "Roadmap #23 optimization may select/score backends but never invades delegated-backend internal placement"
   explicit_exclusions:
   - No Global Execution Optimizer (#23 scope)
-  - No merge of canonical main in this governance bootstrap
+  - Phase 17, Phase 18, Phase 19, Phase 20, and Phase 21 are not started by this governance update
+  - No merge of canonical main in this governance update
   - No production code changes in governance persistence tasks
 - id: SEMANTIC_COMPOSITION_FOUNDATION
   status: ACTIVE
@@ -211,25 +217,38 @@ tracks:
   - 'No Roadmap #22 Phase 15 PlanLowerer/RuntimeAdapter work'
 - id: EXTERNAL_INTEGRATION_AND_WEBHOOK_FOUNDATION
   status: PLANNED_DEFERRED
-  purpose: External APIs, callbacks, polling, streaming, inbound/outbound Webhooks, protocol mediation, integration adapters, and serverless observer deployment.
+  purpose: External APIs, typed adapters, callbacks, polling, streaming, inbound/outbound Webhooks, direct data-plane upload/delivery, edge transforms, protocol mediation, and replaceable serverless observer/access-edge mechanics.
   architecture:
   - 'Inbound: External System -> WebhookIngress -> authentication/signature/trust validation -> normalization -> typed Observation / Command / Event -> canonical application/runtime authority'
   - 'Outbound: committed canonical state/event -> Transactional Outbox -> subscription/delivery resolution -> WebhookDeliveryAdapter -> HTTP/Camel -> external consumer'
+  - 'Remote execution: durable submission/event -> authenticated callback preferred, otherwise bounded poller -> attempt/generation-fenced ExecutionObservation -> platform completion/Artifact authority'
+  - 'Direct upload: platform bounded storage grant -> client/storage data plane -> trusted validation/finalization -> Artifact authority'
+  - 'Private delivery: platform access policy/Artifact authorization -> ephemeral signed mechanics -> storage/CDN data plane'
+  - 'Edge transform: delivery-only unless explicitly lowered to platform Operation/ExecutableTask, staging, publication, Artifact, and fenced completion'
   current_dependencies: Typed domain events, transactional outbox, execution observations, provider/runtime foundations.
   next_actions:
-  - EXTERNAL_INTEGRATION_RUNTIME
-  - APACHE_CAMEL_POC
-  - INBOUND_WEBHOOK_RUNTIME
-  - OUTBOUND_WEBHOOK_RUNTIME
+  - EXTERNAL_INTEGRATION_RUNTIME when the first concrete external service integration requires it
+  - AI_REMOTE_PROVIDER_CONFORMANCE when a remote operation outlives a synchronous request, offers callbacks, or requires polling
+  - INBOUND_WEBHOOK_RUNTIME at the first authenticated inbound webhook integration
+  - OUTBOUND_WEBHOOK_RUNTIME at the first outbound transactional delivery product need
+  - DIRECT_LARGE_WEB_UPLOAD when browser/client media size or throughput makes application byte proxying inappropriate
+  - PRIVATE_DELIVERY_SIGNED_ACCESS when a private Artifact must be delivered directly through storage/CDN
+  - EDGE_TRANSFORM_CLASSIFICATION when an edge output is proposed as reusable, canonical, provenance-bearing, or a later execution input
   roadmap_relationship: '#22 Provider/runtime foundations -> later real AI Provider integration; technology != authority.'
   validation_target: EVENT_SUBSCRIPTION_WEBHOOK_CONFORMANCE
   explicit_boundaries:
   - No synchronous external HTTP call may become part of canonical DB commit authority
-  - Apache Camel/native HTTP/Workers/Lambda are mechanics, not authority
+  - Long waits use durable async state; callback preferred, otherwise bounded attempt/generation-fenced polling
+  - Semantics stay in core compute and external complexity stays behind typed adapters
+  - Workflow owns durable process; Temporal is replaceable orchestration; Apache Camel/native HTTP/Workers/Lambda are mechanics only
+  - Edge is data/access plane, not canonical media or Artifact authority
+  - Application control plane does not proxy large media bytes by default
   explicit_exclusions:
   - No Apache Camel runtime implementation now
   - No Webhook runtime now
   - No event subscription APIs now
+  - No Serverless ExecutionBackend without a concrete ExecutableTask use case and separate adoption
+  - No mandatory Cloudflare Workers, AWS Lambda, serverless, edge, CDN, or signing-provider production dependency
 - id: CREATIVE_DEVELOPMENT_FOUNDATION
   status: PLANNED_DEFERRED
   purpose: Higher-level narrative/directorial/creative semantics modeled independently from Timeline, RenderPlan, Provider, and Execution semantics.

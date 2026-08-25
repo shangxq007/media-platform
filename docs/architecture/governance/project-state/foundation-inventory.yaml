@@ -404,11 +404,13 @@ foundations:
   category: scheduler
   status: POC_CANDIDATE
   architecture_role: specialized VFX/offline farm ExecutionBackend
-  authority_boundary: execution backend contribution (backend-opencue), never execution-state authority
+  authority_boundary: "specialized backend-opencue contribution only; never media Provider, Capability, generic worker-fabric, platform lifecycle, Artifact, or Roadmap #23 global-optimizer authority; Cuebot/RQD retain backend-internal placement and administration"
   planned_window: "Roadmap #22 Phase 21 bounded POC"
   references:
   - docs/architecture/governance/roadmap-22-native-pull-lease-execution-backend-amendment-2.md
-  notes: OpenCue research examples exist under docs/examples/opencue; no production integration
+  - docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md
+  - docs/architecture/governance/project-state/deferred-items.yaml
+  notes: POC_CANDIDATE for specialized VFX/offline execution only; RQD is not platform WorkerRuntime, OpenCue host is not platform PhysicalHost, native management surface/control plane is preserved; research examples exist under docs/examples/opencue; no production integration
 - name: Kueue
   category: scheduler
   status: REFERENCE_ONLY
@@ -475,21 +477,23 @@ foundations:
 - name: Cloudflare Workers
   category: serverless
   status: REFERENCE_ONLY
-  architecture_role: lightweight integration/observer deployment mechanics
-  authority_boundary: never execution-state authority
+  architecture_role: candidate lightweight integration, callback/poll observer, access-edge, or bounded data-plane mechanics
+  authority_boundary: replaceable mechanics only; never domain, Workflow, canonical media, Artifact, access-policy, or execution-state authority
   planned_window: not scheduled
   references:
   - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
-  notes: reference only
+  - docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
+  notes: reference/candidate mechanics only; no mandatory production dependency and no Serverless ExecutionBackend adopted
 - name: AWS Lambda
   category: serverless
   status: REFERENCE_ONLY
-  architecture_role: lightweight integration/observer deployment mechanics
-  authority_boundary: never execution-state authority
+  architecture_role: candidate lightweight integration, callback/poll observer, access-edge, or bounded data-plane mechanics
+  authority_boundary: replaceable mechanics only; never domain, Workflow, canonical media, Artifact, access-policy, or execution-state authority
   planned_window: not scheduled
   references:
   - docs/architecture/governance/project-architecture-state-v1-consolidated-governance-bootstrap-revision-2.md
-  notes: reference only
+  - docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
+  notes: reference/candidate mechanics only; no mandatory production dependency and no Serverless ExecutionBackend adopted
 - name: Lean4
   category: formal-methods
   status: PLANNED
