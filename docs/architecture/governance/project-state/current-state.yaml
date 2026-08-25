@@ -18,7 +18,7 @@ repository:
   moving_branch_tip:
     source: DERIVED_FROM_GIT
     persisted_value: false
-  main_merged_roadmap_22: false
+  main_merged_roadmap_22: true
 local_observation:
   authority: INFORMATIONAL_ONLY
   roadmap_22_worktree: .worktrees/community-compute-distributed-runtime-governance-amendment1
@@ -46,7 +46,8 @@ roadmap_22:
   phase_16_correction_3_final_review: PASS
   phase_16_decision_recovery: CLOSED
   phase_17_started: false
-  canonical_main_integration: NOT_YET_PERFORMED
+  canonical_main_integration: FAST_FORWARDED_TO_ACCEPTED_SOURCE_TIP
+  canonical_main_integration_source_tip: b16b7505ddc37c542d2c422a64d44fc6a5be5ffa
 roadmap_22_epochs:
   epoch_1: CLOSED
   epoch_2: CLOSED
@@ -59,7 +60,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_COMMUNITY_COMPUTE_AND_DISTRIBUTED_RUNTIME_FOUNDATION_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW
+  immediate_next_gate: ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 17
@@ -96,7 +97,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_COMMUNITY_COMPUTE_AND_DISTRIBUTED_RUNTIME_FOUNDATION_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW
+  next_gate: ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   data_integrity_correction_records:
