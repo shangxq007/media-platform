@@ -6,5 +6,6 @@ import java.io.IOException;
 /** Backend-neutral Artifact materialization boundary. */
 @FunctionalInterface
 public interface ArtifactMaterializerPort {
-    MaterializedArtifact materialize(String tenantId, ArtifactPin artifactPin) throws IOException;
+    ArtifactMaterializationResult materialize(String tenantId, ArtifactPin artifactPin)
+            throws IOException;
 }

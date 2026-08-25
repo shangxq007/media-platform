@@ -18,7 +18,7 @@ public final class Phase16RuntimeMetrics {
         increment("reuse.lookup", "outcome", outcome.name());
     }
 
-    public void materialization(OperationOutcome outcome) {
+    public void materialization(MaterializationDisposition outcome) {
         increment("materialization", "outcome", outcome.name());
     }
 

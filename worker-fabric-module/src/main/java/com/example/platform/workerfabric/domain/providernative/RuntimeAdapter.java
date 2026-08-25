@@ -1,6 +1,6 @@
 package com.example.platform.workerfabric.domain.providernative;
 
-import com.example.platform.workerfabric.reuse.MaterializedArtifact;
+import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
 import java.io.IOException;
 import java.util.List;
 
@@ -19,5 +19,5 @@ public interface RuntimeAdapter<P extends ProviderNativeExecutionPlan> {
 
     ProviderExecutionOutput execute(
             RuntimeExecutionBundle executionBundle,
-            List<MaterializedArtifact> runtimeLocalInputs) throws IOException;
+            List<MaterializedExecutionInput> runtimeLocalInputs) throws IOException;
 }

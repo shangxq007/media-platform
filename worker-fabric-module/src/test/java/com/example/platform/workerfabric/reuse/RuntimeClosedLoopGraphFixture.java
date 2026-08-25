@@ -103,6 +103,77 @@ final class RuntimeClosedLoopGraphFixture {
                         boundary(edgeAC, unitA, unitC, candidate.bindingPin())));
     }
 
+    static ProviderBoundExecutableTaskGraph distinctSourceInputs(
+            String sourceXDigest,
+            String sourceYDigest,
+            String provider) {
+        PhysicalPlanUnit unit = unit(
+                "unit-distinct-sources",
+                List.of(
+                        sourceInput("input-a", "unit-distinct-sources", "source-x", sourceXDigest),
+                        sourceInput("input-b", "unit-distinct-sources", "source-y", sourceYDigest)),
+                List.of(output("unit-distinct-sources")),
+                List.of());
+        PhysicalExecutionPlan plan = plan(List.of(unit));
+        Context context = context(plan, provider);
+        return ProviderBoundExecutableTaskGraph.derive(
+                plan, context.graph(), List.of(task(context, provider, unit)), List.of());
+    }
+
+    static ProviderBoundExecutableTaskGraph sameSourceForTwoRoles(
+            String sourceDigest,
+            String provider) {
+        PhysicalPlanUnit unit = unit(
+                "unit-two-roles",
+                List.of(
+                        sourceInput(
+                                "input-foreground", "unit-two-roles", "source-x", sourceDigest),
+                        sourceInput("input-mask", "unit-two-roles", "source-x", sourceDigest)),
+                List.of(output("unit-two-roles")),
+                List.of());
+        PhysicalExecutionPlan plan = plan(List.of(unit));
+        Context context = context(plan, provider);
+        return ProviderBoundExecutableTaskGraph.derive(
+                plan, context.graph(), List.of(task(context, provider, unit)), List.of());
+    }
+
+    static ProviderBoundExecutableTaskGraph twoComputedInputs(
+            String sourceADigest,
+            String sourceBDigest,
+            String provider) {
+        LogicalDependencyEdge edgeAC = edge("a-c-1", "unit-a", "unit-c");
+        LogicalDependencyEdge edgeBC = edge("b-c-2", "unit-b", "unit-c");
+        PhysicalPlanUnit unitA = unit(
+                "unit-a",
+                List.of(sourceInput("unit-a", sourceADigest)),
+                List.of(output("unit-a")),
+                List.of(edgeAC));
+        PhysicalPlanUnit unitB = unit(
+                "unit-b",
+                List.of(sourceInput("unit-b", sourceBDigest)),
+                List.of(output("unit-b")),
+                List.of(edgeBC));
+        PhysicalPlanUnit unitC = unit(
+                "unit-c",
+                List.of(
+                        computedInput("input-c-1", "unit-a", "unit-c", edgeAC),
+                        computedInput("input-c-2", "unit-b", "unit-c", edgeBC)),
+                List.of(output("unit-c")),
+                List.of(edgeAC, edgeBC));
+        PhysicalExecutionPlan plan = plan(List.of(unitA, unitB, unitC));
+        Context context = context(plan, provider);
+        ExecutableTask taskA = task(context, provider, unitA);
+        ExecutableTask taskB = task(context, provider, unitB);
+        ExecutableTask taskC = task(context, provider, unitC);
+        return ProviderBoundExecutableTaskGraph.derive(
+                plan,
+                context.graph(),
+                List.of(taskA, taskB, taskC),
+                List.of(
+                        boundary(edgeAC, unitA, unitC, context.candidate().bindingPin()),
+                        boundary(edgeBC, unitB, unitC, context.candidate().bindingPin())));
+    }
+
     private static ExecutionArtifactBoundary boundary(
             LogicalDependencyEdge edge,
             PhysicalPlanUnit producer,
@@ -115,7 +186,12 @@ final class RuntimeClosedLoopGraphFixture {
                 binding,
                 binding,
                 producer.typedOutputs().getFirst(),
-                consumer.typedInputs().getFirst(),
+                consumer.typedInputs().stream()
+                        .filter(input -> edge.producerLogicalNodeId()
+                                .equals(input.producerLogicalNodeId()))
+                        .filter(input -> edge.dependencyVariant().equals(input.dependencyVariant()))
+                        .findFirst()
+                        .orElseThrow(),
                 ExecutionArtifactBoundary.MaterializationContract.IMMUTABLE_ARTIFACT_AUTHORITY_V1,
                 ExecutionArtifactBoundary.MaterializationReason.INTER_TASK_RUNTIME_BOUNDARY_UNPROVEN,
                 Optional.empty());
@@ -201,14 +277,22 @@ final class RuntimeClosedLoopGraphFixture {
     }
 
     private static InputBinding sourceInput(String unit, String digest) {
+        return sourceInput("input-" + unit, unit, "source-" + unit, digest);
+    }
+
+    private static InputBinding sourceInput(
+            String inputId,
+            String consumerUnit,
+            String sourceArtifactId,
+            String digest) {
         return new InputBinding(
-                new ExecutionInputId("input-" + unit),
-                "logical-" + unit,
-                new ExecutionStepId(unit),
-                new RenderNodeId("render-" + unit),
+                new ExecutionInputId(inputId),
+                "logical-" + consumerUnit,
+                new ExecutionStepId(consumerUnit),
+                new RenderNodeId("render-" + consumerUnit),
                 null, null, null, null,
                 new SourceArtifact(
-                        new ArtifactId("source-" + unit), ContentDigest.sha256(digest)),
+                        new ArtifactId(sourceArtifactId), ContentDigest.sha256(digest)),
                 null);
     }
 
@@ -216,8 +300,16 @@ final class RuntimeClosedLoopGraphFixture {
             String producer,
             String consumer,
             LogicalDependencyEdge edge) {
+        return computedInput("input-" + producer + "-" + consumer, producer, consumer, edge);
+    }
+
+    private static InputBinding computedInput(
+            String inputId,
+            String producer,
+            String consumer,
+            LogicalDependencyEdge edge) {
         return new InputBinding(
-                new ExecutionInputId("input-" + producer + "-" + consumer),
+                new ExecutionInputId(inputId),
                 "logical-" + consumer,
                 new ExecutionStepId(consumer),
                 new RenderNodeId("render-" + consumer),

@@ -127,25 +127,34 @@ class ArtifactReuseMaterializationTest {
                 new WorkerLocalMaterializationCache(temp.resolve("cache"), 1024);
         AtomicInteger downloads = new AtomicInteger();
 
-        MaterializedArtifact first = cache.getOrMaterialize(pin, () -> {
+        ArtifactMaterializationResult firstResult = cache.getOrMaterialize(pin, () -> {
             downloads.incrementAndGet();
             return new ByteArrayInputStream(bytes);
         });
-        MaterializedArtifact hit = cache.getOrMaterialize(pin, () -> {
+        ArtifactMaterializationResult hitResult = cache.getOrMaterialize(pin, () -> {
             downloads.incrementAndGet();
             return new ByteArrayInputStream(bytes);
         });
+        MaterializedArtifact first = firstResult.materializedArtifact();
+        MaterializedArtifact hit = hitResult.materializedArtifact();
 
         assertThat(first.path()).isEqualTo(hit.path());
+        assertThat(firstResult.disposition())
+                .isEqualTo(MaterializationDisposition.STORAGE_MATERIALIZED);
+        assertThat(hitResult.disposition())
+                .isEqualTo(MaterializationDisposition.LOCAL_CACHE_HIT);
         assertThat(first.path()).startsWith(temp.resolve("cache").toAbsolutePath().normalize());
         assertThat(first.path().getFileName().toString()).matches("[0-9a-f]{64}");
         assertThat(downloads).hasValue(1);
         Files.writeString(first.path(), "corrupt");
 
-        MaterializedArtifact repaired = cache.getOrMaterialize(pin, () -> {
+        ArtifactMaterializationResult repairedResult = cache.getOrMaterialize(pin, () -> {
             downloads.incrementAndGet();
             return new ByteArrayInputStream(bytes);
         });
+        MaterializedArtifact repaired = repairedResult.materializedArtifact();
+        assertThat(repairedResult.disposition())
+                .isEqualTo(MaterializationDisposition.CORRUPTION_RECOVERED);
         assertThat(Files.readAllBytes(repaired.path())).containsExactly(bytes);
         assertThat(downloads).hasValue(2);
         assertThat(Files.list(repaired.path().getParent())
@@ -179,7 +188,8 @@ class ArtifactReuseMaterializationTest {
                 });
             });
             start.countDown();
-            assertThat(first.get().path()).isEqualTo(second.get().path());
+            assertThat(first.get().materializedArtifact().path())
+                    .isEqualTo(second.get().materializedArtifact().path());
             assertThat(downloads).hasValue(1);
         } finally {
             executor.shutdownNow();
@@ -232,10 +242,11 @@ class ArtifactReuseMaterializationTest {
                 Map.of(providerId, provider),
                 new WorkerLocalMaterializationCache(temp.resolve("direct-cache"), 1024));
 
-        MaterializedArtifact result = materializer.materialize("tenant-a", pin);
+        ArtifactMaterializationResult result = materializer.materialize("tenant-a", pin);
 
-        assertThat(result.artifactPin()).isEqualTo(pin);
-        assertThat(Files.readAllBytes(result.path())).containsExactly(bytes);
+        assertThat(result.materializedArtifact().artifactPin()).isEqualTo(pin);
+        assertThat(Files.readAllBytes(result.materializedArtifact().path())).containsExactly(bytes);
+        assertThat(result.disposition()).isEqualTo(MaterializationDisposition.STORAGE_MATERIALIZED);
         verify(provider).openRead(org.mockito.ArgumentMatchers.argThat(
                 request -> request.objectId().equals(objectId)));
     }

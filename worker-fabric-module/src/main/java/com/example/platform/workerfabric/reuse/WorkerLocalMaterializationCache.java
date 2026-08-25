@@ -39,7 +39,7 @@ public final class WorkerLocalMaterializationCache {
         }
     }
 
-    public MaterializedArtifact getOrMaterialize(
+    public ArtifactMaterializationResult getOrMaterialize(
             ArtifactPin artifactPin,
             InputStreamSource remoteSource) throws IOException {
         Objects.requireNonNull(artifactPin, "artifactPin");
@@ -51,8 +51,11 @@ public final class WorkerLocalMaterializationCache {
                 Path target = target(artifactPin.contentDigest());
                 if (Files.isRegularFile(target) && hasExpectedDigest(target, artifactPin.contentDigest())) {
                     Files.setLastModifiedTime(target, FileTime.fromMillis(System.currentTimeMillis()));
-                    return new MaterializedArtifact(artifactPin, target, Files.size(target));
+                    return new ArtifactMaterializationResult(
+                            new MaterializedArtifact(artifactPin, target, Files.size(target)),
+                            MaterializationDisposition.LOCAL_CACHE_HIT);
                 }
+                boolean corruptLocalFile = Files.isRegularFile(target);
                 Files.deleteIfExists(target);
                 Files.createDirectories(target.getParent());
                 Path temporary = Files.createTempFile(target.getParent(), ".materializing-", ".tmp");
@@ -74,7 +77,11 @@ public final class WorkerLocalMaterializationCache {
                     }
                     atomicPublish(temporary, target);
                     evictToBound(target);
-                    return new MaterializedArtifact(artifactPin, target, length);
+                    return new ArtifactMaterializationResult(
+                            new MaterializedArtifact(artifactPin, target, length),
+                            corruptLocalFile
+                                    ? MaterializationDisposition.CORRUPTION_RECOVERED
+                                    : MaterializationDisposition.STORAGE_MATERIALIZED);
                 } finally {
                     Files.deleteIfExists(temporary);
                 }

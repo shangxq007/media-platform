@@ -158,6 +158,59 @@ dependency_count = media_build.count("worker-fabric-module")
 report("MEDIA_EXECUTION_PLAN_TO_WORKER_FABRIC_DEPENDENCY_COUNT", dependency_count,
        ["media-execution-plan-module/build.gradle.kts"] * dependency_count)
 
+runtime_adapter_path = (
+    "worker-fabric-module/src/main/java/com/example/platform/workerfabric/"
+    "domain/providernative/RuntimeAdapter.java")
+runtime_binding_path = (
+    "worker-fabric-module/src/main/java/com/example/platform/workerfabric/"
+    "domain/providernative/ProviderNativeRuntimeBinding.java")
+runtime_adapter = read(runtime_adapter_path)
+runtime_binding = read(runtime_binding_path)
+old_runtime_signature = len(re.findall(
+    r"List\s*<\s*MaterializedArtifact\s*>\s+runtimeLocalInputs",
+    runtime_adapter + "\n" + runtime_binding))
+report("OLD_RUNTIME_ADAPTER_MATERIALIZED_ARTIFACT_SIGNATURE_COUNT", old_runtime_signature,
+       [runtime_adapter_path] * old_runtime_signature)
+
+compatibility_overloads = (
+    max(0, runtime_adapter.count("ProviderExecutionOutput execute(") - 1)
+    + max(0, runtime_binding.count("public ProviderExecutionOutput execute(") - 1))
+report("RUNTIME_INPUT_COMPATIBILITY_OVERLOAD_COUNT", compatibility_overloads,
+       [runtime_adapter_path, runtime_binding_path] if compatibility_overloads else [])
+
+runtime_contract_source = runtime_adapter + "\n" + runtime_binding + "\n" + closed_loop
+untyped_runtime_inputs = len(re.findall(
+    r"List\s*<\s*(?:Object|Map(?:\s*<)?|Path|String)\b[^>]*>\s+runtimeLocalInputs"
+    r"|\bList\s+runtimeLocalInputs\b",
+    runtime_contract_source))
+report("UNTYPED_RUNTIME_INPUT_COLLECTION_COUNT", untyped_runtime_inputs,
+       [runtime_adapter_path] * untyped_runtime_inputs)
+
+positional_role_inference = len(re.findall(
+    r"(?:runtimeLocalInputs|inputs)\s*\.\s*(?:get\s*\(\s*\d+\s*\)|getFirst\s*\(\s*\))",
+    runtime_contract_source))
+report("INPUT_ROLE_INFERRED_FROM_LIST_INDEX_COUNT", positional_role_inference,
+       [runtime_adapter_path] * positional_role_inference)
+
+logical_pin_dedup = len(re.findall(
+    r"(?:LinkedHashSet|HashSet|Set)\s*<\s*ArtifactPin\s*>", closed_loop))
+report("LOGICAL_RUNTIME_INPUT_DEDUP_BY_ARTIFACT_PIN_COUNT", logical_pin_dedup,
+       ["RuntimeClosedLoopOrchestrator.java"] * logical_pin_dedup)
+
+worker_execution_type_leaks = regex_hits(
+    r"execution\.planning\.ExecutionIoProjection\.InputBinding"
+    r"|execution\.domain\.ExecutionStepId",
+    lambda path: path.startswith("worker-fabric-module/src/main/"))
+report("WORKER_FABRIC_DIRECT_INTERNAL_EXECUTION_TYPE_DEPENDENCY_COUNT",
+       len(worker_execution_type_leaks), worker_execution_type_leaks)
+
+task_dependency = read(
+    "media-execution-plan-module/src/main/java/com/example/platform/execution/"
+    "taskgraph/ExecutableTaskDependency.java")
+input_binding_leaks = len(re.findall(r"\bInputBinding\s+consumerInput\b", task_dependency))
+report("TASKGRAPH_DEPENDENCY_INPUT_BINDING_LEAK_COUNT", input_binding_leaks,
+       ["ExecutableTaskDependency.java"] * input_binding_leaks)
+
 fenced_publication = 0 if all(token in index for token in (
     "publication_status = 'WINNING'", "publication_status = 'PENDING'",
     "wf_completion_event", "wf_execution_attempt.state", "currentOwner")) else 1

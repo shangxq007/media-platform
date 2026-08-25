@@ -1,8 +1,10 @@
 package com.example.platform.workerfabric.reuse;
 
 import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
+import com.example.platform.execution.domain.ExecutionInputId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.taskgraph.DependencyPreservingReusePruner;
+import com.example.platform.execution.taskgraph.ExecutableInputProjection;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ExecutableTaskDependency;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
@@ -99,7 +101,7 @@ public final class RuntimeClosedLoopOrchestrator {
             }
             ExecutableTask task = tasks.get(taskId);
             TaskRuntimeExecution taskExecution = requireTaskExecution(request, task);
-            List<MaterializedArtifact> inputs = materializeInputs(
+            List<MaterializedExecutionInput> inputs = materializeInputs(
                     request.tenantId(), task, incoming.getOrDefault(taskId, List.of()), outputPins);
             ProviderNativeRuntimeBinding<?> runtimeBinding = runtimeBindings.get(
                     task.providerBindingPin());
@@ -146,26 +148,68 @@ public final class RuntimeClosedLoopOrchestrator {
         return new RuntimeClosedLoopResult(keys, decisions, pruning, outputPins, executed);
     }
 
-    private List<MaterializedArtifact> materializeInputs(
+    private List<MaterializedExecutionInput> materializeInputs(
             String tenantId,
             ExecutableTask task,
             List<ExecutableTaskDependency> dependencies,
             Map<ExecutableTaskId, ArtifactPin> outputPins) throws IOException {
-        LinkedHashSet<ArtifactPin> pins = new LinkedHashSet<>();
-        task.sourceArtifactPins().forEach(required -> pins.add(new ArtifactPin(
-                required.artifactId(), required.contentDigest())));
+        Map<ExecutionInputId, ExecutableInputProjection> knownInputs = new HashMap<>();
+        task.requiredRuntimeInputs().stream()
+                .forEach(input -> {
+                    if (knownInputs.putIfAbsent(input.inputId(), input) != null) {
+                        throw new IllegalArgumentException(
+                                "executable task contains duplicate logical input identity");
+                    }
+                });
+
+        List<ResolvedExecutionInput> resolved = new ArrayList<>();
+        task.sourceArtifactPins().forEach(source -> resolved.add(new ResolvedExecutionInput(
+                source.inputId(),
+                new ArtifactPin(source.artifactId(), source.contentDigest()))));
         dependencies.stream()
-                .sorted(Comparator.comparing(ExecutableTaskDependency::producerTaskId))
-                .forEach(dependency -> pins.add(Objects.requireNonNull(
-                        outputPins.get(dependency.producerTaskId()),
-                        "dependency output Artifact pin is unavailable")));
-        List<MaterializedArtifact> materialized = new ArrayList<>(pins.size());
-        for (ArtifactPin pin : pins) {
+                .sorted(Comparator.comparing(
+                        dependency -> dependency.consumerInput().inputId().value()))
+                .forEach(dependency -> {
+                    if (!dependency.consumerTaskId().equals(task.id())
+                            || !knownInputs.containsKey(dependency.consumerInput().inputId())) {
+                        throw new IllegalArgumentException(
+                                "computed runtime input is unknown to the exact consumer task");
+                    }
+                    ExecutableInputProjection consumerInput =
+                            task.requireExactRuntimeInput(dependency.consumerInput());
+                    ArtifactPin outputPin = outputPins.get(dependency.producerTaskId());
+                    if (outputPin == null) {
+                        throw new IllegalStateException(
+                                "dependency output Artifact pin is unavailable");
+                    }
+                    resolved.add(new ResolvedExecutionInput(
+                            consumerInput.inputId(), outputPin));
+                });
+        resolved.sort(Comparator.comparing(value -> value.inputId().value()));
+
+        Set<ExecutionInputId> resolvedInputIds = new LinkedHashSet<>();
+        for (ResolvedExecutionInput input : resolved) {
+            if (!knownInputs.containsKey(input.inputId())) {
+                throw new IllegalArgumentException("unknown logical runtime input identity");
+            }
+            if (!resolvedInputIds.add(input.inputId())) {
+                throw new IllegalArgumentException("duplicate logical runtime input identity");
+            }
+        }
+        if (!resolvedInputIds.equals(knownInputs.keySet())) {
+            throw new IllegalArgumentException("required logical runtime input identity is absent");
+        }
+
+        List<MaterializedExecutionInput> materialized = new ArrayList<>(resolved.size());
+        for (ResolvedExecutionInput input : resolved) {
             try {
-                materialized.add(artifactMaterializer.materialize(tenantId, pin));
-                metrics.materialization(Phase16RuntimeMetrics.OperationOutcome.SUCCESS);
+                ArtifactMaterializationResult result = artifactMaterializer.materialize(
+                        tenantId, input.artifactPin());
+                materialized.add(new MaterializedExecutionInput(
+                        input.inputId(), input.artifactPin(), result.materializedArtifact()));
+                metrics.materialization(result.disposition());
             } catch (IOException | RuntimeException failure) {
-                metrics.materialization(Phase16RuntimeMetrics.OperationOutcome.FAILURE);
+                metrics.materialization(MaterializationDisposition.FAILURE);
                 throw failure;
             }
         }
@@ -176,7 +220,7 @@ public final class RuntimeClosedLoopOrchestrator {
             ProviderNativeRuntimeBinding<?> runtimeBinding,
             ExecutableTask task,
             TaskRuntimeExecution execution,
-            List<MaterializedArtifact> inputs) throws IOException {
+            List<MaterializedExecutionInput> inputs) throws IOException {
         ProviderExecutionOutput providerOutput = runtimeBinding.execute(
                 task, execution.runtimeContext(), inputs);
         try (providerOutput) {
@@ -228,5 +272,15 @@ public final class RuntimeClosedLoopOrchestrator {
                     .add(dependency);
         }
         return result;
+    }
+
+    private record ResolvedExecutionInput(
+            ExecutionInputId inputId,
+            ArtifactPin artifactPin) {
+
+        private ResolvedExecutionInput {
+            Objects.requireNonNull(inputId, "inputId");
+            Objects.requireNonNull(artifactPin, "artifactPin");
+        }
     }
 }

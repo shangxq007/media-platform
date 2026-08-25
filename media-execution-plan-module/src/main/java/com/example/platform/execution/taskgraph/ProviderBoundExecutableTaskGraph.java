@@ -131,7 +131,8 @@ public final class ProviderBoundExecutableTaskGraph {
             externalDependencies.add(new ExecutableTaskDependency(
                     coverage.taskByUnit().get(producer.stepId()).id(),
                     coverage.taskByUnit().get(consumer.stepId()).id(),
-                    dependency));
+                    dependency,
+                    ExecutableInputProjection.from(exactConsumerInput(consumer, dependency))));
         }
         internalDependencies.sort(Comparator.comparing(
                 ExecutableTaskCanonicalCodec::internalDependency));
@@ -627,6 +628,30 @@ public final class ProviderBoundExecutableTaskGraph {
                 }
             }
         }
+    }
+
+    private static InputBinding exactConsumerInput(
+            PhysicalPlanUnit consumer,
+            LogicalDependencyEdge dependency) {
+        List<InputBinding> matches = consumer.typedInputs().stream()
+                .filter(input -> consumer.stepId().equals(input.consumerStepId()))
+                .filter(input -> dependency.producerLogicalNodeId()
+                        .equals(input.producerLogicalNodeId()))
+                .filter(input -> dependency.producerRenderNodeId()
+                        .equals(input.producerRenderNodeId()))
+                .filter(input -> dependency.consumerLogicalNodeId()
+                        .equals(input.consumerLogicalNodeId()))
+                .filter(input -> dependency.consumerRenderNodeId()
+                        .equals(input.consumerRenderNodeId()))
+                .filter(input -> dependency.dependencyVariant()
+                        .equals(input.dependencyVariant()))
+                .filter(input -> input.sourceArtifact() == null)
+                .toList();
+        if (matches.size() != 1) {
+            throw new IllegalArgumentException(
+                    "source dependency must resolve one exact computed consumer input");
+        }
+        return matches.getFirst();
     }
 
     private static List<MandatoryArtifactBoundary> mandatoryBoundaries(

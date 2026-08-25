@@ -2,6 +2,7 @@ package com.example.platform.execution.taskgraph;
 
 import com.example.platform.execution.composition.CompositionDecision;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
+import com.example.platform.execution.domain.ExecutionInputId;
 import com.example.platform.execution.domain.ExecutionStepId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.planning.ExecutionIoProjection.InputBinding;
@@ -94,8 +95,52 @@ public final class ExecutableTask {
     public List<ExecutableSourceArtifactPin> sourceArtifactPins() {
         return requiredInputArtifactPins.stream()
                 .map(pin -> new ExecutableSourceArtifactPin(
+                        pin.inputBinding().inputId(),
                         pin.artifactPin().artifactId(), pin.artifactPin().contentDigest()))
                 .toList();
+    }
+
+    /** Returns exact task input identities without exposing render-domain types. */
+    public List<ExecutableInputProjection> executionInputs() {
+        return memberships().stream()
+                .flatMap(membership -> membership.inputMapping().stream())
+                .map(ExecutableInputProjection::from)
+                .toList();
+    }
+
+    /**
+     * Returns exactly the source-backed and task-external computed inputs that runtime must supply.
+     * Duplicate canonical input identities fail closed before any runtime dispatch.
+     */
+    public List<ExecutableInputProjection> requiredRuntimeInputs() {
+        Map<ExecutionInputId, ExecutableInputProjection> inputsById = new HashMap<>();
+        for (ExecutableInputProjection input : executionInputs()) {
+            if (inputsById.putIfAbsent(input.inputId(), input) != null) {
+                throw new IllegalArgumentException(
+                        "executable task contains duplicate logical input identity");
+            }
+        }
+        Set<ExecutionStepId> memberStepIds = new HashSet<>();
+        memberships().forEach(membership -> memberStepIds.add(membership.physicalPlanUnitId()));
+        return inputsById.values().stream()
+                .filter(input -> input.sourceArtifactPresence()
+                                == ExecutableInputProjection.SourceArtifactPresence.PRESENT
+                        || input.producerStepId()
+                                .filter(producer -> !memberStepIds.contains(producer))
+                                .isPresent())
+                .sorted(java.util.Comparator.comparing(input -> input.inputId().value()))
+                .toList();
+    }
+
+    /** Requires the complete neutral projection to be one exact runtime-required task input. */
+    public ExecutableInputProjection requireExactRuntimeInput(
+            ExecutableInputProjection candidate) {
+        Objects.requireNonNull(candidate, "candidate");
+        return requiredRuntimeInputs().stream()
+                .filter(candidate::equals)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "computed runtime input is unknown to the exact consumer task"));
     }
 
     private static List<BoundaryAction> canonicalActions(

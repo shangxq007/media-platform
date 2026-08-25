@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
 import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
 import com.example.platform.execution.compatibility.ProviderCandidate;
@@ -58,11 +59,18 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.workerfabric.domain.ExecutionAttemptId;
 import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
+import com.example.platform.workerfabric.reuse.MaterializedArtifact;
+import com.example.platform.workerfabric.reuse.MaterializedExecutionInput;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ProviderNativeLoweringRuntimeAdapterTest {
 
@@ -233,6 +241,56 @@ class ProviderNativeLoweringRuntimeAdapterTest {
         assertEquals(ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH, failure.code());
     }
 
+    @Test
+    void runtimeBindingRejectsAbsentUnknownAndDuplicateLogicalInputIdsBeforeAdapterExecution(
+            @TempDir Path tempDir) throws IOException {
+        ContentDigest digest = ContentDigest.sha256("a".repeat(64));
+        ArtifactPin pin = new ArtifactPin(new ArtifactId("source-runtime-input"), digest);
+        InputBinding sourceInput = new InputBinding(
+                new ExecutionInputId("input-source"),
+                "logical-unit-source",
+                new ExecutionStepId("unit-source"),
+                new RenderNodeId("render-unit-source"),
+                null, null, null, null,
+                new SourceArtifact(pin.artifactId(), pin.contentDigest()),
+                null);
+        ExecutableTask task = task(
+                "provider-a",
+                List.of(unit(
+                        "unit-source",
+                        List.of(sourceInput),
+                        List.of(output("unit-source", false)),
+                        List.of())),
+                List.of());
+        AtomicInteger adapterExecutions = new AtomicInteger();
+        RuntimeAdapter<TestNativePlan> adapter = new TestRuntimeAdapter() {
+            @Override
+            public ProviderExecutionOutput execute(
+                    RuntimeExecutionBundle executionBundle,
+                    List<MaterializedExecutionInput> runtimeLocalInputs) {
+                adapterExecutions.incrementAndGet();
+                return super.execute(executionBundle, runtimeLocalInputs);
+            }
+        };
+        ProviderNativeRuntimeBinding<TestNativePlan> runtimeBinding =
+                new ProviderNativeRuntimeBinding<>(new TestPlanLowerer(), adapter);
+        Path localPath = Files.write(tempDir.resolve("source-runtime-input.bin"), new byte[] {1, 2, 3});
+        MaterializedArtifact local = new MaterializedArtifact(
+                pin, localPath, Files.size(localPath));
+        MaterializedExecutionInput expected = new MaterializedExecutionInput(
+                sourceInput.inputId(), pin, local);
+        MaterializedExecutionInput unknown = new MaterializedExecutionInput(
+                new ExecutionInputId("input-unknown"), pin, local);
+
+        assertThrows(IllegalArgumentException.class, () -> runtimeBinding.execute(
+                task, runtimeContext(task), List.of()));
+        assertThrows(IllegalArgumentException.class, () -> runtimeBinding.execute(
+                task, runtimeContext(task), List.of(unknown)));
+        assertThrows(IllegalArgumentException.class, () -> runtimeBinding.execute(
+                task, runtimeContext(task), List.of(expected, expected)));
+        assertEquals(0, adapterExecutions.get());
+    }
+
     private static RuntimeExecutionContext runtimeContext(ExecutableTask task) {
         return new RuntimeExecutionContext(
                 task.id(), task.providerBindingPin(), ExecutionAttemptId.of("attempt-1"), ExecutionOwnershipGeneration.first());
@@ -298,7 +356,7 @@ class ProviderNativeLoweringRuntimeAdapterTest {
         @Override
         public ProviderExecutionOutput execute(
                 RuntimeExecutionBundle executionBundle,
-                List<com.example.platform.workerfabric.reuse.MaterializedArtifact> runtimeLocalInputs) {
+                List<com.example.platform.workerfabric.reuse.MaterializedExecutionInput> runtimeLocalInputs) {
             return new ProviderExecutionOutput(new java.io.ByteArrayInputStream(new byte[0]));
         }
     }
@@ -317,7 +375,7 @@ class ProviderNativeLoweringRuntimeAdapterTest {
         @Override
         public ProviderExecutionOutput execute(
                 RuntimeExecutionBundle executionBundle,
-                List<com.example.platform.workerfabric.reuse.MaterializedArtifact> runtimeLocalInputs) {
+                List<com.example.platform.workerfabric.reuse.MaterializedExecutionInput> runtimeLocalInputs) {
             return new ProviderExecutionOutput(new java.io.ByteArrayInputStream(new byte[0]));
         }
     }

@@ -210,6 +210,44 @@ class ProviderBoundExecutableTaskGraphTest {
     }
 
     @Test
+    void executableInputProjectionRetainsRuntimeIdentityWithoutRenderTypes() {
+        PhysicalPlanUnit sourceUnit = sourcePinnedUnit("unit-source-projection");
+        TaskContext sourceContext = context(plan(sourceUnit), "provider-a");
+        ExecutableTask sourceTask = task(
+                sourceContext, "provider-a", List.of(sourceUnit), List.of());
+        ExecutableInputProjection source = sourceTask.executionInputs().getFirst();
+
+        UnitPair pair = dependentPair(false);
+        TaskContext computedContext = context(plan(pair.producer(), pair.consumer()), "provider-a");
+        ExecutableTask computedTask = task(
+                computedContext, "provider-a", List.of(pair.consumer()), List.of());
+        ExecutableInputProjection computed = computedTask.executionInputs().getFirst();
+        ExecutableTask coalescedTask = task(
+                computedContext,
+                "provider-a",
+                List.of(pair.producer(), pair.consumer()),
+                List.of());
+
+        assertEquals(sourceUnit.typedInputs().getFirst().inputId(), source.inputId());
+        assertEquals(sourceUnit.stepId(), source.consumerStepId());
+        assertEquals(Optional.empty(), source.producerStepId());
+        assertEquals(ExecutableInputProjection.SourceArtifactPresence.PRESENT,
+                source.sourceArtifactPresence());
+        assertEquals(pair.consumer().typedInputs().getFirst().inputId(), computed.inputId());
+        assertEquals(pair.consumer().stepId(), computed.consumerStepId());
+        assertEquals(Optional.of(pair.producer().stepId()), computed.producerStepId());
+        assertEquals(ExecutableInputProjection.SourceArtifactPresence.ABSENT,
+                computed.sourceArtifactPresence());
+        assertEquals(List.of(source), sourceTask.requiredRuntimeInputs());
+        assertEquals(List.of(computed), computedTask.requiredRuntimeInputs());
+        assertEquals(List.of(), coalescedTask.requiredRuntimeInputs());
+        assertEquals(computed, computedTask.requireExactRuntimeInput(computed));
+        assertTrue(Arrays.stream(ExecutableInputProjection.class.getRecordComponents())
+                .map(component -> component.getType().getName())
+                .noneMatch(type -> type.contains(".render.")));
+    }
+
+    @Test
     void semanticallyDifferentMembershipsProduceDifferentCanonicalBytesAndTaskIds() {
         UnitPair pair = dependentPair(false);
         TaskContext context = context(plan(pair.producer(), pair.consumer()), "provider-a");
@@ -301,6 +339,12 @@ class ProviderBoundExecutableTaskGraphTest {
 
         assertEquals(1, separate.taskDependencies().size());
         assertEquals(pair.edge(), separate.taskDependencies().getFirst().sourceDependency());
+        assertEquals(
+                ExecutableInputProjection.from(pair.consumer().typedInputs().getFirst()),
+                separate.taskDependencies().getFirst().consumerInput());
+        assertTrue(Arrays.stream(ExecutableTaskDependency.class.getRecordComponents())
+                .map(component -> component.getType().getName())
+                .noneMatch(type -> type.contains("ExecutionIoProjection$InputBinding")));
         assertEquals(0, separate.providerLocalDependencies().size());
         assertEquals(0, separate.dependencyLossCount());
 
@@ -456,10 +500,32 @@ class ProviderBoundExecutableTaskGraphTest {
     void cyclicTaskTopologyIsRejectedByPlatformGraphMechanics() {
         LogicalDependencyEdge edgeAB = edge("a-b", "unit-a", "unit-b");
         LogicalDependencyEdge edgeBA = edge("b-a", "unit-b", "unit-a");
+        InputBinding inputBA = new InputBinding(
+                new ExecutionInputId("input-b-a"),
+                edgeBA.consumerLogicalNodeId(),
+                new ExecutionStepId("unit-a"),
+                edgeBA.consumerRenderNodeId(),
+                edgeBA.producerLogicalNodeId(),
+                new ExecutionStepId("unit-b"),
+                edgeBA.producerRenderNodeId(),
+                edgeBA.dependencyVariant(),
+                null,
+                null);
+        InputBinding inputAB = new InputBinding(
+                new ExecutionInputId("input-a-b"),
+                edgeAB.consumerLogicalNodeId(),
+                new ExecutionStepId("unit-b"),
+                edgeAB.consumerRenderNodeId(),
+                edgeAB.producerLogicalNodeId(),
+                new ExecutionStepId("unit-a"),
+                edgeAB.producerRenderNodeId(),
+                edgeAB.dependencyVariant(),
+                null,
+                null);
         PhysicalPlanUnit unitA = unit(
-                "unit-a", List.of(), List.of(output("unit-a", false)), List.of(edgeAB, edgeBA));
+                "unit-a", List.of(inputBA), List.of(output("unit-a", false)), List.of(edgeAB, edgeBA));
         PhysicalPlanUnit unitB = unit(
-                "unit-b", List.of(), List.of(output("unit-b", false)), List.of(edgeAB, edgeBA));
+                "unit-b", List.of(inputAB), List.of(output("unit-b", false)), List.of(edgeAB, edgeBA));
         PhysicalExecutionPlan plan = plan(unitA, unitB);
         ProviderBindingPin binding = binding("provider-a");
         TaskContext context = context(

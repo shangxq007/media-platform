@@ -7,14 +7,22 @@ import java.util.Objects;
 public record ExecutableTaskDependency(
         ExecutableTaskId producerTaskId,
         ExecutableTaskId consumerTaskId,
-        LogicalDependencyEdge sourceDependency) {
+        LogicalDependencyEdge sourceDependency,
+        ExecutableInputProjection consumerInput) {
 
     public ExecutableTaskDependency {
         Objects.requireNonNull(producerTaskId, "producerTaskId");
         Objects.requireNonNull(consumerTaskId, "consumerTaskId");
         Objects.requireNonNull(sourceDependency, "sourceDependency");
+        Objects.requireNonNull(consumerInput, "consumerInput");
         if (producerTaskId.equals(consumerTaskId)) {
             throw new IllegalArgumentException("task dependency must join distinct tasks");
+        }
+        if (consumerInput.producerStepId().isEmpty()
+                || consumerInput.sourceArtifactPresence()
+                        != ExecutableInputProjection.SourceArtifactPresence.ABSENT) {
+            throw new IllegalArgumentException(
+                    "task dependency must retain its exact computed consumer input semantics");
         }
     }
 }

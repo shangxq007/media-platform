@@ -16,6 +16,10 @@ class RuntimeClosedLoopArchitectureGuardTest {
             "worker-fabric-module/src/main/java/com/example/platform/workerfabric/reuse");
     private static final Path PROVIDER_NATIVE = ROOT.resolve(
             "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/providernative");
+    private static final Path WORKER_FABRIC = ROOT.resolve(
+            "worker-fabric-module/src/main/java/com/example/platform/workerfabric");
+    private static final Path EXECUTION = ROOT.resolve(
+            "media-execution-plan-module/src/main/java/com/example/platform/execution");
 
     @Test
     void stagedOutputCannotBeCommittedWithoutAuthoritativeDurableBinding() {
@@ -36,8 +40,9 @@ class RuntimeClosedLoopArchitectureGuardTest {
     @Test
     void providerNativeRuntimeHasOnlyLocalMaterializedInputAndNoStorageOrArtifactAuthority() {
         String source = javaSources(PROVIDER_NATIVE);
-        assertThat(source).contains("List<MaterializedArtifact> runtimeLocalInputs");
+        assertThat(source).contains("List<MaterializedExecutionInput> runtimeLocalInputs");
         assertThat(source).doesNotContain(
+                "List<MaterializedArtifact> runtimeLocalInputs",
                 "StorageProvider",
                 "StorageObjectId",
                 "StorageReplicaId",
@@ -47,6 +52,47 @@ class RuntimeClosedLoopArchitectureGuardTest {
                 "software.amazon.awssdk",
                 "s3://",
                 "r2://");
+    }
+
+    @Test
+    void typedRuntimeInputContractHasNoCompatibilityUntypedPositionalOrPinDedupEscape() {
+        String adapter = source(PROVIDER_NATIVE.resolve("RuntimeAdapter.java"));
+        String binding = source(PROVIDER_NATIVE.resolve("ProviderNativeRuntimeBinding.java"));
+        String closedLoop = source(REUSE.resolve("RuntimeClosedLoopOrchestrator.java"));
+        String typedInput = source(REUSE.resolve("MaterializedExecutionInput.java"));
+        String combined = adapter + binding + closedLoop;
+
+        assertThat(typedInput).contains(
+                "ExecutionInputId inputId",
+                "ArtifactPin artifactPin",
+                "MaterializedArtifact materializedArtifact");
+        assertThat(occurrences(adapter, "ProviderExecutionOutput execute(")).isEqualTo(1);
+        assertThat(occurrences(binding, "public ProviderExecutionOutput execute(")).isEqualTo(1);
+        assertThat(combined).doesNotContain(
+                "List<MaterializedArtifact>",
+                "List<Object>",
+                "List<Map<",
+                "List<Path>",
+                "runtimeLocalInputs.get(",
+                "inputs.get(0)",
+                "inputs.getFirst()",
+                "Set<ArtifactPin>",
+                "LinkedHashSet<ArtifactPin>");
+    }
+
+    @Test
+    void workerFabricConsumesOnlyNeutralTaskgraphInputsAndExposedCanonicalInputIdentity() {
+        String workerFabric = javaSources(WORKER_FABRIC);
+        String dependency = source(EXECUTION.resolve("taskgraph/ExecutableTaskDependency.java"));
+        String executionDomain = source(EXECUTION.resolve("domain/package-info.java"));
+
+        assertThat(workerFabric).doesNotContain(
+                "execution.planning.ExecutionIoProjection.InputBinding",
+                "execution.domain.ExecutionStepId");
+        assertThat(dependency).contains("ExecutableInputProjection consumerInput");
+        assertThat(dependency).doesNotContain("InputBinding consumerInput");
+        assertThat(executionDomain).contains(
+                "@org.springframework.modulith.NamedInterface(\"domain\")");
     }
 
     @Test
@@ -79,17 +125,27 @@ class RuntimeClosedLoopArchitectureGuardTest {
     @Test
     void metricsExposeOnlyBoundedOutcomeLabels() {
         String source = source(REUSE.resolve("Phase16RuntimeMetrics.java"));
+        String dispositions = source(REUSE.resolve("MaterializationDisposition.java"));
         assertThat(source).contains(".tag(tagName, tagValue)");
         assertThat(source).doesNotContain(
                 "tenantId",
                 "artifactId",
                 "executionReuseKey",
                 "taskId",
+                "inputId",
                 "attemptId",
+                "generation",
+                "providerId",
+                "digest",
                 "workerId",
                 "path",
                 "storageObjectId",
                 "storageReplicaId");
+        assertThat(dispositions).contains(
+                "LOCAL_CACHE_HIT",
+                "STORAGE_MATERIALIZED",
+                "CORRUPTION_RECOVERED",
+                "FAILURE");
     }
 
     private static Path repoRoot() {
@@ -117,5 +173,9 @@ class RuntimeClosedLoopArchitectureGuardTest {
         } catch (IOException failure) {
             throw new IllegalStateException(failure);
         }
+    }
+
+    private static int occurrences(String source, String value) {
+        return (source.length() - source.replace(value, "").length()) / value.length();
     }
 }

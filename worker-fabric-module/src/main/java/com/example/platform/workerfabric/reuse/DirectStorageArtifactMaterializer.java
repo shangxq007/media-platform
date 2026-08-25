@@ -34,7 +34,7 @@ public final class DirectStorageArtifactMaterializer implements ArtifactMaterial
     }
 
     @Override
-    public MaterializedArtifact materialize(String tenantId, ArtifactPin artifactPin)
+    public ArtifactMaterializationResult materialize(String tenantId, ArtifactPin artifactPin)
             throws IOException {
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(artifactPin, "artifactPin");
@@ -51,6 +51,13 @@ public final class DirectStorageArtifactMaterializer implements ArtifactMaterial
         replicas.sort(Comparator
                 .comparing((ArtifactReplicaBinding value) -> value.providerId().value())
                 .thenComparing(value -> value.storageReplicaId().value()));
+        return localCache.getOrMaterialize(
+                artifactPin,
+                () -> openFirstReadableReplica(replicas));
+    }
+
+    private java.io.InputStream openFirstReadableReplica(
+            java.util.List<ArtifactReplicaBinding> replicas) throws IOException {
         for (ArtifactReplicaBinding replica : replicas) {
             StorageProvider provider = providers.get(replica.providerId());
             if (provider == null) {
@@ -59,7 +66,7 @@ public final class DirectStorageArtifactMaterializer implements ArtifactMaterial
             Optional<java.io.InputStream> source = provider.openRead(new StorageReadRequest(
                     replica.storageObjectId(), Optional.empty(), IntegrityRequirement.VERIFY_DIGEST));
             if (source.isPresent()) {
-                return localCache.getOrMaterialize(artifactPin, source::orElseThrow);
+                return source.orElseThrow();
             }
         }
         throw new ArtifactMaterializationException(

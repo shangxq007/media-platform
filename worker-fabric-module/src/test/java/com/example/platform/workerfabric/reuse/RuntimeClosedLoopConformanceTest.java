@@ -16,6 +16,8 @@ import com.example.platform.artifact.domain.ArtifactState;
 import com.example.platform.artifact.domain.InMemoryArtifactCommitService;
 import com.example.platform.artifact.domain.ProvenanceEdge;
 import com.example.platform.artifact.domain.ReplicaRole;
+import com.example.platform.execution.domain.ExecutionInputId;
+import com.example.platform.execution.domain.ExecutionStepId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
@@ -118,10 +120,147 @@ class RuntimeClosedLoopConformanceTest {
                 .tag("outcome", "MISS").counter().count()).isEqualTo(1.0);
         assertThat(harness.registry.get("media.worker_fabric.phase16.reuse.lookup")
                 .tag("outcome", "VALIDATED_HIT").counter().count()).isEqualTo(1.0);
-        for (String metric : List.of(
-                "materialization", "staging", "durable.publish", "artifact.commit")) {
+        assertThat(harness.registry.get("media.worker_fabric.phase16.materialization")
+                .tag("outcome", "STORAGE_MATERIALIZED").counter().count()).isPositive();
+        for (String metric : List.of("staging", "durable.publish", "artifact.commit")) {
             assertThat(harness.registry.get("media.worker_fabric.phase16." + metric)
                     .tag("outcome", "SUCCESS").counter().count()).isPositive();
+        }
+    }
+
+    @Test
+    void distinctLogicalSourceInputsRetainExactInputIdToArtifactPinBindings() throws Exception {
+        Harness harness = harness("provider-a");
+        String sourceXDigest = sourceDigest("x");
+        String sourceYDigest = sourceDigest("y");
+        ProviderBoundExecutableTaskGraph graph = RuntimeClosedLoopGraphFixture.distinctSourceInputs(
+                sourceXDigest, sourceYDigest, "provider-a");
+        harness.seedSource("x", sourceXDigest);
+        harness.seedSource("y", sourceYDigest);
+
+        harness.execute(graph, allTaskIds(graph), "distinct-source-inputs");
+
+        ExecutableTaskId taskId = graph.tasks().getFirst().id();
+        assertThat(inputPinsById(harness.runtime.inputsFor(taskId))).containsExactlyInAnyOrderEntriesOf(
+                Map.of(
+                        new ExecutionInputId("input-a"),
+                        new ArtifactPin(new ArtifactId("source-x"), ContentDigest.sha256(sourceXDigest)),
+                        new ExecutionInputId("input-b"),
+                        new ArtifactPin(new ArtifactId("source-y"), ContentDigest.sha256(sourceYDigest))));
+    }
+
+    @Test
+    void identicalSourcePinRetainsTwoLogicalBindingsAndMaterializesStorageOnlyOnce()
+            throws Exception {
+        Harness harness = harness("provider-a");
+        String sourceDigest = sourceDigest("x");
+        ProviderBoundExecutableTaskGraph graph = RuntimeClosedLoopGraphFixture.sameSourceForTwoRoles(
+                sourceDigest, "provider-a");
+        harness.seedSource("x", sourceDigest);
+        int readsBefore = harness.storage.reads();
+
+        harness.execute(graph, allTaskIds(graph), "same-source-two-roles");
+
+        List<MaterializedExecutionInput> inputs = harness.runtime.inputsFor(
+                graph.tasks().getFirst().id());
+        assertThat(inputs).extracting(MaterializedExecutionInput::inputId)
+                .containsExactlyInAnyOrder(
+                        new ExecutionInputId("input-foreground"),
+                        new ExecutionInputId("input-mask"));
+        assertThat(inputs).extracting(MaterializedExecutionInput::artifactPin)
+                .containsOnly(new ArtifactPin(
+                        new ArtifactId("source-x"), ContentDigest.sha256(sourceDigest)));
+        assertThat(inputs).extracting(input -> input.materializedArtifact().path())
+                .containsOnly(inputs.getFirst().materializedArtifact().path());
+        assertThat(harness.storage.reads() - readsBefore).isEqualTo(1);
+    }
+
+    @Test
+    void twoComputedInputsRetainConsumerIdsEvenWhenReusedPredecessorsResolveSamePin()
+            throws Exception {
+        Harness harness = harness("provider-a");
+        ProviderBoundExecutableTaskGraph graph = RuntimeClosedLoopGraphFixture.twoComputedInputs(
+                sourceDigest("unit-a"), sourceDigest("unit-b"), "provider-a");
+        ExecutableTask taskA = taskForUnit(graph, "unit-a");
+        ExecutableTask taskB = taskForUnit(graph, "unit-b");
+        ExecutableTask taskC = taskForUnit(graph, "unit-c");
+        String reusedDigest = sourceDigest("shared-reused");
+        harness.seedSource("shared-reused", reusedDigest);
+        ArtifactPin reusedPin = new ArtifactPin(
+                new ArtifactId("source-shared-reused"), ContentDigest.sha256(reusedDigest));
+        harness.seedReuse(graph, taskA.id(), reusedPin);
+        harness.seedReuse(graph, taskB.id(), reusedPin);
+        int readsBefore = harness.storage.reads();
+
+        RuntimeClosedLoopResult result = harness.execute(
+                graph, Set.of(taskC.id()), "two-computed-inputs");
+
+        assertThat(result.pruningResult().reusedTasks())
+                .containsExactlyInAnyOrder(taskA.id(), taskB.id());
+        List<MaterializedExecutionInput> inputs = harness.runtime.inputsFor(taskC.id());
+        assertThat(inputPinsById(inputs)).containsExactlyInAnyOrderEntriesOf(Map.of(
+                new ExecutionInputId("input-c-1"), reusedPin,
+                new ExecutionInputId("input-c-2"), reusedPin));
+        assertThat(inputs).extracting(input -> input.materializedArtifact().path())
+                .containsOnly(inputs.getFirst().materializedArtifact().path());
+        assertThat(harness.storage.reads() - readsBefore).isEqualTo(1);
+    }
+
+    @Test
+    void reusedPredecessorFeedsExactConsumerInputIdentityAndLocalHandle() throws Exception {
+        Harness harness = harness("provider-a");
+        ProviderBoundExecutableTaskGraph graph = RuntimeClosedLoopGraphFixture.sharedDependency(
+                sourceDigest("unit-a"), "provider-a");
+        ExecutableTask taskA = taskForUnit(graph, "unit-a");
+        ExecutableTask taskB = taskForUnit(graph, "unit-b");
+        String reusedDigest = sourceDigest("reused-a");
+        harness.seedSource("reused-a", reusedDigest);
+        ArtifactPin reusedPin = new ArtifactPin(
+                new ArtifactId("source-reused-a"), ContentDigest.sha256(reusedDigest));
+        harness.seedReuse(graph, taskA.id(), reusedPin);
+
+        harness.execute(graph, Set.of(taskB.id()), "reused-predecessor");
+
+        MaterializedExecutionInput input = harness.runtime.inputsFor(taskB.id()).getFirst();
+        assertThat(input.inputId()).isEqualTo(new ExecutionInputId("input-unit-a-unit-b"));
+        assertThat(input.artifactPin()).isEqualTo(reusedPin);
+        assertThat(input.materializedArtifact().artifactPin()).isEqualTo(reusedPin);
+        assertThat(input.materializedArtifact().path()).isRegularFile();
+    }
+
+    @Test
+    void realMaterializationPathEmitsCacheStorageCorruptionAndFailureDispositions()
+            throws Exception {
+        Harness harness = harness("provider-a");
+        String sourceDigest = sourceDigest("materialization-metrics");
+        ProviderBoundExecutableTaskGraph graph = RuntimeClosedLoopGraphFixture.single(
+                "materialization-metrics", sourceDigest, "provider-a");
+        harness.seedSource("materialization-metrics", sourceDigest);
+
+        harness.execute(graph, allTaskIds(graph), "metrics-storage");
+        Path localPath = harness.runtime.inputsFor(graph.tasks().getFirst().id())
+                .getFirst().materializedArtifact().path();
+        harness.index.clear();
+        harness.execute(graph, allTaskIds(graph), "metrics-cache-hit");
+        Files.writeString(localPath, "manually-corrupt-local-file");
+        harness.index.clear();
+        harness.execute(graph, allTaskIds(graph), "metrics-corruption-recovery");
+
+        String failureDigest = sourceDigest("materialization-storage-failure");
+        ProviderBoundExecutableTaskGraph failureGraph = RuntimeClosedLoopGraphFixture.single(
+                "materialization-storage-failure", failureDigest, "provider-a");
+        harness.seedSource("materialization-storage-failure", failureDigest);
+        harness.storage.failReads = true;
+        int executionsBeforeFailure = harness.runtime.executions();
+        assertThatThrownBy(() -> harness.execute(
+                failureGraph, allTaskIds(failureGraph), "metrics-failure"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("storage read failure");
+        assertThat(harness.runtime.executions()).isEqualTo(executionsBeforeFailure);
+
+        for (MaterializationDisposition disposition : MaterializationDisposition.values()) {
+            assertThat(harness.registry.get("media.worker_fabric.phase16.materialization")
+                    .tag("outcome", disposition.name()).counter().count()).isEqualTo(1.0);
         }
     }
 
@@ -308,6 +447,24 @@ class RuntimeClosedLoopConformanceTest {
                 .collect(java.util.stream.Collectors.toSet());
     }
 
+    private static ExecutableTask taskForUnit(
+            ProviderBoundExecutableTaskGraph graph,
+            String unitId) {
+        ExecutionStepId stepId = new ExecutionStepId(unitId);
+        return graph.tasks().stream()
+                .filter(task -> task.memberships().stream()
+                        .anyMatch(membership -> membership.physicalPlanUnitId().equals(stepId)))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static Map<ExecutionInputId, ArtifactPin> inputPinsById(
+            List<MaterializedExecutionInput> inputs) {
+        return inputs.stream().collect(java.util.stream.Collectors.toMap(
+                MaterializedExecutionInput::inputId,
+                MaterializedExecutionInput::artifactPin));
+    }
+
     private static ContentDigest digest(byte[] bytes) {
         try {
             return ContentDigest.sha256(HexFormat.of().formatHex(
@@ -396,6 +553,20 @@ class RuntimeClosedLoopConformanceTest {
                     storage.providerId(), ReplicaRole.PRIMARY, "local", NOW));
         }
 
+        private void seedReuse(
+                ProviderBoundExecutableTaskGraph graph,
+                ExecutableTaskId taskId,
+                ArtifactPin artifactPin) {
+            index.seed(new ReusableArtifactRecord(
+                    TENANT,
+                    ExecutionReuseKeyDeriver.derive(graph).get(taskId),
+                    artifactPin,
+                    taskId,
+                    new ExecutionAttemptId("seeded-reuse-attempt-" + taskId.sha256Hex()),
+                    ExecutionOwnershipGeneration.first(),
+                    NOW));
+        }
+
         private RuntimeClosedLoopResult execute(
                 ProviderBoundExecutableTaskGraph graph,
                 Set<ExecutableTaskId> requested,
@@ -461,6 +632,8 @@ class RuntimeClosedLoopConformanceTest {
     private static final class RecordingRuntimeAdapter implements RuntimeAdapter<TestNativePlan> {
         private final AtomicInteger executions = new AtomicInteger();
         private final List<Integer> inputCounts = new ArrayList<>();
+        private final Map<ExecutableTaskId, List<MaterializedExecutionInput>> inputsByTask =
+                new HashMap<>();
 
         @Override
         public RuntimeExecutionBundle adapt(
@@ -482,9 +655,10 @@ class RuntimeClosedLoopConformanceTest {
         @Override
         public synchronized ProviderExecutionOutput execute(
                 RuntimeExecutionBundle bundle,
-                List<MaterializedArtifact> runtimeLocalInputs) {
+                List<MaterializedExecutionInput> runtimeLocalInputs) {
             executions.incrementAndGet();
             inputCounts.add(runtimeLocalInputs.size());
+            inputsByTask.put(bundle.executableTaskId(), List.copyOf(runtimeLocalInputs));
             byte[] output = ("provider-output-" + bundle.executableTaskId().sha256Hex())
                     .getBytes(StandardCharsets.UTF_8);
             return new ProviderExecutionOutput(new ByteArrayInputStream(output));
@@ -492,6 +666,9 @@ class RuntimeClosedLoopConformanceTest {
 
         int executions() { return executions.get(); }
         List<Integer> lastInputCounts() { return List.copyOf(inputCounts); }
+        synchronized List<MaterializedExecutionInput> inputsFor(ExecutableTaskId taskId) {
+            return inputsByTask.getOrDefault(taskId, List.of());
+        }
     }
 
     private static final class RecordingArtifactAuthority
@@ -678,6 +855,10 @@ class RuntimeClosedLoopConformanceTest {
             int size = pending.size(); pending.clear(); return size;
         }
         synchronized void clear() { pending.clear(); winners.clear(); }
+        synchronized void seed(ReusableArtifactRecord record) {
+            winners.put(id(record.tenantId(), record.executionReuseKey()),
+                    new ReusableArtifactPublication(record));
+        }
         synchronized int winnerCount() { return winners.size(); }
         private static String id(String tenant, ExecutionReuseKey key) {
             return tenant + "\u0000" + key.version() + "\u0000" + key.stableDigest();
@@ -689,6 +870,7 @@ class RuntimeClosedLoopConformanceTest {
         private int reads;
         private int aborts;
         private boolean failWrites;
+        private boolean failReads;
 
         private RecordingStorageProvider(StorageProvider delegate) { this.delegate = delegate; }
         int reads() { return reads; }
@@ -702,7 +884,11 @@ class RuntimeClosedLoopConformanceTest {
         }
         @Override public WriteSessionResult completeWrite(StorageWriteSession session, ContentDigest digest) { return delegate.completeWrite(session, digest); }
         @Override public void abortWrite(StorageWriteSession session) { aborts++; delegate.abortWrite(session); }
-        @Override public Optional<InputStream> openRead(StorageReadRequest request) { reads++; return delegate.openRead(request); }
+        @Override public Optional<InputStream> openRead(StorageReadRequest request) {
+            reads++;
+            if (failReads) throw new IllegalStateException("storage read failure");
+            return delegate.openRead(request);
+        }
         @Override public Optional<StorageObjectMetadata> stat(StorageObjectId id) { return delegate.stat(id); }
         @Override public StorageReplicaId copy(StorageObjectId source, StorageObjectId target, StorageNamespace namespace) { return delegate.copy(source, target, namespace); }
         @Override public StorageDeletionResult delete(StorageDeletionRequest request) { return delegate.delete(request); }
