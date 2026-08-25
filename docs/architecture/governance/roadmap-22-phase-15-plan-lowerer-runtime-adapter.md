@@ -9,6 +9,9 @@ PHASE_15_BASE_SHA=5b80f0d5c209d99330c0ef32eab2899812cd38a9
 PHASE_15_BASE_TREE=e85d6f87b38ff909cae0ae30cb5a5075d3ae3979
 PHASE_15_PARENT_AFTER_PRE_REPAIR=78990af25cd4d084c744347e4f00270bacbe999d
 PHASE_15_PRE_REPAIR_RECORD=docs/architecture/governance/roadmap-22-pre-phase15-cip2-drift-gate-repair-v1.md
+PHASE_15_CORRECTION_1_RECORD=docs/architecture/governance/roadmap-22-phase-15-provider-native-typed-invocation-correction-1.md
+
+Correction 1 removes the premature generic backend-submission invocation shape from the Phase-15 SPI. The production `InvocationSpec` root currently permits only `ProcessInvocationSpec`; a real backend-submission typed model remains deferred until a real consumer defines its concrete request semantics.
 
 ## Scope
 
@@ -38,7 +41,6 @@ Production package:
 - InvocationSpec
 - InvocationKind
 - ProcessInvocationSpec
-- BackendSubmissionInvocationSpec
 - ExecutionCommand
 - RuntimeAdapter
 - RuntimeExecutionContext
@@ -92,6 +94,9 @@ Architecture guards cover:
 - ExecutableTask does not gain provider-native command fields.
 - PlanLowerer package does not import mutable runtime-state authorities.
 - Generic provider-native plan does not expose shellCommand/commandLine string authority.
+- InvocationSpec permits only the implemented ProcessInvocationSpec shape.
+- No BackendSubmissionInvocationSpec or BACKEND_SUBMISSION invocation kind exists.
+- No generic provider/backend parameter bag appears in the production provider-native SPI; ProcessInvocationSpec.environmentOverrides remains an allowed typed process mechanic.
 - RuntimeAdapter does not depend on domain repositories for mutation.
 - No concrete FFmpeg provider production implementation in Phase 15.
 - No new direct Render/Timeline to provider-native compiler.
@@ -104,6 +109,7 @@ Architecture guards cover:
 - Phase 16: Artifact staging/materialization and Artifact commit integration.
 - Phase 17+: sandbox/isolation and runtime filesystem/materialization mechanics.
 - Phase 19: first real FFmpeg provider plugin and provider-specific lowering.
+- Real backend submission typed model: deferred until a real consumer supplies concrete typed semantics.
 - Roadmap #23: distributed/global scheduling and optimization.
 
 ## Publication

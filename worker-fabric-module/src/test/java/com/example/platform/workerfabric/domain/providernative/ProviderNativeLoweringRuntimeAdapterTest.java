@@ -312,7 +312,7 @@ class ProviderNativeLoweringRuntimeAdapterTest {
             com.example.platform.execution.taskgraph.ExecutableTaskId executableTaskId,
             ProviderBindingPin providerBindingPin,
             List<String> memberUnitIds,
-            List<InvocationSpec> invocations) implements ProviderNativeExecutionPlan {
+            List<ProcessInvocationSpec> invocations) implements ProviderNativeExecutionPlan {
         private TestNativePlan {
             if (memberUnitIds == null || memberUnitIds.isEmpty()) {
                 throw new ProviderNativeExecutionFailure(

@@ -82,3 +82,4 @@ governance:
   data_integrity_correction_records:
   - docs/architecture/governance/project-architecture-state-v1-yaml-semantic-integrity-correction-1.md
   phase_15_record: docs/architecture/governance/roadmap-22-phase-15-plan-lowerer-runtime-adapter.md
+  phase_15_correction_1_record: docs/architecture/governance/roadmap-22-phase-15-provider-native-typed-invocation-correction-1.md

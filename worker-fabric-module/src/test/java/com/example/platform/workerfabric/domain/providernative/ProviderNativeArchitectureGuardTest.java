@@ -57,6 +57,43 @@ class ProviderNativeArchitectureGuardTest {
     }
 
     @Test
+    void providerNativeInvocationRootPermitsOnlyTheImplementedProcessShape() {
+        assertThat(PROVIDER_NATIVE_MAIN.resolve("BackendSubmissionInvocationSpec.java")).doesNotExist();
+
+        String invocationKind = source(PROVIDER_NATIVE_MAIN.resolve("InvocationKind.java"));
+        assertThat(invocationKind).doesNotContain("BACKEND_SUBMISSION");
+
+        String invocationSpec = source(PROVIDER_NATIVE_MAIN.resolve("InvocationSpec.java"));
+        assertThat(invocationSpec).contains("permits ProcessInvocationSpec");
+        assertThat(javaSources(PROVIDER_NATIVE_MAIN)).doesNotContain(
+                "BackendSubmissionInvocationSpec",
+                "HttpInvocationSpec",
+                "GrpcInvocationSpec",
+                "NativeLibraryInvocationSpec",
+                "GenericInvocationSpec");
+    }
+
+    @Test
+    void providerNativeSpiDoesNotExposeGenericProviderOrBackendParameterBags() {
+        String source = codeOnly(javaSources(PROVIDER_NATIVE_MAIN));
+
+        assertThat(source).doesNotContain(
+                "ProviderParameterBag",
+                "BackendParameterBag",
+                "providerParameters");
+        assertThat(Pattern.compile("Map\\s*<\\s*String\\s*,\\s*Object\\s*>")
+                .matcher(source).results().count()).isZero();
+        assertThat(Pattern.compile("Map\\s*<\\s*String\\s*,\\s*String\\s*>\\s+typedFields\\b")
+                .matcher(source).results().count()).isZero();
+        assertThat(Pattern.compile("(?:JsonNode|Object)\\s+providerParameters\\b")
+                .matcher(source).results().count()).isZero();
+        assertThat(Pattern.compile("(?:Map\\s*<[^>]+>|JsonNode|Object)\\s+payload\\b")
+                .matcher(source).results().count()).isZero();
+
+        assertThat(source).contains("Map<String, String> environmentOverrides");
+    }
+
+    @Test
     void runtimeAdapterDoesNotDependOnCanonicalDomainRepositoriesForMutation() {
         String source = source(PROVIDER_NATIVE_MAIN.resolve("RuntimeAdapter.java"));
         assertThat(source).doesNotContain("Repository", "DSLContext", "EntityManager", "JdbcTemplate");
@@ -109,7 +146,6 @@ class ProviderNativeArchitectureGuardTest {
         assertThat(Pattern.compile("new\\s+ExecutionAttempt\\s*\\(").matcher(javaSources(PROVIDER_NATIVE_MAIN))
                 .results().count()).isZero();
     }
-
 
     private static String codeOnly(String source) {
         String withoutBlockComments = source.replaceAll("(?s)/\\*.*?\\*/", "");
