@@ -129,7 +129,14 @@ class ModularityTest {
         // repository debt-register convention with package-specific matches.
         "execution' depends on non-exposed type com.example.platform.render.domain.renderplan",
         "execution' depends on non-exposed type com.example.platform.audio.domain.mix",
-        "execution' depends on non-exposed type com.example.platform.graph"
+        "execution' depends on non-exposed type com.example.platform.graph",
+        // ROADMAP_22_PHASE_16: worker-fabric reuse materialization consumes the
+        // storage contract (StorageProvider / StorageReadRequest /
+        // IntegrityRequirement) through the frozen Storage authority boundary.
+        // The storage named interfaces are registered, but the consumed contract
+        // types surface as non-exposed through the platform-app Modulith scan;
+        // retain the repository debt-register convention with a package-specific match.
+        "workerfabric' depends on non-exposed type com.example.platform.storage.contract"
     );
 
     @Test

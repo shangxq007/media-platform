@@ -24,7 +24,7 @@ import org.springframework.stereotype.Repository;
 
 /** PostgreSQL persistent reuse index with tenant isolation and ownership/completion fencing. */
 @Repository
-public final class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
+public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
 
     private final DSLContext dsl;
 
