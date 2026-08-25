@@ -21,8 +21,8 @@ repository:
   main_merged_roadmap_22: false
 local_observation:
   authority: INFORMATIONAL_ONLY
-  roadmap_22_worktree: .worktrees/roadmap22-phase16-closure-governance
-  executor_branch: agent/roadmap22-phase16-closure-cross-cutting-governance
+  roadmap_22_worktree: .worktrees/community-compute-distributed-runtime-governance-amendment1
+  executor_branch: agent/community-compute-distributed-runtime-governance-amendment1
 current_roadmap:
   number: 22
   name: EXECUTABLE_TASK_GRAPH_AND_WORKER_FABRIC_RUNTIME
@@ -59,7 +59,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_16_GOVERNANCE_NORMALIZATION_CORRECTION_1_FINAL_REVIEW
+  immediate_next_gate: CHATGPT_COMMUNITY_COMPUTE_AND_DISTRIBUTED_RUNTIME_FOUNDATION_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 17
@@ -70,6 +70,7 @@ governance_execution:
   adopted_cross_cutting_amendments:
     worker_runtime_backend_resource_accounting: ADOPTED
     edge_serverless_integration_compute: ADOPTED
+    community_compute_distributed_runtime_foundation: ADOPTED_DEFERRED
 architecture_escalation: NONE
 known_architecture_blockers: 0
 known_implementation_blockers: 0
@@ -95,7 +96,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_ROADMAP_22_PHASE_16_GOVERNANCE_NORMALIZATION_CORRECTION_1_FINAL_REVIEW
+  next_gate: CHATGPT_COMMUNITY_COMPUTE_AND_DISTRIBUTED_RUNTIME_FOUNDATION_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   data_integrity_correction_records:
@@ -107,4 +108,5 @@ governance:
   phase_16_closure_record: docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md
   worker_runtime_backend_resource_accounting_amendment: docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md
   edge_serverless_integration_compute_amendment: docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
+  community_compute_distributed_runtime_foundation_amendment: docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
   phase_16_governance_normalization_correction_1_record: docs/architecture/governance/roadmap-22-phase-16-governance-normalization-correction-1.md

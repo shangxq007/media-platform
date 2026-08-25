@@ -661,3 +661,66 @@ foundations:
   references:
   - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
   notes: not a Phase 16 closure dependency unless repository reality proves need
+- name: BOINC
+  category: community-compute
+  status: REFERENCE_ONLY
+  architecture_role: primary volunteer-compute reference
+  authority_boundary: reference only; no platform dependency, backend kind, protocol authority, or domain authority
+  planned_window: research only; not scheduled
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+  notes: Community compute remains real platform WorkerRuntime capacity through Native Pull unless a future lifecycle proves a separate backend boundary.
+- name: SheepIt Render Farm
+  category: community-render-compute
+  status: REFERENCE_ONLY
+  architecture_role: operational community-render-compute reference
+  authority_boundary: reference only; no platform dependency, protocol authority, task authority, or pre-created backend
+  planned_window: research only; not scheduled
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+  notes: Does not define platform WorkerRuntime, ExecutableTask, Artifact, or scheduler semantics.
+- name: Ramanujan
+  category: experimental-community-compute
+  status: REFERENCE_ONLY
+  architecture_role: portable universal client and IR reference
+  authority_boundary: reference only; its IR or DAG never replaces OperationPlan, ExecutableTask, or provider lowering
+  planned_window: research only; not scheduled
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+  notes: No implementation backlog or dependency is created.
+- name: Apache Mesos
+  category: historical-distributed-scheduling
+  status: REFERENCE_ONLY
+  architecture_role: historical distributed-scheduling reference
+  authority_boundary: retired/non-production reference candidate only; no platform scheduler, worker, or resource authority
+  planned_window: research only; not scheduled
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+  notes: No implementation backlog or production candidacy is created.
+- name: Flamenco
+  category: render-execution-backend
+  status: POC_CANDIDATE
+  architecture_role: specialized Blender delegated ExecutionBackend candidate
+  authority_boundary: platform owns ExecutableTask, Provider binding, Artifact, global backend selection, fencing, and completion; Flamenco owns only delegated internal job/worker placement
+  planned_window: "Roadmap #22 Phase 21 or later, only with a real Blender consumer"
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+  notes: Peer candidate to OpenCue; not mandated and not a Phase 21 blocker; future POC path is workspace output to trusted ingestion/staging to Artifact commit.
+- name: Exo
+  category: ai-provider-runtime
+  status: POC_CANDIDATE
+  architecture_role: provider-local heterogeneous distributed-inference runtime candidate
+  authority_boundary: internal nodes are not platform WorkerRuntime identities and Exo is not global placement or Artifact authority
+  planned_window: first real distributed-AI consumer
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+  notes: No dependency; provider-local parallelism remains behind the provider execution contract.
+- name: Petals
+  category: ai-provider-runtime
+  status: POC_CANDIDATE
+  architecture_role: distributed LLM provider-runtime candidate
+  authority_boundary: public/untrusted swarm denies sensitive, private, and restricted data by default; never platform WorkerRuntime, global placement, or Artifact authority
+  planned_window: first real distributed-LLM need
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+  notes: No dependency; a future private swarm remains subject to explicit trust, tenant/data, entitlement, isolation, and policy validation.

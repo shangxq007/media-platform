@@ -643,3 +643,55 @@ deferred_items:
   blocking_at_trigger: true
   references:
   - docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
+
+- id: COMMUNITY_COMPUTE_POC
+  title: Bounded Community Compute Native Pull POC
+  status: DEFERRED
+  originating_context: Community/user-contributed capacity is real platform WorkerRuntime capacity through Native Pull, not a new domain, Provider, Artifact authority, scheduler, task model, or pre-created Community/BOINC/SheepIt backend.
+  earliest_revisit: AFTER_ROADMAP_22_PHASE_20
+  trigger: Phase 19 real FFmpeg Native Pull and runtime support advertisement plus sufficient Phase 20 resource accounting, sandbox/isolation, trust/data policy, and authoritative Artifact path are all accepted.
+  prerequisites:
+  - Phase 19 real FFmpeg Native Pull vertical slice and WorkerRuntime support advertisement
+  - Phase 20 sufficient ResourceAccountingDomain implementation for the proposed machines and runtimes
+  - Sandbox and isolation appropriate to untrusted external machines
+  - Trust, tenant/data, licensing/content, entitlement, and policy enforcement
+  - Trusted staging/ingestion, digest and policy validation, fenced completion, and authoritative Artifact commit path
+  first_poc: One to three external CPU machines; public or synthetic inputs; explicitly restricted/allowlisted deterministic FFmpeg workloads; no public-internet scale.
+  blocking_now: false
+  blocking_at_trigger: true
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+
+- id: FLAMENCO_EXECUTION_BACKEND_POC
+  title: Flamenco specialized Blender ExecutionBackend POC
+  status: DEFERRED
+  originating_context: Flamenco is a specialized delegated Blender backend candidate and peer to OpenCue; platform task/provider/Artifact/global-backend-selection/fencing/completion authority remains unchanged.
+  earliest_revisit: "Roadmap #22 Phase 21 or later"
+  trigger: A real Blender consumer requires a bounded delegated-render-backend POC.
+  blocking_now: false
+  blocking_at_trigger: false
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+
+- id: EXO_DISTRIBUTED_AI_RUNTIME_POC
+  title: Exo provider-local distributed AI runtime POC
+  status: DEFERRED
+  originating_context: Exo is a provider-local heterogeneous distributed-inference runtime candidate whose internal nodes never become platform WorkerRuntime or global placement authority.
+  earliest_revisit: First real distributed-AI consumer
+  trigger: A concrete distributed-AI operation and provider execution contract require heterogeneous provider-local parallelism.
+  blocking_now: false
+  blocking_at_trigger: false
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
+
+- id: PETALS_DISTRIBUTED_AI_RUNTIME_POC
+  title: Petals distributed LLM provider runtime POC
+  status: DEFERRED
+  originating_context: Petals is a distributed LLM provider-runtime candidate; public/untrusted swarms deny sensitive, private, and restricted data by default.
+  earliest_revisit: First real distributed-LLM need
+  trigger: A concrete distributed-LLM operation requires an explicit public-versus-private swarm decision and passes trust, isolation, tenant/data, entitlement, and policy review.
+  default_data_policy: SENSITIVE_PRIVATE_AND_RESTRICTED_DATA_DENIED
+  blocking_now: false
+  blocking_at_trigger: false
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md

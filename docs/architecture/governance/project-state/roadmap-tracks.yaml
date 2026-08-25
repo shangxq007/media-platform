@@ -321,3 +321,34 @@ tracks:
   - "No Roadmap #23 scheduling optimization"
   references:
   - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+- id: COMMUNITY_COMPUTE_AND_DISTRIBUTED_RUNTIME_FOUNDATION
+  status: ADOPTED_DEFERRED
+  purpose: Bounded cross-cutting foundation for community Native Pull WorkerRuntime capacity, delegated render farms, and provider-local distributed AI runtimes without merging their identity or authority models.
+  earliest_revisit: AFTER_ROADMAP_22_PHASE_20
+  critical_path: false
+  new_numbered_roadmap: false
+  connections:
+  - EXECUTION_AND_PROVIDER_RUNTIME
+  - TRUST_PERMISSION_SANDBOX_V1
+  - RESOURCE_ACCOUNTING_DOMAIN_V1
+  - COMMERCIAL_ACCESS_CONTROL_FOUNDATION
+  - AI_PROVIDER_INTEGRATION_USES_PROVIDER_EXECUTION_FABRIC_V1
+  - PLACEMENT_AUTHORITY_IS_EXPLICIT_PER_EXECUTION_BACKEND_V1
+  current_dependencies: Existing WorkerRuntime/PhysicalHost/Device, Native Pull, trust/sandbox policy, ResourceAccountingDomain, Provider, ExecutionBackend, Artifact, and attempt/generation authority contracts; implementation prerequisites remain deferred.
+  next_actions:
+  - Revisit COMMUNITY_COMPUTE_POC only after Phase 19 real FFmpeg Native Pull and runtime support advertisement plus sufficient Phase 20 resource accounting, sandbox/isolation, trust/data policy, and authoritative Artifact path.
+  - Revisit FLAMENCO_EXECUTION_BACKEND_POC in Phase 21 or later only for a real Blender consumer.
+  - Revisit Exo or Petals only for the first concrete distributed-AI or distributed-LLM consumer.
+  roadmap_relationship: Cross-cutting adopted/deferred foundation; no numbered milestone, phase-order, or critical-path change; Roadmap 22 Phase 17/18/19/20/21 order remains untouched.
+  validation_target: Future bounded POCs must pass existing Provider, Native Pull or delegated-backend, trust/policy, resource-accounting, Artifact, and fencing conformance gates.
+  authority_boundaries:
+  - Community Native Pull participant is a real platform WorkerRuntime, not a fake Provider or backend-internal worker.
+  - Delegated render-farm internal workers remain backend-local and do not reown ExecutableTask semantics.
+  - Provider-local distributed-runtime nodes remain behind the provider execution contract and do not become platform workers or global placement authority.
+  - Contributed resource accounting is distinct from commercial reward, price, credit, token, settlement, and marketplace policy.
+  explicit_exclusions:
+  - No Community, BOINC, or SheepIt backend is pre-created.
+  - No universal distributed-compute god abstraction or new trust enum/model.
+  - No implementation, production dependency, numbered roadmap, Phase 16 reopening, Phase 17 start, or canonical-main integration.
+  references:
+  - docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md

@@ -2709,3 +2709,125 @@
   summary: An edge transform is non-canonical delivery mechanics unless explicitly lowered through platform Operation/ExecutableTask, staging, publication, Artifact, and fenced completion authority.
   implementation_status: DEFERRED
   references: [docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md]
+
+## 9AN COMMUNITY COMPUTE AND DISTRIBUTED RUNTIME FOUNDATION
+
+- id: USER_CONTRIBUTED_COMPUTE_IS_WORKER_CAPACITY_NOT_DOMAIN_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Community or user-contributed compute supplies WorkerRuntime capacity through the existing execution fabric and never becomes domain, Provider, Artifact, scheduler, task, or OperationPlan authority.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: COMMUNITY_WORKER_IS_A_REAL_WORKER_RUNTIME_NOT_A_FAKE_PROVIDER_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: A community Native Pull participant is a real platform WorkerRuntime governed by incarnation, lease, reservation, admission, trust, and fencing contracts; it is never modeled as a fake Provider.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: COMMUNITY_COMPUTE_REUSES_NATIVE_PULL_UNLESS_A_REAL_BACKEND_BOUNDARY_IS_PROVEN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Community capacity reuses Native Pull unless a concrete independent execution lifecycle proves a delegated ExecutionBackend boundary; Community, BOINC, and SheepIt backends are not pre-created.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: COMMUNITY_COMPUTE_ELIGIBILITY_REQUIRES_TRUST_DATA_POLICY_AND_RUNTIME_FEASIBILITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Community-worker eligibility requires runtime/provider/resource feasibility plus trust, isolation, tenant/data, licensing/content, entitlement, and policy approval; technical CAN_RUN does not imply MAY_RUN.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: UNTRUSTED_WORKER_CANNOT_AUTHOR_ARTIFACT_OR_EXECUTION_COMPLETION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: ARTIFACT
+  summary: An untrusted worker may return evidence and bytes but cannot author Artifact commit, authoritative execution completion, or winning reuse publication.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: VOLUNTEER_RESULT_REQUIRES_TRUSTED_VALIDATION_BEFORE_AUTHORITATIVE_COMMIT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: ARTIFACT
+  summary: Volunteer results require trusted platform staging/ingestion, digest and policy validation, and attempt/generation fencing before Artifact commit, completion, or reuse publication.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: VOLUNTEER_RESULT_VALIDATION_IS_WORKLOAD_AWARE_NOT_UNIVERSAL_DIGEST_CONSENSUS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Volunteer-result validation follows workload-specific determinism, semantic tolerance, safety, provenance, and independent checks; no universal digest-consensus or redundant-compute policy is adopted.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: CONTRIBUTED_RESOURCE_ACCOUNTING_IS_DISTINCT_FROM_COMMERCIAL_REWARD_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: COMMERCIAL_POLICY
+  summary: Contributed resource accounting is distinct from price, reward, credit, token, settlement, entitlement, and marketplace policy.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: FLAMENCO_IS_SPECIALIZED_BLENDER_EXECUTION_BACKEND_CANDIDATE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Flamenco is a deferred specialized Blender delegated ExecutionBackend POC candidate and peer to OpenCue, not a mandated backend or Phase 21 blocker.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: DELEGATED_RENDER_FARM_BACKEND_DOES_NOT_REOWN_EXECUTABLE_TASK_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: A delegated render-farm backend may own internal job/worker placement after delegation but never reowns ExecutableTask, Provider binding, Artifact, global backend selection, fencing, or completion semantics.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: PROVIDER_LOCAL_DISTRIBUTED_RUNTIME_DOES_NOT_BECOME_PLATFORM_PLACEMENT_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: A provider-local distributed runtime owns bounded internal realization only and never becomes platform-global backend or WorkerRuntime placement authority.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: PROVIDER_INTERNAL_NODE_TOPOLOGY_DOES_NOT_IMPLY_PLATFORM_WORKER_IDENTITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Provider-internal nodes, shards, peers, or meshes do not imply platform WorkerRuntime, PhysicalHost, Device, lease, or reservation identity.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: PROVIDER_LOCAL_PARALLELISM_REMAINS_BEHIND_PROVIDER_EXECUTION_CONTRACT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PROVIDER
+  summary: Provider-local sharding, collective execution, and parallelism remain behind one provider execution contract and do not create platform task or scheduler authority.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: PUBLIC_PETALS_STYLE_SWARM_IS_NON_SENSITIVE_BY_DEFAULT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: DATA_POLICY
+  summary: A public or untrusted Petals-style swarm denies sensitive, private, tenant-secret, licensed-restricted, and policy-restricted data by default.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+- id: NO_UNIVERSAL_DISTRIBUTED_COMPUTE_GOD_ABSTRACTION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: Community Native Pull workers, delegated-backend internal workers, and provider-local distributed-runtime nodes retain distinct identities, lifecycles, placement, resources, and authorities.
+  implementation_status: DEFERRED
+  references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
