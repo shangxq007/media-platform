@@ -51,7 +51,9 @@ import com.example.platform.shared.identity.ArtifactId;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -65,6 +67,114 @@ class ProviderBoundExecutableTaskGraphTest {
 
     private static final BoundaryContractId DIRECT_CONTRACT =
             BoundaryContractId.of("taskgraph-test-direct.v1");
+
+    @Test
+    void executionReuseKeyIsVersionedCanonicalAndStableForEquivalentGraphs() {
+        ProviderBoundExecutableTaskGraph first = separateGraph(dependentPair(false));
+        ProviderBoundExecutableTaskGraph second = separateGraph(dependentPair(false));
+
+        Map<ExecutableTaskId, ExecutionReuseKey> firstKeys =
+                ExecutionReuseKeyDeriver.derive(first);
+        Map<ExecutableTaskId, ExecutionReuseKey> secondKeys =
+                ExecutionReuseKeyDeriver.derive(second);
+
+        assertEquals(firstKeys, secondKeys);
+        assertEquals(2, firstKeys.size());
+        firstKeys.values().forEach(key -> {
+            assertEquals("execution-reuse-key.v1", key.version());
+            assertEquals(64, key.stableDigest().length());
+            assertTrue(key.canonicalSerialization().startsWith(
+                    "roadmap22.execution-reuse-key.v1"));
+        });
+    }
+
+    @Test
+    void executionReuseKeySurfaceCannotAcceptMutableRuntimeOrLocationState() {
+        List<String> components = Arrays.stream(ExecutionReuseKey.class.getRecordComponents())
+                .map(RecordComponent::getName)
+                .toList();
+
+        assertEquals(List.of("version", "canonicalSerialization", "stableDigest"), components);
+        ExecutionReuseKey key = ExecutionReuseKeyDeriver.derive(
+                sourceGraph(sourcePinnedUnit("immutable-key-surface")))
+                .values().iterator().next();
+        for (String mutableOrLocationValue : List.of(
+                "attempt-123", "generation-9", "lease-4", "worker-runtime-2",
+                "host-5", "device-7", "trace-8", "request-9", "s3://bucket/key",
+                "/tmp/materialized", "2026-08-25T12:00:00Z")) {
+            assertFalse(key.canonicalSerialization().contains(mutableOrLocationValue));
+        }
+    }
+
+    @Test
+    void computedDependencyUsesPredecessorMerkleIdentityWithoutFutureArtifactPin() {
+        ProviderBoundExecutableTaskGraph graph = separateGraph(dependentPair(false));
+        Map<ExecutableTaskId, ExecutionReuseKey> keys = ExecutionReuseKeyDeriver.derive(graph);
+        ExecutableTaskDependency dependency = graph.taskDependencies().getFirst();
+        ExecutionReuseKey producer = keys.get(dependency.producerTaskId());
+        ExecutionReuseKey consumer = keys.get(dependency.consumerTaskId());
+
+        assertTrue(consumer.canonicalSerialization().contains(producer.stableDigest()));
+        assertTrue(consumer.canonicalSerialization().contains("output-unit-a"));
+        assertTrue(consumer.canonicalSerialization().contains("DECODED_FRAMES"));
+        assertFalse(consumer.canonicalSerialization().contains("futureArtifact"));
+    }
+
+    @Test
+    void sourceArtifactPinParticipatesAndProducerChangePropagatesToDependentKey() {
+        ProviderBoundExecutableTaskGraph first = separateGraph(
+                dependentPairWithSourceDigest("a".repeat(64)));
+        ProviderBoundExecutableTaskGraph second = separateGraph(
+                dependentPairWithSourceDigest("b".repeat(64)));
+        Map<ExecutableTaskId, ExecutionReuseKey> firstKeys = ExecutionReuseKeyDeriver.derive(first);
+        Map<ExecutableTaskId, ExecutionReuseKey> secondKeys = ExecutionReuseKeyDeriver.derive(second);
+        ExecutableTaskDependency firstDependency = first.taskDependencies().getFirst();
+        ExecutableTaskDependency secondDependency = second.taskDependencies().getFirst();
+        ExecutionReuseKey firstProducer = firstKeys.get(firstDependency.producerTaskId());
+        ExecutionReuseKey secondProducer = secondKeys.get(secondDependency.producerTaskId());
+        ExecutionReuseKey firstConsumer = firstKeys.get(firstDependency.consumerTaskId());
+        ExecutionReuseKey secondConsumer = secondKeys.get(secondDependency.consumerTaskId());
+
+        assertNotEquals(firstProducer, secondProducer);
+        assertNotEquals(firstConsumer, secondConsumer);
+        assertTrue(firstProducer.canonicalSerialization().contains("artifact-unit-a"));
+        assertTrue(firstProducer.canonicalSerialization().contains("a".repeat(64)));
+    }
+
+    @Test
+    void dependencyPreservingPruningStopsAtValidatedReuseAndKeepsRequiredClosure() {
+        ProviderBoundExecutableTaskGraph graph = separateGraph(dependentPair(false));
+        ExecutableTaskDependency dependency = graph.taskDependencies().getFirst();
+        ExecutableTaskId producer = dependency.producerTaskId();
+        ExecutableTaskId consumer = dependency.consumerTaskId();
+
+        ReusePruningResult miss = DependencyPreservingReusePruner.prune(
+                graph, Set.of(consumer), Set.of());
+        assertEquals(Set.of(producer, consumer), miss.tasksToExecute());
+        assertEquals(Set.of(), miss.reusedTasks());
+
+        ReusePruningResult producerHit = DependencyPreservingReusePruner.prune(
+                graph, Set.of(consumer), Set.of(producer));
+        assertEquals(Set.of(consumer), producerHit.tasksToExecute());
+        assertEquals(Set.of(producer), producerHit.reusedTasks());
+
+        ReusePruningResult consumerHit = DependencyPreservingReusePruner.prune(
+                graph, Set.of(consumer), Set.of(consumer));
+        assertEquals(Set.of(), consumerHit.tasksToExecute());
+        assertEquals(Set.of(consumer), consumerHit.reusedTasks());
+    }
+
+    @Test
+    void pruningFailsClosedForUnknownTargetsOrUnvalidatedReuseClaims() {
+        ProviderBoundExecutableTaskGraph graph = separateGraph(dependentPair(false));
+        ExecutableTaskId unknown = new ExecutableTaskId("f".repeat(64));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> DependencyPreservingReusePruner.prune(graph, Set.of(unknown), Set.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> DependencyPreservingReusePruner.prune(graph, Set.of(graph.tasks().getFirst().id()),
+                        Set.of(unknown)));
+    }
 
     @Test
     void executableTaskIdIsDeterministicAcrossEquivalentMembershipPermutations() {
@@ -548,10 +658,25 @@ class ProviderBoundExecutableTaskGraphTest {
         return new UnitPair(producer, consumer, edge);
     }
 
+    private static UnitPair dependentPairWithSourceDigest(String digest) {
+        UnitPair original = dependentPair(false);
+        InputBinding sourceInput = sourceInput("unit-a", "unit-a", digest);
+        PhysicalPlanUnit producer = unit(
+                "unit-a",
+                List.of(sourceInput),
+                original.producer().typedOutputs(),
+                original.producer().typedDependencies());
+        return new UnitPair(producer, original.consumer(), original.edge());
+    }
+
     private static PhysicalPlanUnit sourcePinnedUnit(String id) {
+        return sourcePinnedUnitWithDigest(id, "a".repeat(64));
+    }
+
+    private static PhysicalPlanUnit sourcePinnedUnitWithDigest(String id, String digest) {
         SourceArtifact sourceArtifact = new SourceArtifact(
                 new ArtifactId("artifact-" + id),
-                ContentDigest.sha256("a".repeat(64)));
+                ContentDigest.sha256(digest));
         InputBinding input = new InputBinding(
                 new ExecutionInputId("input-" + id),
                 "logical-" + id,
@@ -574,6 +699,29 @@ class ProviderBoundExecutableTaskGraphTest {
                 List.of(expectation),
                 List.of());
         return unit(id, List.of(input), List.of(output), List.of());
+    }
+
+    private static ProviderBoundExecutableTaskGraph sourceGraph(PhysicalPlanUnit unit) {
+        PhysicalExecutionPlan plan = plan(unit);
+        TaskContext context = context(plan, "provider-a");
+        return ProviderBoundExecutableTaskGraph.derive(
+                plan,
+                context.graph(),
+                List.of(task(context, "provider-a", List.of(unit), List.of())),
+                List.of());
+    }
+
+    private static ProviderBoundExecutableTaskGraph separateGraph(UnitPair pair) {
+        PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
+        TaskContext context = context(plan, "provider-a");
+        ExecutableTask producer = task(
+                context, "provider-a", List.of(pair.producer()), List.of());
+        ExecutableTask consumer = task(
+                context, "provider-a", List.of(pair.consumer()), List.of());
+        ExecutionArtifactBoundary boundary = executionBoundary(
+                pair, context.candidate("provider-a"), context.candidate("provider-a"));
+        return ProviderBoundExecutableTaskGraph.derive(
+                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
     }
 
     private static PhysicalPlanUnit sourcePinnedUnitWithProducerLogicalNodeId(

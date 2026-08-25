@@ -672,14 +672,14 @@ public final class ProviderBoundExecutableTaskGraph {
             List<LogicalDependencyEdge> externalDependencies) {
     }
 
-    private static final class TaskGraphView implements DirectedGraphView<ExecutableTaskId> {
+    static final class TaskGraphView implements DirectedGraphView<ExecutableTaskId> {
 
         private final Set<ExecutableTaskId> nodes;
         private final Map<ExecutableTaskId, Set<ExecutableTaskId>> successors;
         private final Map<ExecutableTaskId, Set<ExecutableTaskId>> predecessors;
         private final int edgeCount;
 
-        private TaskGraphView(
+        TaskGraphView(
                 List<ExecutableTask> tasks,
                 List<ExecutableTaskDependency> dependencies) {
             Comparator<ExecutableTaskId> order = Comparator.naturalOrder();

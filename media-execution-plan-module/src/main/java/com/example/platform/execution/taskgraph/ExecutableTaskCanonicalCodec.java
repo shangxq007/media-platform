@@ -321,7 +321,7 @@ final class ExecutableTaskCanonicalCodec {
                 .build();
     }
 
-    private static String output(OutputDeclaration output) {
+    static String output(OutputDeclaration output) {
         List<String> outputRequirements = output.outputRequirements().stream()
                 .map(Canonical::outputRequirement).sorted().toList();
         List<String> materializations = output.materializationRequirements().stream()
@@ -342,7 +342,7 @@ final class ExecutableTaskCanonicalCodec {
                 .build();
     }
 
-    private static String dependency(LogicalDependencyEdge dependency) {
+    static String dependency(LogicalDependencyEdge dependency) {
         return new CanonicalWriter()
                 .tag("roadmap22.logical-dependency-edge.v1")
                 .field("edgeId", dependency.edgeId().value())
