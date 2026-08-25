@@ -1203,16 +1203,16 @@ if grep -q 'artifact_id' platform-app/src/main/resources/db/migration/V1__initia
 else
     fail "CIP2G4 artifact binding missing"
 fi
-# CIP2G5/6: SourceBinding unchanged + no Timeline leakage
+# CIP2G5/6: SourceBinding unchanged + no Timeline color-image authority
 if grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java; then
     fail "CIP2G5 SourceBinding changed"
 else
     pass "CIP2G5 SourceBinding unchanged"
 fi
-if grep -rq 'platform.color.' render-module/src/main --include='*.java'; then
-    fail "CIP2G6 Timeline leakage"
+if grep -R '^[[:space:]]*import com\.example\.platform\.colorimage\.' timeline-module/src/main --include='*.java' 2>/dev/null | grep -q .; then
+    fail "CIP2G6 color/image semantic authority leaked into Timeline production code"
 else
-    pass "CIP2G6 zero Timeline source metadata leakage"
+    pass "CIP2G6 Timeline production code has zero color-image authority imports"
 fi
 # CIP2G9: color-image-module persistence dependency = 0
 if grep -q 'implementation(project(' color-image-module/build.gradle.kts; then
@@ -1258,16 +1258,16 @@ if grep -q 'ffprobe\|Probe\|Normalizer' media-module/src/main/java/com/example/p
 else
     pass "CIP2DG10 zero renormalization (unchanged)"
 fi
-# CIP2DG11/12: SourceBinding/Timeline unchanged
+# CIP2DG11/12: SourceBinding shape and Timeline module dependency unchanged
 if grep -qE 'ColorDescription|RasterSampleDescription|StaticHdrMetadata' timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java; then
     fail "CIP2DG11 SourceBinding changed"
 else
     pass "CIP2DG11 SourceBinding unchanged"
 fi
-if grep -rq 'platform.color.' render-module/src/main --include='*.java'; then
-    fail "CIP2DG12 Timeline leakage"
+if grep -Eq '^[[:space:]]*(api|implementation)\(project\(":color-image-module"\)\)' timeline-module/build.gradle.kts; then
+    fail "CIP2DG12 Timeline production dependency on color-image-module"
 else
-    pass "CIP2DG12 zero Timeline leakage"
+    pass "CIP2DG12 Timeline module has zero production color-image dependency"
 fi
 # CIP2EG1/2: credential numeric zero evidence
 CR=$(git grep -InE 'ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+' -- '*.java' '*.kt' '*.sql' '*.md' '*.sh' '*.yml' '*.yaml' '*.json' '*.kts' '*.gradle' 2>/dev/null | grep -vE 'AKIAIO|REDACTED|xxx' | wc -l || true)
