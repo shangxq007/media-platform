@@ -258,7 +258,7 @@ public class McpMediaToolsController {
                         request.outputFormat() != null ? request.outputFormat() : "mp4",
                         timelineJson);
                 plan = segmentPlanFilter.restrictToTargetSegments(
-                        plan, java.util.Set.copyOf(request.segmentIds()), Map.of());
+                        plan, java.util.Set.copyOf(request.segmentIds()));
                 Map<String, Object> body = pipelinePlanBody(plan);
                 body.put("segmentIds", request.segmentIds());
                 body.put("matchingTasks", plan.tasks().stream()
@@ -528,7 +528,6 @@ public class McpMediaToolsController {
             body.put("reuse", plan.reuse().stream().map(a -> Map.of(
                     "artifactId", a.artifactId(),
                     "taskId", a.taskId(),
-                    "uri", a.uri(),
                     "cacheKey", a.cacheKey() != null ? a.cacheKey() : "")).toList());
             body.put("dirtyScopes", plan.impact().dirtyScopes().stream().map(Enum::name).toList());
             body.put("changeCount", plan.diff().changes().size());

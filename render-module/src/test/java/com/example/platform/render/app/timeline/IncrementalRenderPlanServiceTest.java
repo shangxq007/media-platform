@@ -35,9 +35,7 @@ class IncrementalRenderPlanServiceTest {
         RenderArtifactRegistry registry = new RenderArtifactRegistry(null, null);
         service = new IncrementalRenderPlanService(
                 diffService, impactAnalyzer, adapter, planner, registry, canonicalizer,
-                new SegmentTimelinePlanner(), new RenderCacheUriResolver(new RenderCacheProperties()),
-                new SegmentPlanFilter(),
-                testCacheReuseValidator());
+                new SegmentTimelinePlanner(), new SegmentPlanFilter());
     }
 
     @Test

@@ -12,7 +12,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * Resolves reusable artifacts from explicit input or prior job execution state.
+ * Resolves advisory reuse candidates from explicit input or prior job execution state.
  */
 @Service
 public class RenderArtifactRegistry {
@@ -55,13 +55,13 @@ public class RenderArtifactRegistry {
         List<ReusableArtifact> artifacts = new ArrayList<>();
         Object external = state.get("externalArtifacts");
         if (external instanceof Map<?, ?> map) {
-            map.forEach((taskId, uri) -> {
-                if (uri != null) {
-                    artifacts.add(ReusableArtifact.of(String.valueOf(taskId), String.valueOf(uri), ""));
+            map.forEach((taskId, priorOutput) -> {
+                if (priorOutput != null) {
+                    artifacts.add(ReusableArtifact.of(String.valueOf(taskId), ""));
                 }
             });
         }
-        Object reuseList = state.get("reuseArtifacts");
+        Object reuseList = state.get("reuseCandidates");
         if (reuseList instanceof List<?> list) {
             for (Object item : list) {
                 if (item instanceof Map<?, ?> m) {
@@ -88,59 +88,11 @@ public class RenderArtifactRegistry {
         return artifacts;
     }
 
-    public Map<String, String> loadContentHashes(String baseJobId) {
-        if (planPersistence == null || baseJobId == null || baseJobId.isBlank()) {
-            return Map.of();
-        }
-        return planPersistence.loadExecutionState(baseJobId)
-                .map(this::contentHashesFromState)
-                .orElse(Map.of());
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, String> contentHashesFromState(Map<String, Object> state) {
-        Map<String, String> hashes = new LinkedHashMap<>();
-        collectHashes(hashes, state.get("segmentCacheIndex"));
-        Object mezzanine = state.get("mezzanineCacheIndex");
-        if (mezzanine instanceof Map<?, ?> m) {
-            String hash = stringVal(m.get("contentHash"), "");
-            String cacheKey = stringVal(m.get("cacheKey"), "");
-            if (!hash.isBlank() && !cacheKey.isBlank()) {
-                hashes.put(cacheKey, hash);
-            }
-            String taskId = stringVal(m.get("taskId"), "");
-            if (!hash.isBlank() && !taskId.isBlank()) {
-                hashes.put(taskId, hash);
-            }
-        }
-        return hashes;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void collectHashes(Map<String, String> hashes, Object indexObj) {
-        if (!(indexObj instanceof Map<?, ?> cacheIndex)) {
-            return;
-        }
-        cacheIndex.forEach((cacheKey, entry) -> {
-            if (entry instanceof Map<?, ?> m) {
-                String hash = stringVal(m.get("contentHash"), "");
-                if (!hash.isBlank()) {
-                    hashes.put(String.valueOf(cacheKey), hash);
-                    String segmentId = stringVal(m.get("segmentId"), "");
-                    if (!segmentId.isBlank()) {
-                        hashes.put(segmentId, hash);
-                    }
-                }
-            }
-        });
-    }
-
     private static void mergeMezzanineCacheIndex(List<ReusableArtifact> artifacts, Map<?, ?> mezzanine) {
         String taskId = stringVal(mezzanine.get("taskId"), "final_compose");
-        String uri = stringVal(mezzanine.get("remoteUri"), stringVal(mezzanine.get("uri"), ""));
         String cacheKey = stringVal(mezzanine.get("cacheKey"), "");
-        if (!uri.isBlank() && artifacts.stream().noneMatch(a -> taskId.equals(a.taskId()))) {
-            artifacts.add(ReusableArtifact.of(taskId, uri, cacheKey));
+        if (!taskId.isBlank() && artifacts.stream().noneMatch(a -> taskId.equals(a.taskId()))) {
+            artifacts.add(ReusableArtifact.of(taskId, cacheKey));
         }
     }
 
@@ -151,34 +103,22 @@ public class RenderArtifactRegistry {
                 return;
             }
             String segmentId = stringVal(m.get("segmentId"), "");
-            String uri = stringVal(m.get("remoteUri"), stringVal(m.get("uri"), ""));
-            if (segmentId.isBlank() || uri.isBlank()) {
+            if (segmentId.isBlank()) {
                 return;
             }
             if (artifacts.stream().noneMatch(a -> segmentId.equals(a.taskId()))) {
                 artifacts.add(ReusableArtifact.of(
-                        segmentId, uri, stringVal(cacheKey, stringVal(m.get("cacheKey"), ""))));
+                        segmentId, stringVal(cacheKey, stringVal(m.get("cacheKey"), ""))));
             }
         });
     }
 
-    public Map<String, String> indexByCacheKey(List<ReusableArtifact> artifacts) {
-        Map<String, String> index = new LinkedHashMap<>();
-        for (ReusableArtifact artifact : artifacts) {
-            if (artifact.cacheKey() != null && !artifact.cacheKey().isBlank()
-                    && artifact.uri() != null && !artifact.uri().isBlank()) {
-                index.put(artifact.cacheKey(), artifact.uri());
-            }
-        }
-        return index;
-    }
-
     private static void mergeArtifactMap(List<ReusableArtifact> artifacts, Map<?, ?> map) {
-        map.forEach((taskId, uri) -> {
-            if (uri != null && !String.valueOf(uri).isBlank()) {
+        map.forEach((taskId, priorOutput) -> {
+            if (priorOutput != null) {
                 String id = String.valueOf(taskId);
                 if (artifacts.stream().noneMatch(a -> id.equals(a.taskId()))) {
-                    artifacts.add(ReusableArtifact.of(id, String.valueOf(uri), ""));
+                    artifacts.add(ReusableArtifact.of(id, ""));
                 }
             }
         });
@@ -188,35 +128,29 @@ public class RenderArtifactRegistry {
         return new ReusableArtifact(
                 stringVal(m.get("artifactId"), stringVal(m.get("taskId"), "")),
                 stringVal(m.get("taskId"), ""),
-                stringVal(m.get("uri"), ""),
                 stringVal(m.get("cacheKey"), ""),
                 List.of(),
                 stringVal(m.get("scope"), ""));
     }
 
-    public Map<String, String> indexByTaskId(List<ReusableArtifact> artifacts) {
-        Map<String, String> index = new LinkedHashMap<>();
+    public Map<String, ReusableArtifact> indexByTaskId(List<ReusableArtifact> artifacts) {
+        Map<String, ReusableArtifact> index = new LinkedHashMap<>();
         for (ReusableArtifact artifact : artifacts) {
-            if (artifact.taskId() != null && artifact.uri() != null && !artifact.uri().isBlank()) {
-                index.put(artifact.taskId(), artifact.uri());
+            if (artifact.taskId() != null && !artifact.taskId().isBlank()) {
+                index.put(artifact.taskId(), artifact);
             }
         }
         return index;
     }
 
     public List<ReusableArtifact> snapshotFromPlan(PipelineExecutionPlan plan,
-                                                   Map<String, String> completedTaskUris) {
+                                                   Map<String, String> completedTaskOutputs) {
         List<ReusableArtifact> snapshots = new ArrayList<>();
         for (PipelineTask task : plan.tasks()) {
-            String uri = completedTaskUris.get(task.taskId());
-            if (uri == null && task.parameters() != null) {
-                uri = task.parameters().get("reuseArtifactUri");
-            }
-            if (uri != null && !uri.isBlank()) {
+            if (completedTaskOutputs.containsKey(task.taskId())) {
                 snapshots.add(new ReusableArtifact(
                         task.taskId(),
                         task.taskId(),
-                        uri,
                         task.cacheKey() != null ? task.cacheKey() : "",
                         List.of(),
                         task.type().name()));

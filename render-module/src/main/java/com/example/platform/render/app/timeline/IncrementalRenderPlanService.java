@@ -35,9 +35,7 @@ public class IncrementalRenderPlanService {
     private final RenderArtifactRegistry artifactRegistry;
     private final TimelineCanonicalizer canonicalizer;
     private final SegmentTimelinePlanner segmentTimelinePlanner;
-    private final RenderCacheUriResolver cacheUriResolver;
     private final SegmentPlanFilter segmentPlanFilter;
-    private final RenderCacheReuseValidator cacheReuseValidator;
 
     public IncrementalRenderPlanService(TimelineSemanticDiffService semanticDiffService,
                                         RenderImpactAnalyzer impactAnalyzer,
@@ -46,9 +44,7 @@ public class IncrementalRenderPlanService {
                                         RenderArtifactRegistry artifactRegistry,
                                         TimelineCanonicalizer canonicalizer,
                                         SegmentTimelinePlanner segmentTimelinePlanner,
-                                        RenderCacheUriResolver cacheUriResolver,
-                                        SegmentPlanFilter segmentPlanFilter,
-                                        RenderCacheReuseValidator cacheReuseValidator) {
+                                        SegmentPlanFilter segmentPlanFilter) {
         this.semanticDiffService = semanticDiffService;
         this.impactAnalyzer = impactAnalyzer;
         this.internalTimelineAdapter = internalTimelineAdapter;
@@ -56,9 +52,7 @@ public class IncrementalRenderPlanService {
         this.artifactRegistry = artifactRegistry;
         this.canonicalizer = canonicalizer;
         this.segmentTimelinePlanner = segmentTimelinePlanner;
-        this.cacheUriResolver = cacheUriResolver;
         this.segmentPlanFilter = segmentPlanFilter;
-        this.cacheReuseValidator = cacheReuseValidator;
     }
 
     public IncrementalRenderPlan generate(String newTimelineJson,
@@ -92,9 +86,7 @@ public class IncrementalRenderPlanService {
                 spec, profile, tier, outputFormat, newTimelineJson);
 
         List<ReusableArtifact> reusePool = artifactRegistry.resolve(tenantId, baseJobId, explicitReuse);
-        HashFilterResult hashFilter = resolveReuseUris(reusePool, tenantId, baseJobId);
-        Map<String, String> reuseByTask = hashFilter.validUris();
-        Set<String> hashInvalidatedTaskIds = hashFilter.hashInvalidatedTaskIds();
+        Map<String, ReusableArtifact> explicitCandidates = artifactRegistry.indexByTaskId(reusePool);
 
         Set<String> dirtySegmentIds = segmentTimelinePlanner.planFromTimelineJson(newTimelineJson)
                 .map(plan -> segmentTimelinePlanner.dirtySegmentTaskIds(diff, newTimelineJson, plan))
@@ -103,13 +95,13 @@ public class IncrementalRenderPlanService {
         boolean segmentPolicyEnabled = isSegmentPolicyEnabled(fullPlan);
         AppliedPlan applied = impact.fullReRenderRequired()
                 ? applyFull(fullPlan)
-                : applyIncremental(fullPlan, impact, reuseByTask, dirtySegmentIds, segmentPolicyEnabled,
-                        hashInvalidatedTaskIds);
+                : applyIncremental(fullPlan, impact, dirtySegmentIds, segmentPolicyEnabled,
+                        explicitCandidates);
 
         Set<String> targetSegmentIds = SegmentPlanFilter.parseTargetSegmentIds(spec.metadata());
         if (!targetSegmentIds.isEmpty()) {
             PipelineExecutionPlan filtered = segmentPlanFilter.restrictToTargetSegments(
-                    applied.plan(), targetSegmentIds, reuseByTask);
+                    applied.plan(), targetSegmentIds);
             applied = recountAfterFilter(filtered, applied.reuseArtifacts());
         }
 
@@ -122,10 +114,6 @@ public class IncrementalRenderPlanService {
         meta.put("targetRevision", String.valueOf(diff.newRevision()));
         meta.put("executeTaskCount", String.valueOf(applied.executeTaskIds().size()));
         meta.put("reuseTaskCount", String.valueOf(applied.reuseTaskIds().size()));
-        if (!hashInvalidatedTaskIds.isEmpty()) {
-            meta.put("hashInvalidatedTaskIds", String.join(",", hashInvalidatedTaskIds));
-            meta.put("hashInvalidatedCount", String.valueOf(hashInvalidatedTaskIds.size()));
-        }
 
         PipelineExecutionPlan planWithMeta = new PipelineExecutionPlan(
                 applied.plan().planId(),
@@ -165,7 +153,7 @@ public class IncrementalRenderPlanService {
     private AppliedPlan applyFull(PipelineExecutionPlan full) {
         List<String> execute = full.tasks().stream().map(PipelineTask::taskId).toList();
         List<PipelineTask> tasks = full.tasks().stream()
-                .map(t -> withMode(t, "execute", null))
+                .map(t -> withMode(t, "execute"))
                 .toList();
         return new AppliedPlan(
                 new PipelineExecutionPlan(full.planId(), full.timelineId(), full.finalComposer(), tasks, full.metadata()),
@@ -174,60 +162,11 @@ public class IncrementalRenderPlanService {
                 List.of());
     }
 
-    private HashFilterResult resolveReuseUris(List<ReusableArtifact> reusePool,
-                                            String tenantId,
-                                            String baseJobId) {
-        Map<String, String> uris = artifactRegistry.indexByTaskId(reusePool);
-        Map<String, String> cacheKeys = new LinkedHashMap<>();
-        for (ReusableArtifact artifact : reusePool) {
-            if (artifact.taskId() != null) {
-                cacheKeys.put(artifact.taskId(), artifact.cacheKey());
-            }
-        }
-        Map<String, String> resolved = cacheUriResolver.resolveTaskIndex(uris, cacheKeys, tenantId);
-        Map<String, String> byCacheKey = artifactRegistry.indexByCacheKey(reusePool);
-        byCacheKey.forEach((cacheKey, uri) ->
-                resolved.putIfAbsent(cacheKey, cacheUriResolver.resolve(uri, cacheKey, tenantId)));
-        return filterByContentHash(resolved, cacheKeys, baseJobId);
-    }
-
-    private HashFilterResult filterByContentHash(Map<String, String> resolved,
-                                                 Map<String, String> cacheKeys,
-                                                 String baseJobId) {
-        if (cacheReuseValidator == null || !cacheReuseValidator.isValidationEnabled()
-                || baseJobId == null || baseJobId.isBlank()) {
-            return new HashFilterResult(resolved, Set.of());
-        }
-        Map<String, String> expectedHashes = artifactRegistry.loadContentHashes(baseJobId);
-        if (expectedHashes.isEmpty()) {
-            return new HashFilterResult(resolved, Set.of());
-        }
-        Map<String, String> filtered = new LinkedHashMap<>();
-        Set<String> invalidated = new LinkedHashSet<>();
-        resolved.forEach((taskId, uri) -> {
-            String cacheKey = cacheKeys.get(taskId);
-            String expected = expectedHashes.get(taskId);
-            if (expected == null && cacheKey != null) {
-                expected = expectedHashes.get(cacheKey);
-            }
-            if (expected != null && !expected.isBlank()
-                    && !cacheReuseValidator.validateLocalArtifact(uri, expected)) {
-                invalidated.add(taskId);
-                return;
-            }
-            filtered.put(taskId, uri);
-        });
-        return new HashFilterResult(filtered, Set.copyOf(invalidated));
-    }
-
-    private record HashFilterResult(Map<String, String> validUris, Set<String> hashInvalidatedTaskIds) {}
-
     private AppliedPlan applyIncremental(PipelineExecutionPlan full,
                                          RenderImpactResult impact,
-                                         Map<String, String> reuseByTask,
                                          Set<String> dirtySegmentIds,
                                          boolean segmentPolicyEnabled,
-                                         Set<String> hashInvalidatedTaskIds) {
+                                         Map<String, ReusableArtifact> explicitCandidates) {
         Set<PipelineTaskType> dirtyTypes = dirtyTaskTypes(impact.dirtyScopes());
         Set<String> dirtyTaskIds = dirtyTaskIds(impact, full);
         dirtyTaskIds.addAll(dirtySegmentIds);
@@ -238,19 +177,19 @@ public class IncrementalRenderPlanService {
         List<ReusableArtifact> reuseArtifacts = new ArrayList<>();
 
         for (PipelineTask task : full.tasks()) {
-            boolean reuse = shouldReuseTask(task, dirtyTypes, dirtyTaskIds, impact, dirtySegmentIds, segmentPolicyEnabled)
-                    && !hashInvalidatedTaskIds.contains(task.taskId());
+            boolean reuse = shouldReuseTask(
+                    task, dirtyTypes, dirtyTaskIds, impact, dirtySegmentIds, segmentPolicyEnabled);
             if (reuse) {
-                String uri = resolveReuseUri(task, reuseByTask);
-                tasks.add(withMode(task, "reuse", uri));
+                tasks.add(withMode(task, "reuse-candidate"));
                 reuseIds.add(task.taskId());
-                if (uri != null) {
-                    reuseArtifacts.add(ReusableArtifact.of(task.taskId(), uri, task.cacheKey()));
-                }
+                ReusableArtifact explicit = explicitCandidates.get(task.taskId());
+                reuseArtifacts.add(explicit != null
+                        ? explicit
+                        : ReusableArtifact.of(task.taskId(), task.cacheKey()));
             } else {
-                tasks.add(withMode(task, "execute", null));
-                executeIds.add(task.taskId());
+                tasks.add(withMode(task, "execute"));
             }
+            executeIds.add(task.taskId());
         }
 
         return new AppliedPlan(
@@ -389,36 +328,18 @@ public class IncrementalRenderPlanService {
         List<String> reuseIds = new ArrayList<>();
         for (PipelineTask task : plan.tasks()) {
             String mode = task.parameters() != null ? task.parameters().get("incrementalMode") : null;
-            if ("reuse".equals(mode)) {
+            executeIds.add(task.taskId());
+            if ("reuse-candidate".equals(mode)) {
                 reuseIds.add(task.taskId());
-            } else {
-                executeIds.add(task.taskId());
             }
         }
         return new AppliedPlan(plan, reuseArtifacts, executeIds, reuseIds);
     }
 
-    private static String resolveReuseUri(PipelineTask task, Map<String, String> reuseByTask) {
-        String uri = reuseByTask.get(task.taskId());
-        if ((uri == null || uri.isBlank()) && task.cacheKey() != null) {
-            uri = reuseByTask.get(task.cacheKey());
-        }
-        return uri;
-    }
-
-    private static PipelineTask withMode(PipelineTask task, String mode, String reuseUri) {
+    private static PipelineTask withMode(PipelineTask task, String mode) {
         Map<String, String> params = new LinkedHashMap<>(
                 task.parameters() != null ? task.parameters() : Map.of());
         params.put("incrementalMode", mode);
-        if ("reuse".equals(mode)) {
-            params.put("skipExecution", "true");
-            if (reuseUri != null) {
-                params.put("reuseArtifactUri", reuseUri);
-            }
-        } else {
-            params.remove("skipExecution");
-            params.remove("reuseArtifactUri");
-        }
         return new PipelineTask(
                 task.taskId(),
                 task.name(),

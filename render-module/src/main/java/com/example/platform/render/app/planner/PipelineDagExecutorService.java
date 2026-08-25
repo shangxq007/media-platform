@@ -187,7 +187,7 @@ public class PipelineDagExecutorService {
         executionState.put("pipelineSuccess", pipelineResult.success());
         executionState.put("stageCount", pipelineResult.stages().size());
         executionState.put("mode", plan.metadata() != null ? plan.metadata().getOrDefault("mode", "FULL") : "FULL");
-        executionState.put("reuseArtifacts", collectReuseArtifacts(plan));
+        executionState.put("reuseCandidates", collectReuseCandidates(plan));
         if (pipelineResult.stages() != null && !pipelineResult.stages().isEmpty()) {
             Map<String, String> stageArtifacts =
                     IncrementalPipelineSupport.stageArtifactIndex(pipelineResult.stages());
@@ -277,29 +277,19 @@ public class PipelineDagExecutorService {
         return results;
     }
 
-    private static List<Map<String, String>> collectReuseArtifacts(PipelineExecutionPlan plan) {
+    private static List<Map<String, String>> collectReuseCandidates(PipelineExecutionPlan plan) {
         List<Map<String, String>> reuse = new ArrayList<>();
         for (PipelineTask task : plan.tasks()) {
             if (task.parameters() == null) {
                 continue;
             }
-            if ("reuse".equalsIgnoreCase(task.parameters().get("incrementalMode"))
-                    || "true".equalsIgnoreCase(task.parameters().get("skipExecution"))) {
+            if ("reuse-candidate".equalsIgnoreCase(task.parameters().get("incrementalMode"))) {
                 reuse.add(Map.of(
                         "taskId", task.taskId(),
-                        "uri", task.parameters().getOrDefault("reuseArtifactUri", ""),
                         "cacheKey", task.cacheKey() != null ? task.cacheKey() : ""));
             }
         }
         return reuse;
-    }
-
-    private static boolean shouldSkipIncrementalReuse(PipelineTask task) {
-        if (task.parameters() == null) {
-            return false;
-        }
-        return "true".equalsIgnoreCase(task.parameters().get("skipExecution"))
-                || "reuse".equalsIgnoreCase(task.parameters().get("incrementalMode"));
     }
 
     private boolean dependenciesSatisfied(PipelineTask task, Map<String, String> artifacts) {
@@ -312,12 +302,6 @@ public class PipelineDagExecutorService {
 
     private DagTaskResult executeExternalTask(String jobId, PipelineTask task, TimelineSpec parent,
                                               String profile, Map<String, String> priorArtifacts) {
-        if (shouldSkipIncrementalReuse(task)) {
-            String uri = task.parameters().get("reuseArtifactUri");
-            log.info("Skipping external render task {} (incremental reuse) uri={}", task.taskId(), uri);
-            String effectiveUri = uri != null && !uri.isBlank() ? uri : "reuse://" + task.taskId();
-            return DagTaskResult.reused(task.taskId(), effectiveUri);
-        }
         Optional<RenderProvider> providerOpt = providerRegistry.getProvider(task.backend());
         if (providerOpt.isEmpty()) {
             return DagTaskResult.failed(task.taskId(), "Provider not registered: " + task.backend());

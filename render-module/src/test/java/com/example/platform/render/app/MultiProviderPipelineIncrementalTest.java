@@ -63,7 +63,7 @@ class MultiProviderPipelineIncrementalTest {
     }
 
     @Test
-    void skipsProviderRenderWhenStageMarkedReuse() {
+    void reuseCandidateNeverSkipsProviderWithoutArtifactValidation() {
         RenderProvider javacv = mock(RenderProvider.class);
         when(providerRegistry.getProvider("javacv")).thenReturn(Optional.of(javacv));
         when(javacv.render(anyString(), anyString(), anyString()))
@@ -72,9 +72,7 @@ class MultiProviderPipelineIncrementalTest {
 
         TimelineSpec timeline = TimelineSpec.create("tl-inc", "Inc", TimelineOutputSpec.mp4_1080p30());
         Map<String, String> effectParams = new LinkedHashMap<>();
-        effectParams.put("incrementalMode", "reuse");
-        effectParams.put("skipExecution", "true");
-        effectParams.put("reuseArtifactUri", "localFs://artifacts/base/effects-output.mp4");
+        effectParams.put("incrementalMode", "reuse-candidate");
 
         PipelineExecutionPlan plan = new PipelineExecutionPlan(
                 "pep-inc",
@@ -91,9 +89,8 @@ class MultiProviderPipelineIncrementalTest {
                 "job-inc", timeline, "default_1080p", "PRO", "mp4", plan);
 
         assertTrue(result.success());
-        verify(javacv, times(1)).render(anyString(), anyString(), anyString());
-        assertEquals("localFs://artifacts/base/effects-output.mp4",
+        verify(javacv, times(2)).render(anyString(), anyString(), anyString());
+        assertEquals("localFs://artifacts/job-inc/transcode-output.mp4",
                 result.stages().get(0).storageUri());
-        assertTrue(result.stages().get(0).durationMs() < 50L);
     }
 }

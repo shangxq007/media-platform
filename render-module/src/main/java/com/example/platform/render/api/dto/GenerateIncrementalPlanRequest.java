@@ -13,7 +13,7 @@ public record GenerateIncrementalPlanRequest(
         @Schema(example = "PRO") String tier,
         @Schema(example = "mp4") String outputFormat,
         @Schema(description = "基准已完成作业 ID") String baseJobId,
-        @Schema(description = "显式可复用产物（可选）") List<ReusableArtifact> reuseArtifacts) {
+        @Schema(description = "显式复用候选（可选；不代表最终命中）") List<ReusableArtifact> reuseArtifacts) {
 
     public String profileOrDefault() {
         return profile == null || profile.isBlank() ? "default_1080p" : profile;

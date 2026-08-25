@@ -112,7 +112,6 @@ public class MultiProviderPipelineService {
 
             List<String> segmentOrder = extractSegmentOrder(executionPlan);
             Map<String, String> segmentArtifacts = new LinkedHashMap<>();
-            preloadReuseSegmentArtifacts(executionPlan, segmentArtifacts);
 
             String currentInput = null;
             for (PipelineStage stage : stages) {
@@ -173,16 +172,6 @@ public class MultiProviderPipelineService {
                                               Map<String, String> segmentArtifacts,
                                               PipelineExecutionPlan executionPlan) {
         long stageStart = System.currentTimeMillis();
-
-        if (IncrementalPipelineSupport.shouldReuse(stage)) {
-            String uri = IncrementalPipelineSupport.reuseUri(stage);
-            String effectiveUri = uri != null ? uri : IncrementalPipelineSupport.effectiveOutput(stage);
-            log.info("MultiProviderPipelineService: skipping stage '{}' (incremental reuse) uri={}",
-                    stage.name(), effectiveUri);
-            long stageDuration = System.currentTimeMillis() - stageStart;
-            return new PipelineStageResult(stage.name(), stage.providerKey(), true,
-                    effectiveUri, effectiveUri, null, null, stageDuration);
-        }
 
         if ("final_compose".equals(stage.name()) && !segmentArtifacts.isEmpty() && !segmentOrder.isEmpty()) {
             try {
@@ -335,25 +324,6 @@ public class MultiProviderPipelineService {
                 .filter(t -> t.type() == PipelineTaskType.SEGMENT_RENDER)
                 .map(PipelineTask::taskId)
                 .toList();
-    }
-
-    private static void preloadReuseSegmentArtifacts(PipelineExecutionPlan plan,
-                                                     Map<String, String> segmentArtifacts) {
-        if (plan == null) {
-            return;
-        }
-        for (PipelineTask task : plan.tasks()) {
-            if (task.type() != PipelineTaskType.SEGMENT_RENDER || task.parameters() == null) {
-                continue;
-            }
-            if ("reuse".equalsIgnoreCase(task.parameters().get("incrementalMode"))
-                    || "true".equalsIgnoreCase(task.parameters().get("skipExecution"))) {
-                String uri = task.parameters().get("reuseArtifactUri");
-                if (uri != null && !uri.isBlank()) {
-                    segmentArtifacts.put(task.taskId(), uri);
-                }
-            }
-        }
     }
 
     private String selectPackagingProviderKey(String outputFormat) {

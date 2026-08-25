@@ -79,7 +79,6 @@ public class RenderIncrementalApiService {
                 .map(a -> new IncrementalReuseArtifactDto(
                         a.artifactId(),
                         a.taskId(),
-                        a.uri(),
                         a.cacheKey() != null ? a.cacheKey() : ""))
                 .toList();
         Map<String, Object> metadata = pipeline.metadata() != null

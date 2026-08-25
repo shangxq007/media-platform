@@ -26,8 +26,7 @@ class RenderArtifactRegistryPipelineStagesTest {
         List<ReusableArtifact> artifacts = registry.resolve("rj_base", List.of());
 
         assertEquals(2, artifacts.size());
-        assertTrue(artifacts.stream().anyMatch(a -> "effects".equals(a.taskId())
-                && a.uri().contains("effects.mp4")));
+        assertTrue(artifacts.stream().anyMatch(a -> "effects".equals(a.taskId())));
         assertTrue(artifacts.stream().anyMatch(a -> "final_compose".equals(a.taskId())));
     }
 }

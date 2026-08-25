@@ -35,9 +35,7 @@ class SegmentFinalComposeIncrementalTest {
                 new SegmentTimelinePlanner());
         service = new IncrementalRenderPlanService(
                 diffService, impactAnalyzer, adapter, planner, new RenderArtifactRegistry(null, null),
-                canonicalizer, new SegmentTimelinePlanner(), new RenderCacheUriResolver(new RenderCacheProperties()),
-                new SegmentPlanFilter(),
-                testCacheReuseValidator());
+                canonicalizer, new SegmentTimelinePlanner(), new SegmentPlanFilter());
         Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         sampleJson = Files.readString(path);
     }

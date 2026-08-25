@@ -17,8 +17,7 @@ import org.springframework.stereotype.Service;
 public class SegmentPlanFilter {
 
     public PipelineExecutionPlan restrictToTargetSegments(PipelineExecutionPlan plan,
-                                                          Set<String> targetSegmentIds,
-                                                          Map<String, String> reuseUriBySegmentId) {
+                                                          Set<String> targetSegmentIds) {
         if (plan == null || targetSegmentIds == null || targetSegmentIds.isEmpty()) {
             return plan;
         }
@@ -32,8 +31,7 @@ public class SegmentPlanFilter {
                 tasks.add(task);
                 continue;
             }
-            String reuseUri = reuseUriBySegmentId != null ? reuseUriBySegmentId.get(task.taskId()) : null;
-            tasks.add(withForcedReuse(task, reuseUri));
+            tasks.add(withReuseCandidate(task));
         }
         Map<String, String> meta = new LinkedHashMap<>(plan.metadata() != null ? plan.metadata() : Map.of());
         meta.put("targetSegmentIds", String.join(",", targetSegmentIds));
@@ -64,13 +62,9 @@ public class SegmentPlanFilter {
         metadata.put("platform.targetSegmentIds", String.join(",", segmentIds));
     }
 
-    private static PipelineTask withForcedReuse(PipelineTask task, String reuseUri) {
+    private static PipelineTask withReuseCandidate(PipelineTask task) {
         Map<String, String> params = new LinkedHashMap<>(task.parameters() != null ? task.parameters() : Map.of());
-        params.put("incrementalMode", "reuse");
-        params.put("skipExecution", "true");
-        if (reuseUri != null && !reuseUri.isBlank()) {
-            params.put("reuseArtifactUri", reuseUri);
-        }
+        params.put("incrementalMode", "reuse-candidate");
         return new PipelineTask(
                 task.taskId(),
                 task.name(),

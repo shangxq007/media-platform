@@ -60,26 +60,25 @@ class IncrementalRenderHashInvalidationTest {
         service = new IncrementalRenderPlanService(
                 diffService, impactAnalyzer, adapter, planner,
                 new RenderArtifactRegistry(persistence, null), canonicalizer,
-                new SegmentTimelinePlanner(), new RenderCacheUriResolver(cacheProps),
-                new SegmentPlanFilter(), validator);
+                new SegmentTimelinePlanner(), new SegmentPlanFilter());
 
         Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
         sampleJson = Files.readString(path);
     }
 
     @Test
-    void hashMismatchForcesSegmentReExecute() throws Exception {
+    void legacyHashAndUriHintsRemainCandidatesAndCannotSkipExecution() throws Exception {
         String patched = sampleJson.replace("\"durationFrames\": 15", "\"durationFrames\": 20");
         IncrementalRenderPlan plan = service.generate(
                 patched, sampleJson, "default_1080p", "PRO", "mp4", "base-job", null, null);
-        assertTrue(plan.metadata().containsKey("hashInvalidatedCount")
-                        || plan.executeTaskIds().stream().anyMatch(id -> id.startsWith("seg_")),
-                "hash mismatch should force segment re-execution");
+        assertFalse(plan.metadata().containsKey("hashInvalidatedCount"));
+        assertTrue(plan.executeTaskIds().stream().anyMatch(id -> id.startsWith("seg_")));
         var seg0 = plan.pipelinePlan().tasks().stream()
                 .filter(t -> "seg_0".equals(t.taskId()))
                 .findFirst();
-        if (seg0.isPresent() && plan.metadata().containsKey("hashInvalidatedTaskIds")) {
-            assertEquals("execute", seg0.get().parameters().get("incrementalMode"));
+        if (seg0.isPresent()) {
+            assertFalse(seg0.get().parameters().containsKey("skipExecution"));
+            assertFalse(seg0.get().parameters().containsKey("reuseArtifactUri"));
         }
     }
 

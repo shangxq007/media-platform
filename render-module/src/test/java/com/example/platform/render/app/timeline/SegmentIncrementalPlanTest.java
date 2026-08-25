@@ -34,9 +34,7 @@ class SegmentIncrementalPlanTest {
                 new SegmentTimelinePlanner());
         service = new IncrementalRenderPlanService(
                 diffService, impactAnalyzer, adapter, planner, new RenderArtifactRegistry(null, null),
-                canonicalizer, new SegmentTimelinePlanner(), new RenderCacheUriResolver(new RenderCacheProperties()),
-                new SegmentPlanFilter(),
-                testCacheReuseValidator());
+                canonicalizer, new SegmentTimelinePlanner(), new SegmentPlanFilter());
     }
 
     @Test

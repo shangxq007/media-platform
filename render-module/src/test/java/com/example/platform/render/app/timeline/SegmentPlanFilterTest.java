@@ -16,7 +16,7 @@ class SegmentPlanFilterTest {
     private final SegmentPlanFilter filter = new SegmentPlanFilter();
 
     @Test
-    void restrictsNonTargetSegmentsToReuse() {
+    void identifiesNonTargetSegmentsAsCandidatesWithoutSkipping() {
         PipelineExecutionPlan plan = new PipelineExecutionPlan(
                 "p1",
                 "tl",
@@ -31,13 +31,13 @@ class SegmentPlanFilterTest {
                 Map.of());
 
         PipelineExecutionPlan filtered = filter.restrictToTargetSegments(
-                plan, Set.of("seg_1"), Map.of("seg_0", "localFs://base/seg_0.mp4"));
+                plan, Set.of("seg_1"));
 
         PipelineTask seg0 = filtered.tasks().stream().filter(t -> "seg_0".equals(t.taskId())).findFirst().orElseThrow();
         PipelineTask seg1 = filtered.tasks().stream().filter(t -> "seg_1".equals(t.taskId())).findFirst().orElseThrow();
-        assertEquals("reuse", seg0.parameters().get("incrementalMode"));
-        assertEquals("true", seg0.parameters().get("skipExecution"));
-        assertEquals("localFs://base/seg_0.mp4", seg0.parameters().get("reuseArtifactUri"));
+        assertEquals("reuse-candidate", seg0.parameters().get("incrementalMode"));
+        assertNull(seg0.parameters().get("skipExecution"));
+        assertNull(seg0.parameters().get("reuseArtifactUri"));
         assertNull(seg1.parameters().get("skipExecution"));
         assertEquals("PARTIAL", filtered.metadata().get("segmentFilterMode"));
     }

@@ -43,9 +43,7 @@ class IncrementalRenderOrchestrationServiceTest {
                 new SegmentTimelinePlanner());
         IncrementalRenderPlanService planService = new IncrementalRenderPlanService(
                 diffService, impactAnalyzer, adapter, planner, new RenderArtifactRegistry(null, null), canonicalizer,
-                new SegmentTimelinePlanner(), new RenderCacheUriResolver(new RenderCacheProperties()),
-                new SegmentPlanFilter(),
-                testCacheReuseValidator());
+                new SegmentTimelinePlanner(), new SegmentPlanFilter());
         TimelineSpecResolver resolver = new TimelineSpecResolver(adapter, new com.example.platform.render.domain.interchange.TimelineScriptParser());
         orchestration = new IncrementalRenderOrchestrationService(planService, resolver, baseJobTimelineLoader);
         Path path = FixturePath.docsFixture("media-rendering/examples/timeline-v1-full-sample.json");
@@ -70,7 +68,7 @@ class IncrementalRenderOrchestrationServiceTest {
         assertEquals("INCREMENTAL", execution.get().incrementalPlan().mode());
         assertTrue(execution.get().plan().tasks().stream()
                 .anyMatch(t -> t.parameters() != null
-                        && "reuse".equals(t.parameters().get("incrementalMode"))));
+                        && "reuse-candidate".equals(t.parameters().get("incrementalMode"))));
     }
 
     @Test

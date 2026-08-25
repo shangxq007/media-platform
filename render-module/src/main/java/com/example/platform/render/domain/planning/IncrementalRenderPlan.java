@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Incremental render plan: full DAG plus reuse hints and semantic impact summary.
+ * Incremental render plan: full executable DAG plus advisory reuse candidates and semantic impact.
+ * Final skip truth belongs to worker-fabric validation, never this value.
  */
 public record IncrementalRenderPlan(
         String planId,

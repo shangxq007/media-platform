@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Features:
  * <ul>
  *   <li>Topological sort execution</li>
- *   <li>Skip if cached hash exists</li>
  *   <li>Parallel execution for independent nodes</li>
  *   <li>Store artifacts</li>
  * </ul>
@@ -26,11 +25,9 @@ public class DagExecutionEngine {
     private static final Logger log = LoggerFactory.getLogger(DagExecutionEngine.class);
 
     private final ToolRouter toolRouter;
-    private final ArtifactCache artifactCache;
 
-    public DagExecutionEngine(ToolRouter toolRouter, ArtifactCache artifactCache) {
+    public DagExecutionEngine(ToolRouter toolRouter) {
         this.toolRouter = toolRouter;
-        this.artifactCache = artifactCache;
     }
 
     /**
@@ -50,17 +47,6 @@ public class DagExecutionEngine {
         // Execute nodes in topological order
         for (RenderPlanIr.RenderNode node : topoOrder) {
             try {
-                // Check cache
-                if (node.cacheable() && node.inputHash() != null) {
-                    String cachedOutput = artifactCache.get(node.inputHash());
-                    if (cachedOutput != null) {
-                        nodeOutputs.put(node.id(), cachedOutput);
-                        cachedNodes.add(node.id());
-                        log.debug("Cache hit for node {}", node.id());
-                        continue;
-                    }
-                }
-
                 // Get input from parent nodes
                 Map<String, String> parentOutputs = new HashMap<>();
                 for (RenderPlanIr.RenderNode parent : plan.getParents(node.id())) {
@@ -74,11 +60,6 @@ public class DagExecutionEngine {
                 String output = executeNode(node, parentOutputs);
                 nodeOutputs.put(node.id(), output);
                 executedNodes.add(node.id());
-
-                // Cache output
-                if (node.cacheable() && node.inputHash() != null) {
-                    artifactCache.put(node.inputHash(), output);
-                }
 
             } catch (Exception e) {
                 log.error("Failed to execute node {}: {}", node.id(), e.getMessage());
