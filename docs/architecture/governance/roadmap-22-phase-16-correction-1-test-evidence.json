@@ -1,0 +1,72 @@
+{
+  "taskId": "ROADMAP_22_PHASE_16_CORRECTION_1_RUNTIME_CLOSED_LOOP_DURABLE_OUTPUT_AND_OBSERVABILITY",
+  "baseHead": "de82be9e5d35e30343c7139a8b3cb8218d46289f",
+  "generatedAt": "2026-08-25",
+  "runner": "JUnit Platform ManualJunitRunner with repository-resolved JDK 25 classpath",
+  "suites": [
+    {
+      "name": "worker-fabric focused runtime and architecture",
+      "classes": [
+        "com.example.platform.workerfabric.reuse.RuntimeClosedLoopConformanceTest",
+        "com.example.platform.workerfabric.reuse.RuntimeClosedLoopArchitectureGuardTest",
+        "com.example.platform.workerfabric.reuse.ArtifactReuseMaterializationTest",
+        "com.example.platform.workerfabric.domain.providernative.ProviderNativeLoweringRuntimeAdapterTest",
+        "com.example.platform.workerfabric.domain.providernative.ProviderNativeArchitectureGuardTest"
+      ],
+      "total": 49,
+      "started": 49,
+      "passed": 49,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "aborted": 0
+    },
+    {
+      "name": "storage contract and OpenDAL conformance",
+      "classes": [
+        "InMemoryProviderTest",
+        "com.example.platform.storage.opendal.conformance.OpenDalConformanceTest"
+      ],
+      "total": 24,
+      "started": 24,
+      "passed": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "aborted": 0
+    }
+  ],
+  "aggregate": {
+    "total": 73,
+    "started": 73,
+    "passed": 73,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "aborted": 0
+  },
+  "nonJunitChecks": [
+    {
+      "name": "direct JDK 25 production compilation",
+      "status": "PASS"
+    },
+    {
+      "name": "scripts/phase16-clean-forward-guards.py",
+      "status": "PASS"
+    },
+    {
+      "name": "scripts/check-architecture-drift.sh",
+      "status": "PASS"
+    },
+    {
+      "name": "Gradle module execution",
+      "status": "ENVIRONMENT_BLOCKED",
+      "reason": "Could not determine a usable wildcard IP for the Gradle file-lock contention service"
+    },
+    {
+      "name": "PostgreSQL/Testcontainers integration execution",
+      "status": "NOT_RUN",
+      "reason": "No authorized/available Docker/Testcontainers path in this environment"
+    }
+  ]
+}
