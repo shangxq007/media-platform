@@ -277,3 +277,50 @@ validation_projects:
   - missing provenance links
   artifacts: []
   next_trigger: AI/Hybrid Film Studio or GOLDEN_STORY_01 planning
+
+- id: CACHE_ARTIFACT_REUSE_MATERIALIZATION_CONFORMANCE
+  title: Cache, Artifact reuse, and materialization conformance
+  purpose: "Validate Phase 16 cache/reuse/materialization semantics: cache loss safety, Artifact validation before reuse, URI non-identity, semantic and digest invalidation, mutable runtime exclusion, stale/corrupt miss behavior, eviction safety, tenant fail-closed reuse, dependency correctness, stale generation fencing, and provider independence from storage/cache backend."
+  status: PLANNED
+  validation_level: V1
+  required_foundations:
+  - CACHE_AND_ARTIFACT_REUSE_FOUNDATION
+  - Artifact authority
+  - StorageProvider/OpenDAL mechanics
+  - Execution Fabric
+  - Provider-native typed invocation boundary
+  success_criteria:
+  - cache loss never changes correctness
+  - reuse hit requires Artifact validation
+  - URI is not reuse identity
+  - mutated operation semantics change reuse key
+  - mutated Artifact digest changes reuse key
+  - mutable runtime state does not change reuse key
+  - stale or corrupt cache hit becomes miss
+  - local cache eviction does not delete Artifact
+  - cross-tenant reuse fails closed unless explicitly authorized
+  - required dependency closure remains correct after reuse pruning
+  - stale execution generation cannot authoritatively complete output
+  - Provider is independent of concrete storage/cache backend
+  metrics:
+  - cache_lookup_total
+  - cache_hit_total
+  - cache_miss_total
+  - cache_stale_total
+  - cache_corrupt_total
+  - cache_bytes_read
+  - cache_bytes_written
+  - cache_eviction_total
+  - cache_evicted_bytes
+  - cache_validation_failure_total
+  - materialization_remote_bytes
+  - materialization_local_bytes
+  - materialization_latency
+  - worker_cache_used_bytes
+  - worker_cache_capacity_bytes
+  - artifact_reuse_hit_total
+  - artifact_reuse_miss_total
+  artifacts: []
+  next_trigger: "Roadmap #22 Phase 16 implementation begins after decision-recovery final review"
+  references:
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md

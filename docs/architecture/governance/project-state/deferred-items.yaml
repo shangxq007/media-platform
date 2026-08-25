@@ -524,3 +524,40 @@ deferred_items:
   blocking_now: false
   references:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
+
+- id: ALLUXIO_POC_TRIGGER
+  title: Alluxio distributed large-Artifact cache POC trigger
+  status: DEFERRED
+  originating_context: Phase 16 decision recovery; Alluxio is acceleration, not execution or Artifact authority.
+  earliest_revisit: After worker-local materialization cache observability exists
+  trigger: "Multiple workers plus repeated Artifact remote reads, duplicate remote download bytes, object-store bandwidth pressure, low worker-local cache hit ratio, projected cluster benefit, or materialization latency"
+  blocking_now: false
+  references:
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+- id: JUICEFS_POC_TRIGGER
+  title: JuiceFS cached POSIX materialization POC trigger
+  status: DEFERRED
+  originating_context: Phase 16 decision recovery; JuiceFS is optional filesystem materialization mechanics.
+  earliest_revisit: After provider/tool access-shape evidence exists
+  trigger: "Strong POSIX namespace requirement, providers/tools needing transparent filesystem semantics, or cached filesystem mount behavior"
+  blocking_now: false
+  references:
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+- id: DRAGONFLY_POC_TRIGGER
+  title: Dragonfly immutable large-object fan-out POC trigger
+  status: DEFERRED
+  originating_context: Phase 16 decision recovery; Dragonfly is optional P2P distribution acceleration.
+  earliest_revisit: After fan-out and egress metrics exist
+  trigger: "High concurrent fan-out of the same immutable Artifact, large Artifact/model sizes, or object-store egress saturation"
+  blocking_now: false
+  references:
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+- id: REDIS_POC_TRIGGER
+  title: Redis reuse-index hot metadata acceleration POC trigger
+  status: DEFERRED
+  originating_context: Phase 16 decision recovery; Redis is not reuse truth and must not store large media bytes.
+  earliest_revisit: After PostgreSQL reuse-index implementation and observability exist
+  trigger: "Multiple app instances, reuse-index lookup QPS, PostgreSQL reuse-index latency, hot-key concentration, and proven DB bottleneck"
+  blocking_now: false
+  references:
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md

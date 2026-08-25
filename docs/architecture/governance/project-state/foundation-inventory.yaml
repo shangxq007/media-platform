@@ -598,3 +598,62 @@ foundations:
   references:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   notes: POC candidate only; no Novu integration claimed
+
+- name: Bazel Remote Cache CAS Model
+  category: cache-reference
+  status: REFERENCE_ONLY
+  architecture_role: "Reference model for Action/Execution key to result metadata to content-addressed immutable blobs"
+  authority_boundary: reference only; do not adopt Bazel domain model
+  planned_window: not scheduled
+  references:
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+  notes: "BAZEL_REMOTE_CACHE_CAS_MODEL; architecture reference for execution reuse identity and immutable blob separation"
+- name: Alluxio
+  category: distributed-cache
+  status: POC_CANDIDATE
+  architecture_role: future distributed large-Artifact materialization/cache layer
+  authority_boundary: acceleration mechanics only; not execution or Artifact authority
+  planned_window: when metric trigger proves need
+  references:
+  - docs/architecture/governance/project-state/deferred-items.yaml
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+  notes: deferred-items ALLUXIO_POC_TRIGGER
+- name: JuiceFS
+  category: distributed-cache
+  status: POC_CANDIDATE
+  architecture_role: future cached POSIX/distributed filesystem materialization option
+  authority_boundary: materialization mechanics only
+  planned_window: when POSIX namespace trigger proves need
+  references:
+  - docs/architecture/governance/project-state/deferred-items.yaml
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+  notes: deferred-items JUICEFS_POC_TRIGGER
+- name: Dragonfly
+  category: p2p-distribution
+  status: POC_CANDIDATE
+  architecture_role: future P2P immutable large-object fan-out distribution
+  authority_boundary: distribution acceleration only
+  planned_window: when fan-out/egress trigger proves need
+  references:
+  - docs/architecture/governance/project-state/deferred-items.yaml
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+  notes: deferred-items DRAGONFLY_POC_TRIGGER
+- name: Redis
+  category: cache-metadata
+  status: DEFERRED
+  architecture_role: deferred candidate for cluster hot metadata/reuse-index acceleration only
+  authority_boundary: never large media byte store and never reuse truth
+  planned_window: when PostgreSQL reuse-index latency/QPS evidence proves need
+  references:
+  - docs/architecture/governance/project-state/deferred-items.yaml
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+  notes: deferred-items REDIS_POC_TRIGGER
+- name: Caffeine
+  category: process-local-cache
+  status: DEFERRED
+  architecture_role: process-local hot metadata/reuse lookup acceleration candidate
+  authority_boundary: process-local optimization only
+  planned_window: when hot metadata lookup evidence proves need
+  references:
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+  notes: not a Phase 16 closure dependency unless repository reality proves need

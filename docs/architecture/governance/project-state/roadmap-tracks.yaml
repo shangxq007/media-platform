@@ -281,3 +281,24 @@ tracks:
   explicit_exclusions:
   - No notification system implementation now
   - No Novu integration now
+
+- id: CACHE_AND_ARTIFACT_REUSE_FOUNDATION
+  status: ACTIVE_PLANNED
+  purpose: "Cross-cutting cache, Artifact reuse, materialization, validation, output commit, incremental reuse, and cache-aware pruning foundation."
+  current_dependencies: "Artifact authority, Storage/OpenDAL mechanics, Execution Fabric, Roadmap #22 Phase 15 typed provider-native invocation boundary."
+  next_actions:
+  - "Roadmap #22 Phase 16 implementation after ChatGPT decision-recovery final review"
+  - "Migrate legacy hash-to-URI ArtifactCache and IncrementalRenderPlan URI truth to typed validated reuse"
+  roadmap_relationship: "Cross-cutting track, not a numbered milestone; supports Artifact, Storage, Execution Fabric, Roadmap #22 Phase 16, provider runtime, and future Roadmap #23 optimization."
+  validation_target: CACHE_ARTIFACT_REUSE_MATERIALIZATION_CONFORMANCE
+  explicit_boundaries:
+  - "No universal cache god abstraction"
+  - "Cache is derived optimization, not canonical authority"
+  - "Execution reuse index is distinct from worker-local materialization cache"
+  - "Providers consume materialized Artifacts, not storage/cache backends"
+  explicit_exclusions:
+  - "No Redis/Alluxio/JuiceFS/Dragonfly integration in decision recovery"
+  - "No Phase 16 production code before ChatGPT final review"
+  - "No Roadmap #23 scheduling optimization"
+  references:
+  - docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
