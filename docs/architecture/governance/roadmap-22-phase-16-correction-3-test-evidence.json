@@ -1,0 +1,52 @@
+{
+  "task_id": "ROADMAP_22_PHASE_16_CORRECTION_3_CONCURRENT_REUSE_PUBLICATION_AND_OUTPUT_CARDINALITY_GUARDS",
+  "base": {
+    "head": "0331a90bb1f94c86f2b0d38765135b67d1c61c6a",
+    "tree": "325123ca9bd4cf14d13f2493e60a2d857f2776f3",
+    "parent": "caaa03295af46570c7a08419fcc0a94fee66ddf7"
+  },
+  "implementation": {
+    "sha": "e526776170e140f19927d7e4ce838fd1fcc7b775",
+    "tree": "c03e9e8c54532fc39dc4299cb725527f09da619e",
+    "parent": "0331a90bb1f94c86f2b0d38765135b67d1c61c6a"
+  },
+  "branches": {
+    "local": "agent/roadmap22-phase16-correction3-concurrency-output-guard",
+    "remote_candidate": "agent/roadmap22-executable-task-graph-worker-fabric-decision-recovery"
+  },
+  "prior_ci": {
+    "run_id": 32858857398,
+    "head": "0331a90bb1f94c86f2b0d38765135b67d1c61c6a",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "local_verification": {
+    "postgres_testcontainers_concurrency": "PASS",
+    "affected_modules": "PASS",
+    "modulith": "PASS",
+    "full_serial": {
+      "result": "PASS",
+      "duration_seconds": 1273,
+      "actionable_tasks_executed": 199
+    },
+    "clean_forward": "PASS",
+    "architecture_drift": "PASS"
+  },
+  "concurrency_evidence": {
+    "callers": 2,
+    "uncaught_exceptions": 0,
+    "database_row_count": 1,
+    "results": ["STAGED_PENDING", "PENDING_IDEMPOTENT"],
+    "raw_unique_violation": false,
+    "postgres_on_conflict_used": true,
+    "h2_used": false
+  },
+  "output_cardinality": {
+    "supported_authoritative_outputs": 1,
+    "source": "distinct task-owned POST_EXECUTION BoundaryAction output identities",
+    "multi_output_runtime_implemented": false,
+    "multi_output_deferred": true
+  },
+  "correction_3_remote_ci_claimed": false,
+  "phase_16_closure_claimed": false
+}
