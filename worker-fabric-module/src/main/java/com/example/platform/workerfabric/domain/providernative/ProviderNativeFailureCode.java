@@ -1,0 +1,15 @@
+package com.example.platform.workerfabric.domain.providernative;
+
+/** Typed fail-closed architecture-level failures for generic provider-native lowering/runtime adaptation. */
+public enum ProviderNativeFailureCode {
+    UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
+    PROVIDER_BINDING_MISMATCH,
+    UNSUPPORTED_OPERATION_NATIVE_LOWERING,
+    UNSUPPORTED_INVOCATION_FORM,
+    INVALID_STATIC_PROVIDER_EXECUTION_CONTRACT,
+    ILLEGAL_MULTI_MEMBERSHIP_LOWERING,
+    REQUIRED_MATERIALIZATION_BOUNDARY_VIOLATION,
+    MALFORMED_NATIVE_PLAN,
+    RUNTIME_ADAPTER_UNSUPPORTED_PLAN,
+    RUNTIME_BINDING_MISMATCH
+}
