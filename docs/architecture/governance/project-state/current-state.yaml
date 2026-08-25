@@ -60,7 +60,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 17
