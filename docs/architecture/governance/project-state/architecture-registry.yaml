@@ -573,279 +573,279 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Caches are derived optimizations and never canonical domain truth."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; derived-cache authority boundary enforced)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_LOSS_AFFECTS_PERFORMANCE_NOT_CORRECTNESS_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Deleting every cache may reduce performance but must not make canonical results incorrect."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; cache-loss safe-miss boundary tested)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_SCOPE_MUST_BE_EXPLICIT_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Every concrete cache or reuse component documents scope such as PROCESS, HOST/WORKER, or CLUSTER."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; worker-local and cluster reuse scopes are explicit)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: NO_UNIVERSAL_CACHE_GOD_ABSTRACTION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Do not create one generic Cache<K,V> as semantic authority for all cache kinds."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; no-universal-cache boundary guard-enforced)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: EXECUTION_REUSE_AND_ARTIFACT_MATERIALIZATION_ARE_DISTINCT_CACHE_CONCERNS_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "ExecutionReuseKey to ArtifactPin is distinct from ArtifactPin to local bytes or path."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; reuse-index and byte-materialization ports are distinct)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_KEY_IS_VERSIONED_AND_DETERMINISTIC_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cache keys are versioned and deterministic."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; V1 reuse key is versioned and deterministic)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: EXECUTION_REUSE_KEY_IS_VERSIONED_DETERMINISTIC_DERIVED_IDENTITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "ExecutionReuseKey is versioned deterministic derived computation identity, not canonical domain identity."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; derived execution identity implemented)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: REUSE_KEY_EXCLUDES_MUTABLE_RUNTIME_STATE_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Execution reuse keys exclude attempts, leases, hosts, devices, queue/utilization/probe freshness, wall clock, trace ids, and mutable cache state."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; mutable runtime state excluded from reuse-key derivation)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_VALUE_IS_ARTIFACT_PIN_NOT_STORAGE_URI_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Authoritative reuse values are ArtifactId plus ContentDigest pins or records, not raw storage URI strings."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; reuse values are exact Artifact pins, never storage URIs)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_HIT_REQUIRES_ARTIFACT_COMMIT_AND_DIGEST_VALIDATION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "A cache/reuse hit must validate committed Artifact authority and digest before authoritative reuse."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; AVAILABLE authority and exact digest validation required)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_INDEX_IS_NOT_ARTIFACT_EXISTENCE_AUTHORITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "A cache or reuse index does not prove Artifact existence."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; reuse-index lookup cannot establish Artifact authority)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_ENTRY_MUST_BE_VERIFIABLE_BEFORE_AUTHORITATIVE_REUSE_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cache entries must be verified before they can drive execution skipping."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; only ValidatedReuseDecision may drive skipping)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: INCREMENTAL_PLAN_IDENTIFIES_REUSE_CANDIDATES_NOT_REUSE_TRUTH_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "IncrementalRenderPlan identifies reuse candidates; it does not own reusable Artifact truth."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; render plans emit URI-free reuse candidates only)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: PRUNING_PRECEDES_RUNTIME_REUSE_RESOLUTION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Static semantic pruning precedes runtime cache/reuse lookup and validation."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; static pruning precedes runtime reuse resolution)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: VALIDATED_REUSE_MAY_DRIVE_DEPENDENCY_PRESERVING_EXECUTION_PRUNING_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Validated reuse may prune execution only while preserving dependency correctness and remaining consumers."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; dependency-preserving validated-reuse pruning implemented)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: REUSE_INDEX_EVICTION_DOES_NOT_DELETE_ARTIFACT_AUTHORITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Evicting reuse metadata never deletes durable Artifact authority."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; index eviction deletes metadata only)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: WORKER_MATERIALIZATION_CACHE_IS_DISTINCT_FROM_EXECUTION_ARTIFACT_REUSE_INDEX_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Worker-local byte materialization cache is distinct from the cluster execution reuse index."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; worker-local byte cache and cluster reuse index are distinct)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_POLICY_IS_PLATFORM_OWNED_AND_BACKEND_INDEPENDENT_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cache policy intent is platform-owned and backend-independent."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "PARTIALLY_IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; bounded cacheability/materialization policy only; generic policy engine and TTL/LRU/LFU DEFERRED)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_POLICY_IS_INTENT_NOT_BACKEND_CONFIGURATION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cache policy expresses intent; backend-specific config is replaceable mechanics."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "PARTIALLY_IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; bounded platform intent enforced; generic policy engine and TTL/LRU/LFU DEFERRED)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_BACKEND_IS_REPLACEABLE_INFRASTRUCTURE_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cache backends are replaceable infrastructure mechanics."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "ADOPTED; concrete distributed cache backend implementation DEFERRED (Roadmap #22 Phase 16 CLOSED; Redis/Alluxio/JuiceFS/Dragonfly NOT_IMPLEMENTED_BY_DESIGN)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_HIERARCHY_MAY_SHORT_CIRCUIT_LOOKUP_BUT_NOT_AUTHORITY_VALIDATION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cache hierarchy may short-circuit lookup but never authority validation."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "ADOPTED; concrete cache hierarchy implementation DEFERRED (Roadmap #22 Phase 16 CLOSED; NOT_IMPLEMENTED_BY_DESIGN)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: DISTRIBUTED_CACHE_IS_ACCELERATION_NOT_EXECUTION_OR_ARTIFACT_AUTHORITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Distributed cache accelerates data access; it is not execution or Artifact authority."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "ADOPTED; concrete distributed cache implementation DEFERRED (Roadmap #22 Phase 16 CLOSED; Redis/Alluxio/JuiceFS/Dragonfly NOT_IMPLEMENTED_BY_DESIGN)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: DISTRIBUTED_CACHE_LOCK_IS_NOT_EXECUTION_OWNERSHIP_AUTHORITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cache single-flight/distributed locks never replace assignment, lease, attempt, generation, or completion fences."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; no-cache-ownership boundary guard-enforced; distributed cache locks NOT_IMPLEMENTED_BY_DESIGN)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHEABILITY_FAILS_CLOSED_FOR_NONDETERMINISTIC_EXECUTION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cacheability fails closed unless deterministic/reproducible inputs are fully pinned."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; deterministic fully pinned reuse identity fails closed)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: CACHE_OBSERVABILITY_IS_REQUIRED_BEFORE_DISTRIBUTED_CACHE_OPTIMIZATION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Cache observability must exist before distributed-cache optimization decisions."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; bounded runtime observability present; distributed optimization DEFERRED)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: OPENDAL_IS_STORAGE_ACCESS_MECHANICS_NOT_ARTIFACT_CACHE_AUTHORITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "OpenDAL is storage access mechanics, not Artifact cache or reuse authority."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; OpenDAL remains behind StorageProvider and outside reuse authority)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: STORAGE_PROVIDER_AND_ARTIFACT_MATERIALIZER_ARE_DISTINCT_PORTS_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "StorageProvider and ArtifactMaterializer are distinct ports."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; distinct StorageProvider and ArtifactMaterializer ports implemented)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: ARTIFACT_MATERIALIZATION_MAY_USE_STORAGE_PROVIDER_OR_DISTRIBUTED_CACHE_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Artifact materialization may use storage provider or distributed cache behind a materializer port."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "PARTIALLY_IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; direct StorageProvider materialization implemented; distributed-cache materialization option DEFERRED)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: PROVIDER_MUST_NOT_DEPEND_DIRECTLY_ON_STORAGE_OR_CACHE_BACKEND_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Provider SPI must not depend directly on OpenDAL, S3, RustFS, R2, Alluxio, JuiceFS, Dragonfly, Redis, or concrete cache backends."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; provider storage/cache dependency prohibition guard-enforced)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: ARTIFACT_MATERIALIZATION_IS_A_REPLACEABLE_DATA_PLANE_CAPABILITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Artifact materialization is a replaceable data-plane capability."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; replaceable ArtifactMaterializer data-plane port implemented)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: PROVIDER_CONSUMES_MATERIALIZED_ARTIFACT_NOT_STORAGE_BACKEND_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Providers consume materialized Artifact handles/paths, not storage backends."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; providers consume typed materialized inputs only)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: LARGE_ARTIFACT_CACHE_IS_TRANSPARENT_TO_PROVIDER_EXECUTION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Large Artifact cache remains transparent to provider execution semantics."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "ADOPTED; concrete large-Artifact cache implementation DEFERRED (Roadmap #22 Phase 16 CLOSED; Alluxio/JuiceFS/Dragonfly NOT_IMPLEMENTED_BY_DESIGN)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: SEMANTIC_CACHE_INVALIDATION_PREFERS_NEW_DERIVED_KEY_OVER_MUTABLE_INVALIDATION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Semantic invalidation prefers new derived keys over mutable descendant deletion."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; semantic changes derive new immutable reuse keys)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: BYTES_EXIST_IS_NOT_ARTIFACT_COMMITTED_OR_TASK_COMPLETED_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Local bytes existing, Artifact committed, and task completed are distinct states."
-  implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; local bytes, Artifact commit, and task completion remain fenced distinct states)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: ROADMAP_22_PHASE_16_ARTIFACT_STAGING_MATERIALIZATION_REUSE_BOUNDED_ARCHITECTURE_CONTRACT_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Phase 16 bounded architecture contract for artifact staging, materialization, reuse, cache, validation, output commit, pruning, fencing, and observability is frozen."
-  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED at aa95b5d81e8df11ae03854b874f778f3cd4760c1)"
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; bounded V1 guards enforced; full multi-output and streaming NOT_IMPLEMENTED_BY_DESIGN)"
   references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: PHASE_16_MODULE_OWNERSHIP_CONTRACT_V1
@@ -853,7 +853,7 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Phase 16 module ownership is explicit: media-execution-plan owns pure reuse-key and pruning semantics; worker-fabric owns runtime reuse/materialization orchestration; artifact and storage modules retain their existing authorities."
-  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED)"
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; module ownership boundaries implemented and guard-enforced)"
   references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: EXECUTION_REUSE_KEY_OWNED_BY_MEDIA_EXECUTION_PLAN_MODULE_V1
@@ -861,80 +861,80 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "ExecutionReuseKey V1 value, deterministic canonicalization, and dependency-derived mechanics belong to media-execution-plan-module."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; ExecutionReuseKey ownership and dependency guards enforced)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: ARTIFACT_REUSE_INDEX_PORT_OWNED_BY_WORKER_FABRIC_MODULE_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "ArtifactReuseIndexPort, PostgreSQL adapter, reuse lookup orchestration, and ValidatedReuseDecision belong to worker-fabric-module."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; reuse-index port, PostgreSQL adapter, resolver, and validation implemented)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: ARTIFACT_MATERIALIZER_PORT_OWNED_BY_WORKER_FABRIC_MODULE_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "ArtifactMaterializerPort, materialization orchestration, worker-local cache, staging orchestration, and attempt/generation fencing orchestration belong to worker-fabric-module."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; materializer, worker-local cache, staging, and fencing implemented)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: RENDER_INCREMENTAL_PLAN_PRODUCES_REUSE_CANDIDATES_NOT_TRUTH_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "render-module may produce IncrementalRenderPlan candidates and semantic diff/pruning inputs but not final reusable Artifact truth."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; render emits candidate metadata while worker-fabric validates truth)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: MEDIA_EXECUTION_PLAN_MUST_NOT_DEPEND_ON_WORKER_FABRIC_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "media-execution-plan-module must not depend on worker-fabric-module; worker-fabric may depend on media-execution-plan."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; module dependency direction guard-enforced)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: EXECUTION_REUSE_KEY_DEPENDENCY_PROPAGATION_IS_MERKLE_DERIVED_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Computed inter-task inputs contribute producer ExecutionReuseKey plus exact output/dependency/boundary semantics, causing dependent keys to change when producer semantics or provider binding changes."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; Merkle dependency propagation implemented and tested)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: ROOT_SOURCE_INPUT_REUSE_KEY_USES_EXACT_ARTIFACT_PIN_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Root/source input reuse-key contributions use exact ArtifactId plus ContentDigest pins."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; exact root Artifact pins participate in reuse identity)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: COMPUTED_INTER_TASK_INPUT_REUSE_KEY_USES_PREDECESSOR_REUSE_IDENTITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Computed predecessor inputs use predecessor reuse identity rather than pre-invented output Artifact pins."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; computed inputs use predecessor reuse identity)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: MATERIALIZED_ARTIFACT_DIGEST_VALIDATES_REUSE_BUT_DOES_NOT_DEFINE_PRE_EXECUTION_DEPENDENCY_IDENTITY_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "Materialized Artifact digest validates reuse after lookup but does not define pre-execution dependency identity for computed inputs."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; materialized digest validates reuse after lookup only)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 - id: STALE_EXECUTION_GENERATION_MUST_NOT_PUBLISH_WINNING_REUSE_OR_COMPLETION_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED
   authority_scope: EXECUTION
   summary: "A stale attempt/generation must not publish authoritative output association, update the reuse index as winning result, or complete the task."
-  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
-  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+  implementation_status: "IMPLEMENTED (Roadmap #22 Phase 16 CLOSED; stale-generation completion and reuse publication are fenced)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md, docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-closure.md]
 
 ## 9J PROVIDER COMPATIBILITY
 
