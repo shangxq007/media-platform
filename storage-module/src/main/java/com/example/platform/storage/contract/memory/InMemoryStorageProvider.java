@@ -32,11 +32,12 @@ public final class InMemoryStorageProvider implements StorageProvider {
     @Override public StorageProviderId providerId() { return providerId; }
     @Override public StorageProviderCapabilities capabilities() { return capabilities; }
     @Override public StorageWriteSession beginWrite(String writeSessionId, StorageNamespace namespace, ContentDigest expectedDigest, long expectedLength) {
-        var session = new StorageWriteSession(writeSessionId, UUID.randomUUID().toString(), namespace, expectedDigest, expectedLength, providerId, WriteSessionState.PENDING);
+        var session = new StorageWriteSession(writeSessionId, writeSessionId, namespace, expectedDigest, expectedLength, providerId, WriteSessionState.PENDING);
         sessions.put(writeSessionId, session);
         return session;
     }
     @Override public void write(StorageWriteSession session, byte[] data, int offset, int length) {
+        if (committed.contains(session.writeSessionId())) return;
         staging.compute(session.writeSessionId(), (k, v) -> {
             byte[] base = v != null ? v : new byte[0];
             byte[] combined = new byte[base.length + length];
@@ -47,19 +48,18 @@ public final class InMemoryStorageProvider implements StorageProvider {
     }
     @Override public WriteSessionResult completeWrite(StorageWriteSession session, ContentDigest actualDigest) {
         String sid = session.writeSessionId();
+        var objId = new StorageObjectId("obj-" + sid);
         if (committed.contains(sid)) {
-            return new WriteSessionResult(new StorageReplicaId(sid), true, session.idempotencyKey());
+            return new WriteSessionResult(objId, new StorageReplicaId(sid), true, session.idempotencyKey());
         }
         committed.add(sid);
         byte[] data = staging.getOrDefault(sid, new byte[0]);
-        var objId = new StorageObjectId("obj-" + sid);
         store.put(objId, data);
         metadata.put(objId, new StorageObjectMetadata(objId, actualDigest, data.length));
-        return new WriteSessionResult(new StorageReplicaId(sid), false, session.idempotencyKey());
+        return new WriteSessionResult(objId, new StorageReplicaId(sid), false, session.idempotencyKey());
     }
     @Override public void abortWrite(StorageWriteSession session) {
         staging.remove(session.writeSessionId());
-        committed.remove(session.writeSessionId());
     }
     @Override public Optional<InputStream> openRead(StorageReadRequest request) {
         byte[] data = store.get(request.objectId());

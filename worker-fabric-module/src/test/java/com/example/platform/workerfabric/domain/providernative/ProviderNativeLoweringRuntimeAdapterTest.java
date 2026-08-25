@@ -294,6 +294,13 @@ class ProviderNativeLoweringRuntimeAdapterTest {
                     context.platformOwnershipGeneration(),
                     commands);
         }
+
+        @Override
+        public ProviderExecutionOutput execute(
+                RuntimeExecutionBundle executionBundle,
+                List<com.example.platform.workerfabric.reuse.MaterializedArtifact> runtimeLocalInputs) {
+            return new ProviderExecutionOutput(new java.io.ByteArrayInputStream(new byte[0]));
+        }
     }
 
     private static final class StrictTestRuntimeAdapter implements RuntimeAdapter<ProviderNativeExecutionPlan> {
@@ -305,6 +312,13 @@ class ProviderNativeLoweringRuntimeAdapterTest {
                         "fixture runtime adapter supports only TestNativePlan");
             }
             return new TestRuntimeAdapter().adapt(testNativePlan, context);
+        }
+
+        @Override
+        public ProviderExecutionOutput execute(
+                RuntimeExecutionBundle executionBundle,
+                List<com.example.platform.workerfabric.reuse.MaterializedArtifact> runtimeLocalInputs) {
+            return new ProviderExecutionOutput(new java.io.ByteArrayInputStream(new byte[0]));
         }
     }
 

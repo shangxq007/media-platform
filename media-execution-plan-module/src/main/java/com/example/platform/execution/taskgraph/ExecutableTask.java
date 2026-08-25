@@ -90,6 +90,14 @@ public final class ExecutableTask {
         return requiredInputArtifactPins;
     }
 
+    /** Returns source pins without exposing render-domain types to downstream runtime modules. */
+    public List<ExecutableSourceArtifactPin> sourceArtifactPins() {
+        return requiredInputArtifactPins.stream()
+                .map(pin -> new ExecutableSourceArtifactPin(
+                        pin.artifactPin().artifactId(), pin.artifactPin().contentDigest()))
+                .toList();
+    }
+
     private static List<BoundaryAction> canonicalActions(
             List<ExecutableTaskMembership> memberships,
             ProviderBindingPin providerBindingPin,

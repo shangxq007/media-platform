@@ -105,8 +105,7 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
         Objects.requireNonNull(expectedDigest, "expectedDigest required");
 
         // Initialize staging buffer for this write session
-        stagingBuffers.put(writeSessionId, new byte[0]);
-        committedSessions.remove(writeSessionId);
+        stagingBuffers.putIfAbsent(writeSessionId, new byte[0]);
 
         return new StorageWriteSession(
                 writeSessionId,
@@ -131,6 +130,9 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
         }
 
         String sid = session.writeSessionId();
+        if (committedSessions.contains(sid)) {
+            return;
+        }
         byte[] current = stagingBuffers.get(sid);
         if (current == null) {
             throw new IllegalStateException("No staging buffer for session: " + sid);
@@ -149,11 +151,13 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
         Objects.requireNonNull(actualDigest, "actualDigest required");
 
         String sid = session.writeSessionId();
+        StorageObjectId objectId = generateObjectId(session);
 
         // Atomically claim commit rights for this session.
         // Only ONE thread gets 'true' from add(); all others return alreadyCommitted.
         if (!committedSessions.add(sid)) {
-            return new WriteSessionResult(new StorageReplicaId(sid), true, session.idempotencyKey());
+            return new WriteSessionResult(
+                    objectId, new StorageReplicaId(sid), true, session.idempotencyKey());
         }
 
         byte[] data = stagingBuffers.getOrDefault(sid, new byte[0]);
@@ -180,7 +184,6 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
         }
 
         // Determine commit path
-        StorageObjectId objectId = generateObjectId(session);
         String commitPath = OpenDalLocationCodec.pathForObjectId(objectId);
 
         try {
@@ -188,7 +191,8 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
             operator.write(commitPath, data);
             cleanupStaging(sid);
             log.debug("Committed write session {} to path {}", sid, commitPath);
-            return new WriteSessionResult(new StorageReplicaId(sid), false, session.idempotencyKey());
+            return new WriteSessionResult(
+                    objectId, new StorageReplicaId(sid), false, session.idempotencyKey());
         } catch (Exception e) {
             // On failure, release the commit lock so retry can succeed
             committedSessions.remove(sid);
@@ -203,7 +207,6 @@ public abstract class AbstractOpenDalProvider implements StorageProvider {
         Objects.requireNonNull(session, "session required");
         String sid = session.writeSessionId();
         cleanupStaging(sid);
-        committedSessions.remove(sid);
     }
 
     @Override

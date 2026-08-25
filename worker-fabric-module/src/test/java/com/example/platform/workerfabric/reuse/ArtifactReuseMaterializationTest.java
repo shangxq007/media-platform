@@ -13,9 +13,7 @@ import com.example.platform.artifact.domain.ArtifactKind;
 import com.example.platform.artifact.domain.ArtifactMediaType;
 import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.artifact.domain.ArtifactReplicaBinding;
-import com.example.platform.artifact.domain.ArtifactCommitRequest;
-import com.example.platform.artifact.domain.ArtifactCommitResult;
-import com.example.platform.artifact.domain.ArtifactCommitService;
+import com.example.platform.artifact.domain.InMemoryArtifactCommitService;
 import com.example.platform.artifact.domain.ArtifactState;
 import com.example.platform.artifact.domain.ReplicaRole;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
@@ -26,6 +24,12 @@ import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.StorageReplicaId;
 import com.example.platform.storage.contract.provider.StorageProvider;
+import com.example.platform.storage.contract.memory.InMemoryStorageProvider;
+import com.example.platform.storage.contract.namespace.DataClassification;
+import com.example.platform.storage.contract.namespace.NamespaceClass;
+import com.example.platform.storage.contract.namespace.RegionPolicy;
+import com.example.platform.storage.contract.namespace.StorageNamespace;
+import com.example.platform.storage.contract.provider.StorageProviderCapabilities;
 import com.example.platform.workerfabric.domain.ArtifactCommitEvidence;
 import com.example.platform.workerfabric.domain.CompletionAuthorityPort;
 import com.example.platform.workerfabric.domain.CompletionDecision;
@@ -44,6 +48,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -248,39 +253,37 @@ class ArtifactReuseMaterializationTest {
     }
 
     @Test
-    void stagedDigestAndLengthGateArtifactAuthorityCommit() throws Exception {
+    void stagedBytesAreDurablyPublishedBeforeBoundArtifactAuthorityCommit() throws Exception {
         byte[] bytes = "provider-output-to-commit".getBytes();
         StagedExecutionOutput staged = new OutputStagingArea(temp.resolve("commit-staging"))
                 .stage(new ByteArrayInputStream(bytes));
-        ArtifactCommitService commitService = mock(ArtifactCommitService.class);
-        ArtifactCommitRequest request = mock(ArtifactCommitRequest.class);
-        ArtifactCommitResult result = mock(ArtifactCommitResult.class);
-        when(request.contentDigest()).thenReturn(staged.contentDigest());
-        when(request.byteLength()).thenReturn(staged.byteLength());
-        when(commitService.commit(request)).thenReturn(result);
-        when(result.artifact()).thenReturn(new Artifact(
-                ARTIFACT_ID,
-                "tenant-a",
-                staged.contentDigest(),
-                staged.byteLength(),
-                ArtifactMediaType.VIDEO,
-                ArtifactKind.RENDER_MASTER,
-                ArtifactState.AVAILABLE,
-                Artifact.CURRENT_SCHEMA_VERSION,
-                NOW));
+        StorageProviderId providerId = new StorageProviderId("durable-memory");
+        InMemoryStorageProvider storage = new InMemoryStorageProvider(
+                providerId, new StorageProviderCapabilities(providerId, Map.of()));
+        DurableArtifactCommitResult result = new ArtifactOutputCommitOrchestrator(
+                new InMemoryArtifactCommitService(),
+                Map.of(providerId, storage),
+                new Phase16RuntimeMetrics(new SimpleMeterRegistry()))
+                .commit(
+                        staged,
+                        new DurableOutputTarget(
+                                providerId,
+                                new StorageNamespace(
+                                        "tenant-a", "project-a", NamespaceClass.DERIVED,
+                                        RegionPolicy.SINGLE_REGION, DataClassification.INTERNAL),
+                                "write-session-1"),
+                        new ArtifactCommitMetadata(
+                                ARTIFACT_ID, "tenant-a", ArtifactMediaType.VIDEO,
+                                ArtifactKind.RENDER_MASTER, Artifact.CURRENT_SCHEMA_VERSION,
+                                ReplicaRole.PRIMARY, "local", List.of(), NOW, NOW, null, null));
 
-        assertThat(new ArtifactOutputCommitOrchestrator(commitService).commit(staged, request))
-                .isSameAs(result);
-        verify(commitService).commit(request);
-
-        ArtifactCommitRequest mismatch = mock(ArtifactCommitRequest.class);
-        when(mismatch.contentDigest()).thenReturn(digest("other".getBytes()));
-        when(mismatch.byteLength()).thenReturn(staged.byteLength());
-        assertThatThrownBy(() -> new ArtifactOutputCommitOrchestrator(commitService)
-                .commit(staged, mismatch))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("digest");
-        verify(commitService, never()).commit(mismatch);
+        assertThat(result.storagePublication().objectId())
+                .isEqualTo(new StorageObjectId("obj-write-session-1"));
+        assertThat(result.artifactCommitResult().replicaBinding().storageObjectId())
+                .isEqualTo(result.storagePublication().objectId());
+        assertThat(result.artifactCommitResult().artifact().contentDigest())
+                .isEqualTo(staged.contentDigest());
+        assertThat(storage.stat(result.storagePublication().objectId())).isPresent();
     }
 
     @Test

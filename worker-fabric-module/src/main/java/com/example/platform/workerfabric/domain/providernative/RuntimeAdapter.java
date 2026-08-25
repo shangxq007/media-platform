@@ -1,15 +1,23 @@
 package com.example.platform.workerfabric.domain.providernative;
 
+import com.example.platform.workerfabric.reuse.MaterializedArtifact;
+import java.io.IOException;
+import java.util.List;
+
 /**
- * Runtime SPI translating a provider-native plan into typed runtime commands/provider requests.
+ * Runtime SPI translating and executing a provider-native plan through typed runtime mechanics.
  *
  * <p>Adapters must not choose another provider, rebind ProviderBindingPin, create platform attempts,
  * own lease/retry lifecycle, write canonical domain state, commit Artifact authority, or decide
- * completion.
+ * completion. Runtime inputs are immutable worker-local handles; storage providers and locations
+ * are deliberately absent.
  */
-@FunctionalInterface
 public interface RuntimeAdapter<P extends ProviderNativeExecutionPlan> {
 
     RuntimeExecutionBundle adapt(P nativePlan, RuntimeExecutionContext context)
             throws ProviderNativeExecutionFailure;
+
+    ProviderExecutionOutput execute(
+            RuntimeExecutionBundle executionBundle,
+            List<MaterializedArtifact> runtimeLocalInputs) throws IOException;
 }

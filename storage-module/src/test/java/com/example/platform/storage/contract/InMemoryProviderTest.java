@@ -30,6 +30,7 @@ class InMemoryProviderTest {
         provider.write(session, "HelloWorld".getBytes(), 0, 10);
         WriteSessionResult result = provider.completeWrite(session, digest);
         assertNotNull(result);
+        assertEquals(new StorageObjectId("obj-ws-1"), result.objectId());
         assertFalse(result.alreadyCommitted());
     }
     @Test void duplicateCommit_returnsSame() {
@@ -40,6 +41,8 @@ class InMemoryProviderTest {
         provider.write(session, "HelloWorld".getBytes(), 0, 10);
         WriteSessionResult r1 = provider.completeWrite(session, digest);
         WriteSessionResult r2 = provider.completeWrite(session, digest);
+        assertEquals(r1.objectId(), r2.objectId());
+        assertEquals(r1.replicaId(), r2.replicaId());
         assertTrue(r2.alreadyCommitted());
     }
     @Test void openRead_returnsData() throws Exception {

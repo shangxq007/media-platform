@@ -12,6 +12,7 @@ import com.example.platform.execution.planning.PhysicalExecutionPlan;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.graph.api.DirectedGraphView;
 import com.example.platform.graph.api.GraphAlgorithms;
+import com.example.platform.graph.result.TopologicalOrderResult;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -195,6 +196,38 @@ public final class ProviderBoundExecutableTaskGraph {
 
     public List<ExecutableTaskDependency> taskDependencies() {
         return taskDependencies;
+    }
+
+    /** Returns the canonical dependency order using this module's GraphAlgorithms authority. */
+    public List<ExecutableTaskId> topologicalTaskOrder() {
+        Map<ExecutableTaskId, Set<ExecutableTaskId>> successors = new HashMap<>();
+        Map<ExecutableTaskId, Set<ExecutableTaskId>> predecessors = new HashMap<>();
+        tasks.forEach(task -> {
+            successors.put(task.id(), new TreeSet<>());
+            predecessors.put(task.id(), new TreeSet<>());
+        });
+        taskDependencies.forEach(dependency -> {
+            successors.get(dependency.producerTaskId()).add(dependency.consumerTaskId());
+            predecessors.get(dependency.consumerTaskId()).add(dependency.producerTaskId());
+        });
+        TopologicalOrderResult<ExecutableTaskId> result = GraphAlgorithms.topologicalOrder(
+                new DirectedGraphView<>() {
+                    @Override public Set<ExecutableTaskId> nodes() { return successors.keySet(); }
+                    @Override public Set<ExecutableTaskId> successors(ExecutableTaskId node) {
+                        return successors.get(node);
+                    }
+                    @Override public Set<ExecutableTaskId> predecessors(ExecutableTaskId node) {
+                        return predecessors.get(node);
+                    }
+                    @Override public int nodeCount() { return successors.size(); }
+                    @Override public int edgeCount() {
+                        return successors.values().stream().mapToInt(Set::size).sum();
+                    }
+                });
+        if (result instanceof TopologicalOrderResult.CycleDetected<ExecutableTaskId>) {
+            throw new IllegalStateException("provider-bound executable task graph is cyclic");
+        }
+        return ((TopologicalOrderResult.Ordered<ExecutableTaskId>) result).order();
     }
 
     public List<ProviderCompatibilityTransition> selectedProviderTransitions() {

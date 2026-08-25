@@ -32,7 +32,14 @@ public final class ArtifactReuseResolver {
                     ValidatedReuseDecision.Outcome.NOT_CACHEABLE,
                     "execution is not proven fully pinned and deterministically cacheable");
         }
-        ReusableArtifactRecord record = index.lookup(tenantId, executionReuseKey).orElse(null);
+        ReusableArtifactRecord record;
+        try {
+            record = index.lookup(tenantId, executionReuseKey).orElse(null);
+        } catch (RuntimeException lookupFailure) {
+            return ValidatedReuseDecision.reject(
+                    ValidatedReuseDecision.Outcome.MISS,
+                    "reuse index lookup failed closed");
+        }
         if (record == null) {
             return ValidatedReuseDecision.reject(
                     ValidatedReuseDecision.Outcome.MISS, "reuse index miss");
@@ -42,8 +49,15 @@ public final class ArtifactReuseResolver {
                     ValidatedReuseDecision.Outcome.UNAUTHORIZED,
                     "reuse index record tenant does not match request tenant");
         }
-        Artifact artifact = artifacts.getArtifact(tenantId, record.artifactPin().artifactId())
-                .orElse(null);
+        Artifact artifact;
+        try {
+            artifact = artifacts.getArtifact(tenantId, record.artifactPin().artifactId())
+                    .orElse(null);
+        } catch (RuntimeException authorityFailure) {
+            return ValidatedReuseDecision.reject(
+                    ValidatedReuseDecision.Outcome.STALE,
+                    "Artifact authority validation failed closed");
+        }
         if (artifact == null) {
             return ValidatedReuseDecision.reject(
                     ValidatedReuseDecision.Outcome.STALE,
@@ -66,5 +80,25 @@ public final class ArtifactReuseResolver {
                     "Artifact is not AVAILABLE");
         }
         return ValidatedReuseDecision.hit(record);
+    }
+
+    /** Removes only invalid index metadata discovered by an authoritative validation. */
+    public boolean evictInvalid(
+            String tenantId,
+            ExecutionReuseKey executionReuseKey,
+            ValidatedReuseDecision decision) {
+        Objects.requireNonNull(tenantId, "tenantId");
+        Objects.requireNonNull(executionReuseKey, "executionReuseKey");
+        Objects.requireNonNull(decision, "decision");
+        if (decision.outcome() != ValidatedReuseDecision.Outcome.STALE
+                && decision.outcome() != ValidatedReuseDecision.Outcome.CORRUPT) {
+            throw new IllegalArgumentException(
+                    "only stale or corrupt reuse metadata may be evicted by validation");
+        }
+        try {
+            return index.evict(tenantId, executionReuseKey);
+        } catch (RuntimeException evictionFailure) {
+            return false;
+        }
     }
 }

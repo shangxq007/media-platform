@@ -26,13 +26,11 @@ public final class FencedReuseCompletionOrchestrator {
     public FencedReuseCompletionResult complete(
             ReusableArtifactPublication publication,
             CompletionEvidence completionEvidence,
-            ArtifactCommitEvidence artifactCommitEvidence) {
+        ArtifactCommitEvidence artifactCommitEvidence) {
         ReusePublicationResult staged = index.stageWinningPublication(publication);
-        if (staged == ReusePublicationResult.WINNER_IDEMPOTENT) {
-            return new FencedReuseCompletionResult(staged, CompletionDecision.DUPLICATE_NOOP);
-        }
         if (staged != ReusePublicationResult.STAGED_PENDING
-                && staged != ReusePublicationResult.PENDING_IDEMPOTENT) {
+                && staged != ReusePublicationResult.PENDING_IDEMPOTENT
+                && staged != ReusePublicationResult.WINNER_IDEMPOTENT) {
             return new FencedReuseCompletionResult(staged, CompletionDecision.STALE_ATTEMPT_REJECTED);
         }
         CompletionDecision completion = completionAuthority.completeIfCurrent(

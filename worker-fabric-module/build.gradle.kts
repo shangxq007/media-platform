@@ -25,6 +25,7 @@ dependencies {
     implementation(project(":artifact-module"))
     implementation(project(":storage-module"))
     implementation("org.springframework.boot:spring-boot-starter-jooq")
+    implementation("io.micrometer:micrometer-core")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testImplementation("org.assertj:assertj-core:3.26.3")

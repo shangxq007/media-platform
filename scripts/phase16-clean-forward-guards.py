@@ -106,6 +106,42 @@ distributed_locks = regex_hits(
     lambda path: path.startswith("worker-fabric-module/"), re.I)
 report("DISTRIBUTED_CACHE_EXECUTION_LOCK_AUTHORITY_COUNT", len(distributed_locks), distributed_locks)
 
+output_commit = read(
+    "worker-fabric-module/src/main/java/com/example/platform/workerfabric/reuse/ArtifactOutputCommitOrchestrator.java")
+staged_direct_commit = 0 if all(token in output_commit for token in (
+    "provider.beginWrite(", "provider.write(", "provider.completeWrite(",
+    "bindRequest(metadata, publication)")) and not re.search(
+        r"commit\s*\(\s*StagedExecutionOutput[^)]*ArtifactCommitRequest",
+        output_commit, re.S) else 1
+report("STAGED_DIRECT_ARTIFACT_COMMIT_WITHOUT_DURABLE_BINDING_COUNT", staged_direct_commit,
+       ["ArtifactOutputCommitOrchestrator.java"] if staged_direct_commit else [])
+
+provider_native_source = "\n".join(
+    text for path, text in files if "/domain/providernative/" in path)
+provider_storage_authority = len(re.findall(
+    r"StorageProvider|StorageObjectId|StorageReplicaId|ArtifactCommitService|ArtifactReuseIndexPort",
+    provider_native_source))
+report("PROVIDER_DIRECT_STORAGE_OR_ARTIFACT_AUTHORITY_COUNT", provider_storage_authority,
+       ["worker-fabric-module/domain/providernative"] * provider_storage_authority)
+
+closed_loop = read(
+    "worker-fabric-module/src/main/java/com/example/platform/workerfabric/reuse/RuntimeClosedLoopOrchestrator.java")
+unvalidated_pruning = 0 if all(token in closed_loop for token in (
+    "decision.outcome() == ValidatedReuseDecision.Outcome.VALIDATED_HIT",
+    "validatedHitIds.add(task.id())",
+    "Set.copyOf(validatedHitIds)")) and all(token not in closed_loop for token in (
+        "request.reusedTasks", "request.validatedHitIds")) else 1
+report("UNVALIDATED_REUSE_PRUNING_COUNT", unvalidated_pruning,
+       ["RuntimeClosedLoopOrchestrator.java"] if unvalidated_pruning else [])
+
+orchestration_bypass = 0 if all(token in closed_loop for token in (
+    "outputCommitOrchestrator.commit(", "completionOrchestrator.complete(")) and all(
+        token not in closed_loop for token in (
+            "ArtifactCommitService", ".completeIfCurrent(",
+            ".stageWinningPublication(", ".activateWinningPublication(")) else 1
+report("PHASE16_RUNTIME_ORCHESTRATION_BYPASS_COUNT", orchestration_bypass,
+       ["RuntimeClosedLoopOrchestrator.java"] if orchestration_bypass else [])
+
 tenant_guard = 0 if all(token in resolver for token in (
     "tenantId.equals(record.tenantId())", "getArtifact(tenantId")) else 1
 report("CROSS_TENANT_REUSE_WITHOUT_AUTHORIZATION_COUNT", tenant_guard,
