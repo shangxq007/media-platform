@@ -1,0 +1,47 @@
+{
+  "task_id": "ROADMAP_22_PHASE_16_CORRECTION_2_TYPED_RUNTIME_INPUT_BINDING_AND_MATERIALIZATION_OBSERVABILITY",
+  "base_sha": "8e4e589ce3c6b8a90f41852c6f6e31e8b1222f3e",
+  "implementation_sha": "caaa03295af46570c7a08419fcc0a94fee66ddf7",
+  "implementation_tree": "335d9e9b761fe5a9fccf45e915e9c2fbe8da03a2",
+  "focused_test_evidence": {
+    "expression": "33 + 5",
+    "total": 38,
+    "passed": 38,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "aborted": 0
+  },
+  "authoritative_gradle": {
+    "affected_modules": {
+      "command": "./gradlew :media-execution-plan-module:test :artifact-module:test :storage-module:test :storage-provider-opendal:test :worker-fabric-module:test --no-daemon --console=plain",
+      "result": "BUILD_SUCCESSFUL"
+    },
+    "modulith": {
+      "command": "./gradlew :media-execution-plan-module:test :worker-fabric-module:test :platform-app:test --tests com.example.platform.ModularityTest.modularityViolationsWithinBudget --no-daemon --console=plain",
+      "result": "BUILD_SUCCESSFUL"
+    },
+    "full_serial": {
+      "command": "./gradlew check pfirr1RemediationCheck :platform-app:bootJar --rerun-tasks --no-daemon --console=plain",
+      "result": "BUILD_SUCCESSFUL",
+      "duration_seconds": 1321,
+      "actionable_tasks_executed": 199
+    }
+  },
+  "clean_forward_guards": {
+    "command": "python3 scripts/phase16-clean-forward-guards.py",
+    "result": "PASS",
+    "nonzero_counters": 0
+  },
+  "architecture_drift": {
+    "command": "scripts/check-architecture-drift.sh",
+    "result": "PASS"
+  },
+  "remote_ci": {
+    "correction_1_run_id": 32845247072,
+    "correction_1_sha": "8e4e589ce3c6b8a90f41852c6f6e31e8b1222f3e",
+    "correction_1_result": "completed/success",
+    "correction_2_result": "pending publication"
+  },
+  "phase_16_closed": false
+}
