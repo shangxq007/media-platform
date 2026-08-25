@@ -33,6 +33,7 @@ import com.example.platform.execution.planning.LogicalExecutionGraph.LogicalDepe
 import com.example.platform.execution.planning.PhysicalExecutionPlan;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.execution.planning.PhysicalExecutionPlanDigest;
+import com.example.platform.execution.taskgraph.BoundaryAction;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ExecutionArtifactBoundary;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
@@ -66,6 +67,36 @@ final class RuntimeClosedLoopGraphFixture {
         Context context = context(plan, provider);
         return ProviderBoundExecutableTaskGraph.derive(
                 plan, context.graph(), List.of(task(context, provider, unit)), List.of());
+    }
+
+    static ProviderBoundExecutableTaskGraph authoritativeOutputCardinality(
+            String semantic,
+            String sourceDigest,
+            String provider,
+            int authoritativeOutputCount) {
+        if (authoritativeOutputCount < 0) {
+            throw new IllegalArgumentException("authoritativeOutputCount must be non-negative");
+        }
+        List<OutputDeclaration> outputs = new ArrayList<>();
+        int declarationCount = Math.max(1, authoritativeOutputCount);
+        for (int index = 0; index < declarationCount; index++) {
+            outputs.add(output(semantic, semantic + "-" + index));
+        }
+        PhysicalPlanUnit unit = unit(
+                semantic,
+                List.of(sourceInput(semantic, sourceDigest)),
+                outputs,
+                List.of());
+        PhysicalExecutionPlan plan = plan(List.of(unit));
+        Context context = context(plan, provider);
+        List<BoundaryAction> actions = authoritativeOutputActions(unit).stream()
+                .limit(authoritativeOutputCount)
+                .toList();
+        return ProviderBoundExecutableTaskGraph.derive(
+                plan,
+                context.graph(),
+                List.of(task(context, provider, unit, actions)),
+                List.of());
     }
 
     static ProviderBoundExecutableTaskGraph sharedDependency(
@@ -198,6 +229,14 @@ final class RuntimeClosedLoopGraphFixture {
     }
 
     private static ExecutableTask task(Context context, String provider, PhysicalPlanUnit unit) {
+        return task(context, provider, unit, authoritativeOutputActions(unit));
+    }
+
+    private static ExecutableTask task(
+            Context context,
+            String provider,
+            PhysicalPlanUnit unit,
+            List<BoundaryAction> actions) {
         var memberships = ExecutableTaskMembership.canonicalForUnits(List.of(unit));
         var request = ProviderLocalCompositionRequest.of(
                 memberships,
@@ -206,7 +245,22 @@ final class RuntimeClosedLoopGraphFixture {
                 new ProviderCompositionDeclaration(
                         context.candidate().bindingPin(), NativePipelineSupport.SUPPORTED),
                 List.of());
-        return ExecutableTask.create(ProviderLocalCompositionEvaluator.evaluate(request), List.of());
+        return ExecutableTask.create(ProviderLocalCompositionEvaluator.evaluate(request), actions);
+    }
+
+    private static List<BoundaryAction> authoritativeOutputActions(PhysicalPlanUnit unit) {
+        List<BoundaryAction> actions = new ArrayList<>();
+        for (int index = 0; index < unit.typedOutputs().size(); index++) {
+            OutputDeclaration output = unit.typedOutputs().get(index);
+            actions.add(new BoundaryAction(
+                    BoundaryAction.Phase.POST_EXECUTION,
+                    index,
+                    new BoundaryAction.IntermediateArtifactTarget(
+                            unit.stepId(),
+                            output,
+                            output.intermediateArtifactExpectations().getFirst())));
+        }
+        return List.copyOf(actions);
     }
 
     private static Context context(PhysicalExecutionPlan plan, String provider) {
@@ -322,13 +376,17 @@ final class RuntimeClosedLoopGraphFixture {
     }
 
     private static OutputDeclaration output(String unit) {
+        return output(unit, unit);
+    }
+
+    private static OutputDeclaration output(String unit, String identity) {
         return new OutputDeclaration(
-                new ExecutionOutputId("output-" + unit),
+                new ExecutionOutputId("output-" + identity),
                 "logical-" + unit,
                 new RenderNodeId("render-" + unit),
                 List.of(), List.of(),
                 List.of(new IntermediateArtifactExpectation(
-                        new LogicalArtifactId("logical-artifact-" + unit),
+                        new LogicalArtifactId("logical-artifact-" + identity),
                         RenderOutputRole.RENDER_MASTER)),
                 List.of());
     }

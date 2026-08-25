@@ -56,6 +56,7 @@ import com.example.platform.workerfabric.domain.RemoteProviderExecutionHandle;
 import com.example.platform.workerfabric.domain.providernative.ExecutionCommand;
 import com.example.platform.workerfabric.domain.providernative.ProcessInvocationSpec;
 import com.example.platform.workerfabric.domain.providernative.ProviderExecutionOutput;
+import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionPlan;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
@@ -126,6 +127,16 @@ class RuntimeClosedLoopConformanceTest {
             assertThat(harness.registry.get("media.worker_fabric.phase16." + metric)
                     .tag("outcome", "SUCCESS").counter().count()).isPositive();
         }
+    }
+
+    @Test
+    void zeroAuthoritativeOutputsFailTypedBeforeEveryRuntimeSideEffect() throws Exception {
+        assertUnsupportedOutputCardinalityHasNoSideEffects(0);
+    }
+
+    @Test
+    void multipleAuthoritativeOutputsFailTypedBeforeEveryRuntimeSideEffect() throws Exception {
+        assertUnsupportedOutputCardinalityHasNoSideEffects(2);
     }
 
     @Test
@@ -442,6 +453,39 @@ class RuntimeClosedLoopConformanceTest {
         return new Harness(temp, List.of(providers));
     }
 
+    private void assertUnsupportedOutputCardinalityHasNoSideEffects(int outputCount)
+            throws Exception {
+        Harness harness = harness("provider-a");
+        String semantic = "output-cardinality-" + outputCount;
+        ProviderBoundExecutableTaskGraph graph =
+                RuntimeClosedLoopGraphFixture.authoritativeOutputCardinality(
+                        semantic, sourceDigest(semantic), "provider-a", outputCount);
+
+        assertThatThrownBy(() -> harness.execute(graph, allTaskIds(graph), semantic))
+                .isInstanceOfSatisfying(
+                        ProviderNativeExecutionFailure.class,
+                        failure -> {
+                            assertThat(failure.code()).isEqualTo(
+                                    ProviderNativeFailureCode
+                                            .UNSUPPORTED_AUTHORITATIVE_OUTPUT_CARDINALITY);
+                            assertThat(failure.diagnostics())
+                                    .containsEntry(
+                                            "authoritativeOutputCount",
+                                            Integer.toString(outputCount));
+                        });
+
+        assertThat(harness.runtime.executions()).isZero();
+        assertThat(harness.metricTotal("materialization")).isZero();
+        assertThat(harness.metricTotal("staging")).isZero();
+        assertThat(harness.storage.writes()).isZero();
+        assertThat(harness.metricTotal("durable.publish")).isZero();
+        assertThat(harness.authority.commitCount()).isZero();
+        assertThat(harness.metricTotal("artifact.commit")).isZero();
+        assertThat(harness.completions.completionCount()).isZero();
+        assertThat(harness.index.winnerCount()).isZero();
+        assertThat(harness.metricTotal("reuse.publication")).isZero();
+    }
+
     private static Set<ExecutableTaskId> allTaskIds(ProviderBoundExecutableTaskGraph graph) {
         return graph.tasks().stream().map(ExecutableTask::id)
                 .collect(java.util.stream.Collectors.toSet());
@@ -622,6 +666,11 @@ class RuntimeClosedLoopConformanceTest {
             return new StorageNamespace(
                     TENANT, "project-phase16", NamespaceClass.DERIVED,
                     RegionPolicy.SINGLE_REGION, DataClassification.INTERNAL);
+        }
+
+        private double metricTotal(String suffix) {
+            return registry.find("media.worker_fabric.phase16." + suffix)
+                    .counters().stream().mapToDouble(counter -> counter.count()).sum();
         }
     }
 
@@ -868,18 +917,21 @@ class RuntimeClosedLoopConformanceTest {
     private static final class RecordingStorageProvider implements StorageProvider {
         private final StorageProvider delegate;
         private int reads;
+        private int writes;
         private int aborts;
         private boolean failWrites;
         private boolean failReads;
 
         private RecordingStorageProvider(StorageProvider delegate) { this.delegate = delegate; }
         int reads() { return reads; }
+        int writes() { return writes; }
         int aborts() { return aborts; }
         @Override public StorageProviderId providerId() { return delegate.providerId(); }
         @Override public StorageProviderCapabilities capabilities() { return delegate.capabilities(); }
         @Override public StorageWriteSession beginWrite(String id, StorageNamespace namespace, ContentDigest digest, long length) { return delegate.beginWrite(id, namespace, digest, length); }
         @Override public void write(StorageWriteSession session, byte[] data, int offset, int length) {
             if (failWrites) throw new IllegalStateException("storage write failure");
+            writes++;
             delegate.write(session, data, offset, length);
         }
         @Override public WriteSessionResult completeWrite(StorageWriteSession session, ContentDigest digest) { return delegate.completeWrite(session, digest); }

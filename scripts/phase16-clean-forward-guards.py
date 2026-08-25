@@ -38,6 +38,10 @@ def regex_hits(pattern, predicate=lambda _path: True, flags=0):
     return hits
 
 
+def strip_java_comments(text):
+    return re.sub(r"(?m)//.*$", " ", re.sub(r"(?s)/\*.*?\*/", " ", text))
+
+
 artifact_cache = "render-module/src/main/java/com/example/platform/render/infrastructure/renderplan/ArtifactCache.java"
 report("LEGACY_HASH_TO_URI_ARTIFACT_CACHE_AUTHORITY_COUNT", int((root / artifact_cache).exists()),
        [artifact_cache] if (root / artifact_cache).exists() else [])
@@ -126,6 +130,7 @@ report("PROVIDER_DIRECT_STORAGE_OR_ARTIFACT_AUTHORITY_COUNT", provider_storage_a
 
 closed_loop = read(
     "worker-fabric-module/src/main/java/com/example/platform/workerfabric/reuse/RuntimeClosedLoopOrchestrator.java")
+closed_loop_code = strip_java_comments(closed_loop)
 unvalidated_pruning = 0 if all(token in closed_loop for token in (
     "decision.outcome() == ValidatedReuseDecision.Outcome.VALIDATED_HIT",
     "validatedHitIds.add(task.id())",
@@ -141,6 +146,30 @@ orchestration_bypass = 0 if all(token in closed_loop for token in (
             ".stageWinningPublication(", ".activateWinningPublication(")) else 1
 report("PHASE16_RUNTIME_ORCHESTRATION_BYPASS_COUNT", orchestration_bypass,
        ["RuntimeClosedLoopOrchestrator.java"] if orchestration_bypass else [])
+
+silent_first_output = len(re.findall(
+    r"(?:authoritativeOutputIds|typedOutputs|outputMapping)\s*\(\s*\)\s*\.\s*"
+    r"(?:getFirst\s*\(\s*\)|get\s*\(\s*0\s*\))",
+    closed_loop_code))
+report("UNSUPPORTED_MULTI_OUTPUT_SILENT_FIRST_OUTPUT_COUNT", silent_first_output,
+       ["RuntimeClosedLoopOrchestrator.java"] * silent_first_output)
+
+reuse_index_code = strip_java_comments(index)
+generic_reuse_cas = len(re.findall(
+    r"\b(?:compareAndSet|compareAndSwap|AtomicReference|AtomicStampedReference|"
+    r"StampedLock|AdvisoryLock|ReuseIndexCas)\b",
+    reuse_index_code))
+report("GENERIC_REUSE_INDEX_CAS_FRAMEWORK_COUNT", generic_reuse_cas,
+       ["JooqArtifactReuseIndex.java"] * generic_reuse_cas)
+
+worker_runtime_code = "\n".join(
+    strip_java_comments(text) for path, text in files
+    if path.startswith("worker-fabric-module/src/main/"))
+multi_output_runtime = len(re.findall(
+    r"\bProviderExecutionOutputs\b|(?:List|Collection|Set)\s*<\s*ProviderExecutionOutput\s*>",
+    worker_runtime_code))
+report("MULTI_OUTPUT_RUNTIME_IMPLEMENTATION_COUNT", multi_output_runtime,
+       ["worker-fabric-module/src/main"] * multi_output_runtime)
 
 tenant_guard = 0 if all(token in resolver for token in (
     "tenantId.equals(record.tenantId())", "getArtifact(tenantId")) else 1

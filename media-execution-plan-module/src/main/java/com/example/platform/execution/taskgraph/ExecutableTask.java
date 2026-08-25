@@ -3,6 +3,7 @@ package com.example.platform.execution.taskgraph;
 import com.example.platform.execution.composition.CompositionDecision;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.domain.ExecutionInputId;
+import com.example.platform.execution.domain.ExecutionOutputId;
 import com.example.platform.execution.domain.ExecutionStepId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.planning.ExecutionIoProjection.InputBinding;
@@ -132,6 +133,26 @@ public final class ExecutableTask {
                 .toList();
     }
 
+    /**
+     * Returns the distinct output identities that task-owned post-execution semantics require the
+     * platform to materialize and commit. Raw membership declarations are intentionally excluded.
+     */
+    public List<ExecutionOutputId> authoritativeOutputIds() {
+        Set<ExecutionOutputId> outputIds = new HashSet<>();
+        for (BoundaryAction action : boundaryActions) {
+            if (action.phase() != BoundaryAction.Phase.POST_EXECUTION) {
+                continue;
+            }
+            OutputDeclaration output = authoritativeOutput(action.target());
+            if (output != null) {
+                outputIds.add(output.outputId());
+            }
+        }
+        return outputIds.stream()
+                .sorted(java.util.Comparator.comparing(ExecutionOutputId::value))
+                .toList();
+    }
+
     /** Requires the complete neutral projection to be one exact runtime-required task input. */
     public ExecutableInputProjection requireExactRuntimeInput(
             ExecutableInputProjection candidate) {
@@ -228,6 +249,22 @@ public final class ExecutableTask {
             throw new IllegalArgumentException(
                     "declared output BoundaryAction must be POST_EXECUTION and reference a member output");
         }
+    }
+
+    private static OutputDeclaration authoritativeOutput(BoundaryAction.Target target) {
+        if (target instanceof BoundaryAction.IntermediateArtifactTarget intermediate) {
+            return intermediate.outputDeclaration();
+        }
+        if (target instanceof BoundaryAction.FinalArtifactTarget finalTarget) {
+            return finalTarget.outputDeclaration();
+        }
+        if (target instanceof BoundaryAction.MandatoryMaterializationTarget materialization) {
+            return materialization.outputDeclaration();
+        }
+        if (target instanceof BoundaryAction.ExecutionArtifactMaterializeTarget materialize) {
+            return materialize.boundary().producerOutput();
+        }
+        return null;
     }
 
     private static List<RequiredInputArtifactPin> requiredInputPins(

@@ -63,47 +63,14 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
             if (!committedArtifactMatches(tx, candidate)) {
                 return ReusePublicationResult.CONFLICT_REJECTED;
             }
-            Record existing = lockKey(tx, candidate);
-            if (existing != null) {
-                ReusableArtifactRecord indexed = mapRecord(existing);
-                if ("WINNING".equals(existing.get("publication_status", String.class))) {
-                    return samePublication(indexed, candidate)
-                            ? ReusePublicationResult.WINNER_IDEMPOTENT
-                            : ReusePublicationResult.CONFLICT_REJECTED;
-                }
-                if (samePublication(indexed, candidate)) {
-                    return ReusePublicationResult.PENDING_IDEMPOTENT;
-                }
-                tx.execute(
-                        """
-                        update wf_artifact_reuse_index
-                           set reuse_key_canonical = ?, artifact_id = ?,
-                               artifact_digest_algorithm = ?, artifact_digest_value = ?,
-                               task_id = ?, attempt_id = ?, generation = ?,
-                               published_at = cast(? as timestamptz)
-                         where tenant_id = ? and reuse_key_version = ? and reuse_key_digest = ?
-                           and publication_status = 'PENDING'
-                        """,
-                        candidate.executionReuseKey().canonicalSerialization(),
-                        candidate.artifactPin().artifactId().value(),
-                        candidate.artifactPin().contentDigest().algorithm().name(),
-                        candidate.artifactPin().contentDigest().canonicalValue(),
-                        candidate.executableTaskId().sha256Hex(),
-                        candidate.executionAttemptId().value(),
-                        candidate.ownershipGeneration().value(),
-                        databaseTime(candidate.publishedAt()),
-                        candidate.tenantId(),
-                        candidate.executionReuseKey().version(),
-                        candidate.executionReuseKey().stableDigest());
-                return ReusePublicationResult.STAGED_PENDING;
-            }
-            tx.execute(
+            int inserted = tx.execute(
                     """
                     insert into wf_artifact_reuse_index (
                         tenant_id, reuse_key_version, reuse_key_digest, reuse_key_canonical,
                         artifact_id, artifact_digest_algorithm, artifact_digest_value,
                         task_id, attempt_id, generation, publication_status, published_at)
                     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', cast(? as timestamptz))
+                    on conflict (tenant_id, reuse_key_version, reuse_key_digest) do nothing
                     """,
                     candidate.tenantId(),
                     candidate.executionReuseKey().version(),
@@ -116,7 +83,23 @@ public class JooqArtifactReuseIndex implements ArtifactReuseIndexPort {
                     candidate.executionAttemptId().value(),
                     candidate.ownershipGeneration().value(),
                     databaseTime(candidate.publishedAt()));
-            return ReusePublicationResult.STAGED_PENDING;
+            if (inserted == 1) {
+                return ReusePublicationResult.STAGED_PENDING;
+            }
+
+            Record existing = lockKey(tx, candidate);
+            if (existing == null) {
+                return ReusePublicationResult.CONFLICT_REJECTED;
+            }
+            ReusableArtifactRecord indexed = mapRecord(existing);
+            if ("WINNING".equals(existing.get("publication_status", String.class))) {
+                return samePublication(indexed, candidate)
+                        ? ReusePublicationResult.WINNER_IDEMPOTENT
+                        : ReusePublicationResult.CONFLICT_REJECTED;
+            }
+            return samePublication(indexed, candidate)
+                    ? ReusePublicationResult.PENDING_IDEMPOTENT
+                    : ReusePublicationResult.CONFLICT_REJECTED;
         });
     }
 

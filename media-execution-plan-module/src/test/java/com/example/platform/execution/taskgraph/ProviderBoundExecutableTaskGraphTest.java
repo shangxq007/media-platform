@@ -467,6 +467,22 @@ class ProviderBoundExecutableTaskGraphTest {
         assertEquals(1, task.requiredInputArtifactPins().size());
         assertEquals(unit.typedInputs().getFirst().sourceArtifact(),
                 task.requiredInputArtifactPins().getFirst().artifactPin());
+        assertEquals(List.of(unit.typedOutputs().getFirst().outputId()),
+                task.authoritativeOutputIds());
+
+        ExecutableTask rawDeclarationsOnly = task(
+                context, "provider-a", List.of(unit), List.of(preAction));
+        assertEquals(List.of(), rawDeclarationsOnly.authoritativeOutputIds());
+
+        BoundaryAction secondActionForSameOutput = new BoundaryAction(
+                BoundaryAction.Phase.POST_EXECUTION, 1, postAction.target());
+        ExecutableTask repeatedAuthorityForOneOutput = task(
+                context,
+                "provider-a",
+                List.of(unit),
+                List.of(postAction, secondActionForSameOutput));
+        assertEquals(List.of(unit.typedOutputs().getFirst().outputId()),
+                repeatedAuthorityForOneOutput.authoritativeOutputIds());
 
         List<String> componentNames = Arrays.stream(BoundaryAction.class.getRecordComponents())
                 .map(RecordComponent::getName).toList();

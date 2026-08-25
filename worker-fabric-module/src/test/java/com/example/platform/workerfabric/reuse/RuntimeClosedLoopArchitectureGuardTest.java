@@ -148,6 +148,52 @@ class RuntimeClosedLoopArchitectureGuardTest {
                 "FAILURE");
     }
 
+    @Test
+    void outputCardinalityFailsBeforeResolutionWithoutSilentOrMultiOutputRuntime() {
+        String closedLoop = stripComments(source(
+                REUSE.resolve("RuntimeClosedLoopOrchestrator.java")));
+        String task = stripComments(source(
+                EXECUTION.resolve("taskgraph/ExecutableTask.java")));
+        String providerNative = stripComments(javaSources(PROVIDER_NATIVE));
+
+        assertThat(task).contains(
+                "List<ExecutionOutputId> authoritativeOutputIds()",
+                "action.phase() != BoundaryAction.Phase.POST_EXECUTION");
+        assertThat(closedLoop).contains(
+                "validateAuthoritativeOutputCardinality(graph);",
+                "ProviderNativeFailureCode.UNSUPPORTED_AUTHORITATIVE_OUTPUT_CARDINALITY");
+        assertThat(closedLoop.indexOf("validateAuthoritativeOutputCardinality(graph);"))
+                .isLessThan(closedLoop.indexOf("ExecutionReuseKeyDeriver.derive(graph)"));
+        assertThat(closedLoop).doesNotContain(
+                "authoritativeOutputIds().getFirst()",
+                "authoritativeOutputIds().get(0)",
+                "typedOutputs().getFirst()",
+                "outputMapping().getFirst()");
+        assertThat(providerNative + closedLoop).doesNotContain(
+                "ProviderExecutionOutputs",
+                "List<ProviderExecutionOutput>",
+                "Collection<ProviderExecutionOutput>");
+    }
+
+    @Test
+    void postgresFirstPublicationUsesConstraintConflictWithoutGenericCasOrExceptionCatch() {
+        String index = stripComments(source(WORKER_FABRIC.resolve(
+                "infrastructure/JooqArtifactReuseIndex.java")));
+
+        assertThat(index).contains(
+                "on conflict (tenant_id, reuse_key_version, reuse_key_digest) do nothing",
+                "Record existing = lockKey(tx, candidate)",
+                "ReusePublicationResult.PENDING_IDEMPOTENT",
+                "ReusePublicationResult.WINNER_IDEMPOTENT");
+        assertThat(index).doesNotContain(
+                "catch (RuntimeException",
+                "compareAndSet",
+                "compareAndSwap",
+                "AtomicReference",
+                "StampedLock",
+                "AdvisoryLock");
+    }
+
     private static Path repoRoot() {
         Path current = Path.of("").toAbsolutePath();
         while (current != null && !Files.exists(current.resolve("settings.gradle.kts"))) {
@@ -177,5 +223,10 @@ class RuntimeClosedLoopArchitectureGuardTest {
 
     private static int occurrences(String source, String value) {
         return (source.length() - source.replace(value, "").length()) / value.length();
+    }
+
+    private static String stripComments(String source) {
+        return source.replaceAll("(?s)/\\*.*?\\*/", " ")
+                .replaceAll("(?m)//.*$", " ");
     }
 }

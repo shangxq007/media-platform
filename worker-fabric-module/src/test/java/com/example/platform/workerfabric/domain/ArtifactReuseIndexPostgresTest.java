@@ -21,6 +21,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
@@ -83,6 +87,9 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
                 .isEqualTo(ReusePublicationResult.STAGED_PENDING);
         assertThat(index.stageWinningPublication(publication))
                 .isEqualTo(ReusePublicationResult.PENDING_IDEMPOTENT);
+        ReusableArtifactPublication conflictingPublication = publication(grant(804));
+        assertThat(index.stageWinningPublication(conflictingPublication))
+                .isEqualTo(ReusePublicationResult.CONFLICT_REJECTED);
         assertThat(index.lookup(TENANT, REUSE_KEY)).isEmpty();
         assertThat(index.lookup("other-tenant", REUSE_KEY)).isEmpty();
 
@@ -91,6 +98,8 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
                 .isEqualTo(ReusePublicationResult.ACTIVATED_WINNER);
         assertThat(index.activateWinningPublication(publication, completion))
                 .isEqualTo(ReusePublicationResult.WINNER_IDEMPOTENT);
+        assertThat(index.stageWinningPublication(conflictingPublication))
+                .isEqualTo(ReusePublicationResult.CONFLICT_REJECTED);
         assertThat(index.lookup(TENANT, REUSE_KEY)).contains(publication.record());
         assertThat(index.lookup("other-tenant", REUSE_KEY)).isEmpty();
         assertThat(index.evict(TENANT, REUSE_KEY)).isTrue();
@@ -122,6 +131,58 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
         assertThat(dsl.fetchExists(
                 DSL.selectOne().from("artifact").where(DSL.field("id").eq(ARTIFACT_ID.value()))))
                 .isTrue();
+    }
+
+    @Test
+    void concurrentFirstPublicationIsOneRowAndTwoTypedNormalResults() throws Exception {
+        AssignmentGrant grant = grant(803);
+        ReusableArtifactPublication publication = publication(grant);
+        JooqArtifactReuseIndex firstProcess = new JooqArtifactReuseIndex(
+                DSL.using(dataSource, SQLDialect.POSTGRES));
+        JooqArtifactReuseIndex secondProcess = new JooqArtifactReuseIndex(
+                DSL.using(dataSource, SQLDialect.POSTGRES));
+        CyclicBarrier start = new CyclicBarrier(2);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<StageCall> first = executor.submit(
+                    () -> stageTogether(firstProcess, publication, start));
+            Future<StageCall> second = executor.submit(
+                    () -> stageTogether(secondProcess, publication, start));
+
+            List<StageCall> calls = List.of(
+                    first.get(20, TimeUnit.SECONDS),
+                    second.get(20, TimeUnit.SECONDS));
+
+            assertThat(calls)
+                    .as("raw unique violations and all other exceptions")
+                    .filteredOn(call -> call.failure() != null)
+                    .isEmpty();
+            assertThat(calls).extracting(StageCall::result)
+                    .containsExactlyInAnyOrder(
+                            ReusePublicationResult.STAGED_PENDING,
+                            ReusePublicationResult.PENDING_IDEMPOTENT);
+            assertThat(dsl.fetchOne(
+                    """
+                    select count(*) from wf_artifact_reuse_index
+                     where tenant_id = ? and reuse_key_version = ? and reuse_key_digest = ?
+                    """,
+                    TENANT, REUSE_KEY.version(), REUSE_KEY.stableDigest()).get(0, Long.class))
+                    .isOne();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private static StageCall stageTogether(
+            JooqArtifactReuseIndex process,
+            ReusableArtifactPublication publication,
+            CyclicBarrier start) {
+        try {
+            start.await(10, TimeUnit.SECONDS);
+            return new StageCall(process.stageWinningPublication(publication), null);
+        } catch (Throwable failure) {
+            return new StageCall(null, failure);
+        }
     }
 
     private static AssignmentGrant grant(long identity) {
@@ -212,4 +273,6 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
             throw new AssertionError(exception);
         }
     }
+
+    private record StageCall(ReusePublicationResult result, Throwable failure) {}
 }

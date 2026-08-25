@@ -15,6 +15,8 @@ import com.example.platform.execution.taskgraph.ReusePruningResult;
 import com.example.platform.workerfabric.domain.ArtifactCommitEvidence;
 import com.example.platform.workerfabric.domain.CompletionDecision;
 import com.example.platform.workerfabric.domain.providernative.ProviderExecutionOutput;
+import com.example.platform.workerfabric.domain.providernative.ProviderNativeExecutionFailure;
+import com.example.platform.workerfabric.domain.providernative.ProviderNativeFailureCode;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -63,6 +65,7 @@ public final class RuntimeClosedLoopOrchestrator {
     public RuntimeClosedLoopResult execute(RuntimeClosedLoopRequest request) throws IOException {
         Objects.requireNonNull(request, "request");
         ProviderBoundExecutableTaskGraph graph = request.graph();
+        validateAuthoritativeOutputCardinality(graph);
         Map<ExecutableTaskId, ExecutionReuseKey> keys = ExecutionReuseKeyDeriver.derive(graph);
         Map<ExecutableTaskId, ValidatedReuseDecision> decisions = new LinkedHashMap<>();
         Set<ExecutableTaskId> validatedHitIds = new LinkedHashSet<>();
@@ -254,6 +257,21 @@ public final class RuntimeClosedLoopOrchestrator {
                         || result.completionDecision() == CompletionDecision.DUPLICATE_NOOP)
                 && (result.publicationResult() == ReusePublicationResult.ACTIVATED_WINNER
                         || result.publicationResult() == ReusePublicationResult.WINNER_IDEMPOTENT);
+    }
+
+    private static void validateAuthoritativeOutputCardinality(
+            ProviderBoundExecutableTaskGraph graph) {
+        for (ExecutableTask task : graph.tasks()) {
+            int outputCount = task.authoritativeOutputIds().size();
+            if (outputCount != 1) {
+                throw new ProviderNativeExecutionFailure(
+                        ProviderNativeFailureCode.UNSUPPORTED_AUTHORITATIVE_OUTPUT_CARDINALITY,
+                        "Phase 16 V1 requires exactly one platform-authoritative output",
+                        Map.of(
+                                "authoritativeOutputCount", Integer.toString(outputCount),
+                                "executableTaskId", task.id().sha256Hex()));
+            }
+        }
     }
 
     private static void deleteStagedBestEffort(StagedExecutionOutput staged) {
