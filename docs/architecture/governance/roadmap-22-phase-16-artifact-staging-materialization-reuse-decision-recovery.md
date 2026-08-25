@@ -224,3 +224,15 @@ READY_FOR_PHASE_16_IMPLEMENTATION=YES_AFTER_CHATGPT_FINAL_REVIEW
 ARCHITECTURE_BLOCKERS=0
 ARCHITECTURE_ESCALATION=NONE
 NEXT_ACTION=CHATGPT_ROADMAP_22_PHASE_16_DECISION_RECOVERY_FINAL_REVIEW
+
+
+## Append-Forward Correction 1 Reference
+
+Decision Recovery Correction 1 freezes the missing module ownership contract and dependency-derived/Merkle ExecutionReuseKey semantics without reopening architecture and without starting implementation.
+
+Correction record: docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md
+
+Key closures:
+- media-execution-plan-module owns ExecutionReuseKey V1, deterministic canonicalization, dependency-derived reuse-key mechanics, and pure dependency-preserving execution-pruning mechanics.
+- worker-fabric-module owns ArtifactReuseIndexPort, ValidatedReuseDecision, ArtifactMaterializerPort, worker-local materialization cache, staging orchestration, reuse lookup orchestration, and attempt/generation fencing orchestration.
+- computed inter-task reuse-key inputs use predecessor ExecutionReuseKey plus exact output/dependency/boundary semantics; they do not require future ArtifactPin before key computation.

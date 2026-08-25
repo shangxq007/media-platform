@@ -848,6 +848,94 @@
   implementation_status: "FROZEN_DECISION_RECOVERY (implementation not started; Roadmap #22 Phase 16 after ChatGPT review)"
   references: [docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md]
 
+- id: PHASE_16_MODULE_OWNERSHIP_CONTRACT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "Phase 16 module ownership is explicit: media-execution-plan owns pure reuse-key and pruning semantics; worker-fabric owns runtime reuse/materialization orchestration; artifact and storage modules retain their existing authorities."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: EXECUTION_REUSE_KEY_OWNED_BY_MEDIA_EXECUTION_PLAN_MODULE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "ExecutionReuseKey V1 value, deterministic canonicalization, and dependency-derived mechanics belong to media-execution-plan-module."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: ARTIFACT_REUSE_INDEX_PORT_OWNED_BY_WORKER_FABRIC_MODULE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "ArtifactReuseIndexPort, PostgreSQL adapter, reuse lookup orchestration, and ValidatedReuseDecision belong to worker-fabric-module."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: ARTIFACT_MATERIALIZER_PORT_OWNED_BY_WORKER_FABRIC_MODULE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "ArtifactMaterializerPort, materialization orchestration, worker-local cache, staging orchestration, and attempt/generation fencing orchestration belong to worker-fabric-module."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: RENDER_INCREMENTAL_PLAN_PRODUCES_REUSE_CANDIDATES_NOT_TRUTH_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "render-module may produce IncrementalRenderPlan candidates and semantic diff/pruning inputs but not final reusable Artifact truth."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: MEDIA_EXECUTION_PLAN_MUST_NOT_DEPEND_ON_WORKER_FABRIC_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "media-execution-plan-module must not depend on worker-fabric-module; worker-fabric may depend on media-execution-plan."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: EXECUTION_REUSE_KEY_DEPENDENCY_PROPAGATION_IS_MERKLE_DERIVED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "Computed inter-task inputs contribute producer ExecutionReuseKey plus exact output/dependency/boundary semantics, causing dependent keys to change when producer semantics or provider binding changes."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: ROOT_SOURCE_INPUT_REUSE_KEY_USES_EXACT_ARTIFACT_PIN_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "Root/source input reuse-key contributions use exact ArtifactId plus ContentDigest pins."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: COMPUTED_INTER_TASK_INPUT_REUSE_KEY_USES_PREDECESSOR_REUSE_IDENTITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "Computed predecessor inputs use predecessor reuse identity rather than pre-invented output Artifact pins."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: MATERIALIZED_ARTIFACT_DIGEST_VALIDATES_REUSE_BUT_DOES_NOT_DEFINE_PRE_EXECUTION_DEPENDENCY_IDENTITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "Materialized Artifact digest validates reuse after lookup but does not define pre-execution dependency identity for computed inputs."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
+- id: STALE_EXECUTION_GENERATION_MUST_NOT_PUBLISH_WINNING_REUSE_OR_COMPLETION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: EXECUTION
+  summary: "A stale attempt/generation must not publish authoritative output association, update the reuse index as winning result, or complete the task."
+  implementation_status: "FROZEN_DECISION_RECOVERY_CORRECTION_1 (docs-only; implementation not started)"
+  references: [docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md]
+
 ## 9J PROVIDER COMPATIBILITY
 
 - id: PROVIDER_COMPOSITION_IS_CONSTRAINT_SOLVING_NOT_UNIVERSAL_INTEROPERABILITY_V1

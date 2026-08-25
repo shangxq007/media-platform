@@ -35,7 +35,7 @@ roadmap_22:
   phase_15: CLOSED
   phase_15_started: true
   phase_16_started: false
-  phase_16_decision_recovery: FROZEN
+  phase_16_decision_recovery: READY_FOR_CHATGPT_CORRECTION_1_FINAL_REVIEW
 roadmap_22_epochs:
   epoch_1: CLOSED
   epoch_2: CLOSED
@@ -48,7 +48,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_16_DECISION_RECOVERY_FINAL_REVIEW
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_16_DECISION_RECOVERY_CORRECTION_1_FINAL_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 16
@@ -81,7 +81,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_ROADMAP_22_PHASE_16_DECISION_RECOVERY_FINAL_REVIEW
+  next_gate: CHATGPT_ROADMAP_22_PHASE_16_DECISION_RECOVERY_CORRECTION_1_FINAL_REVIEW
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   data_integrity_correction_records:
@@ -89,3 +89,4 @@ governance:
   phase_15_record: docs/architecture/governance/roadmap-22-phase-15-plan-lowerer-runtime-adapter.md
   phase_15_correction_1_record: docs/architecture/governance/roadmap-22-phase-15-provider-native-typed-invocation-correction-1.md
   phase_16_decision_recovery_record: docs/architecture/governance/roadmap-22-phase-16-artifact-staging-materialization-reuse-decision-recovery.md
+  phase_16_decision_recovery_correction_1_record: docs/architecture/governance/roadmap-22-phase-16-decision-recovery-correction-1.md
