@@ -1,0 +1,69 @@
+{
+  "taskId": "ROADMAP_22_PHASE_16_ARTIFACT_STAGING_MATERIALIZATION_AND_REUSE_BOUNDED_IMPLEMENTATION",
+  "recordedAt": "2026-08-25",
+  "executionMode": "direct-javac-and-junit-platform-substitute",
+  "authoritativeGradleGate": false,
+  "totals": {
+    "tests": 82,
+    "passed": 82,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "suites": [
+    {
+      "name": "phase16-media-worker-render-focused",
+      "classes": [
+        "com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraphTest",
+        "com.example.platform.workerfabric.reuse.ArtifactReuseMaterializationTest",
+        "com.example.platform.render.app.MultiProviderPipelineIncrementalTest",
+        "com.example.platform.render.app.timeline.SegmentPlanFilterTest",
+        "com.example.platform.render.app.timeline.RenderArtifactRegistryPipelineStagesTest",
+        "com.example.platform.render.app.timeline.IncrementalRenderPlanServiceTest",
+        "com.example.platform.render.app.timeline.IncrementalRenderHashInvalidationTest",
+        "com.example.platform.render.app.timeline.IncrementalRenderOrchestrationServiceTest",
+        "com.example.platform.render.app.timeline.SegmentIncrementalPlanTest",
+        "com.example.platform.render.app.timeline.SegmentFinalComposeIncrementalTest"
+      ],
+      "tests": 41,
+      "passed": 41,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "artifact-and-storage-authority-relevant",
+      "classes": [
+        "com.example.platform.artifact.domain.ArtifactQueryServiceTest",
+        "com.example.platform.artifact.domain.ArtifactCommitServiceTest",
+        "InMemoryProviderTest"
+      ],
+      "tests": 24,
+      "passed": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "storage-provider-opendal-conformance-relevant",
+      "classes": [
+        "com.example.platform.storage.opendal.conformance.OpenDalConformanceTest"
+      ],
+      "tests": 17,
+      "passed": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "blocked": [
+    {
+      "gate": "Gradle module tests",
+      "reason": "Gradle file-lock contention handler could not determine a usable wildcard IP in the managed sandbox"
+    },
+    {
+      "gate": "ArtifactReuseIndexPostgresTest",
+      "reason": "Testcontainers could not find an accessible Docker environment"
+    }
+  ]
+}

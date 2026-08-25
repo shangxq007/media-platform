@@ -1376,6 +1376,13 @@ else
     pass "FTG31/32 no TextStyle fill; no duplicate color model"
 fi
 
+echo "--- ROADMAP_22_PHASE_16 Clean-Forward Guards ---"
+if python3 scripts/phase16-clean-forward-guards.py; then
+    pass "Phase 16 clean-forward authority counters are zero"
+else
+    fail "Phase 16 clean-forward authority counters are non-zero"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0
