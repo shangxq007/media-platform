@@ -3235,6 +3235,34 @@ create table wf_completion_event (
         references wf_execution_attempt (attempt_id, task_id, generation)
 );
 
+-- Phase 16: derived execution reuse metadata. This index is deliberately not
+-- Artifact existence authority: values are immutable ArtifactId+ContentDigest
+-- pins, lookup is tenant-scoped, and only WINNING rows are reusable.
+create table wf_artifact_reuse_index (
+    tenant_id varchar(128) not null,
+    reuse_key_version varchar(64) not null,
+    reuse_key_digest varchar(64) not null check (length(reuse_key_digest) = 64),
+    reuse_key_canonical text not null,
+    artifact_id varchar(64) not null references artifact(id) on delete cascade,
+    artifact_digest_algorithm varchar(32) not null,
+    artifact_digest_value varchar(64) not null check (length(artifact_digest_value) = 64),
+    task_id varchar(128) not null,
+    attempt_id varchar(128) not null,
+    generation bigint not null check (generation > 0),
+    publication_status varchar(16) not null check (publication_status in ('PENDING','WINNING')),
+    completion_event_id varchar(128) references wf_completion_event(completion_event_id),
+    published_at timestamptz not null,
+    primary key (tenant_id, reuse_key_version, reuse_key_digest),
+    foreign key (attempt_id, task_id, generation)
+        references wf_execution_attempt (attempt_id, task_id, generation),
+    check ((publication_status = 'PENDING' and completion_event_id is null)
+        or (publication_status = 'WINNING' and completion_event_id is not null))
+);
+
+create index ix_wf_artifact_reuse_artifact on wf_artifact_reuse_index(artifact_id);
+create index ix_wf_artifact_reuse_pending on wf_artifact_reuse_index(published_at)
+    where publication_status = 'PENDING';
+
 create table wf_execution_assignment_device (
     assignment_id varchar(128) not null
         references wf_execution_assignment (assignment_id) on delete cascade,
