@@ -3,14 +3,14 @@ project:
   governance_schema_version: 1
 repository:
   canonical_main:
-    sha: d2cc856939fe0a73d6f1ef799078a0a5e7c5b179
-    tree: d2e68f5af848cb49a5db1ea33cd8629ad5b250e0
+    sha: ef0de1ed02147a701c649be7e4c7ebd0987bbea9
+    tree: 34765d742ccc37d215ee800d0c203f584649049e
   active_governed_branch:
-    name: agent/roadmap22-phase17-sandbox-isolation-decision-recovery
+    name: main
   accepted_implementation:
-    milestone: ROADMAP_22_PHASE_16_ARTIFACT_STAGING_MATERIALIZATION_REUSE
-    sha: e526776170e140f19927d7e4ce838fd1fcc7b775
-    tree: c03e9e8c54532fc39dc4299cb725527f09da619e
+    milestone: ROADMAP_22_PHASE_17_SANDBOX_ISOLATION
+    sha: c158e06c7a582b3019d31797d085880189b943c2
+    tree: 469944cbe9cb91dfe8bbf0b2f2d30ad45416db14
     accepted_implementation_remote_reachable: true
   governance_bootstrap_publication:
     sha: 3e69c109c44db2f78fff88b62dd724c18a299edb
@@ -21,8 +21,7 @@ repository:
   main_merged_roadmap_22: true
 local_observation:
   authority: INFORMATIONAL_ONLY
-  roadmap_22_worktree: .worktrees/roadmap22-phase17-sandbox-isolation-decision-recovery
-  executor_branch: agent/roadmap22-phase17-sandbox-isolation-decision-recovery
+  executor_branch: main
 current_roadmap:
   number: 22
   name: EXECUTABLE_TASK_GRAPH_AND_WORKER_FABRIC_RUNTIME
@@ -55,7 +54,7 @@ roadmap_22:
   phase_18_started: false
   phase_19_started: false
   canonical_main_integration: FAST_FORWARDED_TO_ACCEPTED_SOURCE_TIP
-  canonical_main_integration_source_tip: b16b7505ddc37c542d2c422a64d44fc6a5be5ffa
+  canonical_main_integration_source_tip: ef0de1ed02147a701c649be7e4c7ebd0987bbea9
 roadmap_22_epochs:
   epoch_1: CLOSED
   epoch_2: CLOSED
@@ -68,7 +67,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_CANONICAL_INTEGRATION_AUTHORIZATION
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_FINAL_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 17
@@ -105,8 +104,9 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_ROADMAP_22_PHASE_17_CANONICAL_INTEGRATION_AUTHORIZATION
+  next_gate: CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_FINAL_REVIEW
   phase_17_closure_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-closure.md
+  phase_17_canonical_integration_record: docs/architecture/governance/roadmap-22-phase-17-canonical-integration-and-cleanup.md
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   data_integrity_correction_records:

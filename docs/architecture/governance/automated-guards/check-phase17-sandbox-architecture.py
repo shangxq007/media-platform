@@ -24,11 +24,16 @@ def fail(message):
     print("FAIL:", message, file=sys.stderr)
     raise SystemExit(1)
 
+def canonical_main_java_sources():
+    for path in ROOT.glob("**/src/main/**/*.java"):
+        relative_parts = path.relative_to(ROOT).parts
+        if any(part in {".worktrees", ".git", "build"} for part in relative_parts):
+            continue
+        yield path
+
 def main():
     found = {}
-    for path in ROOT.glob("**/src/main/**/*.java"):
-        if "/build/" in path.as_posix():
-            continue
+    for path in canonical_main_java_sources():
         text = path.read_text()
         count = len(re.findall(r"new\s+ProcessBuilder\s*\(", text))
         if count:
@@ -120,7 +125,7 @@ def main():
         fail("worker-fabric sandbox wrappers or aliases remain")
     launcher_definitions = [
         p.relative_to(ROOT).as_posix()
-        for p in ROOT.glob("**/src/main/**/*.java")
+        for p in canonical_main_java_sources()
         if re.search(r"\bclass\s+LocalBoundedProcessLauncher\b", p.read_text())
     ]
     expected_launcher = [
@@ -167,6 +172,16 @@ def main():
     found_raw_resource_flags = [flag for flag in raw_resource_flags if flag in workflow]
     if found_raw_resource_flags:
         fail("raw conformance workflow invents resource capability: " + ", ".join(found_raw_resource_flags))
+    foundation_workflow = (ROOT / ".github/workflows/architecture-drift.yml").read_text()
+    architecture_drift_checkout = """  architecture-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false"""
+    if architecture_drift_checkout not in foundation_workflow:
+        fail("Foundation Verification does not provide Phase 17 governance history")
     print(
         "PHASE17_SANDBOX_ARCHITECTURE_GUARD=PASS "
         f"process_builder_sites={len(found)} sandbox_sources={len(sandbox_files)} "

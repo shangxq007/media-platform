@@ -98,6 +98,12 @@ def main():
         state_mutations.append(("active-governed-branch-drift", changed))
 
         decision_state = copy.deepcopy(baseline_state)
+        decision_state["repository"]["canonical_main"] = {
+            "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",
+            "tree": "d2e68f5af848cb49a5db1ea33cd8629ad5b250e0",
+        }
+        decision_state["repository"]["active_governed_branch"]["name"] = (
+            "agent/roadmap22-phase17-sandbox-isolation-decision-recovery")
         roadmap_22 = decision_state["roadmap_22"]
         roadmap_22["phase_17_started"] = False
         roadmap_22["phase_17_sandbox_isolation_decision_recovery"] = (

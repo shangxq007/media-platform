@@ -24,9 +24,14 @@ METRICS = {
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
 CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW"
 PHASE17_CLOSURE_GATE = "CHATGPT_ROADMAP_22_PHASE_17_CANONICAL_INTEGRATION_AUTHORIZATION"
-EXPECTED_CANONICAL_MAIN = {
+PHASE17_POST_INTEGRATION_GATE = "CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_FINAL_REVIEW"
+EXPECTED_PRE_INTEGRATION_MAIN = {
     "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",
     "tree": "d2e68f5af848cb49a5db1ea33cd8629ad5b250e0",
+}
+EXPECTED_POST_INTEGRATION_MAIN = {
+    "sha": "ef0de1ed02147a701c649be7e4c7ebd0987bbea9",
+    "tree": "34765d742ccc37d215ee800d0c203f584649049e",
 }
 EXPECTED_ROW_IDS = [f"P17-L-{number:03d}" for number in range(1, 132)]
 GIT_QUALIFIED_PATH = re.compile(r"^(?P<revision>[0-9a-f]{40}):(?P<path>.+)$")
@@ -54,7 +59,7 @@ CORRECTION_15_FROZEN_CANDIDATE = (
     "NOT_STARTED",
     "ADOPTED_DEFERRED",
 )
-PHASE17_CLOSED = (
+PRE_INTEGRATION_PHASE17_CLOSED = (
     True,
     "CLOSED",
     "CLOSED",
@@ -65,10 +70,22 @@ PHASE17_CLOSED = (
     "NOT_STARTED",
     "ADOPTED_DEFERRED",
 )
+POST_INTEGRATION_PHASE17_CLOSED = (
+    True,
+    "CLOSED",
+    "CLOSED",
+    False,
+    False,
+    PHASE17_POST_INTEGRATION_GATE,
+    PHASE17_POST_INTEGRATION_GATE,
+    "NOT_STARTED",
+    "ADOPTED_DEFERRED",
+)
 ACCEPTED_PHASE_STATES = {
     DECISION_RECOVERY_CANDIDATE,
     CORRECTION_15_FROZEN_CANDIDATE,
-    PHASE17_CLOSED,
+    PRE_INTEGRATION_PHASE17_CLOSED,
+    POST_INTEGRATION_PHASE17_CLOSED,
 }
 
 def fail(msg: str) -> None:
@@ -144,10 +161,6 @@ def main() -> None:
     if not isinstance(state, dict):
         fail("governance state is not a mapping")
     canonical_main = state.get("repository", {}).get("canonical_main", ABSENT)
-    if canonical_main != EXPECTED_CANONICAL_MAIN:
-        fail(
-            "persisted repository.canonical_main differs: "
-            f"expected={EXPECTED_CANONICAL_MAIN} actual={canonical_main}")
     roadmap_22 = state["roadmap_22"]
     governance_execution = state["governance_execution"]
     phase_state = (
@@ -164,11 +177,21 @@ def main() -> None:
     )
     if phase_state not in ACCEPTED_PHASE_STATES:
         fail("governance Phase 17 state does not match an accepted transition")
-    if roadmap_22.get("phase_17_sandbox_isolation_bounded_implementation") in {"FROZEN_CANDIDATE_PENDING_FCV", "CLOSED"}:
-        active_governed_branch = state.get("repository", {}).get("active_governed_branch", {}).get("name", ABSENT)
-        expected_branch = "agent/roadmap22-phase17-sandbox-isolation-decision-recovery"
-        if active_governed_branch != expected_branch:
-            fail("persisted active governed branch differs from Phase 17 governed branch")
+    active_governed_branch = state.get("repository", {}).get("active_governed_branch", {}).get("name", ABSENT)
+    if phase_state == POST_INTEGRATION_PHASE17_CLOSED:
+        if canonical_main != EXPECTED_POST_INTEGRATION_MAIN:
+            fail("persisted post-integration canonical main differs from accepted Phase 17 source tip")
+        if active_governed_branch != "main":
+            fail("persisted post-integration active governed branch differs from main")
+        if roadmap_22.get("canonical_main_integration_source_tip") != EXPECTED_POST_INTEGRATION_MAIN["sha"]:
+            fail("persisted canonical integration source tip differs from accepted Phase 17 closure publication")
+    else:
+        if canonical_main != EXPECTED_PRE_INTEGRATION_MAIN:
+            fail("persisted pre-integration canonical main differs from expected baseline")
+        if roadmap_22.get("phase_17_sandbox_isolation_bounded_implementation") in {"FROZEN_CANDIDATE_PENDING_FCV", "CLOSED"}:
+            expected_branch = "agent/roadmap22-phase17-sandbox-isolation-decision-recovery"
+            if active_governed_branch != expected_branch:
+                fail("persisted active governed branch differs from Phase 17 governed branch")
     print(
         f"PHASE17_SANDBOX_LEDGER_GUARD=PASS rows={len(rows)} "
         f"dispositions={dict(sorted(counts.items()))} unclassified={unclassified} "
