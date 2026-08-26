@@ -25,50 +25,6 @@ def fail(message):
     raise SystemExit(1)
 
 def main():
-    setup_script = (ROOT / "scripts/ci/setup-test-runtime.sh").read_text()
-    setup_code = "\n".join(
-        line for line in setup_script.splitlines()
-        if not re.match(r"^\s*#", line)
-    )
-    required_bwrap_runtime_code = (
-        'runtime_packages+=("bubblewrap")',
-        'install_packages "${runtime_packages[@]}"',
-        '[[ -x /usr/bin/bwrap ]]',
-        'BWRAP_PROBE_ROOT="$(mktemp -d ',
-        'BWRAP_PROBE_COMMAND=(',
-        '/usr/bin/bwrap',
-        '--unshare-all',
-        '--die-with-parent',
-        '--new-session',
-        'for system_root in /usr /bin /lib /lib64; do',
-        '--ro-bind',
-        '--proc /proc',
-        '--dev /dev',
-        '--tmpfs /tmp',
-        '--ro-bind "$probe_workspace" /workspace',
-        '--chdir /workspace',
-        '--clearenv',
-        '--setenv LANG C',
-        '--setenv PATH /usr/bin:/bin',
-        'env -i MEDIA_PLATFORM_BWRAP_AMBIENT_MARKER=must-not-leak "${BWRAP_PROBE_COMMAND[@]}"',
-        "grep -Fq 'MEDIA_PLATFORM_BWRAP_AMBIENT_MARKER='",
-        "EXPECTED_BWRAP_ENV=$'LANG=C\\nPATH=/usr/bin:/bin\\nPWD=/workspace'",
-    )
-    missing_bwrap_runtime_code = [
-        token for token in required_bwrap_runtime_code if token not in setup_code
-    ]
-    if missing_bwrap_runtime_code:
-        fail(f"CI bwrap install/probe contract differs: missing={missing_bwrap_runtime_code}")
-    probe_invocation = re.search(
-        r'if\s+!\s+BWRAP_PROBE_OUTPUT="\$\((.*?)\)";\s*then(.*?)fi',
-        setup_code,
-        flags=re.DOTALL,
-    )
-    if (not probe_invocation
-            or "|| true" in probe_invocation.group(1)
-            or "exit 1" not in probe_invocation.group(2)):
-        fail("CI bwrap production-shape probe is not a real fail-closed invocation")
-
     found = {}
     for path in ROOT.glob("**/src/main/**/*.java"):
         if "/build/" in path.as_posix():

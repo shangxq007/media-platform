@@ -1,9 +1,11 @@
 package com.example.platform.ingest.preflight.ffprobe;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.example.platform.ingest.contract.MediaCategory;
 import com.example.platform.ingest.contract.MediaProbeStatus;
+import com.example.platform.sandbox.BubblewrapSandboxCapabilityDetector;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,6 +50,10 @@ class FFprobeMediaMetadataProviderTest {
 
     @Test
     void testValidVideoIfFFprobeAvailable(@TempDir Path tempDir) throws IOException {
+        var sandboxDetection = BubblewrapSandboxCapabilityDetector.detect();
+        assumeTrue(sandboxDetection.launcher().isPresent(),
+                "Enforceable host sandbox unavailable: " + sandboxDetection.diagnostic());
+
         // This test requires FFprobe binary - skip if not available
         try {
             Process p = new ProcessBuilder("ffprobe", "-version").start();

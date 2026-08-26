@@ -1,12 +1,14 @@
 package com.example.platform.ingest.preflight;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.ingest.contract.*;
 import com.example.platform.ingest.experimental.tika.TikaDetectorProvider;
 import com.example.platform.ingest.experimental.tika.TikaExperimentalProperties;
 import com.example.platform.ingest.preflight.ffprobe.FFprobeMediaMetadataProvider;
+import com.example.platform.sandbox.BubblewrapSandboxCapabilityDetector;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.ObjectProvider;
@@ -60,6 +62,10 @@ class IngestMetadataMergerTest {
 
     @Test
     void testFfprobeForVideo(@TempDir Path tempDir) throws IOException, InterruptedException {
+        var sandboxDetection = BubblewrapSandboxCapabilityDetector.detect();
+        assumeTrue(sandboxDetection.launcher().isPresent(),
+            "Enforceable host sandbox unavailable: " + sandboxDetection.diagnostic());
+
         // Check if FFmpeg is available
         try {
             Process p = new ProcessBuilder("ffmpeg", "-version").start();
