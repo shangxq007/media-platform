@@ -37,6 +37,9 @@ class ContainerSandboxProcessLauncherIntegrationTest {
         ContainerSandboxDetection detection = ContainerSandboxCapabilityDetector.detect(
                 ContainerEnginePreference.AUTO, IMAGE, Optional.of(secrets));
         assumeTrue(detection.supportedEngineInstalled(), "Podman or Docker is not installed");
+        assumeTrue(detection.launcher().isPresent()
+                        || !onlyRootfulEnginesUnavailable(detection.diagnostic()),
+                "Rootless container engine unavailable: " + detection.diagnostic());
         assertThat(detection.launcher()).as(detection.diagnostic()).isPresent();
         ContainerSandboxProcessLauncher launcher = detection.launcher().orElseThrow();
 
@@ -168,6 +171,28 @@ class ContainerSandboxProcessLauncherIntegrationTest {
         assertThat(ProcessHandle.of(cancellation.observation().handle().processId())
                 .map(ProcessHandle::isAlive).orElse(false)).isFalse();
         assertThat(launcher.hasRunningSandboxContainers()).isFalse();
+    }
+
+    @Test
+    void rootful_engine_unavailability_diagnostic_classification_is_exact() {
+        assertThat(onlyRootfulEnginesUnavailable("docker: engine is not rootless")).isTrue();
+        assertThat(onlyRootfulEnginesUnavailable(
+                "podman: engine is not rootless; docker: engine is not rootless")).isTrue();
+        assertThat(onlyRootfulEnginesUnavailable(
+                "docker: hardening probe failed: runtime setup failed")).isFalse();
+        assertThat(onlyRootfulEnginesUnavailable(
+                "docker: engine is not rootless; podman: hardening probe failed: resource limit"))
+                .isFalse();
+        assertThat(onlyRootfulEnginesUnavailable(
+                "/usr/bin/docker: executable version behavior is not Podman or Docker")).isFalse();
+        assertThat(onlyRootfulEnginesUnavailable(
+                "docker: rootless info probe failed: runtime setup failed")).isFalse();
+    }
+
+    private static boolean onlyRootfulEnginesUnavailable(String diagnostic) {
+        return List.of(diagnostic.split("; ", -1)).stream()
+                .allMatch(entry -> entry.equals("podman: engine is not rootless")
+                        || entry.equals("docker: engine is not rootless"));
     }
 
     private SandboxExecutionResult launch(
