@@ -13,7 +13,7 @@ DOC = ROOT / "docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation
 LEDGER = ROOT / "docs/architecture/governance/automated-guards/phase17-sandbox-isolation-clean-forward-ledger.tsv"
 STATE = ROOT / "docs/architecture/governance/project-state/current-state.yaml"
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
-CORRECTION_16_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_16_FCV_REVIEW"
+CORRECTION_17_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_17_FCV_REVIEW"
 
 def invoke(doc, ledger, state):
     return subprocess.run(["python3", str(GUARD), "--document", str(doc),
@@ -110,8 +110,8 @@ def main():
         changed["roadmap_22"]["phase_17_started"] = True
         state_mutations.append(("decision-recovery-phase17-started-drift", changed))
         changed = copy.deepcopy(decision_state)
-        changed["governance_execution"]["immediate_next_gate"] = CORRECTION_16_FCV_GATE
-        changed["governance"]["next_gate"] = CORRECTION_16_FCV_GATE
+        changed["governance_execution"]["immediate_next_gate"] = CORRECTION_17_FCV_GATE
+        changed["governance"]["next_gate"] = CORRECTION_17_FCV_GATE
         state_mutations.append(("decision-recovery-gate-drift", changed))
 
         for name, mutation_state in state_mutations:

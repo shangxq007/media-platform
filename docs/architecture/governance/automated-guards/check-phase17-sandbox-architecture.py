@@ -155,8 +155,10 @@ def main():
         fail("ambient environment inheritance appeared")
 
     workflow = (ROOT / ".github/workflows/phase17-sandbox-conformance.yml").read_text()
-    if "phase17-c16-20260827" not in workflow:
-        fail("Phase 17 conformance workflow does not require the Correction 16 nonce label")
+    if "phase17-c17-20260827" not in workflow:
+        fail("Phase 17 conformance workflow does not require the Correction 17 nonce label")
+    if "fetch-depth: 0" not in workflow:
+        fail("Phase 17 conformance workflow does not provide required governance history")
     if "pull_request" in workflow or "issue_comment" in workflow or "issues:" in workflow:
         fail("Phase 17 conformance workflow has an untrusted event trigger")
     if "persist-credentials: false" not in workflow or "contents: read" not in workflow:
