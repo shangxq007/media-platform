@@ -27,26 +27,22 @@ Laws: SANDBOX_IS_EXECUTION_SAFETY_INFRASTRUCTURE_NOT_DOMAIN_AUTHORITY_V1; SANDBO
 
 ## Repository reality and Clean Forward ledger
 
-| Path/component | Current role | Phase 17 disposition | Rationale |
-|---|---|---|---|
-| `extension-module/.../sandbox` | extension/plugin code execution policy and worker adapter | MIGRATE_REDESIGN | wrong authority: extension code sandbox is not provider-runtime execution isolation |
-| `sandbox-runtime` concepts/tests | historical language/code execution runtime | MIGRATE_REDESIGN | cannot become universal Provider/Worker/Artifact authority |
-| `sandbox-worker` deployment artifact | historical application/process artifact | REUSE_MECHANICS_ONLY | executable/deployment mechanics do not establish WorkerRuntime identity |
-| `ProcessBuilder`/HTTP worker adapters | process/transport mechanics | REUSE_MECHANICS_ONLY | must sit below the frozen sandbox boundary |
-| Phase 16 `OutputStagingArea` and Artifact commit orchestration | authoritative output boundary | REUSE_AS_CANONICAL | Sandbox must provide candidate bytes only |
-| worker-fabric ownership/generation/fencing | authoritative lifecycle fence | REUSE_AS_CANONICAL | sandbox cannot create a second fence |
-| Docker/Testcontainers | build/test-container mechanics | REUSE_MECHANICS_ONLY | not a production isolation authority |
-| OpenCue local Docker safety documents | delegated-backend operational evidence | DEFER | Phase 17 must not redesign OpenCue internal scheduling |
-| Podman/containerd/LXC/namespaces/cgroups/seccomp/systemd scopes | candidate mechanisms | DEFER | classify implementation only after Phase 17 contract review |
+The canonical, mechanically parsed ledger is:
 
-TOTAL_ROWS=10
-REUSE_AS_CANONICAL_COUNT=2
-REUSE_MECHANICS_ONLY_COUNT=3
-MIGRATE_REDESIGN_COUNT=2
+`docs/architecture/governance/automated-guards/phase17-sandbox-isolation-clean-forward-ledger.tsv`
+
+Each row identifies one exact tracked repository surface and contains: ROW_ID, EXACT_PATH, SYMBOL_OR_COMPONENT, CURRENT_CALLERS, CURRENT_DEPENDENCY_DIRECTION, CURRENT_RUNTIME_ROLE, CURRENT_AUTHORITY_CLAIM, PHASE_17_RELEVANCE, DISPOSITION, and RATIONALE. It covers existing extension/plugin sandbox production and tests; sandbox-worker source, tests, configuration and deployment; direct production ProcessBuilder paths; worker-fabric sandbox eligibility and Artifact/fencing authorities; OpenCue source/tests/docs; Kubernetes/GitOps sandbox surfaces; and generated persistence projections. No path placeholder or undeclared glob is permitted.
+
+TOTAL_ROWS=131
+REUSE_AS_CANONICAL_COUNT=8
+REUSE_MECHANICS_ONLY_COUNT=21
+MIGRATE_REDESIGN_COUNT=37
 DELETE_SHADOW_COUNT=0
-DEFER_COUNT=3
+DEFER_COUNT=65
 UNCLASSIFIED_COUNT=0
 DUPLICATE_ROW_COUNT=0
+
+The counts above are derived from the TSV by `docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger.py`; they are not hand-maintained independently.
 
 ## Typed contract proposal
 
@@ -97,6 +93,10 @@ Community Compute remains ADOPTED_DEFERRED. No enrollment, trust taxonomy, disco
 I0 ledger/deletion preparation; I1 typed requirements/capabilities/failures; I2 process lifecycle; I3 filesystem/workspace/staging; I4 environment/secrets; I5 network; I6 resource/privilege/device hooks; I7 RuntimeAdapter integration; I8 Artifact/fencing proof; I9 one real local isolation adapter; I10 shadow deletion; I11 conformance/guards; I12 freeze/FCV.
 
 Required future evidence: child containment/timeout/cancel/orphan; read-only inputs/traversal/workspace cleanup; deny/allow network; secret scope/redaction/no persistence; resource limit typed mapping; unprivileged/device grant behavior; exit-zero/stale/partial/cancel Artifact fencing; module boundaries and real isolation end-to-end path.
+
+## Governance Correction 1
+
+The independent review accepted the architecture semantics and identified three governance defects: the former summary declared ten rows while its visible table contained nine; the entries were aggregated and not mechanically traceable; and the two project-state next-gate surfaces disagreed. Correction 1 preserves all accepted semantics, replaces the summary with the 131-row exact-path TSV ledger, adds a fail-closed parser/validator with six required RED mutations, and normalizes both next-gate surfaces. The reviewed commit `63f0b49590a3b6cd6aa072d31d5483904d32e668` remains immutable in history.
 
 ## Escalation and final decision
 

@@ -46,6 +46,7 @@ roadmap_22:
   phase_16_correction_3_final_review: PASS
   phase_16_decision_recovery: CLOSED
   phase_17_started: false
+  phase_17_sandbox_isolation_decision_recovery: FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW
   canonical_main_integration: FAST_FORWARDED_TO_ACCEPTED_SOURCE_TIP
   canonical_main_integration_source_tip: b16b7505ddc37c542d2c422a64d44fc6a5be5ffa
 roadmap_22_epochs:
@@ -97,7 +98,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY
+  next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   data_integrity_correction_records:
