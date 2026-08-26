@@ -153,9 +153,22 @@ def main():
         fail("shell-string execution authority appeared")
     if "System.getenv" in sandbox_sources or ".inheritIO()" in sandbox_sources:
         fail("ambient environment inheritance appeared")
+
+    workflow = (ROOT / ".github/workflows/phase17-sandbox-conformance.yml").read_text()
+    if "phase17-c16-20260827" not in workflow:
+        fail("Phase 17 conformance workflow does not require the Correction 16 nonce label")
+    if "pull_request" in workflow or "issue_comment" in workflow or "issues:" in workflow:
+        fail("Phase 17 conformance workflow has an untrusted event trigger")
+    if "persist-credentials: false" not in workflow or "contents: read" not in workflow:
+        fail("Phase 17 conformance workflow lacks the frozen minimal credential posture")
+    raw_resource_flags = ("--cpus=", "--memory=", "--memory-swap=", "--pids-limit=", "--ulimit=")
+    found_raw_resource_flags = [flag for flag in raw_resource_flags if flag in workflow]
+    if found_raw_resource_flags:
+        fail("raw conformance workflow invents resource capability: " + ", ".join(found_raw_resource_flags))
     print(
         "PHASE17_SANDBOX_ARCHITECTURE_GUARD=PASS "
-        f"process_builder_sites={len(found)} sandbox_sources={len(sandbox_files)}")
+        f"process_builder_sites={len(found)} sandbox_sources={len(sandbox_files)} "
+        "raw_workflow_resource_capability_assertion_count=0")
 
 if __name__ == "__main__":
     main()

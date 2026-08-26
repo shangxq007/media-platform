@@ -19,7 +19,7 @@ jobs:
       - linux
       - x64
       - phase17-sandbox-conformance
-      - phase17-c15-20260826
+      - phase17-c16-20260827
     timeout-minutes: 60
     env:
       MEDIA_PLATFORM_REQUIRE_PHASE17_SANDBOX_CONFORMANCE: "true"
@@ -105,12 +105,11 @@ jobs:
             local suffix="$1"
             shift
             /usr/bin/podman run --rm \
-              --name "phase17-c15-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${suffix}" \
-              --label media-platform.phase17.instance=correction-15-smoke \
+              --name "phase17-c16-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${suffix}" \
+              --label media-platform.phase17.instance=correction-16-smoke \
               --pull=missing --network=none --read-only --cap-drop=all \
               --security-opt=no-new-privileges --userns=keep-id \
-              --user="$(id -u):$(id -g)" --pids-limit=16 \
-              --cpus=1.0 --ulimit=nofile=32:32 \
+              --user="$(id -u):$(id -g)" \
               --mount="type=bind,src=$workspace,dst=/sandbox/workspace,rw" \
               --mount="type=bind,src=$smoke_root/input,dst=/sandbox/inputs/input-0,ro" \
               --tmpfs=/sandbox/workspace/tmp:rw,noexec,nosuid,nodev,size=16777216,mode=1777 \
