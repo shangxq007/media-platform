@@ -1,7 +1,7 @@
 package com.example.platform.sandbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static com.example.platform.testsupport.Phase17SandboxConformance.requireCapability;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,8 +36,8 @@ class ContainerSandboxProcessLauncherIntegrationTest {
         };
         ContainerSandboxDetection detection = ContainerSandboxCapabilityDetector.detect(
                 ContainerEnginePreference.AUTO, IMAGE, Optional.of(secrets));
-        assumeTrue(detection.supportedEngineInstalled(), "Podman or Docker is not installed");
-        assumeTrue(detection.launcher().isPresent()
+        requireCapability(detection.supportedEngineInstalled(), "Podman or Docker is not installed");
+        requireCapability(detection.launcher().isPresent()
                         || !onlyRootfulEnginesUnavailable(detection.diagnostic()),
                 "Rootless container engine unavailable: " + detection.diagnostic());
         assertThat(detection.launcher()).as(detection.diagnostic()).isPresent();

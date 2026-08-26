@@ -22,7 +22,11 @@ METRICS = {
     "GLOB_PATH_COUNT",
 }
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
-IMPLEMENTATION_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_FCV_REVIEW"
+CORRECTION_15_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_15_FCV_REVIEW"
+EXPECTED_CANONICAL_MAIN = {
+    "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",
+    "tree": "d2e68f5af848cb49a5db1ea33cd8629ad5b250e0",
+}
 EXPECTED_ROW_IDS = [f"P17-L-{number:03d}" for number in range(1, 132)]
 GIT_QUALIFIED_PATH = re.compile(r"^(?P<revision>[0-9a-f]{40}):(?P<path>.+)$")
 ABSENT = object()
@@ -38,20 +42,20 @@ DECISION_RECOVERY_CANDIDATE = (
     "NOT_STARTED",
     "ADOPTED_DEFERRED",
 )
-IMPLEMENTATION_FROZEN_CANDIDATE = (
+CORRECTION_15_FROZEN_CANDIDATE = (
     True,
     "CLOSED",
     "FROZEN_CANDIDATE_PENDING_FCV",
     False,
     False,
-    IMPLEMENTATION_FCV_GATE,
-    IMPLEMENTATION_FCV_GATE,
+    CORRECTION_15_FCV_GATE,
+    CORRECTION_15_FCV_GATE,
     "NOT_STARTED",
     "ADOPTED_DEFERRED",
 )
 ACCEPTED_PHASE_STATES = {
     DECISION_RECOVERY_CANDIDATE,
-    IMPLEMENTATION_FROZEN_CANDIDATE,
+    CORRECTION_15_FROZEN_CANDIDATE,
 }
 
 def fail(msg: str) -> None:
@@ -124,6 +128,13 @@ def main() -> None:
     if sum(counts[x] for x in ALLOWED) != len(rows): fail("disposition sum mismatch")
     if unclassified != 0 or duplicate_count != 0: fail("ledger not closed")
     state = yaml.safe_load(state_path.read_text())
+    if not isinstance(state, dict):
+        fail("governance state is not a mapping")
+    canonical_main = state.get("repository", {}).get("canonical_main", ABSENT)
+    if canonical_main != EXPECTED_CANONICAL_MAIN:
+        fail(
+            "persisted repository.canonical_main differs: "
+            f"expected={EXPECTED_CANONICAL_MAIN} actual={canonical_main}")
     roadmap_22 = state["roadmap_22"]
     governance_execution = state["governance_execution"]
     phase_state = (

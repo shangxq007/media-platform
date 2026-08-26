@@ -1,7 +1,8 @@
 package com.example.platform.ingest.preflight.ffprobe;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static com.example.platform.testsupport.Phase17SandboxConformance.requireCapability;
+import static com.example.platform.testsupport.Phase17SandboxConformance.requireSuccessfulProcess;
 
 import com.example.platform.ingest.contract.MediaCategory;
 import com.example.platform.ingest.contract.MediaProbeStatus;
@@ -51,31 +52,19 @@ class FFprobeMediaMetadataProviderTest {
     @Test
     void testValidVideoIfFFprobeAvailable(@TempDir Path tempDir) throws IOException {
         var sandboxDetection = BubblewrapSandboxCapabilityDetector.detect();
-        assumeTrue(sandboxDetection.launcher().isPresent(),
+        requireCapability(sandboxDetection.launcher().isPresent(),
                 "Enforceable host sandbox unavailable: " + sandboxDetection.diagnostic());
 
-        // This test requires FFprobe binary - skip if not available
-        try {
-            Process p = new ProcessBuilder("ffprobe", "-version").start();
-            p.waitFor();
-            if (p.exitValue() != 0) return;
-        } catch (Exception e) {
-            return; // FFprobe not available
-        }
+        requireSuccessfulProcess(java.util.List.of("ffprobe", "-version"),
+                "FFprobe binary");
 
         // Generate a tiny test video using FFmpeg
         Path testVideo = tempDir.resolve("test.mp4");
-        try {
-            Process ffmpeg = new ProcessBuilder(
+        requireSuccessfulProcess(java.util.List.of(
                 "ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=blue:s=320x240:d=1",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p",
                 testVideo.toString()
-            ).start();
-            ffmpeg.waitFor();
-            if (ffmpeg.exitValue() != 0) return;
-        } catch (Exception e) {
-            return; // FFmpeg not available
-        }
+            ), "FFmpeg fixture generation");
 
         FFprobeMediaMetadataProvider provider = new FFprobeMediaMetadataProvider();
         var result = provider.probe(testVideo, "test.mp4", "video/mp4");

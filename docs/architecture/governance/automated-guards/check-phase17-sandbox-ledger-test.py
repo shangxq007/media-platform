@@ -13,7 +13,7 @@ DOC = ROOT / "docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation
 LEDGER = ROOT / "docs/architecture/governance/automated-guards/phase17-sandbox-isolation-clean-forward-ledger.tsv"
 STATE = ROOT / "docs/architecture/governance/project-state/current-state.yaml"
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
-IMPLEMENTATION_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_FCV_REVIEW"
+CORRECTION_15_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_15_FCV_REVIEW"
 
 def invoke(doc, ledger, state):
     return subprocess.run(["python3", str(GUARD), "--document", str(doc),
@@ -60,6 +60,15 @@ def main():
         changed["governance"]["next_gate"] = "ARBITRARY_AGREED_GATE"
         state_mutations.append(("aligned-arbitrary-gates", changed))
         changed = copy.deepcopy(baseline_state)
+        changed["repository"]["canonical_main"]["sha"] = "0" * 40
+        state_mutations.append(("canonical-main-sha-drift", changed))
+        changed = copy.deepcopy(baseline_state)
+        changed["repository"]["canonical_main"]["tree"] = "0" * 40
+        state_mutations.append(("canonical-main-tree-drift", changed))
+        changed = copy.deepcopy(baseline_state)
+        changed["repository"].pop("canonical_main")
+        state_mutations.append(("canonical-main-missing", changed))
+        changed = copy.deepcopy(baseline_state)
         changed["roadmap_22"]["phase_17_started"] = False
         state_mutations.append(("implementation-phase17-started-drift", changed))
         changed = copy.deepcopy(baseline_state)
@@ -101,8 +110,8 @@ def main():
         changed["roadmap_22"]["phase_17_started"] = True
         state_mutations.append(("decision-recovery-phase17-started-drift", changed))
         changed = copy.deepcopy(decision_state)
-        changed["governance_execution"]["immediate_next_gate"] = IMPLEMENTATION_FCV_GATE
-        changed["governance"]["next_gate"] = IMPLEMENTATION_FCV_GATE
+        changed["governance_execution"]["immediate_next_gate"] = CORRECTION_15_FCV_GATE
+        changed["governance"]["next_gate"] = CORRECTION_15_FCV_GATE
         state_mutations.append(("decision-recovery-gate-drift", changed))
 
         for name, mutation_state in state_mutations:

@@ -79,6 +79,23 @@ tasks.named<Test>("test") {
     }
 }
 
+tasks.register<Test>("phase17SandboxConformanceTest") {
+    description = "Runs the exact authoritative Phase 17 FFprobe sandbox conformance methods."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform {
+        excludeTags("render-integration")
+    }
+    filter {
+        includeTestsMatching(
+            "com.example.platform.ingest.preflight.ffprobe.FFprobeMediaMetadataProviderTest.testValidVideoIfFFprobeAvailable")
+        includeTestsMatching(
+            "com.example.platform.ingest.preflight.IngestMetadataMergerTest.testFfprobeForVideo")
+        isFailOnNoMatchingTests = true
+    }
+}
+
 tasks.register<Test>("renderIntegrationTest") {
     description = "Runs render pipeline integration tests"
     group = "verification"

@@ -1,7 +1,7 @@
 package com.example.platform.sandbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static com.example.platform.testsupport.Phase17SandboxConformance.requireCapability;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,7 +20,7 @@ class BubblewrapSandboxProcessLauncherIntegrationTest {
 
     @Test
     void real_bubblewrap_enforces_the_advertised_host_binary_boundaries() throws Exception {
-        assumeTrue(Files.isRegularFile(BWRAP) && Files.isExecutable(BWRAP),
+        requireCapability(Files.isRegularFile(BWRAP) && Files.isExecutable(BWRAP),
                 "/usr/bin/bwrap is not installed");
 
         BubblewrapSandboxDetection detection = BubblewrapSandboxCapabilityDetector.detect();

@@ -1,0 +1,204 @@
+name: Phase 17 Sandbox Conformance
+
+on:
+  push:
+    branches:
+      - agent/roadmap22-phase17-sandbox-isolation-decision-recovery
+
+permissions:
+  contents: read
+
+jobs:
+  phase17-sandbox-conformance:
+    if: >-
+      github.repository == 'shangxq007/media-platform' &&
+      github.ref == 'refs/heads/agent/roadmap22-phase17-sandbox-isolation-decision-recovery' &&
+      github.event_name == 'push'
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - phase17-sandbox-conformance
+      - phase17-c15-20260826
+    timeout-minutes: 60
+    env:
+      MEDIA_PLATFORM_REQUIRE_PHASE17_SANDBOX_CONFORMANCE: "true"
+    steps:
+      - name: Checkout exact triggering SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Report bounded runner identity and capabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'GITHUB_SHA=%s\n' "$GITHUB_SHA"
+          uname -a
+          id
+          java -version 2>&1
+          ffmpeg_version="$(ffmpeg -version 2>&1)"; printf '%s\n' "${ffmpeg_version%%$'\n'*}"
+          ffprobe_version="$(ffprobe -version 2>&1)"; printf '%s\n' "${ffprobe_version%%$'\n'*}"
+          /usr/bin/bwrap --version
+          /usr/bin/podman --version
+          /usr/bin/podman info --format json > podman-info.json
+          python3 - <<'PY'
+          import json
+          host = json.load(open("podman-info.json"))["host"]
+          print("rootless=" + str(host["security"]["rootless"]).lower())
+          print("cgroupVersion=" + str(host["cgroupVersion"]))
+          print("cgroupManager=" + str(host["cgroupManager"]))
+          assert host["security"]["rootless"] is True
+          assert host["cgroupVersion"] == "v2"
+          assert host["cgroupManager"] == "systemd"
+          PY
+          rm -f podman-info.json
+          printf 'cgroup_membership='
+          tr '\n' ';' < /proc/self/cgroup
+          printf '\n'
+
+      - name: Run Bubblewrap production-shape smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke_root="$(mktemp -d)"
+          trap 'rm -rf -- "$smoke_root"' EXIT
+          workspace="$smoke_root/workspace"
+          mkdir -p "$workspace/.sandbox-tmp" "$workspace/.sandbox-output"
+          printf 'probe' > "$workspace/input"
+
+          bwrap_command=(/usr/bin/bwrap --unshare-all --die-with-parent --new-session)
+          for system_root in /usr /bin /lib /lib64; do
+            if test -e "$system_root"; then
+              bwrap_command+=(--ro-bind "$system_root" "$system_root")
+            fi
+          done
+          bwrap_command+=(
+            --proc /proc --dev /dev --tmpfs /tmp --tmpfs /sandbox-inputs
+            --ro-bind "$workspace" /workspace
+            --bind "$workspace/.sandbox-tmp" /workspace/.sandbox-tmp
+            --bind "$workspace/.sandbox-output" /workspace/.sandbox-output
+            --ro-bind "$workspace/input" /workspace/input
+            --remount-ro /sandbox-inputs --chdir /workspace --clearenv
+            --setenv LANG C --setenv PATH /usr/bin:/bin /usr/bin/env
+          )
+          environment_output="$(env -i "${bwrap_command[@]}")"
+          test "$(printf '%s\n' "$environment_output" | wc -l)" -eq 3
+          grep -Fx 'LANG=C' <<< "$environment_output"
+          grep -Fx 'PATH=/usr/bin:/bin' <<< "$environment_output"
+          grep -Fx 'PWD=/workspace' <<< "$environment_output"
+
+      - name: Run rootless Podman production-hardening smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(/usr/bin/podman info --format '{{.Host.Security.Rootless}}')" = "true"
+          smoke_root="$(mktemp -d)"
+          trap 'rm -rf -- "$smoke_root"' EXIT
+          workspace="$smoke_root/workspace"
+          mkdir -p "$workspace/tmp" "$workspace/out"
+          printf 'probe' > "$smoke_root/input"
+          image='docker.io/library/alpine:3.20'
+
+          run_hardened() {
+            local suffix="$1"
+            shift
+            /usr/bin/podman run --rm \
+              --name "phase17-c15-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${suffix}" \
+              --label media-platform.phase17.instance=correction-15-smoke \
+              --pull=missing --network=none --read-only --cap-drop=all \
+              --security-opt=no-new-privileges --userns=keep-id \
+              --user="$(id -u):$(id -g)" --pids-limit=16 \
+              --cpus=1.0 --ulimit=nofile=32:32 \
+              --mount="type=bind,src=$workspace,dst=/sandbox/workspace,rw" \
+              --mount="type=bind,src=$smoke_root/input,dst=/sandbox/inputs/input-0,ro" \
+              --tmpfs=/sandbox/workspace/tmp:rw,noexec,nosuid,nodev,size=16777216,mode=1777 \
+              --workdir=/sandbox/workspace --env=PATH=/usr/bin:/bin \
+              --env=HOME=/sandbox/workspace --env=TMPDIR=/sandbox/workspace/tmp \
+              --env=LANG=C.UTF-8 "$image" "$@"
+          }
+
+          run_hardened write /bin/touch \
+            /sandbox/workspace/tmp/ephemeral /sandbox/workspace/out/persisted
+          test -f "$workspace/out/persisted"
+          test ! -e "$workspace/tmp/ephemeral"
+          if run_hardened readonly /bin/touch /read-only-root-proof; then
+            printf 'root filesystem unexpectedly writable\n' >&2
+            exit 1
+          fi
+          network_output="$(run_hardened network /bin/busybox ip link)"
+          grep -F 'lo:' <<< "$network_output"
+          if grep -E 'eth[0-9]|wlan[0-9]' <<< "$network_output"; then
+            printf 'non-loopback network interface exposed\n' >&2
+            exit 1
+          fi
+          status_output="$(run_hardened posture /bin/busybox cat /proc/self/status)"
+          grep -Eq '^NoNewPrivs:[[:space:]]+1$' <<< "$status_output"
+          grep -Eq '^CapEff:[[:space:]]+0+$' <<< "$status_output"
+          test "$(run_hardened identity /bin/busybox id -u)" != "0"
+          environment_output="$(run_hardened environment /usr/bin/env)"
+          grep -Fx 'PATH=/usr/bin:/bin' <<< "$environment_output"
+          grep -Fx 'HOME=/sandbox/workspace' <<< "$environment_output"
+          grep -Fx 'TMPDIR=/sandbox/workspace/tmp' <<< "$environment_output"
+          grep -Fx 'LANG=C.UTF-8' <<< "$environment_output"
+
+      - name: Run exact manifest test selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/phase17-sandbox-conformance
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          from pathlib import Path
+
+          marker = Path("build/phase17-sandbox-conformance/started.json")
+          marker.write_text(json.dumps({
+              "sha": os.environ["GITHUB_SHA"],
+              "started_at_ns": time.time_ns(),
+          }, sort_keys=True) + "\n")
+          PY
+          ./gradlew --no-daemon \
+            :sandbox-isolation-module:cleanPhase17SandboxConformanceTest \
+            :platform-app:cleanPhase17SandboxConformanceTest
+          ./gradlew --no-daemon \
+            :sandbox-isolation-module:phase17SandboxConformanceTest \
+            :platform-app:phase17SandboxConformanceTest
+
+      - name: Guard exact-SHA JUnit results
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 docs/architecture/governance/automated-guards/check-phase17-sandbox-conformance-results.py \
+            --manifest docs/architecture/governance/automated-guards/phase17-sandbox-conformance-tests.tsv \
+            --results-root sandbox-isolation-module/build/test-results/phase17SandboxConformanceTest \
+            --results-root platform-app/build/test-results/phase17SandboxConformanceTest \
+            --freshness-marker build/phase17-sandbox-conformance/started.json \
+            --expected-sha "${{ github.sha }}" \
+            | tee build/phase17-sandbox-conformance/junit-guard.out
+
+      - name: Run Phase 17 governance guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger.py \
+            | tee build/phase17-sandbox-conformance/ledger-guard.out
+          python3 docs/architecture/governance/automated-guards/check-phase17-sandbox-architecture.py \
+            | tee build/phase17-sandbox-conformance/architecture-guard.out
+
+      - name: Upload bounded conformance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase17-sandbox-conformance-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            sandbox-isolation-module/build/test-results/phase17SandboxConformanceTest/TEST-com.example.platform.sandbox.BubblewrapSandboxProcessLauncherIntegrationTest.xml
+            sandbox-isolation-module/build/test-results/phase17SandboxConformanceTest/TEST-com.example.platform.sandbox.ContainerSandboxProcessLauncherIntegrationTest.xml
+            platform-app/build/test-results/phase17SandboxConformanceTest/TEST-com.example.platform.ingest.preflight.ffprobe.FFprobeMediaMetadataProviderTest.xml
+            platform-app/build/test-results/phase17SandboxConformanceTest/TEST-com.example.platform.ingest.preflight.IngestMetadataMergerTest.xml
+            docs/architecture/governance/automated-guards/phase17-sandbox-conformance-tests.tsv
+            build/phase17-sandbox-conformance/*.out

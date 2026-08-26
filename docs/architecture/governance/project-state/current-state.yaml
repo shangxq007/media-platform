@@ -3,8 +3,8 @@ project:
   governance_schema_version: 1
 repository:
   canonical_main:
-    sha: 036f21f7f94f61da92faa2e91934675d024d99e8
-    tree: 7a61effeb2840c428cab2705a9f529159fc4e345
+    sha: d2cc856939fe0a73d6f1ef799078a0a5e7c5b179
+    tree: d2e68f5af848cb49a5db1ea33cd8629ad5b250e0
   active_governed_branch:
     name: agent/roadmap22-executable-task-graph-worker-fabric-decision-recovery
   accepted_implementation:
@@ -64,7 +64,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_FCV_REVIEW
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_15_FCV_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 17
@@ -101,7 +101,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_FCV_REVIEW
+  next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_15_FCV_REVIEW
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   data_integrity_correction_records:

@@ -1,5 +1,6 @@
 import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import java.io.ByteArrayOutputStream
 
@@ -21,6 +22,14 @@ subprojects {
     extensions.configure<JavaPluginExtension>("java") {
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(25))
+        }
+    }
+
+    if (name == "sandbox-isolation-module" || name == "platform-app") {
+        extensions.configure<SourceSetContainer> {
+            named("test") {
+                java.srcDir(rootProject.file("test-conformance-support/src/test/java"))
+            }
         }
     }
 

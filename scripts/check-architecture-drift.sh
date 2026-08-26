@@ -1385,7 +1385,7 @@ fi
 
 echo "--- ROADMAP_22_PHASE_17 Sandbox Isolation Guards ---"
 if python3 docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger-test.py; then
-  pass "Phase 17 ledger guard RED matrix rejects sixteen corruptions"
+  pass "Phase 17 ledger guard RED matrix rejects the fail-closed corruption set"
 else
     fail "Phase 17 ledger guard RED matrix failed"
 fi

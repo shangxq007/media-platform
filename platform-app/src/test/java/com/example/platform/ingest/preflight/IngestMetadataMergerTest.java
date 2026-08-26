@@ -1,7 +1,8 @@
 package com.example.platform.ingest.preflight;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static com.example.platform.testsupport.Phase17SandboxConformance.requireCapability;
+import static com.example.platform.testsupport.Phase17SandboxConformance.requireSuccessfulProcess;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.ingest.contract.*;
@@ -63,26 +64,18 @@ class IngestMetadataMergerTest {
     @Test
     void testFfprobeForVideo(@TempDir Path tempDir) throws IOException, InterruptedException {
         var sandboxDetection = BubblewrapSandboxCapabilityDetector.detect();
-        assumeTrue(sandboxDetection.launcher().isPresent(),
+        requireCapability(sandboxDetection.launcher().isPresent(),
             "Enforceable host sandbox unavailable: " + sandboxDetection.diagnostic());
 
-        // Check if FFmpeg is available
-        try {
-            Process p = new ProcessBuilder("ffmpeg", "-version").start();
-            p.waitFor();
-            if (p.exitValue() != 0) return;
-        } catch (Exception e) {
-            return; // FFmpeg not available
-        }
+        requireSuccessfulProcess(java.util.List.of("ffmpeg", "-version"),
+                "FFmpeg binary");
 
         // Generate tiny test video
         Path testVideo = tempDir.resolve("test.mp4");
-        Process ffmpeg = new ProcessBuilder(
+        requireSuccessfulProcess(java.util.List.of(
             "ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=blue:s=320x240:d=1",
             "-c:v", "libx264", "-pix_fmt", "yuv420p", testVideo.toString()
-        ).start();
-        ffmpeg.waitFor();
-        if (ffmpeg.exitValue() != 0) return;
+        ), "FFmpeg fixture generation");
 
         TikaExperimentalProperties tikaProps = new TikaExperimentalProperties();
         tikaProps.setEnabled(true);
